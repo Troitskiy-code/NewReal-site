@@ -1,9 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-export default function RegisterPage() {
+
+function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ref = searchParams.get("ref");
@@ -61,61 +63,69 @@ export default function RegisterPage() {
   return (
     <div className="min-h-dvh bg-wd-bg text-wd-text">
       <div style={{ maxWidth: 400, margin: "50px auto", padding: 20 }}>
-      <h1>Регистрация</h1>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Имя"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
-        />
-        <input
-          type="email"
-          placeholder="Электронная почта"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
-        />
-        <input
-          type="password"
-          placeholder="Пароль"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
-        />
-        <input
-          type="password"
-          placeholder="Подтверждение пароля"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
-        />
-        <button
-          type="submit"
-          style={{
-            width: "100%",
-            padding: 10,
-            cursor: "pointer",
-            backgroundColor: "#0070f3",
-            color: "#fff",
-            border: "none",
-            borderRadius: 4,
-          }}
-        >
-          Зарегистрироваться
-        </button>
-      </form>
-      {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
-      {success && <p style={{ color: "green", marginTop: 10 }}>{success}</p>}
-      <p style={{ marginTop: 16 }}>
-        Уже есть аккаунт? <Link href="/login">Войти</Link>
-      </p>
+        <h1>Регистрация</h1>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Имя"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          />
+          <input
+            type="email"
+            placeholder="Электронная почта"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          />
+          <input
+            type="password"
+            placeholder="Пароль"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          />
+          <input
+            type="password"
+            placeholder="Подтверждение пароля"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          />
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              padding: 10,
+              cursor: "pointer",
+              backgroundColor: "#0070f3",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+            }}
+          >
+            Зарегистрироваться
+          </button>
+        </form>
+        {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
+        {success && <p style={{ color: "green", marginTop: 10 }}>{success}</p>}
+        <p style={{ marginTop: 16 }}>
+          Уже есть аккаунт? <Link href="/login">Войти</Link>
+        </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-dvh bg-wd-bg text-wd-text flex items-center justify-center">Загрузка...</div>}>
+      <RegisterContent />
+    </Suspense>
   );
 }
