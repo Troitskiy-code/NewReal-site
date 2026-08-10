@@ -394,9 +394,10 @@ export default function CharacterForm({
             </span>
           </div>
           <ToggleSwitch
-            isOn={values.isNSFW}
-            onToggle={(value) => onChange("isNSFW", value)}
-          />
+  isOn={values.isNSFW}
+  onToggle={(value) => onChange("isNSFW", value)}
+  label="NSFW"
+/>
         </div>
       </section>
 
