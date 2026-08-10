@@ -5,7 +5,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ваши настройки
+  output: 'standalone', // <- добавляем
 };
 
 export default nextConfig;
