@@ -10,7 +10,7 @@ import config from "@/lib/config";
 export default function ChatTemplate({ appInstance, userCredits, activeCreation, onCreationCompleted }) {
   const parsedConfig = appInstance.config ? JSON.parse(appInstance.config) : {};
   const [messages, setMessages] = useState([
-    { role: "assistant", content: `Hello! I am your custom assistant configured for ${appInstance.name}. How can I assist you today?` }
+    { role: "assistant", content: `Здравствуйте! Я ваш персональный ассистент для ${appInstance.name}. Чем могу помочь?` }
   ]);
   const [input, setInput] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -24,7 +24,7 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
     setInput("");
     setGenerating(true);
 
-    const toastId = toast.loading("Formulating response...");
+    const toastId = toast.loading("Формируем ответ...");
 
     try {
       const { data } = await axios.post("/api/generation", {
@@ -37,17 +37,17 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
       });
 
       if (data.status === "failed") {
-        toast.error("Generation failed. Credits refunded.", { id: toastId });
-        setMessages((prev) => [...prev, { role: "assistant", content: "Error: Generation task failed." }]);
+        toast.error("Генерация не удалась. Кредиты возвращены.", { id: toastId });
+        setMessages((prev) => [...prev, { role: "assistant", content: "Ошибка: задача генерации не выполнена." }]);
       } else {
-        toast.success("Message received!", { id: toastId });
+        toast.success("Сообщение получено!", { id: toastId });
         // The resultImage field holds the output text in our generic db model
-        setMessages((prev) => [...prev, { role: "assistant", content: data.resultImage || "Done." }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: data.resultImage || "Готово." }]);
       }
       onCreationCompleted();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Chat failed.", { id: toastId });
-      setMessages((prev) => [...prev, { role: "assistant", content: "Error: Connection problem occurred." }]);
+      toast.error(err.response?.data?.error || "Ошибка чата.", { id: toastId });
+      setMessages((prev) => [...prev, { role: "assistant", content: "Ошибка: проблема с подключением." }]);
     } finally {
       setGenerating(false);
     }
@@ -59,11 +59,11 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
       {/* Header Info */}
       <div className="flex items-center justify-between border-b border-divider/40 pb-4">
         <div className="space-y-0.5">
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">{appInstance.name} Chatroom</h2>
-          <p className="text-[11px] text-secondary-text">LLM Engine: {parsedConfig.model || "gpt-4o"}</p>
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">Чат {appInstance.name}</h2>
+          <p className="text-[11px] text-secondary-text">LLM-движок: {parsedConfig.model || "gpt-4o"}</p>
         </div>
         <div className="text-[10px] text-secondary-text bg-bg-page/50 border border-divider/40 px-3 py-1 rounded">
-          Cost: {config.ai.generationCost} credit / msg
+          Стоимость: {config.ai.generationCost} кредит / сообщ.
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
             </div>
             <div className="bg-bg-page border border-divider/40 rounded-xl p-3 text-xs font-semibold text-secondary-text flex items-center gap-2">
               <FiRefreshCw className="animate-spin text-sm" />
-              <span>Thinking...</span>
+              <span>Думаю...</span>
             </div>
           </div>
         )}
@@ -106,7 +106,7 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={`Message ${appInstance.name}...`}
+          placeholder={`Сообщение для ${appInstance.name}...`}
           disabled={generating}
           className="flex-1 bg-bg-page border border-divider/60 rounded-full py-3 px-5 text-xs outline-none focus:border-primary/60 transition-colors font-medium placeholder-secondary-text"
         />

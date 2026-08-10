@@ -1,111 +1,64 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+
+console.log("🔑 NEXTAUTH_SECRET from env:", process.env.NEXTAUTH_SECRET);
 
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "jwt",
-  },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
     CredentialsProvider({
-      id: "credentials",
-      name: "API Key",
-      credentials: {
-        apiKey: { label: "MuAPI Key", type: "password" },
-      },
+      name: "credentials",
+      credentials: { email: { label: "Email", type: "email" }, password: { label: "Password", type: "password" } },
       async authorize(credentials) {
-        if (!credentials?.apiKey) {
-          throw new Error("API Key is required");
-        }
-        const apiKey = credentials.apiKey.trim();
-        if (apiKey.length < 5) {
-          throw new Error("Invalid API key format");
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Не указаны email или пароль");
         }
 
-        const dummyEmail = `apikey_${apiKey.slice(-8)}@muapi.local`;
-        let dbUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { customApiKey: apiKey },
-              { email: dummyEmail }
-            ]
-          }
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+          select: { id: true, email: true, name: true, password: true, createdAt: true },
         });
 
-        if (!dbUser) {
-          dbUser = await prisma.user.create({
-            data: {
-              name: "API Key User",
-              email: dummyEmail,
-              customApiKey: apiKey,
-              credits: 0,
-            }
-          });
-        } else if (!dbUser.customApiKey) {
-          dbUser = await prisma.user.update({
-            where: { id: dbUser.id },
-            data: { customApiKey: apiKey }
-          });
+        if (!user || !user.password) {
+          throw new Error("Пользователь не найден");
+        }
+
+        const passwordMatch = await bcrypt.compare(credentials.password, user.password);
+        if (!passwordMatch) {
+          throw new Error("Неверный пароль");
         }
 
         return {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          image: dbUser.image || null,
-          credits: dbUser.credits,
-          customApiKey: dbUser.customApiKey || apiKey,
-          isApiKeyUser: true,
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          createdAt: user.createdAt,
         };
-      }
+      },
     }),
   ],
+  session: { strategy: "jwt" },
+  secret: "a7f9e2c1b5d8e4f6a9c2d3e1f5b8a7c9d4e2f6a3b8c9d1e5f7a2b6c4d8e9f0a1",
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.id = user.id;
-        token.credits = user.credits;
-        token.customApiKey = user.customApiKey;
-        token.isApiKeyUser = user.isApiKeyUser || false;
-      }
-      if (trigger === "update" && session) {
-        if (session.customApiKey !== undefined) token.customApiKey = session.customApiKey;
-        if (session.credits !== undefined) token.credits = session.credits;
-      }
-      const userId = token.id || token.sub;
-      if (userId) {
-        token.id = userId;
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { credits: true, customApiKey: true }
-          });
-          if (dbUser) {
-            token.credits = dbUser.credits;
-            token.customApiKey = dbUser.customApiKey;
-          }
-        } catch (err) {}
-      }
-      return token;
-    },
     async session({ session, token }) {
-      if (session.user && token) {
-        session.user.id = token.id || token.sub;
-        session.user.credits = token.credits;
-        session.user.customApiKey = token.customApiKey;
-        session.user.isApiKeyUser = Boolean(token.customApiKey);
+      if (token && session.user) {
+        session.user.id = token.sub;
+        session.user.email = token.email;
+        session.user.name = token.name;
+        session.user.createdAt = token.createdAt;
       }
       return session;
     },
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-  pages: {
-    signIn: "/login",
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+        token.createdAt = user.createdAt;
+      }
+      return token;
+    },
   },
 };

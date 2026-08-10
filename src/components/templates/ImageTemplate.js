@@ -9,12 +9,12 @@ import toast from "react-hot-toast";
 import config from "@/lib/config";
 
 const ASPECT_RATIOS = [
-  { id: "1:1", label: "1:1 Square", width: "w-16 h-16" },
-  { id: "16:9", label: "16:9 Landscape", width: "w-20 h-12" },
-  { id: "9:16", label: "9:16 Portrait", width: "w-12 h-20" }
+  { id: "1:1", label: "1:1 Квадрат", width: "w-16 h-16" },
+  { id: "16:9", label: "16:9 Альбомная", width: "w-20 h-12" },
+  { id: "9:16", label: "9:16 Портретная", width: "w-12 h-20" }
 ];
 
-function CustomSelect({ value, onChange, options, placeholder = "Select option", className = "" }) {
+function CustomSelect({ value, onChange, options, placeholder = "Выберите вариант", className = "" }) {
   const [open, setOpen] = useState(false);
   const selectedOption = options.find(opt => opt.value === value) || { label: placeholder, value };
   
@@ -124,15 +124,15 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
     try {
       const { data } = await axios.post("/api/upload", formData);
       setImage(data.url);
-      toast.success("Reference image uploaded!");
+      toast.success("Эталонное изображение загружено!");
     } catch (err) {
-      toast.error("Failed to upload image.");
+      toast.error("Не удалось загрузить изображение.");
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDynamicFileUpload = async (e, key, maxInputs = 1, fileTypeLabel = "File") => {
+  const handleDynamicFileUpload = async (e, key, maxInputs = 1, fileTypeLabel = "Файл") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -149,9 +149,9 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
           [key]: [...currentList, data.url].slice(0, maxInputs)
         };
       });
-      toast.success(`${fileTypeLabel} uploaded successfully!`);
+      toast.success(`${fileTypeLabel} успешно загружен!`);
     } catch (err) {
-      toast.error(`Failed to upload ${fileTypeLabel.toLowerCase()}.`);
+      toast.error(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
     } finally {
       setUploading(false);
     }
@@ -180,12 +180,12 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
     }
 
     if (!finalPrompt.trim()) {
-      toast.error("Please enter a prompt.");
+      toast.error("Введите запрос.");
       return;
     }
 
     setGenerating(true);
-    const toastId = toast.loading("Generating image prediction...");
+    const toastId = toast.loading("Генерация изображения...");
 
     try {
       // Gather other custom fields
@@ -230,15 +230,15 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
       });
 
       if (data.status === "failed") {
-        toast.error("Generation failed. Credits refunded.", { id: toastId });
+        toast.error("Генерация не удалась. Кредиты возвращены.", { id: toastId });
       } else if (data.status === "completed") {
-        toast.success("Generation completed!", { id: toastId });
+        toast.success("Генерация завершена!", { id: toastId });
       } else {
-        toast.success("Generation started! Polling status...", { id: toastId });
+        toast.success("Генерация запущена! Ожидаем результат...", { id: toastId });
       }
       onCreationCompleted(data);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Generation failed.", { id: toastId });
+      toast.error(err.response?.data?.error || "Генерация не удалась.", { id: toastId });
     } finally {
       setGenerating(false);
     }
@@ -259,8 +259,8 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
       {/* Configuration Form */}
       <div className="w-full lg:w-[400px] shrink-0 border border-divider/40 bg-bg-card/30 p-6 rounded-lg flex flex-col gap-6">
         <div>
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">Studio Settings</h2>
-          <p className="text-[11px] text-secondary-text">Tweak aspect ratios and inputs for {appInstance.name}.</p>
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">Настройки студии</h2>
+          <p className="text-[11px] text-secondary-text">Настройте соотношение сторон и параметры для {appInstance.name}.</p>
         </div>
 
         <form onSubmit={handleGenerate} className="space-y-6">
@@ -272,15 +272,15 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
 
                 let fileAccept = "image/*";
                 let icon = <FaImage className="text-xl" />;
-                let labelText = "Image";
+                let labelText = "Изображение";
                 if (param.type === "video_list") {
                   fileAccept = "video/*";
                   icon = <FaVideo className="text-xl" />;
-                  labelText = "Video";
+                  labelText = "Видео";
                 } else if (param.type === "audio_list") {
                   fileAccept = "audio/*";
                   icon = <FaMicrophone className="text-xl" />;
-                  labelText = "Audio";
+                  labelText = "Аудио";
                 }
 
                 return (
@@ -288,7 +288,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">{param.label}</label>
                       <span className="text-[10px] text-secondary-text font-bold bg-bg-page px-2 py-0.5 rounded border border-divider">
-                        {urls.length}/{maxInps} {maxInps > 1 ? "Files" : "File"}
+                        {urls.length}/{maxInps} {maxInps > 1 ? "файлов" : "файл"}
                       </span>
                     </div>
 
@@ -323,7 +323,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                       <div className="relative border-2 border-dashed border-divider hover:border-primary/50 transition-colors rounded-lg h-24 flex flex-col items-center justify-center bg-bg-page/40 p-2">
                         <label className="cursor-pointer flex flex-col items-center gap-1.5 text-xs font-semibold text-secondary-text">
                           {icon}
-                          <span className="text-[10px]">{uploading ? "Uploading..." : `Upload ${labelText}`}</span>
+                          <span className="text-[10px]">{uploading ? "Загрузка..." : `Загрузить ${labelText.toLowerCase()}`}</span>
                           <input
                             type="file"
                             onChange={(e) => handleDynamicFileUpload(e, param.key, maxInps, labelText)}
@@ -343,7 +343,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                   <div key={param.key} className="flex items-center justify-between py-2 border-b border-divider/20">
                     <div className="space-y-0.5">
                       <span className="text-xs font-bold text-primary-text block">{param.label}</span>
-                      <span className="text-[10px] text-secondary-text">Toggle control</span>
+                      <span className="text-[10px] text-secondary-text">Переключатель</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
@@ -400,7 +400,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                     <textarea
                       value={customValues[param.key]}
                       onChange={(e) => setCustomValues(prev => ({ ...prev, [param.key]: e.target.value }))}
-                      placeholder={`Enter ${param.label.toLowerCase()}...`}
+                      placeholder={`Введите ${param.label.toLowerCase()}...`}
                       className="w-full bg-bg-page border border-divider rounded p-3 text-xs outline-none focus:border-primary/60 transition-colors h-24 resize-none font-medium placeholder-secondary-text leading-relaxed"
                     />
                   </div>
@@ -428,7 +428,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                     type="text"
                     value={customValues[param.key]}
                     onChange={(e) => setCustomValues(prev => ({ ...prev, [param.key]: e.target.value }))}
-                    placeholder={`Enter ${param.label.toLowerCase()}...`}
+                    placeholder={`Введите ${param.label.toLowerCase()}...`}
                     className="w-full bg-bg-page border border-divider rounded py-2.5 px-3 text-xs outline-none focus:border-primary/60 transition-colors font-medium text-primary-text"
                   />
                 </div>
@@ -437,7 +437,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
           ) : (
             <>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Reference Image (Optional)</label>
+                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Эталонное изображение (необязательно)</label>
                 <div className="relative border-2 border-dashed border-divider hover:border-primary/50 transition-colors rounded-lg h-32 flex flex-col items-center justify-center bg-bg-page/40 p-4">
                   {image ? (
                     <div className="w-full h-full relative group">
@@ -447,13 +447,13 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                         onClick={() => setImage(null)}
                         className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-white font-bold transition-opacity rounded"
                       >
-                        Remove Reference
+                        Удалить эталон
                       </button>
                     </div>
                   ) : (
                     <label className="cursor-pointer flex flex-col items-center gap-2 text-xs font-semibold text-secondary-text">
                       <FaImage className="text-xl" />
-                      <span>{uploading ? "Uploading..." : "Upload Image"}</span>
+                      <span>{uploading ? "Загрузка..." : "Загрузить изображение"}</span>
                       <input type="file" onChange={handleImageUpload} className="hidden" accept="image/*" disabled={uploading} />
                     </label>
                   )}
@@ -461,7 +461,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Aspect Ratio</label>
+                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Соотношение сторон</label>
                 <div className="grid grid-cols-3 gap-2">
                   {ASPECT_RATIOS.map((ratio) => (
                     <button
@@ -480,11 +480,11 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Custom Prompt</label>
+                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Запрос</label>
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe your vision..."
+                  placeholder="Введите запрос..."
                   className="w-full bg-bg-page border border-divider rounded p-3 text-xs outline-none focus:border-primary/60 transition-colors h-24 resize-none font-medium placeholder-secondary-text leading-relaxed"
                 />
               </div>
@@ -499,15 +499,15 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
             {generating ? (
               <>
                 <FiRefreshCw className="animate-spin text-sm" />
-                <span>Generating Output...</span>
+                <span>Генерация...</span>
               </>
             ) : (
               <>
                 <FaMagic className="text-xs" />
                 <span>
                   {isApiKeyActive
-                    ? "Generate Image (Custom API Key • 0 Credits)"
-                    : `Generate Image (Cost: ${getDynamicCost()} credit${getDynamicCost() !== 1 ? "s" : ""})`}
+                    ? "Сгенерировать изображение (свой API-ключ • 0 кредитов)"
+                    : `Сгенерировать изображение (стоимость: ${getDynamicCost()} кредитов)`}
                 </span>
               </>
             )}
@@ -522,7 +522,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
             <div className="relative h-96 w-full rounded overflow-hidden bg-bg-page border border-divider shadow-xl flex items-center justify-center">
               <div className="flex flex-col items-center gap-4 text-xs font-semibold text-secondary-text">
                 <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="animate-pulse">MuAPI processing image...</span>
+                <span className="animate-pulse">MuAPI обрабатывает изображение...</span>
               </div>
             </div>
           </div>
@@ -557,8 +557,8 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                   <img src={activeCreation.resultImage} alt="AI output" className="w-full h-full object-contain" />
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-xs text-red-500 font-bold">
-                    <span>Generation failed.</span>
-                    <span className="text-[10px] text-secondary-text font-normal">{activeCreation.error || "MuAPI error occurred."}</span>
+                    <span>Генерация не удалась.</span>
+                    <span className="text-[10px] text-secondary-text font-normal">{activeCreation.error || "Произошла ошибка MuAPI."}</span>
                   </div>
                 )}
               </div>
@@ -570,7 +570,7 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
                 <div className="flex items-center gap-3 text-[10px] text-secondary-text">
                   <span className="uppercase font-bold tracking-widest text-primary">{activeCreation.status}</span>
                   <span>•</span>
-                  <span>Aspect: {activeCreation.aspectRatio}</span>
+                  <span>Соотношение: {activeCreation.aspectRatio}</span>
                 </div>
               </div>
               {activeCreation.status === "completed" && (
@@ -586,8 +586,8 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
         ) : (
           <div className="flex flex-col items-center gap-2 text-xs text-secondary-text font-bold uppercase tracking-wider">
             <FaImage className="text-3xl opacity-30 mb-2" />
-            <span>Studio Workspace Empty</span>
-            <span className="text-[10px] text-secondary-text font-normal capitalize">Configure settings and generate dynamic assets.</span>
+            <span>Рабочее пространство пусто</span>
+            <span className="text-[10px] text-secondary-text font-normal capitalize">Настройте параметры и сгенерируйте изображения.</span>
           </div>
         )}
       </div>

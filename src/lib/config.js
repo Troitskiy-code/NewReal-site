@@ -1,5 +1,5 @@
 const config = {
-  appName: "AI SaaS",
+  appName: "NewReal",
   auth: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,

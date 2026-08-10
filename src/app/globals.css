@@ -3,17 +3,41 @@
 @theme {
   --font-sans: var(--font-inter), sans-serif;
   --font-outfit: var(--font-inter), sans-serif;
-  
-  --color-bg-page: var(--bg-page, #09090b);
-  --color-bg-card: var(--bg-card, #18181b);
-  --color-bg-card-hover: var(--bg-card-hover, #27272a);
-  --color-bg-elevated: var(--bg-elevated, #202024);
-  --color-divider: var(--divider, #3f3f46);
-  --color-primary: var(--primary, #8b5cf6);
-  --color-primary-hover: var(--primary-hover, #7c3aed);
-  --color-primary-text: var(--primary-text, #f4f4f5);
-  --color-secondary-text: var(--secondary-text, #a1a1aa);
+
+  /* WetDreams palette */
+  --color-wd-bg: #0a0a0a;
+  --color-wd-card: #1a1a1a;
+  --color-wd-border: #2a2a2a;
+  --color-wd-primary: #ff2d55;
+  --color-wd-secondary: #6c63ff;
+  --color-wd-text: #ffffff;
+  --color-wd-text-secondary: #a0a0a0;
+
+  --color-bg-page: var(--bg-page, #0a0a0a);
+  --color-bg-card: var(--bg-card, #1a1a1a);
+  --color-bg-card-hover: var(--bg-card-hover, #242424);
+  --color-bg-elevated: var(--bg-elevated, #1f1f1f);
+  --color-divider: var(--divider, #2a2a2a);
+  --color-primary: var(--primary, #ff2d55);
+  --color-primary-hover: var(--primary-hover, #e0264b);
+  --color-primary-text: var(--primary-text, #ffffff);
+  --color-secondary-text: var(--secondary-text, #a0a0a0);
   --color-primary-btn-text: var(--primary-btn-text, #ffffff);
+}
+
+/* WetDreams — основная тема проекта */
+[data-theme="wetdreams"],
+:root {
+  --bg-page: #0a0a0a;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #242424;
+  --bg-elevated: #1f1f1f;
+  --divider: #2a2a2a;
+  --primary: #ff2d55;
+  --primary-hover: #e0264b;
+  --primary-text: #ffffff;
+  --secondary-text: #a0a0a0;
+  --primary-btn-text: #ffffff;
 }
 
 /* Premium Visual Themes Override Definitions */
@@ -74,29 +98,74 @@
 }
 
 @layer base {
-  html, body {
-    background-color: var(--color-bg-page);
-    color: var(--color-primary-text);
-    font-family: var(--font-sans);
+  html,
+  body {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     height: 100%;
     margin: 0;
     padding: 0;
   }
 }
 
+/* WetDreams UI utilities */
+.wd-card {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.wd-button {
+  background-color: #ff2d55;
+  color: #ffffff;
+  border: none;
+  border-radius: 50px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.wd-button:hover {
+  background-color: #e0264b;
+}
+
+.wd-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wd-input {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #ffffff;
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.wd-input::placeholder {
+  color: #a0a0a0;
+}
+
+.wd-input:focus {
+  border-color: #ff2d55;
+}
+
 /* Glassmorphism Utilities */
 .glass-panel {
-  background: rgba(24, 24, 27, 0.7);
+  background: rgba(26, 26, 26, 0.75);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(63, 63, 70, 0.5);
+  border: 1px solid rgba(42, 42, 42, 0.8);
 }
 
 .glass-dropdown {
-  background: rgba(15, 15, 18, 0.95);
+  background: rgba(10, 10, 10, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(63, 63, 70, 0.6);
+  border: 1px solid rgba(42, 42, 42, 0.9);
 }
 
 /* Premium Scrollbars */

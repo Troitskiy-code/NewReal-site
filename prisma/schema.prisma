@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -13,16 +14,78 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String? 
+  access_token      String? 
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String? 
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+}
+
+model Character {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  appearance        String?
+  tags              String?
+  imageUrl          String?
+  isPublic          Boolean  @default(false)
+  isNSFW            Boolean  @default(false)
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  messages          Message[]
+  favorites         Favorite[]
+
+  // Новые поля для редактора WetDreams
+  greeting          String?   // Первое сообщение
+  scenario          String?   // Сценарий и окружение
+  exampleDialogs    String?   // Примеры диалогов
+  imageLora         String?   // Аватар для улучшенной генерации
+  voice             String?   // Голос
+  descriptionCard   String?   // Описание карточки персонажа (не влияет на поведение)
+}
+
+model Model {
+  id                   String   @id @default(cuid())
+  name                 String   @unique
+  displayName          String
+  pricePer1MInput      Float?
+  pricePer1MOutput     Float?
+  isFreeForSubscribers Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  users                User[]
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  chatId      String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String   // "user" или "assistant"
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([userId, characterId])
+  @@index([userId, chatId])
+}
+
+model Favorite {
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([userId, characterId])
 }
 
 model Session {
@@ -39,19 +102,31 @@ model User {
   email         String?       @unique
   emailVerified DateTime?
   image         String?
+  password      String?
   credits       Int           @default(0)
-  customApiKey  String?       @db.Text
+  realCoins     Int           @default(0)
+  lastDailyBonus DateTime?
+  referralCode  String?       @unique
+  referredBy    String?
+  createdAt DateTime @default(now())
+  selectedModelId String?
+  selectedModel   Model?   @relation(fields: [selectedModelId], references: [id])
+  isSubscribed    Boolean  @default(false)
+  customApiKey  String?
   accounts      Account[]
   sessions      Session[]
   creations     Creation[]
   instances     AppInstance[]
+  characters    Character[]
+  messages      Message[]
+  favorites     Favorite[]
 }
 
 model AppInstance {
   id         String     @id @default(cuid())
   name       String
   templateId String
-  config     String?    @db.Text
+  config     String?    
   createdAt  DateTime   @default(now())
   userId     String
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -60,24 +135,24 @@ model AppInstance {
 
 model Creation {
   id           String       @id @default(cuid())
-  prompt       String?      @db.Text
+  prompt       String?      
   aspectRatio  String?
   resolution   String?
   createdAt    DateTime     @default(now())
   userId       String
   requestId    String?      @unique
   status       String       @default("processing")
-  error        String?      @db.Text
+  error        String?     
   appId        String?
-  inputImage   String?      @db.Text
-  resultImage  String?      @db.Text
+  inputImage   String?      
+  resultImage  String?      
   creditCost   Int          @default(1)
-  customData   String?      @db.Text
-  greeting     String?      @db.Text
+  customData   String?      
+  greeting     String?      
   name         String?
-  systemPrompt String?      @db.Text
+  systemPrompt String?      
   category     String?
-  imageUrl     String?      @db.Text
+  imageUrl     String?      
   isPack       Boolean      @default(false)
   
   app          AppInstance? @relation(fields: [appId], references: [id], onDelete: Cascade)

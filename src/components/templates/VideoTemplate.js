@@ -8,13 +8,13 @@ import toast from "react-hot-toast";
 import config from "@/lib/config";
 
 const DURATION_PRESETS = [
-  { value: 3, label: "3s Quick" },
-  { value: 5, label: "5s Standard" },
-  { value: 7, label: "7s Extended" },
-  { value: 10, label: "10s Long" },
+  { value: 3, label: "3с Быстро" },
+  { value: 5, label: "5с Стандарт" },
+  { value: 7, label: "7с Расширенно" },
+  { value: 10, label: "10с Длинно" },
 ];
 
-function CustomSelect({ value, onChange, options, placeholder = "Select option", className = "" }) {
+function CustomSelect({ value, onChange, options, placeholder = "Выберите вариант", className = "" }) {
   const [open, setOpen] = useState(false);
   const selectedOption = options.find(opt => opt.value === value) || { label: placeholder, value };
   
@@ -121,15 +121,15 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
     try {
       const { data } = await axios.post("/api/upload", formData);
       setSourceImage(data.url);
-      toast.success("Source frame uploaded!");
+      toast.success("Исходный кадр загружен!");
     } catch (err) {
-      toast.error("Failed to upload image.");
+      toast.error("Не удалось загрузить изображение.");
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDynamicFileUpload = async (e, key, maxInputs = 1, fileTypeLabel = "File") => {
+  const handleDynamicFileUpload = async (e, key, maxInputs = 1, fileTypeLabel = "Файл") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -146,9 +146,9 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
           [key]: [...currentList, data.url].slice(0, maxInputs)
         };
       });
-      toast.success(`${fileTypeLabel} uploaded successfully!`);
+      toast.success(`${fileTypeLabel} успешно загружен!`);
     } catch (err) {
-      toast.error(`Failed to upload ${fileTypeLabel.toLowerCase()}.`);
+      toast.error(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
     } finally {
       setUploading(false);
     }
@@ -176,12 +176,12 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
     }
 
     if (!finalPrompt.trim()) {
-      toast.error("Please enter a prompt describing the video.");
+      toast.error("Введите запрос с описанием видео.");
       return;
     }
 
     setGenerating(true);
-    const toastId = toast.loading("Generating video prediction...");
+    const toastId = toast.loading("Генерация видео...");
 
     try {
       const customParams = {};
@@ -226,15 +226,15 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
       });
 
       if (data.status === "failed") {
-        toast.error("Video generation failed. Credits refunded.", { id: toastId });
+        toast.error("Генерация видео не удалась. Кредиты возвращены.", { id: toastId });
       } else if (data.status === "completed") {
-        toast.success("Video generation completed!", { id: toastId });
+        toast.success("Генерация видео завершена!", { id: toastId });
       } else {
-        toast.success("Video generation started! Polling status...", { id: toastId });
+        toast.success("Генерация видео запущена! Ожидаем результат...", { id: toastId });
       }
       onCreationCompleted(data);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Generation failed.", { id: toastId });
+      toast.error(err.response?.data?.error || "Генерация не удалась.", { id: toastId });
     } finally {
       setGenerating(false);
     }
@@ -275,9 +275,9 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
       <div className="w-full lg:w-[400px] shrink-0 border border-divider/40 bg-bg-card/30 p-6 rounded-lg flex flex-col gap-6">
         <div>
           <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary flex items-center gap-2">
-            <FaVideo className="text-xs" /> Video Studio
+            <FaVideo className="text-xs" /> Видеостудия
           </h2>
-          <p className="text-[11px] text-secondary-text">Generate AI-powered videos for {appInstance.name}.</p>
+          <p className="text-[11px] text-secondary-text">Генерируйте ИИ-видео для {appInstance.name}.</p>
         </div>
 
         <form onSubmit={handleGenerate} className="space-y-6">
@@ -289,15 +289,15 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
 
                 let fileAccept = "image/*";
                 let icon = <FaImage className="text-xl" />;
-                let labelText = "Image";
+                let labelText = "Изображение";
                 if (param.type === "video_list") {
                   fileAccept = "video/*";
                   icon = <FaVideo className="text-xl" />;
-                  labelText = "Video";
+                  labelText = "Видео";
                 } else if (param.type === "audio_list") {
                   fileAccept = "audio/*";
                   icon = <FaMicrophone className="text-xl" />;
-                  labelText = "Audio";
+                  labelText = "Аудио";
                 }
 
                 return (
@@ -305,7 +305,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">{param.label}</label>
                       <span className="text-[10px] text-secondary-text font-bold bg-bg-page px-2 py-0.5 rounded border border-divider">
-                        {urls.length}/{maxInps} {maxInps > 1 ? "Files" : "File"}
+                        {urls.length}/{maxInps} {maxInps > 1 ? "файлов" : "файл"}
                       </span>
                     </div>
 
@@ -340,7 +340,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                       <div className="relative border-2 border-dashed border-divider hover:border-primary/50 transition-colors rounded-lg h-24 flex flex-col items-center justify-center bg-bg-page/40 p-2">
                         <label className="cursor-pointer flex flex-col items-center gap-1.5 text-xs font-semibold text-secondary-text">
                           {icon}
-                          <span className="text-[10px]">{uploading ? "Uploading..." : `Upload ${labelText}`}</span>
+                          <span className="text-[10px]">{uploading ? "Загрузка..." : `Загрузить ${labelText.toLowerCase()}`}</span>
                           <input
                             type="file"
                             onChange={(e) => handleDynamicFileUpload(e, param.key, maxInps, labelText)}
@@ -360,7 +360,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                   <div key={param.key} className="flex items-center justify-between py-2 border-b border-divider/20">
                     <div className="space-y-0.5">
                       <span className="text-xs font-bold text-primary-text block">{param.label}</span>
-                      <span className="text-[10px] text-secondary-text">Toggle control</span>
+                      <span className="text-[10px] text-secondary-text">Переключатель</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -417,7 +417,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                     <textarea
                       value={customValues[param.key]}
                       onChange={(e) => setCustomValues(prev => ({ ...prev, [param.key]: e.target.value }))}
-                      placeholder={`Enter ${param.label.toLowerCase()}...`}
+                      placeholder={`Введите ${param.label.toLowerCase()}...`}
                       className="w-full bg-bg-page border border-divider rounded p-3 text-xs outline-none focus:border-primary/60 transition-colors h-24 resize-none font-medium placeholder-secondary-text leading-relaxed"
                     />
                   </div>
@@ -445,7 +445,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                     type="text"
                     value={customValues[param.key]}
                     onChange={(e) => setCustomValues(prev => ({ ...prev, [param.key]: e.target.value }))}
-                    placeholder={`Enter ${param.label.toLowerCase()}...`}
+                    placeholder={`Введите ${param.label.toLowerCase()}...`}
                     className="w-full bg-bg-page border border-divider rounded py-2.5 px-3 text-xs outline-none focus:border-primary/60 transition-colors font-medium text-primary-text"
                   />
                 </div>
@@ -455,7 +455,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
             <>
               {/* Source Frame Upload */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Source Frame (Optional)</label>
+                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Исходный кадр (необязательно)</label>
                 <div className="relative border-2 border-dashed border-divider hover:border-primary/50 transition-colors rounded-lg h-32 flex flex-col items-center justify-center bg-bg-page/40 p-4">
                   {sourceImage ? (
                     <div className="w-full h-full relative group">
@@ -465,13 +465,13 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                         onClick={() => setSourceImage(null)}
                         className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-white font-bold transition-opacity rounded"
                       >
-                        Remove Frame
+                        Удалить кадр
                       </button>
                     </div>
                   ) : (
                     <label className="cursor-pointer flex flex-col items-center gap-2 text-xs font-semibold text-secondary-text">
                       <FaImage className="text-xl" />
-                      <span>{uploading ? "Uploading..." : "Upload Source Frame"}</span>
+                      <span>{uploading ? "Загрузка..." : "Загрузить исходный кадр"}</span>
                       <input type="file" onChange={handleImageUpload} className="hidden" accept="image/*" disabled={uploading} />
                     </label>
                   )}
@@ -481,7 +481,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
               {/* Duration Selector */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Duration</label>
+                  <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Длительность</label>
                   <span className="text-xs font-bold text-primary">{duration}s</span>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
@@ -512,11 +512,11 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
 
               {/* Prompt */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Video Prompt</label>
+                <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Запрос для видео</label>
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe the motion and scene for your video..."
+                  placeholder="Опишите движение и сцену для видео..."
                   className="w-full bg-bg-page border border-divider rounded p-3 text-xs outline-none focus:border-primary/60 transition-colors h-24 resize-none font-medium placeholder-secondary-text leading-relaxed"
                 />
               </div>
@@ -531,13 +531,13 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
             {generating ? (
               <>
                 <FiRefreshCw className="animate-spin text-sm" />
-                <span>Generating Video...</span>
+                <span>Генерация видео...</span>
               </>
             ) : (
               <>
                 <FaMagic className="text-xs" />
                 <span>
-                  Generate Video (Cost: {getDynamicCost()} credit{getDynamicCost() !== 1 ? "s" : ""})
+                  Сгенерировать видео (стоимость: {getDynamicCost()} кредитов)
                 </span>
               </>
             )}
@@ -552,7 +552,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
             <div className="relative w-full rounded overflow-hidden bg-bg-page border border-divider shadow-xl flex items-center justify-center" style={{ aspectRatio: "16/9" }}>
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-xs font-semibold text-secondary-text">
                 <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="animate-pulse">Rendering video frames...</span>
+                <span className="animate-pulse">Рендеринг кадров видео...</span>
               </div>
             </div>
           </div>
@@ -586,8 +586,8 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                 )
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-red-500 font-bold">
-                  <span>Generation failed.</span>
-                  <span className="text-[10px] text-secondary-text font-normal">{activeCreation.error || "MuAPI error occurred."}</span>
+                  <span>Генерация не удалась.</span>
+                  <span className="text-[10px] text-secondary-text font-normal">{activeCreation.error || "Произошла ошибка MuAPI."}</span>
                 </div>
               )}
             </div>
@@ -600,7 +600,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                   <span className="uppercase font-bold tracking-widest text-primary">{activeCreation.status}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
-                    <FaVideo className="text-[8px]" /> Video
+                    <FaVideo className="text-[8px]" /> Видео
                   </span>
                 </div>
               </div>
@@ -617,8 +617,8 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
         ) : (
           <div className="flex flex-col items-center gap-2 text-xs text-secondary-text font-bold uppercase tracking-wider">
             <FaVideo className="text-3xl opacity-30 mb-2" />
-            <span>Video Studio Empty</span>
-            <span className="text-[10px] text-secondary-text font-normal capitalize">Upload a source frame and describe the motion to generate AI video.</span>
+            <span>Видеостудия пуста</span>
+            <span className="text-[10px] text-secondary-text font-normal capitalize">Загрузите исходный кадр и опишите движение для генерации ИИ-видео.</span>
           </div>
         )}
       </div>

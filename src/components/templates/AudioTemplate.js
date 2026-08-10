@@ -7,7 +7,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import config from "@/lib/config";
 
-function CustomSelect({ value, onChange, options, placeholder = "Select option", className = "" }) {
+function CustomSelect({ value, onChange, options, placeholder = "Выберите вариант", className = "" }) {
   const [open, setOpen] = useState(false);
   const selectedOption = options.find(opt => opt.value === value) || { label: placeholder, value };
   
@@ -111,15 +111,15 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
     try {
       const { data } = await axios.post("/api/upload", formData);
       setAudioUrl(data.url);
-      toast.success("Audio file loaded!");
+      toast.success("Аудиофайл загружен!");
     } catch (err) {
-      toast.error("Failed to upload audio.");
+      toast.error("Не удалось загрузить аудио.");
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDynamicFileUpload = async (e, key, maxInputs = 1, fileTypeLabel = "File") => {
+  const handleDynamicFileUpload = async (e, key, maxInputs = 1, fileTypeLabel = "Файл") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -136,9 +136,9 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
           [key]: [...currentList, data.url].slice(0, maxInputs)
         };
       });
-      toast.success(`${fileTypeLabel} uploaded successfully!`);
+      toast.success(`${fileTypeLabel} успешно загружен!`);
     } catch (err) {
-      toast.error(`Failed to upload ${fileTypeLabel.toLowerCase()}.`);
+      toast.error(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
     } finally {
       setUploading(false);
     }
@@ -194,12 +194,12 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
     }
 
     if (!inputAudioVal) {
-      toast.error("Please upload an audio file first.");
+      toast.error("Сначала загрузите аудиофайл.");
       return;
     }
 
     setGenerating(true);
-    const toastId = toast.loading("Processing audio transcription...");
+    const toastId = toast.loading("Обработка расшифровки аудио...");
 
     try {
       const { data } = await axios.post("/api/generation", {
@@ -211,15 +211,15 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
       });
 
       if (data.status === "failed") {
-        toast.error("Transcription failed. Credits refunded.", { id: toastId });
+        toast.error("Расшифровка не удалась. Кредиты возвращены.", { id: toastId });
       } else if (data.status === "completed") {
-        toast.success("Transcription complete!", { id: toastId });
+        toast.success("Расшифровка завершена!", { id: toastId });
       } else {
-        toast.success("Transcription started! Polling status...", { id: toastId });
+        toast.success("Расшифровка запущена! Ожидаем результат...", { id: toastId });
       }
       onCreationCompleted(data);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Transcription failed.", { id: toastId });
+      toast.error(err.response?.data?.error || "Расшифровка не удалась.", { id: toastId });
     } finally {
       setGenerating(false);
     }
@@ -240,8 +240,8 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
       {/* File Upload Box */}
       <div className="w-full lg:w-[400px] shrink-0 border border-divider/40 bg-bg-card/30 p-6 rounded-lg flex flex-col gap-6">
         <div>
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">Upload Audio</h2>
-          <p className="text-[11px] text-secondary-text">Select a speech recording or podcast file.</p>
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">Загрузка аудио</h2>
+          <p className="text-[11px] text-secondary-text">Выберите запись речи или подкаст.</p>
         </div>
 
         <form onSubmit={handleTranscribe} className="space-y-6">
@@ -253,15 +253,15 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
 
                 let fileAccept = "image/*";
                 let icon = <FaImage className="text-xl" />;
-                let labelText = "Image";
+                let labelText = "Изображение";
                 if (param.type === "video_list") {
                   fileAccept = "video/*";
                   icon = <FaVideo className="text-xl" />;
-                  labelText = "Video";
+                  labelText = "Видео";
                 } else if (param.type === "audio_list") {
                   fileAccept = "audio/*";
                   icon = <FaMicrophone className="text-xl" />;
-                  labelText = "Audio";
+                  labelText = "Аудио";
                 }
 
                 return (
@@ -269,7 +269,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">{param.label}</label>
                       <span className="text-[10px] text-secondary-text font-bold bg-bg-page px-2 py-0.5 rounded border border-divider">
-                        {urls.length}/{maxInps} {maxInps > 1 ? "Files" : "File"}
+                        {urls.length}/{maxInps} {maxInps > 1 ? "файлов" : "файл"}
                       </span>
                     </div>
 
@@ -304,7 +304,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
                       <div className="relative border-2 border-dashed border-divider hover:border-primary/50 transition-colors rounded-lg h-24 flex flex-col items-center justify-center bg-bg-page/40 p-2">
                         <label className="cursor-pointer flex flex-col items-center gap-1.5 text-xs font-semibold text-secondary-text">
                           {icon}
-                          <span className="text-[10px]">{uploading ? "Uploading..." : `Upload ${labelText}`}</span>
+                          <span className="text-[10px]">{uploading ? "Загрузка..." : `Загрузить ${labelText.toLowerCase()}`}</span>
                           <input
                             type="file"
                             onChange={(e) => handleDynamicFileUpload(e, param.key, maxInps, labelText)}
@@ -324,7 +324,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
                   <div key={param.key} className="flex items-center justify-between py-2 border-b border-divider/20">
                     <div className="space-y-0.5">
                       <span className="text-xs font-bold text-primary-text block">{param.label}</span>
-                      <span className="text-[10px] text-secondary-text">Toggle control</span>
+                      <span className="text-[10px] text-secondary-text">Переключатель</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
@@ -381,7 +381,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
                     <textarea
                       value={customValues[param.key]}
                       onChange={(e) => setCustomValues(prev => ({ ...prev, [param.key]: e.target.value }))}
-                      placeholder={`Enter ${param.label.toLowerCase()}...`}
+                      placeholder={`Введите ${param.label.toLowerCase()}...`}
                       className="w-full bg-bg-page border border-divider rounded p-3 text-xs outline-none focus:border-primary/60 transition-colors h-24 resize-none font-medium placeholder-secondary-text leading-relaxed"
                     />
                   </div>
@@ -417,24 +417,24 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
             })
           ) : (
             <div className="space-y-2">
-              <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Audio file (.mp3, .wav, .m4a)</label>
+              <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Аудиофайл (.mp3, .wav, .m4a)</label>
               <div className="relative border-2 border-dashed border-divider hover:border-primary/50 transition-colors rounded-lg h-36 flex flex-col items-center justify-center bg-bg-page/40 p-4">
                 {audioUrl ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative group p-2 text-center">
                     <FaMicrophone className="text-3xl text-primary animate-pulse" />
-                    <span className="text-[10px] text-secondary-text truncate w-full">File Uploaded</span>
+                    <span className="text-[10px] text-secondary-text truncate w-full">Файл загружен</span>
                     <button
                       type="button"
                       onClick={() => setAudioUrl(null)}
                       className="absolute inset-0 bg-black/85 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-white font-bold transition-opacity rounded"
                     >
-                      Change File
+                      Заменить файл
                     </button>
                   </div>
                 ) : (
                   <label className="cursor-pointer flex flex-col items-center gap-2 text-xs font-semibold text-secondary-text">
                     <FaMicrophone className="text-2xl" />
-                    <span>{uploading ? "Loading File..." : "Select File"}</span>
+                    <span>{uploading ? "Загрузка..." : "Выбрать файл"}</span>
                     <input type="file" onChange={handleAudioUpload} className="hidden" accept="audio/*" disabled={uploading} />
                   </label>
                 )}
@@ -450,13 +450,13 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
             {generating ? (
               <>
                 <FiRefreshCw className="animate-spin text-sm" />
-                <span>Transcribing speech...</span>
+                <span>Расшифровка речи...</span>
               </>
             ) : (
               <>
                 <FaFileAlt className="text-xs" />
                 <span>
-                  Transcribe Audio (Cost: {getDynamicCost()} credit{getDynamicCost() !== 1 ? "s" : ""})
+                  Расшифровать аудио (стоимость: {getDynamicCost()} кредитов)
                 </span>
               </>
             )}
@@ -468,26 +468,26 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
       <div className="flex-1 border border-divider/30 bg-bg-card/10 rounded-lg p-6 flex flex-col justify-between min-h-[400px]">
         <div className="flex-1 w-full flex flex-col gap-4">
           <div className="border-b border-divider/40 pb-2">
-            <h3 className="text-xs font-bold text-secondary-text uppercase tracking-wider">Transcript Output</h3>
+            <h3 className="text-xs font-bold text-secondary-text uppercase tracking-wider">Результат расшифровки</h3>
           </div>
 
           <div className="flex-1 bg-bg-page border border-divider/40 rounded p-4 text-xs leading-relaxed overflow-y-auto scrollbar-subtle min-h-[250px] max-h-[350px] overscroll-contain">
             {generating || (activeCreation && activeCreation.status === "processing") ? (
               <div className="h-full flex flex-col items-center justify-center gap-3 text-secondary-text font-bold uppercase tracking-wider">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="animate-pulse">Whisper processing transcription...</span>
+                <span className="animate-pulse">Whisper обрабатывает расшифровку...</span>
               </div>
             ) : activeCreation ? (
               activeCreation.status === "completed" ? (
-                <p className="font-medium whitespace-pre-wrap">{activeCreation.resultImage || "Done."}</p>
+                <p className="font-medium whitespace-pre-wrap">{activeCreation.resultImage || "Готово."}</p>
               ) : (
-                <span className="text-red-500 font-bold">Transcription failed: {activeCreation.error || "MuAPI error."}</span>
+                <span className="text-red-500 font-bold">Расшифровка не удалась: {activeCreation.error || "Ошибка MuAPI."}</span>
               )
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center text-secondary-text font-bold uppercase tracking-wider">
                 <FaFileAlt className="text-2xl opacity-20 mb-2" />
-                <span>Empty Transcript</span>
-                <span className="text-[10px] text-secondary-text font-normal capitalize">Load an audio file and initiate the transcription engine.</span>
+                <span>Расшифровка пуста</span>
+                <span className="text-[10px] text-secondary-text font-normal capitalize">Загрузите аудиофайл и запустите расшифровку.</span>
               </div>
             )}
           </div>
@@ -500,7 +500,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
               className="bg-bg-page hover:bg-bg-card border border-divider px-4 py-2 text-xs text-primary font-bold rounded-full transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-md"
             >
               <FaDownload size={10} />
-              <span>Download Transcript (.txt)</span>
+              <span>Скачать расшифровку (.txt)</span>
             </button>
           </div>
         )}

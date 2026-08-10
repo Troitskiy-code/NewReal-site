@@ -6,8 +6,8 @@ import VideoTemplate from "@/components/templates/VideoTemplate";
 export const templateRegistry = {
   "ai-image": {
     id: "ai-image",
-    name: "AI Image Studio",
-    description: "Launch a custom AI art and photo studio. Perfect for generating cyberpunk cityscapes, custom oil paintings, and before-after comparisons.",
+    name: "ИИ-студия изображений",
+    description: "Запустите собственную студию ИИ-артов и фото. Идеально для кибerpunk-городов, масляной живописи и сравнений «до/после».",
     component: ImageTemplate,
     modelEndpoint: "predictions", // default MUAPI endpoint
     defaultConfig: {
@@ -16,15 +16,15 @@ export const templateRegistry = {
       model: "nano-banana-2",
     },
     configFields: [
-      { name: "systemPrompt", label: "Base Prompt Context", type: "textarea", placeholder: "e.g., You are an artist rendering details in oil canvas style..." },
-      { name: "model", label: "Image Model", type: "select", options: ["nano-banana-2", "wan2.7", "gpt-image-2"] },
-      { name: "aspectRatio", label: "Default Aspect Ratio", type: "select", options: ["1:1", "16:9", "9:16"] }
+      { name: "systemPrompt", label: "Базовый контекст запроса", type: "textarea", placeholder: "например: Вы — художник, рисующий маслом на холсте..." },
+      { name: "model", label: "Модель изображений", type: "select", options: ["nano-banana-2", "wan2.7", "gpt-image-2"] },
+      { name: "aspectRatio", label: "Соотношение сторон по умолчанию", type: "select", options: ["1:1", "16:9", "9:16"] }
     ]
   },
   "ai-video": {
     id: "ai-video",
-    name: "AI Video Studio",
-    description: "Generate AI-powered videos from text prompts or source images. Create motion clips, animated scenes, and cinematic shorts.",
+    name: "ИИ-видеостудия",
+    description: "Генерируйте ИИ-видео из текстовых запросов или исходных изображений. Создавайте клипы с движением, анимированные сцены и короткометражки.",
     component: VideoTemplate,
     modelEndpoint: "predictions",
     defaultConfig: {
@@ -33,15 +33,15 @@ export const templateRegistry = {
       model: "wan2.1",
     },
     configFields: [
-      { name: "systemPrompt", label: "Video Generation Instructions", type: "textarea", placeholder: "e.g., Create a slow-motion cinematic clip with dramatic lighting..." },
-      { name: "model", label: "Video Model", type: "select", options: ["wan2.1", "nano-banana-2", "wan2.7"] },
-      { name: "aspectRatio", label: "Default Aspect Ratio", type: "select", options: ["16:9", "9:16", "1:1"] }
+      { name: "systemPrompt", label: "Инструкции для генерации видео", type: "textarea", placeholder: "например: Создайте кинематографичный клип в замедленной съёмке с драматическим освещением..." },
+      { name: "model", label: "Видеомодель", type: "select", options: ["wan2.1", "nano-banana-2", "wan2.7"] },
+      { name: "aspectRatio", label: "Соотношение сторон по умолчанию", type: "select", options: ["16:9", "9:16", "1:1"] }
     ]
   },
   "ai-chat": {
     id: "ai-chat",
-    name: "AI Companion Chatbot",
-    description: "Create customized companion personalities or expert support bots. Fits standard chat timelines and floating console boxes.",
+    name: "ИИ-чат-компаньон",
+    description: "Создавайте персонализированных компаньонов или экспертных ботов поддержки. Подходит для стандартных чатов и плавающих консолей.",
     component: ChatTemplate,
     modelEndpoint: "chat/completions",
     defaultConfig: {
@@ -49,14 +49,14 @@ export const templateRegistry = {
       model: "gpt-4o",
     },
     configFields: [
-      { name: "systemPrompt", label: "Bot Personality Instructions", type: "textarea", placeholder: "e.g., You are a futuristic guide who speaks with mechanical metaphors..." },
-      { name: "model", label: "LLM Model", type: "select", options: ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"] }
+      { name: "systemPrompt", label: "Инструкции личности бота", type: "textarea", placeholder: "например: Вы — футуристический проводник, говорящий механическими метафорами..." },
+      { name: "model", label: "LLM-модель", type: "select", options: ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"] }
     ]
   },
   "audio-transcribe": {
     id: "audio-transcribe",
-    name: "Audio Transcription Suite",
-    description: "Turn audio files, podcasts, and recordings into accurate written text, SRT captions, and meeting notes.",
+    name: "Студия расшифровки аудио",
+    description: "Превращайте аудиофайлы, подкасты и записи в точный текст, SRT-субтитры и заметки встреч.",
     component: AudioTemplate,
     modelEndpoint: "predictions", // Whisper predictions
     defaultConfig: {
@@ -64,12 +64,11 @@ export const templateRegistry = {
       model: "openai-whisper",
     },
     configFields: [
-      { name: "systemPrompt", label: "Transcription Instructions", type: "textarea", placeholder: "e.g., Format the transcript with clean paragraph breaks..." },
-      { name: "model", label: "Speech Engine", type: "select", options: ["openai-whisper"] }
+      { name: "systemPrompt", label: "Инструкции для расшифровки", type: "textarea", placeholder: "например: Оформите расшифровку с чёткими абзацами..." },
+      { name: "model", label: "Движок распознавания речи", type: "select", options: ["openai-whisper"] }
     ]
   }
 };
 
 export const getTemplate = (id) => templateRegistry[id] || null;
 export const getAllTemplates = () => Object.values(templateRegistry);
-

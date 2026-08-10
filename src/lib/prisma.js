@@ -1,17 +1,9 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { PrismaClient } from '@prisma/client';
 
-const globalForPrisma = globalThis;
+const FALLBACK_URL = "postgresql://postgres:Timofey18012005%21@localhost:5432/ai_characters";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.DATABASE_URL || FALLBACK_URL,
+});
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export { prisma };

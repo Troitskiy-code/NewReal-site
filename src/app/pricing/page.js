@@ -2,17 +2,16 @@
 
 import { useSession } from "next-auth/react";
 import { useState } from "react";
-import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FaCheck, FaInfoCircle } from "react-icons/fa";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 
 const PLANS = [
-  { id: "basic", name: "Basic Pack", price: "$5", credits: 100, description: "Perfect for testing custom prompts and exploring styles." },
-  { id: "standard", name: "Standard Pack", price: "$10", credits: 250, description: "Ideal for regular creators wanting high resolution outputs." },
-  { id: "pro", name: "Professional Pack", price: "$20", credits: 600, description: "Designed for power users demanding batch exports and high speed.", popular: true },
-  { id: "business", name: "Business Pack", price: "$50", credits: 2000, description: "Maximum value pack for agency workflows and large volume generations." }
+  { id: "basic", name: "Базовый пакет", price: "$5", credits: 100, description: "Идеально для тестирования запросов и изучения стилей." },
+  { id: "standard", name: "Стандартный пакет", price: "$10", credits: 250, description: "Подходит для регулярных авторов, которым нужны изображения в высоком разрешении." },
+  { id: "pro", name: "Профессиональный пакет", price: "$20", credits: 600, description: "Для опытных пользователей с пакетным экспортом и высокой скоростью.", popular: true },
+  { id: "business", name: "Бизнес-пакет", price: "$50", credits: 2000, description: "Максимальная выгода для агентств и крупных объёмов генераций." }
 ];
 
 export default function Pricing() {
@@ -21,7 +20,7 @@ export default function Pricing() {
 
   const handleCheckout = async (planId) => {
     if (status !== "authenticated") {
-      toast.error("You must sign in with Google to purchase credit packages.");
+      toast.error("Войдите в аккаунт, чтобы купить пакет кредитов.");
       return;
     }
 
@@ -35,26 +34,25 @@ export default function Pricing() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.error || "Failed to trigger Stripe checkout session.");
+      toast.error(err.response?.data?.error || "Не удалось создать сессию оплаты Stripe.");
     } finally {
       setLoadingPlan(null);
     }
   };
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg-page select-none text-primary-text overflow-hidden">
+    <div className="flex min-h-dvh flex-col bg-wd-bg select-none text-wd-text overflow-hidden">
       <Toaster position="top-right" />
-      <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-12 sm:px-6 lg:px-8 flex flex-col gap-10 overflow-y-auto scrollbar-subtle items-center">
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full mb-1">
             <FaInfoCircle className="text-primary text-xs" />
-            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Pricing Plans</span>
+            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Тарифные планы</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Buy Credits Packs</h1>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Купить пакеты кредитов</h1>
           <p className="text-xs sm:text-sm text-secondary-text max-w-lg leading-relaxed">
-            Purchase flexible credit packages to perform high-resolution predictions. Keep all profits — we handle AI infrastructure.
+            Приобретайте гибкие пакеты кредитов для генераций в высоком разрешении. Вся прибыль — ваша, инфраструктуру ИИ мы берём на себя.
           </p>
         </div>
 
@@ -69,7 +67,7 @@ export default function Pricing() {
             >
               {plan.popular && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider shadow">
-                  Most Popular
+                  Самый популярный
                 </span>
               )}
 
@@ -80,7 +78,7 @@ export default function Pricing() {
                 </div>
                 
                 <div className="text-xs bg-bg-page/50 border border-divider/30 p-3 rounded text-center font-extrabold text-primary">
-                  {plan.credits} Art Credits
+                  {plan.credits} кредитов
                 </div>
 
                 <p className="text-xs text-secondary-text leading-relaxed font-medium min-h-[3rem]">{plan.description}</p>
@@ -88,15 +86,15 @@ export default function Pricing() {
                 <ul className="space-y-2 border-t border-divider/30 pt-4 text-xs font-semibold text-secondary-text">
                   <li className="flex items-center gap-2">
                     <FaCheck className="text-primary text-[10px]" />
-                    <span>Dynamic aspect ratios</span>
+                    <span>Гибкие соотношения сторон</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <FaCheck className="text-primary text-[10px]" />
-                    <span>HD image downloads</span>
+                    <span>Скачивание изображений в HD</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <FaCheck className="text-primary text-[10px]" />
-                    <span>No subscription required</span>
+                    <span>Без подписки</span>
                   </li>
                 </ul>
               </div>
@@ -108,7 +106,7 @@ export default function Pricing() {
                   plan.popular ? "bg-primary text-white hover:bg-primary-hover shadow-primary/15" : "bg-bg-page hover:bg-bg-card text-primary-text border border-divider"
                 }`}
               >
-                {loadingPlan === plan.id ? "Loading checkout..." : "Purchase Credits"}
+                {loadingPlan === plan.id ? "Загрузка..." : "Купить кредиты"}
               </button>
             </div>
           ))}

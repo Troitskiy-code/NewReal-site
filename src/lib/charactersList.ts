@@ -1,0 +1,1 @@
+export const CHARACTERS_PAGE_LIMIT = 24;

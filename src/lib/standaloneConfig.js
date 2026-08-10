@@ -12,7 +12,7 @@ export const standaloneConfig = {
   "userParams": [
     {
       "key": "prompt",
-      "label": "Prompt",
+      "label": "Запрос",
       "type": "textarea",
       "defaultValue": "",
       "options": [],
@@ -24,7 +24,7 @@ export const standaloneConfig = {
     },
     {
       "key": "images_list",
-      "label": "Images List",
+      "label": "Список изображений",
       "type": "image_list",
       "defaultValue": [],
       "options": [],
@@ -36,7 +36,7 @@ export const standaloneConfig = {
     },
     {
       "key": "aspect_ratio",
-      "label": "Aspect Ratio",
+      "label": "Соотношение сторон",
       "type": "enum",
       "defaultValue": "",
       "options": [
@@ -59,7 +59,7 @@ export const standaloneConfig = {
     },
     {
       "key": "resolution",
-      "label": "Resolution",
+      "label": "Разрешение",
       "type": "enum",
       "defaultValue": "1k",
       "options": [
