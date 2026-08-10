@@ -5,6 +5,10 @@ import { prisma } from "./prisma";
 
 console.log("🔑 NEXTAUTH_SECRET from env:", process.env.NEXTAUTH_SECRET);
 
+/**
+ * @type {import("next-auth").AuthOptions}
+ */
+
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
