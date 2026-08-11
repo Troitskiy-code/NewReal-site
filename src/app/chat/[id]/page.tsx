@@ -90,31 +90,33 @@ function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-[#2A2A2A] bg-[#121212] p-5 shadow-xl"
+        className="relative flex max-h-[80vh] w-[90%] max-w-sm flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#121212] shadow-xl md:max-w-lg"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chat-modal-title"
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 id="chat-modal-title" className="text-base font-black text-white">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-2 top-2 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-2xl leading-none text-white transition-colors hover:bg-black/70 active:scale-95 md:right-4 md:top-4"
+          aria-label="Закрыть"
+        >
+          ✕
+        </button>
+
+        <div className="shrink-0 border-b border-[#2A2A2A] p-4 pr-16 md:p-6 md:pr-20">
+          <h2 id="chat-modal-title" className="text-base font-black text-white md:text-lg">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full px-2 py-1 text-sm text-secondary-text transition-colors hover:text-white"
-            aria-label="Закрыть"
-          >
-            ✕
-          </button>
         </div>
-        {children}
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</div>
       </div>
     </div>
   );
@@ -419,17 +421,15 @@ export default function ChatPage() {
         </Modal>
 
         <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
-          <div className="space-y-2">
+          <div className="-mx-4 md:-mx-6">
             {models.length === 0 ? (
-              <p className="text-sm text-secondary-text">Модели не найдены</p>
+              <p className="px-4 text-sm text-secondary-text md:px-6">Модели не найдены</p>
             ) : (
               models.map((model) => (
                 <label
                   key={model.id}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${
-                    selectedModelId === model.id
-                      ? "border-[#6C63FF] bg-[#6C63FF]/10"
-                      : "border-[#2A2A2A] bg-[#0A0A0A] hover:border-[#6C63FF]/40"
+                  className={`flex cursor-pointer items-start gap-3 break-words border-b border-gray-700 px-4 py-3 transition-colors last:border-b-0 md:px-6 ${
+                    selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
                   } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
                 >
                   <input
@@ -438,9 +438,9 @@ export default function ChatPage() {
                     value={model.id}
                     checked={selectedModelId === model.id}
                     onChange={() => handleModelChange(model.id)}
-                    className="mt-1 accent-[#6C63FF]"
+                    className="mt-1 shrink-0 accent-[#6C63FF]"
                   />
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 break-words">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-bold text-white">{model.displayName}</span>
                       <span className="text-xs text-gray-400">
@@ -448,7 +448,9 @@ export default function ChatPage() {
                       </span>
                     </div>
                     {model.description && (
-                      <p className="mt-1 text-xs leading-relaxed text-gray-500">{model.description}</p>
+                      <p className="mt-1 break-words text-xs leading-relaxed text-gray-500">
+                        {model.description}
+                      </p>
                     )}
                   </div>
                 </label>
