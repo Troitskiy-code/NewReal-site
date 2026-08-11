@@ -11,7 +11,7 @@ import {
   getUpcomingBonusStreak,
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
-import { FREE_TIER_MONTHLY_LIMIT, isSubscriptionActive, normalizeUserCounters } from "@/lib/verseChatEconomy";
+import { FREE_TIER_MONTHLY_LIMIT, isSubscriptionActive, normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
 
 export async function GET() {
   try {
@@ -74,6 +74,9 @@ export async function GET() {
         ? null
         : Math.max(0, FREE_TIER_MONTHLY_LIMIT - counters.freeRequestsUsed),
       freeRequestsLimit: FREE_TIER_MONTHLY_LIMIT,
+      dailyRequests: counters.dailyRequests,
+      dailyLimit: DAILY_REQUEST_LIMIT,
+      dailyRequestsRemaining: Math.max(0, DAILY_REQUEST_LIMIT - counters.dailyRequests),
     });
   } catch (error) {
     console.error("Balance fetch error:", error);

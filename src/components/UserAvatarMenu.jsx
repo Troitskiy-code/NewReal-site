@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { FaUser, FaCog, FaBell, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
 import toast from "react-hot-toast";
+import VerseCoinsBalance from "./VerseCoinsBalance";
 
 function getInitials(name, email) {
   const source = (name || email || "U").trim();
@@ -68,7 +69,8 @@ export default function UserAvatarMenu() {
   ];
 
   return (
-    <div ref={menuRef} className="relative">
+    <div ref={menuRef} className="relative flex items-center gap-2 md:gap-3">
+      <VerseCoinsBalance />
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}

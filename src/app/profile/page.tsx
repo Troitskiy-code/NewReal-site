@@ -18,6 +18,7 @@ import {
   FaRobot,
 } from "react-icons/fa";
 import FavoriteButton from "@/components/FavoriteButton";
+import VerseCoinsBalance from "@/components/VerseCoinsBalance";
 import { getCardDescription } from "@/lib/characterFields";
 
 type Character = {
@@ -197,7 +198,7 @@ export default function ProfilePage() {
         {/* Profile header */}
         <section className="wd-card p-4 md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-            <div className="flex min-w-0 items-center gap-4 md:gap-5">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 md:gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-wd-border bg-[#0A0A0A] md:h-20 md:w-20">
                 {userImage ? (
                   <img src={userImage} alt={userName} className="h-full w-full object-cover" />
@@ -218,6 +219,7 @@ export default function ProfilePage() {
                   <span className="font-semibold text-white">{formatRegistrationDate(registeredAt)}</span>
                 </p>
               </div>
+              <VerseCoinsBalance size="md" className="ml-auto lg:ml-0" />
             </div>
 
             <div className="flex flex-wrap gap-3 lg:ml-auto">

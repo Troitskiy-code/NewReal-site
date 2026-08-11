@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 
 export async function GET() {
   try {
@@ -9,34 +10,42 @@ export async function GET() {
 
     const models = await prisma.model.findMany({
       where: { isActive: true },
-      orderBy: { pricePer1MInput: "asc" },
+      orderBy: { priceVC: "asc" },
       select: {
         id: true,
         name: true,
         displayName: true,
         pricePer1MInput: true,
         pricePer1MOutput: true,
+        priceVC: true,
         isFreeForSubscribers: true,
         isActive: true,
       },
     });
 
+    const baseModel = models[0] ?? null;
+
     let selectedModelId: string | null = null;
-    let isSubscribed = false;
+    let subscriptionActive = false;
 
     if (session?.user?.id) {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { selectedModelId: true, isSubscribed: true },
+        select: {
+          selectedModelId: true,
+          subscriptionType: true,
+          subscriptionEnd: true,
+        },
       });
       selectedModelId = user?.selectedModelId ?? null;
-      isSubscribed = user?.isSubscribed ?? false;
+      subscriptionActive = user ? isSubscriptionActive(user) : false;
     }
 
     return NextResponse.json({
       models,
       selectedModelId,
-      isSubscribed,
+      subscriptionActive,
+      baseModelId: baseModel?.id ?? null,
     });
   } catch (error) {
     console.error("Models fetch error:", error);

@@ -5,6 +5,14 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import {
+  BASE_MODEL_COST_VC,
+  calculateRequestCost,
+  DAILY_REQUEST_LIMIT,
+  normalizeUserCounters,
+  type EconomyModel,
+  type EconomyUser,
+} from "@/lib/verseChatEconomy";
 
 type Message = {
   id: string;
@@ -13,13 +21,24 @@ type Message = {
   createdAt: string;
 };
 
-type ChatModel = {
-  id: string;
-  name: string;
-  displayName: string;
+type ChatModel = EconomyModel & {
   pricePer1MInput: number | null;
   pricePer1MOutput: number | null;
-  isFreeForSubscribers: boolean;
+};
+
+type BalanceData = {
+  verseCoins: number;
+  subscriptionActive: boolean;
+  freeRequestsRemaining: number | null;
+  freeRequestsLimit: number;
+  dailyRequests: number;
+  dailyLimit: number;
+  dailyRequestsRemaining: number;
+  freeRequestsUsed: number;
+  freeRequestsMonth: string;
+  dailyRequestsDate: string;
+  subscriptionType: string | null;
+  subscriptionEnd: string | null;
 };
 
 type ChatCharacter = {
@@ -44,13 +63,12 @@ function createGreetingMessage(content: string): Message {
 type ModelsResponse = {
   models: ChatModel[];
   selectedModelId: string | null;
-  isSubscribed: boolean;
+  subscriptionActive: boolean;
+  baseModelId: string | null;
 };
 
-function formatModelPrice(model: ChatModel): string {
-  const input = model.pricePer1MInput ?? 0;
-  const output = model.pricePer1MOutput ?? 0;
-  return `${input}₽/1M ввод · ${output}₽/1M вывод`;
+function formatVc(value: number): string {
+  return value.toLocaleString("ru-RU");
 }
 
 function formatMessageContent(content: string): string {
@@ -74,7 +92,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [baseModelId, setBaseModelId] = useState<string | null>(null);
+  const [balance, setBalance] = useState<BalanceData | null>(null);
   const [changingModel, setChangingModel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +101,40 @@ export default function ChatPage() {
     () => models.find((model) => model.id === selectedModelId) ?? models[0] ?? null,
     [models, selectedModelId]
   );
+
+  const baseModel = useMemo(
+    () => models.find((model) => model.id === baseModelId) ?? models[0] ?? null,
+    [models, baseModelId]
+  );
+
+  const costPreview = useMemo(() => {
+    if (!selectedModel || !baseModel || !balance) return null;
+
+    const economyUser: EconomyUser = {
+      id: "",
+      verseCoins: balance.verseCoins,
+      subscriptionType: balance.subscriptionType,
+      subscriptionEnd: balance.subscriptionEnd ? new Date(balance.subscriptionEnd) : null,
+      freeRequestsUsed: balance.freeRequestsUsed,
+      freeRequestsMonth: new Date(balance.freeRequestsMonth),
+      dailyRequests: balance.dailyRequests,
+      dailyRequestsDate: new Date(balance.dailyRequestsDate),
+    };
+
+    const counters = normalizeUserCounters(economyUser);
+    return calculateRequestCost(economyUser, selectedModel, baseModel, counters);
+  }, [selectedModel, baseModel, balance]);
+
+  const requestCostVC = costPreview?.ok ? costPreview.costVC : 0;
+  const insufficientBalance =
+    Boolean(costPreview?.ok && requestCostVC > 0 && balance && balance.verseCoins < requestCostVC);
+  const modelBlocked = costPreview?.ok === false;
+  const canSend =
+    !sending &&
+    Boolean(input.trim()) &&
+    !modelBlocked &&
+    !insufficientBalance &&
+    (balance?.dailyRequestsRemaining ?? 1) > 0;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -99,9 +152,10 @@ export default function ChatPage() {
 
     const fetchData = async () => {
       try {
-        const [chatRes, modelsRes] = await Promise.all([
+        const [chatRes, modelsRes, balanceRes] = await Promise.all([
           axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`),
           axios.get<ModelsResponse>("/api/models"),
+          axios.get<BalanceData>("/api/user/balance"),
         ]);
 
         const { messages: loadedMessages, character: loadedCharacter } = chatRes.data;
@@ -114,7 +168,8 @@ export default function ChatPage() {
           setMessages(loadedMessages);
         }
         setModels(modelsRes.data.models);
-        setIsSubscribed(modelsRes.data.isSubscribed);
+        setBaseModelId(modelsRes.data.baseModelId);
+        setBalance(balanceRes.data);
 
         const initialModelId =
           modelsRes.data.selectedModelId ?? modelsRes.data.models[0]?.id ?? "";
@@ -154,6 +209,21 @@ export default function ChatPage() {
     e.preventDefault();
     if (!input.trim() || sending) return;
 
+    if (modelBlocked) {
+      toast.error(costPreview && !costPreview.ok ? costPreview.error : "Модель недоступна");
+      return;
+    }
+
+    if (insufficientBalance) {
+      toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+      return;
+    }
+
+    if (balance && balance.dailyRequestsRemaining <= 0) {
+      toast.error("Достигнут суточный лимит запросов");
+      return;
+    }
+
     const userMessage = input.trim();
     setInput("");
     setSending(true);
@@ -177,6 +247,25 @@ export default function ChatPage() {
       if (data.limitWarning) {
         toast(data.limitWarning, { icon: "⚠️" });
       }
+
+      setBalance((prev) =>
+        prev
+          ? {
+              ...prev,
+              verseCoins: data.remainingVC ?? prev.verseCoins,
+              dailyRequests: data.dailyRequests ?? prev.dailyRequests,
+              dailyRequestsRemaining:
+                data.dailyLimit !== undefined && data.dailyRequests !== undefined
+                  ? Math.max(0, data.dailyLimit - data.dailyRequests)
+                  : prev.dailyRequestsRemaining,
+              freeRequestsUsed: data.freeRequestsUsed ?? prev.freeRequestsUsed,
+              freeRequestsRemaining:
+                data.freeRequestsRemaining !== undefined
+                  ? data.freeRequestsRemaining
+                  : prev.freeRequestsRemaining,
+            }
+          : prev
+      );
 
       setMessages((prev) =>
         prev.map((msg) => (msg.id === optimisticUser.id ? data.userMessage : msg))
@@ -203,8 +292,7 @@ export default function ChatPage() {
     }
   };
 
-  const modelIsFree =
-    selectedModel && isSubscribed && selectedModel.isFreeForSubscribers;
+  const dailyRemaining = balance?.dailyRequestsRemaining ?? DAILY_REQUEST_LIMIT;
 
   if (status === "loading" || loading) {
     return (
@@ -275,18 +363,50 @@ export default function ChatPage() {
             </select>
           </div>
 
-          {selectedModel && (
-            <div className="text-[11px] text-secondary-text space-y-1">
-              <p>{formatModelPrice(selectedModel)}</p>
-              {selectedModel.isFreeForSubscribers ? (
-                <p className="text-primary font-semibold">
-                  {modelIsFree
-                    ? "Бесплатно для подписчиков"
-                    : "Бесплатно для подписчиков · сейчас платная модель"}
-                </p>
+          {selectedModel && balance && (
+            <div className="space-y-2 text-[11px] text-secondary-text">
+              {costPreview?.ok === false ? (
+                <p className="font-semibold text-red-400">{costPreview.error}</p>
+              ) : requestCostVC === 0 ? (
+                <p className="font-semibold text-[#6C63FF]">Этот запрос бесплатный</p>
               ) : (
-                <p>Оплата списывается в RealCoins после каждого ответа</p>
+                <p className="font-semibold text-white">
+                  Этот запрос стоит {formatVc(requestCostVC)} VC
+                </p>
               )}
+
+              {insufficientBalance && (
+                <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-red-300">
+                  Недостаточно VC: нужно {formatVc(requestCostVC)}, на балансе{" "}
+                  {formatVc(balance.verseCoins)}.{" "}
+                  <a href="/coins" className="underline hover:text-white">
+                    Пополнить
+                  </a>
+                </p>
+              )}
+
+              {!balance.subscriptionActive && balance.freeRequestsRemaining !== null && (
+                <p>
+                  Бесплатных запросов в этом месяце:{" "}
+                  <span className="font-bold text-white">{balance.freeRequestsRemaining}</span> из{" "}
+                  {balance.freeRequestsLimit}
+                </p>
+              )}
+
+              <p>
+                Осталось{" "}
+                <span className="font-bold text-white">{formatVc(dailyRemaining)}</span> запросов
+                сегодня
+              </p>
+
+              <p className="text-[10px] text-secondary-text/80">
+                Баланс: {formatVc(balance.verseCoins)} VC
+                {selectedModel.priceVC > 0 && balance.subscriptionActive && selectedModel.id !== baseModelId
+                  ? ` · модель: ${formatVc(selectedModel.priceVC)} VC/запрос`
+                  : !balance.subscriptionActive && balance.freeRequestsRemaining === 0
+                    ? ` · базовая модель: ${BASE_MODEL_COST_VC} VC/запрос`
+                    : ""}
+              </p>
             </div>
           )}
         </div>
@@ -336,7 +456,7 @@ export default function ChatPage() {
           />
           <button
             type="submit"
-            disabled={sending || !input.trim()}
+            disabled={!canSend}
             className="min-h-[44px] w-full rounded-full bg-primary px-6 py-2 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
           >
             Отправить
