@@ -77,6 +77,13 @@ export default function ChatPage() {
       return;
     }
 
+    if (!characterId || status !== "authenticated") {
+      return;
+    }
+
+    setMessages([]);
+    setLoading(true);
+
     const fetchData = async () => {
       try {
         const [chatRes, modelsRes] = await Promise.all([
@@ -105,9 +112,7 @@ export default function ChatPage() {
       }
     };
 
-    if (characterId && status === "authenticated") {
-      fetchData();
-    }
+    fetchData();
   }, [characterId, status]);
 
   useEffect(() => {
