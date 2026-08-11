@@ -1,44 +1,49 @@
-import { NextResponse } from "next/server";
-import config from "@/lib/config";
+import { NextRequest, NextResponse } from "next/server";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
 
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const file = formData.get("file");
-    const apiKey = config.ai.apiKey;
+    const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      return NextResponse.json({ error: "Файл не загружен" }, { status: 400 });
     }
 
-    if (!apiKey || apiKey.includes("your_") || apiKey.trim() === "") {
-      // Offline/Local Base64 Fallback
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const base64Url = `data:${file.type};base64,${buffer.toString("base64")}`;
-      return NextResponse.json({ url: base64Url });
+    // Проверка размера (максимум 5 МБ)
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: "Максимальный размер файла — 5 МБ" }, { status: 400 });
     }
 
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
+    // Создаём папку public/uploads, если её нет
+    const uploadDir = path.join(process.cwd(), "public/uploads");
+    await mkdir(uploadDir, { recursive: true });
 
-    const uploadRes = await fetch("https://api.muapi.ai/api/v1/upload_file", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-      },
-      body: uploadFormData,
-    });
+    // Генерируем уникальное имя файла
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `${Date.now()}.${ext}`;
+    const filePath = path.join(uploadDir, fileName);
 
-    if (!uploadRes.ok) {
-      const errorText = await uploadRes.text();
-      return NextResponse.json({ error: `CDN upload failed: ${errorText}` }, { status: 500 });
-    }
+    // Сохраняем файл
+    const bytes = await file.arrayBuffer();
+    await writeFile(filePath, Buffer.from(bytes));
 
-    const result = await uploadRes.json();
-    return NextResponse.json({ url: result.url || result.file_url });
+    // Возвращаем URL для доступа (относительный путь)
+    const url = `/uploads/${fileName}`;
+    return NextResponse.json({ url });
   } catch (error) {
     console.error("File upload error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Ошибка загрузки файла" },
+      { status: 500 }
+    );
   }
 }
+
+// Отключаем встроенный парсер body, чтобы обрабатывать FormData вручную
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
