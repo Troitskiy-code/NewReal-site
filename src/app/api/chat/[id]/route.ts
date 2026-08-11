@@ -156,13 +156,13 @@ export async function POST(
     }
 
     const costResult = calculateRequestCost(user, model, baseModel, counters);
-    if (!costResult.ok) {
+    if (costResult.ok === false) {
       return NextResponse.json(
         {
-          error: costResult.error,
+          error: costResult.error || "Недостаточно средств",
           ...costResult.details,
         },
-        { status: costResult.status }
+        { status: costResult.status || 402 }
       );
     }
 
