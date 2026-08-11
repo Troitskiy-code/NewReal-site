@@ -267,6 +267,12 @@ export default function ChatPage() {
           : prev
       );
 
+      if (typeof data.remainingVC === "number") {
+        window.dispatchEvent(
+          new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.remainingVC } })
+        );
+      }
+
       setMessages((prev) =>
         prev.map((msg) => (msg.id === optimisticUser.id ? data.userMessage : msg))
       );
@@ -278,14 +284,21 @@ export default function ChatPage() {
     } catch (error) {
       setMessages((prev) => prev.filter((msg) => msg.id !== optimisticUser.id));
 
-      if (axios.isAxiosError(error) && error.response?.status === 402) {
-        toast.error(error.response.data?.error || "Недостаточно средств");
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const message = error.response?.data?.error;
+
+        if (status === 402) {
+          toast.error(message || "Недостаточно VerseCoins");
+        } else if (status === 429) {
+          toast.error(message || "Достигнут суточный лимит запросов");
+        } else if (status === 403) {
+          toast.error(message || "Модель доступна только по подписке");
+        } else {
+          toast.error(message || "Не удалось отправить сообщение");
+        }
       } else {
-        toast.error(
-          axios.isAxiosError(error) && error.response?.data?.error
-            ? error.response.data.error
-            : "Не удалось отправить сообщение"
-        );
+        toast.error("Не удалось отправить сообщение");
       }
       setInput(userMessage);
       setSending(false);

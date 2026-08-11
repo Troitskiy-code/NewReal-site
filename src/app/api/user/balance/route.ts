@@ -30,6 +30,8 @@ export async function GET() {
         subscriptionEnd: true,
         freeRequestsUsed: true,
         freeRequestsMonth: true,
+        dailyRequests: true,
+        dailyRequestsDate: true,
       },
     });
 
@@ -50,8 +52,8 @@ export async function GET() {
         subscriptionEnd: user.subscriptionEnd,
         freeRequestsUsed: user.freeRequestsUsed,
         freeRequestsMonth: user.freeRequestsMonth,
-        dailyRequests: 0,
-        dailyRequestsDate: now,
+        dailyRequests: user.dailyRequests,
+        dailyRequestsDate: user.dailyRequestsDate,
       },
       now
     );
@@ -75,6 +77,8 @@ export async function GET() {
         : Math.max(0, FREE_TIER_MONTHLY_LIMIT - counters.freeRequestsUsed),
       freeRequestsLimit: FREE_TIER_MONTHLY_LIMIT,
       dailyRequests: counters.dailyRequests,
+      dailyRequestsDate: counters.dailyRequestsDate,
+      freeRequestsMonth: counters.freeRequestsMonth,
       dailyLimit: DAILY_REQUEST_LIMIT,
       dailyRequestsRemaining: Math.max(0, DAILY_REQUEST_LIMIT - counters.dailyRequests),
     });

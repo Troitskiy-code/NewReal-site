@@ -3,8 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
-console.log("🔑 NEXTAUTH_SECRET from env:", process.env.NEXTAUTH_SECRET);
-
 /**
  * @type {import("next-auth").AuthOptions}
  */

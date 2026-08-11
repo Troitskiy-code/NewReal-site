@@ -70,6 +70,15 @@ export async function POST() {
       },
     });
 
+    await prisma.transaction.create({
+      data: {
+        userId: session.user.id,
+        amount: bonus,
+        type: "daily_bonus",
+        description: `Ежедневный бонус, день ${newStreak}`,
+      },
+    });
+
     return NextResponse.json({
       coins: updatedUser.verseCoins,
       verseCoins: updatedUser.verseCoins,

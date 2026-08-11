@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FaCoins } from "react-icons/fa";
 import axios from "axios";
 
@@ -10,27 +10,35 @@ export default function VerseCoinsBalance({ className = "", size = "sm" }) {
   const { status } = useSession();
   const [verseCoins, setVerseCoins] = useState(null);
 
-  useEffect(() => {
+  const fetchBalance = useCallback(() => {
     if (status !== "authenticated") {
       setVerseCoins(null);
       return;
     }
 
-    let cancelled = false;
-
     axios
       .get("/api/user/balance")
-      .then(({ data }) => {
-        if (!cancelled) setVerseCoins(data.verseCoins);
-      })
-      .catch(() => {
-        if (!cancelled) setVerseCoins(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+      .then(({ data }) => setVerseCoins(data.verseCoins))
+      .catch(() => setVerseCoins(null));
   }, [status]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
+
+  useEffect(() => {
+    const onBalanceUpdate = (event) => {
+      const detail = event?.detail;
+      if (typeof detail?.verseCoins === "number") {
+        setVerseCoins(detail.verseCoins);
+      } else {
+        fetchBalance();
+      }
+    };
+
+    window.addEventListener("verseCoinsUpdated", onBalanceUpdate);
+    return () => window.removeEventListener("verseCoinsUpdated", onBalanceUpdate);
+  }, [fetchBalance]);
 
   if (status !== "authenticated" || verseCoins === null) {
     return null;

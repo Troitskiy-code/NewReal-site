@@ -60,8 +60,26 @@ function formatDate(value: string): string {
   });
 }
 
-function handleBuy() {
-  toast("Оплата через Unitpay будет доступна позже", { icon: "💳" });
+function handleBuy(packageId: number, vc: number, fetchBalance: () => Promise<void>) {
+  return async () => {
+    try {
+      const { data } = await axios.post<{ message: string; verseCoins: number; addedVC: number }>(
+        "/api/coins/purchase",
+        { packageId }
+      );
+      toast.success(data.message || `Зачислено ${vc.toLocaleString("ru-RU")} VC`);
+      window.dispatchEvent(
+        new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.verseCoins } })
+      );
+      await fetchBalance();
+    } catch (err) {
+      const message =
+        axios.isAxiosError(err) && err.response?.data?.error
+          ? err.response.data.error
+          : "Не удалось выполнить покупку";
+      toast.error(message);
+    }
+  };
 }
 
 export default function CoinsPage() {
@@ -98,8 +116,11 @@ export default function CoinsPage() {
   const handleClaimBonus = async () => {
     setClaiming(true);
     try {
-      const { data } = await axios.post<{ message: string }>("/api/daily-bonus");
+      const { data } = await axios.post<{ message: string; verseCoins: number }>("/api/daily-bonus");
       toast.success(data.message || "Бонус получен!");
+      window.dispatchEvent(
+        new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.verseCoins } })
+      );
       await fetchBalance();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
@@ -291,7 +312,7 @@ export default function CoinsPage() {
                     <td className="px-4 py-4 text-right">
                       <button
                         type="button"
-                        onClick={handleBuy}
+                        onClick={handleBuy(pkg.id, pkg.vc, fetchBalance)}
                         className="rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
                       >
                         Купить

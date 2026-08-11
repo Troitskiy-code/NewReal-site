@@ -9,13 +9,13 @@ import {
   DAILY_REQUEST_LIMIT,
   FREE_TIER_MONTHLY_LIMIT,
   getDailyLimitWarning,
+  isSubscriptionActive,
   normalizeUserCounters,
   type EconomyModel,
 } from "@/lib/verseChatEconomy";
 
-console.log("🔑 ENV KODIKROUTER_API_KEY:", process.env.KODIKROUTER_API_KEY ? "ЕСТЬ" : "НЕТ");
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const KODIKROUTER_KEY = "sk-kr_live_6rzN8Y-SX7Y-jUY__zfjuRqxYBvfHJ42";
+const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 const MAX_OUTPUT_TOKENS = 1500;
 
 const modelSelect = {
@@ -99,8 +99,6 @@ export async function POST(
       return NextResponse.json({ error: "ID персонажа не указан" }, { status: 400 });
     }
 
-    console.log("[chat] POST start", { characterId: id, userId: session.user.id });
-
     const character = await prisma.character.findUnique({
       where: { id },
       select: {
@@ -128,12 +126,6 @@ export async function POST(
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Сообщение обязательно" }, { status: 400 });
     }
-
-    console.log("[chat] message received", {
-      characterId: id,
-      userId: session.user.id,
-      messageLength: message.length,
-    });
 
     const resolved = await resolveChatContext(session.user.id);
     if (!resolved) {
@@ -187,17 +179,6 @@ export async function POST(
       take: 10,
     });
 
-    console.log("[chat] context prepared", {
-      characterId: id,
-      characterName: character.name,
-      model: model.name,
-      historyCount: history.length,
-      costVC,
-      usesFreeTier,
-    });
-
-    console.log("[chat] saving user message", { characterId: id, userId: session.user.id });
-
     const userMessage = await prisma.message.create({
       data: {
         characterId: id,
@@ -217,46 +198,38 @@ export async function POST(
       { role: "user", content: message },
     ];
 
-    console.log("[chat] KodikRouter request", {
-      characterId: id,
-      model: model.name,
-      messagesCount: messages.length,
-      maxTokens: MAX_OUTPUT_TOKENS,
-    });
-
-    const response = await axios.post(
-      `${KODIKROUTER_URL}/chat/completions`,
-      {
-        model: "openai/gpt-4-turbo",
-        messages,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        temperature: 0.8,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${KODIKROUTER_KEY}`,
-          "Content-Type": "application/json",
+    let assistantReply: string;
+    try {
+      const response = await axios.post(
+        `${KODIKROUTER_URL}/chat/completions`,
+        {
+          model: "openai/gpt-4-turbo",
+          messages,
+          max_tokens: MAX_OUTPUT_TOKENS,
+          temperature: 0.8,
         },
-      }
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${KODIKROUTER_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    const assistantReply = response.data.choices[0]?.message?.content?.trim();
-    if (!assistantReply) {
-      throw new Error("Пустой ответ от ИИ");
+      assistantReply = response.data.choices[0]?.message?.content?.trim() ?? "";
+      if (!assistantReply) {
+        throw new Error("Пустой ответ от ИИ");
+      }
+    } catch (aiError) {
+      await prisma.message.delete({ where: { id: userMessage.id } });
+      throw aiError;
     }
 
+    const subscribed = isSubscriptionActive(user);
     const nextDailyRequests = counters.dailyRequests + 1;
     const nextFreeRequestsUsed = usesFreeTier
       ? counters.freeRequestsUsed + 1
       : counters.freeRequestsUsed;
-
-    console.log("[chat] charging user", {
-      userId: session.user.id,
-      chargedVC: costVC,
-      usesFreeTier,
-      nextDailyRequests,
-      nextFreeRequestsUsed,
-    });
 
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
@@ -281,12 +254,6 @@ export async function POST(
       });
     }
 
-    console.log("[chat] saving assistant message", {
-      characterId: id,
-      userId: session.user.id,
-      replyLength: assistantReply.length,
-    });
-
     const assistantMessage = await prisma.message.create({
       data: {
         characterId: id,
@@ -309,8 +276,10 @@ export async function POST(
       chargedVC: costVC,
       remainingVC: updatedUser.verseCoins,
       isFree: costVC === 0,
-      freeRequestsUsed: nextFreeRequestsUsed,
-      freeRequestsRemaining: Math.max(0, FREE_TIER_MONTHLY_LIMIT - nextFreeRequestsUsed),
+      freeRequestsUsed: subscribed ? null : nextFreeRequestsUsed,
+      freeRequestsRemaining: subscribed
+        ? null
+        : Math.max(0, FREE_TIER_MONTHLY_LIMIT - nextFreeRequestsUsed),
       dailyRequests: nextDailyRequests,
       dailyLimit: DAILY_REQUEST_LIMIT,
       limitWarning,
@@ -318,14 +287,11 @@ export async function POST(
       remainingCoins: updatedUser.verseCoins,
     });
   } catch (error) {
-    console.error("Chat error:", error);
-    console.log("Подробная ошибка:", JSON.stringify(error, null, 2));
-    console.error("Chat error details:", {
-      message: (error as Error).message,
-      stack: (error as Error).stack,
-      response: axios.isAxiosError(error) ? error.response?.data : undefined,
-      status: axios.isAxiosError(error) ? error.response?.status : undefined,
-    });
+    if (axios.isAxiosError(error)) {
+      console.error("Chat API error:", error.response?.status, error.response?.data ?? error.message);
+    } else {
+      console.error("Chat error:", error);
+    }
     return NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 });
   }
 }
