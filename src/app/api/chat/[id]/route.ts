@@ -186,7 +186,7 @@ export async function POST(
     const response = await axios.post(
       `${KODIKROUTER_URL}/chat/completions`,
       {
-        model: "gpt-4-turbo",
+        model: "openai/gpt-4-turbo",
         messages,
         max_tokens: MAX_OUTPUT_TOKENS,
         temperature: 0.8,
