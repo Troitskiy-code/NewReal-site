@@ -2,38 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-const BONUS_AMOUNTS = [10, 15, 20, 25, 30, 35, 40];
-
-function startOfDay(date: Date): Date {
-  const normalized = new Date(date);
-  normalized.setHours(0, 0, 0, 0);
-  return normalized;
-}
-
-function isSameCalendarDay(a: Date, b: Date): boolean {
-  return startOfDay(a).getTime() === startOfDay(b).getTime();
-}
-
-function getMsUntilNextDay(now = new Date()): number {
-  const nextDay = startOfDay(now);
-  nextDay.setDate(nextDay.getDate() + 1);
-  return Math.max(0, nextDay.getTime() - now.getTime());
-}
-
-function getBonusForStreak(streak: number): number {
-  const index = Math.min(Math.max(streak, 1), 7) - 1;
-  return BONUS_AMOUNTS[index];
-}
-
-function getNextStreak(currentStreak: number): number {
-  const nextStreak = currentStreak + 1;
-  return nextStreak > 7 ? 1 : nextStreak;
-}
-
-function getNextBonus(currentStreak: number): number {
-  return getBonusForStreak(getNextStreak(currentStreak));
-}
+import {
+  getBonusForStreak,
+  getMsUntilNextDay,
+  getNextBonus,
+  isSameCalendarDay,
+} from "@/lib/dailyBonus";
 
 export async function POST() {
   try {
@@ -64,6 +38,7 @@ export async function POST() {
         {
           error: "Бонус уже получен сегодня. Приходите завтра!",
           coins: user.verseCoins,
+          verseCoins: user.verseCoins,
           streak: user.bonusStreak,
           nextBonus: getNextBonus(user.bonusStreak),
           msUntilNextBonus,
@@ -97,6 +72,7 @@ export async function POST() {
 
     return NextResponse.json({
       coins: updatedUser.verseCoins,
+      verseCoins: updatedUser.verseCoins,
       streak: updatedUser.bonusStreak,
       nextBonus,
       bonus,

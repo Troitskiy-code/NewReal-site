@@ -52,8 +52,8 @@ const NAV_ITEMS = [
     iconActive: FaStar,
   },
   {
-    name: "RealCoins",
-    path: "/realcoins",
+    name: "VerseCoins",
+    path: "/coins",
     iconActive: FaCoins,
     iconInactive: FaCoins,
     inactiveMuted: true,

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function TokensRedirectPage() {
-  redirect("/realcoins");
+  redirect("/coins");
 }
