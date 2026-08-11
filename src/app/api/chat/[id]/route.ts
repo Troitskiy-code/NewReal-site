@@ -35,6 +35,20 @@ async function resolveUserModel(userId: string) {
     });
   }
 
+  if (!model) {
+    // Создаём модель по умолчанию, если её нет в базе
+    model = await prisma.model.create({
+      data: {
+        name: "gpt-4o-mini",
+        displayName: "GPT-4o Mini",
+        pricePer1MInput: 1.5,
+        pricePer1MOutput: 6,
+        isFreeForSubscribers: true,
+        isActive: true,
+      },
+    });
+  }
+
   return { user, model };
 }
 
@@ -56,6 +70,8 @@ export async function POST(
     if (!id) {
       return NextResponse.json({ error: "ID персонажа не указан" }, { status: 400 });
     }
+
+    console.log("[chat] POST start", { characterId: id, userId: session.user.id });
 
     const character = await prisma.character.findUnique({
       where: { id },
@@ -85,6 +101,12 @@ export async function POST(
       return NextResponse.json({ error: "Сообщение обязательно" }, { status: 400 });
     }
 
+    console.log("[chat] message received", {
+      characterId: id,
+      userId: session.user.id,
+      messageLength: message.length,
+    });
+
     const resolved = await resolveUserModel(session.user.id);
     if (!resolved?.model) {
       return NextResponse.json({ error: "Нет доступных моделей" }, { status: 500 });
@@ -99,6 +121,14 @@ export async function POST(
       where: { characterId: id },
       orderBy: { createdAt: "asc" },
       take: 10,
+    });
+
+    console.log("[chat] context prepared", {
+      characterId: id,
+      characterName: character.name,
+      model: model.name,
+      historyCount: history.length,
+      isFree,
     });
 
     const inputText = [
@@ -125,6 +155,8 @@ export async function POST(
       }
     }
 
+    console.log("[chat] saving user message", { characterId: id, userId: session.user.id });
+
     const userMessage = await prisma.message.create({
       data: {
         characterId: id,
@@ -143,6 +175,13 @@ export async function POST(
       })),
       { role: "user", content: message },
     ];
+
+    console.log("[chat] KodikRouter request", {
+      characterId: id,
+      model: model.name,
+      messagesCount: messages.length,
+      maxTokens: MAX_OUTPUT_TOKENS,
+    });
 
     const response = await axios.post(
       `${KODIKROUTER_URL}/chat/completions`,
@@ -173,6 +212,13 @@ export async function POST(
       const actualCostRubles = calculateCostRubles(inputTokens, outputTokens, model);
       chargedCoins = rublesToRealCoins(actualCostRubles);
 
+      console.log("[chat] charging user", {
+        userId: session.user.id,
+        chargedCoins,
+        inputTokens,
+        outputTokens,
+      });
+
       const updatedUser = await prisma.user.update({
         where: { id: session.user.id },
         data: { realCoins: { decrement: chargedCoins } },
@@ -180,6 +226,12 @@ export async function POST(
       });
       remainingCoins = updatedUser.realCoins;
     }
+
+    console.log("[chat] saving assistant message", {
+      characterId: id,
+      userId: session.user.id,
+      replyLength: assistantReply.length,
+    });
 
     const assistantMessage = await prisma.message.create({
       data: {
@@ -204,6 +256,13 @@ export async function POST(
     });
   } catch (error) {
     console.error("Chat error:", error);
+    console.log("Подробная ошибка:", JSON.stringify(error, null, 2));
+    console.error("Chat error details:", {
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+      response: axios.isAxiosError(error) ? error.response?.data : undefined,
+      status: axios.isAxiosError(error) ? error.response?.status : undefined,
+    });
     return NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 });
   }
 }
