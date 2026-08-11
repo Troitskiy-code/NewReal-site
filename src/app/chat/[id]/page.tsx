@@ -57,7 +57,7 @@ function formatMessageContent(content: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  return escaped.replace(/\*(.*?)\*/g, "<i>$1</i>").replace(/\n/g, "<br />");
+  return escaped.replace(/\*(.*?)\*/g, '<span style="color: #B39DDB;">$1</span>').replace(/\n/g, "<br />");
 }
 
 export default function ChatPage() {
