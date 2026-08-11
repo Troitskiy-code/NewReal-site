@@ -51,6 +51,15 @@ function formatModelPrice(model: ChatModel): string {
   return `${input}₽/1M ввод · ${output}₽/1M вывод`;
 }
 
+function formatMessageContent(content: string): string {
+  const escaped = content
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return escaped.replace(/\*(.*?)\*/g, "<i>$1</i>").replace(/\n/g, "<br />");
+}
+
 export default function ChatPage() {
   const params = useParams();
   const characterId = params.id as string;
@@ -262,9 +271,14 @@ export default function ChatPage() {
                       ? "bg-primary text-white"
                       : "bg-[#1A1A1A] border border-[#6C63FF]/40 text-white"
                   }`}
-                >
-                  {msg.content}
-                </div>
+                  {...(msg.role === "assistant"
+                    ? {
+                        dangerouslySetInnerHTML: {
+                          __html: formatMessageContent(msg.content),
+                        },
+                      }
+                    : { children: msg.content })}
+                />
               </div>
             ))
           )}

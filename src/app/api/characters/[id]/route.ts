@@ -106,6 +106,10 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       data,
     });
 
+    await prisma.message.deleteMany({
+      where: { characterId: id },
+    });
+
     return NextResponse.json(character);
   } catch (error) {
     console.error("Character update error:", error);
