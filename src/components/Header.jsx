@@ -35,7 +35,7 @@ export default function Header() {
           <Link href="/" className="ml-14 flex min-w-0 items-center gap-2 md:gap-3">
             <Image
               src="/logo.png"
-              alt="NewReal"
+              alt="NewVerse"
               width={45}
               height={45}
               className="h-7 w-7 shrink-0 md:h-10 md:w-10 lg:h-[45px] lg:w-[45px]"

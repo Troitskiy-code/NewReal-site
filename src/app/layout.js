@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "NewReal — роллплей ИИ на русском",
-  description: "Создай персонажа из своих снов. Общайся без цензуры с продвинутыми ИИ-моделями.",
+  title: "NewVerse — Твоя вселенная персонажей",
+  description: "Создавай и общайся с ИИ-персонажами в ролевых играх.",
 };
 
 export default function RootLayout({ children }) {
