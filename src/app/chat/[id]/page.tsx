@@ -285,7 +285,7 @@ export default function ChatPage() {
                 <div
                   className={`max-w-[88%] rounded-lg px-3 py-1.5 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
                     msg.role === "user"
-                      ? "bg-black border border-pink-500/70 text-white"
+                      ? "bg-black border border-[#9C27B0]/70 text-white"
                       : "bg-[#1A1A1A] border border-[#6C63FF]/40 text-white"
                   }`}
                   dangerouslySetInnerHTML={{
