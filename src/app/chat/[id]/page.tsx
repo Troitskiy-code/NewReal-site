@@ -255,7 +255,7 @@ export default function ChatPage() {
                   className={`max-w-[88%] rounded-lg px-3 py-1.5 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
                     msg.role === "user"
                       ? "bg-primary text-white"
-                      : "bg-bg-card border border-divider/40 text-primary-text"
+                      : "bg-[#1A1A1A] border border-[#6C63FF]/40 text-white"
                   }`}
                 >
                   {msg.content}

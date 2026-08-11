@@ -13,7 +13,7 @@ import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 console.log("🔑 ENV KODIKROUTER_API_KEY:", process.env.KODIKROUTER_API_KEY ? "ЕСТЬ" : "НЕТ");
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const KODIKROUTER_KEY = "sk-kr_live_6rzN8Y-SX7Y-jUY__zfjuRqxYBvfHJ42";
-const MAX_OUTPUT_TOKENS = 500;
+const MAX_OUTPUT_TOKENS = 1500;
 
 async function resolveUserModel(userId: string) {
   const user = await prisma.user.findUnique({
