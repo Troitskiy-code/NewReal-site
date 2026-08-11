@@ -63,11 +63,11 @@ const PLANS = [
   },
 ];
 
-function formatNumber(value: number): string {
+function formatNumber(value) {
   return value.toLocaleString("ru-RU");
 }
 
-function handleSubscribe(planName: string) {
+function handleSubscribe(planName) {
   toast(`Подписка «${planName}» через Unitpay будет доступна позже`, { icon: "💳" });
 }
 
