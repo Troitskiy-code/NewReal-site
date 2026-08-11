@@ -56,6 +56,7 @@ model Model {
   displayName          String
   pricePer1MInput      Float?
   pricePer1MOutput     Float?
+  priceVC              Int      @default(0)
   isFreeForSubscribers Boolean  @default(false)
   isActive             Boolean  @default(true)
   createdAt            DateTime @default(now())
@@ -96,29 +97,49 @@ model Session {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  name          String?
-  email         String?       @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  credits       Int           @default(0)
-  realCoins     Int           @default(0)
-  lastDailyBonus DateTime?
-  referralCode  String?       @unique
-  referredBy    String?
-  createdAt DateTime @default(now())
-  selectedModelId String?
-  selectedModel   Model?   @relation(fields: [selectedModelId], references: [id])
-  isSubscribed    Boolean  @default(false)
-  customApiKey  String?
-  accounts      Account[]
-  sessions      Session[]
-  creations     Creation[]
-  instances     AppInstance[]
-  characters    Character[]
-  messages      Message[]
-  favorites     Favorite[]
+  id                 String        @id @default(cuid())
+  name               String?
+  email              String?       @unique
+  emailVerified      DateTime?
+  image              String?
+  password           String?
+  credits            Int           @default(0)
+  realCoins          Int           @default(0)
+  verseCoins         Int           @default(0)
+  subscriptionType   String?       @default("none")
+  subscriptionEnd    DateTime?
+  freeRequestsUsed   Int           @default(0)
+  freeRequestsMonth  DateTime      @default(now())
+  bonusStreak        Int           @default(0)
+  lastBonusDate      DateTime?
+  dailyRequests      Int           @default(0)
+  dailyRequestsDate  DateTime      @default(now())
+  lastDailyBonus     DateTime?
+  referralCode       String?       @unique
+  referredBy         String?
+  createdAt          DateTime      @default(now())
+  selectedModelId    String?
+  selectedModel      Model?        @relation(fields: [selectedModelId], references: [id])
+  isSubscribed       Boolean       @default(false)
+  customApiKey       String?
+  accounts           Account[]
+  sessions           Session[]
+  creations          Creation[]
+  instances          AppInstance[]
+  characters         Character[]
+  messages           Message[]
+  favorites          Favorite[]
+  transactions       Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Int
+  type        String
+  description String
+  createdAt   DateTime @default(now())
 }
 
 model AppInstance {
