@@ -106,7 +106,6 @@ export default function CreateCharacterPage() {
         imageUrl,
         imageLora,
         isPublic: form.isPublic,
-        isNSFW: form.isNSFW,
       });
 
       toast.success("Персонаж создан!", { id: toastId });

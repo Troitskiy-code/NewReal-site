@@ -9,6 +9,7 @@ import {
   isModelFreeForUser,
   rublesToRealCoins,
 } from "@/lib/chatEconomy";
+import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 console.log("🔑 ENV KODIKROUTER_API_KEY:", process.env.KODIKROUTER_API_KEY ? "ЕСТЬ" : "НЕТ");
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const KODIKROUTER_KEY = "sk-kr_live_6rzN8Y-SX7Y-jUY__zfjuRqxYBvfHJ42";
@@ -58,7 +59,17 @@ export async function POST(
 
     const character = await prisma.character.findUnique({
       where: { id },
-      select: { id: true, name: true, description: true, appearance: true, isPublic: true, userId: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        appearance: true,
+        greeting: true,
+        scenario: true,
+        exampleDialogs: true,
+        isPublic: true,
+        userId: true,
+      },
     });
 
     if (!character) {
@@ -82,7 +93,7 @@ export async function POST(
     const { user, model } = resolved;
     const isFree = isModelFreeForUser(model, user.isSubscribed);
 
-    const systemPrompt = `Ты — персонаж по имени ${character.name}. Твоя внешность: ${character.appearance || "не описана"}. Твой характер: ${character.description || "не описан"}. Отвечай от лица этого персонажа, сохраняя его образ. Будь дружелюбным, последовательным и отвечай в рамках своей роли.`;
+    const systemPrompt = buildChatSystemPrompt(character);
 
     const history = await prisma.message.findMany({
       where: { characterId: id },

@@ -12,7 +12,6 @@ const characterSelect = {
   tags: true,
   imageUrl: true,
   isPublic: true,
-  isNSFW: true,
   createdAt: true,
   user: {
     select: {

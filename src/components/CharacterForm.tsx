@@ -14,7 +14,6 @@ import {
 } from "react-icons/fa";
 import { CHARACTER_LIMITS } from "@/lib/characterFields";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
-import ToggleSwitch from "@/components/ToggleSwitch";
 
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
 const HINT_CLASS = "text-sm text-gray-400 leading-relaxed";
@@ -156,7 +155,6 @@ export type CharacterFormValues = {
   descriptionCard: string;
   tags: string;
   isPublic: boolean;
-  isNSFW: boolean;
 };
 
 export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
@@ -169,7 +167,6 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
   descriptionCard: "",
   tags: "",
   isPublic: false,
-  isNSFW: false,
 };
 
 type CharacterFormProps = {
@@ -384,22 +381,6 @@ export default function CharacterForm({
           footerHint="Максимальный размер: 5 МБ. Рекомендуемое соотношение: 3:5."
         />
       </FormBlock>
-
-      <section className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="min-w-0 space-y-1">
-            <span className="block text-base font-bold text-white md:text-lg">18+ контент</span>
-            <span className="block text-sm text-gray-400">
-              Отметьте, если персонаж содержит контент для взрослых (NSFW)
-            </span>
-          </div>
-          <ToggleSwitch
-  isOn={values.isNSFW}
-  onToggle={(value) => onChange("isNSFW", value)}
-  label="NSFW"
-/>
-        </div>
-      </section>
 
       <section>
         <VisibilityToggle isPublic={values.isPublic} onChange={(v) => onChange("isPublic", v)} />

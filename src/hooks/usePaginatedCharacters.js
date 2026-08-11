@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 
-export function usePaginatedCharacters({ search, sort, showNSFW = false }) {
+export function usePaginatedCharacters({ search, sort }) {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -28,7 +28,6 @@ export function usePaginatedCharacters({ search, sort, showNSFW = false }) {
         params.set("limit", String(CHARACTERS_PAGE_LIMIT));
         params.set("sort", sort);
         if (search.trim()) params.set("search", search.trim());
-        if (showNSFW) params.set("showNSFW", "true");
 
         const { data } = await axios.get(`/api/characters?${params.toString()}`);
 
@@ -48,7 +47,7 @@ export function usePaginatedCharacters({ search, sort, showNSFW = false }) {
         setLoadingMore(false);
       }
     },
-    [search, sort, showNSFW]
+    [search, sort]
   );
 
   useEffect(() => {

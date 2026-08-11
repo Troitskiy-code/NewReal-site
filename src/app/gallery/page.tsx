@@ -9,7 +9,6 @@ import axios from "axios";
 import { Toaster } from "react-hot-toast";
 import { FaUser, FaPlus } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
-import { useNsfwPreference } from "@/hooks/useNsfwPreference";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 
 type Character = {
@@ -35,8 +34,6 @@ type CharactersResponse = {
     page: number;
     limit: number;
     totalPages: number;
-    canShowNSFW?: boolean;
-    restrictNsfw?: boolean;
   };
 };
 
@@ -44,14 +41,6 @@ const PAGE_LIMIT = CHARACTERS_PAGE_LIMIT;
 
 function GalleryPageContent() {
   const { sort, setSort } = useCharacterSortUrl();
-  const {
-    showNSFW,
-    setShowNSFW,
-    canShowNSFWToggle,
-    restrictNSFW,
-    ready: nsfwReady,
-    isAuthenticated,
-  } = useNsfwPreference();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -76,7 +65,6 @@ function GalleryPageContent() {
         params.set("limit", String(PAGE_LIMIT));
         params.set("sort", sort);
         if (search.trim()) params.set("search", search.trim());
-        if (nsfwReady && showNSFW) params.set("showNSFW", "true");
 
         const { data } = await axios.get<CharactersResponse>(`/api/characters?${params.toString()}`);
 
@@ -96,7 +84,7 @@ function GalleryPageContent() {
         setLoadingMore(false);
       }
     },
-    [search, sort, showNSFW, nsfwReady]
+    [search, sort]
   );
 
   useEffect(() => {
@@ -142,12 +130,6 @@ function GalleryPageContent() {
         onSearchChange={setSearch}
         sort={sort}
         onSortChange={setSort}
-        showNSFW={showNSFW}
-        onShowNSFWChange={setShowNSFW}
-        canShowNSFWToggle={canShowNSFWToggle}
-        restrictNSFW={restrictNSFW}
-        nsfwReady={nsfwReady}
-        isAuthenticated={isAuthenticated}
       />
 
       <main className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-6 md:px-6 md:pt-4">

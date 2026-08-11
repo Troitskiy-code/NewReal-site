@@ -3,12 +3,6 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
-import {
-  getRestrictNsfwFromRequest,
-  parseShowNsfwParam,
-  resolveCanShowNsfw,
-  shouldIncludeNsfwCharacters,
-} from "@/lib/nsfw";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 
 // ------------------ POST (создание персонажа) ------------------
@@ -38,7 +32,6 @@ export async function POST(req: NextRequest) {
       imageUrl,
       imageLora,
       isPublic,
-      isNSFW,
       greeting,
       scenario,
       exampleDialogs,
@@ -61,7 +54,6 @@ export async function POST(req: NextRequest) {
         scenario: scenario ?? null,
         exampleDialogs: exampleDialogs ?? null,
         isPublic,
-        isNSFW,
         userId: session.user.id,
       },
     });
@@ -76,7 +68,6 @@ export async function POST(req: NextRequest) {
 // ------------------ GET (получение списка персонажей) ------------------
 export async function GET(req: NextRequest) {
   try {
-    // Получаем параметры из URL
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
     const tagsParam = searchParams.get("tags") || "";
@@ -102,10 +93,6 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     const session = await getServerSession(authOptions);
-    const restrictNsfw = getRestrictNsfwFromRequest(req);
-    const showNsfwRequested = parseShowNsfwParam(searchParams.get("showNSFW"));
-    const isAuthenticated = Boolean(session?.user?.id);
-    const canShowNSFW = resolveCanShowNsfw(isAuthenticated, restrictNsfw);
 
     const where: Record<string, unknown> = {};
 
@@ -138,18 +125,6 @@ export async function GET(req: NextRequest) {
           tags: { contains: tag, mode: "insensitive" },
         })),
       });
-    }
-
-    const isOwnProfile = Boolean(userId && session?.user?.id && session.user.id === userId);
-    const includeNsfw = shouldIncludeNsfwCharacters({
-      isAuthenticated,
-      restrictNsfw,
-      showNsfwRequested,
-      isOwnProfile,
-    });
-
-    if (!includeNsfw) {
-      andConditions.push({ isNSFW: false });
     }
 
     const queryWhere = andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
@@ -220,8 +195,6 @@ export async function GET(req: NextRequest) {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
-        canShowNSFW,
-        restrictNsfw,
       },
     });
   } catch (error) {

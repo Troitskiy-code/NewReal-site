@@ -9,21 +9,12 @@ import { Toaster } from "react-hot-toast";
 import { FaUser } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
-import { useNsfwPreference } from "@/hooks/useNsfwPreference";
 
 function HomePageContent() {
   const { sort, setSort } = useCharacterSortUrl();
   const [search, setSearch] = useState("");
-  const {
-    showNSFW,
-    setShowNSFW,
-    canShowNSFWToggle,
-    restrictNSFW,
-    ready: nsfwReady,
-    isAuthenticated,
-  } = useNsfwPreference();
   const { characters, loading, loadingMore, error, hasMore, total, loadMore, reload } =
-    usePaginatedCharacters({ search, sort, showNSFW: nsfwReady ? showNSFW : false });
+    usePaginatedCharacters({ search, sort });
 
   const hasFilters = search.trim().length > 0;
 
@@ -36,12 +27,6 @@ function HomePageContent() {
         onSearchChange={setSearch}
         sort={sort}
         onSortChange={setSort}
-        showNSFW={showNSFW}
-        onShowNSFWChange={setShowNSFW}
-        canShowNSFWToggle={canShowNSFWToggle}
-        restrictNSFW={restrictNSFW}
-        nsfwReady={nsfwReady}
-        isAuthenticated={isAuthenticated}
       />
 
       <main className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-6 md:px-6 md:pt-4">

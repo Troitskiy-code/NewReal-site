@@ -34,7 +34,6 @@ model Character {
   tags              String?
   imageUrl          String?
   isPublic          Boolean  @default(false)
-  isNSFW            Boolean  @default(false)
   userId            String
   user              User     @relation(fields: [userId], references: [id])
   createdAt         DateTime @default(now())

@@ -18,7 +18,6 @@ type Character = CharacterFormValues & {
   imageUrl: string | null;
   imageLora: string | null;
   userId: string;
-  isNSFW?: boolean;
 };
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -67,7 +66,6 @@ export default function EditCharacterPage() {
           descriptionCard: data.descriptionCard || "",
           tags: data.tags || "",
           isPublic: data.isPublic,
-          isNSFW: data.isNSFW ?? false,
         });
         setImageUrl(data.imageUrl);
         setImageLora(data.imageLora);
@@ -174,7 +172,6 @@ export default function EditCharacterPage() {
         imageUrl: finalImageUrl,
         imageLora: finalImageLora,
         isPublic: form.isPublic,
-        isNSFW: form.isNSFW,
       });
 
       toast.success("Персонаж обновлён!", { id: toastId });

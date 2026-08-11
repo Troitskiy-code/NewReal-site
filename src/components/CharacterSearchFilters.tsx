@@ -2,7 +2,6 @@
 
 import { FaChevronDown, FaSearch, FaTimes } from "react-icons/fa";
 import { CHARACTER_SORT_OPTIONS, type CharacterSort } from "@/lib/characterSort";
-import ToggleSwitch from "@/components/ToggleSwitch";
 
 type CharacterSearchFiltersProps = {
   search: string;
@@ -10,12 +9,6 @@ type CharacterSearchFiltersProps = {
   sort: CharacterSort;
   onSortChange: (sort: CharacterSort) => void;
   placeholder?: string;
-  showNSFW?: boolean;
-  onShowNSFWChange?: (value: boolean) => void;
-  canShowNSFWToggle?: boolean;
-  restrictNSFW?: boolean;
-  nsfwReady?: boolean;
-  isAuthenticated?: boolean;
 };
 
 const controlClassName =
@@ -27,25 +20,11 @@ export default function CharacterSearchFilters({
   sort,
   onSortChange,
   placeholder = "Поиск по имени или тегу...",
-  showNSFW = false,
-  onShowNSFWChange,
-  canShowNSFWToggle = false,
-  restrictNSFW = false,
-  nsfwReady = false,
-  isAuthenticated = false,
 }: CharacterSearchFiltersProps) {
   const hasFilters = search.trim().length > 0;
-  const showNsfwControl =
-    nsfwReady && isAuthenticated && canShowNSFWToggle && onShowNSFWChange;
 
   return (
     <section className="mb-4 w-full shrink-0 border-b border-[#2A2A2A] bg-[#121212] px-4 pb-4 pt-3 md:mb-6 md:py-4">
-      {nsfwReady && restrictNSFW && (
-        <p className="mb-3 text-xs text-gray-400 md:text-sm">
-          NSFW контент скрыт согласно законодательству вашего региона.
-        </p>
-      )}
-
       <div className="flex flex-wrap items-center gap-2 md:gap-3">
         <div className="relative min-w-0 w-full flex-1 basis-full min-[520px]:basis-auto min-[520px]:min-w-[200px] md:min-w-[240px]">
           <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#A0A0A0]" />
@@ -77,18 +56,6 @@ export default function CharacterSearchFilters({
               aria-hidden
             />
           </div>
-
-          {showNsfwControl && (
-            <div className="flex shrink-0 items-center">
-              <ToggleSwitch
-                isOn={showNSFW}
-                onToggle={onShowNSFWChange}
-                label="Показать NSFW чаты"
-                labelPosition="left"
-                compact
-              />
-            </div>
-          )}
 
           {hasFilters && (
             <button
