@@ -9,6 +9,8 @@ const models = [
     pricePer1MInput: 1.5,
     pricePer1MOutput: 6,
     priceVC: 0,
+    description:
+      "Быстрая и лёгкая модель для повседневного общения. Подходит для коротких и динамичных историй.",
     isFreeForSubscribers: true,
     isActive: true,
   },
@@ -18,6 +20,8 @@ const models = [
     pricePer1MInput: 5,
     pricePer1MOutput: 15,
     priceVC: 8,
+    description:
+      "Сбалансированная модель для ролевых игр и диалогов. Хороша для глубоких сюжетов.",
     isFreeForSubscribers: false,
     isActive: true,
   },
@@ -27,6 +31,8 @@ const models = [
     pricePer1MInput: 3,
     pricePer1MOutput: 15,
     priceVC: 19,
+    description:
+      "Мощная модель с высоким качеством ответов. Идеальна для сложных персонажей и захватывающих историй.",
     isFreeForSubscribers: false,
     isActive: true,
   },
@@ -36,6 +42,8 @@ const models = [
     pricePer1MInput: 15,
     pricePer1MOutput: 60,
     priceVC: 47,
+    description:
+      "Модель для экспертных задач и интеллектуальных диалогов. Требует вдумчивого подхода.",
     isFreeForSubscribers: false,
     isActive: true,
   },
@@ -45,6 +53,8 @@ const models = [
     pricePer1MInput: 25,
     pricePer1MOutput: 100,
     priceVC: 93,
+    description:
+      "Флагманская модель с неограниченными возможностями. Для самых требовательных игроков.",
     isFreeForSubscribers: false,
     isActive: true,
   },

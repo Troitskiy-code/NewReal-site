@@ -23,6 +23,7 @@ type Message = {
 type ChatModel = EconomyModel & {
   pricePer1MInput: number | null;
   pricePer1MOutput: number | null;
+  description: string | null;
 };
 
 type BalanceData = {
@@ -237,7 +238,6 @@ export default function ChatPage() {
     setChangingModel(true);
     try {
       await axios.post("/api/user/select-model", { modelId });
-      toast.success("Модель изменена");
     } catch (err) {
       setSelectedModelId(previousId);
       toast.error(
@@ -426,7 +426,7 @@ export default function ChatPage() {
               models.map((model) => (
                 <label
                   key={model.id}
-                  className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${
                     selectedModelId === model.id
                       ? "border-[#6C63FF] bg-[#6C63FF]/10"
                       : "border-[#2A2A2A] bg-[#0A0A0A] hover:border-[#6C63FF]/40"
@@ -438,12 +438,19 @@ export default function ChatPage() {
                     value={model.id}
                     checked={selectedModelId === model.id}
                     onChange={() => handleModelChange(model.id)}
-                    className="accent-[#6C63FF]"
+                    className="mt-1 accent-[#6C63FF]"
                   />
-                  <span className="flex-1 text-sm font-medium text-white">{model.displayName}</span>
-                  {model.priceVC > 0 && (
-                    <span className="text-xs text-secondary-text">{model.priceVC} VC</span>
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-white">{model.displayName}</span>
+                      <span className="text-xs text-gray-400">
+                        {model.priceVC === 0 ? "Бесплатно" : `${model.priceVC} VC/запрос`}
+                      </span>
+                    </div>
+                    {model.description && (
+                      <p className="mt-1 text-xs leading-relaxed text-gray-500">{model.description}</p>
+                    )}
+                  </div>
                 </label>
               ))
             )}

@@ -57,6 +57,7 @@ model Model {
   pricePer1MInput      Float?
   pricePer1MOutput     Float?
   priceVC              Int      @default(0)
+  description          String?
   isFreeForSubscribers Boolean  @default(false)
   isActive             Boolean  @default(true)
   createdAt            DateTime @default(now())
