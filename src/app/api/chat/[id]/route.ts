@@ -225,7 +225,7 @@ export async function GET(
 
     const character = await prisma.character.findUnique({
       where: { id },
-      select: { isPublic: true, userId: true },
+      select: { isPublic: true, userId: true, name: true, greeting: true },
     });
 
     if (!character) {
@@ -242,7 +242,13 @@ export async function GET(
       take: 50,
     });
 
-    return NextResponse.json(messages);
+    return NextResponse.json({
+      messages,
+      character: {
+        name: character.name,
+        greeting: character.greeting,
+      },
+    });
   } catch (error) {
     console.error("Get history error:", error);
     return NextResponse.json({ error: "Ошибка получения истории" }, { status: 500 });

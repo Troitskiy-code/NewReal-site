@@ -23,6 +23,22 @@ type ChatModel = {
   isFreeForSubscribers: boolean;
 };
 
+type ChatHistoryResponse = {
+  messages: Message[];
+  character: {
+    name: string;
+    greeting: string | null;
+  };
+};
+
+function createGreetingMessage(content: string): Message {
+  return {
+    id: "greeting",
+    role: "assistant",
+    content,
+    createdAt: new Date().toISOString(),
+  };
+}
 type ModelsResponse = {
   models: ChatModel[];
   selectedModelId: string | null;
@@ -63,12 +79,19 @@ export default function ChatPage() {
 
     const fetchData = async () => {
       try {
-        const [messagesRes, modelsRes] = await Promise.all([
-          axios.get<Message[]>(`/api/chat/${characterId}`),
+        const [chatRes, modelsRes] = await Promise.all([
+          axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`),
           axios.get<ModelsResponse>("/api/models"),
         ]);
 
-        setMessages(messagesRes.data);
+        const { messages: loadedMessages, character } = chatRes.data;
+        const greeting = character.greeting?.trim();
+
+        if (loadedMessages.length === 0 && greeting) {
+          setMessages([createGreetingMessage(greeting)]);
+        } else {
+          setMessages(loadedMessages);
+        }
         setModels(modelsRes.data.models);
         setIsSubscribed(modelsRes.data.isSubscribed);
 
