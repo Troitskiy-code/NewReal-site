@@ -135,6 +135,7 @@ export default function ChatPage() {
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [changingModel, setChangingModel] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedModel = useMemo(
@@ -381,7 +382,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`relative flex min-h-dvh flex-col text-primary-text ${
+      className={`relative flex min-h-dvh max-w-full flex-col overflow-x-hidden text-primary-text ${
         character?.imageUrl ? "" : "bg-bg-page"
       }`}
       style={{
@@ -394,8 +395,28 @@ export default function ChatPage() {
       {character?.imageUrl && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
       )}
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+      <div className="relative z-10 flex min-h-0 max-w-full flex-1 flex-col overflow-x-hidden">
         <Toaster position="top-right" />
+
+        <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
+          <div className="flex flex-col items-center gap-4 text-center">
+            {character?.imageUrl ? (
+              <img
+                src={character.imageUrl}
+                alt={character.name}
+                className="h-24 w-24 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-transparent">
+                <FaUser className="text-4xl text-white" />
+              </div>
+            )}
+            <h3 className="text-lg font-semibold text-white">{character?.name ?? "Персонаж"}</h3>
+            <p className="text-left text-sm leading-relaxed text-secondary-text whitespace-pre-wrap">
+              {character?.description?.trim() || "Описание не указано."}
+            </p>
+          </div>
+        </Modal>
 
         <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
           <div className="space-y-2">
@@ -429,7 +450,27 @@ export default function ChatPage() {
           </div>
         </Modal>
 
-        <aside className="fixed left-[100px] top-16 z-10 flex w-[200px] flex-col items-center gap-2 bg-transparent px-3 py-4 backdrop-blur-sm md:top-20">
+        {/* Мобильная аватарка — только иконка, по клику профиль */}
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          className="fixed left-2 top-16 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm md:hidden"
+          title={character?.name ?? "Профиль персонажа"}
+          aria-label="Профиль персонажа"
+        >
+          {character?.imageUrl ? (
+            <img
+              src={character.imageUrl}
+              alt={character.name}
+              className="h-10 w-10 rounded-full object-cover"
+            />
+          ) : (
+            <FaUser className="text-lg text-white" />
+          )}
+        </button>
+
+        {/* Десктоп: аватар + имя */}
+        <aside className="fixed left-[100px] top-16 z-10 hidden w-[200px] flex-col items-center gap-2 bg-transparent px-3 py-4 backdrop-blur-sm md:top-20 md:flex">
           {character?.imageUrl ? (
             <img
               src={character.imageUrl}
@@ -446,11 +487,12 @@ export default function ChatPage() {
           </span>
         </aside>
 
-        <aside className="fixed right-[120px] top-16 z-10 flex w-[60px] justify-center bg-transparent py-4 backdrop-blur-sm md:top-20">
+        {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
+        <aside className="fixed right-2 top-16 z-20 flex w-10 justify-center bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-white transition-colors hover:text-[#6C63FF]"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-[#6C63FF] md:bg-transparent md:backdrop-blur-none"
             title="Настройки"
             aria-label="Настройки модели"
           >
@@ -458,23 +500,23 @@ export default function ChatPage() {
           </button>
         </aside>
 
-        <main className="flex min-h-0 flex-1 flex-col pb-4 pl-48 pr-16 pt-16 md:pb-6 md:pt-20">
-          <div className="mx-auto min-h-[240px] w-full max-w-3xl flex-1 space-y-2 overflow-y-auto py-3 md:min-h-[300px] md:space-y-4 md:py-4">
+        <main className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-x-hidden px-2 pb-2 pt-[4.5rem] md:px-0 md:pb-6 md:pl-48 md:pr-16 md:pt-20">
+          <div className="mx-auto flex min-h-[240px] w-full max-w-full flex-1 flex-col space-y-2 overflow-y-auto overflow-x-hidden px-2 py-4 md:max-w-3xl md:space-y-4 md:px-4 md:py-6">
             {messages.length === 0 ? (
-              <div className="text-center text-secondary-text text-sm py-20">
+              <div className="py-16 text-center text-sm text-secondary-text md:py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!
               </div>
             ) : (
               messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[88%] rounded-lg px-3 py-1.5 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
+                    className={`max-w-[85%] break-words rounded-lg px-3 py-2 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
                       msg.role === "user"
-                        ? "bg-black border border-[#9C27B0]/70 text-white"
-                        : "bg-[#1A1A1A] border border-[#6C63FF]/40 text-white"
+                        ? "border border-[#9C27B0]/70 bg-black text-white"
+                        : "border border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
                     }`}
                     dangerouslySetInnerHTML={{
                       __html: formatMessageContent(msg.content),
@@ -485,7 +527,7 @@ export default function ChatPage() {
             )}
             {sending && (
               <div className="flex justify-start">
-                <div className="rounded-lg border border-divider/40 bg-bg-card px-3 py-1.5 text-sm text-secondary-text md:px-4 md:py-2">
+                <div className="rounded-lg border border-divider/40 bg-bg-card px-3 py-2 text-sm text-secondary-text md:px-4">
                   <span className="animate-pulse">Печатает...</span>
                 </div>
               </div>
@@ -495,20 +537,20 @@ export default function ChatPage() {
 
           <form
             onSubmit={sendMessage}
-            className="mx-auto flex w-full max-w-3xl shrink-0 flex-col gap-2 border-t border-divider/40 pt-3 sm:flex-row md:pt-4"
+            className="sticky bottom-0 z-10 mx-auto flex w-full max-w-full shrink-0 flex-col gap-2 border-t border-divider/40 bg-[#121212]/85 px-2 py-3 backdrop-blur-sm sm:flex-row md:max-w-3xl md:bg-transparent md:px-4 md:py-4 md:backdrop-blur-none"
           >
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Напишите сообщение..."
-              className="min-h-[44px] w-full flex-1 rounded-full border border-divider bg-bg-card px-4 py-2 text-sm outline-none transition-colors focus:border-primary/60"
+              className="min-h-[44px] w-full min-w-0 flex-1 rounded-full border border-divider bg-bg-card px-4 py-2 text-sm outline-none transition-colors focus:border-primary/60"
               disabled={sending}
             />
             <button
               type="submit"
               disabled={!canSend}
-              className="min-h-[44px] w-full rounded-full bg-primary px-6 py-2 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
+              className="min-h-[44px] w-full shrink-0 rounded-full bg-primary px-6 py-2 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
             >
               Отправить
             </button>
