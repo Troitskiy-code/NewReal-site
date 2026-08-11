@@ -235,7 +235,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`relative mt-0 flex min-h-dvh flex-col pt-16 text-primary-text md:pt-20 ${
+      className={`relative flex min-h-dvh flex-col text-primary-text ${
         character?.imageUrl ? "" : "bg-bg-page"
       }`}
       style={{
