@@ -250,7 +250,7 @@ export default function ChatPage() {
       )}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Toaster position="top-right" />
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-2 py-4 sm:px-4 md:py-6">
+        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-2 pb-4 pt-16 sm:px-4 md:pb-6 md:pt-20">
         <div className="mb-3 space-y-2 border-b border-divider/40 pb-3 md:mb-4 md:space-y-3 md:pb-4">
           <h1 className="text-lg font-black tracking-tight md:text-xl">Чат с персонажем</h1>
 
