@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 
 export async function POST(req) {
   try {
@@ -16,21 +14,13 @@ export async function POST(req) {
       return NextResponse.json({ error: "Максимальный размер файла — 5 МБ" }, { status: 400 });
     }
 
-    // Создаём папку public/uploads, если её нет
-    const uploadDir = path.join(process.cwd(), "public/uploads");
-    await mkdir(uploadDir, { recursive: true });
-
-    // Генерируем уникальное имя файла
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `${Date.now()}.${ext}`;
-    const filePath = path.join(uploadDir, fileName);
-
-    // Сохраняем файл
+    // Конвертируем файл в Base64
     const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
+    const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString("base64");
+    const mimeType = file.type || "image/jpeg";
+    const url = `data:${mimeType};base64,${base64}`;
 
-    // Возвращаем URL для доступа (относительный путь)
-    const url = `/uploads/${fileName}`;
     return NextResponse.json({ url });
   } catch (error) {
     console.error("File upload error:", error);
@@ -41,7 +31,6 @@ export async function POST(req) {
   }
 }
 
-// Отключаем встроенный парсер body, чтобы обрабатывать FormData вручную
 export const config = {
   api: {
     bodyParser: false,
