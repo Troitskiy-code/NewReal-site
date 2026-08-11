@@ -3,25 +3,70 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import axios from "axios";
-import {
-  calculateCostRubles,
-  estimateTokensFromText,
-  isModelFreeForUser,
-  rublesToRealCoins,
-} from "@/lib/chatEconomy";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
+import {
+  calculateRequestCost,
+  DAILY_REQUEST_LIMIT,
+  FREE_TIER_MONTHLY_LIMIT,
+  getDailyLimitWarning,
+  normalizeUserCounters,
+  type EconomyModel,
+} from "@/lib/verseChatEconomy";
+
 console.log("🔑 ENV KODIKROUTER_API_KEY:", process.env.KODIKROUTER_API_KEY ? "ЕСТЬ" : "НЕТ");
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const KODIKROUTER_KEY = "sk-kr_live_6rzN8Y-SX7Y-jUY__zfjuRqxYBvfHJ42";
 const MAX_OUTPUT_TOKENS = 1500;
 
-async function resolveUserModel(userId: string) {
+const modelSelect = {
+  id: true,
+  name: true,
+  displayName: true,
+  priceVC: true,
+  isFreeForSubscribers: true,
+  isActive: true,
+} as const;
+
+async function getOrCreateBaseModel(): Promise<EconomyModel> {
+  let baseModel = await prisma.model.findFirst({
+    where: { isActive: true },
+    orderBy: { priceVC: "asc" },
+    select: modelSelect,
+  });
+
+  if (!baseModel) {
+    baseModel = await prisma.model.create({
+      data: {
+        name: "gpt-4o-mini",
+        displayName: "GPT-4o Mini",
+        pricePer1MInput: 1.5,
+        pricePer1MOutput: 6,
+        priceVC: 0,
+        isFreeForSubscribers: true,
+        isActive: true,
+      },
+      select: modelSelect,
+    });
+  }
+
+  return baseModel;
+}
+
+async function resolveChatContext(userId: string) {
+  const baseModel = await getOrCreateBaseModel();
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      realCoins: true,
-      isSubscribed: true,
-      selectedModel: true,
+      id: true,
+      verseCoins: true,
+      subscriptionType: true,
+      subscriptionEnd: true,
+      freeRequestsUsed: true,
+      freeRequestsMonth: true,
+      dailyRequests: true,
+      dailyRequestsDate: true,
+      selectedModel: { select: modelSelect },
     },
   });
 
@@ -29,27 +74,10 @@ async function resolveUserModel(userId: string) {
 
   let model = user.selectedModel;
   if (!model || !model.isActive) {
-    model = await prisma.model.findFirst({
-      where: { isActive: true },
-      orderBy: { pricePer1MInput: "asc" },
-    });
+    model = baseModel;
   }
 
-  if (!model) {
-    // Создаём модель по умолчанию, если её нет в базе
-    model = await prisma.model.create({
-      data: {
-        name: "gpt-4o-mini",
-        displayName: "GPT-4o Mini",
-        pricePer1MInput: 1.5,
-        pricePer1MOutput: 6,
-        isFreeForSubscribers: true,
-        isActive: true,
-      },
-    });
-  }
-
-  return { user, model };
+  return { user, model, baseModel };
 }
 
 export async function POST(
@@ -107,13 +135,49 @@ export async function POST(
       messageLength: message.length,
     });
 
-    const resolved = await resolveUserModel(session.user.id);
-    if (!resolved?.model) {
-      return NextResponse.json({ error: "Нет доступных моделей" }, { status: 500 });
+    const resolved = await resolveChatContext(session.user.id);
+    if (!resolved) {
+      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
 
-    const { user, model } = resolved;
-    const isFree = isModelFreeForUser(model, user.isSubscribed);
+    const { user, model, baseModel } = resolved;
+    const now = new Date();
+    const counters = normalizeUserCounters(user, now);
+
+    if (counters.dailyRequests >= DAILY_REQUEST_LIMIT) {
+      return NextResponse.json(
+        {
+          error: "Достигнут суточный лимит запросов",
+          dailyRequests: counters.dailyRequests,
+          dailyLimit: DAILY_REQUEST_LIMIT,
+        },
+        { status: 429 }
+      );
+    }
+
+    const costResult = calculateRequestCost(user, model, baseModel, counters);
+    if (!costResult.ok) {
+      return NextResponse.json(
+        {
+          error: costResult.error,
+          ...costResult.details,
+        },
+        { status: costResult.status }
+      );
+    }
+
+    const { costVC, usesFreeTier } = costResult;
+
+    if (costVC > 0 && user.verseCoins < costVC) {
+      return NextResponse.json(
+        {
+          error: "Недостаточно VerseCoins",
+          requiredVC: costVC,
+          balance: user.verseCoins,
+        },
+        { status: 402 }
+      );
+    }
 
     const systemPrompt = buildChatSystemPrompt(character);
 
@@ -128,32 +192,9 @@ export async function POST(
       characterName: character.name,
       model: model.name,
       historyCount: history.length,
-      isFree,
+      costVC,
+      usesFreeTier,
     });
-
-    const inputText = [
-      systemPrompt,
-      ...history.map((msg) => msg.content),
-      message,
-    ].join("\n");
-
-    const inputTokens = estimateTokensFromText(inputText);
-
-    if (!isFree) {
-      const estimatedCostRubles = calculateCostRubles(inputTokens, MAX_OUTPUT_TOKENS, model);
-      const estimatedCostCoins = rublesToRealCoins(estimatedCostRubles);
-
-      if (user.realCoins < estimatedCostCoins) {
-        return NextResponse.json(
-          {
-            error: "Недостаточно средств",
-            requiredCoins: estimatedCostCoins,
-            balance: user.realCoins,
-          },
-          { status: 402 }
-        );
-      }
-    }
 
     console.log("[chat] saving user message", { characterId: id, userId: session.user.id });
 
@@ -204,27 +245,40 @@ export async function POST(
       throw new Error("Пустой ответ от ИИ");
     }
 
-    const outputTokens = estimateTokensFromText(assistantReply);
-    let chargedCoins = 0;
-    let remainingCoins = user.realCoins;
+    const nextDailyRequests = counters.dailyRequests + 1;
+    const nextFreeRequestsUsed = usesFreeTier
+      ? counters.freeRequestsUsed + 1
+      : counters.freeRequestsUsed;
 
-    if (!isFree) {
-      const actualCostRubles = calculateCostRubles(inputTokens, outputTokens, model);
-      chargedCoins = rublesToRealCoins(actualCostRubles);
+    console.log("[chat] charging user", {
+      userId: session.user.id,
+      chargedVC: costVC,
+      usesFreeTier,
+      nextDailyRequests,
+      nextFreeRequestsUsed,
+    });
 
-      console.log("[chat] charging user", {
-        userId: session.user.id,
-        chargedCoins,
-        inputTokens,
-        outputTokens,
+    const updatedUser = await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        verseCoins: costVC > 0 ? { decrement: costVC } : undefined,
+        dailyRequests: nextDailyRequests,
+        dailyRequestsDate: counters.dailyRequestsDate,
+        freeRequestsUsed: nextFreeRequestsUsed,
+        freeRequestsMonth: counters.freeRequestsMonth,
+      },
+      select: { verseCoins: true },
+    });
+
+    if (costVC > 0) {
+      await prisma.transaction.create({
+        data: {
+          userId: session.user.id,
+          amount: -costVC,
+          type: "chat",
+          description: `Чат: ${character.name}, модель ${model.displayName}`,
+        },
       });
-
-      const updatedUser = await prisma.user.update({
-        where: { id: session.user.id },
-        data: { realCoins: { decrement: chargedCoins } },
-        select: { realCoins: true },
-      });
-      remainingCoins = updatedUser.realCoins;
     }
 
     console.log("[chat] saving assistant message", {
@@ -243,6 +297,8 @@ export async function POST(
       },
     });
 
+    const limitWarning = getDailyLimitWarning(nextDailyRequests);
+
     return NextResponse.json({
       userMessage,
       assistantMessage,
@@ -250,9 +306,16 @@ export async function POST(
         id: model.id,
         displayName: model.displayName,
       },
-      chargedCoins,
-      remainingCoins,
-      isFree,
+      chargedVC: costVC,
+      remainingVC: updatedUser.verseCoins,
+      isFree: costVC === 0,
+      freeRequestsUsed: nextFreeRequestsUsed,
+      freeRequestsRemaining: Math.max(0, FREE_TIER_MONTHLY_LIMIT - nextFreeRequestsUsed),
+      dailyRequests: nextDailyRequests,
+      dailyLimit: DAILY_REQUEST_LIMIT,
+      limitWarning,
+      chargedCoins: costVC,
+      remainingCoins: updatedUser.verseCoins,
     });
   } catch (error) {
     console.error("Chat error:", error);
