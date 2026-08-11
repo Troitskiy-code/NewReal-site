@@ -23,12 +23,15 @@ type ChatModel = {
   isFreeForSubscribers: boolean;
 };
 
+type ChatCharacter = {
+  name: string;
+  greeting: string | null;
+  imageUrl: string | null;
+};
+
 type ChatHistoryResponse = {
   messages: Message[];
-  character: {
-    name: string;
-    greeting: string | null;
-  };
+  character: ChatCharacter;
 };
 
 function createGreetingMessage(content: string): Message {
@@ -66,6 +69,7 @@ export default function ChatPage() {
   const { status } = useSession();
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [character, setCharacter] = useState<ChatCharacter | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -91,6 +95,7 @@ export default function ChatPage() {
     }
 
     setMessages([]);
+    setCharacter(null);
     setLoading(true);
 
     const fetchData = async () => {
@@ -100,8 +105,9 @@ export default function ChatPage() {
           axios.get<ModelsResponse>("/api/models"),
         ]);
 
-        const { messages: loadedMessages, character } = chatRes.data;
-        const greeting = character.greeting?.trim();
+        const { messages: loadedMessages, character: loadedCharacter } = chatRes.data;
+        setCharacter(loadedCharacter);
+        const greeting = loadedCharacter.greeting?.trim();
 
         if (loadedMessages.length === 0 && greeting) {
           setMessages([createGreetingMessage(greeting)]);
@@ -231,9 +237,23 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col bg-bg-page text-primary-text">
-      <Toaster position="top-right" />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-2 py-4 sm:px-4 md:py-6">
+    <div
+      className={`relative min-h-dvh flex flex-col text-primary-text ${
+        character?.imageUrl ? "" : "bg-bg-page"
+      }`}
+      style={{
+        backgroundImage: character?.imageUrl ? `url(${character.imageUrl})` : "none",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      {character?.imageUrl && (
+        <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
+      )}
+      <div className="relative z-10 flex min-h-dvh flex-col">
+        <Toaster position="top-right" />
+        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-2 py-4 sm:px-4 md:py-6">
         <div className="mb-3 space-y-2 border-b border-divider/40 pb-3 md:mb-4 md:space-y-3 md:pb-4">
           <h1 className="text-lg font-black tracking-tight md:text-xl">Чат с персонажем</h1>
 
@@ -322,8 +342,9 @@ export default function ChatPage() {
             Отправить
           </button>
         </form>
-      </main>
-      <Footer />
+        </main>
+        <Footer />
+      </div>
     </div>
   );
 }

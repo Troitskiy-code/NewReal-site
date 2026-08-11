@@ -284,7 +284,7 @@ export async function GET(
 
     const character = await prisma.character.findUnique({
       where: { id },
-      select: { isPublic: true, userId: true, name: true, greeting: true },
+      select: { isPublic: true, userId: true, name: true, greeting: true, imageUrl: true },
     });
 
     if (!character) {
@@ -306,6 +306,7 @@ export async function GET(
       character: {
         name: character.name,
         greeting: character.greeting,
+        imageUrl: character.imageUrl,
       },
     });
   } catch (error) {
