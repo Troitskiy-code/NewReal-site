@@ -90,12 +90,12 @@ function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/80 p-4 pt-16 backdrop-blur-sm md:items-center md:pt-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative mx-auto flex max-h-[80vh] w-[95%] max-w-sm flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#121212] shadow-xl md:max-w-md"
+        className="relative mx-auto flex max-h-[80vh] w-full max-w-sm flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] shadow-xl md:max-w-md"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
