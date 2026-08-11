@@ -1,116 +1,170 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useState } from "react";
 import Footer from "@/components/Footer";
-import { FaCheck, FaInfoCircle } from "react-icons/fa";
-import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { FaCheck, FaCrown, FaHeart, FaStar, FaUserFriends } from "react-icons/fa";
 
 const PLANS = [
-  { id: "basic", name: "Базовый пакет", price: "$5", credits: 100, description: "Идеально для тестирования запросов и изучения стилей." },
-  { id: "standard", name: "Стандартный пакет", price: "$10", credits: 250, description: "Подходит для регулярных авторов, которым нужны изображения в высоком разрешении." },
-  { id: "pro", name: "Профессиональный пакет", price: "$20", credits: 600, description: "Для опытных пользователей с пакетным экспортом и высокой скоростью.", popular: true },
-  { id: "business", name: "Бизнес-пакет", price: "$50", credits: 2000, description: "Максимальная выгода для агентств и крупных объёмов генераций." }
+  {
+    id: "acquaintance",
+    name: "Знакомство",
+    price: 399,
+    vc: 4000,
+    premiumMessages: 500,
+    icon: FaStar,
+    accent: "border-wd-border",
+    buttonClass: "border border-wd-border bg-[#121212] hover:border-wd-secondary/50 hover:bg-wd-secondary/10",
+    features: [
+      "4 000 бонусных VC каждый месяц",
+      "До 500 премиальных сообщений",
+      "Доступ к платным моделям за VC",
+      "Базовая модель бесплатна",
+      "Без рекламы в чате",
+    ],
+  },
+  {
+    id: "friendship",
+    name: "Дружба",
+    price: 999,
+    vc: 12000,
+    premiumMessages: 1500,
+    icon: FaUserFriends,
+    popular: true,
+    accent: "border-wd-secondary/50",
+    buttonClass: "wd-button",
+    features: [
+      "12 000 бонусных VC каждый месяц",
+      "До 1 500 премиальных сообщений",
+      "Полный доступ к платным моделям",
+      "Базовая модель бесплатна",
+      "Приоритетная очередь ответов",
+      "Без рекламы и ограничений интерфейса",
+    ],
+  },
+  {
+    id: "love",
+    name: "Любовь",
+    price: 1995,
+    vc: 35000,
+    premiumMessages: 4400,
+    icon: FaHeart,
+    accent: "border-wd-primary/50",
+    buttonClass:
+      "border border-wd-primary/50 bg-wd-primary/15 hover:bg-wd-primary hover:border-wd-primary text-white",
+    features: [
+      "35 000 бонусных VC каждый месяц",
+      "До 4 400 премиальных сообщений",
+      "Все премиальные модели без ограничений",
+      "Базовая модель бесплатна",
+      "Максимальный приоритет генерации",
+      "Ранний доступ к новым персонажам",
+      "Без рекламы и водяных знаков",
+    ],
+  },
 ];
 
-export default function Pricing() {
-  const { data: session, status } = useSession();
-  const [loadingPlan, setLoadingPlan] = useState(null);
+function formatNumber(value: number): string {
+  return value.toLocaleString("ru-RU");
+}
 
-  const handleCheckout = async (planId) => {
-    if (status !== "authenticated") {
-      toast.error("Войдите в аккаунт, чтобы купить пакет кредитов.");
-      return;
-    }
+function handleSubscribe(planName: string) {
+  toast(`Подписка «${planName}» через Unitpay будет доступна позже`, { icon: "💳" });
+}
 
-    setLoadingPlan(planId);
-    try {
-      const { data } = await axios.post("/api/checkout", { planId });
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("No redirection URL returned");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.error || "Не удалось создать сессию оплаты Stripe.");
-    } finally {
-      setLoadingPlan(null);
-    }
-  };
-
+export default function PricingPage() {
   return (
-    <div className="flex min-h-dvh flex-col bg-wd-bg select-none text-wd-text overflow-hidden">
+    <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
       <Toaster position="top-right" />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-12 sm:px-6 lg:px-8 flex flex-col gap-10 overflow-y-auto scrollbar-subtle items-center">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full mb-1">
-            <FaInfoCircle className="text-primary text-xs" />
-            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Тарифные планы</span>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center gap-10 overflow-y-auto px-4 py-12 scrollbar-subtle sm:px-6 lg:px-8">
+        <div className="space-y-4 text-center">
+          <div className="mb-1 inline-flex items-center gap-2 rounded-wd-pill border border-wd-secondary/30 bg-wd-secondary/10 px-3 py-1">
+            <FaCrown className="text-xs text-wd-secondary" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-wd-secondary">
+              Подписки
+            </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">Купить пакеты кредитов</h1>
-          <p className="text-xs sm:text-sm text-secondary-text max-w-lg leading-relaxed">
-            Приобретайте гибкие пакеты кредитов для генераций в высоком разрешении. Вся прибыль — ваша, инфраструктуру ИИ мы берём на себя.
+          <h1 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
+            Тарифы NewVerse
+          </h1>
+          <p className="mx-auto max-w-2xl text-sm leading-relaxed text-wd-text-secondary">
+            Ежемесячные планы с бонусными VerseCoins и премиальными сообщениями. Выберите уровень,
+            который подходит вашему ритму общения с персонажами.
           </p>
         </div>
 
-        {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-5xl">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative bg-bg-card border rounded-lg p-6 flex flex-col justify-between gap-6 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${
-                plan.popular ? "border-primary shadow-xl shadow-primary/5 scale-105" : "border-divider/50 shadow-md"
-              }`}
-            >
-              {plan.popular && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-wider shadow">
-                  Самый популярный
-                </span>
-              )}
-
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <h3 className="text-sm font-extrabold uppercase tracking-wide text-primary-text">{plan.name}</h3>
-                  <p className="text-2xl font-black tracking-tight text-white">{plan.price}</p>
-                </div>
-                
-                <div className="text-xs bg-bg-page/50 border border-divider/30 p-3 rounded text-center font-extrabold text-primary">
-                  {plan.credits} кредитов
-                </div>
-
-                <p className="text-xs text-secondary-text leading-relaxed font-medium min-h-[3rem]">{plan.description}</p>
-                
-                <ul className="space-y-2 border-t border-divider/30 pt-4 text-xs font-semibold text-secondary-text">
-                  <li className="flex items-center gap-2">
-                    <FaCheck className="text-primary text-[10px]" />
-                    <span>Гибкие соотношения сторон</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <FaCheck className="text-primary text-[10px]" />
-                    <span>Скачивание изображений в HD</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <FaCheck className="text-primary text-[10px]" />
-                    <span>Без подписки</span>
-                  </li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => handleCheckout(plan.id)}
-                disabled={loadingPlan !== null}
-                className={`w-full py-3 rounded-full text-xs font-bold transition-all shadow-md cursor-pointer select-none active:scale-[0.98] ${
-                  plan.popular ? "bg-primary text-white hover:bg-primary-hover shadow-primary/15" : "bg-bg-page hover:bg-bg-card text-primary-text border border-divider"
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
+          {PLANS.map((plan) => {
+            const Icon = plan.icon;
+            return (
+              <article
+                key={plan.id}
+                className={`relative flex flex-col rounded-wd border bg-wd-card p-6 shadow-wd transition-all hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(108,99,255,0.12)] ${plan.accent} ${
+                  plan.popular ? "md:-mt-2 md:mb-2 md:scale-[1.02]" : ""
                 }`}
               >
-                {loadingPlan === plan.id ? "Загрузка..." : "Купить кредиты"}
-              </button>
-            </div>
-          ))}
+                {plan.popular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow">
+                    Популярный
+                  </span>
+                )}
+
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-wd bg-[#0A0A0A] text-wd-secondary">
+                    <Icon />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-white">{plan.name}</h2>
+                    <p className="text-xs text-wd-text-secondary">Ежемесячная подписка</p>
+                  </div>
+                </div>
+
+                <div className="mb-5 space-y-1">
+                  <p className="text-4xl font-black leading-none text-white">
+                    {formatNumber(plan.price)} ₽
+                  </p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
+                    в месяц
+                  </p>
+                </div>
+
+                <div className="mb-5 rounded-wd border border-wd-border bg-[#0A0A0A] p-4 text-sm">
+                  <p className="font-black text-white">
+                    {formatNumber(plan.vc)} VC
+                    <span className="ml-1 font-semibold text-wd-text-secondary">
+                      (до {formatNumber(plan.premiumMessages)} премиальных сообщений)
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-wd-text-secondary">
+                    1 премиальное сообщение ≈ 8 VC
+                  </p>
+                </div>
+
+                <ul className="mb-6 flex-1 space-y-2.5 border-t border-wd-border pt-5 text-xs text-wd-text-secondary">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={() => handleSubscribe(plan.name)}
+                  className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${plan.buttonClass}`}
+                >
+                  Подписаться
+                </button>
+              </article>
+            );
+          })}
         </div>
+
+        <p className="max-w-2xl text-center text-xs text-wd-text-secondary">
+          Премиальные сообщения — запросы к платным моделям. Базовая модель остаётся бесплатной для
+          подписчиков. Оплата через Unitpay будет подключена в ближайшем обновлении.
+        </p>
       </main>
 
       <Footer />
