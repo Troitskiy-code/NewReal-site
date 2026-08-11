@@ -90,12 +90,12 @@ function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative flex max-h-[80vh] w-[90%] max-w-sm flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#121212] shadow-xl md:max-w-lg"
+        className="relative mx-auto flex max-h-[80vh] w-[95%] max-w-sm flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#121212] shadow-xl md:max-w-md"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -104,7 +104,7 @@ function Modal({ open, onClose, title, children }: ModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-2 top-2 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-2xl leading-none text-white transition-colors hover:bg-black/70 active:scale-95 md:right-4 md:top-4"
+          className="absolute right-3 top-3 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-2xl leading-none text-white transition-colors hover:bg-black/70 active:scale-95"
           aria-label="Закрыть"
         >
           ✕
@@ -421,14 +421,14 @@ export default function ChatPage() {
         </Modal>
 
         <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
-          <div className="-mx-4 md:-mx-6">
+          <div className="-mx-4 -mb-4 md:-mx-6 md:-mb-6">
             {models.length === 0 ? (
               <p className="px-4 text-sm text-secondary-text md:px-6">Модели не найдены</p>
             ) : (
               models.map((model) => (
                 <label
                   key={model.id}
-                  className={`flex cursor-pointer items-start gap-3 break-words border-b border-gray-700 px-4 py-3 transition-colors last:border-b-0 md:px-6 ${
+                  className={`flex cursor-pointer items-start gap-3 break-words border-b border-gray-700/50 px-4 py-3 transition-colors last:border-b-0 md:px-6 ${
                     selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
                   } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
                 >
@@ -438,12 +438,12 @@ export default function ChatPage() {
                     value={model.id}
                     checked={selectedModelId === model.id}
                     onChange={() => handleModelChange(model.id)}
-                    className="mt-1 shrink-0 accent-[#6C63FF]"
+                    className="mt-1.5 shrink-0 accent-[#6C63FF]"
                   />
                   <div className="min-w-0 flex-1 break-words">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-bold text-white">{model.displayName}</span>
-                      <span className="text-xs text-gray-400">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span className="text-lg font-bold text-white">{model.displayName}</span>
+                      <span className="text-sm text-gray-400">
                         {model.priceVC === 0 ? "Бесплатно" : `${model.priceVC} VC/запрос`}
                       </span>
                     </div>
