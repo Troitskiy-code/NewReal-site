@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import Footer from "@/components/Footer";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -210,7 +209,6 @@ export default function ChatPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
-        <Footer />
       </div>
     );
   }
@@ -231,14 +229,13 @@ export default function ChatPage() {
             Войти
           </a>
         </main>
-        <Footer />
       </div>
     );
   }
 
   return (
     <div
-      className={`relative min-h-dvh flex flex-col text-primary-text ${
+      className={`relative mt-0 flex min-h-dvh flex-col pt-16 text-primary-text md:pt-20 ${
         character?.imageUrl ? "" : "bg-bg-page"
       }`}
       style={{
@@ -251,7 +248,7 @@ export default function ChatPage() {
       {character?.imageUrl && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
       )}
-      <div className="relative z-10 flex min-h-dvh flex-col">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Toaster position="top-right" />
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-2 py-4 sm:px-4 md:py-6">
         <div className="mb-3 space-y-2 border-b border-divider/40 pb-3 md:mb-4 md:space-y-3 md:pb-4">
@@ -343,7 +340,6 @@ export default function ChatPage() {
           </button>
         </form>
         </main>
-        <Footer />
       </div>
     </div>
   );
