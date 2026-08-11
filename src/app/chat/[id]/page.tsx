@@ -429,16 +429,16 @@ export default function ChatPage() {
           </div>
         </Modal>
 
-        <aside className="fixed left-0 top-16 z-10 flex w-[200px] flex-col items-center gap-2 bg-black/50 px-3 py-4 backdrop-blur-sm md:top-20">
+        <aside className="fixed left-[100px] top-16 z-10 flex w-[200px] flex-col items-center gap-2 bg-transparent px-3 py-4 backdrop-blur-sm md:top-20">
           {character?.imageUrl ? (
             <img
               src={character.imageUrl}
               alt={character.name}
-              className="h-12 w-12 shrink-0 rounded-full border border-[#6C63FF]/40 object-cover"
+              className="h-12 w-12 shrink-0 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#6C63FF]/40 bg-[#1A1A1A]">
-              <FaUser className="text-xl text-[#6C63FF]" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-transparent">
+              <FaUser className="text-xl text-white" />
             </div>
           )}
           <span className="line-clamp-3 text-center text-base font-semibold text-white">
@@ -446,11 +446,11 @@ export default function ChatPage() {
           </span>
         </aside>
 
-        <aside className="fixed right-0 top-16 z-10 flex w-[60px] justify-center bg-black/50 py-4 backdrop-blur-sm md:top-20">
+        <aside className="fixed right-[120px] top-16 z-10 flex w-[60px] justify-center bg-transparent py-4 backdrop-blur-sm md:top-20">
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-divider/60 bg-[#1A1A1A]/80 text-white transition-colors hover:border-[#6C63FF]/60 hover:text-[#6C63FF]"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-white transition-colors hover:text-[#6C63FF]"
             title="Настройки"
             aria-label="Настройки модели"
           >
