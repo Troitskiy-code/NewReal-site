@@ -153,27 +153,44 @@ export default function ChatPage() {
     setInput("");
     setSending(true);
 
+    const optimisticUser: Message = {
+      id: `temp-user-${Date.now()}`,
+      role: "user",
+      content: userMessage,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticUser]);
+
     try {
       const { data } = await axios.post(`/api/chat/${characterId}`, {
         message: userMessage,
       });
-      setMessages((prev) => [...prev, data.userMessage, data.assistantMessage]);
 
       if (data.chargedCoins > 0) {
         toast.success(`Списано ${data.chargedCoins} RealCoins`);
       }
+
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === optimisticUser.id ? data.userMessage : msg))
+      );
+
+      setTimeout(() => {
+        setMessages((prev) => [...prev, data.assistantMessage]);
+        setSending(false);
+      }, 1000);
     } catch (error) {
+      setMessages((prev) => prev.filter((msg) => msg.id !== optimisticUser.id));
+
       if (axios.isAxiosError(error) && error.response?.status === 402) {
         toast.error(error.response.data?.error || "Недостаточно средств");
       } else {
         toast.error(
           axios.isAxiosError(error) && error.response?.data?.error
             ? error.response.data.error
-            : "Ошибка отправки сообщения"
+            : "Не удалось отправить сообщение"
         );
       }
       setInput(userMessage);
-    } finally {
       setSending(false);
     }
   };
@@ -268,16 +285,12 @@ export default function ChatPage() {
                 <div
                   className={`max-w-[88%] rounded-lg px-3 py-1.5 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
                     msg.role === "user"
-                      ? "bg-primary text-white"
+                      ? "bg-black border border-pink-500/70 text-white"
                       : "bg-[#1A1A1A] border border-[#6C63FF]/40 text-white"
                   }`}
-                  {...(msg.role === "assistant"
-                    ? {
-                        dangerouslySetInnerHTML: {
-                          __html: formatMessageContent(msg.content),
-                        },
-                      }
-                    : { children: msg.content })}
+                  dangerouslySetInnerHTML={{
+                    __html: formatMessageContent(msg.content),
+                  }}
                 />
               </div>
             ))
