@@ -5,10 +5,9 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { FaUser, FaCog } from "react-icons/fa";
 import {
-  BASE_MODEL_COST_VC,
   calculateRequestCost,
-  DAILY_REQUEST_LIMIT,
   normalizeUserCounters,
   type EconomyModel,
   type EconomyUser,
@@ -45,11 +44,19 @@ type ChatCharacter = {
   name: string;
   greeting: string | null;
   imageUrl: string | null;
+  description: string | null;
 };
 
 type ChatHistoryResponse = {
   messages: Message[];
   character: ChatCharacter;
+};
+
+type ModelsResponse = {
+  models: ChatModel[];
+  selectedModelId: string | null;
+  subscriptionActive: boolean;
+  baseModelId: string | null;
 };
 
 function createGreetingMessage(content: string): Message {
@@ -60,16 +67,6 @@ function createGreetingMessage(content: string): Message {
     createdAt: new Date().toISOString(),
   };
 }
-type ModelsResponse = {
-  models: ChatModel[];
-  selectedModelId: string | null;
-  subscriptionActive: boolean;
-  baseModelId: string | null;
-};
-
-function formatVc(value: number): string {
-  return value.toLocaleString("ru-RU");
-}
 
 function formatMessageContent(content: string): string {
   const escaped = content
@@ -78,6 +75,48 @@ function formatMessageContent(content: string): string {
     .replace(/>/g, "&gt;");
 
   return escaped.replace(/\*(.*?)\*/g, '<span style="color: #B39DDB;">$1</span>').replace(/\n/g, "<br />");
+}
+
+type ModalProps = {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+};
+
+function Modal({ open, onClose, title, children }: ModalProps) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-[#2A2A2A] bg-[#121212] p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="chat-modal-title"
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id="chat-modal-title" className="text-base font-black text-white">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full px-2 py-1 text-sm text-secondary-text transition-colors hover:text-white"
+            aria-label="Закрыть"
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export default function ChatPage() {
@@ -95,6 +134,8 @@ export default function ChatPage() {
   const [baseModelId, setBaseModelId] = useState<string | null>(null);
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [changingModel, setChangingModel] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedModel = useMemo(
@@ -189,12 +230,16 @@ export default function ChatPage() {
   }, [messages]);
 
   const handleModelChange = async (modelId: string) => {
+    if (modelId === selectedModelId) return;
+
+    const previousId = selectedModelId;
     setSelectedModelId(modelId);
     setChangingModel(true);
     try {
       await axios.post("/api/user/select-model", { modelId });
       toast.success("Модель изменена");
     } catch (err) {
+      setSelectedModelId(previousId);
       toast.error(
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
@@ -285,14 +330,14 @@ export default function ChatPage() {
       setMessages((prev) => prev.filter((msg) => msg.id !== optimisticUser.id));
 
       if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
+        const statusCode = error.response?.status;
         const message = error.response?.data?.error;
 
-        if (status === 402) {
+        if (statusCode === 402) {
           toast.error(message || "Недостаточно VerseCoins");
-        } else if (status === 429) {
+        } else if (statusCode === 429) {
           toast.error(message || "Достигнут суточный лимит запросов");
-        } else if (status === 403) {
+        } else if (statusCode === 403) {
           toast.error(message || "Модель доступна только по подписке");
         } else {
           toast.error(message || "Не удалось отправить сообщение");
@@ -304,8 +349,6 @@ export default function ChatPage() {
       setSending(false);
     }
   };
-
-  const dailyRemaining = balance?.dailyRequestsRemaining ?? DAILY_REQUEST_LIMIT;
 
   if (status === "loading" || loading) {
     return (
@@ -354,127 +397,154 @@ export default function ChatPage() {
       )}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Toaster position="top-right" />
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-2 pb-4 pt-16 sm:px-4 md:pb-6 md:pt-20">
-        <div className="mb-3 space-y-2 border-b border-divider/40 pb-3 md:mb-4 md:space-y-3 md:pb-4">
-          <h1 className="text-lg font-black tracking-tight md:text-xl">Чат с персонажем</h1>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <label className="text-xs font-bold text-secondary-text uppercase tracking-wider shrink-0">
-              Модель
-            </label>
-            <select
-              value={selectedModelId}
-              onChange={(e) => handleModelChange(e.target.value)}
-              disabled={changingModel || models.length === 0}
-              className="flex-1 bg-bg-card border border-divider rounded-full py-2 px-4 text-xs outline-none focus:border-primary/60 transition-colors font-medium text-primary-text"
-            >
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.displayName}
-                </option>
-              ))}
-            </select>
+        <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
+          <div className="flex flex-col items-center gap-4 text-center">
+            {character?.imageUrl ? (
+              <img
+                src={character.imageUrl}
+                alt={character.name}
+                className="h-28 w-28 rounded-full border-2 border-[#6C63FF]/50 object-cover"
+              />
+            ) : (
+              <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-[#6C63FF]/50 bg-[#1A1A1A]">
+                <FaUser className="text-4xl text-[#6C63FF]" />
+              </div>
+            )}
+            <h3 className="text-lg font-bold text-white">{character?.name}</h3>
+            <p className="text-left text-sm leading-relaxed text-secondary-text whitespace-pre-wrap">
+              {character?.description?.trim() || "Описание не указано."}
+            </p>
+          </div>
+        </Modal>
+
+        <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
+          <div className="space-y-2">
+            {models.length === 0 ? (
+              <p className="text-sm text-secondary-text">Модели не найдены</p>
+            ) : (
+              models.map((model) => (
+                <label
+                  key={model.id}
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors ${
+                    selectedModelId === model.id
+                      ? "border-[#6C63FF] bg-[#6C63FF]/10"
+                      : "border-[#2A2A2A] bg-[#0A0A0A] hover:border-[#6C63FF]/40"
+                  } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="chat-model"
+                    value={model.id}
+                    checked={selectedModelId === model.id}
+                    onChange={() => handleModelChange(model.id)}
+                    className="accent-[#6C63FF]"
+                  />
+                  <span className="flex-1 text-sm font-medium text-white">{model.displayName}</span>
+                  {model.priceVC > 0 && (
+                    <span className="text-xs text-secondary-text">{model.priceVC} VC</span>
+                  )}
+                </label>
+              ))
+            )}
+          </div>
+        </Modal>
+
+        <main className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col px-2 pb-4 pt-16 sm:px-4 md:pb-6 md:pt-20">
+          <div className="sticky top-0 z-10 -mx-2 border-b border-divider/40 bg-[#121212]/95 px-2 py-2 backdrop-blur-sm sm:-mx-4 sm:px-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <label className="sr-only" htmlFor="chat-model-select">
+                Модель
+              </label>
+              <select
+                id="chat-model-select"
+                value={selectedModelId}
+                onChange={(e) => handleModelChange(e.target.value)}
+                disabled={changingModel || models.length === 0}
+                className="min-w-0 flex-1 rounded-full border border-divider bg-bg-card py-2 px-4 text-xs font-medium text-primary-text outline-none transition-colors focus:border-primary/60"
+              >
+                {models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.displayName}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-divider bg-bg-card text-white transition-colors hover:border-[#6C63FF]/60 hover:text-[#6C63FF]"
+                title="Профиль персонажа"
+                aria-label="Профиль персонажа"
+              >
+                <FaUser size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-divider bg-bg-card text-white transition-colors hover:border-[#6C63FF]/60 hover:text-[#6C63FF]"
+                title="Настройки"
+                aria-label="Настройки модели"
+              >
+                <FaCog size={14} />
+              </button>
+            </div>
           </div>
 
-          {selectedModel && balance && (
-            <div className="space-y-2 text-[11px] text-secondary-text">
-              {costPreview?.ok === false ? (
-                <p className="font-semibold text-red-400">{costPreview.error}</p>
-              ) : requestCostVC === 0 ? (
-                <p className="font-semibold text-[#6C63FF]">Этот запрос бесплатный</p>
-              ) : (
-                <p className="font-semibold text-white">
-                  Этот запрос стоит {formatVc(requestCostVC)} VC
-                </p>
-              )}
-
-              {insufficientBalance && (
-                <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-red-300">
-                  Недостаточно VC: нужно {formatVc(requestCostVC)}, на балансе{" "}
-                  {formatVc(balance.verseCoins)}.{" "}
-                  <a href="/coins" className="underline hover:text-white">
-                    Пополнить
-                  </a>
-                </p>
-              )}
-
-              {!balance.subscriptionActive && balance.freeRequestsRemaining !== null && (
-                <p>
-                  Бесплатных запросов в этом месяце:{" "}
-                  <span className="font-bold text-white">{balance.freeRequestsRemaining}</span> из{" "}
-                  {balance.freeRequestsLimit}
-                </p>
-              )}
-
-              <p>
-                Осталось{" "}
-                <span className="font-bold text-white">{formatVc(dailyRemaining)}</span> запросов
-                сегодня
-              </p>
-
-              <p className="text-[10px] text-secondary-text/80">
-                Баланс: {formatVc(balance.verseCoins)} VC
-                {selectedModel.priceVC > 0 && balance.subscriptionActive && selectedModel.id !== baseModelId
-                  ? ` · модель: ${formatVc(selectedModel.priceVC)} VC/запрос`
-                  : !balance.subscriptionActive && balance.freeRequestsRemaining === 0
-                    ? ` · базовая модель: ${BASE_MODEL_COST_VC} VC/запрос`
-                    : ""}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="min-h-[240px] flex-1 space-y-2 overflow-y-auto pb-3 md:min-h-[300px] md:space-y-4 md:pb-4">
-          {messages.length === 0 ? (
-            <div className="text-center text-secondary-text text-sm py-20">
-              Начните диалог с персонажем. Напишите что-нибудь!
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
+          <div className="min-h-[240px] flex-1 space-y-2 overflow-y-auto py-3 md:min-h-[300px] md:space-y-4 md:py-4">
+            {messages.length === 0 ? (
+              <div className="text-center text-secondary-text text-sm py-20">
+                Начните диалог с персонажем. Напишите что-нибудь!
+              </div>
+            ) : (
+              messages.map((msg) => (
                 <div
-                  className={`max-w-[88%] rounded-lg px-3 py-1.5 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
-                    msg.role === "user"
-                      ? "bg-black border border-[#9C27B0]/70 text-white"
-                      : "bg-[#1A1A1A] border border-[#6C63FF]/40 text-white"
-                  }`}
-                  dangerouslySetInnerHTML={{
-                    __html: formatMessageContent(msg.content),
-                  }}
-                />
+                  key={msg.id}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[88%] rounded-lg px-3 py-1.5 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
+                      msg.role === "user"
+                        ? "bg-black border border-[#9C27B0]/70 text-white"
+                        : "bg-[#1A1A1A] border border-[#6C63FF]/40 text-white"
+                    }`}
+                    dangerouslySetInnerHTML={{
+                      __html: formatMessageContent(msg.content),
+                    }}
+                  />
+                </div>
+              ))
+            )}
+            {sending && (
+              <div className="flex justify-start">
+                <div className="rounded-lg border border-divider/40 bg-bg-card px-3 py-1.5 text-sm text-secondary-text md:px-4 md:py-2">
+                  <span className="animate-pulse">Печатает...</span>
+                </div>
               </div>
-            ))
-          )}
-          {sending && (
-            <div className="flex justify-start">
-              <div className="rounded-lg border border-divider/40 bg-bg-card px-3 py-1.5 text-sm text-secondary-text md:px-4 md:py-2">
-                <span className="animate-pulse">Печатает...</span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
-        <form onSubmit={sendMessage} className="flex flex-col gap-2 border-t border-divider/40 pt-3 sm:flex-row md:pt-4">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Напишите сообщение..."
-            className="min-h-[44px] w-full flex-1 rounded-full border border-divider bg-bg-card px-4 py-2 text-sm outline-none transition-colors focus:border-primary/60"
-            disabled={sending}
-          />
-          <button
-            type="submit"
-            disabled={!canSend}
-            className="min-h-[44px] w-full rounded-full bg-primary px-6 py-2 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
+          <form
+            onSubmit={sendMessage}
+            className="flex shrink-0 flex-col gap-2 border-t border-divider/40 pt-3 sm:flex-row md:pt-4"
           >
-            Отправить
-          </button>
-        </form>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Напишите сообщение..."
+              className="min-h-[44px] w-full flex-1 rounded-full border border-divider bg-bg-card px-4 py-2 text-sm outline-none transition-colors focus:border-primary/60"
+              disabled={sending}
+            />
+            <button
+              type="submit"
+              disabled={!canSend}
+              className="min-h-[44px] w-full rounded-full bg-primary px-6 py-2 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
+            >
+              Отправить
+            </button>
+          </form>
         </main>
       </div>
     </div>
