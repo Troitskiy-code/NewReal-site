@@ -134,7 +134,6 @@ export default function ChatPage() {
   const [baseModelId, setBaseModelId] = useState<string | null>(null);
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [changingModel, setChangingModel] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -398,26 +397,6 @@ export default function ChatPage() {
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Toaster position="top-right" />
 
-        <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
-          <div className="flex flex-col items-center gap-4 text-center">
-            {character?.imageUrl ? (
-              <img
-                src={character.imageUrl}
-                alt={character.name}
-                className="h-28 w-28 rounded-full border-2 border-[#6C63FF]/50 object-cover"
-              />
-            ) : (
-              <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-[#6C63FF]/50 bg-[#1A1A1A]">
-                <FaUser className="text-4xl text-[#6C63FF]" />
-              </div>
-            )}
-            <h3 className="text-lg font-bold text-white">{character?.name}</h3>
-            <p className="text-left text-sm leading-relaxed text-secondary-text whitespace-pre-wrap">
-              {character?.description?.trim() || "Описание не указано."}
-            </p>
-          </div>
-        </Modal>
-
         <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
           <div className="space-y-2">
             {models.length === 0 ? (
@@ -450,48 +429,37 @@ export default function ChatPage() {
           </div>
         </Modal>
 
-        <main className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col px-2 pb-4 pt-16 sm:px-4 md:pb-6 md:pt-20">
-          <div className="sticky top-0 z-10 -mx-2 border-b border-divider/40 bg-[#121212]/95 px-2 py-2 backdrop-blur-sm sm:-mx-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <label className="sr-only" htmlFor="chat-model-select">
-                Модель
-              </label>
-              <select
-                id="chat-model-select"
-                value={selectedModelId}
-                onChange={(e) => handleModelChange(e.target.value)}
-                disabled={changingModel || models.length === 0}
-                className="min-w-0 flex-1 rounded-full border border-divider bg-bg-card py-2 px-4 text-xs font-medium text-primary-text outline-none transition-colors focus:border-primary/60"
-              >
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.displayName}
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                onClick={() => setProfileOpen(true)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-divider bg-bg-card text-white transition-colors hover:border-[#6C63FF]/60 hover:text-[#6C63FF]"
-                title="Профиль персонажа"
-                aria-label="Профиль персонажа"
-              >
-                <FaUser size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-divider bg-bg-card text-white transition-colors hover:border-[#6C63FF]/60 hover:text-[#6C63FF]"
-                title="Настройки"
-                aria-label="Настройки модели"
-              >
-                <FaCog size={14} />
-              </button>
+        <aside className="fixed left-0 top-16 z-10 flex w-[200px] flex-col items-center gap-2 bg-black/50 px-3 py-4 backdrop-blur-sm md:top-20">
+          {character?.imageUrl ? (
+            <img
+              src={character.imageUrl}
+              alt={character.name}
+              className="h-12 w-12 shrink-0 rounded-full border border-[#6C63FF]/40 object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#6C63FF]/40 bg-[#1A1A1A]">
+              <FaUser className="text-xl text-[#6C63FF]" />
             </div>
-          </div>
+          )}
+          <span className="line-clamp-3 text-center text-base font-semibold text-white">
+            {character?.name ?? "Персонаж"}
+          </span>
+        </aside>
 
-          <div className="min-h-[240px] flex-1 space-y-2 overflow-y-auto py-3 md:min-h-[300px] md:space-y-4 md:py-4">
+        <aside className="fixed right-0 top-16 z-10 flex w-[60px] justify-center bg-black/50 py-4 backdrop-blur-sm md:top-20">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-divider/60 bg-[#1A1A1A]/80 text-white transition-colors hover:border-[#6C63FF]/60 hover:text-[#6C63FF]"
+            title="Настройки"
+            aria-label="Настройки модели"
+          >
+            <FaCog size={18} />
+          </button>
+        </aside>
+
+        <main className="flex min-h-0 flex-1 flex-col pb-4 pl-48 pr-16 pt-16 md:pb-6 md:pt-20">
+          <div className="mx-auto min-h-[240px] w-full max-w-3xl flex-1 space-y-2 overflow-y-auto py-3 md:min-h-[300px] md:space-y-4 md:py-4">
             {messages.length === 0 ? (
               <div className="text-center text-secondary-text text-sm py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!
@@ -527,7 +495,7 @@ export default function ChatPage() {
 
           <form
             onSubmit={sendMessage}
-            className="flex shrink-0 flex-col gap-2 border-t border-divider/40 pt-3 sm:flex-row md:pt-4"
+            className="mx-auto flex w-full max-w-3xl shrink-0 flex-col gap-2 border-t border-divider/40 pt-3 sm:flex-row md:pt-4"
           >
             <input
               type="text"
