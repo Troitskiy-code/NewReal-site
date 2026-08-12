@@ -103,6 +103,7 @@ export default function CoinsPage() {
       });
       const data = await res.json();
       if (data.url) {
+        console.log("🔗 URL для оплаты:", data.url);
         window.location.href = data.url;
       } else {
         toast.error("Не удалось создать платёж");
@@ -295,7 +296,9 @@ export default function CoinsPage() {
                 </tr>
               </thead>
               <tbody>
-                {PACKAGES.map((pkg) => (
+                {PACKAGES.map((pkg) => {
+                  console.log("📦 Пакет:", pkg);
+                  return (
                   <tr key={pkg.id} className="border-b border-wd-border/60 bg-wd-card last:border-b-0">
                     <td className="px-4 py-4 font-black text-white">{formatCoins(pkg.vc)}</td>
                     <td className="px-4 py-4 text-white">{formatCoins(pkg.price)}</td>
@@ -318,7 +321,8 @@ export default function CoinsPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
