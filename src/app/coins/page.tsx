@@ -60,28 +60,6 @@ function formatDate(value: string): string {
   });
 }
 
-function handleBuy(packageId: number, vc: number, fetchBalance: () => Promise<void>) {
-  return async () => {
-    try {
-      const { data } = await axios.post<{ message: string; verseCoins: number; addedVC: number }>(
-        "/api/coins/purchase",
-        { packageId }
-      );
-      toast.success(data.message || `Зачислено ${vc.toLocaleString("ru-RU")} VC`);
-      window.dispatchEvent(
-        new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.verseCoins } })
-      );
-      await fetchBalance();
-    } catch (err) {
-      const message =
-        axios.isAxiosError(err) && err.response?.data?.error
-          ? err.response.data.error
-          : "Не удалось выполнить покупку";
-      toast.error(message);
-    }
-  };
-}
-
 export default function CoinsPage() {
   const { status } = useSession();
   const [balance, setBalance] = useState<BalanceData | null>(null);
@@ -112,6 +90,27 @@ export default function CoinsPage() {
       fetchBalance();
     }
   }, [status, fetchBalance]);
+
+  const handleBuy = async (price: number, coins: number) => {
+    try {
+      const res = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sum: price,
+          desc: `Покупка ${coins} VC`,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast.error("Не удалось создать платёж");
+      }
+    } catch {
+      toast.error("Ошибка при создании платежа");
+    }
+  };
 
   const handleClaimBonus = async () => {
     setClaiming(true);
@@ -312,7 +311,7 @@ export default function CoinsPage() {
                     <td className="px-4 py-4 text-right">
                       <button
                         type="button"
-                        onClick={handleBuy(pkg.id, pkg.vc, fetchBalance)}
+                        onClick={() => handleBuy(pkg.price, pkg.vc)}
                         className="rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
                       >
                         Купить
