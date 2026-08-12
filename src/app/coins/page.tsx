@@ -107,7 +107,7 @@ export default function CoinsPage() {
       } else {
         toast.error("Не удалось создать платёж");
       }
-    } catch {
+    } catch (error) {
       toast.error("Ошибка при создании платежа");
     }
   };

@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
     const currency = searchParams.get("currency") || "RUB";
     const signature = searchParams.get("signature");
 
-    // Проверка подписи
     const paramsForSignature = { account, currency, sum };
     const sortedKeys = Object.keys(paramsForSignature).sort();
     let signatureString = sortedKeys
@@ -35,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (method === "PAY") {
-      const vcAmount = Math.round(Number(sum) / 0.3); // 1 VC = 0.30 ₽
+      const vcAmount = Math.round(Number(sum) / 0.3);
       await prisma.$transaction([
         prisma.user.update({
           where: { id: account },
