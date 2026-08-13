@@ -40,6 +40,7 @@ model Character {
   updatedAt         DateTime @updatedAt
   messages          Message[]
   favorites         Favorite[]
+  memories          Memory[]
 
   // Новые поля для редактора WetDreams
   greeting          String?   // Первое сообщение
@@ -77,6 +78,19 @@ model Message {
 
   @@index([userId, characterId])
   @@index([userId, chatId])
+}
+
+model Memory {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary     String    @db.Text
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, characterId])
+  @@index([characterId])
 }
 
 model Favorite {
@@ -128,6 +142,7 @@ model User {
   characters         Character[]
   messages           Message[]
   favorites          Favorite[]
+  memories           Memory[]
   transactions       Transaction[]
 }
 

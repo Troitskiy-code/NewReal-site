@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import axios from "axios";
 import { encoding_for_model } from "tiktoken";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
+import { appendMemoryToSystemPrompt, resolveChatMemorySummary } from "@/lib/chatMemory";
 import {
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
@@ -203,10 +204,12 @@ export async function POST(
       );
     }
 
-    const systemPrompt = buildChatSystemPrompt(character);
+    const systemPromptBase = buildChatSystemPrompt(character);
+    const memorySummary = await resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY);
+    const systemPrompt = appendMemoryToSystemPrompt(systemPromptBase, memorySummary);
 
     const historyRows = await prisma.message.findMany({
-      where: { characterId: id },
+      where: { characterId: id, userId: session.user.id },
       orderBy: { createdAt: "desc" },
       take: HISTORY_MESSAGE_LIMIT,
     });
@@ -236,7 +239,11 @@ export async function POST(
       MAX_CONTEXT_TOKENS
     );
 
-    console.log(`📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens})`);
+    console.log(
+      `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens})${
+        memorySummary ? ", с предысторией" : ""
+      }`
+    );
 
     let assistantReply: string;
     try {
@@ -355,7 +362,7 @@ export async function GET(
     }
 
     const messages = await prisma.message.findMany({
-      where: { characterId: id },
+      where: { characterId: id, userId: session.user.id },
       orderBy: { createdAt: "asc" },
       take: 50,
     });
