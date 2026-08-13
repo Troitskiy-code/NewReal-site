@@ -8,7 +8,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { FaUser, FaCog } from "react-icons/fa";
 import {
   calculateRequestCost,
-  normalizeUserCounters,
+  getEffectiveModelPriceVC,
   type EconomyModel,
   type EconomyUser,
 } from "@/lib/verseChatEconomy";
@@ -29,13 +29,9 @@ type ChatModel = EconomyModel & {
 type BalanceData = {
   verseCoins: number;
   subscriptionActive: boolean;
-  freeRequestsRemaining: number | null;
-  freeRequestsLimit: number;
   dailyRequests: number;
   dailyLimit: number;
   dailyRequestsRemaining: number;
-  freeRequestsUsed: number;
-  freeRequestsMonth: string;
   dailyRequestsDate: string;
   subscriptionType: string | null;
   subscriptionEnd: string | null;
@@ -159,24 +155,19 @@ export default function ChatPage() {
       verseCoins: balance.verseCoins,
       subscriptionType: balance.subscriptionType,
       subscriptionEnd: balance.subscriptionEnd ? new Date(balance.subscriptionEnd) : null,
-      freeRequestsUsed: balance.freeRequestsUsed,
-      freeRequestsMonth: new Date(balance.freeRequestsMonth),
       dailyRequests: balance.dailyRequests,
       dailyRequestsDate: new Date(balance.dailyRequestsDate),
     };
 
-    const counters = normalizeUserCounters(economyUser);
-    return calculateRequestCost(economyUser, selectedModel, baseModel, counters);
+    return calculateRequestCost(economyUser, selectedModel, baseModel);
   }, [selectedModel, baseModel, balance]);
 
   const requestCostVC = costPreview?.ok ? costPreview.costVC : 0;
   const insufficientBalance =
     Boolean(costPreview?.ok && requestCostVC > 0 && balance && balance.verseCoins < requestCostVC);
-  const modelBlocked = costPreview?.ok === false;
   const canSend =
     !sending &&
     Boolean(input.trim()) &&
-    !modelBlocked &&
     !insufficientBalance &&
     (balance?.dailyRequestsRemaining ?? 1) > 0;
 
@@ -256,11 +247,6 @@ export default function ChatPage() {
     e.preventDefault();
     if (!input.trim() || sending) return;
 
-    if (modelBlocked) {
-      toast.error(costPreview && !costPreview.ok ? costPreview.error : "Модель недоступна");
-      return;
-    }
-
     if (insufficientBalance) {
       toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
       return;
@@ -305,11 +291,6 @@ export default function ChatPage() {
                 data.dailyLimit !== undefined && data.dailyRequests !== undefined
                   ? Math.max(0, data.dailyLimit - data.dailyRequests)
                   : prev.dailyRequestsRemaining,
-              freeRequestsUsed: data.freeRequestsUsed ?? prev.freeRequestsUsed,
-              freeRequestsRemaining:
-                data.freeRequestsRemaining !== undefined
-                  ? data.freeRequestsRemaining
-                  : prev.freeRequestsRemaining,
             }
           : prev
       );
@@ -339,8 +320,6 @@ export default function ChatPage() {
           toast.error(message || "Недостаточно VerseCoins");
         } else if (statusCode === 429) {
           toast.error(message || "Достигнут суточный лимит запросов");
-        } else if (statusCode === 403) {
-          toast.error(message || "Модель доступна только по подписке");
         } else {
           toast.error(message || "Не удалось отправить сообщение");
         }
@@ -444,7 +423,18 @@ export default function ChatPage() {
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                       <span className="text-lg font-bold text-white">{model.displayName}</span>
                       <span className="text-sm text-gray-400">
-                        {model.priceVC === 0 ? "Бесплатно" : `${model.priceVC} VC/запрос`}
+                        {balance && baseModel
+                          ? `${getEffectiveModelPriceVC(
+                              {
+                                subscriptionType: balance.subscriptionType,
+                                subscriptionEnd: balance.subscriptionEnd
+                                  ? new Date(balance.subscriptionEnd)
+                                  : null,
+                              },
+                              model,
+                              baseModel
+                            )} VC/запрос`
+                          : `${model.priceVC} VC/запрос`}
                       </span>
                     </div>
                     {model.description && (

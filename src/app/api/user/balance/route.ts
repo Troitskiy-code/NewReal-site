@@ -6,12 +6,11 @@ import {
   getBonusForStreak,
   getMsUntilNextDay,
   getNextBonus,
-  getNextStreak,
   getSubscriptionLabel,
   getUpcomingBonusStreak,
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
-import { FREE_TIER_MONTHLY_LIMIT, isSubscriptionActive, normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
+import { isSubscriptionActive, normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
 
 export async function GET() {
   try {
@@ -28,8 +27,6 @@ export async function GET() {
         lastBonusDate: true,
         subscriptionType: true,
         subscriptionEnd: true,
-        freeRequestsUsed: true,
-        freeRequestsMonth: true,
         dailyRequests: true,
         dailyRequestsDate: true,
       },
@@ -50,8 +47,6 @@ export async function GET() {
         verseCoins: user.verseCoins,
         subscriptionType: user.subscriptionType,
         subscriptionEnd: user.subscriptionEnd,
-        freeRequestsUsed: user.freeRequestsUsed,
-        freeRequestsMonth: user.freeRequestsMonth,
         dailyRequests: user.dailyRequests,
         dailyRequestsDate: user.dailyRequestsDate,
       },
@@ -71,14 +66,8 @@ export async function GET() {
       subscriptionEnd: user.subscriptionEnd,
       subscriptionActive,
       subscriptionLabel: subscriptionActive ? getSubscriptionLabel(user.subscriptionType) : null,
-      freeRequestsUsed: counters.freeRequestsUsed,
-      freeRequestsRemaining: subscriptionActive
-        ? null
-        : Math.max(0, FREE_TIER_MONTHLY_LIMIT - counters.freeRequestsUsed),
-      freeRequestsLimit: FREE_TIER_MONTHLY_LIMIT,
       dailyRequests: counters.dailyRequests,
       dailyRequestsDate: counters.dailyRequestsDate,
-      freeRequestsMonth: counters.freeRequestsMonth,
       dailyLimit: DAILY_REQUEST_LIMIT,
       dailyRequestsRemaining: Math.max(0, DAILY_REQUEST_LIMIT - counters.dailyRequests),
     });

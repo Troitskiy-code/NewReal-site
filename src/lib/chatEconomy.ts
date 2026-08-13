@@ -26,10 +26,3 @@ export function rublesToRealCoins(rubles: number): number {
   if (rubles <= 0) return 0;
   return Math.max(1, Math.ceil(rubles));
 }
-
-export function isModelFreeForUser(
-  model: Pick<ChatModel, "isFreeForSubscribers">,
-  isSubscribed: boolean
-): boolean {
-  return isSubscribed && model.isFreeForSubscribers;
-}

@@ -6,7 +6,6 @@ import {
   BASE_MODEL_COST_VC,
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
-  FREE_TIER_MONTHLY_LIMIT,
   getDailyLimitWarning,
   isSubscriptionActive,
   normalizeUserCounters,
@@ -37,7 +36,7 @@ const baseModel: EconomyModel = {
   name: "gpt-mini",
   displayName: "Base",
   priceVC: 0,
-  isFreeForSubscribers: true,
+  isFreeForSubscribers: false,
   isActive: true,
 };
 
@@ -58,8 +57,6 @@ function makeUser(overrides: Partial<EconomyUser> = {}): EconomyUser {
     verseCoins: 100,
     subscriptionType: "none",
     subscriptionEnd: null,
-    freeRequestsUsed: 0,
-    freeRequestsMonth: now,
     dailyRequests: 0,
     dailyRequestsDate: now,
     ...overrides,
@@ -69,24 +66,11 @@ function makeUser(overrides: Partial<EconomyUser> = {}): EconomyUser {
 console.log("\n1. Пользователь без подписки");
 {
   const user = makeUser();
-  const counters = normalizeUserCounters(user, now);
+  const baseCost = calculateRequestCost(user, baseModel, baseModel);
+  assert(baseCost.ok === true && baseCost.costVC === BASE_MODEL_COST_VC, "базовая модель: 2 VC");
 
-  for (let i = 0; i < FREE_TIER_MONTHLY_LIMIT; i += 1) {
-    const result = calculateRequestCost(user, baseModel, baseModel, counters);
-    assert(result.ok === true && result.costVC === 0 && result.usesFreeTier === true, `запрос ${i + 1}: бесплатно`);
-    if (result.ok) counters.freeRequestsUsed += 1;
-  }
-
-  const paidAfterFree = calculateRequestCost(user, baseModel, baseModel, counters);
-  assert(
-    paidAfterFree.ok === true &&
-      paidAfterFree.costVC === BASE_MODEL_COST_VC &&
-      paidAfterFree.usesFreeTier === false,
-    "11-й запрос: 2 VC"
-  );
-
-  const blockedPremium = calculateRequestCost(user, paidModel, baseModel, counters);
-  assert(blockedPremium.ok === false && blockedPremium.status === 403, "платная модель без подписки: 403");
+  const paidCost = calculateRequestCost(user, paidModel, baseModel);
+  assert(paidCost.ok === true && paidCost.costVC === 15, "платная модель доступна по priceVC");
 }
 
 console.log("\n2. Подписка «Дружба»");
@@ -95,12 +79,11 @@ console.log("\n2. Подписка «Дружба»");
     subscriptionType: "friendship",
     subscriptionEnd: new Date("2026-09-01"),
   });
-  const counters = normalizeUserCounters(user, now);
 
-  const baseFree = calculateRequestCost(user, baseModel, baseModel, counters);
+  const baseFree = calculateRequestCost(user, baseModel, baseModel);
   assert(baseFree.ok === true && baseFree.costVC === 0, "базовая модель бесплатна");
 
-  const paidCost = calculateRequestCost(user, paidModel, baseModel, counters);
+  const paidCost = calculateRequestCost(user, paidModel, baseModel);
   assert(paidCost.ok === true && paidCost.costVC === 15, "платная модель по priceVC");
 }
 

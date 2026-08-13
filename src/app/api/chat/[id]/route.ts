@@ -7,9 +7,7 @@ import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 import {
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
-  FREE_TIER_MONTHLY_LIMIT,
   getDailyLimitWarning,
-  isSubscriptionActive,
   normalizeUserCounters,
   type EconomyModel,
 } from "@/lib/verseChatEconomy";
@@ -23,7 +21,6 @@ const modelSelect = {
   name: true,
   displayName: true,
   priceVC: true,
-  isFreeForSubscribers: true,
   isActive: true,
 } as const;
 
@@ -42,14 +39,13 @@ async function getOrCreateBaseModel(): Promise<EconomyModel> {
         pricePer1MInput: 1.5,
         pricePer1MOutput: 6,
         priceVC: 0,
-        isFreeForSubscribers: true,
         isActive: true,
       },
       select: modelSelect,
     });
   }
 
-  return baseModel;
+  return { ...baseModel, isFreeForSubscribers: false };
 }
 
 async function resolveChatContext(userId: string) {
@@ -62,8 +58,6 @@ async function resolveChatContext(userId: string) {
       verseCoins: true,
       subscriptionType: true,
       subscriptionEnd: true,
-      freeRequestsUsed: true,
-      freeRequestsMonth: true,
       dailyRequests: true,
       dailyRequestsDate: true,
       selectedModel: { select: modelSelect },
@@ -77,7 +71,11 @@ async function resolveChatContext(userId: string) {
     model = baseModel;
   }
 
-  return { user, model, baseModel };
+  return {
+    user,
+    model: { ...model, isFreeForSubscribers: false },
+    baseModel,
+  };
 }
 
 export async function POST(
@@ -147,7 +145,7 @@ export async function POST(
       );
     }
 
-    const costResult = calculateRequestCost(user, model, baseModel, counters);
+    const costResult = calculateRequestCost(user, model, baseModel);
     if (costResult.ok === false) {
       return NextResponse.json(
         {
@@ -158,7 +156,7 @@ export async function POST(
       );
     }
 
-    const { costVC, usesFreeTier } = costResult;
+    const { costVC } = costResult;
 
     if (costVC > 0 && user.verseCoins < costVC) {
       return NextResponse.json(
@@ -225,11 +223,7 @@ export async function POST(
       throw aiError;
     }
 
-    const subscribed = isSubscriptionActive(user);
     const nextDailyRequests = counters.dailyRequests + 1;
-    const nextFreeRequestsUsed = usesFreeTier
-      ? counters.freeRequestsUsed + 1
-      : counters.freeRequestsUsed;
 
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
@@ -237,8 +231,6 @@ export async function POST(
         verseCoins: costVC > 0 ? { decrement: costVC } : undefined,
         dailyRequests: nextDailyRequests,
         dailyRequestsDate: counters.dailyRequestsDate,
-        freeRequestsUsed: nextFreeRequestsUsed,
-        freeRequestsMonth: counters.freeRequestsMonth,
       },
       select: { verseCoins: true },
     });
@@ -276,10 +268,6 @@ export async function POST(
       chargedVC: costVC,
       remainingVC: updatedUser.verseCoins,
       isFree: costVC === 0,
-      freeRequestsUsed: subscribed ? null : nextFreeRequestsUsed,
-      freeRequestsRemaining: subscribed
-        ? null
-        : Math.max(0, FREE_TIER_MONTHLY_LIMIT - nextFreeRequestsUsed),
       dailyRequests: nextDailyRequests,
       dailyLimit: DAILY_REQUEST_LIMIT,
       limitWarning,

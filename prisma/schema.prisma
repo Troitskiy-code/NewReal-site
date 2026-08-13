@@ -109,8 +109,6 @@ model User {
   verseCoins         Int           @default(0)
   subscriptionType   String?       @default("none")
   subscriptionEnd    DateTime?
-  freeRequestsUsed   Int           @default(0)
-  freeRequestsMonth  DateTime      @default(now())
   bonusStreak        Int           @default(0)
   lastBonusDate      DateTime?
   dailyRequests      Int           @default(0)

@@ -20,8 +20,6 @@ type BalanceData = {
   subscriptionActive: boolean;
   subscriptionLabel: string | null;
   subscriptionEnd: string | null;
-  freeRequestsRemaining: number | null;
-  freeRequestsLimit: number;
 };
 
 type TokenPackage = {
@@ -209,14 +207,6 @@ export default function CoinsPage() {
                     Действует до {formatDate(balance.subscriptionEnd)}
                   </p>
                 </div>
-              </section>
-            )}
-
-            {!balance.subscriptionActive && balance.freeRequestsRemaining !== null && (
-              <section className="rounded-wd border border-wd-border bg-[#121212] px-5 py-4 text-sm text-wd-text-secondary">
-                У вас осталось{" "}
-                <strong className="text-white">{balance.freeRequestsRemaining}</strong> бесплатных запросов в
-                этом месяце (из {balance.freeRequestsLimit}).
               </section>
             )}
 
