@@ -6,6 +6,7 @@ import axios from "axios";
 import { encoding_for_model } from "tiktoken";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 import { appendMemoryToSystemPrompt, resolveChatMemorySummary } from "@/lib/chatMemory";
+import { scheduleMessageEmbedding } from "@/lib/messageEmbeddings";
 import {
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
@@ -205,15 +206,6 @@ export async function POST(
     }
 
     const systemPromptBase = buildChatSystemPrompt(character);
-    const memorySummary = await resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY);
-    const systemPrompt = appendMemoryToSystemPrompt(systemPromptBase, memorySummary);
-
-    const historyRows = await prisma.message.findMany({
-      where: { characterId: id, userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: HISTORY_MESSAGE_LIMIT,
-    });
-    const history = historyRows.reverse();
 
     const userMessage = await prisma.message.create({
       data: {
@@ -225,13 +217,24 @@ export async function POST(
       },
     });
 
+    scheduleMessageEmbedding(userMessage.id, message, KODIKROUTER_KEY);
+
+    const memorySummary = await resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY);
+    const systemPrompt = appendMemoryToSystemPrompt(systemPromptBase, memorySummary);
+
+    const historyRows = await prisma.message.findMany({
+      where: { characterId: id, userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: HISTORY_MESSAGE_LIMIT,
+    });
+    const history = historyRows.reverse();
+
     const messagesForAI: ChatCompletionMessage[] = [
       { role: "system", content: systemPrompt },
       ...history.map((msg) => ({
         role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
         content: msg.content,
       })),
-      { role: "user", content: message },
     ];
 
     const { messages: trimmedMessages, totalTokens } = trimMessagesToTokenLimit(
@@ -268,7 +271,6 @@ export async function POST(
         throw new Error("Пустой ответ от ИИ");
       }
     } catch (aiError) {
-      await prisma.message.delete({ where: { id: userMessage.id } });
       throw aiError;
     }
 
@@ -304,6 +306,8 @@ export async function POST(
         content: assistantReply,
       },
     });
+
+    scheduleMessageEmbedding(assistantMessage.id, assistantReply, KODIKROUTER_KEY);
 
     const limitWarning = getDailyLimitWarning(nextDailyRequests);
 
@@ -364,7 +368,6 @@ export async function GET(
     const messages = await prisma.message.findMany({
       where: { characterId: id, userId: session.user.id },
       orderBy: { createdAt: "asc" },
-      take: 50,
     });
 
     return NextResponse.json({

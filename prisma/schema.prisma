@@ -75,9 +75,18 @@ model Message {
   role        String   // "user" или "assistant"
   content     String   @db.Text
   createdAt   DateTime @default(now())
+  embedding   MessageEmbedding?
 
   @@index([userId, characterId])
   @@index([userId, chatId])
+}
+
+model MessageEmbedding {
+  id        String   @id @default(cuid())
+  messageId String   @unique
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  embedding Bytes    // вектор эмбеддинга (для pgvector)
+  createdAt DateTime @default(now())
 }
 
 model Memory {

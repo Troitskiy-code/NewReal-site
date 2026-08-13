@@ -97,22 +97,15 @@ export async function resolveChatMemorySummary(
   const dialogText = formatDialogForSummary(oldestMessages);
   const summary = await requestSummary(apiKey, dialogText);
 
-  await prisma.$transaction([
-    prisma.memory.create({
-      data: {
-        userId,
-        characterId,
-        summary,
-      },
-    }),
-    prisma.message.deleteMany({
-      where: {
-        id: { in: oldestMessages.map((message) => message.id) },
-      },
-    }),
-  ]);
+  await prisma.memory.create({
+    data: {
+      userId,
+      characterId,
+      summary,
+    },
+  });
 
-  console.log(`🧠 Суммаризация сохранена, удалено ${oldestMessages.length} сообщений`);
+  console.log(`🧠 Суммаризация сохранена (${oldestMessages.length} сообщений в выжимке, сообщения в БД сохранены)`);
 
   return summary;
 }
