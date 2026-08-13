@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import axios from "axios";
+import { encoding_for_model } from "tiktoken";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 import {
   calculateRequestCost,
@@ -15,6 +16,39 @@ import {
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 const MAX_OUTPUT_TOKENS = 1500;
+const MAX_CONTEXT_TOKENS = 6000;
+const HISTORY_MESSAGE_LIMIT = 25;
+
+type ChatCompletionMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+function countTokens(text: string): number {
+  try {
+    const enc = encoding_for_model("gpt-4");
+    const tokens = enc.encode(text);
+    enc.free();
+    return tokens.length;
+  } catch {
+    return Math.ceil(text.length / 4);
+  }
+}
+
+function trimMessagesToTokenLimit(messages: ChatCompletionMessage[], maxTokens: number): {
+  messages: ChatCompletionMessage[];
+  totalTokens: number;
+} {
+  const trimmed = [...messages];
+  let totalTokens = trimmed.reduce((sum, message) => sum + countTokens(message.content), 0);
+
+  while (totalTokens > maxTokens && trimmed.length > 2) {
+    const removed = trimmed.splice(1, 1)[0];
+    totalTokens -= countTokens(removed.content);
+  }
+
+  return { messages: trimmed, totalTokens };
+}
 
 const modelSelect = {
   id: true,
@@ -171,11 +205,12 @@ export async function POST(
 
     const systemPrompt = buildChatSystemPrompt(character);
 
-    const history = await prisma.message.findMany({
+    const historyRows = await prisma.message.findMany({
       where: { characterId: id },
-      orderBy: { createdAt: "asc" },
-      take: 10,
+      orderBy: { createdAt: "desc" },
+      take: HISTORY_MESSAGE_LIMIT,
     });
+    const history = historyRows.reverse();
 
     const userMessage = await prisma.message.create({
       data: {
@@ -187,14 +222,21 @@ export async function POST(
       },
     });
 
-    const messages = [
+    const messagesForAI: ChatCompletionMessage[] = [
       { role: "system", content: systemPrompt },
       ...history.map((msg) => ({
-        role: msg.role === "user" ? "user" : "assistant",
+        role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
         content: msg.content,
       })),
       { role: "user", content: message },
     ];
+
+    const { messages: trimmedMessages, totalTokens } = trimMessagesToTokenLimit(
+      messagesForAI,
+      MAX_CONTEXT_TOKENS
+    );
+
+    console.log(`📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens})`);
 
     let assistantReply: string;
     try {
@@ -202,7 +244,7 @@ export async function POST(
         `${KODIKROUTER_URL}/chat/completions`,
         {
           model: "openai/gpt-4-turbo",
-          messages,
+          messages: trimmedMessages,
           max_tokens: MAX_OUTPUT_TOKENS,
           temperature: 0.8,
         },
