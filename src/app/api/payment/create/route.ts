@@ -16,7 +16,8 @@ function generatePaymentUrl(userId: string, sum: number, desc: string) {
   signatureString += `{up}${SECRET_KEY}`;
   const signature = crypto.createHash("sha256").update(signatureString).digest("hex");
 
-  const testParam = SECRET_KEY.includes("test") ? "&test=1" : "";
+  // const testParam = SECRET_KEY.includes("test") ? "&test=1" : "";
+  const testParam = "";
   return `https://unitpay.ru/pay/${PUBLIC_KEY}?sum=${sum}&account=${userId}&desc=${encodeURIComponent(desc)}&signature=${signature}&currency=${currency}${testParam}`;
 }
 
