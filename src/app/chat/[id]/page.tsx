@@ -274,13 +274,6 @@ export default function ChatPage() {
         message: userMessage,
       });
 
-      if (data.chargedVC > 0) {
-        toast.success(`Списано ${data.chargedVC} VC`);
-      }
-      if (data.limitWarning) {
-        toast(data.limitWarning, { icon: "⚠️" });
-      }
-
       setBalance((prev) =>
         prev
           ? {
