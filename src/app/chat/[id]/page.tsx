@@ -112,7 +112,7 @@ function Modal({ open, onClose, title, children }: ModalProps) {
           </h2>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-visible p-4 pt-6 md:p-6 md:pt-8">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</div>
       </div>
     </div>
   );
@@ -160,13 +160,14 @@ function ModelSettingsList({
             : `${model.priceVC} VC/запрос`;
 
         return (
-          <div key={model.id} className="relative overflow-visible border-b border-gray-700/50 last:border-b-0">
+          <div key={model.id} className="border-b border-gray-700/50 last:border-b-0">
             <label
-              className={`flex cursor-pointer items-center justify-between overflow-visible px-4 py-3 transition-colors md:px-6 ${
+              className={`flex cursor-pointer items-center justify-between px-4 py-3 transition-colors md:px-6 ${
                 selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
               } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
+              title={model.description ?? undefined}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-3 overflow-visible">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <input
                   type="radio"
                   name="chat-model"
@@ -175,16 +176,9 @@ function ModelSettingsList({
                   onChange={() => onModelChange(model.id)}
                   className="shrink-0 accent-[#6C63FF]"
                 />
-                <div className="flex min-w-0 flex-1 items-center justify-between gap-3 overflow-visible">
-                  <span className="relative inline-block min-w-0 flex-1">
-                    <span className="group relative inline-block max-w-full cursor-pointer truncate text-base font-bold text-white md:text-lg">
-                      <span>{model.displayName}</span>
-                      {model.description && (
-                        <span className="pointer-events-none absolute bottom-full left-0 z-50 mb-2 hidden w-64 rounded bg-gray-800 px-2 py-1 text-xs font-normal normal-case leading-relaxed text-white shadow-lg md:group-hover:block">
-                          {model.description}
-                        </span>
-                      )}
-                    </span>
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                  <span className="truncate text-base font-bold text-white md:text-lg">
+                    {model.displayName}
                   </span>
                   <span className="shrink-0 text-sm text-gray-400">{priceLabel}</span>
                 </div>
@@ -494,7 +488,7 @@ export default function ChatPage() {
         </Modal>
 
         <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
-          <div className="-mx-4 -mb-4 overflow-visible md:-mx-6 md:-mb-6">
+          <div className="-mx-4 -mb-4 md:-mx-6 md:-mb-6">
             {models.length === 0 ? (
               <p className="px-4 text-sm text-secondary-text md:px-6">Модели не найдены</p>
             ) : (
