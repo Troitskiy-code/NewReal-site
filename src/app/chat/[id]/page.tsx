@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaUser, FaCog } from "react-icons/fa";
+import { FaUser, FaCog, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -115,6 +115,103 @@ function Modal({ open, onClose, title, children }: ModalProps) {
         <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</div>
       </div>
     </div>
+  );
+}
+
+type ModelSettingsListProps = {
+  models: ChatModel[];
+  selectedModelId: string;
+  baseModel: ChatModel | null;
+  balance: BalanceData | null;
+  changingModel: boolean;
+  onModelChange: (modelId: string) => void;
+};
+
+function ModelSettingsList({
+  models,
+  selectedModelId,
+  baseModel,
+  balance,
+  changingModel,
+  onModelChange,
+}: ModelSettingsListProps) {
+  const [expandedModelId, setExpandedModelId] = useState<string | null>(null);
+
+  const toggleDescription = (modelId: string) => {
+    setExpandedModelId((current) => (current === modelId ? null : modelId));
+  };
+
+  return (
+    <>
+      {models.map((model) => {
+        const isExpanded = expandedModelId === model.id;
+        const priceLabel =
+          balance && baseModel
+            ? `${getEffectiveModelPriceVC(
+                {
+                  subscriptionType: balance.subscriptionType,
+                  subscriptionEnd: balance.subscriptionEnd
+                    ? new Date(balance.subscriptionEnd)
+                    : null,
+                },
+                model,
+                baseModel
+              )} VC/запрос`
+            : `${model.priceVC} VC/запрос`;
+
+        return (
+          <div key={model.id} className="border-b border-gray-700/50 last:border-b-0">
+            <label
+              className={`flex cursor-pointer items-center justify-between px-4 py-3 transition-colors md:px-6 ${
+                selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
+              } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <input
+                  type="radio"
+                  name="chat-model"
+                  value={model.id}
+                  checked={selectedModelId === model.id}
+                  onChange={() => onModelChange(model.id)}
+                  className="shrink-0 accent-[#6C63FF]"
+                />
+                <div
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3"
+                  title={model.description ?? undefined}
+                >
+                  <span className="truncate text-base font-bold text-white md:text-lg">
+                    {model.displayName}
+                  </span>
+                  <span className="shrink-0 text-sm text-gray-400">{priceLabel}</span>
+                </div>
+              </div>
+
+              {model.description && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleDescription(model.id);
+                  }}
+                  className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#0A0A0A] hover:text-white md:hidden"
+                  aria-label={isExpanded ? "Скрыть описание" : "Показать описание"}
+                  aria-expanded={isExpanded}
+                >
+                  {isExpanded ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
+                </button>
+              )}
+            </label>
+
+            {model.description && isExpanded && (
+              <p className="px-4 pb-3 pl-11 text-xs leading-relaxed text-gray-500 md:hidden">
+                {model.description}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -397,47 +494,14 @@ export default function ChatPage() {
             {models.length === 0 ? (
               <p className="px-4 text-sm text-secondary-text md:px-6">Модели не найдены</p>
             ) : (
-              models.map((model) => (
-                <label
-                  key={model.id}
-                  className={`flex cursor-pointer items-start gap-3 break-words border-b border-gray-700/50 px-4 py-3 transition-colors last:border-b-0 md:px-6 ${
-                    selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
-                  } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="chat-model"
-                    value={model.id}
-                    checked={selectedModelId === model.id}
-                    onChange={() => handleModelChange(model.id)}
-                    className="mt-1.5 shrink-0 accent-[#6C63FF]"
-                  />
-                  <div className="min-w-0 flex-1 break-words">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="text-lg font-bold text-white">{model.displayName}</span>
-                      <span className="text-sm text-gray-400">
-                        {balance && baseModel
-                          ? `${getEffectiveModelPriceVC(
-                              {
-                                subscriptionType: balance.subscriptionType,
-                                subscriptionEnd: balance.subscriptionEnd
-                                  ? new Date(balance.subscriptionEnd)
-                                  : null,
-                              },
-                              model,
-                              baseModel
-                            )} VC/запрос`
-                          : `${model.priceVC} VC/запрос`}
-                      </span>
-                    </div>
-                    {model.description && (
-                      <p className="mt-1 break-words text-xs leading-relaxed text-gray-500">
-                        {model.description}
-                      </p>
-                    )}
-                  </div>
-                </label>
-              ))
+              <ModelSettingsList
+                models={models}
+                selectedModelId={selectedModelId}
+                baseModel={baseModel}
+                balance={balance}
+                changingModel={changingModel}
+                onModelChange={handleModelChange}
+              />
             )}
           </div>
         </Modal>
