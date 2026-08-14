@@ -6,12 +6,20 @@ import axios from "axios";
 import { encoding_for_model } from "tiktoken";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 import { appendMemoryToSystemPrompt, resolveChatMemorySummary } from "@/lib/chatMemory";
-import { scheduleMessageEmbedding } from "@/lib/messageEmbeddings";
+import {
+  appendRagToSystemPrompt,
+  formatRagContext,
+  isUniverseRagEligible,
+  scheduleMessageEmbedding,
+  searchRelevantMessages,
+  shouldPersistEmbeddings,
+} from "@/lib/messageEmbeddings";
 import {
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
   getContextTokenLimit,
   getDailyLimitWarning,
+  getHistoryMessageLimit,
   isSubscriptionActive,
   normalizeUserCounters,
   type EconomyModel,
@@ -20,7 +28,6 @@ import {
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 const MAX_OUTPUT_TOKENS = 1500;
-const HISTORY_MESSAGE_LIMIT = 25;
 
 type ChatCompletionMessage = {
   role: "system" | "user" | "assistant";
@@ -172,6 +179,8 @@ export async function POST(
     const counters = normalizeUserCounters(user, now);
     const subscriptionActive = isSubscriptionActive(user);
     const maxContextTokens = getContextTokenLimit(user.subscriptionType, subscriptionActive);
+    const universeRag = isUniverseRagEligible(user.subscriptionType, subscriptionActive);
+    const persistEmbeddings = shouldPersistEmbeddings(user.subscriptionType, subscriptionActive);
 
     if (counters.dailyRequests >= DAILY_REQUEST_LIMIT) {
       return NextResponse.json(
@@ -220,17 +229,42 @@ export async function POST(
       },
     });
 
-    scheduleMessageEmbedding(userMessage.id, message, KODIKROUTER_KEY);
+    scheduleMessageEmbedding(userMessage.id, message, KODIKROUTER_KEY, persistEmbeddings);
 
     const memorySummary = await resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY);
-    const systemPrompt = appendMemoryToSystemPrompt(systemPromptBase, memorySummary);
+    let systemPrompt = appendMemoryToSystemPrompt(systemPromptBase, memorySummary);
+
+    if (universeRag) {
+      try {
+        const ragMessages = await searchRelevantMessages(
+          session.user.id,
+          id,
+          message,
+          KODIKROUTER_KEY,
+          userMessage.id
+        );
+        console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
+        systemPrompt = appendRagToSystemPrompt(systemPrompt, formatRagContext(ragMessages));
+      } catch (ragError) {
+        console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
+      }
+    }
+
+    const historyLimit = getHistoryMessageLimit(user.subscriptionType, subscriptionActive);
+    const subscriptionLogType = subscriptionActive
+      ? user.subscriptionType ?? "unknown"
+      : "start";
 
     const historyRows = await prisma.message.findMany({
       where: { characterId: id, userId: session.user.id },
       orderBy: { createdAt: "desc" },
-      take: HISTORY_MESSAGE_LIMIT,
+      take: historyLimit,
     });
     const history = historyRows.reverse();
+
+    console.log(
+      `📚 Загружено ${history.length} сообщений для подписки ${subscriptionLogType} (лимит: ${historyLimit}, контекст: ${maxContextTokens})`
+    );
 
     const messagesForAI: ChatCompletionMessage[] = [
       { role: "system", content: systemPrompt },
@@ -248,7 +282,7 @@ export async function POST(
     console.log(
       `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens}, лимит: ${maxContextTokens})${
         memorySummary ? ", с предысторией" : ""
-      }`
+      }${universeRag ? ", RAG" : ""}`
     );
 
     let assistantReply: string;
@@ -310,7 +344,7 @@ export async function POST(
       },
     });
 
-    scheduleMessageEmbedding(assistantMessage.id, assistantReply, KODIKROUTER_KEY);
+    scheduleMessageEmbedding(assistantMessage.id, assistantReply, KODIKROUTER_KEY, persistEmbeddings);
 
     const limitWarning = getDailyLimitWarning(nextDailyRequests);
 

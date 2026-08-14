@@ -6,6 +6,7 @@ export {
   buildSubscriptionActivationGrant,
   getContextMultiplier,
   getContextTokenLimit,
+  getHistoryMessageLimit,
   getSubscriptionMonthlyVC,
   getSubscriptionPlan,
 } from "./chatEconomy";

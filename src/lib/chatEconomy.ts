@@ -95,6 +95,26 @@ export function getContextTokenLimit(
   return getSubscriptionPlan(type).contextTokens;
 }
 
+export function getHistoryMessageLimit(
+  type: string | null | undefined,
+  subscriptionActive: boolean
+): number {
+  if (!subscriptionActive) {
+    return 25;
+  }
+
+  const normalized = type === "history" ? "story" : type;
+
+  switch (normalized) {
+    case "universe":
+      return 100;
+    case "story":
+      return 60;
+    default:
+      return 25;
+  }
+}
+
 export function getContextMultiplier(
   type: string | null | undefined,
   subscriptionActive: boolean
