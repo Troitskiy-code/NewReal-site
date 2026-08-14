@@ -12,12 +12,9 @@ export default function Footer() {
         <Link href="/refund" className="text-wd-text-secondary transition-colors hover:text-white">
           Политика возврата
         </Link>
-        <a
-          href="mailto:support@newvers.ai"
-          className="text-wd-text-secondary transition-colors hover:text-white"
-        >
+        <Link href="/support" className="text-wd-text-secondary transition-colors hover:text-white">
           Поддержка
-        </a>
+        </Link>
       </nav>
       <p className="text-xs text-wd-text-secondary">
         © {new Date().getFullYear()} NewVerse — Твоя вселенная персонажей

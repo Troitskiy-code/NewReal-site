@@ -89,10 +89,22 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white">5. Контактная информация</h2>
             <p>
-              По вопросам использования сервиса, оплаты и возвратов обращайтесь:{" "}
-              <a href="mailto:support@newvers.ai" className="text-wd-secondary underline hover:text-white">
-                support@newvers.ai
+              Все вопросы, жалобы и обращения по использованию сервиса, оплате и возвратам
+              принимаются через форму на{" "}
+              <Link href="/support" className="text-wd-secondary underline hover:text-white">
+                странице поддержки
+              </Link>
+              .
+            </p>
+            <p>
+              Перейдите по ссылке{" "}
+              <a
+                href="https://newvers.ai/support"
+                className="text-wd-secondary underline hover:text-white"
+              >
+                https://newvers.ai/support
               </a>
+              , выберите тему обращения и опишите ситуацию — мы ответим на указанный вами email.
             </p>
             <p className="text-xs text-wd-text-secondary/80">
               Дата последнего обновления: {new Date().toLocaleDateString("ru-RU")}

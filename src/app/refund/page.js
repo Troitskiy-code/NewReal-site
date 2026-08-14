@@ -44,11 +44,14 @@ export default function RefundPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white">3. Порядок подачи обращения</h2>
             <p>
-              Для подачи жалобы или запроса на возврат направьте письмо на{" "}
-              <a href="mailto:support@newvers.ai" className="text-wd-secondary underline hover:text-white">
-                support@newvers.ai
-              </a>{" "}
-              с темой «Запрос на возврат» и укажите:
+              Для подачи жалобы или запроса на возврат перейдите на{" "}
+              <Link href="/support" className="text-wd-secondary underline hover:text-white">
+                страницу поддержки
+              </Link>{" "}
+              (<a href="https://newvers.ai/support" className="text-wd-secondary underline hover:text-white">
+                https://newvers.ai/support
+              </a>
+              ) и заполните форму обращения. Выберите тему «Возврат средств» и укажите:
             </p>
             <ul className="list-disc space-y-2 pl-5">
               <li>email аккаунта в NewVerse;</li>
@@ -70,10 +73,11 @@ export default function RefundPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white">5. Контакты</h2>
             <p>
-              Email для обращений:{" "}
-              <a href="mailto:support@newvers.ai" className="text-wd-secondary underline hover:text-white">
-                support@newvers.ai
-              </a>
+              Обращения принимаются через{" "}
+              <Link href="/support" className="text-wd-secondary underline hover:text-white">
+                страницу поддержки
+              </Link>
+              .
             </p>
             <p>
               Также см.{" "}
