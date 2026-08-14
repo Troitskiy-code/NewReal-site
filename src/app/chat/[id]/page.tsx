@@ -26,10 +26,6 @@ const MODEL_DESCRIPTIONS: Record<string, string> = {
   "GPT-5.2": "Флагманская модель, интеллект эксперта.",
 };
 
-function getModelDescription(displayName: string): string | undefined {
-  return MODEL_DESCRIPTIONS[displayName];
-}
-
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -162,7 +158,8 @@ function ModelSettingsList({
     <>
       {models.map((model) => {
         const isExpanded = expandedModelId === model.id;
-        const description = getModelDescription(model.displayName);
+        const description = MODEL_DESCRIPTIONS[model.displayName];
+        console.log(model.displayName, description);
         const priceLabel =
           balance && baseModel
             ? `${getEffectiveModelPriceVC(
@@ -178,7 +175,7 @@ function ModelSettingsList({
             : `${model.priceVC} VC/запрос`;
 
         return (
-          <div key={model.id} className="border-b border-gray-700/50 last:border-b-0">
+          <div key={model.id} className="group border-b border-gray-700/50 last:border-b-0">
             <label
               className={`flex cursor-pointer items-center justify-between px-4 py-3 transition-colors md:px-6 ${
                 selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
@@ -221,6 +218,12 @@ function ModelSettingsList({
 
             {description && isExpanded && (
               <p className="px-4 pb-3 pl-11 text-xs leading-relaxed text-gray-500 md:hidden">
+                {description}
+              </p>
+            )}
+
+            {description && (
+              <p className="hidden px-4 pb-3 pl-11 text-xs leading-relaxed text-gray-500 md:block md:max-h-0 md:overflow-hidden md:pb-0 md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-h-24 md:group-hover:pb-3 md:group-hover:opacity-100">
                 {description}
               </p>
             )}
