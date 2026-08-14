@@ -1,81 +1,71 @@
-import axios from "axios";
-import { prisma } from "@/lib/prisma";
-
-const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const EMBEDDING_MODEL = "openai/text-embedding-3-small";
-
 export const MESSAGE_EMBEDDINGS_ENABLED =
   process.env.ENABLE_RAG_EMBEDDINGS === "true";
 
-function vectorToBytes(vector: number[]): Buffer {
-  const float32 = new Float32Array(vector);
-  return Buffer.from(float32.buffer);
+export type RagMessage = {
+  id: string;
+  role: string;
+  content: string;
+  similarity?: number;
+};
+
+export type RagContext = {
+  text: string;
+  count: number;
+};
+
+export function isUniverseRagEligible(
+  subscriptionType: string | null | undefined,
+  subscriptionActive: boolean
+): boolean {
+  return subscriptionActive && subscriptionType === "universe";
 }
 
-async function fetchEmbedding(text: string, apiKey: string): Promise<number[]> {
-  const response = await axios.post(
-    `${KODIKROUTER_URL}/embeddings`,
-    {
-      model: EMBEDDING_MODEL,
-      input: text,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  const vector = response.data?.data?.[0]?.embedding;
-  if (!Array.isArray(vector) || vector.length === 0) {
-    throw new Error("Пустой эмбеддинг от API");
-  }
-
-  return vector;
+export function shouldPersistEmbeddings(
+  subscriptionType: string | null | undefined,
+  subscriptionActive: boolean
+): boolean {
+  return MESSAGE_EMBEDDINGS_ENABLED || isUniverseRagEligible(subscriptionType, subscriptionActive);
 }
 
-export async function saveMessageEmbedding(
-  messageId: string,
-  content: string,
-  apiKey: string
-): Promise<void> {
-  if (!MESSAGE_EMBEDDINGS_ENABLED) {
-    return;
+export function formatRagContext(messages: RagMessage[]): RagContext | null {
+  if (!messages || messages.length === 0) {
+    return null;
   }
 
-  const existing = await prisma.messageEmbedding.findUnique({
-    where: { messageId },
-    select: { id: true },
-  });
+  const text = messages.map((message) => message.content).join("\n");
+  return { text, count: messages.length };
+}
 
-  if (existing) {
-    console.log(`🔍 Эмбеддинг уже есть для message=${messageId}`);
-    return;
+export function appendRagToSystemPrompt(
+  systemPrompt: string,
+  ragContext: RagContext | null
+): string {
+  if (!ragContext?.text) {
+    return systemPrompt;
   }
 
-  const vector = await fetchEmbedding(content, apiKey);
+  return `${systemPrompt}\n\nНа основе прошлых разговоров:\n${ragContext.text}`;
+}
 
-  await prisma.messageEmbedding.create({
-    data: {
-      messageId,
-      embedding: vectorToBytes(vector),
-    },
-  });
-
-  console.log(`🔍 Эмбеддинг сохранён для message=${messageId} (${vector.length} dims)`);
+export async function searchRelevantMessages(
+  _userId: string,
+  _characterId: string,
+  _queryText: string,
+  _apiKey?: string,
+  _excludeMessageId?: string
+): Promise<RagMessage[]> {
+  return [];
 }
 
 export function scheduleMessageEmbedding(
-  messageId: string,
-  content: string,
-  apiKey: string
+  _messageId: string,
+  _content: string,
+  _apiKey: string,
+  persistEmbeddings: boolean
 ): void {
-  if (!MESSAGE_EMBEDDINGS_ENABLED) {
+  if (!persistEmbeddings) {
     return;
   }
 
-  void saveMessageEmbedding(messageId, content, apiKey).catch((error) => {
-    console.error(`🔍 Ошибка эмбеддинга message=${messageId}:`, error);
-  });
+  console.log("🔍 RAG: сохранение эмбеддингов временно отключено (заглушка)");
 }
