@@ -2,6 +2,14 @@ export const DAILY_REQUEST_LIMIT = 300;
 export const DAILY_LIMIT_WARNING_AT = 270;
 export const BASE_MODEL_COST_VC = 2;
 
+export {
+  buildSubscriptionActivationGrant,
+  getContextMultiplier,
+  getContextTokenLimit,
+  getSubscriptionMonthlyVC,
+  getSubscriptionPlan,
+} from "./chatEconomy";
+
 export type EconomyUser = {
   id: string;
   verseCoins: number;
@@ -33,7 +41,7 @@ export function isSubscriptionActive(
   user: Pick<EconomyUser, "subscriptionType" | "subscriptionEnd">
 ): boolean {
   const type = user.subscriptionType ?? "none";
-  if (type === "none") return false;
+  if (type === "none" || type === "start") return false;
   if (!user.subscriptionEnd) return false;
   return user.subscriptionEnd > new Date();
 }

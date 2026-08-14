@@ -5,70 +5,99 @@ const prisma = new PrismaClient();
 const models = [
   {
     name: "openai/gpt-4o-mini",
-    displayName: "Базовая",
-    pricePer1MInput: 1.5,
-    pricePer1MOutput: 6,
-    priceVC: 0,
-    description:
-      "Быстрая и лёгкая модель для повседневного общения. Подходит для коротких и динамичных историй.",
-    isFreeForSubscribers: true,
+    displayName: "GPT-4o-mini",
+    priceVC: 4,
+    description: "Быстрая и надёжная. Идеальна для повседневных диалогов.",
+    isFreeForSubscribers: false,
     isActive: true,
   },
   {
-    name: "openai/gpt-4o",
-    displayName: "Стандартная",
-    pricePer1MInput: 5,
-    pricePer1MOutput: 15,
+    name: "deepseek/deepseek-v3.2",
+    displayName: "DeepSeek V3.2",
+    priceVC: 4,
+    description: "Отличный русский язык и низкая цена.",
+    isFreeForSubscribers: false,
+    isActive: true,
+  },
+  {
+    name: "deepseek/deepseek-v4-pro",
+    displayName: "DeepSeek V4 Pro",
     priceVC: 8,
-    description:
-      "Сбалансированная модель для ролевых игр и диалогов. Хороша для глубоких сюжетов.",
+    description: "Живой диалог, глубокое понимание контекста.",
+    isFreeForSubscribers: false,
+    isActive: true,
+  },
+  {
+    name: "deepseek/deepseek-v4-flash",
+    displayName: "DeepSeek V4-Flash",
+    priceVC: 12,
+    description: "Молниеносная скорость, идеальна для длинных переписок.",
+    isFreeForSubscribers: false,
+    isActive: true,
+  },
+  {
+    name: "google/gemini-2.0-flash",
+    displayName: "Gemini 2.0 Flash",
+    priceVC: 16,
+    description: "Быстрая, креативная, для генерации идей.",
     isFreeForSubscribers: false,
     isActive: true,
   },
   {
     name: "anthropic/claude-3.5-sonnet",
-    displayName: "Продвинутая",
-    pricePer1MInput: 3,
-    pricePer1MOutput: 15,
-    priceVC: 19,
-    description:
-      "Мощная модель с высоким качеством ответов. Идеальна для сложных персонажей и захватывающих историй.",
+    displayName: "Claude 3.5 Sonnet",
+    priceVC: 30,
+    description: "Высокий эмоциональный интеллект, реалистичные диалоги.",
     isFreeForSubscribers: false,
     isActive: true,
   },
   {
-    name: "openai/o1",
-    displayName: "Экспертная",
-    pricePer1MInput: 15,
-    pricePer1MOutput: 60,
-    priceVC: 47,
-    description:
-      "Модель для экспертных задач и интеллектуальных диалогов. Требует вдумчивого подхода.",
+    name: "openai/gpt-4o",
+    displayName: "GPT-4o",
+    priceVC: 35,
+    description: "Универсальный лидер, баланс качества и цены.",
     isFreeForSubscribers: false,
     isActive: true,
   },
   {
-    name: "openai/gpt-5",
-    displayName: "Флагманская",
-    pricePer1MInput: 25,
-    pricePer1MOutput: 100,
-    priceVC: 93,
-    description:
-      "Флагманская модель с неограниченными возможностями. Для самых требовательных игроков.",
+    name: "google/gemini-2.5-pro",
+    displayName: "Gemini 2.5 Pro",
+    priceVC: 35,
+    description: "Глубокое понимание, идеален для миров и длинных нарративов.",
+    isFreeForSubscribers: false,
+    isActive: true,
+  },
+  {
+    name: "anthropic/claude-opus-4",
+    displayName: "Claude Opus 4",
+    priceVC: 60,
+    description: "Максимальное качество, профессиональные сценарии.",
+    isFreeForSubscribers: false,
+    isActive: true,
+  },
+  {
+    name: "openai/gpt-5.2",
+    displayName: "GPT-5.2",
+    priceVC: 60,
+    description: "Флагманская модель, интеллект эксперта.",
     isFreeForSubscribers: false,
     isActive: true,
   },
 ];
 
 async function main() {
+  await prisma.user.updateMany({
+    data: { selectedModelId: null },
+  });
+
+  const deleted = await prisma.model.deleteMany();
+  console.log(`Удалено моделей: ${deleted.count}`);
+
   for (const model of models) {
-    await prisma.model.upsert({
-      where: { name: model.name },
-      update: model,
-      create: model,
-    });
+    await prisma.model.create({ data: model });
   }
-  console.log("Модели успешно добавлены:", models.length);
+
+  console.log(`Добавлено моделей: ${models.length}`);
 }
 
 main()

@@ -10,7 +10,9 @@ import { scheduleMessageEmbedding } from "@/lib/messageEmbeddings";
 import {
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
+  getContextTokenLimit,
   getDailyLimitWarning,
+  isSubscriptionActive,
   normalizeUserCounters,
   type EconomyModel,
 } from "@/lib/verseChatEconomy";
@@ -18,7 +20,6 @@ import {
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 const MAX_OUTPUT_TOKENS = 1500;
-const MAX_CONTEXT_TOKENS = 6000;
 const HISTORY_MESSAGE_LIMIT = 25;
 
 type ChatCompletionMessage = {
@@ -169,6 +170,8 @@ export async function POST(
     const { user, model, baseModel } = resolved;
     const now = new Date();
     const counters = normalizeUserCounters(user, now);
+    const subscriptionActive = isSubscriptionActive(user);
+    const maxContextTokens = getContextTokenLimit(user.subscriptionType, subscriptionActive);
 
     if (counters.dailyRequests >= DAILY_REQUEST_LIMIT) {
       return NextResponse.json(
@@ -239,11 +242,11 @@ export async function POST(
 
     const { messages: trimmedMessages, totalTokens } = trimMessagesToTokenLimit(
       messagesForAI,
-      MAX_CONTEXT_TOKENS
+      maxContextTokens
     );
 
     console.log(
-      `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens})${
+      `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens}, лимит: ${maxContextTokens})${
         memorySummary ? ", с предысторией" : ""
       }`
     );

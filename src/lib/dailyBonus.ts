@@ -34,13 +34,4 @@ export function getUpcomingBonusStreak(currentStreak: number): number {
   return getNextStreak(currentStreak);
 }
 
-export function getSubscriptionLabel(type: string | null | undefined): string | null {
-  switch (type) {
-    case "friendship":
-      return "Дружба";
-    case "love":
-      return "Любовь";
-    default:
-      return null;
-  }
-}
+export { getSubscriptionLabel } from "@/lib/chatEconomy";

@@ -8,6 +8,108 @@ export type ChatModel = {
   isActive: boolean;
 };
 
+export type SubscriptionPlan = {
+  id: string;
+  name: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  vcPerMonth: number;
+  contextTokens: number;
+  contextMultiplier: number;
+  priority: boolean;
+  ragEnabled: boolean;
+  features: string[];
+};
+
+export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
+  {
+    id: "start",
+    name: "Старт",
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    vcPerMonth: 100,
+    contextTokens: 8_000,
+    contextMultiplier: 1,
+    priority: false,
+    ragEnabled: false,
+    features: ["100 VC в месяц", "Контекст 8K", "Базовый доступ к моделям"],
+  },
+  {
+    id: "dialog",
+    name: "Диалог",
+    monthlyPrice: 499,
+    yearlyPrice: 4_990,
+    vcPerMonth: 2_500,
+    contextTokens: 16_000,
+    contextMultiplier: 1.5,
+    priority: false,
+    ragEnabled: false,
+    features: ["2 500 VC в месяц", "Контекст 16K", "Множитель памяти ×1,5"],
+  },
+  {
+    id: "story",
+    name: "История",
+    monthlyPrice: 1_299,
+    yearlyPrice: 12_990,
+    vcPerMonth: 10_000,
+    contextTokens: 32_000,
+    contextMultiplier: 2,
+    priority: true,
+    ragEnabled: false,
+    features: ["10 000 VC в месяц", "Контекст 32K", "Множитель ×2", "Приоритетная очередь"],
+  },
+  {
+    id: "universe",
+    name: "Вселенная",
+    monthlyPrice: 3_499,
+    yearlyPrice: 37_990,
+    vcPerMonth: 30_000,
+    contextTokens: 64_000,
+    contextMultiplier: 2.5,
+    priority: true,
+    ragEnabled: true,
+    features: ["30 000 VC в месяц", "Контекст 64K", "Множитель ×2,5", "Приоритет + RAG-память"],
+  },
+];
+
+export const DEFAULT_SUBSCRIPTION_TYPE = "start";
+
+export function getSubscriptionPlan(type: string | null | undefined): SubscriptionPlan {
+  const normalized = type === "none" || !type ? DEFAULT_SUBSCRIPTION_TYPE : type;
+  return SUBSCRIPTION_PLANS.find((plan) => plan.id === normalized) ?? SUBSCRIPTION_PLANS[0];
+}
+
+export function getSubscriptionLabel(type: string | null | undefined): string | null {
+  const plan = getSubscriptionPlan(type);
+  return plan.id === DEFAULT_SUBSCRIPTION_TYPE && (type === "none" || !type) ? null : plan.name;
+}
+
+export function getContextTokenLimit(
+  type: string | null | undefined,
+  subscriptionActive: boolean
+): number {
+  if (!subscriptionActive) {
+    return getSubscriptionPlan(DEFAULT_SUBSCRIPTION_TYPE).contextTokens;
+  }
+
+  return getSubscriptionPlan(type).contextTokens;
+}
+
+export function getContextMultiplier(
+  type: string | null | undefined,
+  subscriptionActive: boolean
+): number {
+  if (!subscriptionActive) {
+    return getSubscriptionPlan(DEFAULT_SUBSCRIPTION_TYPE).contextMultiplier;
+  }
+
+  return getSubscriptionPlan(type).contextMultiplier;
+}
+
+export function getSubscriptionMonthlyVC(type: string | null | undefined): number {
+  return getSubscriptionPlan(type).vcPerMonth;
+}
+
 export function estimateTokensFromText(text: string): number {
   return Math.max(1, Math.ceil(text.length / 4));
 }
@@ -25,4 +127,28 @@ export function calculateCostRubles(
 export function rublesToRealCoins(rubles: number): number {
   if (rubles <= 0) return 0;
   return Math.max(1, Math.ceil(rubles));
+}
+
+export type SubscriptionActivationGrant = {
+  subscriptionType: string;
+  bonusVC: number;
+  contextTokens: number;
+  contextMultiplier: number;
+  priority: boolean;
+  ragEnabled: boolean;
+};
+
+export function buildSubscriptionActivationGrant(
+  subscriptionType: string
+): SubscriptionActivationGrant {
+  const plan = getSubscriptionPlan(subscriptionType);
+
+  return {
+    subscriptionType: plan.id,
+    bonusVC: plan.vcPerMonth,
+    contextTokens: plan.contextTokens,
+    contextMultiplier: plan.contextMultiplier,
+    priority: plan.priority,
+    ragEnabled: plan.ragEnabled,
+  };
 }

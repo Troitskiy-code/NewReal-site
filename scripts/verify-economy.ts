@@ -73,10 +73,10 @@ console.log("\n1. Пользователь без подписки");
   assert(paidCost.ok === true && paidCost.costVC === 15, "платная модель доступна по priceVC");
 }
 
-console.log("\n2. Подписка «Дружба»");
+console.log("\n2. Подписка «Диалог»");
 {
   const user = makeUser({
-    subscriptionType: "friendship",
+    subscriptionType: "dialog",
     subscriptionEnd: new Date("2026-09-01"),
   });
 
@@ -111,11 +111,11 @@ console.log("\n4. Суточный лимит 300");
 console.log("\n5. Активность подписки");
 {
   assert(
-    isSubscriptionActive({ subscriptionType: "friendship", subscriptionEnd: new Date("2026-09-01") }),
+    isSubscriptionActive({ subscriptionType: "dialog", subscriptionEnd: new Date("2026-09-01") }),
     "активная подписка"
   );
   assert(
-    !isSubscriptionActive({ subscriptionType: "friendship", subscriptionEnd: new Date("2026-01-01") }),
+    !isSubscriptionActive({ subscriptionType: "dialog", subscriptionEnd: new Date("2026-01-01") }),
     "истёкшая подписка"
   );
   assert(!isSubscriptionActive({ subscriptionType: "none", subscriptionEnd: null }), "без подписки");

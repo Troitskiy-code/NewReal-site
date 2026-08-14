@@ -1,73 +1,44 @@
 "use client";
 
 import Footer from "@/components/Footer";
+import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import toast, { Toaster } from "react-hot-toast";
-import { FaCheck, FaCrown, FaHeart, FaStar, FaUserFriends } from "react-icons/fa";
+import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 
-const PLANS = [
-  {
-    id: "acquaintance",
-    name: "Знакомство",
-    price: 399,
-    vc: 4000,
-    premiumMessages: 500,
-    icon: FaStar,
-    accent: "border-wd-border",
-    buttonClass: "border border-wd-border bg-[#121212] hover:border-wd-secondary/50 hover:bg-wd-secondary/10",
-    features: [
-      "4 000 бонусных VC каждый месяц",
-      "До 500 премиальных сообщений",
-      "Доступ к платным моделям за VC",
-      "Базовая модель бесплатна",
-      "Без рекламы в чате",
-    ],
-  },
-  {
-    id: "friendship",
-    name: "Дружба",
-    price: 999,
-    vc: 12000,
-    premiumMessages: 1500,
-    icon: FaUserFriends,
-    popular: true,
-    accent: "border-wd-secondary/50",
-    buttonClass: "wd-button",
-    features: [
-      "12 000 бонусных VC каждый месяц",
-      "До 1 500 премиальных сообщений",
-      "Полный доступ к платным моделям",
-      "Базовая модель бесплатна",
-      "Приоритетная очередь ответов",
-      "Без рекламы и ограничений интерфейса",
-    ],
-  },
-  {
-    id: "love",
-    name: "Любовь",
-    price: 1995,
-    vc: 35000,
-    premiumMessages: 4400,
-    icon: FaHeart,
-    accent: "border-wd-primary/50",
-    buttonClass:
-      "border border-wd-primary/50 bg-wd-primary/15 hover:bg-wd-primary hover:border-wd-primary text-white",
-    features: [
-      "35 000 бонусных VC каждый месяц",
-      "До 4 400 премиальных сообщений",
-      "Все премиальные модели без ограничений",
-      "Базовая модель бесплатна",
-      "Максимальный приоритет генерации",
-      "Ранний доступ к новым персонажам",
-      "Без рекламы и водяных знаков",
-    ],
-  },
-];
+const PLAN_ICONS = {
+  start: FaStar,
+  dialog: FaRocket,
+  story: FaCrown,
+  universe: FaGlobe,
+};
+
+const PLAN_ACCENTS = {
+  start: "border-wd-border",
+  dialog: "border-wd-border",
+  story: "border-wd-secondary/50",
+  universe: "border-wd-primary/50",
+};
+
+const PLAN_BUTTONS = {
+  start:
+    "border border-wd-border bg-[#121212] text-wd-text-secondary cursor-default",
+  dialog:
+    "border border-wd-border bg-[#121212] hover:border-wd-secondary/50 hover:bg-wd-secondary/10",
+  story: "wd-button",
+  universe:
+    "border border-wd-primary/50 bg-wd-primary/15 hover:bg-wd-primary hover:border-wd-primary text-white",
+};
 
 function formatNumber(value) {
   return value.toLocaleString("ru-RU");
 }
 
-function handleSubscribe(planName) {
+function handleSubscribe(planName, isFree) {
+  if (isFree) {
+    toast("Тариф «Старт» доступен всем пользователям по умолчанию", { icon: "✨" });
+    return;
+  }
+
   toast(`Подписка «${planName}» через Unitpay будет доступна позже`, { icon: "💳" });
 }
 
@@ -76,7 +47,7 @@ export default function PricingPage() {
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
       <Toaster position="top-right" />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center gap-10 overflow-y-auto px-4 py-12 scrollbar-subtle sm:px-6 lg:px-8">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center gap-10 overflow-y-auto px-4 py-12 scrollbar-subtle sm:px-6 lg:px-8">
         <div className="space-y-4 text-center">
           <div className="mb-1 inline-flex items-center gap-2 rounded-wd-pill border border-wd-secondary/30 bg-wd-secondary/10 px-3 py-1">
             <FaCrown className="text-xs text-wd-secondary" />
@@ -88,22 +59,25 @@ export default function PricingPage() {
             Тарифы NewVerse
           </h1>
           <p className="mx-auto max-w-2xl text-sm leading-relaxed text-wd-text-secondary">
-            Ежемесячные планы с бонусными VerseCoins и премиальными сообщениями. Выберите уровень,
-            который подходит вашему ритму общения с персонажами.
+            Ежемесячные планы с бонусными VerseCoins, расширенным контекстом и приоритетом
+            генерации. Выберите уровень для ваших историй и диалогов.
           </p>
         </div>
 
-        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-3">
-          {PLANS.map((plan) => {
-            const Icon = plan.icon;
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {SUBSCRIPTION_PLANS.map((plan) => {
+            const Icon = PLAN_ICONS[plan.id] ?? FaStar;
+            const isFree = plan.monthlyPrice === 0;
+            const isPopular = plan.id === "story";
+
             return (
               <article
                 key={plan.id}
-                className={`relative flex flex-col rounded-wd border bg-wd-card p-6 shadow-wd transition-all hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(108,99,255,0.12)] ${plan.accent} ${
-                  plan.popular ? "md:-mt-2 md:mb-2 md:scale-[1.02]" : ""
+                className={`relative flex flex-col rounded-wd border bg-wd-card p-6 shadow-wd transition-all hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(108,99,255,0.12)] ${PLAN_ACCENTS[plan.id]} ${
+                  isPopular ? "md:-mt-2 md:mb-2 md:scale-[1.02]" : ""
                 }`}
               >
-                {plan.popular && (
+                {isPopular && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow">
                     Популярный
                   </span>
@@ -115,28 +89,31 @@ export default function PricingPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-black text-white">{plan.name}</h2>
-                    <p className="text-xs text-wd-text-secondary">Ежемесячная подписка</p>
+                    <p className="text-xs text-wd-text-secondary">
+                      {isFree ? "Бесплатный тариф" : "Ежемесячная подписка"}
+                    </p>
                   </div>
                 </div>
 
                 <div className="mb-5 space-y-1">
                   <p className="text-4xl font-black leading-none text-white">
-                    {formatNumber(plan.price)} ₽
+                    {isFree ? "0 ₽" : `${formatNumber(plan.monthlyPrice)} ₽`}
                   </p>
                   <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
-                    в месяц
+                    {isFree ? "навсегда" : "в месяц"}
                   </p>
+                  {!isFree && (
+                    <p className="text-xs text-wd-text-secondary">
+                      или {formatNumber(plan.yearlyPrice)} ₽ / год
+                    </p>
+                  )}
                 </div>
 
                 <div className="mb-5 rounded-wd border border-wd-border bg-[#0A0A0A] p-4 text-sm">
-                  <p className="font-black text-white">
-                    {formatNumber(plan.vc)} VC
-                    <span className="ml-1 font-semibold text-wd-text-secondary">
-                      (до {formatNumber(plan.premiumMessages)} премиальных сообщений)
-                    </span>
-                  </p>
+                  <p className="font-black text-white">{formatNumber(plan.vcPerMonth)} VC / мес</p>
                   <p className="mt-1 text-xs text-wd-text-secondary">
-                    1 премиальное сообщение ≈ 8 VC
+                    Контекст {formatNumber(plan.contextTokens)} · множитель ×
+                    {plan.contextMultiplier.toLocaleString("ru-RU")}
                   </p>
                 </div>
 
@@ -151,19 +128,21 @@ export default function PricingPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleSubscribe(plan.name)}
-                  className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${plan.buttonClass}`}
+                  onClick={() => handleSubscribe(plan.name, isFree)}
+                  disabled={isFree}
+                  className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${PLAN_BUTTONS[plan.id]}`}
                 >
-                  Подписаться
+                  {isFree ? "Текущий базовый тариф" : "Подписаться"}
                 </button>
               </article>
             );
           })}
         </div>
 
-        <p className="max-w-2xl text-center text-xs text-wd-text-secondary">
-          Премиальные сообщения — запросы к платным моделям. Базовая модель остаётся бесплатной для
-          подписчиков. Оплата через Unitpay будет подключена в ближайшем обновлении.
+        <p className="max-w-3xl text-center text-xs text-wd-text-secondary">
+          При активации подписки на баланс начисляются бонусные VC согласно тарифу. Контекст и
+          множитель памяти применяются автоматически. Оплата через Unitpay будет подключена в
+          ближайшем обновлении.
         </p>
       </main>
 
