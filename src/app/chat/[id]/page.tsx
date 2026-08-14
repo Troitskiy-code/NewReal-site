@@ -13,6 +13,23 @@ import {
   type EconomyUser,
 } from "@/lib/verseChatEconomy";
 
+const MODEL_DESCRIPTIONS: Record<string, string> = {
+  "GPT-4o-mini": "Быстрая и надёжная. Идеальна для повседневных диалогов.",
+  "DeepSeek V3.2": "Отличный русский язык и низкая цена.",
+  "DeepSeek V4 Pro": "Живой диалог, глубокое понимание контекста.",
+  "DeepSeek V4-Flash": "Молниеносная скорость, идеальна для длинных переписок.",
+  "Gemini 2.0 Flash": "Быстрая, креативная, для генерации идей.",
+  "Claude 3.5 Sonnet": "Высокий эмоциональный интеллект, реалистичные диалоги.",
+  "GPT-4o": "Универсальный лидер, баланс качества и цены.",
+  "Gemini 2.5 Pro": "Глубокое понимание, идеален для миров и длинных нарративов.",
+  "Claude Opus 4": "Максимальное качество, профессиональные сценарии.",
+  "GPT-5.2": "Флагманская модель, интеллект эксперта.",
+};
+
+function getModelDescription(displayName: string): string | undefined {
+  return MODEL_DESCRIPTIONS[displayName];
+}
+
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -145,6 +162,7 @@ function ModelSettingsList({
     <>
       {models.map((model) => {
         const isExpanded = expandedModelId === model.id;
+        const description = getModelDescription(model.displayName);
         const priceLabel =
           balance && baseModel
             ? `${getEffectiveModelPriceVC(
@@ -165,7 +183,7 @@ function ModelSettingsList({
               className={`flex cursor-pointer items-center justify-between px-4 py-3 transition-colors md:px-6 ${
                 selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
               } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
-              title={model.description ?? undefined}
+              title={description}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <input
@@ -184,7 +202,7 @@ function ModelSettingsList({
                 </div>
               </div>
 
-              {model.description && (
+              {description && (
                 <button
                   type="button"
                   onClick={(event) => {
@@ -201,9 +219,9 @@ function ModelSettingsList({
               )}
             </label>
 
-            {model.description && isExpanded && (
+            {description && isExpanded && (
               <p className="px-4 pb-3 pl-11 text-xs leading-relaxed text-gray-500 md:hidden">
-                {model.description}
+                {description}
               </p>
             )}
           </div>
