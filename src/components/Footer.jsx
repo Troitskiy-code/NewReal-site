@@ -1,9 +1,24 @@
+import Link from "next/link";
 import Logo from "./Logo";
 
 export default function Footer() {
   return (
     <footer className="border-t border-wd-border bg-wd-bg px-4 py-6 text-center">
-      <Logo size="md" className="inline-block mb-2" />
+      <Logo size="md" className="mb-2 inline-block" />
+      <nav className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
+        <Link href="/terms" className="text-wd-text-secondary transition-colors hover:text-white">
+          Пользовательское соглашение
+        </Link>
+        <Link href="/refund" className="text-wd-text-secondary transition-colors hover:text-white">
+          Политика возврата
+        </Link>
+        <a
+          href="mailto:support@newvers.ai"
+          className="text-wd-text-secondary transition-colors hover:text-white"
+        >
+          Поддержка
+        </a>
+      </nav>
       <p className="text-xs text-wd-text-secondary">
         © {new Date().getFullYear()} NewVerse — Твоя вселенная персонажей
       </p>
