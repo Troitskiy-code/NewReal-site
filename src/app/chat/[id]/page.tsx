@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaUser, FaCog, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaPlus, FaTrash } from "react-icons/fa";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -75,6 +75,73 @@ function createGreetingMessage(content: string): Message {
     content,
     createdAt: new Date().toISOString(),
   };
+}
+
+function isPersistedMessage(message: Message): boolean {
+  return message.id !== "greeting" && !message.id.startsWith("temp-");
+}
+
+type MessageActionsProps = {
+  message: Message;
+  isLastAssistant: boolean;
+  disabled: boolean;
+  onRegenerate: (messageId: string) => void;
+  onContinue: () => void;
+  onDelete: (messageId: string) => void;
+};
+
+function MessageActions({
+  message,
+  isLastAssistant,
+  disabled,
+  onRegenerate,
+  onContinue,
+  onDelete,
+}: MessageActionsProps) {
+  if (!isPersistedMessage(message)) {
+    return null;
+  }
+
+  return (
+    <div className="mt-1 flex items-center gap-1">
+      {message.role === "assistant" && (
+        <>
+          <button
+            type="button"
+            onClick={() => onRegenerate(message.id)}
+            disabled={disabled}
+            className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+            title="Перегенерировать"
+            aria-label="Перегенерировать"
+          >
+            <FaRedo size={12} />
+          </button>
+          {isLastAssistant && (
+            <button
+              type="button"
+              onClick={onContinue}
+              disabled={disabled}
+              className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+              title="Продолжить"
+              aria-label="Продолжить"
+            >
+              <FaPlus size={12} />
+            </button>
+          )}
+        </>
+      )}
+      <button
+        type="button"
+        onClick={() => onDelete(message.id)}
+        disabled={disabled}
+        className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-red-500/20 hover:text-red-300 disabled:opacity-40"
+        title="Удалить"
+        aria-label="Удалить"
+      >
+        <FaTrash size={12} />
+      </button>
+    </div>
+  );
 }
 
 function formatMessageContent(content: string): string {
@@ -254,7 +321,17 @@ export default function ChatPage() {
   const [changingModel, setChangingModel] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const lastAssistantMessageId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === "assistant" && isPersistedMessage(messages[i])) {
+        return messages[i].id;
+      }
+    }
+    return null;
+  }, [messages]);
 
   const selectedModel = useMemo(
     () => models.find((model) => model.id === selectedModelId) ?? models[0] ?? null,
@@ -286,6 +363,7 @@ export default function ChatPage() {
     Boolean(costPreview?.ok && requestCostVC > 0 && balance && balance.verseCoins < requestCostVC);
   const canSend =
     !sending &&
+    !actionLoading &&
     Boolean(input.trim()) &&
     !insufficientBalance &&
     (balance?.dailyRequestsRemaining ?? 1) > 0;
@@ -362,6 +440,113 @@ export default function ChatPage() {
     }
   };
 
+  const updateBalanceFromResponse = (data: {
+    remainingVC?: number;
+    dailyRequests?: number;
+    dailyLimit?: number;
+  }) => {
+    setBalance((prev) =>
+      prev
+        ? {
+            ...prev,
+            verseCoins: data.remainingVC ?? prev.verseCoins,
+            dailyRequests: data.dailyRequests ?? prev.dailyRequests,
+            dailyRequestsRemaining:
+              data.dailyLimit !== undefined && data.dailyRequests !== undefined
+                ? Math.max(0, data.dailyLimit - data.dailyRequests)
+                : prev.dailyRequestsRemaining,
+          }
+        : prev
+    );
+
+    if (typeof data.remainingVC === "number") {
+      window.dispatchEvent(
+        new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.remainingVC } })
+      );
+    }
+  };
+
+  const ensureCanPerformPaidAction = (): boolean => {
+    if (insufficientBalance) {
+      toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+      return false;
+    }
+
+    if (balance && balance.dailyRequestsRemaining <= 0) {
+      toast.error("Достигнут суточный лимит запросов");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleApiError = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError(error)) {
+      const statusCode = error.response?.status;
+      const message = error.response?.data?.error;
+
+      if (statusCode === 402) {
+        toast.error(message || "Недостаточно VerseCoins");
+      } else if (statusCode === 429) {
+        toast.error(message || "Достигнут суточный лимит запросов");
+      } else {
+        toast.error(message || fallback);
+      }
+    } else {
+      toast.error(fallback);
+    }
+  };
+
+  const handleRegenerate = async (messageId: string) => {
+    if (sending || actionLoading || !ensureCanPerformPaidAction()) return;
+
+    setActionLoading(true);
+    try {
+      const { data } = await axios.post(`/api/chat/${characterId}/regenerate`, { messageId });
+      updateBalanceFromResponse(data);
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? data.assistantMessage : msg))
+      );
+      toast.success("Ответ перегенерирован");
+    } catch (error) {
+      handleApiError(error, "Не удалось перегенерировать ответ");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleContinue = async () => {
+    if (sending || actionLoading || !ensureCanPerformPaidAction()) return;
+
+    setSending(true);
+    try {
+      const { data } = await axios.post(`/api/chat/${characterId}`, { continue: true });
+      updateBalanceFromResponse(data);
+      setMessages((prev) => [...prev, data.assistantMessage]);
+      toast.success("Ответ продолжен");
+    } catch (error) {
+      handleApiError(error, "Не удалось продолжить ответ");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleDelete = async (messageId: string) => {
+    if (sending || actionLoading) return;
+    if (!window.confirm("Удалить это сообщение?")) return;
+
+    setActionLoading(true);
+    try {
+      await axios.delete(`/api/messages/${messageId}`);
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      toast.success("Сообщение удалено");
+    } catch (error) {
+      handleApiError(error, "Не удалось удалить сообщение");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || sending) return;
@@ -393,25 +578,7 @@ export default function ChatPage() {
         message: userMessage,
       });
 
-      setBalance((prev) =>
-        prev
-          ? {
-              ...prev,
-              verseCoins: data.remainingVC ?? prev.verseCoins,
-              dailyRequests: data.dailyRequests ?? prev.dailyRequests,
-              dailyRequestsRemaining:
-                data.dailyLimit !== undefined && data.dailyRequests !== undefined
-                  ? Math.max(0, data.dailyLimit - data.dailyRequests)
-                  : prev.dailyRequestsRemaining,
-            }
-          : prev
-      );
-
-      if (typeof data.remainingVC === "number") {
-        window.dispatchEvent(
-          new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.remainingVC } })
-        );
-      }
+      updateBalanceFromResponse(data);
 
       setMessages((prev) =>
         prev.map((msg) => (msg.id === optimisticUser.id ? data.userMessage : msg))
@@ -591,15 +758,29 @@ export default function ChatPage() {
                   className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] break-words rounded-lg px-3 py-2 text-sm md:max-w-[75%] md:px-4 md:py-2 ${
-                      msg.role === "user"
-                        ? "border border-[#9C27B0]/70 bg-black text-white"
-                        : "border border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
+                    className={`flex max-w-[85%] flex-col md:max-w-[75%] ${
+                      msg.role === "user" ? "items-end" : "items-start"
                     }`}
-                    dangerouslySetInnerHTML={{
-                      __html: formatMessageContent(msg.content),
-                    }}
-                  />
+                  >
+                    <div
+                      className={`break-words rounded-lg px-3 py-2 text-sm md:px-4 md:py-2 ${
+                        msg.role === "user"
+                          ? "border border-[#9C27B0]/70 bg-black text-white"
+                          : "border border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
+                      }`}
+                      dangerouslySetInnerHTML={{
+                        __html: formatMessageContent(msg.content),
+                      }}
+                    />
+                    <MessageActions
+                      message={msg}
+                      isLastAssistant={msg.id === lastAssistantMessageId}
+                      disabled={sending || actionLoading}
+                      onRegenerate={handleRegenerate}
+                      onContinue={handleContinue}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 </div>
               ))
             )}
@@ -623,7 +804,7 @@ export default function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Напишите сообщение..."
               className="min-h-[44px] w-full min-w-0 flex-1 rounded-full border border-divider bg-bg-card px-4 py-2 text-sm outline-none transition-colors focus:border-primary/60"
-              disabled={sending}
+              disabled={sending || actionLoading}
             />
             <button
               type="submit"

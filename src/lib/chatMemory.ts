@@ -1,9 +1,11 @@
 import axios from "axios";
+import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
-const MEMORY_MESSAGE_THRESHOLD = 50;
+const DEFAULT_MAX_CONTEXT_TOKENS = 4000;
+const MEMORY_TOKEN_THRESHOLD_RATIO = 0.8;
 const MESSAGES_TO_SUMMARIZE = 20;
 
 const SUMMARY_PROMPT =
@@ -13,6 +15,17 @@ type DialogMessage = {
   role: string;
   content: string;
 };
+
+function countTokens(text: string): number {
+  try {
+    const enc = encoding_for_model("gpt-4");
+    const tokens = enc.encode(text);
+    enc.free();
+    return tokens.length;
+  } catch {
+    return Math.ceil(text.length / 4);
+  }
+}
 
 function formatDialogForSummary(messages: DialogMessage[]): string {
   return messages
@@ -54,7 +67,8 @@ async function requestSummary(apiKey: string, dialogText: string): Promise<strin
 export async function resolveChatMemorySummary(
   userId: string,
   characterId: string,
-  apiKey: string
+  apiKey: string,
+  maxContextTokens: number = DEFAULT_MAX_CONTEXT_TOKENS
 ): Promise<string | null> {
   const existingMemory = await prisma.memory.findUnique({
     where: {
@@ -71,27 +85,29 @@ export async function resolveChatMemorySummary(
     return existingMemory.summary;
   }
 
-  const messageCount = await prisma.message.count({
+  const threshold = Math.floor((maxContextTokens || DEFAULT_MAX_CONTEXT_TOKENS) * MEMORY_TOKEN_THRESHOLD_RATIO);
+
+  const allMessages = await prisma.message.findMany({
     where: { userId, characterId },
+    orderBy: { createdAt: "asc" },
+    select: { role: true, content: true },
   });
 
-  if (messageCount <= MEMORY_MESSAGE_THRESHOLD) {
-    console.log(`🧠 Суммаризация не нужна: ${messageCount} сообщений (лимит ${MEMORY_MESSAGE_THRESHOLD})`);
+  const totalTokens = allMessages.reduce((sum, message) => sum + countTokens(message.content), 0);
+
+  if (totalTokens <= threshold) {
+    console.log(`🧠 Суммаризация не нужна: ${totalTokens} токенов (порог ${threshold}, 80% от ${maxContextTokens})`);
     return null;
   }
 
-  const oldestMessages = await prisma.message.findMany({
-    where: { userId, characterId },
-    orderBy: { createdAt: "asc" },
-    take: MESSAGES_TO_SUMMARIZE,
-  });
+  const oldestMessages = allMessages.slice(0, MESSAGES_TO_SUMMARIZE);
 
   if (oldestMessages.length === 0) {
     return null;
   }
 
   console.log(
-    `🧠 Создание суммаризации: ${oldestMessages.length} старых сообщений (всего ${messageCount})`
+    `🧠 Создание суммаризации: ${oldestMessages.length} старых сообщений (${totalTokens} токенов, порог ${threshold})`
   );
 
   const dialogText = formatDialogForSummary(oldestMessages);
