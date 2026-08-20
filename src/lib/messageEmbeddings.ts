@@ -1,6 +1,4 @@
 import axios from "axios";
-import { randomUUID } from "crypto";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
@@ -31,10 +29,6 @@ type RagSearchRow = {
   similarity: number;
 };
 
-function embeddingToPgVector(vector: number[] | Float32Array): string {
-  return `[${Array.from(vector).join(",")}]`;
-}
-
 async function fetchEmbedding(text: string, apiKey: string): Promise<Float32Array> {
   const response = await axios.post(
     `${KODIKROUTER_URL}/embeddings`,
@@ -62,14 +56,20 @@ async function fetchEmbedding(text: string, apiKey: string): Promise<Float32Arra
   return new Float32Array(vector);
 }
 
-async function getQueryEmbedding(query: string, apiKey: string): Promise<string | null> {
+async function getQueryEmbedding(
+  query: string,
+  apiKey: string
+): Promise<Float32Array | null> {
   try {
-    const vector = await fetchEmbedding(query, apiKey);
-    return embeddingToPgVector(vector);
+    return await fetchEmbedding(query, apiKey);
   } catch (error) {
     console.error("🔍 pgvector: не удалось получить эмбеддинг запроса", error);
     return null;
   }
+}
+
+function toVectorString(embedding: Float32Array): string {
+  return `[${Array.from(embedding).join(",")}]`;
 }
 
 export function isUniverseRagEligible(
@@ -114,6 +114,30 @@ export function appendRagToSystemPrompt(
 
 export async function saveMessageEmbedding(
   messageId: string,
+  embedding: Float32Array
+): Promise<void> {
+  if (!embedding || embedding.length === 0) {
+    return;
+  }
+
+  try {
+    const vectorString = toVectorString(embedding);
+
+    await prisma.$executeRaw`
+      INSERT INTO "MessageEmbedding" ("id", "messageId", embedding, "createdAt")
+      VALUES (gen_random_uuid()::text, ${messageId}, ${vectorString}::vector, NOW())
+    `;
+
+    console.log(
+      `🔍 Эмбеддинг сохранён для message=${messageId} (${embedding.length} dims)`
+    );
+  } catch (error) {
+    console.error(`🔍 Ошибка эмбеддинга message=${messageId}:`, error);
+  }
+}
+
+async function saveMessageEmbeddingFromContent(
+  messageId: string,
   content: string,
   apiKey: string
 ): Promise<void> {
@@ -127,17 +151,8 @@ export async function saveMessageEmbedding(
     return;
   }
 
-  const vector = await fetchEmbedding(content, apiKey);
-  const vectorLiteral = embeddingToPgVector(vector);
-
-  await prisma.$executeRaw(
-    Prisma.sql`
-      INSERT INTO "MessageEmbedding" (id, "messageId", embedding, "createdAt")
-      VALUES (${randomUUID()}, ${messageId}, ${Prisma.raw(`${vectorLiteral}::vector`)}, NOW())
-    `
-  );
-
-  console.log(`🔍 Эмбеддинг сохранён для message=${messageId} (${EMBEDDING_DIMENSIONS} dims)`);
+  const embedding = await fetchEmbedding(content, apiKey);
+  await saveMessageEmbedding(messageId, embedding);
 }
 
 export function scheduleMessageEmbedding(
@@ -150,7 +165,7 @@ export function scheduleMessageEmbedding(
     return;
   }
 
-  void saveMessageEmbedding(messageId, content, apiKey).catch((error) => {
+  void saveMessageEmbeddingFromContent(messageId, content, apiKey).catch((error) => {
     console.error(`🔍 Ошибка эмбеддинга message=${messageId}:`, error);
   });
 }
@@ -164,58 +179,61 @@ export async function searchRelevantMessages(
   limit: number = RAG_TOP_K,
   threshold: number = RAG_MIN_SIMILARITY
 ): Promise<RagMessage[]> {
-  const queryEmbedding = await getQueryEmbedding(queryText, apiKey);
-  if (!queryEmbedding) {
-    return [];
-  }
+  try {
+    const queryEmbedding = await getQueryEmbedding(queryText, apiKey);
+    if (!queryEmbedding) {
+      return [];
+    }
 
-  const vectorParam = Prisma.raw(`${queryEmbedding}::vector`);
+    const vectorString = toVectorString(queryEmbedding);
 
-  const results = excludeMessageId
-    ? await prisma.$queryRaw<RagSearchRow[]>(
-        Prisma.sql`
-        SELECT
-          m.id,
-          m.role,
-          m.content,
-          1 - (me.embedding <=> ${vectorParam}) AS similarity
-        FROM "MessageEmbedding" me
-        JOIN "Message" m ON m.id = me."messageId"
-        WHERE
-          m."characterId" = ${characterId}
-          AND m."userId" = ${userId}
-          AND m."role" = 'user'
-          AND m.id != ${excludeMessageId}
-        ORDER BY me.embedding <=> ${vectorParam}
-        LIMIT ${limit}
-      `
-      )
-    : await prisma.$queryRaw<RagSearchRow[]>(
-        Prisma.sql`
-        SELECT
-          m.id,
-          m.role,
-          m.content,
-          1 - (me.embedding <=> ${vectorParam}) AS similarity
-        FROM "MessageEmbedding" me
-        JOIN "Message" m ON m.id = me."messageId"
-        WHERE
-          m."characterId" = ${characterId}
-          AND m."userId" = ${userId}
-          AND m."role" = 'user'
-        ORDER BY me.embedding <=> ${vectorParam}
-        LIMIT ${limit}
-      `
-      );
+    const results = excludeMessageId
+      ? await prisma.$queryRaw<RagSearchRow[]>`
+          SELECT
+            m.id,
+            m.role,
+            m.content,
+            1 - (me.embedding <=> ${vectorString}::vector) AS similarity
+          FROM "MessageEmbedding" me
+          JOIN "Message" m ON m.id = me."messageId"
+          WHERE
+            m."characterId" = ${characterId}
+            AND m."userId" = ${userId}
+            AND m."role" = 'user'
+            AND m.id != ${excludeMessageId}
+          ORDER BY me.embedding <=> ${vectorString}::vector
+          LIMIT ${limit}
+        `
+      : await prisma.$queryRaw<RagSearchRow[]>`
+          SELECT
+            m.id,
+            m.role,
+            m.content,
+            1 - (me.embedding <=> ${vectorString}::vector) AS similarity
+          FROM "MessageEmbedding" me
+          JOIN "Message" m ON m.id = me."messageId"
+          WHERE
+            m."characterId" = ${characterId}
+            AND m."userId" = ${userId}
+            AND m."role" = 'user'
+          ORDER BY me.embedding <=> ${vectorString}::vector
+          LIMIT ${limit}
+        `;
 
-  console.log(`🔍 pgvector: найдено ${results.length} релевантных сообщений`);
+    const filtered = results.filter((row) => Number(row.similarity) > threshold);
 
-  return results
-    .filter((row) => Number(row.similarity) > threshold)
-    .map((row) => ({
+    console.log(
+      `🔍 RAG: найдено ${filtered.length} релевантных сообщений (проверено ${results.length})`
+    );
+
+    return filtered.map((row) => ({
       id: row.id,
       role: row.role,
       content: row.content,
       similarity: Number(row.similarity),
     }));
+  } catch (error) {
+    console.error("🔍 RAG: ошибка поиска релевантных сообщений", error);
+    return [];
+  }
 }
