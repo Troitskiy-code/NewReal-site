@@ -52,7 +52,7 @@ const models = [
     description: "Улучшенная версия GLM, контекст 8K.",
   },
   {
-    name: "xai/grok-4.20",
+    name: "x-ai/grok-4.20",
     displayName: "Grok 4.20",
     priceVC: 60,
     maxContextTokens: 12000,
