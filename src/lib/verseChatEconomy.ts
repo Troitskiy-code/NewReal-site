@@ -25,6 +25,7 @@ export type EconomyModel = {
   name: string;
   displayName: string;
   priceVC: number;
+  maxContextTokens: number;
   isFreeForSubscribers: boolean;
   isActive: boolean;
 };

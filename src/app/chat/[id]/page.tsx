@@ -14,16 +14,15 @@ import {
 } from "@/lib/verseChatEconomy";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
-  "GPT-4o-mini": "Быстрая и надёжная. Идеальна для повседневных диалогов.",
-  "DeepSeek V3.2": "Отличный русский язык и низкая цена.",
-  "DeepSeek V4 Pro": "Живой диалог, глубокое понимание контекста.",
-  "DeepSeek V4-Flash": "Молниеносная скорость, идеальна для длинных переписок.",
-  "Gemini 2.0 Flash": "Быстрая, креативная, для генерации идей.",
-  "Claude 3.5 Sonnet": "Высокий эмоциональный интеллект, реалистичные диалоги.",
-  "GPT-4o": "Универсальный лидер, баланс качества и цены.",
-  "Gemini 2.5 Pro": "Глубокое понимание, идеален для миров и длинных нарративов.",
-  "Claude Opus 4": "Максимальное качество, профессиональные сценарии.",
-  "GPT-5.2": "Флагманская модель, интеллект эксперта.",
+  "Gemma 4 31B": "Базовая модель с малым контекстом 4K. Экономный выбор для простых диалогов.",
+  "DeepSeek V4 Flash": "Быстрая модель для динамичных историй. Контекст 6K.",
+  "Minimax M2.7": "Сбалансированная модель для ролевых игр.",
+  "Mistral Medium 3.1": "Глубокий контекст 8K, хорошее понимание диалогов.",
+  "Gemini 3 Flash": "Мощная модель с контекстом 8K, отличная для сложных сюжетов.",
+  "GLM 5": "Китайская модель, сильная логика и контекст 8K.",
+  "GLM 5.1": "Улучшенная версия GLM, контекст 8K.",
+  "Grok 4.20": "12K контекста, мощная модель для экспертных задач.",
+  "Claude Haiku 4.5": "12K контекста, максимальная логика и качество ответов.",
 };
 
 type Message = {
@@ -158,8 +157,7 @@ function ModelSettingsList({
     <>
       {models.map((model) => {
         const isExpanded = expandedModelId === model.id;
-        const description = MODEL_DESCRIPTIONS[model.displayName];
-        console.log(model.displayName, description);
+        const description = model.description ?? MODEL_DESCRIPTIONS[model.displayName];
         const priceLabel =
           balance && baseModel
             ? `${getEffectiveModelPriceVC(
@@ -195,7 +193,12 @@ function ModelSettingsList({
                   <span className="truncate text-base font-bold text-white md:text-lg">
                     {model.displayName}
                   </span>
-                  <span className="shrink-0 text-sm text-gray-400">{priceLabel}</span>
+                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                    <span className="text-sm text-gray-400">{priceLabel}</span>
+                    <span className="text-xs text-gray-500">
+                      {model.maxContextTokens / 1000}K токенов
+                    </span>
+                  </div>
                 </div>
               </div>
 

@@ -58,6 +58,7 @@ model Model {
   pricePer1MInput      Float?
   pricePer1MOutput     Float?
   priceVC              Int      @default(0)
+  maxContextTokens     Int      @default(4000)
   description          String?
   isFreeForSubscribers Boolean  @default(false)
   isActive             Boolean  @default(true)

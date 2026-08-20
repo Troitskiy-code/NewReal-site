@@ -85,14 +85,18 @@ export function getSubscriptionLabel(type: string | null | undefined): string | 
 }
 
 export function getContextTokenLimit(
-  type: string | null | undefined,
-  subscriptionActive: boolean
+  user: { subscriptionType?: string | null } | null | undefined,
+  model: { maxContextTokens?: number | null } | null | undefined
 ): number {
-  if (!subscriptionActive) {
-    return getSubscriptionPlan(DEFAULT_SUBSCRIPTION_TYPE).contextTokens;
+  if (!model) return 4000;
+
+  const baseLimit = model.maxContextTokens || 4000;
+
+  if (user?.subscriptionType === "universe") {
+    return Math.min(64000, baseLimit);
   }
 
-  return getSubscriptionPlan(type).contextTokens;
+  return baseLimit;
 }
 
 export function getHistoryMessageLimit(

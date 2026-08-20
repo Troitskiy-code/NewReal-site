@@ -65,6 +65,7 @@ const modelSelect = {
   name: true,
   displayName: true,
   priceVC: true,
+  maxContextTokens: true,
   isActive: true,
 } as const;
 
@@ -78,11 +79,12 @@ async function getOrCreateBaseModel(): Promise<EconomyModel> {
   if (!baseModel) {
     baseModel = await prisma.model.create({
       data: {
-        name: "gpt-4o-mini",
-        displayName: "GPT-4o Mini",
+        name: "google/gemma-4-31b",
+        displayName: "Gemma 4 31B",
         pricePer1MInput: 1.5,
         pricePer1MOutput: 6,
-        priceVC: 0,
+        priceVC: 4,
+        maxContextTokens: 4000,
         isActive: true,
       },
       select: modelSelect,
@@ -178,7 +180,7 @@ export async function POST(
     const now = new Date();
     const counters = normalizeUserCounters(user, now);
     const subscriptionActive = isSubscriptionActive(user);
-    const maxContextTokens = getContextTokenLimit(user.subscriptionType, subscriptionActive);
+    const maxContextTokens = getContextTokenLimit(user, model);
     const universeRag = isUniverseRagEligible(user.subscriptionType, subscriptionActive);
     const persistEmbeddings = shouldPersistEmbeddings(user.subscriptionType, subscriptionActive);
 

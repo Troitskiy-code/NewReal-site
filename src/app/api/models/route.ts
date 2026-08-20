@@ -18,6 +18,7 @@ export async function GET() {
         pricePer1MInput: true,
         pricePer1MOutput: true,
         priceVC: true,
+        maxContextTokens: true,
         description: true,
         isFreeForSubscribers: true,
         isActive: true,

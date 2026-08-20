@@ -33,9 +33,10 @@ function assert(condition: boolean, label: string) {
 
 const baseModel: EconomyModel = {
   id: "base",
-  name: "gpt-mini",
+  name: "google/gemma-4-31b",
   displayName: "Base",
-  priceVC: 0,
+  priceVC: 4,
+  maxContextTokens: 4000,
   isFreeForSubscribers: false,
   isActive: true,
 };
@@ -45,6 +46,7 @@ const paidModel: EconomyModel = {
   name: "gpt-pro",
   displayName: "Pro",
   priceVC: 15,
+  maxContextTokens: 8000,
   isFreeForSubscribers: false,
   isActive: true,
 };

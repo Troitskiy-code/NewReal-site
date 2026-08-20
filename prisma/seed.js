@@ -1,87 +1,69 @@
 const { PrismaClient } = require("@prisma/client");
-
 const prisma = new PrismaClient();
 
 const models = [
   {
-    name: "openai/gpt-4o-mini",
-    displayName: "GPT-4o-mini",
+    name: "google/gemma-4-31b",
+    displayName: "Gemma 4 31B",
     priceVC: 4,
-    description: "Быстрая и надёжная. Идеальна для повседневных диалогов.",
-    isFreeForSubscribers: false,
-    isActive: true,
-  },
-  {
-    name: "deepseek/deepseek-v3.2",
-    displayName: "DeepSeek V3.2",
-    priceVC: 4,
-    description: "Отличный русский язык и низкая цена.",
-    isFreeForSubscribers: false,
-    isActive: true,
-  },
-  {
-    name: "deepseek/deepseek-v4-pro",
-    displayName: "DeepSeek V4 Pro",
-    priceVC: 8,
-    description: "Живой диалог, глубокое понимание контекста.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    maxContextTokens: 4000,
+    description: "Базовая модель с малым контекстом 4K. Экономный выбор для простых диалогов.",
   },
   {
     name: "deepseek/deepseek-v4-flash",
-    displayName: "DeepSeek V4-Flash",
+    displayName: "DeepSeek V4 Flash",
+    priceVC: 8,
+    maxContextTokens: 6000,
+    description: "Быстрая модель для динамичных историй. Контекст 6K.",
+  },
+  {
+    name: "minimax/m2.7",
+    displayName: "Minimax M2.7",
     priceVC: 12,
-    description: "Молниеносная скорость, идеальна для длинных переписок.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    maxContextTokens: 6000,
+    description: "Сбалансированная модель для ролевых игр.",
   },
   {
-    name: "google/gemini-2.0-flash",
-    displayName: "Gemini 2.0 Flash",
-    priceVC: 16,
-    description: "Быстрая, креативная, для генерации идей.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    name: "mistral/mistral-medium-3.1",
+    displayName: "Mistral Medium 3.1",
+    priceVC: 22,
+    maxContextTokens: 8000,
+    description: "Глубокий контекст 8K, хорошее понимание диалогов.",
   },
   {
-    name: "anthropic/claude-3.5-sonnet",
-    displayName: "Claude 3.5 Sonnet",
+    name: "google/gemini-3-flash",
+    displayName: "Gemini 3 Flash",
     priceVC: 30,
-    description: "Высокий эмоциональный интеллект, реалистичные диалоги.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    maxContextTokens: 8000,
+    description: "Мощная модель с контекстом 8K, отличная для сложных сюжетов.",
   },
   {
-    name: "openai/gpt-4o",
-    displayName: "GPT-4o",
-    priceVC: 35,
-    description: "Универсальный лидер, баланс качества и цены.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    name: "zhipu/glm-5",
+    displayName: "GLM 5",
+    priceVC: 30,
+    maxContextTokens: 8000,
+    description: "Китайская модель, сильная логика и контекст 8K.",
   },
   {
-    name: "google/gemini-2.5-pro",
-    displayName: "Gemini 2.5 Pro",
-    priceVC: 35,
-    description: "Глубокое понимание, идеален для миров и длинных нарративов.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    name: "zhipu/glm-5.1",
+    displayName: "GLM 5.1",
+    priceVC: 34,
+    maxContextTokens: 8000,
+    description: "Улучшенная версия GLM, контекст 8K.",
   },
   {
-    name: "anthropic/claude-opus-4",
-    displayName: "Claude Opus 4",
+    name: "xai/grok-4.20",
+    displayName: "Grok 4.20",
     priceVC: 60,
-    description: "Максимальное качество, профессиональные сценарии.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    maxContextTokens: 12000,
+    description: "12K контекста, мощная модель для экспертных задач.",
   },
   {
-    name: "openai/gpt-5.2",
-    displayName: "GPT-5.2",
-    priceVC: 60,
-    description: "Флагманская модель, интеллект эксперта.",
-    isFreeForSubscribers: false,
-    isActive: true,
+    name: "anthropic/claude-haiku-4.5",
+    displayName: "Claude Haiku 4.5",
+    priceVC: 70,
+    maxContextTokens: 12000,
+    description: "12K контекста, максимальная логика и качество ответов.",
   },
 ];
 
@@ -90,21 +72,23 @@ async function main() {
     data: { selectedModelId: null },
   });
 
-  const deleted = await prisma.model.deleteMany();
-  console.log(`Удалено моделей: ${deleted.count}`);
+  await prisma.model.deleteMany();
 
   for (const model of models) {
-    await prisma.model.create({ data: model });
+    await prisma.model.create({
+      data: {
+        ...model,
+        isActive: true,
+        isFreeForSubscribers: false,
+      },
+    });
   }
 
-  console.log(`Добавлено моделей: ${models.length}`);
+  console.log("✅ Модели обновлены");
 }
 
 main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
+  .catch(console.error)
   .finally(async () => {
     await prisma.$disconnect();
   });
