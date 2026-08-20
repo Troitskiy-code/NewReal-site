@@ -86,7 +86,7 @@ model MessageEmbedding {
   id        String   @id @default(cuid())
   messageId String   @unique
   message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  embedding Bytes    // вектор эмбеддинга (для pgvector)
+  embedding Unsupported("vector(1536)")
   createdAt DateTime @default(now())
 }
 

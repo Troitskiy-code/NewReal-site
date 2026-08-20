@@ -1,8 +1,11 @@
 import axios from "axios";
+import { randomUUID } from "crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+const EMBEDDING_DIMENSIONS = 1536;
 const RAG_TOP_K = 5;
 const RAG_MIN_SIMILARITY = 0.25;
 
@@ -21,32 +24,15 @@ export type RagContext = {
   count: number;
 };
 
-function vectorToBytes(vector: number[] | Float32Array): Buffer {
-  const float32 = vector instanceof Float32Array ? vector : new Float32Array(vector);
-  return Buffer.from(float32.buffer, float32.byteOffset, float32.byteLength);
-}
+type RagSearchRow = {
+  id: string;
+  role: string;
+  content: string;
+  similarity: number;
+};
 
-function bytesToFloat32Array(bytes: Buffer): Float32Array {
-  const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
-  return new Float32Array(
-    buffer.buffer,
-    buffer.byteOffset,
-    buffer.byteLength / Float32Array.BYTES_PER_ELEMENT
-  );
-}
-
-function cosineSimilarity(left: Float32Array, right: Float32Array): number {
-  let dot = 0;
-  let normLeft = 0;
-  let normRight = 0;
-
-  for (let index = 0; index < left.length; index += 1) {
-    dot += left[index] * right[index];
-    normLeft += left[index] * left[index];
-    normRight += right[index] * right[index];
-  }
-
-  return dot / (Math.sqrt(normLeft) * Math.sqrt(normRight) + 1e-8);
+function embeddingToPgVector(vector: number[] | Float32Array): string {
+  return `[${Array.from(vector).join(",")}]`;
 }
 
 async function fetchEmbedding(text: string, apiKey: string): Promise<Float32Array> {
@@ -69,7 +55,21 @@ async function fetchEmbedding(text: string, apiKey: string): Promise<Float32Arra
     throw new Error("Пустой эмбеддинг от API");
   }
 
+  if (vector.length !== EMBEDDING_DIMENSIONS) {
+    throw new Error(`Неожиданная размерность эмбеддинга: ${vector.length}`);
+  }
+
   return new Float32Array(vector);
+}
+
+async function getQueryEmbedding(query: string, apiKey: string): Promise<string | null> {
+  try {
+    const vector = await fetchEmbedding(query, apiKey);
+    return embeddingToPgVector(vector);
+  } catch (error) {
+    console.error("🔍 pgvector: не удалось получить эмбеддинг запроса", error);
+    return null;
+  }
 }
 
 export function isUniverseRagEligible(
@@ -128,15 +128,16 @@ export async function saveMessageEmbedding(
   }
 
   const vector = await fetchEmbedding(content, apiKey);
+  const vectorLiteral = embeddingToPgVector(vector);
 
-  await prisma.messageEmbedding.create({
-    data: {
-      messageId,
-      embedding: vectorToBytes(vector),
-    },
-  });
+  await prisma.$executeRaw(
+    Prisma.sql`
+      INSERT INTO "MessageEmbedding" (id, "messageId", embedding, "createdAt")
+      VALUES (${randomUUID()}, ${messageId}, ${Prisma.raw(`${vectorLiteral}::vector`)}, NOW())
+    `
+  );
 
-  console.log(`🔍 Эмбеддинг сохранён для message=${messageId} (${vector.length} dims)`);
+  console.log(`🔍 Эмбеддинг сохранён для message=${messageId} (${EMBEDDING_DIMENSIONS} dims)`);
 }
 
 export function scheduleMessageEmbedding(
@@ -159,44 +160,62 @@ export async function searchRelevantMessages(
   characterId: string,
   queryText: string,
   apiKey: string,
-  excludeMessageId?: string
+  excludeMessageId?: string,
+  limit: number = RAG_TOP_K,
+  threshold: number = RAG_MIN_SIMILARITY
 ): Promise<RagMessage[]> {
-  const queryVector = await fetchEmbedding(queryText, apiKey);
+  const queryEmbedding = await getQueryEmbedding(queryText, apiKey);
+  if (!queryEmbedding) {
+    return [];
+  }
 
-  const storedEmbeddings = await prisma.messageEmbedding.findMany({
-    where: {
-      message: {
-        userId,
-        characterId,
-        ...(excludeMessageId ? { id: { not: excludeMessageId } } : {}),
-      },
-    },
-    select: {
-      embedding: true,
-      message: {
-        select: {
-          id: true,
-          role: true,
-          content: true,
-        },
-      },
-    },
-  });
+  const vectorParam = Prisma.raw(`${queryEmbedding}::vector`);
 
-  const ranked = storedEmbeddings
-    .map((entry) => ({
-      id: entry.message.id,
-      role: entry.message.role,
-      content: entry.message.content,
-      similarity: cosineSimilarity(queryVector, bytesToFloat32Array(entry.embedding)),
-    }))
-    .filter((entry) => entry.similarity > RAG_MIN_SIMILARITY)
-    .sort((left, right) => right.similarity - left.similarity)
-    .slice(0, RAG_TOP_K);
+  const results = excludeMessageId
+    ? await prisma.$queryRaw<RagSearchRow[]>(
+        Prisma.sql`
+        SELECT
+          m.id,
+          m.role,
+          m.content,
+          1 - (me.embedding <=> ${vectorParam}) AS similarity
+        FROM "MessageEmbedding" me
+        JOIN "Message" m ON m.id = me."messageId"
+        WHERE
+          m."characterId" = ${characterId}
+          AND m."userId" = ${userId}
+          AND m."role" = 'user'
+          AND m.id != ${excludeMessageId}
+        ORDER BY me.embedding <=> ${vectorParam}
+        LIMIT ${limit}
+      `
+      )
+    : await prisma.$queryRaw<RagSearchRow[]>(
+        Prisma.sql`
+        SELECT
+          m.id,
+          m.role,
+          m.content,
+          1 - (me.embedding <=> ${vectorParam}) AS similarity
+        FROM "MessageEmbedding" me
+        JOIN "Message" m ON m.id = me."messageId"
+        WHERE
+          m."characterId" = ${characterId}
+          AND m."userId" = ${userId}
+          AND m."role" = 'user'
+        ORDER BY me.embedding <=> ${vectorParam}
+        LIMIT ${limit}
+      `
+      );
 
-  console.log(
-    `🔍 RAG: найдено ${ranked.length} релевантных сообщений (проверено ${storedEmbeddings.length})`
-  );
+  console.log(`🔍 pgvector: найдено ${results.length} релевантных сообщений`);
 
-  return ranked;
+  return results
+    .filter((row) => Number(row.similarity) > threshold)
+    .map((row) => ({
+      id: row.id,
+      role: row.role,
+      content: row.content,
+      similarity: Number(row.similarity),
+    }));
 }
