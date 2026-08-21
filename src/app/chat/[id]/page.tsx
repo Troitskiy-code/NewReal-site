@@ -167,6 +167,85 @@ function formatMessageContent(content: string): string {
   return escaped.replace(/\*(.*?)\*/g, '<span style="color: #B39DDB;">$1</span>').replace(/\n/g, "<br />");
 }
 
+function ChatSettingsMenu({
+  open,
+  onToggle,
+  onClose,
+  onOpenModels,
+  onClearChat,
+  disabled,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onOpenModels: () => void;
+  onClearChat: () => void;
+  disabled: boolean;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open, onClose]);
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={disabled}
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-[#6C63FF] disabled:opacity-50 md:bg-transparent md:backdrop-blur-none"
+        title="Настройки чата"
+        aria-label="Настройки чата"
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <FaCog size={18} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-30 mt-2 min-w-[180px] overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] py-1 shadow-xl"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose();
+              onOpenModels();
+            }}
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]"
+          >
+            Модели чата
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose();
+              onClearChat();
+            }}
+            disabled={disabled}
+            className="block w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-[#2A2A2A] disabled:opacity-50"
+          >
+            Очистить чат
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type ModalProps = {
   open: boolean;
   onClose: () => void;
@@ -334,6 +413,7 @@ export default function ChatPage() {
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [changingModel, setChangingModel] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -615,7 +695,7 @@ export default function ChatPage() {
       setMessages(greeting ? [createGreetingMessage(greeting)] : []);
       setEditingMessageId(null);
       setEditingDraft("");
-      setSettingsOpen(false);
+      setSettingsMenuOpen(false);
       toast.success("История чата очищена");
     } catch (error) {
       handleApiError(error, "Не удалось очистить чат");
@@ -755,8 +835,8 @@ export default function ChatPage() {
           </div>
         </Modal>
 
-        <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
-          <div className="-mx-4 -mb-4 flex flex-col md:-mx-6 md:-mb-6">
+        <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Модели чата">
+          <div className="-mx-4 -mb-4 md:-mx-6 md:-mb-6">
             {models.length === 0 ? (
               <p className="px-4 text-sm text-secondary-text md:px-6">Модели не найдены</p>
             ) : (
@@ -769,17 +849,6 @@ export default function ChatPage() {
                 onModelChange={handleModelChange}
               />
             )}
-            <div className="border-t border-[#2A2A2A] p-4 md:px-6">
-              <button
-                type="button"
-                onClick={handleClearChat}
-                disabled={sending || actionLoading || clearingChat}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/40 px-4 py-2.5 text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50"
-              >
-                <FaTrash size={14} />
-                {clearingChat ? "Очистка..." : "Очистить историю"}
-              </button>
-            </div>
           </div>
         </Modal>
 
@@ -822,15 +891,14 @@ export default function ChatPage() {
 
         {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
         <aside className="fixed right-2 top-16 z-20 flex w-10 justify-center bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-[#6C63FF] md:bg-transparent md:backdrop-blur-none"
-            title="Настройки"
-            aria-label="Настройки модели"
-          >
-            <FaCog size={18} />
-          </button>
+          <ChatSettingsMenu
+            open={settingsMenuOpen}
+            onToggle={() => setSettingsMenuOpen((current) => !current)}
+            onClose={() => setSettingsMenuOpen(false)}
+            onOpenModels={() => setSettingsOpen(true)}
+            onClearChat={handleClearChat}
+            disabled={sending || actionLoading || clearingChat}
+          />
         </aside>
 
         <main className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-x-hidden px-2 pb-2 pt-[4.5rem] md:px-0 md:pb-6 md:pl-48 md:pr-16 md:pt-20">
