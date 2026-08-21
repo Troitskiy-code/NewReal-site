@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import crypto from "crypto";
-
-const PUBLIC_KEY = process.env.UNITPAY_PUBLIC_KEY!;
-const SECRET_KEY = process.env.UNITPAY_SECRET_KEY!;
-
-function generatePaymentUrl(userId: string, sum: number, desc: string) {
-  const currency = "RUB";
-  const params = { account: userId, currency, desc, sum };
-  const sortedKeys = Object.keys(params).sort();
-  let signatureString = sortedKeys
-    .map((key) => params[key as keyof typeof params])
-    .join("{up}");
-  signatureString += `{up}${SECRET_KEY}`;
-  const signature = crypto.createHash("sha256").update(signatureString).digest("hex");
-
-  return `https://unitpay.ru/pay/${PUBLIC_KEY}?sum=${sum}&account=${userId}&desc=${encodeURIComponent(desc)}&signature=${signature}&currency=${currency}`;
-}
+import { generateRobokassaPaymentUrl } from "@/lib/robokassa";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +11,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { sum, desc } = await req.json();
-    const url = generatePaymentUrl(session.user.id, sum, desc);
+
+    if (!sum || !desc) {
+      return NextResponse.json({ error: "sum и desc обязательны" }, { status: 400 });
+    }
+
+    const url = generateRobokassaPaymentUrl(session.user.id, Number(sum), String(desc));
     return NextResponse.json({ url });
   } catch (error) {
     console.error("Payment creation error:", error);
