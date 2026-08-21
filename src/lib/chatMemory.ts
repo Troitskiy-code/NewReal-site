@@ -5,7 +5,7 @@ import { getContextTokenLimit } from "@/lib/chatEconomy";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
-const MEMORY_TOKEN_THRESHOLD_RATIO = 0.8;
+const MEMORY_TOKEN_THRESHOLD_RATIO = 0.5;
 const MESSAGES_TO_SUMMARIZE = 20;
 
 const SUMMARY_PROMPT =
@@ -101,7 +101,7 @@ export async function resolveChatMemorySummary(
   const totalTokens = allMessages.reduce((sum, message) => sum + countTokens(message.content), 0);
 
   if (totalTokens <= threshold) {
-    console.log(`🧠 Суммаризация не нужна: ${totalTokens} токенов (порог ${threshold}, 80% от ${maxContextTokens})`);
+    console.log(`🧠 Суммаризация не нужна: ${totalTokens} токенов (порог ${threshold}, 50% от ${maxContextTokens})`);
     return null;
   }
 
