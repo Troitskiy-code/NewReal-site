@@ -156,7 +156,6 @@ export async function prepareChatMessages({
   characterId,
   character,
   user,
-  model,
   apiKey,
   ragQueryText,
   excludeMessageId,
@@ -164,14 +163,14 @@ export async function prepareChatMessages({
   historyBeforeMessageId,
 }: PrepareChatMessagesOptions) {
   const subscriptionActive = isSubscriptionActive(user);
-  const maxContextTokens = getContextTokenLimit(user, model);
+  const maxContextTokens = getContextTokenLimit(user);
   const universeRag = isUniverseRagEligible(user.subscriptionType, subscriptionActive);
 
   const memorySummary = await resolveChatMemorySummary(
     userId,
     characterId,
     apiKey,
-    maxContextTokens
+    user
   );
 
   let systemPrompt = appendMemoryToSystemPrompt(buildChatSystemPrompt(character), memorySummary);

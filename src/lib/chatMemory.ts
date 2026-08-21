@@ -1,10 +1,10 @@
 import axios from "axios";
 import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
+import { getContextTokenLimit } from "@/lib/chatEconomy";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
-const DEFAULT_MAX_CONTEXT_TOKENS = 4000;
 const MEMORY_TOKEN_THRESHOLD_RATIO = 0.8;
 const MESSAGES_TO_SUMMARIZE = 20;
 
@@ -68,8 +68,13 @@ export async function resolveChatMemorySummary(
   userId: string,
   characterId: string,
   apiKey: string,
-  maxContextTokens: number = DEFAULT_MAX_CONTEXT_TOKENS
+  user: {
+    subscriptionType?: string | null;
+    subscriptionEnd?: Date | string | null;
+  }
 ): Promise<string | null> {
+  const maxContextTokens = getContextTokenLimit(user);
+
   const existingMemory = await prisma.memory.findUnique({
     where: {
       userId_characterId: {
@@ -85,7 +90,7 @@ export async function resolveChatMemorySummary(
     return existingMemory.summary;
   }
 
-  const threshold = Math.floor((maxContextTokens || DEFAULT_MAX_CONTEXT_TOKENS) * MEMORY_TOKEN_THRESHOLD_RATIO);
+  const threshold = Math.floor(maxContextTokens * MEMORY_TOKEN_THRESHOLD_RATIO);
 
   const allMessages = await prisma.message.findMany({
     where: { userId, characterId },

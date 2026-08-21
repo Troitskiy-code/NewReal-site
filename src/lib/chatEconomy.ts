@@ -85,18 +85,32 @@ export function getSubscriptionLabel(type: string | null | undefined): string | 
 }
 
 export function getContextTokenLimit(
-  user: { subscriptionType?: string | null } | null | undefined,
-  model: { maxContextTokens?: number | null } | null | undefined
+  user: {
+    subscriptionType?: string | null;
+    subscriptionEnd?: Date | string | null;
+  } | null | undefined
 ): number {
-  if (!model) return 4000;
+  const type = user?.subscriptionType || "start";
+  const subscriptionEnd = user?.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
+  const active =
+    type !== "none" &&
+    type !== "start" &&
+    !!subscriptionEnd &&
+    subscriptionEnd > new Date();
 
-  const baseLimit = model.maxContextTokens || 4000;
+  if (!active) return 6000;
 
-  if (user?.subscriptionType === "universe") {
-    return Math.min(64000, baseLimit);
+  switch (type) {
+    case "dialog":
+      return 8000;
+    case "story":
+    case "history":
+      return 12000;
+    case "universe":
+      return 16000;
+    default:
+      return 6000;
   }
-
-  return baseLimit;
 }
 
 export function getHistoryMessageLimit(
