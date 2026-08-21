@@ -20,7 +20,7 @@ import {
 } from "@/lib/verseChatEconomy";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-export const MAX_OUTPUT_TOKENS = 1500;
+export const MAX_OUTPUT_TOKENS = 1000;
 
 export type ChatCompletionMessage = {
   role: "system" | "user" | "assistant";
@@ -270,7 +270,7 @@ export async function callChatCompletion(
       model: modelName,
       messages,
       max_tokens: MAX_OUTPUT_TOKENS,
-      temperature: 0.8,
+      temperature: 0.7,
     },
     {
       headers: {

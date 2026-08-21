@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaPlus, FaTrash } from "react-icons/fa";
+import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaPlus, FaTrash, FaPen } from "react-icons/fa";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -88,6 +88,7 @@ type MessageActionsProps = {
   onRegenerate: (messageId: string) => void;
   onContinue: () => void;
   onDelete: (messageId: string) => void;
+  onEdit: (messageId: string) => void;
 };
 
 function MessageActions({
@@ -97,6 +98,7 @@ function MessageActions({
   onRegenerate,
   onContinue,
   onDelete,
+  onEdit,
 }: MessageActionsProps) {
   if (!isPersistedMessage(message)) {
     return null;
@@ -104,6 +106,18 @@ function MessageActions({
 
   return (
     <div className="mt-1 flex items-center gap-1">
+      {message.role === "user" && (
+        <button
+          type="button"
+          onClick={() => onEdit(message.id)}
+          disabled={disabled}
+          className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+          title="Редактировать"
+          aria-label="Редактировать"
+        >
+          <FaPen size={12} />
+        </button>
+      )}
       {message.role === "assistant" && (
         <>
           <button
@@ -322,6 +336,9 @@ export default function ChatPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const lastAssistantMessageId = useMemo(() => {
@@ -364,6 +381,7 @@ export default function ChatPage() {
   const canSend =
     !sending &&
     !actionLoading &&
+    !clearingChat &&
     Boolean(input.trim()) &&
     !insufficientBalance &&
     (balance?.dailyRequestsRemaining ?? 1) > 0;
@@ -539,11 +557,70 @@ export default function ChatPage() {
     try {
       await axios.delete(`/api/messages/${messageId}`);
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      if (editingMessageId === messageId) {
+        setEditingMessageId(null);
+        setEditingDraft("");
+      }
       toast.success("Сообщение удалено");
     } catch (error) {
       handleApiError(error, "Не удалось удалить сообщение");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleEditStart = (messageId: string) => {
+    const message = messages.find((msg) => msg.id === messageId);
+    if (!message) return;
+    setEditingMessageId(messageId);
+    setEditingDraft(message.content);
+  };
+
+  const handleEditCancel = () => {
+    setEditingMessageId(null);
+    setEditingDraft("");
+  };
+
+  const handleEditSave = async (messageId: string) => {
+    const trimmed = editingDraft.trim();
+    if (!trimmed) {
+      toast.error("Сообщение не может быть пустым");
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const { data } = await axios.put<Message>(`/api/messages/${messageId}`, {
+        content: trimmed,
+      });
+      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? data : msg)));
+      setEditingMessageId(null);
+      setEditingDraft("");
+      toast.success("Сообщение обновлено");
+    } catch (error) {
+      handleApiError(error, "Не удалось сохранить сообщение");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClearChat = async () => {
+    if (sending || actionLoading || clearingChat) return;
+    if (!window.confirm("Очистить всю историю чата с этим персонажем?")) return;
+
+    setClearingChat(true);
+    try {
+      await axios.delete(`/api/chat/${characterId}/messages`);
+      const greeting = character?.greeting?.trim();
+      setMessages(greeting ? [createGreetingMessage(greeting)] : []);
+      setEditingMessageId(null);
+      setEditingDraft("");
+      setSettingsOpen(false);
+      toast.success("История чата очищена");
+    } catch (error) {
+      handleApiError(error, "Не удалось очистить чат");
+    } finally {
+      setClearingChat(false);
     }
   };
 
@@ -679,7 +756,7 @@ export default function ChatPage() {
         </Modal>
 
         <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки модели">
-          <div className="-mx-4 -mb-4 md:-mx-6 md:-mb-6">
+          <div className="-mx-4 -mb-4 flex flex-col md:-mx-6 md:-mb-6">
             {models.length === 0 ? (
               <p className="px-4 text-sm text-secondary-text md:px-6">Модели не найдены</p>
             ) : (
@@ -692,6 +769,17 @@ export default function ChatPage() {
                 onModelChange={handleModelChange}
               />
             )}
+            <div className="border-t border-[#2A2A2A] p-4 md:px-6">
+              <button
+                type="button"
+                onClick={handleClearChat}
+                disabled={sending || actionLoading || clearingChat}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/40 px-4 py-2.5 text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+              >
+                <FaTrash size={14} />
+                {clearingChat ? "Очистка..." : "Очистить историю"}
+              </button>
+            </div>
           </div>
         </Modal>
 
@@ -762,24 +850,57 @@ export default function ChatPage() {
                       msg.role === "user" ? "items-end" : "items-start"
                     }`}
                   >
-                    <div
-                      className={`break-words rounded-lg px-3 py-2 text-sm md:px-4 md:py-2 ${
-                        msg.role === "user"
-                          ? "border border-[#9C27B0]/70 bg-black text-white"
-                          : "border border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
-                      }`}
-                      dangerouslySetInnerHTML={{
-                        __html: formatMessageContent(msg.content),
-                      }}
-                    />
-                    <MessageActions
-                      message={msg}
-                      isLastAssistant={msg.id === lastAssistantMessageId}
-                      disabled={sending || actionLoading}
-                      onRegenerate={handleRegenerate}
-                      onContinue={handleContinue}
-                      onDelete={handleDelete}
-                    />
+                    {editingMessageId === msg.id ? (
+                      <div className="w-full min-w-[220px] rounded-lg border border-[#9C27B0]/70 bg-black p-3">
+                        <textarea
+                          value={editingDraft}
+                          onChange={(e) => setEditingDraft(e.target.value)}
+                          rows={3}
+                          className="w-full resize-y rounded-md border border-divider bg-[#121212] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
+                          disabled={actionLoading}
+                        />
+                        <div className="mt-2 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={handleEditCancel}
+                            disabled={actionLoading}
+                            className="rounded-full px-3 py-1 text-xs text-gray-400 hover:text-white disabled:opacity-50"
+                          >
+                            Отмена
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEditSave(msg.id)}
+                            disabled={actionLoading || !editingDraft.trim()}
+                            className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+                          >
+                            Сохранить
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className={`break-words rounded-lg px-3 py-2 text-sm md:px-4 md:py-2 ${
+                          msg.role === "user"
+                            ? "border border-[#9C27B0]/70 bg-black text-white"
+                            : "border border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
+                        }`}
+                        dangerouslySetInnerHTML={{
+                          __html: formatMessageContent(msg.content),
+                        }}
+                      />
+                    )}
+                    {editingMessageId !== msg.id && (
+                      <MessageActions
+                        message={msg}
+                        isLastAssistant={msg.id === lastAssistantMessageId}
+                        disabled={sending || actionLoading || clearingChat}
+                        onRegenerate={handleRegenerate}
+                        onContinue={handleContinue}
+                        onDelete={handleDelete}
+                        onEdit={handleEditStart}
+                      />
+                    )}
                   </div>
                 </div>
               ))
@@ -804,7 +925,7 @@ export default function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Напишите сообщение..."
               className="min-h-[44px] w-full min-w-0 flex-1 rounded-full border border-divider bg-bg-card px-4 py-2 text-sm outline-none transition-colors focus:border-primary/60"
-              disabled={sending || actionLoading}
+              disabled={sending || actionLoading || clearingChat}
             />
             <button
               type="submit"
