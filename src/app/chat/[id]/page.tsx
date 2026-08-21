@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisV, FaRegCopy } from "react-icons/fa";
+import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy } from "react-icons/fa";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -113,19 +113,22 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
   const menuItemClass =
     "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A] disabled:opacity-40";
 
+  const menuButtonClass =
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
+
   return (
-    <div ref={menuRef} className="relative">
+    <div ref={menuRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
         disabled={disabled}
-        className="flex h-7 min-w-7 items-center justify-center rounded text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40"
+        className={menuButtonClass}
         title="Действия"
         aria-label="Действия с сообщением"
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <FaEllipsisV size={14} />
+        <FaEllipsisH size={17} />
       </button>
 
       {open && (
@@ -192,13 +195,13 @@ function MessageToolbar({
 
   const isUser = message.role === "user";
   const actionButtonClass =
-    "flex h-7 min-w-7 items-center justify-center rounded text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
   const textButtonClass =
-    "flex h-7 items-center rounded px-1.5 text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
+    "flex h-7 shrink-0 items-center rounded px-1 text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
 
   if (isUser) {
     return (
-      <div className="flex shrink-0 items-center gap-0.5">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1">
         <MessageMenu
           message={message}
           disabled={disabled}
@@ -214,24 +217,14 @@ function MessageToolbar({
           title="Копировать"
           aria-label="Копировать"
         >
-          <FaRegCopy size={14} />
+          <FaRegCopy size={16} />
         </button>
       </div>
     );
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-0.5">
-      <button
-        type="button"
-        onClick={() => onRegenerate(message.id)}
-        disabled={disabled}
-        className={actionButtonClass}
-        title="Перегенерировать"
-        aria-label="Перегенерировать"
-      >
-        <FaRedo size={14} />
-      </button>
+    <div className="flex shrink-0 flex-nowrap items-center gap-1">
       <button
         type="button"
         onClick={onContinue}
@@ -241,13 +234,16 @@ function MessageToolbar({
       >
         Продолжить
       </button>
-      <MessageMenu
-        message={message}
+      <button
+        type="button"
+        onClick={() => onRegenerate(message.id)}
         disabled={disabled}
-        align="right"
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
+        className={actionButtonClass}
+        title="Перегенерировать"
+        aria-label="Перегенерировать"
+      >
+        <FaRedo size={16} />
+      </button>
       <button
         type="button"
         onClick={() => onCopy(message.content)}
@@ -256,8 +252,15 @@ function MessageToolbar({
         title="Копировать"
         aria-label="Копировать"
       >
-        <FaRegCopy size={14} />
+        <FaRegCopy size={16} />
       </button>
+      <MessageMenu
+        message={message}
+        disabled={disabled}
+        align="right"
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
     </div>
   );
 }
@@ -324,7 +327,7 @@ function ChatMessageItem({
   const isUser = message.role === "user";
 
   const avatarBlock = (
-    <div className={`flex min-w-0 items-center gap-1 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+    <div className={`flex shrink-0 min-w-0 items-center gap-1 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       <MessageAvatar name={displayName} imageUrl={avatarUrl} />
       <span className="hidden truncate text-[11px] font-semibold text-gray-400 md:inline">{displayName}</span>
     </div>
@@ -341,7 +344,7 @@ function ChatMessageItem({
       onCopy={onCopy}
     />
   ) : (
-    <div className="h-8 w-8 shrink-0" aria-hidden />
+    <div className="h-7 w-7 shrink-0" aria-hidden />
   );
 
   return (
@@ -350,7 +353,7 @@ function ChatMessageItem({
         isUser ? "ml-auto items-end" : "items-start"
       }`}
     >
-      <div className="flex w-full items-center justify-between gap-1">
+      <div className="flex w-full flex-nowrap items-center justify-between gap-1">
         {isUser ? (
           <>
             {actionsBlock}
