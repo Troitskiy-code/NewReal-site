@@ -105,7 +105,7 @@ function MessageActions({
   }
 
   const actionButtonClass =
-    "rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 disabled:opacity-40";
+    "flex h-8 min-w-8 items-center justify-center rounded px-2 text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 disabled:opacity-40";
 
   if (message.role === "assistant") {
     return (
@@ -178,6 +178,158 @@ function MessageActions({
         <FaTrash size={11} />
       </button>
     </>
+  );
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
+function MessageAvatar({ name, imageUrl }: { name: string; imageUrl: string | null }) {
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        className="h-7 w-7 shrink-0 rounded-full object-cover md:h-7 md:w-7"
+      />
+    );
+  }
+
+  const initials = getInitials(name);
+  return (
+    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2A2A2A] text-[10px] font-semibold text-gray-300">
+      {initials || <FaUser size={12} className="text-gray-400" />}
+    </div>
+  );
+}
+
+type ChatMessageItemProps = {
+  message: Message;
+  displayName: string;
+  avatarUrl: string | null;
+  isLastAssistant: boolean;
+  isEditing: boolean;
+  editingDraft: string;
+  actionDisabled: boolean;
+  onEditDraftChange: (value: string) => void;
+  onEditCancel: () => void;
+  onEditSave: (messageId: string) => void;
+  onRegenerate: (messageId: string) => void;
+  onContinue: () => void;
+  onDelete: (messageId: string) => void;
+  onEdit: (messageId: string) => void;
+};
+
+function ChatMessageItem({
+  message,
+  displayName,
+  avatarUrl,
+  isLastAssistant,
+  isEditing,
+  editingDraft,
+  actionDisabled,
+  onEditDraftChange,
+  onEditCancel,
+  onEditSave,
+  onRegenerate,
+  onContinue,
+  onDelete,
+  onEdit,
+}: ChatMessageItemProps) {
+  const isUser = message.role === "user";
+
+  const avatarBlock = (
+    <div className={`flex min-w-0 items-center gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+      <MessageAvatar name={displayName} imageUrl={avatarUrl} />
+      <span className="hidden truncate text-xs font-semibold text-gray-400 md:inline">{displayName}</span>
+    </div>
+  );
+
+  const actionsBlock = !isEditing ? (
+    <div className="flex shrink-0 items-center gap-1">
+      <MessageActions
+        message={message}
+        isLastAssistant={isLastAssistant}
+        disabled={actionDisabled}
+        onRegenerate={onRegenerate}
+        onContinue={onContinue}
+        onDelete={onDelete}
+        onEdit={onEdit}
+      />
+    </div>
+  ) : (
+    <div className="h-8 w-8 shrink-0" aria-hidden />
+  );
+
+  return (
+    <div
+      className={`flex w-full max-w-[85%] flex-col gap-1 md:max-w-[75%] ${
+        isUser ? "ml-auto items-end" : "items-start"
+      }`}
+    >
+      <div className="flex w-full items-center justify-between gap-2">
+        {isUser ? (
+          <>
+            {actionsBlock}
+            {avatarBlock}
+          </>
+        ) : (
+          <>
+            {avatarBlock}
+            {actionsBlock}
+          </>
+        )}
+      </div>
+
+      {isEditing ? (
+        <div
+          className={`w-full min-w-[220px] rounded-lg border p-3 ${
+            isUser ? "border-[#9C27B0]/70 bg-black" : "border-[#6C63FF]/40 bg-[#1A1A1A]"
+          }`}
+        >
+          <textarea
+            value={editingDraft}
+            onChange={(e) => onEditDraftChange(e.target.value)}
+            rows={3}
+            className="w-full resize-y rounded-md border border-divider bg-[#121212] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
+            disabled={actionDisabled}
+          />
+          <div className={`mt-2 flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
+            <button
+              type="button"
+              onClick={onEditCancel}
+              disabled={actionDisabled}
+              className="rounded-full px-3 py-1 text-xs text-gray-400 hover:text-gray-300 disabled:opacity-50"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={() => onEditSave(message.id)}
+              disabled={actionDisabled || !editingDraft.trim()}
+              className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+            >
+              Сохранить
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`w-full break-words rounded-lg border px-4 py-2 text-sm ${
+            isUser
+              ? "border-[#9C27B0]/70 bg-black text-white"
+              : "border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
+          }`}
+          dangerouslySetInnerHTML={{
+            __html: formatMessageContent(message.content),
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -423,7 +575,7 @@ function ModelSettingsList({
 export default function ChatPage() {
   const params = useParams();
   const characterId = params.id as string;
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [character, setCharacter] = useState<ChatCharacter | null>(null);
@@ -488,6 +640,11 @@ export default function ChatPage() {
     Boolean(input.trim()) &&
     !insufficientBalance &&
     (balance?.dailyRequestsRemaining ?? 1) > 0;
+
+  const userDisplayName = session?.user?.name ?? session?.user?.email ?? "Вы";
+  const userAvatarUrl = session?.user?.image ?? null;
+  const characterDisplayName = character?.name ?? "Персонаж";
+  const characterAvatarUrl = character?.imageUrl ?? null;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -932,82 +1089,23 @@ export default function ChatPage() {
               </div>
             ) : (
               messages.map((msg) => (
-                <div
+                <ChatMessageItem
                   key={msg.id}
-                  className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div className="relative max-w-[85%] md:max-w-[75%]">
-                    {editingMessageId === msg.id ? (
-                      <div
-                        className={`w-full min-w-[220px] rounded-lg border p-3 ${
-                          msg.role === "user"
-                            ? "border-[#9C27B0]/70 bg-black"
-                            : "border-[#6C63FF]/40 bg-[#1A1A1A]"
-                        }`}
-                      >
-                        <textarea
-                          value={editingDraft}
-                          onChange={(e) => setEditingDraft(e.target.value)}
-                          rows={3}
-                          className="w-full resize-y rounded-md border border-divider bg-[#121212] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
-                          disabled={actionLoading}
-                        />
-                        <div
-                          className={`mt-2 flex gap-2 ${
-                            msg.role === "user" ? "justify-end" : "justify-start"
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={handleEditCancel}
-                            disabled={actionLoading}
-                            className="rounded-full px-3 py-1 text-xs text-gray-400 hover:text-gray-300 disabled:opacity-50"
-                          >
-                            Отмена
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleEditSave(msg.id)}
-                            disabled={actionLoading || !editingDraft.trim()}
-                            className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
-                          >
-                            Сохранить
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        className={`relative overflow-hidden rounded-lg border ${
-                          msg.role === "user"
-                            ? "border-[#9C27B0]/70 bg-black text-white"
-                            : "border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
-                        }`}
-                      >
-                        <div
-                          className={`absolute top-1 z-10 flex flex-row flex-wrap items-center gap-1 ${
-                            msg.role === "user" ? "left-1" : "right-1"
-                          }`}
-                        >
-                          <MessageActions
-                            message={msg}
-                            isLastAssistant={msg.id === lastAssistantMessageId}
-                            disabled={sending || actionLoading || clearingChat}
-                            onRegenerate={handleRegenerate}
-                            onContinue={handleContinue}
-                            onDelete={handleDelete}
-                            onEdit={handleEditStart}
-                          />
-                        </div>
-                        <div
-                          className="break-words px-3 pb-3 pt-8 text-sm md:px-4"
-                          dangerouslySetInnerHTML={{
-                            __html: formatMessageContent(msg.content),
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  message={msg}
+                  displayName={msg.role === "user" ? userDisplayName : characterDisplayName}
+                  avatarUrl={msg.role === "user" ? userAvatarUrl : characterAvatarUrl}
+                  isLastAssistant={msg.id === lastAssistantMessageId}
+                  isEditing={editingMessageId === msg.id}
+                  editingDraft={editingDraft}
+                  actionDisabled={sending || actionLoading || clearingChat}
+                  onEditDraftChange={setEditingDraft}
+                  onEditCancel={handleEditCancel}
+                  onEditSave={handleEditSave}
+                  onRegenerate={handleRegenerate}
+                  onContinue={handleContinue}
+                  onDelete={handleDelete}
+                  onEdit={handleEditStart}
+                />
               ))
             )}
             {sending && (
