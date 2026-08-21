@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaPlus, FaTrash, FaPen } from "react-icons/fa";
+import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaTrash, FaPen } from "react-icons/fa";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -104,42 +104,46 @@ function MessageActions({
     return null;
   }
 
+  const actionButtonClass =
+    "rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 disabled:opacity-40";
+
   return (
-    <div className="mt-1 flex items-center gap-1">
-      {message.role === "user" && (
-        <button
-          type="button"
-          onClick={() => onEdit(message.id)}
-          disabled={disabled}
-          className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
-          title="Редактировать"
-          aria-label="Редактировать"
-        >
-          <FaPen size={12} />
-        </button>
-      )}
+    <div
+      className={`flex flex-wrap items-center gap-1 ${
+        message.role === "user" ? "justify-end" : "justify-start"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => onEdit(message.id)}
+        disabled={disabled}
+        className={actionButtonClass}
+        title="Редактировать"
+        aria-label="Редактировать"
+      >
+        <FaPen size={11} />
+      </button>
       {message.role === "assistant" && (
         <>
           <button
             type="button"
             onClick={() => onRegenerate(message.id)}
             disabled={disabled}
-            className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+            className={actionButtonClass}
             title="Перегенерировать"
             aria-label="Перегенерировать"
           >
-            <FaRedo size={12} />
+            <FaRedo size={11} />
           </button>
           {isLastAssistant && (
             <button
               type="button"
               onClick={onContinue}
               disabled={disabled}
-              className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+              className={`${actionButtonClass} px-2`}
               title="Продолжить"
-              aria-label="Продолжить"
             >
-              <FaPlus size={12} />
+              Продолжить
             </button>
           )}
         </>
@@ -148,11 +152,11 @@ function MessageActions({
         type="button"
         onClick={() => onDelete(message.id)}
         disabled={disabled}
-        className="rounded p-1.5 text-xs text-gray-400 transition-colors hover:bg-red-500/20 hover:text-red-300 disabled:opacity-40"
+        className={actionButtonClass}
         title="Удалить"
         aria-label="Удалить"
       >
-        <FaTrash size={12} />
+        <FaTrash size={11} />
       </button>
     </div>
   );
@@ -919,7 +923,13 @@ export default function ChatPage() {
                     }`}
                   >
                     {editingMessageId === msg.id ? (
-                      <div className="w-full min-w-[220px] rounded-lg border border-[#9C27B0]/70 bg-black p-3">
+                      <div
+                        className={`w-full min-w-[220px] rounded-lg border p-3 ${
+                          msg.role === "user"
+                            ? "border-[#9C27B0]/70 bg-black"
+                            : "border-[#6C63FF]/40 bg-[#1A1A1A]"
+                        }`}
+                      >
                         <textarea
                           value={editingDraft}
                           onChange={(e) => setEditingDraft(e.target.value)}
@@ -927,12 +937,16 @@ export default function ChatPage() {
                           className="w-full resize-y rounded-md border border-divider bg-[#121212] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
                           disabled={actionLoading}
                         />
-                        <div className="mt-2 flex justify-end gap-2">
+                        <div
+                          className={`mt-2 flex gap-2 ${
+                            msg.role === "user" ? "justify-end" : "justify-start"
+                          }`}
+                        >
                           <button
                             type="button"
                             onClick={handleEditCancel}
                             disabled={actionLoading}
-                            className="rounded-full px-3 py-1 text-xs text-gray-400 hover:text-white disabled:opacity-50"
+                            className="rounded-full px-3 py-1 text-xs text-gray-400 hover:text-gray-300 disabled:opacity-50"
                           >
                             Отмена
                           </button>
@@ -948,26 +962,30 @@ export default function ChatPage() {
                       </div>
                     ) : (
                       <div
-                        className={`break-words rounded-lg px-3 py-2 text-sm md:px-4 md:py-2 ${
+                        className={`overflow-hidden rounded-lg border ${
                           msg.role === "user"
-                            ? "border border-[#9C27B0]/70 bg-black text-white"
-                            : "border border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
+                            ? "border-[#9C27B0]/70 bg-black text-white"
+                            : "border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
                         }`}
-                        dangerouslySetInnerHTML={{
-                          __html: formatMessageContent(msg.content),
-                        }}
-                      />
-                    )}
-                    {editingMessageId !== msg.id && (
-                      <MessageActions
-                        message={msg}
-                        isLastAssistant={msg.id === lastAssistantMessageId}
-                        disabled={sending || actionLoading || clearingChat}
-                        onRegenerate={handleRegenerate}
-                        onContinue={handleContinue}
-                        onDelete={handleDelete}
-                        onEdit={handleEditStart}
-                      />
+                      >
+                        <div className="px-2 pt-1.5">
+                          <MessageActions
+                            message={msg}
+                            isLastAssistant={msg.id === lastAssistantMessageId}
+                            disabled={sending || actionLoading || clearingChat}
+                            onRegenerate={handleRegenerate}
+                            onContinue={handleContinue}
+                            onDelete={handleDelete}
+                            onEdit={handleEditStart}
+                          />
+                        </div>
+                        <div
+                          className="break-words px-3 pb-2 pt-1 text-sm md:px-4 md:pb-2"
+                          dangerouslySetInnerHTML={{
+                            __html: formatMessageContent(msg.content),
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>

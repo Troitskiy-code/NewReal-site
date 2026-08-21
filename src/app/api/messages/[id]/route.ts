@@ -38,10 +38,6 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
-    if (message.role !== "user") {
-      return NextResponse.json({ error: "Можно редактировать только сообщения пользователя" }, { status: 400 });
-    }
-
     const updatedMessage = await prisma.message.update({
       where: { id: message.id },
       data: { content: content.trim() },
