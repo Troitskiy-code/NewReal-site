@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisV } from "react-icons/fa";
+import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisV, FaRegCopy } from "react-icons/fa";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -83,25 +83,13 @@ function isPersistedMessage(message: Message): boolean {
 
 type MessageMenuProps = {
   message: Message;
-  isLastAssistant: boolean;
   disabled: boolean;
   align: "left" | "right";
   onEdit: (messageId: string) => void;
   onDelete: (messageId: string) => void;
-  onCopy: (content: string) => void;
-  onContinue: () => void;
 };
 
-function MessageMenu({
-  message,
-  isLastAssistant,
-  disabled,
-  align,
-  onEdit,
-  onDelete,
-  onCopy,
-  onContinue,
-}: MessageMenuProps) {
+function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -131,13 +119,13 @@ function MessageMenu({
         type="button"
         onClick={() => setOpen((current) => !current)}
         disabled={disabled}
-        className="flex h-8 w-8 items-center justify-center rounded text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 disabled:opacity-40"
+        className="flex h-7 min-w-7 items-center justify-center rounded text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40"
         title="Действия"
         aria-label="Действия с сообщением"
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <FaEllipsisV size={16} />
+        <FaEllipsisV size={14} />
       </button>
 
       {open && (
@@ -147,20 +135,6 @@ function MessageMenu({
             align === "left" ? "left-0" : "right-0"
           }`}
         >
-          {message.role === "assistant" && isLastAssistant && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onContinue();
-              }}
-              disabled={disabled}
-              className={menuItemClass}
-            >
-              Продолжить
-            </button>
-          )}
           <button
             type="button"
             role="menuitem"
@@ -187,19 +161,6 @@ function MessageMenu({
             <span aria-hidden>🗑️</span>
             Удалить
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onCopy(message.content);
-            }}
-            disabled={disabled}
-            className={menuItemClass}
-          >
-            <span aria-hidden>📋</span>
-            Копировать
-          </button>
         </div>
       )}
     </div>
@@ -208,7 +169,6 @@ function MessageMenu({
 
 type MessageToolbarProps = {
   message: Message;
-  isLastAssistant: boolean;
   disabled: boolean;
   onRegenerate: (messageId: string) => void;
   onContinue: () => void;
@@ -219,7 +179,6 @@ type MessageToolbarProps = {
 
 function MessageToolbar({
   message,
-  isLastAssistant,
   disabled,
   onRegenerate,
   onContinue,
@@ -233,32 +192,72 @@ function MessageToolbar({
 
   const isUser = message.role === "user";
   const actionButtonClass =
-    "flex h-8 min-w-8 items-center justify-center rounded text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 disabled:opacity-40";
+    "flex h-7 min-w-7 items-center justify-center rounded text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
+  const textButtonClass =
+    "flex h-7 items-center rounded px-1.5 text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
+
+  if (isUser) {
+    return (
+      <div className="flex shrink-0 items-center gap-0.5">
+        <MessageMenu
+          message={message}
+          disabled={disabled}
+          align="left"
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+        <button
+          type="button"
+          onClick={() => onCopy(message.content)}
+          disabled={disabled}
+          className={actionButtonClass}
+          title="Копировать"
+          aria-label="Копировать"
+        >
+          <FaRegCopy size={14} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex shrink-0 items-center gap-0.5">
-      {!isUser && (
-        <button
-          type="button"
-          onClick={() => onRegenerate(message.id)}
-          disabled={disabled}
-          className={actionButtonClass}
-          title="Перегенерировать"
-          aria-label="Перегенерировать"
-        >
-          <FaRedo size={14} />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => onRegenerate(message.id)}
+        disabled={disabled}
+        className={actionButtonClass}
+        title="Перегенерировать"
+        aria-label="Перегенерировать"
+      >
+        <FaRedo size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={onContinue}
+        disabled={disabled}
+        className={textButtonClass}
+        title="Продолжить"
+      >
+        Продолжить
+      </button>
       <MessageMenu
         message={message}
-        isLastAssistant={isLastAssistant}
         disabled={disabled}
-        align={isUser ? "left" : "right"}
+        align="right"
         onEdit={onEdit}
         onDelete={onDelete}
-        onCopy={onCopy}
-        onContinue={onContinue}
       />
+      <button
+        type="button"
+        onClick={() => onCopy(message.content)}
+        disabled={disabled}
+        className={actionButtonClass}
+        title="Копировать"
+        aria-label="Копировать"
+      >
+        <FaRegCopy size={14} />
+      </button>
     </div>
   );
 }
@@ -293,7 +292,6 @@ type ChatMessageItemProps = {
   message: Message;
   displayName: string;
   avatarUrl: string | null;
-  isLastAssistant: boolean;
   isEditing: boolean;
   editingDraft: string;
   actionDisabled: boolean;
@@ -311,7 +309,6 @@ function ChatMessageItem({
   message,
   displayName,
   avatarUrl,
-  isLastAssistant,
   isEditing,
   editingDraft,
   actionDisabled,
@@ -336,7 +333,6 @@ function ChatMessageItem({
   const actionsBlock = !isEditing ? (
     <MessageToolbar
       message={message}
-      isLastAssistant={isLastAssistant}
       disabled={actionDisabled}
       onRegenerate={onRegenerate}
       onContinue={onContinue}
@@ -678,15 +674,6 @@ export default function ChatPage() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const lastAssistantMessageId = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      if (messages[i].role === "assistant" && isPersistedMessage(messages[i])) {
-        return messages[i].id;
-      }
-    }
-    return null;
-  }, [messages]);
 
   const selectedModel = useMemo(
     () => models.find((model) => model.id === selectedModelId) ?? models[0] ?? null,
@@ -1186,7 +1173,6 @@ export default function ChatPage() {
                   message={msg}
                   displayName={msg.role === "user" ? userDisplayName : characterDisplayName}
                   avatarUrl={msg.role === "user" ? userAvatarUrl : characterAvatarUrl}
-                  isLastAssistant={msg.id === lastAssistantMessageId}
                   isEditing={editingMessageId === msg.id}
                   editingDraft={editingDraft}
                   actionDisabled={sending || actionLoading || clearingChat}
