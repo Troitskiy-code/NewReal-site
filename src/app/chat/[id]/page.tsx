@@ -1000,7 +1000,11 @@ export default function ChatPage() {
       updateBalanceFromResponse(data);
 
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === optimisticUser.id ? data.userMessage : msg))
+        prev.map((msg) => {
+          if (msg.id === optimisticUser.id) return data.userMessage;
+          if (msg.id === "greeting" && data.greetingMessage) return data.greetingMessage;
+          return msg;
+        })
       );
 
       setTimeout(() => {

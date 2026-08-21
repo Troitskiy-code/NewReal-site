@@ -116,6 +116,7 @@ export async function POST(
       );
     }
 
+    let greetingMessage = null;
     let userMessage = null;
     let ragQueryText: string | undefined;
     let excludeMessageId: string | undefined;
@@ -136,6 +137,29 @@ export async function POST(
 
       ragQueryText = lastAssistant.content;
     } else {
+      const existingMessagesCount = await prisma.message.count({
+        where: { characterId: id, userId: session.user.id },
+      });
+
+      if (existingMessagesCount === 0 && character.greeting?.trim()) {
+        greetingMessage = await prisma.message.create({
+          data: {
+            characterId: id,
+            chatId: id,
+            userId: session.user.id,
+            role: "assistant",
+            content: character.greeting.trim(),
+          },
+        });
+
+        scheduleMessageEmbedding(
+          greetingMessage.id,
+          greetingMessage.content,
+          KODIKROUTER_KEY,
+          persistEmbeddings
+        );
+      }
+
       userMessage = await prisma.message.create({
         data: {
           characterId: id,
@@ -192,6 +216,7 @@ export async function POST(
         nextDailyRequests: charge.nextDailyRequests,
         limitWarning: charge.limitWarning,
         model,
+        greetingMessage: greetingMessage ?? undefined,
         userMessage: userMessage ?? undefined,
         assistantMessage,
       })

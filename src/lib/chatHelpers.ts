@@ -337,6 +337,7 @@ export function buildChatResponsePayload({
   nextDailyRequests,
   limitWarning,
   model,
+  greetingMessage,
   userMessage,
   assistantMessage,
 }: {
@@ -345,10 +346,12 @@ export function buildChatResponsePayload({
   nextDailyRequests: number;
   limitWarning: string | null;
   model: EconomyModel;
+  greetingMessage?: { id: string; role: string; content: string; createdAt: Date };
   userMessage?: { id: string; role: string; content: string; createdAt: Date };
   assistantMessage: { id: string; role: string; content: string; createdAt: Date };
 }) {
   return {
+    ...(greetingMessage ? { greetingMessage } : {}),
     ...(userMessage ? { userMessage } : {}),
     assistantMessage,
     model: {
