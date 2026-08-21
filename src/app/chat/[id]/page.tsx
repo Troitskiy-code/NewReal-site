@@ -107,12 +107,56 @@ function MessageActions({
   const actionButtonClass =
     "rounded px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-300 disabled:opacity-40";
 
+  if (message.role === "assistant") {
+    return (
+      <>
+        {isLastAssistant && (
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={disabled}
+            className={`${actionButtonClass} px-2`}
+            title="Продолжить"
+          >
+            Продолжить
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onEdit(message.id)}
+          disabled={disabled}
+          className={actionButtonClass}
+          title="Редактировать"
+          aria-label="Редактировать"
+        >
+          <FaPen size={11} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onRegenerate(message.id)}
+          disabled={disabled}
+          className={actionButtonClass}
+          title="Перегенерировать"
+          aria-label="Перегенерировать"
+        >
+          <FaRedo size={11} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(message.id)}
+          disabled={disabled}
+          className={actionButtonClass}
+          title="Удалить"
+          aria-label="Удалить"
+        >
+          <FaTrash size={11} />
+        </button>
+      </>
+    );
+  }
+
   return (
-    <div
-      className={`flex flex-wrap items-center gap-1 ${
-        message.role === "user" ? "justify-end" : "justify-start"
-      }`}
-    >
+    <>
       <button
         type="button"
         onClick={() => onEdit(message.id)}
@@ -123,31 +167,6 @@ function MessageActions({
       >
         <FaPen size={11} />
       </button>
-      {message.role === "assistant" && (
-        <>
-          <button
-            type="button"
-            onClick={() => onRegenerate(message.id)}
-            disabled={disabled}
-            className={actionButtonClass}
-            title="Перегенерировать"
-            aria-label="Перегенерировать"
-          >
-            <FaRedo size={11} />
-          </button>
-          {isLastAssistant && (
-            <button
-              type="button"
-              onClick={onContinue}
-              disabled={disabled}
-              className={`${actionButtonClass} px-2`}
-              title="Продолжить"
-            >
-              Продолжить
-            </button>
-          )}
-        </>
-      )}
       <button
         type="button"
         onClick={() => onDelete(message.id)}
@@ -158,7 +177,7 @@ function MessageActions({
       >
         <FaTrash size={11} />
       </button>
-    </div>
+    </>
   );
 }
 
@@ -917,11 +936,7 @@ export default function ChatPage() {
                   key={msg.id}
                   className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div
-                    className={`flex max-w-[85%] flex-col md:max-w-[75%] ${
-                      msg.role === "user" ? "items-end" : "items-start"
-                    }`}
-                  >
+                  <div className="relative max-w-[85%] md:max-w-[75%]">
                     {editingMessageId === msg.id ? (
                       <div
                         className={`w-full min-w-[220px] rounded-lg border p-3 ${
@@ -962,13 +977,17 @@ export default function ChatPage() {
                       </div>
                     ) : (
                       <div
-                        className={`overflow-hidden rounded-lg border ${
+                        className={`relative overflow-hidden rounded-lg border ${
                           msg.role === "user"
                             ? "border-[#9C27B0]/70 bg-black text-white"
                             : "border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
                         }`}
                       >
-                        <div className="px-2 pt-1.5">
+                        <div
+                          className={`absolute top-1 z-10 flex flex-row flex-wrap items-center gap-1 ${
+                            msg.role === "user" ? "left-1" : "right-1"
+                          }`}
+                        >
                           <MessageActions
                             message={msg}
                             isLastAssistant={msg.id === lastAssistantMessageId}
@@ -980,7 +999,7 @@ export default function ChatPage() {
                           />
                         </div>
                         <div
-                          className="break-words px-3 pb-2 pt-1 text-sm md:px-4 md:pb-2"
+                          className="break-words px-3 pb-3 pt-8 text-sm md:px-4"
                           dangerouslySetInnerHTML={{
                             __html: formatMessageContent(msg.content),
                           }}
