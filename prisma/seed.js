@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 const models = [
   { name: "google/gemma-4-31b-it", displayName: "Gemma 4 31B", priceVC: 4, maxContextTokens: 12000, description: "Базовая модель с контекстом 12K. Экономный выбор для простых диалогов." },
-  { name: "deepseek/deepseek-v4-flash-latest", displayName: "DeepSeek V4 Flash", priceVC: 8, maxContextTokens: 12000, description: "Быстрая модель для динамичных историй. Контекст 12K." },
+  { name: "deepseek/deepseek-v4-flash", displayName: "DeepSeek V4 Flash", priceVC: 8, maxContextTokens: 12000, description: "Быстрая модель для динамичных историй. Контекст 12K." },
   { name: "minimax/minimax-m2.7", displayName: "Minimax M2.7", priceVC: 12, maxContextTokens: 12000, description: "Сбалансированная модель для ролевых игр." },
   { name: "mistralai/mistral-medium-3.1", displayName: "Mistral Medium 3.1", priceVC: 22, maxContextTokens: 12000, description: "Глубокий контекст 12K, хорошее понимание диалогов." },
   { name: "google/gemini-3-flash-preview", displayName: "Gemini 3 Flash", priceVC: 30, maxContextTokens: 12000, description: "Мощная модель с контекстом 12K, отличная для сложных сюжетов." },
