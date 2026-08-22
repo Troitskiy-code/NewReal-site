@@ -1167,8 +1167,8 @@ export default function ChatPage() {
           />
         </aside>
 
-        <main className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden px-2 md:px-0 md:pl-48 md:pr-16">
-          <div className="mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col space-y-2 overflow-y-auto px-4 pt-4 md:max-w-3xl md:space-y-4 md:px-4 md:pt-6">
+        <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-2 px-4 pt-4 md:space-y-4 md:px-4 md:pt-6">
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!
@@ -1204,7 +1204,7 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="flex-shrink-0 border-t border-[#2A2A2A] bg-[#121212] p-4">
+          <div className="sticky bottom-0 z-10 border-t border-[#2A2A2A] bg-[#121212] p-4">
             <form
               onSubmit={sendMessage}
               className="mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row"
