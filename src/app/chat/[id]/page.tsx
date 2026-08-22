@@ -1065,7 +1065,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`relative flex h-dvh max-w-full flex-col overflow-hidden text-primary-text ${
+      className={`relative flex h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden text-primary-text md:h-[calc(100dvh-5rem)] ${
         character?.imageUrl ? "" : "bg-bg-page"
       }`}
       style={{
@@ -1078,7 +1078,7 @@ export default function ChatPage() {
       {character?.imageUrl && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
       )}
-      <div className="relative z-10 flex h-full min-h-0 max-w-full flex-1 flex-col overflow-hidden">
+      <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col">
         <Toaster position="top-right" />
 
         <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
@@ -1167,8 +1167,8 @@ export default function ChatPage() {
           />
         </aside>
 
-        <main className="flex h-full min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden px-2 pt-[4.5rem] md:px-0 md:pl-48 md:pr-16 md:pt-20">
-          <div className="mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col space-y-2 overflow-y-auto overflow-x-hidden px-2 py-4 pb-24 md:max-w-3xl md:space-y-4 md:px-4 md:py-6">
+        <main className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden px-2 md:px-0 md:pl-48 md:pr-16">
+          <div className="mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col space-y-2 overflow-y-auto px-4 pt-4 md:max-w-3xl md:space-y-4 md:px-4 md:pt-6">
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!
@@ -1204,7 +1204,7 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="sticky bottom-0 z-10 shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-2 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.45)] md:px-4 md:py-4">
+          <div className="flex-shrink-0 border-t border-[#2A2A2A] bg-[#121212] p-4">
             <form
               onSubmit={sendMessage}
               className="mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row"
