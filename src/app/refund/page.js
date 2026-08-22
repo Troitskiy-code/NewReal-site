@@ -20,20 +20,33 @@ export default function RefundPage() {
             <p>
               NewVerse предоставляет доступ к цифровым услугам: общению с ИИ-персонажами,
               использованию виртуальной валюты VerseCoins (VC) и платным подпискам, расширяющим
-              функциональность сервиса. Оплата осуществляется через платёжную систему Unitpay.
+              функциональность сервиса. Оплата осуществляется через платёжный сервис Robokassa.
+            </p>
+            <p>
+              Полные условия оказания услуг содержатся в{" "}
+              <Link href="/offer" className="text-wd-secondary underline hover:text-white">
+                публичной оферте
+              </Link>
+              .
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white">2. Когда возможен возврат</h2>
-            <p>Возврат денежных средств может быть рассмотрен в следующих случаях:</p>
+            <p>
+              Пользователь вправе отказаться от услуг и потребовать возврат средств в следующих
+              случаях:
+            </p>
             <ul className="list-disc space-y-2 pl-5">
-              <li>двойное списание средств за один и тот же платёж;</li>
+              <li>Двойное списание средств за одну покупку.</li>
               <li>
-                техническая ошибка на стороне сервиса или платёжной системы, из-за которой оплаченная
-                услуга не была оказана (VC не зачислены, подписка не активирована);
+                Техническая ошибка, из-за которой услуга не была оказана (VC не зачислены, подписка
+                не активирована).
               </li>
-              <li>иные обоснованные случаи — по усмотрению Администрации сервиса.</li>
+              <li>
+                Отказ от подписки в течение 14 дней с момента покупки при условии, что услуга не
+                была использована (не было отправлено ни одного запроса к ИИ).
+              </li>
             </ul>
             <p>
               VC, уже использованные для запросов к ИИ, как правило, не подлежат возврату, так как
@@ -44,36 +57,58 @@ export default function RefundPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white">3. Порядок подачи обращения</h2>
             <p>
-              Для подачи жалобы или запроса на возврат перейдите на{" "}
-              <Link href="/support" className="text-wd-secondary underline hover:text-white">
-                страницу поддержки
-              </Link>{" "}
-              (<a href="https://newvers.ai/support" className="text-wd-secondary underline hover:text-white">
-                https://newvers.ai/support
-              </a>
-              ) и заполните форму обращения. Выберите тему «Возврат средств» и укажите:
+              <strong className="text-white">Для возврата средств необходимо:</strong>
             </p>
-            <ul className="list-disc space-y-2 pl-5">
-              <li>email аккаунта в NewVerse;</li>
-              <li>дату и сумму платежа;</li>
-              <li>идентификатор платежа (если есть);</li>
-              <li>описание проблемы и приложенные подтверждающие материалы (скриншоты, чеки).</li>
-            </ul>
+            <ol className="list-decimal space-y-2 pl-5">
+              <li>
+                Направить письменное заявление на электронную почту{" "}
+                <a
+                  href="mailto:mrcheleng87@gmail.com"
+                  className="text-wd-secondary underline hover:text-white"
+                >
+                  mrcheleng87@gmail.com
+                </a>{" "}
+                или через{" "}
+                <Link href="/support" className="text-wd-secondary underline hover:text-white">
+                  страницу поддержки
+                </Link>
+                .
+              </li>
+              <li>
+                В заявлении указать: ФИО, email пользователя, дату и сумму платежа, причину
+                возврата.
+              </li>
+              <li>
+                Приложить подтверждение платежа (скриншот или номер транзакции из Robokassa).
+              </li>
+            </ol>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-bold text-white">4. Срок рассмотрения</h2>
+            <h2 className="text-lg font-bold text-white">4. Срок рассмотрения и возврата</h2>
             <p>
-              Обращения рассматриваются в течение <strong className="text-white">10 рабочих дней</strong>{" "}
-              с момента получения полного комплекта информации. О результатах рассмотрения мы
-              сообщим на указанный вами email.
+              Срок рассмотрения заявления –{" "}
+              <strong className="text-white">10 рабочих дней</strong>. Возврат осуществляется на ту
+              же карту или счёт, с которого был произведён платёж, в течение 5 рабочих дней после
+              принятия решения.
+            </p>
+            <p>
+              <span className="text-red-400">Важно:</span> возврат производится в полном объёме,
+              без удержания комиссии платёжного сервиса.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-lg font-bold text-white">5. Контакты</h2>
             <p>
-              Обращения принимаются через{" "}
+              Обращения принимаются на{" "}
+              <a
+                href="mailto:mrcheleng87@gmail.com"
+                className="text-wd-secondary underline hover:text-white"
+              >
+                mrcheleng87@gmail.com
+              </a>{" "}
+              и через{" "}
               <Link href="/support" className="text-wd-secondary underline hover:text-white">
                 страницу поддержки
               </Link>
@@ -81,6 +116,10 @@ export default function RefundPage() {
             </p>
             <p>
               Также см.{" "}
+              <Link href="/offer" className="text-wd-secondary underline hover:text-white">
+                Публичную оферту
+              </Link>{" "}
+              и{" "}
               <Link href="/terms" className="text-wd-secondary underline hover:text-white">
                 Пользовательское соглашение
               </Link>

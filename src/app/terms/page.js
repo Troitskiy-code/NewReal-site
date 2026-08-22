@@ -27,6 +27,13 @@ export default function TermsPage() {
               функционалу NewVerse на условиях настоящего Соглашения. Используя сервис, вы
               подтверждаете, что ознакомились с Соглашением и принимаете его условия.
             </p>
+            <p>
+              Все условия оказания услуг регулируются{" "}
+              <Link href="/offer" className="text-wd-secondary underline hover:text-white">
+                публичной офертой
+              </Link>
+              .
+            </p>
           </section>
 
           <section className="space-y-3">
