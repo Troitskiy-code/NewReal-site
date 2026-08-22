@@ -28,7 +28,30 @@ export async function DELETE(
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
+    const messagesToClear = await prisma.message.findMany({
+      where: {
+        characterId,
+        userId: session.user.id,
+      },
+      select: { id: true },
+    });
+
+    const messageIds = messagesToClear.map((message) => message.id);
+
+    if (messageIds.length > 0) {
+      await prisma.messageEmbedding.deleteMany({
+        where: { messageId: { in: messageIds } },
+      });
+    }
+
     const result = await prisma.message.deleteMany({
+      where: {
+        characterId,
+        userId: session.user.id,
+      },
+    });
+
+    await prisma.memory.deleteMany({
       where: {
         characterId,
         userId: session.user.id,

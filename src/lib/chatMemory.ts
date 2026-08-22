@@ -6,7 +6,9 @@ import { getContextTokenLimit } from "@/lib/chatEconomy";
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
 const MEMORY_TOKEN_THRESHOLD_RATIO = 0.5;
-const MESSAGES_TO_SUMMARIZE = 20;
+const KEEP_RECENT_MESSAGES = 25;
+const MEMORY_REFRESH_MESSAGE_THRESHOLD = 20;
+const MEMORY_REFRESH_TOKEN_THRESHOLD = 2000;
 
 const SUMMARY_PROMPT =
   "Сделай краткую выжимку этого диалога (5–7 предложений), сохранив ключевые детали: тему разговора, важные события, эмоциональный фон.";
@@ -64,6 +66,42 @@ async function requestSummary(apiKey: string, dialogText: string): Promise<strin
   return summary;
 }
 
+function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
+  if (messages.length <= KEEP_RECENT_MESSAGES) {
+    return [];
+  }
+
+  return messages.slice(0, messages.length - KEEP_RECENT_MESSAGES);
+}
+
+async function saveMemorySummary(
+  userId: string,
+  characterId: string,
+  apiKey: string,
+  messagesToSummarize: DialogMessage[]
+): Promise<string | null> {
+  if (messagesToSummarize.length === 0) {
+    return null;
+  }
+
+  const dialogText = formatDialogForSummary(messagesToSummarize);
+  const summary = await requestSummary(apiKey, dialogText);
+
+  await prisma.memory.deleteMany({
+    where: { userId, characterId },
+  });
+
+  await prisma.memory.create({
+    data: {
+      userId,
+      characterId,
+      summary,
+    },
+  });
+
+  return summary;
+}
+
 export async function resolveChatMemorySummary(
   userId: string,
   characterId: string,
@@ -82,22 +120,38 @@ export async function resolveChatMemorySummary(
         characterId,
       },
     },
-    select: { summary: true },
+    select: { summary: true, createdAt: true },
   });
-
-  if (existingMemory) {
-    console.log(`🧠 Используется сохранённая суммаризация для user=${userId}, character=${characterId}`);
-    return existingMemory.summary;
-  }
-
-  const threshold = Math.floor(maxContextTokens * MEMORY_TOKEN_THRESHOLD_RATIO);
 
   const allMessages = await prisma.message.findMany({
     where: { userId, characterId },
     orderBy: { createdAt: "asc" },
-    select: { role: true, content: true },
+    select: { role: true, content: true, createdAt: true },
   });
 
+  if (existingMemory) {
+    const newMessages = allMessages.filter((message) => message.createdAt > existingMemory.createdAt);
+    const newTokens = newMessages.reduce((sum, message) => sum + countTokens(message.content), 0);
+    const shouldRefresh =
+      newMessages.length > MEMORY_REFRESH_MESSAGE_THRESHOLD ||
+      newTokens > MEMORY_REFRESH_TOKEN_THRESHOLD;
+
+    if (!shouldRefresh) {
+      console.log(`🧠 Используется сохранённая суммаризация для user=${userId}, character=${characterId}`);
+      return existingMemory.summary;
+    }
+
+    const historyToSummarize = getHistoryForSummary(allMessages);
+    if (historyToSummarize.length === 0) {
+      return existingMemory.summary;
+    }
+
+    const summary = await saveMemorySummary(userId, characterId, apiKey, historyToSummarize);
+    console.log(`🔄 Суммаризация обновлена (добавлено ${newMessages.length} новых сообщений)`);
+    return summary ?? existingMemory.summary;
+  }
+
+  const threshold = Math.floor(maxContextTokens * MEMORY_TOKEN_THRESHOLD_RATIO);
   const totalTokens = allMessages.reduce((sum, message) => sum + countTokens(message.content), 0);
 
   if (totalTokens <= threshold) {
@@ -105,28 +159,17 @@ export async function resolveChatMemorySummary(
     return null;
   }
 
-  const oldestMessages = allMessages.slice(0, MESSAGES_TO_SUMMARIZE);
-
-  if (oldestMessages.length === 0) {
+  const historyToSummarize = getHistoryForSummary(allMessages);
+  if (historyToSummarize.length === 0) {
     return null;
   }
 
   console.log(
-    `🧠 Создание суммаризации: ${oldestMessages.length} старых сообщений (${totalTokens} токенов, порог ${threshold})`
+    `🧠 Создание суммаризации: ${historyToSummarize.length} старых сообщений (${totalTokens} токенов, порог ${threshold})`
   );
 
-  const dialogText = formatDialogForSummary(oldestMessages);
-  const summary = await requestSummary(apiKey, dialogText);
-
-  await prisma.memory.create({
-    data: {
-      userId,
-      characterId,
-      summary,
-    },
-  });
-
-  console.log(`🧠 Суммаризация сохранена (${oldestMessages.length} сообщений в выжимке, сообщения в БД сохранены)`);
+  const summary = await saveMemorySummary(userId, characterId, apiKey, historyToSummarize);
+  console.log(`🧠 Суммаризация сохранена (${historyToSummarize.length} сообщений в выжимке, сообщения в БД сохранены)`);
 
   return summary;
 }
