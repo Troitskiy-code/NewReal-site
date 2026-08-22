@@ -873,7 +873,14 @@ export default function ChatPage() {
     try {
       const { data } = await axios.post(`/api/chat/${characterId}`, { continue: true });
       updateBalanceFromResponse(data);
-      setMessages((prev) => [...prev, data.assistantMessage]);
+      setMessages((prev) => {
+        const incoming = data.assistantMessage;
+        if (!incoming?.id) return prev;
+        if (prev.some((msg) => msg.id === incoming.id)) {
+          return prev.map((msg) => (msg.id === incoming.id ? incoming : msg));
+        }
+        return [...prev, incoming];
+      });
       toast.success("Ответ продолжен");
     } catch (error) {
       handleApiError(error, "Не удалось продолжить ответ");

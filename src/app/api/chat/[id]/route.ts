@@ -11,6 +11,7 @@ import {
   prepareChatMessages,
   resolveChatContext,
   isAssistantMessageCutOff,
+  mergeAssistantContinuation,
 } from "@/lib/chatHelpers";
 import {
   calculateRequestCost,
@@ -119,12 +120,13 @@ export async function POST(
 
     let greetingMessage = null;
     let userMessage = null;
+    let lastAssistant = null;
     let ragQueryText: string | undefined;
     let excludeMessageId: string | undefined;
     let continueCutOff = false;
 
     if (continueChat) {
-      const lastAssistant = await prisma.message.findFirst({
+      lastAssistant = await prisma.message.findFirst({
         where: {
           characterId: id,
           userId: session.user.id,
@@ -139,6 +141,9 @@ export async function POST(
 
       continueCutOff = isAssistantMessageCutOff(lastAssistant.content);
       console.log(`📌 Обрыв обнаружен: ${continueCutOff ? "да" : "нет"}`);
+      if (continueCutOff) {
+        console.log(`📌 Продолжение текста: ${lastAssistant.content.slice(-100)}...`);
+      }
       ragQueryText = lastAssistant.content;
     } else {
       const existingMessagesCount = await prisma.message.count({
@@ -190,6 +195,7 @@ export async function POST(
       excludeMessageId,
       continueMode: continueChat,
       continueCutOff,
+      continueSourceText: lastAssistant?.content,
     });
 
     const assistantReply = await callChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
@@ -202,17 +208,25 @@ export async function POST(
       modelDisplayName: model.displayName,
     });
 
-    const assistantMessage = await prisma.message.create({
-      data: {
-        characterId: id,
-        chatId: id,
-        userId: session.user.id,
-        role: "assistant",
-        content: assistantReply,
-      },
-    });
+    const assistantMessage =
+      continueChat && continueCutOff && lastAssistant
+        ? await prisma.message.update({
+            where: { id: lastAssistant.id },
+            data: {
+              content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
+            },
+          })
+        : await prisma.message.create({
+            data: {
+              characterId: id,
+              chatId: id,
+              userId: session.user.id,
+              role: "assistant",
+              content: assistantReply,
+            },
+          });
 
-    scheduleMessageEmbedding(assistantMessage.id, assistantReply, KODIKROUTER_KEY, persistEmbeddings);
+    scheduleMessageEmbedding(assistantMessage.id, assistantMessage.content, KODIKROUTER_KEY, persistEmbeddings);
 
     return NextResponse.json(
       buildChatResponsePayload({

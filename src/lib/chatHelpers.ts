@@ -149,22 +149,113 @@ type PrepareChatMessagesOptions = {
   excludeMessageId?: string;
   continueMode?: boolean;
   continueCutOff?: boolean;
+  continueSourceText?: string;
   historyBeforeMessageId?: string;
 };
 
-const CUT_OFF_INDICATORS = [
-  /[«"„][^«"“»"]*$/,
-  /(и|но|потому что|чтобы|так как|если|когда|хотя|пока|будто|словно)\s*$/i,
-  /[,;:]\s*$/,
-  /\(\s*$/,
-  /—\s*$/,
-  /\.\.\.\s*$/,
+const CUT_OFF_CONJUNCTIONS = [
+  "несмотря на",
+  "в отличие от",
+  "в связи с",
+  "в результате",
+  "в продолжение",
+  "в заключение",
+  "по прошествии",
+  "на основании",
+  "при помощи",
+  "с помощью",
+  "начиная с",
+  "по причине",
+  "в течение",
+  "за счёт",
+  "по мере",
+  "из-за",
+  "благодаря",
+  "посредством",
+  "потому что",
+  "так как",
+  "ввиду",
+  "в силу",
+  "сквозь",
+  "вдоль",
+  "напротив",
+  "возле",
+  "около",
+  "подле",
+  "среди",
+  "между",
+  "вокруг",
+  "мимо",
+  "кроме",
+  "включая",
+  "исключая",
+  "кончая",
+  "спустя",
+  "чтобы",
+  "когда",
+  "хотя",
+  "пока",
+  "будто",
+  "словно",
+  "через",
+  "если",
+  "и",
+  "но",
 ];
+
+const CUT_OFF_CONJUNCTION_RE = new RegExp(
+  `(?:^|\\s)(?:${CUT_OFF_CONJUNCTIONS.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\s*$`,
+  "i"
+);
+
+function hasUnclosedQuotes(text: string): boolean {
+  const guillemetOpen = (text.match(/«/g) ?? []).length;
+  const guillemetClose = (text.match(/»/g) ?? []).length;
+  if (guillemetOpen > guillemetClose) return true;
+
+  const lowOpen = (text.match(/„/g) ?? []).length;
+  const lowClose = (text.match(/[“”]/g) ?? []).length;
+  if (lowOpen > lowClose) return true;
+
+  return ((text.match(/"/g) ?? []).length) % 2 === 1;
+}
+
+function hasUnclosedParens(text: string): boolean {
+  const open = (text.match(/\(/g) ?? []).length;
+  const close = (text.match(/\)/g) ?? []).length;
+  return open > close;
+}
 
 export function isAssistantMessageCutOff(content: string | null | undefined): boolean {
   const text = content?.trim() ?? "";
   if (!text) return false;
-  return CUT_OFF_INDICATORS.some((pattern) => pattern.test(text));
+
+  if (/\.\.\.\s*$/.test(text) || /…\s*$/.test(text)) {
+    return true;
+  }
+
+  if (/[.!?][»"”']?\s*$/.test(text)) {
+    return false;
+  }
+
+  return (
+    hasUnclosedQuotes(text) ||
+    hasUnclosedParens(text) ||
+    CUT_OFF_CONJUNCTION_RE.test(text) ||
+    /[,;:]\s*$/.test(text) ||
+    /[—–-]\s*$/.test(text) ||
+    /[«"„][^«"“»"]*$/.test(text) ||
+    !/[.!?…]\s*$/.test(text)
+  );
+}
+
+export function mergeAssistantContinuation(original: string, continuation: string): string {
+  const left = original.trimEnd();
+  const right = continuation.trim();
+  if (!right) return left;
+
+  const needsSpace = !/\s$/.test(left) && !/^[.,!?;:—…)»"”']/.test(right);
+  return needsSpace ? `${left} ${right}` : `${left}${right}`;
 }
 
 export async function prepareChatMessages({
@@ -177,6 +268,7 @@ export async function prepareChatMessages({
   excludeMessageId,
   continueMode = false,
   continueCutOff = false,
+  continueSourceText,
   historyBeforeMessageId,
 }: PrepareChatMessagesOptions) {
   const subscriptionActive = isSubscriptionActive(user);
@@ -193,8 +285,12 @@ export async function prepareChatMessages({
   let systemPrompt = appendMemoryToSystemPrompt(buildChatSystemPrompt(character), memorySummary);
 
   if (continueMode) {
-    if (continueCutOff) {
-      systemPrompt = `${systemPrompt}\n\nВнимание: предыдущее сообщение было оборвано. Продолжи ровно с того места, где остановился, не пересказывай и не начинай заново.`;
+    if (continueCutOff && continueSourceText?.trim()) {
+      systemPrompt = `Внимание: ты должен продолжить предыдущее сообщение ассистента, которое было оборвано. Вот текст, который нужно продолжить:
+«${continueSourceText.trim()}»
+Продолжи ровно с того места, где остановился, не повторяй предыдущее, не начинай заново. Просто допиши недостающую часть.
+
+${systemPrompt}`;
     } else {
       systemPrompt = `${systemPrompt}\n\nПродолжи ответ с того места, где остановился.`;
     }
