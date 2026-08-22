@@ -148,8 +148,24 @@ type PrepareChatMessagesOptions = {
   ragQueryText?: string;
   excludeMessageId?: string;
   continueMode?: boolean;
+  continueCutOff?: boolean;
   historyBeforeMessageId?: string;
 };
+
+const CUT_OFF_INDICATORS = [
+  /[«"„][^«"“»"]*$/,
+  /(и|но|потому что|чтобы|так как|если|когда|хотя|пока|будто|словно)\s*$/i,
+  /[,;:]\s*$/,
+  /\(\s*$/,
+  /—\s*$/,
+  /\.\.\.\s*$/,
+];
+
+export function isAssistantMessageCutOff(content: string | null | undefined): boolean {
+  const text = content?.trim() ?? "";
+  if (!text) return false;
+  return CUT_OFF_INDICATORS.some((pattern) => pattern.test(text));
+}
 
 export async function prepareChatMessages({
   userId,
@@ -160,6 +176,7 @@ export async function prepareChatMessages({
   ragQueryText,
   excludeMessageId,
   continueMode = false,
+  continueCutOff = false,
   historyBeforeMessageId,
 }: PrepareChatMessagesOptions) {
   const subscriptionActive = isSubscriptionActive(user);
@@ -176,7 +193,11 @@ export async function prepareChatMessages({
   let systemPrompt = appendMemoryToSystemPrompt(buildChatSystemPrompt(character), memorySummary);
 
   if (continueMode) {
-    systemPrompt = `${systemPrompt}\n\nПродолжи ответ с того места, где остановился.`;
+    if (continueCutOff) {
+      systemPrompt = `${systemPrompt}\n\nВнимание: предыдущее сообщение было оборвано. Продолжи ровно с того места, где остановился, не пересказывай и не начинай заново.`;
+    } else {
+      systemPrompt = `${systemPrompt}\n\nПродолжи ответ с того места, где остановился.`;
+    }
   }
 
   if (universeRag && ragQueryText) {

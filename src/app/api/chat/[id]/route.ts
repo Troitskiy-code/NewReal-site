@@ -10,6 +10,7 @@ import {
   chargeForChatRequest,
   prepareChatMessages,
   resolveChatContext,
+  isAssistantMessageCutOff,
 } from "@/lib/chatHelpers";
 import {
   calculateRequestCost,
@@ -120,6 +121,7 @@ export async function POST(
     let userMessage = null;
     let ragQueryText: string | undefined;
     let excludeMessageId: string | undefined;
+    let continueCutOff = false;
 
     if (continueChat) {
       const lastAssistant = await prisma.message.findFirst({
@@ -135,6 +137,8 @@ export async function POST(
         return NextResponse.json({ error: "Нет сообщения ассистента для продолжения" }, { status: 400 });
       }
 
+      continueCutOff = isAssistantMessageCutOff(lastAssistant.content);
+      console.log(`📌 Обрыв обнаружен: ${continueCutOff ? "да" : "нет"}`);
       ragQueryText = lastAssistant.content;
     } else {
       const existingMessagesCount = await prisma.message.count({
@@ -185,6 +189,7 @@ export async function POST(
       ragQueryText,
       excludeMessageId,
       continueMode: continueChat,
+      continueCutOff,
     });
 
     const assistantReply = await callChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
