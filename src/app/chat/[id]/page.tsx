@@ -349,7 +349,7 @@ function ChatMessageItem({
 
   return (
     <div
-      className={`flex w-full max-w-[85%] flex-col gap-0.5 md:max-w-[75%] ${
+      className={`flex w-full max-w-[90%] flex-col gap-0.5 md:max-w-[85%] ${
         isUser ? "ml-auto items-end" : "items-start"
       }`}
     >
@@ -1065,7 +1065,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`relative flex min-h-dvh max-w-full flex-col overflow-x-hidden text-primary-text ${
+      className={`relative flex h-dvh max-w-full flex-col overflow-hidden text-primary-text ${
         character?.imageUrl ? "" : "bg-bg-page"
       }`}
       style={{
@@ -1078,7 +1078,7 @@ export default function ChatPage() {
       {character?.imageUrl && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
       )}
-      <div className="relative z-10 flex min-h-0 max-w-full flex-1 flex-col overflow-x-hidden">
+      <div className="relative z-10 flex h-full min-h-0 max-w-full flex-1 flex-col overflow-hidden">
         <Toaster position="top-right" />
 
         <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
@@ -1167,8 +1167,8 @@ export default function ChatPage() {
           />
         </aside>
 
-        <main className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-x-hidden px-2 pb-2 pt-[4.5rem] md:px-0 md:pb-6 md:pl-48 md:pr-16 md:pt-20">
-          <div className="mx-auto flex min-h-[240px] w-full max-w-full flex-1 flex-col space-y-2 overflow-y-auto overflow-x-hidden px-2 py-4 md:max-w-3xl md:space-y-4 md:px-4 md:py-6">
+        <main className="flex h-full min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden px-2 pt-[4.5rem] md:px-0 md:pl-48 md:pr-16 md:pt-20">
+          <div className="mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col space-y-2 overflow-y-auto overflow-x-hidden px-2 py-4 pb-24 md:max-w-3xl md:space-y-4 md:px-4 md:py-6">
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!
@@ -1204,26 +1204,28 @@ export default function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <form
-            onSubmit={sendMessage}
-            className="sticky bottom-0 z-10 mx-auto flex w-full max-w-full shrink-0 flex-col gap-2 border-t border-divider/40 bg-[#121212]/85 px-2 py-3 backdrop-blur-sm sm:flex-row md:max-w-3xl md:bg-transparent md:px-4 md:py-4 md:backdrop-blur-none"
-          >
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Напишите сообщение..."
-              className="min-h-[44px] w-full min-w-0 flex-1 rounded-full border border-divider bg-bg-card px-4 py-2 text-sm outline-none transition-colors focus:border-primary/60"
-              disabled={sending || actionLoading || clearingChat}
-            />
-            <button
-              type="submit"
-              disabled={!canSend}
-              className="min-h-[44px] w-full shrink-0 rounded-full bg-primary px-6 py-2 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
+          <div className="sticky bottom-0 z-10 shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-2 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.45)] md:px-4 md:py-4">
+            <form
+              onSubmit={sendMessage}
+              className="mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row"
             >
-              Отправить
-            </button>
-          </form>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Напишите сообщение..."
+                className="min-h-[44px] w-full min-w-0 flex-1 rounded-full border border-divider bg-bg-card px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/60"
+                disabled={sending || actionLoading || clearingChat}
+              />
+              <button
+                type="submit"
+                disabled={!canSend}
+                className="min-h-[44px] w-full shrink-0 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
+              >
+                Отправить
+              </button>
+            </form>
+          </div>
         </main>
       </div>
     </div>
