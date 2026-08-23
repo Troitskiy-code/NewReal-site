@@ -370,7 +370,9 @@ function ChatMessageItem({
       {isEditing ? (
         <div
           className={`w-full min-w-[220px] rounded-lg border p-3 ${
-            isUser ? "border-[#9C27B0]/70 bg-black" : "border-[#6C63FF]/40 bg-[#1A1A1A]"
+            isUser
+              ? "border-[#9C27B0]/70 bg-black/50 text-white backdrop-blur-sm"
+              : "border-[#6C63FF]/40 bg-black/40 text-white backdrop-blur-sm"
           }`}
         >
           <textarea
@@ -403,8 +405,8 @@ function ChatMessageItem({
         <div
           className={`w-full break-words rounded-lg border px-4 py-2 text-sm ${
             isUser
-              ? "border-[#9C27B0]/70 bg-black text-white"
-              : "border-[#6C63FF]/40 bg-[#1A1A1A] text-white"
+              ? "border-[#9C27B0]/70 bg-black/50 text-white backdrop-blur-sm"
+              : "border-[#6C63FF]/40 bg-black/40 text-white backdrop-blur-sm"
           }`}
           dangerouslySetInnerHTML={{
             __html: formatMessageContent(message.content),
@@ -1203,7 +1205,7 @@ export default function ChatPage() {
             )}
             {sending && (
               <div className="flex justify-start">
-                <div className="rounded-lg border border-divider/40 bg-bg-card px-3 py-2 text-sm text-secondary-text md:px-4">
+                <div className="rounded-lg border border-divider/40 bg-black/40 px-3 py-2 text-sm text-gray-100 backdrop-blur-sm md:px-4">
                   <span className="animate-pulse">Печатает...</span>
                 </div>
               </div>
