@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "preinstall": "node prisma/preinstall.cjs",
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/prisma-generate.cjs && next build",
     "start": "next start",
     "lint": "eslint",
     "verify:economy": "node --experimental-strip-types scripts/verify-economy.ts"
