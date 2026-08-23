@@ -3,7 +3,6 @@
  * Запуск: node --experimental-strip-types scripts/verify-economy.ts
  */
 import {
-  BASE_MODEL_COST_VC,
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
   getDailyLimitWarning,
@@ -69,7 +68,7 @@ console.log("\n1. Пользователь без подписки");
 {
   const user = makeUser();
   const baseCost = calculateRequestCost(user, baseModel, baseModel);
-  assert(baseCost.ok === true && baseCost.costVC === BASE_MODEL_COST_VC, "базовая модель: 2 VC");
+  assert(baseCost.ok === true && baseCost.costVC === 4, "базовая модель: 4 VC");
 
   const paidCost = calculateRequestCost(user, paidModel, baseModel);
   assert(paidCost.ok === true && paidCost.costVC === 15, "платная модель доступна по priceVC");
@@ -82,8 +81,8 @@ console.log("\n2. Подписка «Диалог»");
     subscriptionEnd: new Date("2026-09-01"),
   });
 
-  const baseFree = calculateRequestCost(user, baseModel, baseModel);
-  assert(baseFree.ok === true && baseFree.costVC === 0, "базовая модель бесплатна");
+  const basePaid = calculateRequestCost(user, baseModel, baseModel);
+  assert(basePaid.ok === true && basePaid.costVC === 4, "базовая модель платная и с подпиской");
 
   const paidCost = calculateRequestCost(user, paidModel, baseModel);
   assert(paidCost.ok === true && paidCost.costVC === 15, "платная модель по priceVC");

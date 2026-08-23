@@ -88,7 +88,7 @@ export function trimMessagesToTokenLimit(
 export async function getOrCreateBaseModel(): Promise<EconomyModel> {
   let baseModel = await prisma.model.findFirst({
     where: { isActive: true },
-    orderBy: { priceVC: "asc" },
+    orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }],
     select: modelSelect,
   });
 

@@ -73,17 +73,10 @@ export function isBaseModel(model: EconomyModel, baseModel: EconomyModel): boole
 }
 
 export function getEffectiveModelPriceVC(
-  user: Pick<EconomyUser, "subscriptionType" | "subscriptionEnd">,
+  _user: Pick<EconomyUser, "subscriptionType" | "subscriptionEnd">,
   model: EconomyModel,
-  baseModel: EconomyModel
+  _baseModel: EconomyModel
 ): number {
-  const subscribed = isSubscriptionActive(user);
-  const base = isBaseModel(model, baseModel);
-
-  if (base) {
-    return subscribed ? 0 : BASE_MODEL_COST_VC;
-  }
-
   return Math.max(0, model.priceVC);
 }
 

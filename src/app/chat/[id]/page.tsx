@@ -14,15 +14,15 @@ import {
 } from "@/lib/verseChatEconomy";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
-  "Gemma 4 31B": "Базовая модель с малым контекстом 4K. Экономный выбор для простых диалогов.",
-  "DeepSeek V4 Flash": "Быстрая модель для динамичных историй. Контекст 6K.",
-  "Minimax M2.7": "Сбалансированная модель для ролевых игр.",
-  "Mistral Medium 3.1": "Глубокий контекст 8K, хорошее понимание диалогов.",
-  "Gemini 3 Flash": "Мощная модель с контекстом 8K, отличная для сложных сюжетов.",
-  "GLM 5": "Китайская модель, сильная логика и контекст 8K.",
-  "GLM 5.1": "Улучшенная версия GLM, контекст 8K.",
-  "Grok 4.20": "12K контекста, мощная модель для экспертных задач.",
-  "Claude Haiku 4.5": "12K контекста, максимальная логика и качество ответов.",
+  "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
+  "Gemma 4 31B": "Лёгкий старт, приятный слог, отличный русский язык.",
+  "Mistral Small 4": "Хороший баланс цены и качества, живые диалоги.",
+  "Gemini 2.5 Flash": "Креативная, для нестандартных сюжетов и идей.",
+  "Llama 3.3 70B": "Ролевые игры и творческие диалоги. Держит характер, стабильный стиль.",
+  "Claude Haiku 4.5": "Надёжный стиль, сильное мышление, без «воды».",
+  "Grok 4.20": "Максимальная реалистичность, минимум галлюцинаций.",
+  "Gemini 2.5 Pro": "Глубокое понимание контекста, построение миров.",
+  "Mistral Large 2": "Сложные рассуждения, профессиональные сценарии.",
 };
 
 type Message = {
@@ -612,11 +612,8 @@ function ModelSettingsList({
                   <span className="truncate text-base font-bold text-white md:text-lg">
                     {model.displayName}
                   </span>
-                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <div className="flex shrink-0 items-end">
                     <span className="text-sm text-gray-400">{priceLabel}</span>
-                    <span className="text-xs text-gray-500">
-                      {model.maxContextTokens / 1000}K токенов
-                    </span>
                   </div>
                 </div>
               </div>

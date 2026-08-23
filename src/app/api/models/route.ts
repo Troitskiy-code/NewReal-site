@@ -10,7 +10,7 @@ export async function GET() {
 
     const models = await prisma.model.findMany({
       where: { isActive: true },
-      orderBy: { priceVC: "asc" },
+      orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
         name: true,
