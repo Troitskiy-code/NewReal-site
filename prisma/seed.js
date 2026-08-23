@@ -2,15 +2,15 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const models = [
-  { name: "google/gemma-4-31b-it", displayName: "Gemma 4 31B", priceVC: 4, maxContextTokens: 12000, description: "Базовая модель с контекстом 12K. Экономный выбор для простых диалогов." },
-  { name: "deepseek/deepseek-v4-flash", displayName: "DeepSeek V4 Flash", priceVC: 8, maxContextTokens: 12000, description: "Быстрая модель для динамичных историй. Контекст 12K." },
-  { name: "minimax/minimax-m2.7", displayName: "Minimax M2.7", priceVC: 12, maxContextTokens: 12000, description: "Сбалансированная модель для ролевых игр." },
-  { name: "mistralai/mistral-medium-3.1", displayName: "Mistral Medium 3.1", priceVC: 22, maxContextTokens: 12000, description: "Глубокий контекст 12K, хорошее понимание диалогов." },
-  { name: "google/gemini-3-flash-preview", displayName: "Gemini 3 Flash", priceVC: 30, maxContextTokens: 12000, description: "Мощная модель с контекстом 12K, отличная для сложных сюжетов." },
-  { name: "z-ai/glm-5", displayName: "GLM 5", priceVC: 30, maxContextTokens: 12000, description: "Китайская модель, сильная логика и контекст 12K." },
-  { name: "z-ai/glm-5.1", displayName: "GLM 5.1", priceVC: 34, maxContextTokens: 12000, description: "Улучшенная версия GLM, контекст 12K." },
-  { name: "x-ai/grok-4.20", displayName: "Grok 4.20", priceVC: 60, maxContextTokens: 12000, description: "12K контекста, мощная модель для экспертных задач." },
-  { name: "anthropic/claude-haiku-4.5", displayName: "Claude Haiku 4.5", priceVC: 70, maxContextTokens: 12000, description: "12K контекста, максимальная логика и качество ответов." },
+  { name: "deepseek/deepseek-v4-flash", displayName: "DeepSeek V4 Flash", priceVC: 4, maxContextTokens: 12000, description: "Самая быстрая модель для длинных динамичных переписок." },
+  { name: "google/gemma-4-31b-it", displayName: "Gemma 4 31B", priceVC: 4, maxContextTokens: 12000, description: "Лёгкий старт, приятный слог, отличный русский язык." },
+  { name: "mistralai/mistral-small-4", displayName: "Mistral Small 4", priceVC: 5, maxContextTokens: 12000, description: "Хороший баланс цены и качества, живые диалоги." },
+  { name: "google/gemini-2.5-flash", displayName: "Gemini 2.5 Flash", priceVC: 12, maxContextTokens: 12000, description: "Креативная, для нестандартных сюжетов и идей." },
+  { name: "deepseek/deepseek-v4-pro", displayName: "DeepSeek V4 Pro", priceVC: 13, maxContextTokens: 12000, description: "Эмоциональная, держит контекст – для ролевых игр." },
+  { name: "anthropic/claude-haiku-4.5", displayName: "Claude Haiku 4.5", priceVC: 34, maxContextTokens: 12000, description: "Надёжный стиль, сильное мышление, без «воды»." },
+  { name: "x-ai/grok-4.20", displayName: "Grok 4.20", priceVC: 36, maxContextTokens: 12000, description: "Максимальная реалистичность, минимум галлюцинаций." },
+  { name: "google/gemini-2.5-pro", displayName: "Gemini 2.5 Pro", priceVC: 50, maxContextTokens: 12000, description: "Глубокое понимание контекста, построение миров." },
+  { name: "mistralai/mistral-large-2", displayName: "Mistral Large 2", priceVC: 63, maxContextTokens: 12000, description: "Сложные рассуждения, профессиональные сценарии." },
 ];
 
 async function main() {
