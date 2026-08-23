@@ -7,6 +7,7 @@ import {
   buildChatResponsePayload,
   callChatCompletion,
   chargeForChatRequest,
+  logActionOptionsIfPresent,
   prepareChatMessages,
   resolveChatContext,
 } from "@/lib/chatHelpers";
@@ -152,6 +153,7 @@ export async function POST(
     });
 
     const assistantReply = await callChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+    logActionOptionsIfPresent(assistantReply);
 
     const charge = await chargeForChatRequest({
       userId: session.user.id,

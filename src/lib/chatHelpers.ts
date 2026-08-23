@@ -251,6 +251,22 @@ export function isAssistantMessageCutOff(content: string | null | undefined): bo
   );
 }
 
+export function replyHasActionOptions(content: string | null | undefined): boolean {
+  const text = content?.trim() ?? "";
+  if (!text) return false;
+
+  const listed = (text.match(/^\s*(?:\d+[\).]|[-•*])\s+\S+/gm) ?? []).length;
+  if (listed >= 3) return true;
+
+  return /(?:варианты|ты можешь|можешь выбрать|что делать)/i.test(text) && listed >= 2;
+}
+
+export function logActionOptionsIfPresent(content: string | null | undefined): void {
+  if (replyHasActionOptions(content)) {
+    console.log("📋 Предложены варианты действий");
+  }
+}
+
 export function mergeAssistantContinuation(original: string, continuation: string): string {
   const left = original.trimEnd();
   const right = continuation.trim();
