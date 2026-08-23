@@ -7,8 +7,10 @@ import {
   appendRagToSystemPrompt,
   formatRagContext,
   isUniverseRagEligible,
+  RAG_HISTORY_TOKEN_THRESHOLD,
   searchRelevantMessages,
 } from "@/lib/messageEmbeddings";
+import { appendRandomEventToPrompt, pickRandomSceneEvent } from "@/lib/randomEvent";
 import {
   DAILY_REQUEST_LIMIT,
   getContextTokenLimit,
@@ -296,19 +298,11 @@ ${systemPrompt}`;
     }
   }
 
-  if (universeRag && ragQueryText) {
-    try {
-      const ragMessages = await searchRelevantMessages(
-        userId,
-        characterId,
-        ragQueryText,
-        apiKey,
-        excludeMessageId
-      );
-      console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
-      systemPrompt = appendRagToSystemPrompt(systemPrompt, formatRagContext(ragMessages));
-    } catch (ragError) {
-      console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
+  if (!continueCutOff) {
+    const randomEvent = pickRandomSceneEvent();
+    if (randomEvent) {
+      systemPrompt = appendRandomEventToPrompt(systemPrompt, randomEvent);
+      console.log(`🎲 Случайное событие: ${randomEvent}`);
     }
   }
 
@@ -346,6 +340,32 @@ ${systemPrompt}`;
     historyRows = historyRows.reverse();
   }
 
+  const totalHistoryTokens = historyRows.reduce((sum, msg) => sum + countTokens(msg.content), 0);
+  let ragUsed = false;
+
+  if (universeRag && ragQueryText) {
+    if (totalHistoryTokens > RAG_HISTORY_TOKEN_THRESHOLD) {
+      try {
+        const ragMessages = await searchRelevantMessages(
+          userId,
+          characterId,
+          ragQueryText,
+          apiKey,
+          excludeMessageId
+        );
+        console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
+        systemPrompt = appendRagToSystemPrompt(systemPrompt, formatRagContext(ragMessages));
+        ragUsed = ragMessages.length > 0;
+      } catch (ragError) {
+        console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
+      }
+    } else {
+      console.log(
+        `🔍 RAG: пропущен (история слишком короткая: ${totalHistoryTokens} токенов)`
+      );
+    }
+  }
+
   console.log(
     `📚 Загружено ${historyRows.length} сообщений для подписки ${subscriptionLogType} (лимит: ${historyLimit}, контекст: ${maxContextTokens})`
   );
@@ -364,7 +384,7 @@ ${systemPrompt}`;
   );
 
   console.log(
-    `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens}, лимит: ${maxContextTokens})${memorySummary ? ", с предысторией" : ""}${universeRag ? ", RAG" : ""}${continueMode ? ", continue" : ""}`
+    `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens}, лимит: ${maxContextTokens})${memorySummary ? ", с предысторией" : ""}${ragUsed ? ", RAG" : ""}${continueMode ? ", continue" : ""}`
   );
 
   return {

@@ -6,6 +6,7 @@ const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;
 const RAG_TOP_K = 5;
 const RAG_MIN_SIMILARITY = 0.25;
+export const RAG_HISTORY_TOKEN_THRESHOLD = 5000;
 
 export const MESSAGE_EMBEDDINGS_ENABLED =
   process.env.ENABLE_RAG_EMBEDDINGS === "true";
