@@ -9,13 +9,11 @@ import {
   FaStar,
   FaCoins,
   FaPlusCircle,
-  FaImage,
   FaHeart,
   FaQuestionCircle,
   FaUser,
   FaRegComments,
   FaRegStar,
-  FaRegImage,
   FaRegHeart,
   FaRegQuestionCircle,
 } from "react-icons/fa";
@@ -65,14 +63,6 @@ const NAV_ITEMS = [
     iconActive: FaPlusCircle,
     inactiveMuted: true,
     matchPaths: ["/create", "/edit"],
-  },
-  {
-    name: "Генератор",
-    path: "/generator",
-    iconInactive: FaRegImage,
-    iconActive: FaImage,
-    stub: true,
-    stubMessage: "Генератор скоро будет доступен",
   },
   {
     name: "Профиль",

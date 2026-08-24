@@ -253,9 +253,16 @@ export default function EditCharacterPage() {
               avatarPreview={avatarPreview}
               onAvatarChange={handleAvatarChange}
               onAvatarRemove={handleRemoveAvatar}
+              onAvatarGenerated={(url) => {
+                setAvatarFile(null);
+                setAvatarPreview(url);
+                setImageUrl(url);
+              }}
               loraPreview={loraPreview}
+              loraFile={loraFile}
               onLoraChange={handleLoraChange}
               onLoraRemove={handleRemoveLora}
+              characterId={id}
             />
 
             <div className="flex flex-col gap-4 border-t border-[#2A2A2A] pt-4 md:pt-6 sm:flex-row sm:items-center sm:justify-between">

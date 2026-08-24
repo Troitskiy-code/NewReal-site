@@ -31,6 +31,7 @@ export default function CreateCharacterPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loraFile, setLoraFile] = useState<File | null>(null);
   const [loraPreview, setLoraPreview] = useState<string | null>(null);
+  const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const updateField = <K extends keyof CharacterFormValues>(field: K, value: CharacterFormValues[K]) => {
@@ -46,6 +47,7 @@ export default function CreateCharacterPage() {
       return;
     }
     setAvatarFile(file);
+    setGeneratedAvatarUrl(null);
     setAvatarPreview(URL.createObjectURL(file));
   };
 
@@ -73,6 +75,7 @@ export default function CreateCharacterPage() {
     setAvatarPreview(null);
     setLoraFile(null);
     setLoraPreview(null);
+    setGeneratedAvatarUrl(null);
     toast.success("Черновик очищен");
   };
 
@@ -88,7 +91,7 @@ export default function CreateCharacterPage() {
     const toastId = toast.loading("Создание персонажа...");
 
     try {
-      let imageUrl: string | null = null;
+      let imageUrl: string | null = generatedAvatarUrl;
       let imageLora: string | null = null;
 
       if (avatarFile) imageUrl = await uploadImage(avatarFile);
@@ -175,8 +178,15 @@ export default function CreateCharacterPage() {
               onAvatarRemove={() => {
                 setAvatarFile(null);
                 setAvatarPreview(null);
+                setGeneratedAvatarUrl(null);
+              }}
+              onAvatarGenerated={(url) => {
+                setAvatarFile(null);
+                setAvatarPreview(url);
+                setGeneratedAvatarUrl(url);
               }}
               loraPreview={loraPreview}
+              loraFile={loraFile}
               onLoraChange={handleLoraChange}
               onLoraRemove={() => {
                 setLoraFile(null);

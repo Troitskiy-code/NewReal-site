@@ -5,7 +5,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["tiktoken"],
+  serverExternalPackages: ["tiktoken", "replicate"],
 };
 
 export default nextConfig;

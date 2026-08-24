@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { IconType } from "react-icons";
+import axios from "axios";
+import toast from "react-hot-toast";
 import {
   FaChevronDown,
   FaCog,
@@ -9,6 +11,8 @@ import {
   FaIdCard,
   FaImage,
   FaInfoCircle,
+  FaMagic,
+  FaSpinner,
   FaTags,
   FaUser,
 } from "react-icons/fa";
@@ -175,10 +179,28 @@ type CharacterFormProps = {
   avatarPreview: string | null;
   onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAvatarRemove: () => void;
+  onAvatarGenerated: (imageUrl: string) => void;
   loraPreview: string | null;
+  loraFile?: File | null;
   onLoraChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onLoraRemove: () => void;
+  characterId?: string;
 };
+
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Не удалось прочитать изображение"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function resolveReferenceImage(preview: string | null, file?: File | null): Promise<string | null> {
+  if (file) return fileToDataUrl(file);
+  if (preview && (preview.startsWith("data:") || preview.startsWith("http"))) return preview;
+  return null;
+}
 
 export default function CharacterForm({
   values,
@@ -186,11 +208,58 @@ export default function CharacterForm({
   avatarPreview,
   onAvatarChange,
   onAvatarRemove,
+  onAvatarGenerated,
   loraPreview,
+  loraFile,
   onLoraChange,
   onLoraRemove,
+  characterId,
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [generatingAvatar, setGeneratingAvatar] = useState(false);
+
+  const handleGenerateAvatar = async () => {
+    if (!values.name.trim()) {
+      toast.error("Сначала укажите имя персонажа");
+      return;
+    }
+
+    setGeneratingAvatar(true);
+    const toastId = toast.loading("Генерация аватара...");
+
+    try {
+      const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
+      const { data } = await axios.post<{ imageUrl: string }>("/api/generate-avatar", {
+        name: values.name.trim(),
+        appearance: values.appearance.trim() || undefined,
+        description: values.description.trim() || undefined,
+        scenario: values.scenario.trim() || undefined,
+        exampleDialogs: values.exampleDialogs.trim() || undefined,
+        referenceImage: referenceImage || undefined,
+      });
+
+      if (!data.imageUrl) {
+        throw new Error("Сервер не вернул изображение");
+      }
+
+      if (characterId) {
+        await axios.put(`/api/characters/${characterId}`, { imageUrl: data.imageUrl });
+      }
+
+      onAvatarGenerated(data.imageUrl);
+      toast.success("Аватар сгенерирован", { id: toastId });
+    } catch (err: unknown) {
+      const message =
+        axios.isAxiosError(err) && err.response?.data?.error
+          ? err.response.data.error
+          : err instanceof Error
+            ? err.message
+            : "Не удалось сгенерировать аватар";
+      toast.error(message, { id: toastId });
+    } finally {
+      setGeneratingAvatar(false);
+    }
+  };
 
   return (
     <div className="space-y-4 text-base md:space-y-8">
@@ -380,6 +449,19 @@ export default function CharacterForm({
           onRemove={onAvatarRemove}
           footerHint="Максимальный размер: 5 МБ. Рекомендуемое соотношение: 3:5."
         />
+        <button
+          type="button"
+          onClick={handleGenerateAvatar}
+          disabled={generatingAvatar}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
+        >
+          {generatingAvatar ? (
+            <FaSpinner className="animate-spin text-sm" />
+          ) : (
+            <FaMagic className="text-sm" />
+          )}
+          {generatingAvatar ? "Генерация..." : "Сгенерировать аватар"}
+        </button>
       </FormBlock>
 
       <section>
