@@ -36,9 +36,17 @@ function authHeaders(apiKey: string) {
   };
 }
 
-function formatCreateyaError(status: number | undefined, data: CreateyaErrorBody | undefined): string {
-  const code = data?.error?.code || data?.code;
-  const message = data?.error?.message || data?.message;
+function readErrorField(data: unknown, key: "code" | "message"): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const record = data as Record<string, unknown>;
+  const nested = record.error && typeof record.error === "object" ? (record.error as Record<string, unknown>) : undefined;
+  const value = nested?.[key] ?? record[key];
+  return typeof value === "string" && value ? value : undefined;
+}
+
+function formatCreateyaError(status: number | undefined, data: unknown): string {
+  const code = readErrorField(data, "code");
+  const message = readErrorField(data, "message");
   if (code === "insufficient_credits" || status === 402) {
     return "Сервис генерации временно недоступен (недостаточно кредитов провайдера).";
   }
@@ -55,7 +63,7 @@ function formatCreateyaError(status: number | undefined, data: CreateyaErrorBody
 
 function createyaErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    return formatCreateyaError(error.response?.status, error.response?.data as CreateyaErrorBody | undefined);
+    return formatCreateyaError(error.response?.status, error.response?.data);
   }
   if (error instanceof Error) return error.message;
   return "Не удалось сгенерировать аватар";
