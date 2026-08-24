@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 const models = [
   { name: "deepseek/deepseek-v4-flash", displayName: "DeepSeek V4 Flash", priceVC: 4, maxContextTokens: 12000, description: "Самая быстрая модель для длинных динамичных переписок." },
   { name: "google/gemma-4-31b-it", displayName: "Gemma 4 31B", priceVC: 4, maxContextTokens: 12000, description: "Лёгкий старт, приятный слог, отличный русский язык." },
-  { name: "mistralai/mistral-small-4", displayName: "Mistral Small 4", priceVC: 5, maxContextTokens: 12000, description: "Хороший баланс цены и качества, живые диалоги." },
+  { name: "mistralai/mistral-small-2603", displayName: "Mistral Small 4", priceVC: 5, maxContextTokens: 12000, description: "Хороший баланс цены и качества, живые диалоги." },
   { name: "google/gemini-2.5-flash", displayName: "Gemini 2.5 Flash", priceVC: 12, maxContextTokens: 12000, description: "Креативная, для нестандартных сюжетов и идей." },
   { name: "mistralai/mistral-small-3.1-24b-instruct", displayName: "Mistral Small 3.1 24B", priceVC: 11, maxContextTokens: 12000, description: "Хорошая модель для ролевых игр и сложных персонажей." },
   { name: "anthropic/claude-haiku-4.5", displayName: "Claude Haiku 4.5", priceVC: 34, maxContextTokens: 12000, description: "Надёжный стиль, сильное мышление, без «воды»." },
