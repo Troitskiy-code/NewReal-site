@@ -5,7 +5,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["tiktoken", "sharp"],
+  serverExternalPackages: ["tiktoken", "jimp", "libheif-js", "sharp"],
 };
 
 export default nextConfig;

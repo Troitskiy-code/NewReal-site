@@ -1,5 +1,6 @@
 import axios from "axios";
-import sharp from "sharp";
+import { createRequire } from "node:module";
+import { Jimp } from "jimp";
 
 const DEFAULT_API_URL = "https://api.createya.ai";
 
@@ -104,52 +105,153 @@ function parseDataUrl(value: string): { mime: string; buffer: Buffer } | null {
   return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
-async function loadImageBytes(
-  input: string
-): Promise<{ buffer: Buffer; mime: string; fromUrl: boolean } | null> {
-  if (input.startsWith("http://") || input.startsWith("https://")) {
-    const response = await axios.get<ArrayBuffer>(input, {
-      responseType: "arraybuffer",
-      timeout: 60_000,
-    });
-    const mime = String(response.headers["content-type"] || "").split(";")[0].trim();
-    return { buffer: Buffer.from(response.data), mime, fromUrl: true };
+async function loadImageBuffer(imageData: string): Promise<Buffer> {
+  if (imageData.startsWith("data:")) {
+    const parsed = parseDataUrl(imageData);
+    if (!parsed) {
+      throw new Error("Не удалось прочитать референс-изображение");
+    }
+    return parsed.buffer;
   }
 
-  const parsed = parseDataUrl(input);
-  if (parsed) return { buffer: parsed.buffer, mime: parsed.mime, fromUrl: false };
+  if (imageData.startsWith("http://") || imageData.startsWith("https://")) {
+    const response = await fetch(imageData);
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить референс-изображение");
+    }
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  return Buffer.from(imageData, "base64");
+}
+
+const nodeRequire = createRequire(import.meta.url);
+
+type HeifImage = {
+  get_width: () => number;
+  get_height: () => number;
+  display: (
+    imageData: { data: Uint8ClampedArray; width: number; height: number },
+    callback: (displayData: { data: Uint8ClampedArray; width: number; height: number } | null) => void
+  ) => void;
+  free: () => void;
+};
+
+type LibHeif = {
+  ready?: Promise<unknown>;
+  HeifDecoder: new () => {
+    decode: (buffer: Uint8Array) => HeifImage[];
+    decoder: { delete: () => void };
+  };
+};
+
+async function decodeHeifFamily(buffer: Buffer) {
+  const libheif = nodeRequire("libheif-js") as LibHeif;
+  if (libheif.ready) await libheif.ready;
+
+  const bytes = Uint8Array.from(buffer);
+  const decoder = new libheif.HeifDecoder();
+  const images = decoder.decode(bytes);
+  if (!images.length) {
+    throw new Error("HEIF image not found");
+  }
+
+  const image = images[0];
+  const width = image.get_width();
+  const height = image.get_height();
+
+  try {
+    const displayData = await new Promise<{ data: Uint8ClampedArray; width: number; height: number }>(
+      (resolve, reject) => {
+        image.display({ data: new Uint8ClampedArray(width * height * 4), width, height }, (result) => {
+          if (!result) reject(new Error("HEIF processing error"));
+          else resolve(result);
+        });
+      }
+    );
+
+    return Jimp.fromBitmap({
+      data: Buffer.from(displayData.data),
+      width: displayData.width,
+      height: displayData.height,
+    });
+  } finally {
+    for (const item of images) {
+      try {
+        item.free();
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+    try {
+      decoder.decoder.delete();
+    } catch {
+      // ignore cleanup errors
+    }
+  }
+}
+
+function loadOptionalSharp() {
+  const candidates = ["sharp", ["next", "node_modules", "sharp"].join("/")];
+  for (const id of candidates) {
+    try {
+      return nodeRequire(id) as (input: Buffer) => {
+        png: () => { toBuffer: () => Promise<Buffer> };
+      };
+    } catch {
+      // Next still ships sharp; the app no longer depends on it directly.
+    }
+  }
   return null;
 }
 
-function isAvifSource(mime: string, input: string, format?: string): boolean {
-  return (
-    mime.toLowerCase().includes("avif") ||
-    /\.avif(\?|#|$)/i.test(input) ||
-    format === "avif" ||
-    format === "heif"
-  );
-}
-
-export async function convertImageToPNG(base64: string): Promise<string> {
-  if (!base64) return base64;
-
-  const loaded = await loadImageBytes(base64);
-  if (!loaded) return base64;
-
-  let format: string | undefined;
-  try {
-    format = (await sharp(loaded.buffer).metadata()).format;
-  } catch {
-    if (!isAvifSource(loaded.mime, base64)) return base64;
+async function decodeAvifToJimp(buffer: Buffer) {
+  const sharp = loadOptionalSharp();
+  if (!sharp) {
     throw new Error("Не удалось прочитать референс-изображение");
   }
+  const png = await sharp(buffer).png().toBuffer();
+  return Jimp.read(png);
+}
 
-  if (!isAvifSource(loaded.mime, base64, format)) {
-    return base64;
+async function readImageForPng(buffer: Buffer) {
+  try {
+    return await Jimp.read(Buffer.from(buffer));
+  } catch {
+    // Jimp 1.x cannot decode AVIF/HEIC.
   }
 
-  const png = await sharp(loaded.buffer).png().toBuffer();
-  return `data:image/png;base64,${png.toString("base64")}`;
+  const brand = buffer.subarray(8, 12).toString("ascii").replace(/\0/g, " ").trim();
+  if (brand === "avif" || brand === "avis") {
+    try {
+      return await decodeAvifToJimp(buffer);
+    } catch {
+      throw new Error("Не удалось прочитать референс-изображение");
+    }
+  }
+
+  try {
+    return await decodeHeifFamily(buffer);
+  } catch {
+    throw new Error("Не удалось прочитать референс-изображение");
+  }
+}
+
+export async function convertImageToPNG(imageData: string): Promise<string> {
+  if (!imageData) return imageData;
+
+  try {
+    const buffer = await loadImageBuffer(imageData);
+    const image = await readImageForPng(buffer);
+    const pngBuffer = Buffer.from(await image.getBuffer("image/png"));
+    return `data:image/png;base64,${pngBuffer.toString("base64")}`;
+  } catch (error) {
+    console.error("[Createya] convertImageToPNG failed", error);
+    if (error instanceof Error && error.message.includes("референс")) {
+      throw error;
+    }
+    throw new Error("Не удалось прочитать референс-изображение");
+  }
 }
 
 function extractRunId(data: unknown): string | undefined {
