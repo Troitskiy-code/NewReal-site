@@ -105,26 +105,6 @@ function parseDataUrl(value: string): { mime: string; buffer: Buffer } | null {
   return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
-async function loadImageBuffer(imageData: string): Promise<Buffer> {
-  if (imageData.startsWith("data:")) {
-    const parsed = parseDataUrl(imageData);
-    if (!parsed) {
-      throw new Error("Не удалось прочитать референс-изображение");
-    }
-    return parsed.buffer;
-  }
-
-  if (imageData.startsWith("http://") || imageData.startsWith("https://")) {
-    const response = await fetch(imageData);
-    if (!response.ok) {
-      throw new Error("Не удалось загрузить референс-изображение");
-    }
-    return Buffer.from(await response.arrayBuffer());
-  }
-
-  return Buffer.from(imageData, "base64");
-}
-
 const nodeRequire = createRequire(import.meta.url);
 
 type HeifImage = {
@@ -206,51 +186,123 @@ function loadOptionalSharp() {
 }
 
 async function decodeAvifToJimp(buffer: Buffer) {
+  console.log("[convertImageToPNG] trying AVIF fallback");
   const sharp = loadOptionalSharp();
   if (!sharp) {
+    console.error("[convertImageToPNG] AVIF fallback unavailable: sharp not found");
     throw new Error("Не удалось прочитать референс-изображение");
   }
   const png = await sharp(buffer).png().toBuffer();
+  console.log("[convertImageToPNG] AVIF fallback produced PNG bytes:", png.length);
   return Jimp.read(png);
 }
 
-async function readImageForPng(buffer: Buffer) {
-  try {
-    return await Jimp.read(Buffer.from(buffer));
-  } catch {
-    // Jimp 1.x cannot decode AVIF/HEIC.
-  }
-
+async function readImageFallbacks(buffer: Buffer) {
   const brand = buffer.subarray(8, 12).toString("ascii").replace(/\0/g, " ").trim();
+  console.log("[convertImageToPNG] heif/avif brand:", brand || "(none)");
+
   if (brand === "avif" || brand === "avis") {
-    try {
-      return await decodeAvifToJimp(buffer);
-    } catch {
-      throw new Error("Не удалось прочитать референс-изображение");
-    }
+    return decodeAvifToJimp(buffer);
   }
 
-  try {
-    return await decodeHeifFamily(buffer);
-  } catch {
-    throw new Error("Не удалось прочитать референс-изображение");
-  }
+  console.log("[convertImageToPNG] trying HEIC/HEIF fallback");
+  return decodeHeifFamily(buffer);
 }
 
 export async function convertImageToPNG(imageData: string): Promise<string> {
+  console.log("[convertImageToPNG] input type:", typeof imageData);
+  console.log("[convertImageToPNG] input preview:", typeof imageData === "string" ? imageData.slice(0, 100) : String(imageData));
+  console.log("[convertImageToPNG] input length:", typeof imageData === "string" ? imageData.length : 0);
+
   if (!imageData) return imageData;
 
   try {
-    const buffer = await loadImageBuffer(imageData);
-    const image = await readImageForPng(buffer);
-    const pngBuffer = Buffer.from(await image.getBuffer("image/png"));
-    return `data:image/png;base64,${pngBuffer.toString("base64")}`;
-  } catch (error) {
-    console.error("[Createya] convertImageToPNG failed", error);
-    if (error instanceof Error && error.message.includes("референс")) {
-      throw error;
+    let buffer: Buffer;
+
+    if (imageData.startsWith("data:image/") || imageData.startsWith("data:")) {
+      const mimeMatch = imageData.match(/^data:([^;]+)/);
+      console.log("[convertImageToPNG] mime type:", mimeMatch ? mimeMatch[1] : "unknown");
+
+      const commaIndex = imageData.indexOf(",");
+      if (commaIndex === -1) {
+        console.error("[convertImageToPNG] invalid data URL: missing comma separator");
+        throw new Error("Invalid base64 data: missing comma separator");
+      }
+
+      const base64 = imageData.slice(commaIndex + 1);
+      console.log("[convertImageToPNG] base64 length:", base64.length);
+      buffer = Buffer.from(base64, "base64");
+    } else if (imageData.startsWith("http://") || imageData.startsWith("https://")) {
+      console.log("[convertImageToPNG] fetching URL:", imageData);
+      console.log("[convertImageToPNG] Fetching URL...");
+      let response: Response;
+      try {
+        response = await fetch(imageData);
+      } catch (fetchError) {
+        console.error("[convertImageToPNG] fetch threw:", fetchError);
+        if (fetchError instanceof Error) {
+          console.error("[convertImageToPNG] fetch message:", fetchError.message);
+          console.error("[convertImageToPNG] fetch stack:", fetchError.stack);
+        }
+        throw new Error(`Failed to fetch image: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
+      }
+
+      console.log("[convertImageToPNG] Response status:", response.status);
+      console.log("[convertImageToPNG] Content-Type:", response.headers.get("content-type"));
+      if (!response.ok) {
+        console.error("[convertImageToPNG] fetch failed:", response.status, response.statusText);
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+      buffer = Buffer.from(await response.arrayBuffer());
+    } else {
+      console.log("[convertImageToPNG] assuming raw base64");
+      buffer = Buffer.from(imageData, "base64");
     }
-    throw new Error("Не удалось прочитать референс-изображение");
+
+    console.log("[convertImageToPNG] buffer size:", buffer.length);
+
+    let image;
+    try {
+      image = await Jimp.read(Buffer.from(buffer));
+      const width = image.bitmap?.width ?? image.width;
+      const height = image.bitmap?.height ?? image.height;
+      console.log("[convertImageToPNG] Jimp read successful, image width/height:", `${width}x${height}`);
+    } catch (jimpError) {
+      console.error("[convertImageToPNG] Jimp.read failed:", jimpError);
+      if (jimpError instanceof Error) {
+        console.error("[convertImageToPNG] Jimp.read message:", jimpError.message);
+        console.error("[convertImageToPNG] Jimp.read stack:", jimpError.stack);
+      }
+      try {
+        image = await readImageFallbacks(buffer);
+        const width = image.bitmap?.width ?? image.width;
+        const height = image.bitmap?.height ?? image.height;
+        console.log("[convertImageToPNG] fallback read successful, image width/height:", `${width}x${height}`);
+      } catch (fallbackError) {
+        console.error("[convertImageToPNG] fallback decode failed:", fallbackError);
+        if (fallbackError instanceof Error) {
+          console.error("[convertImageToPNG] fallback message:", fallbackError.message);
+          console.error("[convertImageToPNG] fallback stack:", fallbackError.stack);
+        }
+        throw fallbackError;
+      }
+    }
+
+    const pngBuffer = Buffer.from(await image.getBuffer("image/png"));
+    console.log("[convertImageToPNG] PNG buffer size:", pngBuffer.length);
+
+    const result = `data:image/png;base64,${pngBuffer.toString("base64")}`;
+    console.log("[convertImageToPNG] conversion successful, result length:", result.length);
+    return result;
+  } catch (error) {
+    console.error("[convertImageToPNG] failed:", error);
+    if (error instanceof Error) {
+      console.error("[convertImageToPNG] failed message:", error.message);
+      console.error("[convertImageToPNG] failed stack:", error.stack);
+    }
+    throw new Error(
+      `Не удалось прочитать референс-изображение: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
