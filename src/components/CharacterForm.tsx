@@ -533,7 +533,7 @@ export default function CharacterForm({
               Осталось {tokenStatus.dailyRemaining} из {tokenStatus.dailyLimit} бесплатных генераций сегодня
             </p>
             <p>
-              Модель: {usesSd ? `SD 3.5 Large (${costAT} AT или ${costVC} VC)` : `FLUX Schnell (${costAT} AT или ${costVC} VC)`}
+              Модель: {usesSd ? `Grok Imagine I2I (${costAT} AT или ${costVC} VC)` : `Grok Imagine (${costAT} AT или ${costVC} VC)`}
             </p>
             <label className="flex items-center gap-2 text-white">
               <input

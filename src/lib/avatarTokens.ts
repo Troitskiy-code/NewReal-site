@@ -145,7 +145,7 @@ export async function chargeAvatarVC(
       userId,
       amount: -costVC,
       type: "avatar",
-      description: `Генерация аватара (${modelType === "SD" ? "SD 3.5 Large" : "FLUX Schnell"})`,
+      description: `Генерация аватара (${modelType === "SD" ? "Grok Imagine I2I" : "Grok Imagine"})`,
     },
   });
 
