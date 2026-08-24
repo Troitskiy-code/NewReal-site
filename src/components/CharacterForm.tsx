@@ -16,7 +16,7 @@ import {
   FaTags,
   FaUser,
 } from "react-icons/fa";
-import { CHARACTER_LIMITS } from "@/lib/characterFields";
+import { ensureReferenceImageDataUrl, ensureReferenceImageFile } from "@/lib/convertAvifToPng";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
 
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
@@ -182,7 +182,7 @@ type CharacterFormProps = {
   onAvatarGenerated: (imageUrl: string) => void;
   loraPreview: string | null;
   loraFile?: File | null;
-  onLoraChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onLoraChange: (file: File) => void;
   onLoraRemove: () => void;
   characterId?: string;
 };
@@ -198,7 +198,9 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 async function resolveReferenceImage(preview: string | null, file?: File | null): Promise<string | null> {
   if (file) return fileToDataUrl(file);
-  if (preview && (preview.startsWith("data:") || preview.startsWith("http"))) return preview;
+  if (preview && (preview.startsWith("data:") || preview.startsWith("http") || preview.startsWith("blob:"))) {
+    return ensureReferenceImageDataUrl(preview);
+  }
   return null;
 }
 
@@ -241,6 +243,19 @@ export default function CharacterForm({
   );
   const canUsePaid = Boolean(tokenStatus && tokenStatus.verseCoins >= costVC);
   const paymentMethod = payWithVC || !canUseFree ? "paid" : "free";
+
+  const handleLoraInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const ready = await ensureReferenceImageFile(file);
+      onLoraChange(ready);
+    } catch (error) {
+      console.error("[CharacterForm] AVIF conversion failed:", error);
+      toast.error("Не удалось обработать AVIF. Загрузите PNG или JPEG.");
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -486,7 +501,7 @@ export default function CharacterForm({
                   Лучше всего подходит четкое изображение лица или полный образ без лишних деталей.
                 </li>
               </ul>
-              <ImageUploadField preview={loraPreview} onChange={onLoraChange} onRemove={onLoraRemove} />
+              <ImageUploadField preview={loraPreview} onChange={handleLoraInput} onRemove={onLoraRemove} />
             </FormBlock>
           </div>
         )}

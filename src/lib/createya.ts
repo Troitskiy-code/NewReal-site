@@ -171,38 +171,14 @@ async function decodeHeifFamily(buffer: Buffer) {
   }
 }
 
-function loadOptionalSharp() {
-  const candidates = ["sharp", ["next", "node_modules", "sharp"].join("/")];
-  for (const id of candidates) {
-    try {
-      return nodeRequire(id) as (input: Buffer) => {
-        png: () => { toBuffer: () => Promise<Buffer> };
-      };
-    } catch {
-      // Next still ships sharp; the app no longer depends on it directly.
-    }
-  }
-  return null;
-}
-
-async function decodeAvifToJimp(buffer: Buffer) {
-  console.log("[convertImageToPNG] trying AVIF fallback");
-  const sharp = loadOptionalSharp();
-  if (!sharp) {
-    console.error("[convertImageToPNG] AVIF fallback unavailable: sharp not found");
-    throw new Error("Не удалось прочитать референс-изображение");
-  }
-  const png = await sharp(buffer).png().toBuffer();
-  console.log("[convertImageToPNG] AVIF fallback produced PNG bytes:", png.length);
-  return Jimp.read(png);
-}
-
 async function readImageFallbacks(buffer: Buffer) {
   const brand = buffer.subarray(8, 12).toString("ascii").replace(/\0/g, " ").trim();
   console.log("[convertImageToPNG] heif/avif brand:", brand || "(none)");
 
+  // AVIF is converted to PNG in the browser before upload.
   if (brand === "avif" || brand === "avis") {
-    return decodeAvifToJimp(buffer);
+    console.error("[convertImageToPNG] AVIF reached server; expected client-side PNG");
+    throw new Error("AVIF нужно конвертировать в PNG до отправки");
   }
 
   console.log("[convertImageToPNG] trying HEIC/HEIF fallback");

@@ -101,14 +101,12 @@ export default function EditCharacterPage() {
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleLoraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleLoraChange = (file: File) => {
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
       toast.error("Максимальный размер изображения — 5 МБ");
-      e.target.value = "";
       return;
     }
+    if (loraPreview?.startsWith("blob:")) URL.revokeObjectURL(loraPreview);
     setLoraFile(file);
     setLoraPreview(URL.createObjectURL(file));
   };
