@@ -319,12 +319,17 @@ export default function CharacterForm({
         { id: toastId }
       );
     } catch (err: unknown) {
-      const message =
-        axios.isAxiosError(err) && err.response?.data?.error
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const serverError =
+        axios.isAxiosError(err) && typeof err.response?.data?.error === "string"
           ? err.response.data.error
-          : err instanceof Error
-            ? err.message
-            : "Не удалось сгенерировать аватар";
+          : null;
+      const message =
+        status === 400
+          ? serverError ||
+            "Ваш запрос был отклонён из-за политики безопасности. Попробуйте изменить описание персонажа или использовать более нейтральные формулировки."
+          : serverError ||
+            (err instanceof Error ? err.message : "Не удалось сгенерировать аватар");
       toast.error(message, { id: toastId });
     } finally {
       setGeneratingAvatar(false);

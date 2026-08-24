@@ -10,6 +10,7 @@ import {
   spendFreeToken,
   type AvatarModelType,
 } from "@/lib/avatarTokens";
+import { buildAvatarPrompt, isSensitiveGenerationError, SENSITIVE_CLIENT_MESSAGE } from "@/lib/avatarPrompt";
 
 export const maxDuration = 60;
 
@@ -30,23 +31,25 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function buildPrompt(body: GenerateAvatarBody): string {
-  const name = asText(body.name) || "unnamed character";
-  const appearance = asText(body.appearance);
-  const description = asText(body.description);
-  const scenario = asText(body.scenario);
-  const exampleDialogs = asText(body.exampleDialogs);
+async function readErrorDetails(error: unknown): Promise<string> {
+  const parts: string[] = [];
+  if (error instanceof Error) {
+    parts.push(error.message);
+    if (error.stack) parts.push(error.stack);
+  } else {
+    parts.push(String(error));
+  }
 
-  const parts = [
-    `Portrait of ${name}`,
-    appearance,
-    description,
-    scenario,
-    exampleDialogs,
-    "fantasy style, detailed, high quality, character art",
-  ].filter(Boolean);
+  const response = (error as { response?: Response }).response;
+  if (response) {
+    try {
+      parts.push(await response.clone().text());
+    } catch {
+      // ignore
+    }
+  }
 
-  return parts.join(", ");
+  return parts.join("\n");
 }
 
 function firstOutput(output: unknown): unknown {
@@ -120,7 +123,7 @@ export async function POST(req: NextRequest) {
     }
 
     const paymentMethod = asText(body.paymentMethod) === "paid" ? "paid" : "free";
-    const prompt = buildPrompt(body);
+    const prompt = buildAvatarPrompt(body);
     const referenceImage = asText(body.referenceImage);
     const modelType: AvatarModelType = referenceImage ? "SD" : "FLUX";
 
@@ -190,8 +193,13 @@ export async function POST(req: NextRequest) {
       remainingVC,
     });
   } catch (error) {
-    console.error("Avatar generation error:", error);
-    const message = error instanceof Error ? error.message : "Не удалось сгенерировать аватар";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const details = await readErrorDetails(error);
+    console.error("Avatar generation error:", details);
+
+    if (isSensitiveGenerationError(error, details)) {
+      return NextResponse.json({ error: SENSITIVE_CLIENT_MESSAGE }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: "Не удалось сгенерировать аватар" }, { status: 500 });
   }
 }
