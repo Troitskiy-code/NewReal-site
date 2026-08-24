@@ -1,9 +1,21 @@
 import axios from "axios";
+import sharp from "sharp";
 
 const DEFAULT_API_URL = "https://api.createya.ai";
 
 export const CREATEYA_TEXT_MODEL = "grok-imagine-t2i";
 export const CREATEYA_IMAGE_MODEL = "grok-imagine-i2i";
+export const MISSING_RUN_ID_MESSAGE = "Не удалось запустить генерацию. Попробуйте ещё раз.";
+
+const PENDING_STATUSES = new Set([
+  "queued",
+  "processing",
+  "in_progress",
+  "pending",
+  "running",
+  "started",
+  "submitted",
+]);
 
 type CreateyaErrorBody = {
   error?: { code?: string; message?: string };
@@ -12,9 +24,14 @@ type CreateyaErrorBody = {
 };
 
 type CreateyaRunResult = CreateyaErrorBody & {
+  id?: string;
   run_id?: string;
+  runId?: string;
   status?: string;
   output?: { url?: string; urls?: string[] };
+  url?: string;
+  urls?: string[];
+  data?: CreateyaRunResult;
 };
 
 type CreateyaUploadResult = {
@@ -36,12 +53,21 @@ function authHeaders(apiKey: string) {
   };
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
 function readErrorField(data: unknown, key: "code" | "message"): string | undefined {
-  if (!data || typeof data !== "object") return undefined;
-  const record = data as Record<string, unknown>;
-  const nested = record.error && typeof record.error === "object" ? (record.error as Record<string, unknown>) : undefined;
+  const record = asRecord(data);
+  if (!record) return undefined;
+  const nested = asRecord(record.error);
   const value = nested?.[key] ?? record[key];
-  return typeof value === "string" && value ? value : undefined;
+  return asString(value);
 }
 
 function formatCreateyaError(status: number | undefined, data: unknown): string {
@@ -55,6 +81,9 @@ function formatCreateyaError(status: number | undefined, data: unknown): string 
   }
   if (status === 401) {
     return "CREATEYA_API_KEY не настроен или недействителен";
+  }
+  if (message && /mime_type|not allowed/i.test(message)) {
+    return "Референс должен быть в формате PNG или JPEG. Загрузите другое изображение.";
   }
   if (message) return message;
   if (status) return `Createya вернула ошибку HTTP ${status}`;
@@ -75,22 +104,106 @@ function parseDataUrl(value: string): { mime: string; buffer: Buffer } | null {
   return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
+async function loadImageBytes(
+  input: string
+): Promise<{ buffer: Buffer; mime: string; fromUrl: boolean } | null> {
+  if (input.startsWith("http://") || input.startsWith("https://")) {
+    const response = await axios.get<ArrayBuffer>(input, {
+      responseType: "arraybuffer",
+      timeout: 60_000,
+    });
+    const mime = String(response.headers["content-type"] || "").split(";")[0].trim();
+    return { buffer: Buffer.from(response.data), mime, fromUrl: true };
+  }
+
+  const parsed = parseDataUrl(input);
+  if (parsed) return { buffer: parsed.buffer, mime: parsed.mime, fromUrl: false };
+  return null;
+}
+
+function isAvifSource(mime: string, input: string, format?: string): boolean {
+  return (
+    mime.toLowerCase().includes("avif") ||
+    /\.avif(\?|#|$)/i.test(input) ||
+    format === "avif" ||
+    format === "heif"
+  );
+}
+
+export async function convertImageToPNG(base64: string): Promise<string> {
+  if (!base64) return base64;
+
+  const loaded = await loadImageBytes(base64);
+  if (!loaded) return base64;
+
+  let format: string | undefined;
+  try {
+    format = (await sharp(loaded.buffer).metadata()).format;
+  } catch {
+    if (!isAvifSource(loaded.mime, base64)) return base64;
+    throw new Error("Не удалось прочитать референс-изображение");
+  }
+
+  if (!isAvifSource(loaded.mime, base64, format)) {
+    return base64;
+  }
+
+  const png = await sharp(loaded.buffer).png().toBuffer();
+  return `data:image/png;base64,${png.toString("base64")}`;
+}
+
+function extractRunId(data: unknown): string | undefined {
+  const record = asRecord(data);
+  if (!record) return undefined;
+  const nested = asRecord(record.data);
+  return (
+    asString(record.run_id) ||
+    asString(record.runId) ||
+    asString(record.id) ||
+    asString(nested?.run_id) ||
+    asString(nested?.runId) ||
+    asString(nested?.id)
+  );
+}
+
+function extractOutputUrl(data: unknown): string | undefined {
+  const record = asRecord(data);
+  if (!record) return undefined;
+  const output = asRecord(record.output);
+  const nested = asRecord(record.data);
+  const nestedOutput = asRecord(nested?.output);
+  const urls = [output?.urls, nestedOutput?.urls, record.urls, nested?.urls];
+  for (const value of urls) {
+    if (Array.isArray(value)) {
+      const url = value.find((item) => asString(item));
+      if (url) return String(url);
+    }
+  }
+  return (
+    asString(output?.url) ||
+    asString(nestedOutput?.url) ||
+    asString(record.url) ||
+    asString(nested?.url)
+  );
+}
+
 async function uploadReferenceImage(
   apiUrl: string,
   apiKey: string,
   referenceImage: string
 ): Promise<string> {
-  if (referenceImage.startsWith("http://") || referenceImage.startsWith("https://")) {
-    return referenceImage;
+  const prepared = await convertImageToPNG(referenceImage);
+  if (prepared.startsWith("http://") || prepared.startsWith("https://")) {
+    return prepared;
   }
 
-  const parsed = parseDataUrl(referenceImage);
+  const parsed = parseDataUrl(prepared);
   if (!parsed) {
     throw new Error("Референс должен быть URL или data URL");
   }
 
   const form = new FormData();
-  const blob = new Blob([new Uint8Array(parsed.buffer)], { type: parsed.mime });
+  const blob = new Blob([new Uint8Array(parsed.buffer)], { type: parsed.mime || "image/png" });
   const ext = parsed.mime.includes("png") ? "png" : parsed.mime.includes("webp") ? "webp" : "jpg";
   form.append("file", blob, `reference.${ext}`);
 
@@ -106,15 +219,8 @@ async function uploadReferenceImage(
 
   const url = data.url || data.urls?.find(Boolean) || data.data?.url;
   if (!url) {
+    console.error("[Createya] upload response without url", { status, data });
     throw new Error("Createya не вернула URL загруженного изображения");
-  }
-  return url;
-}
-
-function extractOutputUrl(result: CreateyaRunResult): string {
-  const url = result.output?.urls?.find(Boolean) || result.output?.url;
-  if (!url) {
-    throw new Error("Createya не вернула URL изображения");
   }
   return url;
 }
@@ -141,10 +247,16 @@ async function pollRun(
       validateStatus: () => true,
     });
 
+    console.info("[Createya] poll", { runId, httpStatus: status, body: data });
+
     if (status >= 400) {
       throw new Error(formatCreateyaError(status, data));
     }
     if (data.status === "completed") return data;
+    const doneUrl = extractOutputUrl(data);
+    if (doneUrl && data.status !== "failed") {
+      return { ...data, output: { url: doneUrl, urls: [doneUrl] } };
+    }
     if (data.status === "failed") {
       throwIfFailed(data);
       throw new Error("Генерация отклонена");
@@ -183,12 +295,29 @@ export async function generateWithCreateya(
     throw new Error("Для генерации с референсом нужно изображение");
   }
 
+  const runUrl = `${apiUrl}/v1/run`;
+  console.info("[Createya] request", {
+    method: "POST",
+    url: runUrl,
+    headers: { Authorization: "Bearer ***", "Content-Type": "application/json" },
+    model,
+    hasReference,
+    input: {
+      ...input,
+      prompt: `[${prompt.length} chars]`,
+      image_url: input.image_url ? "[set]" : undefined,
+      image_urls: input.image_urls ? "[set]" : undefined,
+    },
+  });
+
   try {
     const { data, status } = await axios.post<CreateyaRunResult>(
-      `${apiUrl}/v1/run`,
+      runUrl,
       { model, input },
       { headers: authHeaders(apiKey), timeout: 60_000, validateStatus: () => true }
     );
+
+    console.info("[Createya] response", { httpStatus: status, body: data });
 
     if (status >= 400) {
       throw new Error(formatCreateyaError(status, data));
@@ -196,19 +325,35 @@ export async function generateWithCreateya(
 
     throwIfFailed(data);
 
-    if (data.status === "completed") {
-      return extractOutputUrl(data);
+    const outputUrl = extractOutputUrl(data);
+    const runId = extractRunId(data);
+    const isPending =
+      status === 202 ||
+      PENDING_STATUSES.has(data.status || "") ||
+      (!outputUrl && Boolean(runId));
+
+    if (data.status === "completed" && outputUrl) {
+      return outputUrl;
     }
 
-    if (status === 202 || data.status === "queued" || data.status === "processing" || data.status === "in_progress") {
-      if (!data.run_id) {
-        throw new Error("Createya не вернула run_id");
+    if (isPending) {
+      if (!runId) {
+        console.error("[Createya] missing run id", JSON.stringify(data));
+        throw new Error(MISSING_RUN_ID_MESSAGE);
       }
-      const completed = await pollRun(apiUrl, apiKey, data.run_id);
-      return extractOutputUrl(completed);
+      const completed = await pollRun(apiUrl, apiKey, runId);
+      const completedUrl = extractOutputUrl(completed);
+      if (!completedUrl) {
+        console.error("[Createya] completed without image url", JSON.stringify(completed));
+        throw new Error("Createya не вернула URL изображения");
+      }
+      return completedUrl;
     }
 
-    return extractOutputUrl(data);
+    if (outputUrl) return outputUrl;
+
+    console.error("[Createya] unexpected run payload", JSON.stringify(data));
+    throw new Error(MISSING_RUN_ID_MESSAGE);
   } catch (error) {
     throw new Error(createyaErrorMessage(error));
   }

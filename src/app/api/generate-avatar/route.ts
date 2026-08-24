@@ -10,7 +10,7 @@ import {
   type AvatarModelType,
 } from "@/lib/avatarTokens";
 import { buildAvatarPrompt, isSensitiveGenerationError, SENSITIVE_CLIENT_MESSAGE } from "@/lib/avatarPrompt";
-import { generateWithCreateya, imageUrlToDataUrl } from "@/lib/createya";
+import { convertImageToPNG, generateWithCreateya, imageUrlToDataUrl } from "@/lib/createya";
 
 export const maxDuration = 90;
 
@@ -47,7 +47,10 @@ export async function POST(req: NextRequest) {
 
     const paymentMethod = asText(body.paymentMethod) === "paid" ? "paid" : "free";
     const prompt = buildAvatarPrompt(body);
-    const referenceImage = asText(body.referenceImage);
+    let referenceImage = asText(body.referenceImage);
+    if (referenceImage) {
+      referenceImage = await convertImageToPNG(referenceImage);
+    }
     const modelType: AvatarModelType = referenceImage ? "SD" : "FLUX";
 
     let user = await replenishAvatarTokens(session.user.id);
@@ -108,7 +111,9 @@ export async function POST(req: NextRequest) {
       message.includes("кредитов") ||
       message.includes("CREATEYA_API_KEY") ||
       message.includes("время ожидания") ||
-      message.includes("референс");
+      message.includes("референс") ||
+      message.includes("запустить генерацию") ||
+      message.includes("PNG");
 
     return NextResponse.json(
       { error: isUserFacing ? message : "Не удалось сгенерировать аватар" },
