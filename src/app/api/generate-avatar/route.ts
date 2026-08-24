@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 export const maxDuration = 60;
 
 const TEXT_TO_IMAGE_MODEL = "black-forest-labs/flux-schnell";
-const IMAGE_TO_IMAGE_MODEL = "stability-ai/stable-diffusion-img2img";
+const IMAGE_TO_IMAGE_MODEL = "stability-ai/stable-diffusion-3.5-large";
 
 type GenerateAvatarBody = {
   name?: unknown;
@@ -40,8 +40,15 @@ function buildPrompt(body: GenerateAvatarBody): string {
   return parts.join(", ");
 }
 
+function firstOutput(output: unknown): unknown {
+  if (Array.isArray(output)) {
+    return output.find((item) => item != null) ?? null;
+  }
+  return output;
+}
+
 async function outputToDataUrl(output: unknown): Promise<string> {
-  const first = Array.isArray(output) ? output[0] : output;
+  const first = firstOutput(output);
   if (!first) {
     throw new Error("Пустой ответ генерации");
   }
@@ -110,10 +117,10 @@ export async function POST(req: NextRequest) {
     const output = referenceImage
       ? await replicate.run(IMAGE_TO_IMAGE_MODEL, {
           input: {
-            image: referenceImage,
             prompt,
+            image: referenceImage,
             prompt_strength: 0.72,
-            num_outputs: 1,
+            output_format: "webp",
           },
         })
       : await replicate.run(TEXT_TO_IMAGE_MODEL, {
