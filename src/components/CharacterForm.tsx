@@ -16,6 +16,7 @@ import {
   FaTags,
   FaUser,
 } from "react-icons/fa";
+import { CHARACTER_LIMITS } from "@/lib/characterFields";
 import { ensureReferenceImageDataUrl, ensureReferenceImageFile } from "@/lib/convertAvifToPng";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
 

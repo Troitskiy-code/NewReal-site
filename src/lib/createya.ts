@@ -1,5 +1,4 @@
 import axios from "axios";
-import { createRequire } from "node:module";
 import { Jimp } from "jimp";
 
 const DEFAULT_API_URL = "https://api.createya.ai";
@@ -105,84 +104,20 @@ function parseDataUrl(value: string): { mime: string; buffer: Buffer } | null {
   return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
 }
 
-const nodeRequire = createRequire(import.meta.url);
-
-type HeifImage = {
-  get_width: () => number;
-  get_height: () => number;
-  display: (
-    imageData: { data: Uint8ClampedArray; width: number; height: number },
-    callback: (displayData: { data: Uint8ClampedArray; width: number; height: number } | null) => void
-  ) => void;
-  free: () => void;
-};
-
-type LibHeif = {
-  ready?: Promise<unknown>;
-  HeifDecoder: new () => {
-    decode: (buffer: Uint8Array) => HeifImage[];
-    decoder: { delete: () => void };
-  };
-};
-
-async function decodeHeifFamily(buffer: Buffer) {
-  const libheif = nodeRequire("libheif-js") as LibHeif;
-  if (libheif.ready) await libheif.ready;
-
-  const bytes = Uint8Array.from(buffer);
-  const decoder = new libheif.HeifDecoder();
-  const images = decoder.decode(bytes);
-  if (!images.length) {
-    throw new Error("HEIF image not found");
-  }
-
-  const image = images[0];
-  const width = image.get_width();
-  const height = image.get_height();
-
-  try {
-    const displayData = await new Promise<{ data: Uint8ClampedArray; width: number; height: number }>(
-      (resolve, reject) => {
-        image.display({ data: new Uint8ClampedArray(width * height * 4), width, height }, (result) => {
-          if (!result) reject(new Error("HEIF processing error"));
-          else resolve(result);
-        });
-      }
-    );
-
-    return Jimp.fromBitmap({
-      data: Buffer.from(displayData.data),
-      width: displayData.width,
-      height: displayData.height,
-    });
-  } finally {
-    for (const item of images) {
-      try {
-        item.free();
-      } catch {
-        // ignore cleanup errors
-      }
-    }
-    try {
-      decoder.decoder.delete();
-    } catch {
-      // ignore cleanup errors
-    }
-  }
+function sniffImageBrand(buffer: Buffer): string {
+  return buffer.subarray(8, 12).toString("ascii").replace(/\0/g, " ").trim();
 }
 
-async function readImageFallbacks(buffer: Buffer) {
-  const brand = buffer.subarray(8, 12).toString("ascii").replace(/\0/g, " ").trim();
-  console.log("[convertImageToPNG] heif/avif brand:", brand || "(none)");
-
-  // AVIF is converted to PNG in the browser before upload.
-  if (brand === "avif" || brand === "avis") {
+function rejectUnsupportedReference(mime: string | undefined, buffer: Buffer) {
+  const brand = sniffImageBrand(buffer);
+  const haystack = `${mime || ""} ${brand}`.toLowerCase();
+  if (haystack.includes("avif") || brand === "avis") {
     console.error("[convertImageToPNG] AVIF reached server; expected client-side PNG");
     throw new Error("AVIF нужно конвертировать в PNG до отправки");
   }
-
-  console.log("[convertImageToPNG] trying HEIC/HEIF fallback");
-  return decodeHeifFamily(buffer);
+  if (haystack.includes("heic") || haystack.includes("heif") || brand === "mif1" || brand === "msf1" || brand === "heix") {
+    throw new Error("Формат HEIC пока не поддерживается. Загрузите PNG или JPEG.");
+  }
 }
 
 export async function convertImageToPNG(imageData: string): Promise<string> {
@@ -194,10 +129,12 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
 
   try {
     let buffer: Buffer;
+    let mime: string | undefined;
 
     if (imageData.startsWith("data:image/") || imageData.startsWith("data:")) {
       const mimeMatch = imageData.match(/^data:([^;]+)/);
-      console.log("[convertImageToPNG] mime type:", mimeMatch ? mimeMatch[1] : "unknown");
+      mime = mimeMatch?.[1];
+      console.log("[convertImageToPNG] mime type:", mime || "unknown");
 
       const commaIndex = imageData.indexOf(",");
       if (commaIndex === -1) {
@@ -223,6 +160,7 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
         throw new Error(`Failed to fetch image: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
       }
 
+      mime = response.headers.get("content-type")?.split(";")[0]?.trim();
       console.log("[convertImageToPNG] Response status:", response.status);
       console.log("[convertImageToPNG] Content-Type:", response.headers.get("content-type"));
       if (!response.ok) {
@@ -236,6 +174,7 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
     }
 
     console.log("[convertImageToPNG] buffer size:", buffer.length);
+    rejectUnsupportedReference(mime, buffer);
 
     let image;
     try {
@@ -249,19 +188,7 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
         console.error("[convertImageToPNG] Jimp.read message:", jimpError.message);
         console.error("[convertImageToPNG] Jimp.read stack:", jimpError.stack);
       }
-      try {
-        image = await readImageFallbacks(buffer);
-        const width = image.bitmap?.width ?? image.width;
-        const height = image.bitmap?.height ?? image.height;
-        console.log("[convertImageToPNG] fallback read successful, image width/height:", `${width}x${height}`);
-      } catch (fallbackError) {
-        console.error("[convertImageToPNG] fallback decode failed:", fallbackError);
-        if (fallbackError instanceof Error) {
-          console.error("[convertImageToPNG] fallback message:", fallbackError.message);
-          console.error("[convertImageToPNG] fallback stack:", fallbackError.stack);
-        }
-        throw fallbackError;
-      }
+      throw jimpError;
     }
 
     const pngBuffer = Buffer.from(await image.getBuffer("image/png"));
@@ -275,6 +202,12 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
     if (error instanceof Error) {
       console.error("[convertImageToPNG] failed message:", error.message);
       console.error("[convertImageToPNG] failed stack:", error.stack);
+      if (
+        error.message.includes("AVIF") ||
+        error.message.includes("HEIC")
+      ) {
+        throw error;
+      }
     }
     throw new Error(
       `Не удалось прочитать референс-изображение: ${error instanceof Error ? error.message : String(error)}`
