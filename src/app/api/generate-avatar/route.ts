@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import Replicate from "replicate";
 import { authOptions } from "@/lib/auth";
+import {
+  canSpendFreeToken,
+  chargeAvatarVC,
+  getPaidVCCost,
+  replenishAvatarTokens,
+  spendFreeToken,
+  type AvatarModelType,
+} from "@/lib/avatarTokens";
 
 export const maxDuration = 60;
 
@@ -15,6 +23,7 @@ type GenerateAvatarBody = {
   scenario?: unknown;
   exampleDialogs?: unknown;
   referenceImage?: unknown;
+  paymentMethod?: unknown;
 };
 
 function asText(value: unknown): string {
@@ -110,10 +119,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Укажите имя персонажа" }, { status: 400 });
     }
 
+    const paymentMethod = asText(body.paymentMethod) === "paid" ? "paid" : "free";
     const prompt = buildPrompt(body);
     const referenceImage = asText(body.referenceImage);
-    const replicate = new Replicate({ auth: apiKey });
+    const modelType: AvatarModelType = referenceImage ? "SD" : "FLUX";
 
+    let user = await replenishAvatarTokens(session.user.id);
+
+    if (paymentMethod === "free") {
+      const canSpend = canSpendFreeToken(user, modelType);
+      if (!canSpend.ok) {
+        return NextResponse.json(
+          { error: canSpend.reason || "Недостаточно AT" },
+          { status: 402 }
+        );
+      }
+    } else {
+      const costVC = getPaidVCCost(modelType);
+      if (user.verseCoins < costVC) {
+        return NextResponse.json(
+          {
+            error: "Недостаточно VC",
+            requiredVC: costVC,
+            remainingVC: user.verseCoins,
+          },
+          { status: 402 }
+        );
+      }
+    }
+
+    const replicate = new Replicate({ auth: apiKey });
     const output = referenceImage
       ? await replicate.run(IMAGE_TO_IMAGE_MODEL, {
           input: {
@@ -135,7 +170,25 @@ export async function POST(req: NextRequest) {
         });
 
     const imageUrl = await outputToDataUrl(output);
-    return NextResponse.json({ imageUrl });
+
+    let remainingTokens = user.avatarTokens;
+    let remainingVC = user.verseCoins;
+
+    if (paymentMethod === "free") {
+      user = await spendFreeToken(user, modelType);
+      remainingTokens = user.avatarTokens;
+      remainingVC = user.verseCoins;
+    } else {
+      remainingVC = await chargeAvatarVC(user.id, getPaidVCCost(modelType), modelType);
+      remainingTokens = user.avatarTokens;
+    }
+
+    return NextResponse.json({
+      imageUrl,
+      used: paymentMethod,
+      remainingTokens,
+      remainingVC,
+    });
   } catch (error) {
     console.error("Avatar generation error:", error);
     const message = error instanceof Error ? error.message : "Не удалось сгенерировать аватар";

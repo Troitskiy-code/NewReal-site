@@ -11,6 +11,7 @@ import {
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
 import { isSubscriptionActive, normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
+import { replenishAvatarTokens } from "@/lib/avatarTokens";
 
 export async function GET() {
   try {
@@ -35,6 +36,8 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
+
+    await replenishAvatarTokens(session.user.id);
 
     const now = new Date();
     const claimedToday = Boolean(user.lastBonusDate && isSameCalendarDay(user.lastBonusDate, now));

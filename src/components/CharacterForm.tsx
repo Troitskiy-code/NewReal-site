@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -202,6 +202,19 @@ async function resolveReferenceImage(preview: string | null, file?: File | null)
   return null;
 }
 
+type AvatarTokenStatus = {
+  avatarTokens: number;
+  maxTokens: number;
+  tokensUsedToday: number;
+  dailyLimit: number;
+  dailyRemaining: number;
+  verseCoins: number;
+  fluxCostAT: number;
+  sdCostAT: number;
+  fluxCostVC: number;
+  sdCostVC: number;
+};
+
 export default function CharacterForm({
   values,
   onChange,
@@ -217,6 +230,36 @@ export default function CharacterForm({
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
+  const [payWithVC, setPayWithVC] = useState(false);
+  const [tokenStatus, setTokenStatus] = useState<AvatarTokenStatus | null>(null);
+
+  const usesSd = Boolean(loraFile || loraPreview);
+  const costAT = usesSd ? tokenStatus?.sdCostAT ?? 2 : tokenStatus?.fluxCostAT ?? 1;
+  const costVC = usesSd ? tokenStatus?.sdCostVC ?? 25 : tokenStatus?.fluxCostVC ?? 2;
+  const canUseFree = Boolean(
+    tokenStatus && tokenStatus.dailyRemaining > 0 && tokenStatus.avatarTokens >= costAT
+  );
+  const canUsePaid = Boolean(tokenStatus && tokenStatus.verseCoins >= costVC);
+  const paymentMethod = payWithVC || !canUseFree ? "paid" : "free";
+
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get<AvatarTokenStatus>("/api/avatar-tokens")
+      .then(({ data }) => {
+        if (!cancelled) setTokenStatus(data);
+      })
+      .catch(() => {
+        /* баланс подтянется при генерации */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (tokenStatus && !canUseFree) setPayWithVC(true);
+  }, [tokenStatus, canUseFree]);
 
   const handleGenerateAvatar = async () => {
     if (!values.name.trim()) {
@@ -229,13 +272,19 @@ export default function CharacterForm({
 
     try {
       const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
-      const { data } = await axios.post<{ imageUrl: string }>("/api/generate-avatar", {
+      const { data } = await axios.post<{
+        imageUrl: string;
+        used?: "free" | "paid";
+        remainingTokens?: number;
+        remainingVC?: number;
+      }>("/api/generate-avatar", {
         name: values.name.trim(),
         appearance: values.appearance.trim() || undefined,
         description: values.description.trim() || undefined,
         scenario: values.scenario.trim() || undefined,
         exampleDialogs: values.exampleDialogs.trim() || undefined,
         referenceImage: referenceImage || undefined,
+        paymentMethod,
       });
 
       if (!data.imageUrl) {
@@ -247,7 +296,28 @@ export default function CharacterForm({
       }
 
       onAvatarGenerated(data.imageUrl);
-      toast.success("Аватар сгенерирован", { id: toastId });
+      setTokenStatus((prev) =>
+        prev
+          ? {
+              ...prev,
+              avatarTokens: data.remainingTokens ?? prev.avatarTokens,
+              verseCoins: data.remainingVC ?? prev.verseCoins,
+              tokensUsedToday:
+                data.used === "free" ? prev.tokensUsedToday + 1 : prev.tokensUsedToday,
+              dailyRemaining:
+                data.used === "free" ? Math.max(0, prev.dailyRemaining - 1) : prev.dailyRemaining,
+            }
+          : prev
+      );
+      if (typeof data.remainingVC === "number") {
+        window.dispatchEvent(
+          new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.remainingVC } })
+        );
+      }
+      toast.success(
+        data.used === "paid" ? `Аватар сгенерирован (−${costVC} VC)` : `Аватар сгенерирован (−${costAT} AT)`,
+        { id: toastId }
+      );
     } catch (err: unknown) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
@@ -449,10 +519,37 @@ export default function CharacterForm({
           onRemove={onAvatarRemove}
           footerHint="Максимальный размер: 5 МБ. Рекомендуемое соотношение: 3:5."
         />
+        {tokenStatus && (
+          <div className="space-y-2 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-gray-300">
+            <p>
+              AT: {tokenStatus.avatarTokens}/{tokenStatus.maxTokens}
+            </p>
+            <p>
+              Осталось {tokenStatus.dailyRemaining} из {tokenStatus.dailyLimit} бесплатных генераций сегодня
+            </p>
+            <p>
+              Модель: {usesSd ? `SD 3.5 Large (${costAT} AT или ${costVC} VC)` : `FLUX Schnell (${costAT} AT или ${costVC} VC)`}
+            </p>
+            <label className="flex items-center gap-2 text-white">
+              <input
+                type="checkbox"
+                checked={paymentMethod === "paid"}
+                onChange={(e) => setPayWithVC(e.target.checked)}
+                disabled={!canUseFree}
+                className="accent-[#6C63FF]"
+              />
+              Оплатить VC ({costVC} VC)
+              {!canUseFree ? " — бесплатные генерации недоступны" : ""}
+            </label>
+            {paymentMethod === "paid" && !canUsePaid && (
+              <p className="text-red-400">Недостаточно VC. Нужно {costVC}, на балансе {tokenStatus.verseCoins}.</p>
+            )}
+          </div>
+        )}
         <button
           type="button"
           onClick={handleGenerateAvatar}
-          disabled={generatingAvatar}
+          disabled={generatingAvatar || (paymentMethod === "paid" && tokenStatus !== null && !canUsePaid)}
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
         >
           {generatingAvatar ? (
@@ -460,7 +557,11 @@ export default function CharacterForm({
           ) : (
             <FaMagic className="text-sm" />
           )}
-          {generatingAvatar ? "Генерация..." : "Сгенерировать аватар"}
+          {generatingAvatar
+            ? "Генерация..."
+            : paymentMethod === "paid"
+              ? `Сгенерировать аватар (${costVC} VC)`
+              : `Сгенерировать аватар (${costAT} AT)`}
         </button>
       </FormBlock>
 
