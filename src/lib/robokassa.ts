@@ -48,9 +48,14 @@ export function generateRobokassaPaymentUrl(
     Shp_vc: String(parseVcFromDesc(desc, sum)),
   };
 
-  const signature = md5(
-    `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${buildShpSuffix(shp)}`
-  );
+  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${buildShpSuffix(shp)}`;
+  const signature = md5(signatureString);
+
+  console.log("[Robokassa] MerchantLogin:", MERCHANT_ID);
+  console.log("[Robokassa] OutSum:", outSum);
+  console.log("[Robokassa] InvId:", invId);
+  console.log("[Robokassa] signature string:", signatureString);
+  console.log("[Robokassa] signature:", signature);
 
   const shpQuery = Object.entries(shp)
     .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
@@ -67,8 +72,16 @@ export function verifyRobokassaResultSignature(
   signature: string,
   shp: ShpParams
 ): boolean {
-  const calculatedSignature = md5(`${outSum}:${invId}:${PASSWORD2}${buildShpSuffix(shp)}`);
-  return signature.toLowerCase() === calculatedSignature.toLowerCase();
+  const signatureString = `${outSum}:${invId}:${PASSWORD2}${buildShpSuffix(shp)}`;
+  const calculatedSignature = md5(signatureString);
+  const isValid = signature.toLowerCase() === calculatedSignature.toLowerCase();
+
+  console.log("[Robokassa] incoming signature:", signature);
+  console.log("[Robokassa] calculated signature:", calculatedSignature);
+  console.log("[Robokassa] signature string:", signatureString);
+  console.log("[Robokassa] signature match:", isValid);
+
+  return isValid;
 }
 
 export function extractShpParams(

@@ -25,57 +25,80 @@ async function parseWebhookPayload(req: NextRequest) {
 }
 
 async function handleWebhook(req: NextRequest) {
-  const { outSum, invId, signature, shp } = await parseWebhookPayload(req);
-  const userId = shp.Shp_userId;
+  try {
+    const { outSum, invId, signature, shp } = await parseWebhookPayload(req);
+    console.log("[Robokassa] webhook params:", { outSum, invId, signature, shp });
 
-  if (!outSum || !invId || !signature || !userId) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
+    const userId = shp.Shp_userId;
 
-  if (!verifyRobokassaResultSignature(outSum, invId, signature, shp)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-  }
+    if (!outSum || !invId || !signature || !userId) {
+      console.error("[Robokassa] webhook missing required fields", {
+        outSum,
+        invId,
+        signature,
+        userId,
+        shp,
+      });
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
 
-  const paymentMarker = `Robokassa InvId=${invId}`;
-  const existingPayment = await prisma.transaction.findFirst({
-    where: {
-      userId,
-      description: paymentMarker,
-    },
-    select: { id: true },
-  });
+    const isValid = verifyRobokassaResultSignature(outSum, invId, signature, shp);
+    console.log("[Robokassa] webhook signature valid:", isValid);
 
-  if (existingPayment) {
+    if (!isValid) {
+      console.error("[Robokassa] webhook invalid signature", { invId, outSum, signature, shp });
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
+
+    const paymentMarker = `Robokassa InvId=${invId}`;
+    const existingPayment = await prisma.transaction.findFirst({
+      where: {
+        userId,
+        description: paymentMarker,
+      },
+      select: { id: true },
+    });
+
+    if (existingPayment) {
+      console.log("[Robokassa] Webhook processed successfully", { InvId: invId, duplicate: true });
+      return new NextResponse(`OK${invId}`, {
+        status: 200,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    const vcFromShp = Number(shp.Shp_vc);
+    const vcAmount = Number.isFinite(vcFromShp) && vcFromShp > 0
+      ? vcFromShp
+      : Math.round(Number(outSum) / 0.3);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { verseCoins: { increment: vcAmount } },
+      }),
+      prisma.transaction.create({
+        data: {
+          userId,
+          amount: vcAmount,
+          type: "purchase",
+          description: paymentMarker,
+        },
+      }),
+    ]);
+
+    console.log("[Robokassa] Webhook processed successfully", { InvId: invId, vcAmount });
     return new NextResponse(`OK${invId}`, {
       status: 200,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+  } catch (error) {
+    console.error("[Robokassa] webhook error:", error);
+    if (error instanceof Error) {
+      console.error("[Robokassa] webhook error details:", error.message, error.stack);
+    }
+    throw error;
   }
-
-  const vcFromShp = Number(shp.Shp_vc);
-  const vcAmount = Number.isFinite(vcFromShp) && vcFromShp > 0
-    ? vcFromShp
-    : Math.round(Number(outSum) / 0.3);
-
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { verseCoins: { increment: vcAmount } },
-    }),
-    prisma.transaction.create({
-      data: {
-        userId,
-        amount: vcAmount,
-        type: "purchase",
-        description: paymentMarker,
-      },
-    }),
-  ]);
-
-  return new NextResponse(`OK${invId}`, {
-    status: 200,
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  });
 }
 
 export async function POST(req: NextRequest) {
