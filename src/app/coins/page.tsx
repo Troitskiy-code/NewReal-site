@@ -30,8 +30,7 @@ type TokenPackage = {
 };
 
 const PACKAGES: TokenPackage[] = [
-  // TEMP: 10 ₽ for Robokassa live payment test; restore 300 after test
-  { id: 1, vc: 1000, price: 10 },
+  { id: 1, vc: 1000, price: 300 },
   { id: 2, vc: 2500, price: 600, bonus: "+20%" },
   { id: 3, vc: 7000, price: 1500, bonus: "+40%" },
   { id: 4, vc: 16000, price: 3000, bonus: "+60%" },
