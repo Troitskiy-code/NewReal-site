@@ -62,8 +62,13 @@ export function generateRobokassaPaymentUrl(
     .join("");
 
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
+  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}&SignatureValue=${signature}${shpQuery}${testParam}`;
+  const loggedUrl = url.replace(/SignatureValue=[^&]*/i, "SignatureValue=REDACTED");
 
-  return `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}&SignatureValue=${signature}${shpQuery}${testParam}`;
+  console.log("[Robokassa] payment URL:", loggedUrl);
+  console.log("[Robokassa] IsTest:", ROBOKASSA_TEST_MODE ? "1" : "absent");
+
+  return url;
 }
 
 export function verifyRobokassaResultSignature(
