@@ -24,8 +24,44 @@ async function parseWebhookPayload(req: NextRequest) {
   };
 }
 
+async function readRawWebhookLog(req: NextRequest) {
+  const headers = Object.fromEntries(req.headers.entries());
+  let bodyText: string | null = null;
+  let searchParams: Record<string, string> | null = null;
+
+  if (req.method === "POST") {
+    try {
+      bodyText = await req.clone().text();
+    } catch (error) {
+      bodyText = `(failed to read body: ${error instanceof Error ? error.message : String(error)})`;
+    }
+  } else if (req.method === "GET") {
+    searchParams = Object.fromEntries(req.nextUrl.searchParams.entries());
+  }
+
+  return {
+    method: req.method,
+    url: req.url,
+    headers,
+    searchParams,
+    body: bodyText,
+  };
+}
+
 async function handleWebhook(req: NextRequest) {
   try {
+    const rawLog = await readRawWebhookLog(req);
+    console.log("[Robokassa] raw webhook request:", rawLog);
+    console.log("[Robokassa] request method:", rawLog.method);
+    console.log("[Robokassa] request headers:", rawLog.headers);
+    console.log("[Robokassa] request URL:", rawLog.url);
+    if (rawLog.method === "POST") {
+      console.log("[Robokassa] request body:", rawLog.body);
+    }
+    if (rawLog.method === "GET") {
+      console.log("[Robokassa] request searchParams:", rawLog.searchParams);
+    }
+
     const { outSum, invId, signature, shp } = await parseWebhookPayload(req);
     console.log("[Robokassa] webhook params:", { outSum, invId, signature, shp });
 
