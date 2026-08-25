@@ -29,12 +29,6 @@ async function parseWebhookPayload(req: NextRequest) {
   const queryShp = extractShpParams(params.entries());
 
   if (queryOutSum && queryInvId && querySignature) {
-    console.log("[Robokassa] parsed payload from searchParams:", {
-      outSum: queryOutSum,
-      invId: queryInvId,
-      signature: querySignature,
-      shp: queryShp,
-    });
     return {
       outSum: queryOutSum,
       invId: queryInvId,
@@ -49,144 +43,86 @@ async function parseWebhookPayload(req: NextRequest) {
     contentType.includes("multipart/form-data")
   ) {
     const body = await req.formData();
-    const payload = {
+    return {
       outSum: firstParam(body, "OutSum", "out_summ", "outsum"),
       invId: firstParam(body, "InvId", "inv_id", "invid"),
       signature: firstParam(body, "SignatureValue", "crc", "signaturevalue"),
       shp: extractShpParams(body.entries()),
     };
-    console.log("[Robokassa] parsed payload from formData:", payload);
-    return payload;
   }
 
-  const empty = {
+  return {
     outSum: queryOutSum,
     invId: queryInvId,
     signature: querySignature,
     shp: queryShp,
   };
-  console.log("[Robokassa] parsed payload empty/partial:", empty);
-  return empty;
 }
 
-async function readRawWebhookLog(req: NextRequest) {
-  const headers = Object.fromEntries(req.headers.entries());
-  let bodyText: string | null = null;
-  let searchParams: Record<string, string> | null = null;
-
-  if (req.method === "POST") {
-    try {
-      bodyText = await req.clone().text();
-    } catch (error) {
-      bodyText = `(failed to read body: ${error instanceof Error ? error.message : String(error)})`;
-    }
-  } else if (req.method === "GET") {
-    searchParams = Object.fromEntries(req.nextUrl.searchParams.entries());
-  }
-
-  return {
-    method: req.method,
-    url: req.url,
-    headers,
-    searchParams,
-    body: bodyText,
-  };
+function okResponse(invId: string) {
+  return new NextResponse(`OK${invId}`, {
+    status: 200,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 async function handleWebhook(req: NextRequest) {
-  try {
-    const rawLog = await readRawWebhookLog(req);
-    console.log("[Robokassa] raw webhook request:", rawLog);
-    console.log("[Robokassa] request method:", rawLog.method);
-    console.log("[Robokassa] request headers:", rawLog.headers);
-    console.log("[Robokassa] request URL:", rawLog.url);
-    if (rawLog.method === "POST") {
-      console.log("[Robokassa] request body:", rawLog.body);
-    }
-    if (rawLog.method === "GET") {
-      console.log("[Robokassa] request searchParams:", rawLog.searchParams);
-    }
+  const { outSum, invId, signature, shp } = await parseWebhookPayload(req);
+  const userId = shpValue(shp, "Shp_userId");
 
-    const { outSum, invId, signature, shp } = await parseWebhookPayload(req);
-    console.log("[Robokassa] webhook params:", { outSum, invId, signature, shp });
+  if (!outSum || !invId || !signature || !userId) {
+    console.error("[Robokassa] Webhook error: Missing required fields");
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
 
-    const userId = shpValue(shp, "Shp_userId");
+  if (!verifyRobokassaResultSignature(outSum, invId, signature, shp)) {
+    console.error("[Robokassa] Webhook error: Invalid signature");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+  }
 
-    if (!outSum || !invId || !signature || !userId) {
-      console.error("[Robokassa] webhook missing required fields", {
-        outSum,
-        invId,
-        signature,
+  const paymentMarker = `Robokassa InvId=${invId}`;
+  const existingPayment = await prisma.transaction.findFirst({
+    where: {
+      userId,
+      description: paymentMarker,
+    },
+    select: { id: true },
+  });
+
+  if (existingPayment) {
+    console.log(`[Robokassa] Webhook processed successfully: InvId=${invId}`);
+    return okResponse(invId);
+  }
+
+  const vcFromShp = Number(shpValue(shp, "Shp_vc"));
+  const vcAmount = Number.isFinite(vcFromShp) && vcFromShp > 0
+    ? vcFromShp
+    : Math.round(Number(outSum) / 0.3);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { verseCoins: { increment: vcAmount } },
+    }),
+    prisma.transaction.create({
+      data: {
         userId,
-        shp,
-      });
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    const isValid = verifyRobokassaResultSignature(outSum, invId, signature, shp);
-    console.log("[Robokassa] webhook signature valid:", isValid);
-
-    if (!isValid) {
-      console.error("[Robokassa] webhook invalid signature", { invId, outSum, signature, shp });
-      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-    }
-
-    const paymentMarker = `Robokassa InvId=${invId}`;
-    const existingPayment = await prisma.transaction.findFirst({
-      where: {
-        userId,
+        amount: vcAmount,
+        type: "purchase",
         description: paymentMarker,
       },
-      select: { id: true },
-    });
+    }),
+  ]);
 
-    if (existingPayment) {
-      console.log("[Robokassa] Webhook processed successfully", { InvId: invId, duplicate: true });
-      return new NextResponse(`OK${invId}`, {
-        status: 200,
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
-    }
-
-    const vcFromShp = Number(shpValue(shp, "Shp_vc"));
-    const vcAmount = Number.isFinite(vcFromShp) && vcFromShp > 0
-      ? vcFromShp
-      : Math.round(Number(outSum) / 0.3);
-
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: userId },
-        data: { verseCoins: { increment: vcAmount } },
-      }),
-      prisma.transaction.create({
-        data: {
-          userId,
-          amount: vcAmount,
-          type: "purchase",
-          description: paymentMarker,
-        },
-      }),
-    ]);
-
-    console.log("[Robokassa] Webhook processed successfully", { InvId: invId, vcAmount });
-    return new NextResponse(`OK${invId}`, {
-      status: 200,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  } catch (error) {
-    console.error("[Robokassa] webhook error:", error);
-    if (error instanceof Error) {
-      console.error("[Robokassa] webhook error details:", error.message, error.stack);
-    }
-    throw error;
-  }
+  console.log(`[Robokassa] Webhook processed successfully: InvId=${invId}, vcAmount=${vcAmount}`);
+  return okResponse(invId);
 }
 
 export async function POST(req: NextRequest) {
   try {
     return await handleWebhook(req);
   } catch (error) {
-    console.error("Robokassa webhook error:", error);
+    console.error("[Robokassa] Webhook error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
@@ -195,7 +131,7 @@ export async function GET(req: NextRequest) {
   try {
     return await handleWebhook(req);
   } catch (error) {
-    console.error("Robokassa webhook error:", error);
+    console.error("[Robokassa] Webhook error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

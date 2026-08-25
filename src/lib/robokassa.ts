@@ -74,16 +74,6 @@ function passwordCandidates() {
   return passwords.filter((item) => item.value);
 }
 
-function redactSignatureString(value: string): string {
-  let redacted = value;
-  for (const { name, value: password } of passwordCandidates()) {
-    if (password) {
-      redacted = redacted.split(password).join(name);
-    }
-  }
-  return redacted;
-}
-
 export function parseVcFromDesc(desc: string, sum: number): number {
   const match = desc.match(/(\d[\d\s]*)\s*VC/i);
   if (match) {
@@ -99,6 +89,7 @@ export function generateRobokassaPaymentUrl(
   desc: string
 ): string {
   if (!MERCHANT_ID || !PASSWORD) {
+    console.error("[Robokassa] Payment error: merchant or password is not configured");
     throw new Error("Robokassa is not configured");
   }
 
@@ -112,23 +103,14 @@ export function generateRobokassaPaymentUrl(
   const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${buildShpSuffix(shp)}`;
   const signature = md5(signatureString);
 
-  console.log("[Robokassa] MerchantLogin:", MERCHANT_ID);
-  console.log("[Robokassa] OutSum:", outSum);
-  console.log("[Robokassa] InvId:", invId);
-  console.log("[Robokassa] signature string:", signatureString);
-  console.log("[Robokassa] signature:", signature);
-
   const shpQuery = Object.entries(shp)
     .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
     .join("");
 
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
   const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}&SignatureValue=${signature}${shpQuery}${testParam}`;
-  const loggedUrl = url.replace(/SignatureValue=[^&]*/i, "SignatureValue=REDACTED");
 
-  console.log("[Robokassa] payment URL:", loggedUrl);
-  console.log("[Robokassa] IsTest:", ROBOKASSA_TEST_MODE ? "1" : "absent");
-
+  console.log(`[Robokassa] Payment created: InvId=${invId}`);
   return url;
 }
 
@@ -140,108 +122,32 @@ export function verifyRobokassaResultSignature(
 ): boolean {
   const incoming = signature.trim();
   const incomingLower = incoming.toLowerCase();
-  const shpSorted = buildShpSuffix(shp);
-  const shpUnsorted = buildShpSuffixUnsorted(shp);
-  const shpModes = [
-    { name: "noShp", suffix: "" },
-    { name: "shpSorted", suffix: shpSorted },
-    { name: "shpUnsorted", suffix: shpUnsorted },
-  ].filter((mode, index, list) => list.findIndex((item) => item.suffix === mode.suffix) === index);
+  const passwords = passwordCandidates();
 
-  const algorithms: Array<{ name: string; hash: (value: string) => string }> = [
-    { name: "md5", hash: md5 },
-    { name: "crc32hex", hash: crc32Hex },
-    { name: "crc32dec", hash: crc32Dec },
-  ];
-
-  const results: Array<{
-    label: string;
-    signatureString: string;
-    algorithm: string;
-    calculated: string;
-    match: boolean;
-  }> = [];
-
-  console.log("[Robokassa] incoming signature:", signature);
-  console.log("[Robokassa] OutSum raw:", outSum);
-  console.log("[Robokassa] InvId:", invId);
-  console.log("[Robokassa] shp:", shp);
-  console.log("[Robokassa] shp sorted suffix:", shpSorted || "(none)");
-  console.log("[Robokassa] shp unsorted suffix:", shpUnsorted || "(none)");
-  console.log("[Robokassa] Password3 configured:", Boolean(PASSWORD3));
-
-  if (!PASSWORD3) {
-    console.warn("[Robokassa] Password3 variants skipped: ROBOKASSA_PASSWORD3 is not set");
-  } else {
-    const password3Variants = [
-      {
-        name: "P3-A",
-        description: "OutSum:InvId:Password3 without Shp",
-        value: `${outSum}:${invId}:${PASSWORD3}`,
-      },
-      {
-        name: "P3-B",
-        description: "OutSum:InvId:Password3 with Shp sorted",
-        value: `${outSum}:${invId}:${PASSWORD3}${shpSorted}`,
-      },
-      {
-        name: "P3-C",
-        description: "OutSum:InvId:Password3 with Shp unsorted",
-        value: `${outSum}:${invId}:${PASSWORD3}${shpUnsorted}`,
-      },
-    ];
-
-    for (const variant of password3Variants) {
-      const calculated = md5(variant.value);
-      const match = incoming === calculated || incomingLower === calculated.toLowerCase();
-      const item = {
-        label: `md5 ${variant.name} ${variant.description}`,
-        signatureString: redactSignatureString(variant.value),
-        algorithm: "md5",
-        calculated,
-        match,
-      };
-      results.push(item);
-      console.log(`[Robokassa] signature variant ${variant.name}:`, item);
-    }
+  if (!passwords.length) {
+    console.error("[Robokassa] Webhook error: passwords are not configured");
+    return false;
   }
 
+  const shpSuffixes = [...new Set(["", buildShpSuffix(shp), buildShpSuffixUnsorted(shp)])];
+  const hashFns = [md5, crc32Hex, crc32Dec];
+
+  const matches = (value: string) =>
+    hashFns.some((hash) => {
+      const calculated = hash(value);
+      return incoming === calculated || incomingLower === calculated.toLowerCase();
+    });
+
   for (const sum of outSumFormats(outSum)) {
-    for (const password of passwordCandidates()) {
-      for (const shpMode of shpModes) {
-        const signatureString = `${sum}:${invId}:${password.value}${shpMode.suffix}`;
-        for (const algorithm of algorithms) {
-          const calculated = algorithm.hash(signatureString);
-          const match =
-            incoming === calculated ||
-            incomingLower === calculated.toLowerCase();
-          results.push({
-            label: `${algorithm.name} ${sum} ${password.name} ${shpMode.name}`,
-            signatureString: redactSignatureString(signatureString),
-            algorithm: algorithm.name,
-            calculated,
-            match,
-          });
+    for (const password of passwords) {
+      for (const suffix of shpSuffixes) {
+        if (matches(`${sum}:${invId}:${password.value}${suffix}`)) {
+          return true;
         }
       }
     }
   }
 
-  const matched = results.filter((item) => item.match);
-  console.log("[Robokassa] signature variants tried:", results.length);
-
-  if (matched.length > 0) {
-    console.log("[Robokassa] signature match: true", matched[0].label);
-    for (const item of matched) {
-      console.log("[Robokassa] matching variant:", item);
-    }
-    return true;
-  }
-
-  console.log("[Robokassa] signature match: false");
-  for (const item of results) {
-    console.log("[Robokassa] signature variant:", item);
-  }
   return false;
 }
 
