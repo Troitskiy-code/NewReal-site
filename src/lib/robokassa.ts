@@ -77,15 +77,52 @@ export function verifyRobokassaResultSignature(
   signature: string,
   shp: ShpParams
 ): boolean {
-  const signatureString = `${outSum}:${invId}:${PASSWORD2}${buildShpSuffix(shp)}`;
-  const calculatedSignature = md5(signatureString);
-  const isValid = signature.toLowerCase() === calculatedSignature.toLowerCase();
+  const shpSuffix = buildShpSuffix(shp);
+  const incoming = signature.toLowerCase();
+
+  const variants = [
+    {
+      name: "A",
+      description: "OutSum:InvId:Password2 without Shp",
+      value: `${outSum}:${invId}:${PASSWORD2}`,
+    },
+    {
+      name: "B",
+      description: "OutSum:InvId:Password1 with Shp",
+      value: `${outSum}:${invId}:${PASSWORD}${shpSuffix}`,
+    },
+    {
+      name: "C",
+      description: "OutSum:InvId:Password1 without Shp",
+      value: `${outSum}:${invId}:${PASSWORD}`,
+    },
+    {
+      name: "D",
+      description: "OutSum:InvId:Password2 with Shp (current Result URL)",
+      value: `${outSum}:${invId}:${PASSWORD2}${shpSuffix}`,
+    },
+  ];
 
   console.log("[Robokassa] incoming signature:", signature);
-  console.log("[Robokassa] calculated signature:", calculatedSignature);
-  console.log("[Robokassa] signature string:", signatureString);
-  console.log("[Robokassa] signature match:", isValid);
+  console.log("[Robokassa] shp suffix:", shpSuffix || "(none)");
 
+  let matched: string | null = null;
+  for (const variant of variants) {
+    const calculated = md5(variant.value);
+    const isMatch = incoming === calculated.toLowerCase();
+    console.log(`[Robokassa] signature variant ${variant.name}:`, {
+      description: variant.description,
+      signatureString: variant.value,
+      calculated,
+      match: isMatch,
+    });
+    if (isMatch && !matched) {
+      matched = variant.name;
+    }
+  }
+
+  const isValid = matched !== null;
+  console.log("[Robokassa] signature match:", isValid, matched ? `variant ${matched}` : "none");
   return isValid;
 }
 
