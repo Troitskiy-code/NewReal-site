@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const PACKAGES: Record<number, { vc: number; price: number; label: string }> = {
-  1: { vc: 1000, price: 300, label: "1000 VC" },
+  // TEMP: 10 ₽ for Robokassa live payment test; restore 300 after test
+  1: { vc: 1000, price: 10, label: "1000 VC" },
   2: { vc: 2500, price: 600, label: "2500 VC" },
   3: { vc: 7000, price: 1500, label: "7000 VC" },
   4: { vc: 16000, price: 3000, label: "16000 VC" },
