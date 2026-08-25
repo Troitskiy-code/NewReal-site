@@ -162,6 +162,50 @@ export function verifyRobokassaResultSignature(
     match: boolean;
   }> = [];
 
+  console.log("[Robokassa] incoming signature:", signature);
+  console.log("[Robokassa] OutSum raw:", outSum);
+  console.log("[Robokassa] InvId:", invId);
+  console.log("[Robokassa] shp:", shp);
+  console.log("[Robokassa] shp sorted suffix:", shpSorted || "(none)");
+  console.log("[Robokassa] shp unsorted suffix:", shpUnsorted || "(none)");
+  console.log("[Robokassa] Password3 configured:", Boolean(PASSWORD3));
+
+  if (!PASSWORD3) {
+    console.warn("[Robokassa] Password3 variants skipped: ROBOKASSA_PASSWORD3 is not set");
+  } else {
+    const password3Variants = [
+      {
+        name: "P3-A",
+        description: "OutSum:InvId:Password3 without Shp",
+        value: `${outSum}:${invId}:${PASSWORD3}`,
+      },
+      {
+        name: "P3-B",
+        description: "OutSum:InvId:Password3 with Shp sorted",
+        value: `${outSum}:${invId}:${PASSWORD3}${shpSorted}`,
+      },
+      {
+        name: "P3-C",
+        description: "OutSum:InvId:Password3 with Shp unsorted",
+        value: `${outSum}:${invId}:${PASSWORD3}${shpUnsorted}`,
+      },
+    ];
+
+    for (const variant of password3Variants) {
+      const calculated = md5(variant.value);
+      const match = incoming === calculated || incomingLower === calculated.toLowerCase();
+      const item = {
+        label: `md5 ${variant.name} ${variant.description}`,
+        signatureString: redactSignatureString(variant.value),
+        algorithm: "md5",
+        calculated,
+        match,
+      };
+      results.push(item);
+      console.log(`[Robokassa] signature variant ${variant.name}:`, item);
+    }
+  }
+
   for (const sum of outSumFormats(outSum)) {
     for (const password of passwordCandidates()) {
       for (const shpMode of shpModes) {
@@ -184,13 +228,6 @@ export function verifyRobokassaResultSignature(
   }
 
   const matched = results.filter((item) => item.match);
-
-  console.log("[Robokassa] incoming signature:", signature);
-  console.log("[Robokassa] OutSum raw:", outSum);
-  console.log("[Robokassa] InvId:", invId);
-  console.log("[Robokassa] shp:", shp);
-  console.log("[Robokassa] shp sorted suffix:", shpSorted || "(none)");
-  console.log("[Robokassa] shp unsorted suffix:", shpUnsorted || "(none)");
   console.log("[Robokassa] signature variants tried:", results.length);
 
   if (matched.length > 0) {
