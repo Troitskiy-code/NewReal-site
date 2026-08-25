@@ -2,26 +2,71 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { extractShpParams, verifyRobokassaResultSignature } from "@/lib/robokassa";
 
-async function parseWebhookPayload(req: NextRequest) {
-  const contentType = req.headers.get("content-type") ?? "";
+function firstParam(
+  source: { get(name: string): string | File | null },
+  ...names: string[]
+): string {
+  for (const name of names) {
+    const value = source.get(name);
+    if (value !== null && value !== undefined && String(value) !== "") {
+      return String(value);
+    }
+  }
+  return "";
+}
 
-  if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
-    const body = await req.formData();
+function shpValue(shp: Record<string, string>, name: string): string {
+  const target = name.toLowerCase();
+  const match = Object.entries(shp).find(([key]) => key.toLowerCase() === target);
+  return match?.[1] ?? "";
+}
+
+async function parseWebhookPayload(req: NextRequest) {
+  const params = req.nextUrl.searchParams;
+  const queryOutSum = firstParam(params, "OutSum", "out_summ", "outsum");
+  const queryInvId = firstParam(params, "InvId", "inv_id", "invid");
+  const querySignature = firstParam(params, "SignatureValue", "crc", "signaturevalue");
+  const queryShp = extractShpParams(params.entries());
+
+  if (queryOutSum && queryInvId && querySignature) {
+    console.log("[Robokassa] parsed payload from searchParams:", {
+      outSum: queryOutSum,
+      invId: queryInvId,
+      signature: querySignature,
+      shp: queryShp,
+    });
     return {
-      outSum: String(body.get("OutSum") ?? ""),
-      invId: String(body.get("InvId") ?? ""),
-      signature: String(body.get("SignatureValue") ?? ""),
-      shp: extractShpParams(body.entries()),
+      outSum: queryOutSum,
+      invId: queryInvId,
+      signature: querySignature,
+      shp: queryShp,
     };
   }
 
-  const params = req.nextUrl.searchParams;
-  return {
-    outSum: params.get("OutSum") ?? "",
-    invId: params.get("InvId") ?? "",
-    signature: params.get("SignatureValue") ?? "",
-    shp: extractShpParams(params.entries()),
+  const contentType = req.headers.get("content-type") ?? "";
+  if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
+    const body = await req.formData();
+    const payload = {
+      outSum: firstParam(body, "OutSum", "out_summ", "outsum"),
+      invId: firstParam(body, "InvId", "inv_id", "invid"),
+      signature: firstParam(body, "SignatureValue", "crc", "signaturevalue"),
+      shp: extractShpParams(body.entries()),
+    };
+    console.log("[Robokassa] parsed payload from formData:", payload);
+    return payload;
+  }
+
+  const empty = {
+    outSum: queryOutSum,
+    invId: queryInvId,
+    signature: querySignature,
+    shp: queryShp,
   };
+  console.log("[Robokassa] parsed payload empty/partial:", empty);
+  return empty;
 }
 
 async function readRawWebhookLog(req: NextRequest) {
@@ -65,7 +110,7 @@ async function handleWebhook(req: NextRequest) {
     const { outSum, invId, signature, shp } = await parseWebhookPayload(req);
     console.log("[Robokassa] webhook params:", { outSum, invId, signature, shp });
 
-    const userId = shp.Shp_userId;
+    const userId = shpValue(shp, "Shp_userId");
 
     if (!outSum || !invId || !signature || !userId) {
       console.error("[Robokassa] webhook missing required fields", {
@@ -103,7 +148,7 @@ async function handleWebhook(req: NextRequest) {
       });
     }
 
-    const vcFromShp = Number(shp.Shp_vc);
+    const vcFromShp = Number(shpValue(shp, "Shp_vc"));
     const vcAmount = Number.isFinite(vcFromShp) && vcFromShp > 0
       ? vcFromShp
       : Math.round(Number(outSum) / 0.3);

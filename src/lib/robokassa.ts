@@ -95,7 +95,7 @@ export function extractShpParams(
   const shp: ShpParams = {};
 
   for (const [key, value] of entries) {
-    if (!key.startsWith("Shp_") || value === null || value === undefined) {
+    if (!/^shp_/i.test(key) || value === null || value === undefined) {
       continue;
     }
 
