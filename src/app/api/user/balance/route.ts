@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
+  applyBonusMultiplier,
   getBonusForStreak,
   getMsUntilNextDay,
   getNextBonus,
@@ -42,8 +43,13 @@ export async function GET() {
     const now = new Date();
     const claimedToday = Boolean(user.lastBonusDate && isSameCalendarDay(user.lastBonusDate, now));
     const canClaimBonus = !claimedToday;
+    const subscriptionActive = isSubscriptionActive(user);
+    const bonusSubscriptionType = subscriptionActive ? user.subscriptionType : null;
     const upcomingStreak = getUpcomingBonusStreak(user.bonusStreak);
-    const currentBonusAmount = getBonusForStreak(upcomingStreak);
+    const currentBonusAmount = applyBonusMultiplier(
+      getBonusForStreak(upcomingStreak),
+      bonusSubscriptionType
+    );
     const counters = normalizeUserCounters(
       {
         id: session.user.id,
@@ -55,7 +61,6 @@ export async function GET() {
       },
       now
     );
-    const subscriptionActive = isSubscriptionActive(user);
 
     return NextResponse.json({
       verseCoins: user.verseCoins,
@@ -63,7 +68,7 @@ export async function GET() {
       lastBonusDate: user.lastBonusDate,
       canClaimBonus,
       currentBonusAmount,
-      nextBonus: getNextBonus(user.bonusStreak),
+      nextBonus: applyBonusMultiplier(getNextBonus(user.bonusStreak), bonusSubscriptionType),
       msUntilNextBonus: claimedToday ? getMsUntilNextDay(now) : 0,
       subscriptionType: user.subscriptionType,
       subscriptionEnd: user.subscriptionEnd,

@@ -21,6 +21,29 @@ export function getBonusForStreak(streak: number): number {
   return DAILY_BONUS_AMOUNTS[index];
 }
 
+export function getBonusMultiplier(subscriptionType: string | null): number {
+  const type = (subscriptionType ?? "").trim().toLowerCase();
+
+  if (!type || type === "free" || type === "none" || type === "start") {
+    return 1;
+  }
+  if (type === "dialog") {
+    return 1.5;
+  }
+  if (type === "history" || type === "story") {
+    return 2;
+  }
+  if (type === "universe") {
+    return 2.5;
+  }
+
+  return 1;
+}
+
+export function applyBonusMultiplier(baseBonus: number, subscriptionType: string | null): number {
+  return Math.round(baseBonus * getBonusMultiplier(subscriptionType));
+}
+
 export function getNextStreak(currentStreak: number): number {
   const nextStreak = currentStreak + 1;
   return nextStreak > 7 ? 1 : nextStreak;

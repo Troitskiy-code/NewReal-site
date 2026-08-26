@@ -3,11 +3,14 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
+  applyBonusMultiplier,
   getBonusForStreak,
+  getBonusMultiplier,
   getMsUntilNextDay,
   getNextBonus,
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
+import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 
 export async function POST() {
   try {
@@ -22,6 +25,8 @@ export async function POST() {
         verseCoins: true,
         bonusStreak: true,
         lastBonusDate: true,
+        subscriptionType: true,
+        subscriptionEnd: true,
       },
     });
 
@@ -29,6 +34,8 @@ export async function POST() {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
     }
 
+    const subscriptionType = isSubscriptionActive(user) ? user.subscriptionType : null;
+    const multiplier = getBonusMultiplier(subscriptionType);
     const now = new Date();
     const msUntilNextBonus = getMsUntilNextDay(now);
     const nextBonusAt = new Date(now.getTime() + msUntilNextBonus);
@@ -40,7 +47,7 @@ export async function POST() {
           coins: user.verseCoins,
           verseCoins: user.verseCoins,
           streak: user.bonusStreak,
-          nextBonus: getNextBonus(user.bonusStreak),
+          nextBonus: applyBonusMultiplier(getNextBonus(user.bonusStreak), subscriptionType),
           msUntilNextBonus,
           nextBonusAt,
         },
@@ -53,8 +60,8 @@ export async function POST() {
       newStreak = 1;
     }
 
-    const bonus = getBonusForStreak(newStreak);
-    const nextBonus = getNextBonus(newStreak);
+    const bonus = applyBonusMultiplier(getBonusForStreak(newStreak), subscriptionType);
+    const nextBonus = applyBonusMultiplier(getNextBonus(newStreak), subscriptionType);
 
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
@@ -75,7 +82,7 @@ export async function POST() {
         userId: session.user.id,
         amount: bonus,
         type: "daily_bonus",
-        description: `Ежедневный бонус, день ${newStreak}`,
+        description: `Ежедневный бонус, день ${newStreak}, x${multiplier}`,
       },
     });
 

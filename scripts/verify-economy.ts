@@ -13,7 +13,9 @@ import {
 } from "../src/lib/verseChatEconomy.ts";
 import {
   DAILY_BONUS_AMOUNTS,
+  applyBonusMultiplier,
   getBonusForStreak,
+  getBonusMultiplier,
   getNextStreak,
 } from "../src/lib/dailyBonus.ts";
 
@@ -95,6 +97,22 @@ console.log("\n3. Ежедневный бонус (серия 1–7, сброс)
   }
   assert(getNextStreak(7) === 1, "после 7-го дня серия сбрасывается на 1");
   assert(getBonusForStreak(getNextStreak(7)) === 10, "новый цикл начинается с 10 VC");
+}
+
+console.log("\n4b. Множитель ежедневного бонуса");
+{
+  assert(getBonusMultiplier(null) === 1, "null → x1");
+  assert(getBonusMultiplier("free") === 1, "free → x1");
+  assert(getBonusMultiplier("dialog") === 1.5, "dialog → x1.5");
+  assert(getBonusMultiplier("history") === 2, "history → x2");
+  assert(getBonusMultiplier("story") === 2, "story → x2");
+  assert(getBonusMultiplier("universe") === 2.5, "universe → x2.5");
+  assert(getBonusMultiplier("unknown-plan") === 1, "неизвестный тип → x1");
+  assert(applyBonusMultiplier(10, null) === 10, "день 1 без подписки: 10");
+  assert(applyBonusMultiplier(10, "dialog") === 15, "день 1 Диалог: 15");
+  assert(applyBonusMultiplier(15, "dialog") === 23, "день 2 Диалог: 23");
+  assert(applyBonusMultiplier(10, "history") === 20, "день 1 История: 20");
+  assert(applyBonusMultiplier(10, "universe") === 25, "день 1 Вселенная: 25");
 }
 
 console.log("\n4. Суточный лимит 300");
