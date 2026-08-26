@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { extractShpParams, verifyRobokassaResultSignature } from "@/lib/robokassa";
+import { addSubscriptionDays } from "@/lib/subscriptionState";
+import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 
 function firstParam(
   source: { get(name: string): string | File | null },
@@ -108,6 +110,48 @@ async function handleWebhook(req: NextRequest) {
     }
 
     const now = new Date();
+    const applyMode = shpValue(shp, "Shp_applyMode").trim() === "afterExpiry" ? "afterExpiry" : "immediate";
+
+    if (applyMode === "afterExpiry") {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          subscriptionType: true,
+          subscriptionEnd: true,
+        },
+      });
+
+      if (currentUser && isSubscriptionActive(currentUser) && currentUser.subscriptionEnd) {
+        const pendingEnd = addSubscriptionDays(
+          currentUser.subscriptionEnd,
+          period === "year" ? 365 : 30
+        );
+
+        await prisma.$transaction([
+          prisma.user.update({
+            where: { id: userId },
+            data: {
+              pendingSubscriptionType: plan.id,
+              pendingSubscriptionEnd: pendingEnd,
+            },
+          }),
+          prisma.transaction.create({
+            data: {
+              userId,
+              amount: 0,
+              type: "subscription_pending",
+              description: paymentMarker,
+            },
+          }),
+        ]);
+
+        console.log(
+          `[Robokassa] Webhook processed successfully: InvId=${invId}, pending=${plan.id}, period=${period}`
+        );
+        return okResponse(invId);
+      }
+    }
+
     const subscriptionEnd = new Date(now);
     if (period === "year") {
       subscriptionEnd.setDate(subscriptionEnd.getDate() + 365);
@@ -122,6 +166,8 @@ async function handleWebhook(req: NextRequest) {
           subscriptionType: plan.id,
           subscriptionEnd,
           isSubscribed: true,
+          pendingSubscriptionType: null,
+          pendingSubscriptionEnd: null,
         },
       }),
       prisma.transaction.create({

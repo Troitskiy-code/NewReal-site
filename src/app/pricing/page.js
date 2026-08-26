@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
@@ -36,24 +36,54 @@ function formatNumber(value) {
   return value.toLocaleString("ru-RU");
 }
 
+function formatDate(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function PricingPage() {
   const { status } = useSession();
   const router = useRouter();
   const [isYearly, setIsYearly] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState(null);
+  const [balance, setBalance] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [applyMode, setApplyMode] = useState("immediate");
+  const [cancellingPending, setCancellingPending] = useState(false);
 
-  const handleSubscribe = async (plan) => {
-    const isFree = plan.monthlyPrice === 0;
-    if (isFree) {
-      toast("Тариф «Старт» доступен всем пользователям по умолчанию", { icon: "✨" });
-      return;
+  const fetchBalance = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/balance");
+      if (!res.ok) {
+        setBalance(null);
+        return;
+      }
+      const data = await res.json();
+      setBalance(data);
+    } catch {
+      setBalance(null);
     }
+  }, []);
 
-    if (status !== "authenticated") {
-      router.push("/login");
-      return;
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchBalance();
     }
+  }, [status, fetchBalance]);
 
+  const hasActiveSubscription = Boolean(
+    balance?.subscriptionType &&
+      balance.subscriptionType !== "none" &&
+      balance.subscriptionType !== "start" &&
+      balance.subscriptionEnd &&
+      new Date(balance.subscriptionEnd) > new Date()
+  );
+
+  const startCheckout = async (plan, mode) => {
     setSubscribingPlanId(plan.id);
     const toastId = toast.loading("Создание платежа...");
 
@@ -64,6 +94,7 @@ export default function PricingPage() {
         body: JSON.stringify({
           planId: plan.id,
           period: isYearly ? "year" : "month",
+          applyMode: mode,
         }),
       });
       const data = await res.json();
@@ -79,6 +110,46 @@ export default function PricingPage() {
         id: toastId,
       });
       setSubscribingPlanId(null);
+    }
+  };
+
+  const handleSubscribe = (plan) => {
+    const isFree = plan.monthlyPrice === 0;
+    if (isFree) {
+      toast("Тариф «Старт» доступен всем пользователям по умолчанию", { icon: "✨" });
+      return;
+    }
+
+    if (status !== "authenticated") {
+      router.push("/login");
+      return;
+    }
+
+    setApplyMode("immediate");
+    setSelectedPlan(plan);
+  };
+
+  const handlePay = async () => {
+    if (!selectedPlan) return;
+    const mode = hasActiveSubscription ? applyMode : "immediate";
+    setSelectedPlan(null);
+    await startCheckout(selectedPlan, mode);
+  };
+
+  const handleCancelPending = async () => {
+    setCancellingPending(true);
+    try {
+      const res = await fetch("/api/subscription/pending/cancel", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Не удалось отменить ожидающую подписку");
+      }
+      setBalance((prev) => (prev ? { ...prev, ...data } : data));
+      toast.success("Ожидающая подписка отменена");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось отменить ожидающую подписку");
+    } finally {
+      setCancellingPending(false);
     }
   };
 
@@ -102,6 +173,32 @@ export default function PricingPage() {
             генерации. Выберите уровень для ваших историй и диалогов.
           </p>
         </div>
+
+        {status === "authenticated" && (
+          <div className="flex w-full max-w-3xl flex-col gap-3">
+            <div className="rounded-wd border border-wd-secondary/30 bg-wd-card px-4 py-3 text-center text-sm text-white">
+              {hasActiveSubscription
+                ? `Ваша подписка: ${balance.subscriptionLabel || "активна"}, действует до ${formatDate(balance.subscriptionEnd)}`
+                : "У вас нет активной подписки"}
+            </div>
+            {balance?.pendingSubscriptionType && balance.pendingSubscriptionLabel && (
+              <div className="flex flex-col items-center gap-3 rounded-wd border border-wd-border bg-wd-card px-4 py-3 text-center sm:flex-row sm:justify-between sm:text-left">
+                <p className="text-sm text-wd-text-secondary">
+                  Новая подписка {balance.pendingSubscriptionLabel} начнётся после окончания текущей (
+                  {formatDate(balance.subscriptionEnd)})
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCancelPending}
+                  disabled={cancellingPending}
+                  className="shrink-0 rounded-wd-pill border border-wd-border px-4 py-2 text-xs font-bold text-white transition-colors hover:border-wd-primary disabled:opacity-50"
+                >
+                  {cancellingPending ? "Отмена..." : "Отменить"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="inline-flex rounded-wd-pill border border-wd-border bg-wd-card p-1">
           <button
@@ -208,6 +305,63 @@ export default function PricingPage() {
           множитель памяти применяются автоматически. Оплата проходит через Robokassa.
         </p>
       </main>
+
+      {selectedPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="wd-card w-full max-w-md space-y-5 p-6">
+            <h2 className="text-lg font-black text-white">Оформление подписки {selectedPlan.name}</h2>
+            <div className="space-y-3 text-sm text-wd-text-secondary">
+              <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
+                <input
+                  type="radio"
+                  name="applyMode"
+                  value="immediate"
+                  checked={applyMode === "immediate"}
+                  onChange={() => setApplyMode("immediate")}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-bold text-white">Применить сейчас</span>
+                  Старая подписка, если есть, будет заменена, остаток средств не возвращается
+                </span>
+              </label>
+              {hasActiveSubscription && (
+                <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
+                  <input
+                    type="radio"
+                    name="applyMode"
+                    value="afterExpiry"
+                    checked={applyMode === "afterExpiry"}
+                    onChange={() => setApplyMode("afterExpiry")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block font-bold text-white">Применить после окончания текущей</span>
+                    Новая подписка начнётся автоматически после истечения старой
+                  </span>
+                </label>
+              )}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={handlePay}
+                disabled={Boolean(subscribingPlanId)}
+                className="wd-button w-full py-3 text-sm disabled:opacity-50"
+              >
+                Перейти к оплате
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPlan(null)}
+                className="w-full py-2 text-sm font-medium text-wd-text-secondary hover:text-white"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

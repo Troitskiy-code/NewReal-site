@@ -70,18 +70,27 @@ export async function applyPendingSubscriptionIfDue(
 
   if (!user) return null;
 
-  if (!user.pendingSubscriptionType || !user.pendingSubscriptionEnd || user.pendingSubscriptionEnd > now) {
+  if (!user.pendingSubscriptionType) {
+    return user;
+  }
+
+  if (user.subscriptionEnd && user.subscriptionEnd > now) {
     return user;
   }
 
   const plan = getSubscriptionPlan(user.pendingSubscriptionType);
   const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
+  const nextEnd = isStart
+    ? null
+    : user.pendingSubscriptionEnd && user.pendingSubscriptionEnd > now
+      ? user.pendingSubscriptionEnd
+      : addSubscriptionDays(now, 30);
 
   return prisma.user.update({
     where: { id: userId },
     data: {
       subscriptionType: isStart ? DEFAULT_SUBSCRIPTION_TYPE : plan.id,
-      subscriptionEnd: isStart ? null : addSubscriptionDays(now, 30),
+      subscriptionEnd: nextEnd,
       isSubscribed: !isStart,
       pendingSubscriptionType: null,
       pendingSubscriptionEnd: null,
