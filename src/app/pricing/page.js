@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import toast, { Toaster } from "react-hot-toast";
@@ -33,16 +36,52 @@ function formatNumber(value) {
   return value.toLocaleString("ru-RU");
 }
 
-function handleSubscribe(planName, isFree) {
-  if (isFree) {
-    toast("Тариф «Старт» доступен всем пользователям по умолчанию", { icon: "✨" });
-    return;
-  }
-
-  toast(`Подписка «${planName}» через Unitpay будет доступна позже`, { icon: "💳" });
-}
-
 export default function PricingPage() {
+  const { status } = useSession();
+  const router = useRouter();
+  const [isYearly, setIsYearly] = useState(false);
+  const [subscribingPlanId, setSubscribingPlanId] = useState(null);
+
+  const handleSubscribe = async (plan) => {
+    const isFree = plan.monthlyPrice === 0;
+    if (isFree) {
+      toast("Тариф «Старт» доступен всем пользователям по умолчанию", { icon: "✨" });
+      return;
+    }
+
+    if (status !== "authenticated") {
+      router.push("/login");
+      return;
+    }
+
+    setSubscribingPlanId(plan.id);
+    const toastId = toast.loading("Создание платежа...");
+
+    try {
+      const res = await fetch("/api/subscription/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: plan.id,
+          period: isYearly ? "year" : "month",
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Не удалось создать платёж");
+      }
+
+      toast.dismiss(toastId);
+      window.location.href = data.url;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Ошибка при создании платежа", {
+        id: toastId,
+      });
+      setSubscribingPlanId(null);
+    }
+  };
+
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
       <Toaster position="top-right" />
@@ -59,9 +98,34 @@ export default function PricingPage() {
             Тарифы NewVerse
           </h1>
           <p className="mx-auto max-w-2xl text-sm leading-relaxed text-wd-text-secondary">
-            Ежемесячные планы с бонусными VerseCoins, расширенным контекстом и приоритетом
+            Ежемесячные и годовые планы с бонусными VerseCoins, расширенным контекстом и приоритетом
             генерации. Выберите уровень для ваших историй и диалогов.
           </p>
+        </div>
+
+        <div className="inline-flex rounded-wd-pill border border-wd-border bg-wd-card p-1">
+          <button
+            type="button"
+            onClick={() => setIsYearly(false)}
+            className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
+              !isYearly
+                ? "bg-wd-secondary text-white shadow"
+                : "text-wd-text-secondary hover:text-white"
+            }`}
+          >
+            Месяц
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsYearly(true)}
+            className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
+              isYearly
+                ? "bg-wd-secondary text-white shadow"
+                : "text-wd-text-secondary hover:text-white"
+            }`}
+          >
+            Год
+          </button>
         </div>
 
         <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -69,6 +133,7 @@ export default function PricingPage() {
             const Icon = PLAN_ICONS[plan.id] ?? FaStar;
             const isFree = plan.monthlyPrice === 0;
             const isPopular = plan.id === "story";
+            const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
 
             return (
               <article
@@ -90,23 +155,18 @@ export default function PricingPage() {
                   <div>
                     <h2 className="text-lg font-black text-white">{plan.name}</h2>
                     <p className="text-xs text-wd-text-secondary">
-                      {isFree ? "Бесплатный тариф" : "Ежемесячная подписка"}
+                      {isFree ? "Бесплатный тариф" : isYearly ? "Годовая подписка" : "Ежемесячная подписка"}
                     </p>
                   </div>
                 </div>
 
                 <div className="mb-5 space-y-1">
                   <p className="text-4xl font-black leading-none text-white">
-                    {isFree ? "0 ₽" : `${formatNumber(plan.monthlyPrice)} ₽`}
+                    {isFree ? "0 ₽" : `${formatNumber(price)} ₽`}
                   </p>
                   <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
-                    {isFree ? "навсегда" : "в месяц"}
+                    {isFree ? "навсегда" : isYearly ? "в год" : "в месяц"}
                   </p>
-                  {!isFree && (
-                    <p className="text-xs text-wd-text-secondary">
-                      или {formatNumber(plan.yearlyPrice)} ₽ / год
-                    </p>
-                  )}
                 </div>
 
                 <div className="mb-5 rounded-wd border border-wd-border bg-[#0A0A0A] p-4 text-sm">
@@ -128,11 +188,15 @@ export default function PricingPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleSubscribe(plan.name, isFree)}
-                  disabled={isFree}
+                  onClick={() => handleSubscribe(plan)}
+                  disabled={isFree || subscribingPlanId === plan.id}
                   className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${PLAN_BUTTONS[plan.id]}`}
                 >
-                  {isFree ? "Текущий базовый тариф" : "Подписаться"}
+                  {isFree
+                    ? "Текущий базовый тариф"
+                    : subscribingPlanId === plan.id
+                      ? "Переход к оплате..."
+                      : "Подписаться"}
                 </button>
               </article>
             );
@@ -141,8 +205,7 @@ export default function PricingPage() {
 
         <p className="max-w-3xl text-center text-xs text-wd-text-secondary">
           При активации подписки на баланс начисляются бонусные VC согласно тарифу. Контекст и
-          множитель памяти применяются автоматически. Оплата через Unitpay будет подключена в
-          ближайшем обновлении.
+          множитель памяти применяются автоматически. Оплата проходит через Robokassa.
         </p>
       </main>
 

@@ -28,11 +28,11 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 0,
     yearlyPrice: 0,
     vcPerMonth: 100,
-    contextTokens: 8_000,
+    contextTokens: 6_000,
     contextMultiplier: 1,
     priority: false,
     ragEnabled: false,
-    features: ["100 VC в месяц", "Контекст 8K", "Базовый доступ к моделям"],
+    features: ["100 VC в месяц", "Контекст 6K", "Базовый доступ к моделям"],
   },
   {
     id: "dialog",
@@ -40,11 +40,11 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 499,
     yearlyPrice: 4_990,
     vcPerMonth: 2_500,
-    contextTokens: 16_000,
+    contextTokens: 6_000,
     contextMultiplier: 1.5,
     priority: false,
     ragEnabled: false,
-    features: ["2 500 VC в месяц", "Контекст 16K", "Множитель памяти ×1,5"],
+    features: ["2 500 VC в месяц", "Контекст 6K", "Множитель памяти ×1,5"],
   },
   {
     id: "story",
@@ -52,11 +52,11 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 1_299,
     yearlyPrice: 12_990,
     vcPerMonth: 10_000,
-    contextTokens: 32_000,
+    contextTokens: 10_000,
     contextMultiplier: 2,
     priority: true,
     ragEnabled: false,
-    features: ["10 000 VC в месяц", "Контекст 32K", "Множитель ×2", "Приоритетная очередь"],
+    features: ["10 000 VC в месяц", "Контекст 10K", "Множитель ×2", "Приоритетная очередь"],
   },
   {
     id: "universe",
@@ -64,18 +64,19 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 3_499,
     yearlyPrice: 37_990,
     vcPerMonth: 30_000,
-    contextTokens: 64_000,
+    contextTokens: 16_000,
     contextMultiplier: 2.5,
     priority: true,
     ragEnabled: true,
-    features: ["30 000 VC в месяц", "Контекст 64K", "Множитель ×2,5", "Приоритет + RAG-память"],
+    features: ["30 000 VC в месяц", "Контекст 16K", "Множитель ×2,5", "Приоритет + RAG-память"],
   },
 ];
 
 export const DEFAULT_SUBSCRIPTION_TYPE = "start";
 
 export function getSubscriptionPlan(type: string | null | undefined): SubscriptionPlan {
-  const normalized = type === "none" || !type ? DEFAULT_SUBSCRIPTION_TYPE : type;
+  const raw = type === "none" || !type ? DEFAULT_SUBSCRIPTION_TYPE : type;
+  const normalized = raw === "history" ? "story" : raw;
   return SUBSCRIPTION_PLANS.find((plan) => plan.id === normalized) ?? SUBSCRIPTION_PLANS[0];
 }
 
@@ -98,19 +99,9 @@ export function getContextTokenLimit(
     !!subscriptionEnd &&
     subscriptionEnd > new Date();
 
-  if (!active) return 6000;
+  if (!active) return getSubscriptionPlan(DEFAULT_SUBSCRIPTION_TYPE).contextTokens;
 
-  switch (type) {
-    case "dialog":
-      return 8000;
-    case "story":
-    case "history":
-      return 12000;
-    case "universe":
-      return 16000;
-    default:
-      return 6000;
-  }
+  return getSubscriptionPlan(type).contextTokens;
 }
 
 export function getHistoryMessageLimit(

@@ -86,7 +86,8 @@ export function parseVcFromDesc(desc: string, sum: number): number {
 export function generateRobokassaPaymentUrl(
   userId: string,
   sum: number,
-  desc: string
+  desc: string,
+  extraShp: ShpParams = {}
 ): string {
   if (!MERCHANT_ID || !PASSWORD) {
     console.error("[Robokassa] Payment error: merchant or password is not configured");
@@ -95,9 +96,11 @@ export function generateRobokassaPaymentUrl(
 
   const invId = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const outSum = Number(sum).toFixed(2);
+  const isSubscription = extraShp.Shp_subscription === "true";
   const shp: ShpParams = {
     Shp_userId: userId,
-    Shp_vc: String(parseVcFromDesc(desc, sum)),
+    ...(isSubscription ? {} : { Shp_vc: String(parseVcFromDesc(desc, sum)) }),
+    ...extraShp,
   };
 
   const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${buildShpSuffix(shp)}`;

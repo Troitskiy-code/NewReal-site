@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { extractShpParams, verifyRobokassaResultSignature } from "@/lib/robokassa";
 
 function firstParam(
@@ -91,6 +92,51 @@ async function handleWebhook(req: NextRequest) {
 
   if (existingPayment) {
     console.log(`[Robokassa] Webhook processed successfully: InvId=${invId}`);
+    return okResponse(invId);
+  }
+
+  const isSubscription = shpValue(shp, "Shp_subscription").toLowerCase() === "true";
+  if (isSubscription) {
+    const planId = shpValue(shp, "Shp_plan").trim().toLowerCase();
+    const period = shpValue(shp, "Shp_period").trim().toLowerCase() === "year" ? "year" : "month";
+    const normalizedPlanId = planId === "history" ? "story" : planId;
+    const plan = SUBSCRIPTION_PLANS.find((item) => item.id === normalizedPlanId);
+
+    if (!plan || plan.monthlyPrice <= 0) {
+      console.error(`[Robokassa] Webhook error: Unknown subscription plan "${planId}"`);
+      return NextResponse.json({ error: "Unknown subscription plan" }, { status: 400 });
+    }
+
+    const now = new Date();
+    const subscriptionEnd = new Date(now);
+    if (period === "year") {
+      subscriptionEnd.setDate(subscriptionEnd.getDate() + 365);
+    } else {
+      subscriptionEnd.setDate(subscriptionEnd.getDate() + 30);
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionType: plan.id,
+          subscriptionEnd,
+          isSubscribed: true,
+        },
+      }),
+      prisma.transaction.create({
+        data: {
+          userId,
+          amount: 0,
+          type: "subscription",
+          description: paymentMarker,
+        },
+      }),
+    ]);
+
+    console.log(
+      `[Robokassa] Webhook processed successfully: InvId=${invId}, subscription=${plan.id}, period=${period}`
+    );
     return okResponse(invId);
   }
 
