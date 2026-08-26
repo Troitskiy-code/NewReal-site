@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaCoins, FaCrown, FaGift } from "react-icons/fa";
-import { DAILY_BONUS_AMOUNTS } from "@/lib/dailyBonus";
+import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 
 type BalanceData = {
   verseCoins: number;
@@ -18,6 +18,7 @@ type BalanceData = {
   nextBonus: number;
   msUntilNextBonus: number;
   subscriptionActive: boolean;
+  subscriptionType: string | null;
   subscriptionLabel: string | null;
   subscriptionEnd: string | null;
 };
@@ -141,6 +142,10 @@ export default function CoinsPage() {
     ? Math.min((balance.bonusStreak % 7) + 1, 7)
     : Math.min(Math.max(balance?.bonusStreak ?? 0, 1), 7);
   const streakProgress = balance ? (Math.min(balance.bonusStreak, 7) / 7) * 100 : 0;
+  const bonusMultiplier = getBonusMultiplier(
+    balance?.subscriptionActive ? balance.subscriptionType : null
+  );
+  const bonusScale = DAILY_BONUS_AMOUNTS.map((amount) => Math.round(amount * bonusMultiplier));
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
@@ -235,8 +240,8 @@ export default function CoinsPage() {
                   />
                 </div>
                 <div className="flex justify-between text-[10px] text-wd-text-secondary">
-                  {DAILY_BONUS_AMOUNTS.map((amount, index) => (
-                    <span key={amount} className={index + 1 <= balance.bonusStreak ? "text-wd-primary" : ""}>
+                  {bonusScale.map((amount, index) => (
+                    <span key={index} className={index + 1 <= balance.bonusStreak ? "text-wd-primary" : ""}>
                       {amount}
                     </span>
                   ))}
