@@ -140,8 +140,8 @@ model User {
   lastDailyBonus     DateTime?
   avatarTokens       Int           @default(10)
   lastTokenReplenish DateTime      @default(now())
-  tokensUsedToday    Int           @default(0)
-  lastTokenDate      DateTime      @default(now())
+  tokensUsedThisMonth Int          @default(0)
+  lastTokenMonth     DateTime      @default(now())
   referralCode       String?       @unique
   referredBy         String?
   createdAt          DateTime      @default(now())

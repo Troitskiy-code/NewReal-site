@@ -1,11 +1,16 @@
 import { prisma } from "@/lib/prisma";
-import { isSameCalendarDay, isSubscriptionActive } from "@/lib/verseChatEconomy";
+import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 
 export const MAX_AVATAR_TOKENS = 10;
 export const AVATAR_REPLENISH_HOURS = 6;
 export const AVATAR_REPLENISH_MS = AVATAR_REPLENISH_HOURS * 60 * 60 * 1000;
-export const FREE_DAILY_LIMIT = 5;
-export const SUBSCRIBER_DAILY_LIMIT = 10;
+
+export const MONTHLY_LIMITS = {
+  free: 0,
+  dialog: 20,
+  history: 50,
+  universe: 150,
+} as const;
 
 export type AvatarModelType = "FLUX" | "SD";
 
@@ -14,8 +19,8 @@ export type AvatarTokenUser = {
   verseCoins: number;
   avatarTokens: number;
   lastTokenReplenish: Date;
-  tokensUsedToday: number;
-  lastTokenDate: Date;
+  tokensUsedThisMonth: number;
+  lastTokenMonth: Date;
   subscriptionType: string | null;
   subscriptionEnd: Date | null;
 };
@@ -25,8 +30,8 @@ const AVATAR_TOKEN_SELECT = {
   verseCoins: true,
   avatarTokens: true,
   lastTokenReplenish: true,
-  tokensUsedToday: true,
-  lastTokenDate: true,
+  tokensUsedThisMonth: true,
+  lastTokenMonth: true,
   subscriptionType: true,
   subscriptionEnd: true,
 } as const;
@@ -35,36 +40,44 @@ export function getFreeTokenCost(modelType: AvatarModelType): number {
   return modelType === "SD" ? 2 : 1;
 }
 
-export function getPaidVCCost(modelType: AvatarModelType): number {
-  return modelType === "SD" ? 25 : 2;
-}
-
-export function getDailyLimit(
+export function getMonthlyLimit(
   user: Pick<AvatarTokenUser, "subscriptionType" | "subscriptionEnd">
 ): number {
-  return isSubscriptionActive(user) ? SUBSCRIBER_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  if (!isSubscriptionActive(user)) {
+    return MONTHLY_LIMITS.free;
+  }
+
+  const type = (user.subscriptionType ?? "free").trim().toLowerCase();
+  if (type === "dialog") return MONTHLY_LIMITS.dialog;
+  if (type === "history" || type === "story") return MONTHLY_LIMITS.history;
+  if (type === "universe") return MONTHLY_LIMITS.universe;
+  return MONTHLY_LIMITS.free;
 }
 
-function normalizeDailyUsage(
-  user: Pick<AvatarTokenUser, "tokensUsedToday" | "lastTokenDate">,
+function isSameCalendarMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+function normalizeMonthlyUsage(
+  user: Pick<AvatarTokenUser, "tokensUsedThisMonth" | "lastTokenMonth">,
   now = new Date()
-): { tokensUsedToday: number; lastTokenDate: Date } {
-  if (!isSameCalendarDay(user.lastTokenDate, now)) {
-    return { tokensUsedToday: 0, lastTokenDate: now };
+): { tokensUsedThisMonth: number; lastTokenMonth: Date } {
+  if (!isSameCalendarMonth(user.lastTokenMonth, now)) {
+    return { tokensUsedThisMonth: 0, lastTokenMonth: now };
   }
-  return { tokensUsedToday: user.tokensUsedToday, lastTokenDate: user.lastTokenDate };
+  return { tokensUsedThisMonth: user.tokensUsedThisMonth, lastTokenMonth: user.lastTokenMonth };
 }
 
 export function canSpendFreeToken(
   user: AvatarTokenUser,
   modelType: AvatarModelType
 ): { ok: boolean; reason?: string } {
-  const daily = normalizeDailyUsage(user);
-  const dailyLimit = getDailyLimit(user);
+  const monthly = normalizeMonthlyUsage(user);
+  const monthlyLimit = getMonthlyLimit(user);
   const cost = getFreeTokenCost(modelType);
 
-  if (daily.tokensUsedToday >= dailyLimit) {
-    return { ok: false, reason: "Дневной лимит исчерпан" };
+  if (monthly.tokensUsedThisMonth >= monthlyLimit) {
+    return { ok: false, reason: "Достигнут месячный лимит бесплатных генераций" };
   }
   if (user.avatarTokens < cost) {
     return { ok: false, reason: "Недостаточно AT" };
@@ -82,7 +95,7 @@ export async function replenishAvatarTokens(userId: string, now = new Date()): P
     throw new Error("Пользователь не найден");
   }
 
-  const daily = normalizeDailyUsage(user, now);
+  const monthly = normalizeMonthlyUsage(user, now);
   const elapsed = now.getTime() - user.lastTokenReplenish.getTime();
   const periods = Math.max(0, Math.floor(elapsed / AVATAR_REPLENISH_MS));
   const nextTokens = Math.min(MAX_AVATAR_TOKENS, user.avatarTokens + periods);
@@ -94,7 +107,7 @@ export async function replenishAvatarTokens(userId: string, now = new Date()): P
   if (
     nextTokens === user.avatarTokens &&
     nextReplenish.getTime() === user.lastTokenReplenish.getTime() &&
-    daily.tokensUsedToday === user.tokensUsedToday
+    monthly.tokensUsedThisMonth === user.tokensUsedThisMonth
   ) {
     return user;
   }
@@ -104,8 +117,8 @@ export async function replenishAvatarTokens(userId: string, now = new Date()): P
     data: {
       avatarTokens: nextTokens,
       lastTokenReplenish: nextReplenish,
-      tokensUsedToday: daily.tokensUsedToday,
-      lastTokenDate: daily.lastTokenDate,
+      tokensUsedThisMonth: monthly.tokensUsedThisMonth,
+      lastTokenMonth: monthly.lastTokenMonth,
     },
     select: AVATAR_TOKEN_SELECT,
   });
@@ -116,56 +129,30 @@ export async function spendFreeToken(
   modelType: AvatarModelType
 ): Promise<AvatarTokenUser> {
   const cost = getFreeTokenCost(modelType);
-  const daily = normalizeDailyUsage(user);
+  const monthly = normalizeMonthlyUsage(user);
 
   return prisma.user.update({
     where: { id: user.id },
     data: {
       avatarTokens: { decrement: cost },
-      tokensUsedToday: daily.tokensUsedToday + 1,
-      lastTokenDate: daily.lastTokenDate,
+      tokensUsedThisMonth: monthly.tokensUsedThisMonth + 1,
+      lastTokenMonth: monthly.lastTokenMonth,
     },
     select: AVATAR_TOKEN_SELECT,
   });
 }
 
-export async function chargeAvatarVC(
-  userId: string,
-  costVC: number,
-  modelType: AvatarModelType
-): Promise<number> {
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { verseCoins: { decrement: costVC } },
-    select: { verseCoins: true },
-  });
-
-  await prisma.transaction.create({
-    data: {
-      userId,
-      amount: -costVC,
-      type: "avatar",
-      description: `Генерация аватара (${modelType === "SD" ? "Grok Imagine I2I" : "Grok Imagine"})`,
-    },
-  });
-
-  return updated.verseCoins;
-}
-
 export function getAvatarTokenStatus(user: AvatarTokenUser) {
-  const daily = normalizeDailyUsage(user);
-  const dailyLimit = getDailyLimit(user);
+  const monthly = normalizeMonthlyUsage(user);
+  const monthlyLimit = getMonthlyLimit(user);
 
   return {
     avatarTokens: user.avatarTokens,
     maxTokens: MAX_AVATAR_TOKENS,
-    tokensUsedToday: daily.tokensUsedToday,
-    dailyLimit,
-    dailyRemaining: Math.max(0, dailyLimit - daily.tokensUsedToday),
-    verseCoins: user.verseCoins,
+    tokensUsedThisMonth: monthly.tokensUsedThisMonth,
+    monthlyLimit,
+    monthlyRemaining: Math.max(0, monthlyLimit - monthly.tokensUsedThisMonth),
     fluxCostAT: getFreeTokenCost("FLUX"),
     sdCostAT: getFreeTokenCost("SD"),
-    fluxCostVC: getPaidVCCost("FLUX"),
-    sdCostVC: getPaidVCCost("SD"),
   };
 }
