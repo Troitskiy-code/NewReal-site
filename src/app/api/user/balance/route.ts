@@ -7,12 +7,12 @@ import {
   getBonusForStreak,
   getMsUntilNextDay,
   getNextBonus,
-  getSubscriptionLabel,
   getUpcomingBonusStreak,
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
-import { isSubscriptionActive, normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
+import { normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
 import { replenishAvatarTokens } from "@/lib/avatarTokens";
+import { applyPendingSubscriptionIfDue, serializeSubscriptionState } from "@/lib/subscriptionState";
 
 export async function GET() {
   try {
@@ -29,6 +29,9 @@ export async function GET() {
         lastBonusDate: true,
         subscriptionType: true,
         subscriptionEnd: true,
+        pendingSubscriptionType: true,
+        pendingSubscriptionEnd: true,
+        isSubscribed: true,
         dailyRequests: true,
         dailyRequestsDate: true,
       },
@@ -39,12 +42,21 @@ export async function GET() {
     }
 
     await replenishAvatarTokens(session.user.id);
+    const synced = (await applyPendingSubscriptionIfDue(session.user.id)) ?? user;
+    const subscription = serializeSubscriptionState(
+      {
+        subscriptionType: synced.subscriptionType,
+        subscriptionEnd: synced.subscriptionEnd,
+        pendingSubscriptionType: synced.pendingSubscriptionType,
+        pendingSubscriptionEnd: synced.pendingSubscriptionEnd,
+        isSubscribed: synced.isSubscribed,
+      }
+    );
 
     const now = new Date();
     const claimedToday = Boolean(user.lastBonusDate && isSameCalendarDay(user.lastBonusDate, now));
     const canClaimBonus = !claimedToday;
-    const subscriptionActive = isSubscriptionActive(user);
-    const bonusSubscriptionType = subscriptionActive ? user.subscriptionType : null;
+    const bonusSubscriptionType = subscription.subscriptionActive ? subscription.subscriptionType : null;
     const upcomingStreak = getUpcomingBonusStreak(user.bonusStreak);
     const currentBonusAmount = applyBonusMultiplier(
       getBonusForStreak(upcomingStreak),
@@ -54,8 +66,8 @@ export async function GET() {
       {
         id: session.user.id,
         verseCoins: user.verseCoins,
-        subscriptionType: user.subscriptionType,
-        subscriptionEnd: user.subscriptionEnd,
+        subscriptionType: subscription.subscriptionType,
+        subscriptionEnd: subscription.subscriptionEnd,
         dailyRequests: user.dailyRequests,
         dailyRequestsDate: user.dailyRequestsDate,
       },
@@ -70,10 +82,7 @@ export async function GET() {
       currentBonusAmount,
       nextBonus: applyBonusMultiplier(getNextBonus(user.bonusStreak), bonusSubscriptionType),
       msUntilNextBonus: claimedToday ? getMsUntilNextDay(now) : 0,
-      subscriptionType: user.subscriptionType,
-      subscriptionEnd: user.subscriptionEnd,
-      subscriptionActive,
-      subscriptionLabel: subscriptionActive ? getSubscriptionLabel(user.subscriptionType) : null,
+      ...subscription,
       dailyRequests: counters.dailyRequests,
       dailyRequestsDate: counters.dailyRequestsDate,
       dailyLimit: DAILY_REQUEST_LIMIT,

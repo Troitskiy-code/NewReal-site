@@ -48,6 +48,7 @@ const NAV_ITEMS = [
     path: "/pricing",
     iconInactive: FaRegStar,
     iconActive: FaStar,
+    matchPaths: ["/pricing", "/subscription"],
   },
   {
     name: "VerseCoins",

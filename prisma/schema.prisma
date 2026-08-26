@@ -131,8 +131,10 @@ model User {
   credits            Int           @default(0)
   realCoins          Int           @default(0)
   verseCoins         Int           @default(0)
-  subscriptionType   String?       @default("none")
-  subscriptionEnd    DateTime?
+  subscriptionType         String?   @default("none")
+  subscriptionEnd          DateTime?
+  pendingSubscriptionType  String?
+  pendingSubscriptionEnd   DateTime?
   bonusStreak        Int           @default(0)
   lastBonusDate      DateTime?
   dailyRequests      Int           @default(0)

@@ -20,6 +20,7 @@ import {
   normalizeUserCounters,
   type EconomyModel,
 } from "@/lib/verseChatEconomy";
+import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -128,13 +129,21 @@ export async function resolveChatContext(userId: string) {
 
   if (!user) return null;
 
+  const synced = await applyPendingSubscriptionIfDue(userId);
+  const subscriptionType = synced?.subscriptionType ?? user.subscriptionType;
+  const subscriptionEnd = synced?.subscriptionEnd ?? user.subscriptionEnd;
+
   let model = user.selectedModel;
   if (!model || !model.isActive) {
     model = baseModel;
   }
 
   return {
-    user,
+    user: {
+      ...user,
+      subscriptionType,
+      subscriptionEnd,
+    },
     model: { ...model, isFreeForSubscribers: false },
     baseModel,
   };

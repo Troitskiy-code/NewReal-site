@@ -16,6 +16,7 @@ import {
   FaComments,
   FaEnvelope,
   FaRobot,
+  FaCrown,
 } from "react-icons/fa";
 import FavoriteButton from "@/components/FavoriteButton";
 import VerseCoinsBalance from "@/components/VerseCoinsBalance";
@@ -48,6 +49,15 @@ type UserStats = {
   chatsCount: number;
   messagesCount: number;
   createdAt: string;
+};
+
+type SubscriptionBalance = {
+  subscriptionLabel: string | null;
+  subscriptionActive: boolean;
+  subscriptionEnd: string | null;
+  daysRemaining: number;
+  pendingSubscriptionLabel: string | null;
+  pendingSubscriptionEnd: string | null;
 };
 
 function parseTags(tags: string | null): string[] {
@@ -83,6 +93,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -100,12 +111,14 @@ export default function ProfilePage() {
       setError(null);
 
       try {
-        const [charactersRes, statsRes] = await Promise.all([
+        const [charactersRes, statsRes, balanceRes] = await Promise.all([
           axios.get<CharactersResponse>(`/api/characters?userId=${session.user.id}&limit=100`),
           axios.get<UserStats>("/api/user/stats"),
+          axios.get<SubscriptionBalance>("/api/user/balance"),
         ]);
         setCharacters(charactersRes.data.data);
         setStats(statsRes.data);
+        setSubscription(balanceRes.data);
       } catch (err) {
         const message =
           axios.isAxiosError(err) && err.response?.data?.error
@@ -114,6 +127,7 @@ export default function ProfilePage() {
         setError(message);
         setCharacters([]);
         setStats(null);
+        setSubscription(null);
       } finally {
         setLoading(false);
         setStatsLoading(false);
@@ -237,6 +251,36 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        {subscription && (
+          <section className="wd-card flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-6">
+            <div className="flex items-start gap-3">
+              <FaCrown className="mt-1 shrink-0 text-wd-secondary" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-wd-text-secondary">
+                  Подписка
+                </p>
+                <h2 className="text-lg font-black text-white">{subscription.subscriptionLabel || "Старт"}</h2>
+                {subscription.subscriptionActive && subscription.subscriptionEnd ? (
+                  <p className="text-xs text-wd-text-secondary">
+                    До {new Date(subscription.subscriptionEnd).toLocaleDateString("ru-RU")} · осталось{" "}
+                    {subscription.daysRemaining} дн.
+                  </p>
+                ) : (
+                  <p className="text-xs text-wd-text-secondary">Бесплатный тариф</p>
+                )}
+                {subscription.pendingSubscriptionLabel && (
+                  <p className="text-xs text-wd-secondary">
+                    Затем: {subscription.pendingSubscriptionLabel}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Link href="/subscription" className="wd-button px-5 py-2.5 text-xs">
+              Управление подпиской
+            </Link>
+          </section>
+        )}
 
         {/* Stats */}
         <section className="grid grid-cols-3 gap-2 md:gap-4">
