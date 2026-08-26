@@ -185,7 +185,6 @@ type CharacterFormProps = {
   loraFile?: File | null;
   onLoraChange: (file: File) => void;
   onLoraRemove: () => void;
-  characterId?: string;
 };
 
 async function fileToDataUrl(file: File): Promise<string> {
@@ -205,14 +204,10 @@ async function resolveReferenceImage(preview: string | null, file?: File | null)
   return null;
 }
 
-type AvatarTokenStatus = {
-  avatarTokens: number;
-  maxTokens: number;
+type AvatarLimitStatus = {
   tokensUsedThisMonth: number;
   monthlyLimit: number;
   monthlyRemaining: number;
-  fluxCostAT: number;
-  sdCostAT: number;
 };
 
 export default function CharacterForm({
@@ -226,17 +221,13 @@ export default function CharacterForm({
   loraFile,
   onLoraChange,
   onLoraRemove,
-  characterId,
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
-  const [tokenStatus, setTokenStatus] = useState<AvatarTokenStatus | null>(null);
+  const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
 
   const usesSd = Boolean(loraFile || loraPreview);
-  const costAT = usesSd ? tokenStatus?.sdCostAT ?? 2 : tokenStatus?.fluxCostAT ?? 1;
-  const canGenerate = Boolean(
-    tokenStatus && tokenStatus.monthlyRemaining > 0 && tokenStatus.avatarTokens >= costAT
-  );
+  const canGenerate = Boolean(tokenStatus && tokenStatus.monthlyRemaining > 0);
 
   const handleLoraInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -254,7 +245,7 @@ export default function CharacterForm({
   useEffect(() => {
     let cancelled = false;
     axios
-      .get<AvatarTokenStatus>("/api/avatar-tokens")
+      .get<AvatarLimitStatus>("/api/avatar-tokens")
       .then(({ data }) => {
         if (!cancelled) setTokenStatus(data);
       })
@@ -277,10 +268,7 @@ export default function CharacterForm({
 
     try {
       const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
-      const { data } = await axios.post<{
-        imageUrl: string;
-        remainingTokens?: number;
-      }>("/api/generate-avatar", {
+      const { data } = await axios.post<{ imageUrl: string }>("/api/generate-avatar", {
         name: values.name.trim(),
         appearance: values.appearance.trim() || undefined,
         description: values.description.trim() || undefined,
@@ -293,22 +281,17 @@ export default function CharacterForm({
         throw new Error("Сервер не вернул изображение");
       }
 
-      if (characterId) {
-        await axios.put(`/api/characters/${characterId}`, { imageUrl: data.imageUrl });
-      }
-
       onAvatarGenerated(data.imageUrl);
       setTokenStatus((prev) =>
         prev
           ? {
               ...prev,
-              avatarTokens: data.remainingTokens ?? prev.avatarTokens,
               tokensUsedThisMonth: prev.tokensUsedThisMonth + 1,
               monthlyRemaining: Math.max(0, prev.monthlyRemaining - 1),
             }
           : prev
       );
-      toast.success(`Аватар сгенерирован (−${costAT} AT)`, { id: toastId });
+      toast.success("Аватар сгенерирован", { id: toastId });
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       const serverError =
@@ -518,22 +501,16 @@ export default function CharacterForm({
         {tokenStatus && (
           <div className="space-y-2 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-gray-300">
             <p>
-              AT: {tokenStatus.avatarTokens}/{tokenStatus.maxTokens}
-            </p>
-            <p>
               Месячный лимит: осталось {tokenStatus.monthlyRemaining} из {tokenStatus.monthlyLimit} генераций
             </p>
             <p>
-              Модель: {usesSd ? `Grok Imagine I2I (${costAT} AT)` : `Grok Imagine (${costAT} AT)`}
+              Модель: {usesSd ? "Grok Imagine I2I" : "Grok Imagine"}
             </p>
             {tokenStatus.monthlyLimit === 0 && (
               <p className="text-red-400">Генерация доступна по подписке Диалог, История или Вселенная.</p>
             )}
             {tokenStatus.monthlyLimit > 0 && tokenStatus.monthlyRemaining === 0 && (
               <p className="text-red-400">Достигнут месячный лимит бесплатных генераций.</p>
-            )}
-            {tokenStatus.monthlyRemaining > 0 && tokenStatus.avatarTokens < costAT && (
-              <p className="text-red-400">Недостаточно AT. Нужно {costAT}, на балансе {tokenStatus.avatarTokens}.</p>
             )}
           </div>
         )}
@@ -548,7 +525,7 @@ export default function CharacterForm({
           ) : (
             <FaMagic className="text-sm" />
           )}
-          {generatingAvatar ? "Генерация..." : `Сгенерировать аватар (${costAT} AT)`}
+          {generatingAvatar ? "Генерация..." : "Сгенерировать аватар"}
         </button>
       </FormBlock>
 

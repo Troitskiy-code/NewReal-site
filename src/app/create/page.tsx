@@ -92,7 +92,7 @@ export default function CreateCharacterPage() {
       let imageUrl: string | null = generatedAvatarUrl;
       let imageLora: string | null = null;
 
-      if (avatarFile) imageUrl = await uploadImage(avatarFile);
+      if (!generatedAvatarUrl && avatarFile) imageUrl = await uploadImage(avatarFile);
       if (loraFile) imageLora = await uploadImage(loraFile);
 
       await axios.post("/api/characters", {

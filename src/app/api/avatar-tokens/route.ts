@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getAvatarTokenStatus, replenishAvatarTokens } from "@/lib/avatarTokens";
+import { getAvatarTokenStatus, getAvatarUsageUser } from "@/lib/avatarTokens";
 
 export async function GET() {
   try {
@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const user = await replenishAvatarTokens(session.user.id);
+    const user = await getAvatarUsageUser(session.user.id);
     return NextResponse.json(getAvatarTokenStatus(user));
   } catch (error) {
     console.error("Avatar tokens fetch error:", error);

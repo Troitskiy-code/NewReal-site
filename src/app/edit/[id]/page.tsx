@@ -46,6 +46,7 @@ export default function EditCharacterPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loraFile, setLoraFile] = useState<File | null>(null);
   const [loraPreview, setLoraPreview] = useState<string | null>(null);
+  const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -98,6 +99,7 @@ export default function EditCharacterPage() {
       return;
     }
     setAvatarFile(file);
+    setGeneratedAvatarUrl(null);
     setAvatarPreview(URL.createObjectURL(file));
   };
 
@@ -114,6 +116,7 @@ export default function EditCharacterPage() {
   const handleRemoveAvatar = () => {
     setAvatarFile(null);
     setAvatarPreview(null);
+    setGeneratedAvatarUrl(null);
     setImageUrl(null);
   };
 
@@ -137,6 +140,7 @@ export default function EditCharacterPage() {
     setLoraPreview(null);
     setImageUrl(null);
     setImageLora(null);
+    setGeneratedAvatarUrl(null);
     toast.success("Черновик очищен");
   };
 
@@ -152,10 +156,10 @@ export default function EditCharacterPage() {
     const toastId = toast.loading("Сохранение изменений...");
 
     try {
-      let finalImageUrl = imageUrl;
+      let finalImageUrl = generatedAvatarUrl ?? imageUrl;
       let finalImageLora = imageLora;
 
-      if (avatarFile) finalImageUrl = await uploadImage(avatarFile);
+      if (!generatedAvatarUrl && avatarFile) finalImageUrl = await uploadImage(avatarFile);
       if (loraFile) finalImageLora = await uploadImage(loraFile);
 
       await axios.put(`/api/characters/${id}`, {
@@ -254,13 +258,12 @@ export default function EditCharacterPage() {
               onAvatarGenerated={(url) => {
                 setAvatarFile(null);
                 setAvatarPreview(url);
-                setImageUrl(url);
+                setGeneratedAvatarUrl(url);
               }}
               loraPreview={loraPreview}
               loraFile={loraFile}
               onLoraChange={handleLoraChange}
               onLoraRemove={handleRemoveLora}
-              characterId={id}
             />
 
             <div className="flex flex-col gap-4 border-t border-[#2A2A2A] pt-4 md:pt-6 sm:flex-row sm:items-center sm:justify-between">

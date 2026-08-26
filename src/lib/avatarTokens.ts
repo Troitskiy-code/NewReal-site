@@ -36,10 +36,6 @@ const AVATAR_TOKEN_SELECT = {
   subscriptionEnd: true,
 } as const;
 
-export function getFreeTokenCost(modelType: AvatarModelType): number {
-  return modelType === "SD" ? 2 : 1;
-}
-
 export function getMonthlyLimit(
   user: Pick<AvatarTokenUser, "subscriptionType" | "subscriptionEnd">
 ): number {
@@ -68,21 +64,42 @@ function normalizeMonthlyUsage(
   return { tokensUsedThisMonth: user.tokensUsedThisMonth, lastTokenMonth: user.lastTokenMonth };
 }
 
-export function canSpendFreeToken(
-  user: AvatarTokenUser,
-  modelType: AvatarModelType
-): { ok: boolean; reason?: string } {
+export function canGenerateThisMonth(user: AvatarTokenUser): { ok: boolean; reason?: string } {
   const monthly = normalizeMonthlyUsage(user);
   const monthlyLimit = getMonthlyLimit(user);
-  const cost = getFreeTokenCost(modelType);
 
   if (monthly.tokensUsedThisMonth >= monthlyLimit) {
     return { ok: false, reason: "Достигнут месячный лимит бесплатных генераций" };
   }
-  if (user.avatarTokens < cost) {
-    return { ok: false, reason: "Недостаточно AT" };
-  }
   return { ok: true };
+}
+
+export async function getAvatarUsageUser(userId: string, now = new Date()): Promise<AvatarTokenUser> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: AVATAR_TOKEN_SELECT,
+  });
+
+  if (!user) {
+    throw new Error("Пользователь не найден");
+  }
+
+  const monthly = normalizeMonthlyUsage(user, now);
+  if (
+    monthly.tokensUsedThisMonth === user.tokensUsedThisMonth &&
+    monthly.lastTokenMonth.getTime() === user.lastTokenMonth.getTime()
+  ) {
+    return user;
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      tokensUsedThisMonth: monthly.tokensUsedThisMonth,
+      lastTokenMonth: monthly.lastTokenMonth,
+    },
+    select: AVATAR_TOKEN_SELECT,
+  });
 }
 
 export async function replenishAvatarTokens(userId: string, now = new Date()): Promise<AvatarTokenUser> {
@@ -124,17 +141,12 @@ export async function replenishAvatarTokens(userId: string, now = new Date()): P
   });
 }
 
-export async function spendFreeToken(
-  user: AvatarTokenUser,
-  modelType: AvatarModelType
-): Promise<AvatarTokenUser> {
-  const cost = getFreeTokenCost(modelType);
+export async function recordMonthlyGeneration(user: AvatarTokenUser): Promise<AvatarTokenUser> {
   const monthly = normalizeMonthlyUsage(user);
 
   return prisma.user.update({
     where: { id: user.id },
     data: {
-      avatarTokens: { decrement: cost },
       tokensUsedThisMonth: monthly.tokensUsedThisMonth + 1,
       lastTokenMonth: monthly.lastTokenMonth,
     },
@@ -147,12 +159,8 @@ export function getAvatarTokenStatus(user: AvatarTokenUser) {
   const monthlyLimit = getMonthlyLimit(user);
 
   return {
-    avatarTokens: user.avatarTokens,
-    maxTokens: MAX_AVATAR_TOKENS,
     tokensUsedThisMonth: monthly.tokensUsedThisMonth,
     monthlyLimit,
     monthlyRemaining: Math.max(0, monthlyLimit - monthly.tokensUsedThisMonth),
-    fluxCostAT: getFreeTokenCost("FLUX"),
-    sdCostAT: getFreeTokenCost("SD"),
   };
 }

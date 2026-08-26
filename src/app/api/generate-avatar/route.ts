@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import {
-  canSpendFreeToken,
-  replenishAvatarTokens,
-  spendFreeToken,
+  canGenerateThisMonth,
+  getAvatarUsageUser,
+  recordMonthlyGeneration,
   type AvatarModelType,
 } from "@/lib/avatarTokens";
 import { buildAvatarPrompt, isSensitiveGenerationError, SENSITIVE_CLIENT_MESSAGE } from "@/lib/avatarPrompt";
@@ -49,23 +49,20 @@ export async function POST(req: NextRequest) {
     }
     const modelType: AvatarModelType = referenceImage ? "SD" : "FLUX";
 
-    const user = await replenishAvatarTokens(session.user.id);
-    const canSpend = canSpendFreeToken(user, modelType);
-    if (!canSpend.ok) {
+    const user = await getAvatarUsageUser(session.user.id);
+    const canGenerate = canGenerateThisMonth(user);
+    if (!canGenerate.ok) {
       return NextResponse.json(
-        { error: canSpend.reason || "Достигнут месячный лимит бесплатных генераций" },
+        { error: canGenerate.reason || "Достигнут месячный лимит бесплатных генераций" },
         { status: 402 }
       );
     }
 
     const createdUrl = await generateWithCreateya(prompt, referenceImage || undefined, modelType);
     const imageUrl = await imageUrlToDataUrl(createdUrl);
-    const updated = await spendFreeToken(user, modelType);
+    await recordMonthlyGeneration(user);
 
-    return NextResponse.json({
-      imageUrl,
-      remainingTokens: updated.avatarTokens,
-    });
+    return NextResponse.json({ imageUrl });
   } catch (error) {
     console.error("Avatar generation error:", error);
     const details = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
