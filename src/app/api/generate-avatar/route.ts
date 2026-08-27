@@ -7,7 +7,12 @@ import {
   recordMonthlyGeneration,
   type AvatarModelType,
 } from "@/lib/avatarTokens";
-import { buildAvatarPrompt, isSensitiveGenerationError, SENSITIVE_CLIENT_MESSAGE } from "@/lib/avatarPrompt";
+import {
+  buildAvatarPrompt,
+  isSensitiveGenerationError,
+  resolveAvatarStyle,
+  SENSITIVE_CLIENT_MESSAGE,
+} from "@/lib/avatarPrompt";
 import { convertImageToPNG, generateWithCreateya, imageUrlToDataUrl } from "@/lib/createya";
 
 export const maxDuration = 90;
@@ -19,6 +24,7 @@ type GenerateAvatarBody = {
   scenario?: unknown;
   exampleDialogs?: unknown;
   referenceImage?: unknown;
+  style?: unknown;
 };
 
 function asText(value: unknown): string {
@@ -42,7 +48,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Укажите имя персонажа" }, { status: 400 });
     }
 
-    const prompt = buildAvatarPrompt(body);
+    // style: 'anime' | 'realistic'; default realistic when missing/invalid
+    const style = resolveAvatarStyle(body.style);
+    const prompt = buildAvatarPrompt({ ...body, style });
     let referenceImage = asText(body.referenceImage);
     if (referenceImage) {
       referenceImage = await convertImageToPNG(referenceImage);

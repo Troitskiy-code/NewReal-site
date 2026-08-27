@@ -224,6 +224,7 @@ export default function CharacterForm({
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
+  const [style, setStyle] = useState<"anime" | "realistic">("realistic");
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
 
   const usesSd = Boolean(loraFile || loraPreview);
@@ -275,6 +276,7 @@ export default function CharacterForm({
         scenario: values.scenario.trim() || undefined,
         exampleDialogs: values.exampleDialogs.trim() || undefined,
         referenceImage: referenceImage || undefined,
+        style,
       });
 
       if (!data.imageUrl) {
@@ -514,19 +516,51 @@ export default function CharacterForm({
             )}
           </div>
         )}
-        <button
-          type="button"
-          onClick={handleGenerateAvatar}
-          disabled={generatingAvatar || (tokenStatus !== null && !canGenerate)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
-        >
-          {generatingAvatar ? (
-            <FaSpinner className="animate-spin text-sm" />
-          ) : (
-            <FaMagic className="text-sm" />
-          )}
-          {generatingAvatar ? "Генерация..." : "Сгенерировать аватар"}
-        </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div
+            className="flex w-full gap-2 sm:w-auto"
+            role="radiogroup"
+            aria-label="Стиль генерации аватара"
+          >
+            {(
+              [
+                { value: "realistic" as const, label: "Реалистичный" },
+                { value: "anime" as const, label: "Аниме" },
+              ] as const
+            ).map((option) => {
+              const active = style === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setStyle(option.value)}
+                  className={`flex-1 rounded-lg border px-4 py-3 text-sm font-bold transition-colors sm:flex-none ${
+                    active
+                      ? "border-[#6C63FF] bg-[#6C63FF] text-white"
+                      : "border-gray-500 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-300"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerateAvatar}
+            disabled={generatingAvatar || (tokenStatus !== null && !canGenerate)}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
+          >
+            {generatingAvatar ? (
+              <FaSpinner className="animate-spin text-sm" />
+            ) : (
+              <FaMagic className="text-sm" />
+            )}
+            {generatingAvatar ? "Генерация..." : "Сгенерировать аватар"}
+          </button>
+        </div>
       </FormBlock>
 
       <section>

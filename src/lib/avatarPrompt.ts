@@ -29,21 +29,35 @@ function sanitizePromptText(value: string): string {
   return text.slice(0, 280);
 }
 
+export type AvatarStyle = "anime" | "realistic";
+
+const STYLE_PROMPT: Record<AvatarStyle, string> = {
+  anime: "anime style, anime art, manga style, colorful, cel-shaded",
+  realistic: "photorealistic, realistic style, detailed, high quality",
+};
+
+export function resolveAvatarStyle(value: unknown): AvatarStyle {
+  return value === "anime" ? "anime" : "realistic";
+}
+
 export function buildAvatarPrompt(body: {
   name?: unknown;
   appearance?: unknown;
   description?: unknown;
+  style?: unknown;
 }): string {
   const name = sanitizePromptText(asText(body.name)) || "unnamed character";
   const appearance = sanitizePromptText(asText(body.appearance));
   const description = sanitizePromptText(asText(body.description));
+  const style = resolveAvatarStyle(body.style);
 
   return [
     "safe, appropriate, family friendly fantasy character portrait",
     `of ${name}`,
     appearance,
     description,
-    "fantasy character portrait, detailed, high quality, character art",
+    STYLE_PROMPT[style],
+    "fantasy character portrait, character art",
   ]
     .filter(Boolean)
     .join(", ");
