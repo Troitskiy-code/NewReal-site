@@ -497,6 +497,12 @@ export default function CharacterForm({
       </FormBlock>
 
       <FormBlock title="Аватар персонажа" icon={FaImage}>
+        <ImageUploadField
+          preview={avatarPreview}
+          onChange={onAvatarChange}
+          onRemove={onAvatarRemove}
+          footerHint="Максимальный размер: 5 МБ. Рекомендуемое соотношение: 3:5."
+        />
         <div className="space-y-3">
           <label htmlFor="avatarPrompt" className="block text-sm font-medium text-white">
             Описание для генерации аватара
@@ -517,12 +523,6 @@ export default function CharacterForm({
             )}
           </p>
         </div>
-        <ImageUploadField
-          preview={avatarPreview}
-          onChange={onAvatarChange}
-          onRemove={onAvatarRemove}
-          footerHint="Максимальный размер: 5 МБ. Рекомендуемое соотношение: 3:5."
-        />
         {tokenStatus && (
           <div className="space-y-2 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-gray-300">
             <p>
