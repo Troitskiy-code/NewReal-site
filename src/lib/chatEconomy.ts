@@ -37,14 +37,14 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: "dialog",
     name: "Диалог",
-    monthlyPrice: 20,
-    yearlyPrice: 200,
+    monthlyPrice: 499,
+    yearlyPrice: 4_990,
     vcPerMonth: 2_500,
     contextTokens: 6_000,
     contextMultiplier: 1.5,
     priority: false,
     ragEnabled: false,
-    features: ["2 500 VC в месяц", "Контекст 6K", "Множитель памяти ×1,5"],
+    features: ["2 500 VC в месяц", "Контекст 6К", "Множитель памяти ×1,5"],
   },
   {
     id: "story",
