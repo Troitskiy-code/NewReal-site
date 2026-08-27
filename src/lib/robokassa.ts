@@ -140,20 +140,19 @@ export function generateRobokassaPaymentUrl(
     ...extraShp,
   };
 
-  // Compact JSON (no spaces), then the same encodeURIComponent value goes into Signature and URL.
-  // Signature order: MerchantLogin:OutSum:InvId:Receipt:Password1:Shp_*
+  // Receipt goes only in the URL query. Signature stays:
+  // MerchantLogin:OutSum:InvId:Password1:Shp_*  (without Receipt) — avoids error 29 for this shop.
   const receiptJson = receipt ? JSON.stringify(receipt) : "";
   const receiptEncoded = receiptJson ? encodeURIComponent(receiptJson) : "";
-  const receiptPart = receiptEncoded ? `${receiptEncoded}:` : "";
   const shpSuffix = buildShpSuffix(shp);
-  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${PASSWORD}${shpSuffix}`;
+  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${shpSuffix}`;
   const signature = md5(signatureString);
 
   console.log("[Robokassa] Receipt JSON:", receiptJson || "(none)");
   console.log("[Robokassa] Receipt encoded:", receiptEncoded || "(none)");
   console.log(
     "[Robokassa] Signature string:",
-    `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${"***"}${shpSuffix}`
+    `${MERCHANT_ID}:${outSum}:${invId}:***${shpSuffix}`
   );
 
   const shpQuery = Object.entries(shp)
