@@ -83,11 +83,47 @@ export function parseVcFromDesc(desc: string, sum: number): number {
   return Math.round(sum / 0.3);
 }
 
+export type RobokassaReceiptItem = {
+  Name: string;
+  Price: number;
+  Quantity: number;
+  Amount: number;
+  Tax: string;
+};
+
+export type RobokassaReceipt = {
+  Items: RobokassaReceiptItem[];
+  TaxSystem: string;
+};
+
+/** Фискальный чек (54-ФЗ) для параметра Receipt в Robokassa. */
+export function buildReceipt(
+  items: Array<{ name: string; price: number; quantity?: number }>,
+  taxSystem = "usn_income"
+): RobokassaReceipt {
+  return {
+    TaxSystem: taxSystem,
+    Items: items.map((item) => {
+      const quantity = item.quantity ?? 1;
+      const price = Number(Number(item.price).toFixed(2));
+      const amount = Number((price * quantity).toFixed(2));
+      return {
+        Name: String(item.name).slice(0, 128),
+        Price: price,
+        Quantity: quantity,
+        Amount: amount,
+        Tax: "none",
+      };
+    }),
+  };
+}
+
 export function generateRobokassaPaymentUrl(
   userId: string,
   sum: number,
   desc: string,
-  extraShp: ShpParams = {}
+  extraShp: ShpParams = {},
+  receipt?: RobokassaReceipt | null
 ): string {
   if (!MERCHANT_ID || !PASSWORD) {
     console.error("[Robokassa] Payment error: merchant or password is not configured");
@@ -103,15 +139,19 @@ export function generateRobokassaPaymentUrl(
     ...extraShp,
   };
 
-  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${buildShpSuffix(shp)}`;
+  // Receipt must be URL-encoded and included in SignatureValue per Robokassa docs
+  const receiptEncoded = receipt ? encodeURIComponent(JSON.stringify(receipt)) : "";
+  const receiptPart = receiptEncoded ? `${receiptEncoded}:` : "";
+  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${PASSWORD}${buildShpSuffix(shp)}`;
   const signature = md5(signatureString);
 
   const shpQuery = Object.entries(shp)
     .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
     .join("");
 
+  const receiptQuery = receiptEncoded ? `&Receipt=${receiptEncoded}` : "";
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
-  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}&SignatureValue=${signature}${shpQuery}${testParam}`;
+  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}&SignatureValue=${signature}${receiptQuery}${shpQuery}${testParam}`;
 
   console.log(`[Robokassa] Payment created: InvId=${invId}`);
   return url;
