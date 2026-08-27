@@ -119,6 +119,12 @@ export function buildReceipt(
   };
 }
 
+function logSignatureVariant(label: string, value: string) {
+  console.log(
+    `[Robokassa] signature variant: ${label} | MD5=${md5(value)} | CRC32=${crc32Hex(value)} | CRC32dec=${crc32Dec(value)}`
+  );
+}
+
 export function generateRobokassaPaymentUrl(
   userId: string,
   sum: number,
@@ -131,12 +137,21 @@ export function generateRobokassaPaymentUrl(
     throw new Error("Robokassa is not configured");
   }
 
-  const invId = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  const outSum = Number(sum).toFixed(2);
-  const isSubscription = extraShp.Shp_subscription === "true";
+  // InvId must fit Robokassa Int32 range (1..2147483647); Date.now() alone overflows.
+  const invId = String(
+    Math.max(1, (Date.now() % 1_000_000_000) * 2 + (Math.floor(Math.random() * 1000) % 2))
+  );
+  const amount = Number(sum);
+  const outSum = amount.toFixed(2);
+  const sumFormats = uniqueStrings([
+    outSum,
+    String(amount),
+    amount.toFixed(0),
+    amount.toFixed(1),
+    amount.toFixed(2),
+  ]);
 
-  // Shp_* must be present in both URL and signature (webhook needs them).
-  // Sorted alphabetically per Robokassa docs.
+  const isSubscription = extraShp.Shp_subscription === "true";
   const shp: ShpParams = {
     Shp_userId: userId,
     ...(isSubscription ? {} : { Shp_vc: String(parseVcFromDesc(desc, sum)) }),
@@ -144,52 +159,76 @@ export function generateRobokassaPaymentUrl(
   };
   const shpSuffix = buildShpSuffix(shp);
 
-  // Compact JSON → same encodeURIComponent value in Signature and URL.
-  // Official order: MerchantLogin:OutSum:InvId:Receipt:Password1:Shp_*
   const receiptJson = receipt ? JSON.stringify(receipt) : "";
   const receiptEncoded = receiptJson ? encodeURIComponent(receiptJson) : "";
-  const receiptPart = receiptEncoded ? `${receiptEncoded}:` : "";
 
+  const passwords = [
+    { name: "Password1", value: PASSWORD },
+    { name: "Password2", value: PASSWORD2 },
+    { name: "Password3", value: PASSWORD3 },
+  ].filter((item) => item.value);
+
+  console.log("[Robokassa] diag base:", {
+    merchant: MERCHANT_ID,
+    outSum,
+    invId,
+    shpSuffix: shpSuffix || "(none)",
+    receiptJson: receiptJson || "(none)",
+    hasReceipt: Boolean(receiptJson),
+  });
+
+  for (const sumFmt of sumFormats) {
+    for (const password of passwords) {
+      // Without Receipt: MerchantLogin:OutSum:InvId:Password:Shp_*
+      logSignatureVariant(
+        `noReceipt sum=${sumFmt} ${password.name}+Shp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${password.value}${shpSuffix}`
+      );
+      logSignatureVariant(
+        `noReceipt sum=${sumFmt} ${password.name} noShp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${password.value}`
+      );
+
+      if (!receiptJson) continue;
+
+      // Receipt raw JSON between InvId and Password
+      logSignatureVariant(
+        `receiptRaw-beforePassword sum=${sumFmt} ${password.name}+Shp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${receiptJson}:${password.value}${shpSuffix}`
+      );
+      // Receipt URL-encoded between InvId and Password (docs / PHP example)
+      logSignatureVariant(
+        `receiptEnc-beforePassword sum=${sumFmt} ${password.name}+Shp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${receiptEncoded}:${password.value}${shpSuffix}`
+      );
+      // Password before Receipt (raw)
+      logSignatureVariant(
+        `password-before-receiptRaw sum=${sumFmt} ${password.name}+Shp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${password.value}:${receiptJson}${shpSuffix}`
+      );
+      // Password before Receipt (encoded)
+      logSignatureVariant(
+        `password-before-receiptEnc sum=${sumFmt} ${password.name}+Shp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${password.value}:${receiptEncoded}${shpSuffix}`
+      );
+      // Receipt after Shp (encoded)
+      logSignatureVariant(
+        `receiptEnc-afterShp sum=${sumFmt} ${password.name}+Shp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${password.value}${shpSuffix}:${receiptEncoded}`
+      );
+      // Receipt after Shp (raw)
+      logSignatureVariant(
+        `receiptRaw-afterShp sum=${sumFmt} ${password.name}+Shp`,
+        `${MERCHANT_ID}:${sumFmt}:${invId}:${password.value}${shpSuffix}:${receiptJson}`
+      );
+    }
+  }
+
+  // Production signature: official order with URL-encoded Receipt when present.
+  const receiptPart = receiptEncoded ? `${receiptEncoded}:` : "";
   const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${PASSWORD}${shpSuffix}`;
   const signature = md5(signatureString);
-
-  // Diagnostic signature variants (error 29 = SignatureValue mismatch)
-  const variantA = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}`;
-  const variantB = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${shpSuffix}`;
-  const variantC = PASSWORD2
-    ? `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD2}${shpSuffix}`
-    : "";
-  const variantD = PASSWORD3
-    ? `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD3}${shpSuffix}`
-    : "";
-  const variantWithReceipt = signatureString;
-
-  console.log("[Robokassa] Receipt JSON:", receiptJson || "(none)");
-  console.log("[Robokassa] Receipt encoded:", receiptEncoded || "(none)");
-  console.log("[Robokassa] Shp suffix:", shpSuffix || "(none)");
-  console.log("[Robokassa] Signature variants (password masked in strings, hashes full):");
-  console.log("  A (no Shp, Password1) MD5:", md5(variantA), "CRC32:", crc32Hex(variantA));
-  console.log("  B (Shp + Password1) MD5:", md5(variantB), "CRC32:", crc32Hex(variantB));
-  if (variantC) {
-    console.log("  C (Shp + Password2) MD5:", md5(variantC), "CRC32:", crc32Hex(variantC));
-  } else {
-    console.log("  C (Shp + Password2): skipped (PASSWORD2 empty)");
-  }
-  if (variantD) {
-    console.log("  D (Shp + Password3) MD5:", md5(variantD), "CRC32:", crc32Hex(variantD));
-  } else {
-    console.log("  D (Shp + Password3): skipped (PASSWORD3 empty)");
-  }
-  console.log(
-    "  E (Receipt+Password1+Shp, used) MD5:",
-    md5(variantWithReceipt),
-    "CRC32:",
-    crc32Hex(variantWithReceipt)
-  );
-  console.log(
-    "[Robokassa] Signature string used:",
-    `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}***${shpSuffix}`
-  );
+  logSignatureVariant("USED receiptEnc-beforePassword Password1+Shp outSum.fixed2", signatureString);
 
   const shpQuery = Object.entries(shp)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
