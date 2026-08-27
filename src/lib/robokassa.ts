@@ -12,7 +12,7 @@ type ShpParams = Record<string, string>;
 function buildShpSuffix(params: ShpParams): string {
   const entries = Object.entries(params)
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
-    .sort(([a], [b]) => a.localeCompare(b));
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
 
   if (entries.length === 0) {
     return "";
@@ -84,35 +84,36 @@ export function parseVcFromDesc(desc: string, sum: number): number {
 }
 
 export type RobokassaReceiptItem = {
-  Name: string;
-  Price: number;
-  Quantity: number;
-  Amount: number;
-  Tax: string;
+  name: string;
+  quantity: number;
+  sum: number;
+  tax: string;
 };
 
 export type RobokassaReceipt = {
-  Items: RobokassaReceiptItem[];
-  TaxSystem: string;
+  sno: string;
+  items: RobokassaReceiptItem[];
 };
 
-/** Фискальный чек (54-ФЗ) для параметра Receipt в Robokassa. */
+/**
+ * Фискальный чек (54-ФЗ) для параметра Receipt в Robokassa.
+ * Формат по актуальной документации: sno + items[{ name, quantity, sum, tax }].
+ */
 export function buildReceipt(
   items: Array<{ name: string; price: number; quantity?: number }>,
   taxSystem = "usn_income"
 ): RobokassaReceipt {
   return {
-    TaxSystem: taxSystem,
-    Items: items.map((item) => {
+    sno: taxSystem,
+    items: items.map((item) => {
       const quantity = item.quantity ?? 1;
-      const price = Number(Number(item.price).toFixed(2));
-      const amount = Number((price * quantity).toFixed(2));
+      const unitPrice = Number(Number(item.price).toFixed(2));
+      const sum = Number((unitPrice * quantity).toFixed(2));
       return {
-        Name: String(item.name).slice(0, 128),
-        Price: price,
-        Quantity: quantity,
-        Amount: amount,
-        Tax: "none",
+        name: String(item.name).slice(0, 128),
+        quantity,
+        sum,
+        tax: "none",
       };
     }),
   };
@@ -139,11 +140,21 @@ export function generateRobokassaPaymentUrl(
     ...extraShp,
   };
 
-  // Receipt must be URL-encoded and included in SignatureValue per Robokassa docs
-  const receiptEncoded = receipt ? encodeURIComponent(JSON.stringify(receipt)) : "";
+  // Compact JSON (no spaces), then the same encodeURIComponent value goes into Signature and URL.
+  // Signature order: MerchantLogin:OutSum:InvId:Receipt:Password1:Shp_*
+  const receiptJson = receipt ? JSON.stringify(receipt) : "";
+  const receiptEncoded = receiptJson ? encodeURIComponent(receiptJson) : "";
   const receiptPart = receiptEncoded ? `${receiptEncoded}:` : "";
-  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${PASSWORD}${buildShpSuffix(shp)}`;
+  const shpSuffix = buildShpSuffix(shp);
+  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${PASSWORD}${shpSuffix}`;
   const signature = md5(signatureString);
+
+  console.log("[Robokassa] Receipt JSON:", receiptJson || "(none)");
+  console.log("[Robokassa] Receipt encoded:", receiptEncoded || "(none)");
+  console.log(
+    "[Robokassa] Signature string:",
+    `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${"***"}${shpSuffix}`
+  );
 
   const shpQuery = Object.entries(shp)
     .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
