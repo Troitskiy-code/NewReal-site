@@ -134,28 +134,65 @@ export function generateRobokassaPaymentUrl(
   const invId = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const outSum = Number(sum).toFixed(2);
   const isSubscription = extraShp.Shp_subscription === "true";
+
+  // Shp_* must be present in both URL and signature (webhook needs them).
+  // Sorted alphabetically per Robokassa docs.
   const shp: ShpParams = {
     Shp_userId: userId,
     ...(isSubscription ? {} : { Shp_vc: String(parseVcFromDesc(desc, sum)) }),
     ...extraShp,
   };
+  const shpSuffix = buildShpSuffix(shp);
 
-  // Receipt goes only in the URL query. Signature stays:
-  // MerchantLogin:OutSum:InvId:Password1:Shp_*  (without Receipt) — avoids error 29 for this shop.
+  // Compact JSON → same encodeURIComponent value in Signature and URL.
+  // Official order: MerchantLogin:OutSum:InvId:Receipt:Password1:Shp_*
   const receiptJson = receipt ? JSON.stringify(receipt) : "";
   const receiptEncoded = receiptJson ? encodeURIComponent(receiptJson) : "";
-  const shpSuffix = buildShpSuffix(shp);
-  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${shpSuffix}`;
+  const receiptPart = receiptEncoded ? `${receiptEncoded}:` : "";
+
+  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}${PASSWORD}${shpSuffix}`;
   const signature = md5(signatureString);
+
+  // Diagnostic signature variants (error 29 = SignatureValue mismatch)
+  const variantA = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}`;
+  const variantB = `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${shpSuffix}`;
+  const variantC = PASSWORD2
+    ? `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD2}${shpSuffix}`
+    : "";
+  const variantD = PASSWORD3
+    ? `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD3}${shpSuffix}`
+    : "";
+  const variantWithReceipt = signatureString;
 
   console.log("[Robokassa] Receipt JSON:", receiptJson || "(none)");
   console.log("[Robokassa] Receipt encoded:", receiptEncoded || "(none)");
+  console.log("[Robokassa] Shp suffix:", shpSuffix || "(none)");
+  console.log("[Robokassa] Signature variants (password masked in strings, hashes full):");
+  console.log("  A (no Shp, Password1) MD5:", md5(variantA), "CRC32:", crc32Hex(variantA));
+  console.log("  B (Shp + Password1) MD5:", md5(variantB), "CRC32:", crc32Hex(variantB));
+  if (variantC) {
+    console.log("  C (Shp + Password2) MD5:", md5(variantC), "CRC32:", crc32Hex(variantC));
+  } else {
+    console.log("  C (Shp + Password2): skipped (PASSWORD2 empty)");
+  }
+  if (variantD) {
+    console.log("  D (Shp + Password3) MD5:", md5(variantD), "CRC32:", crc32Hex(variantD));
+  } else {
+    console.log("  D (Shp + Password3): skipped (PASSWORD3 empty)");
+  }
   console.log(
-    "[Robokassa] Signature string:",
-    `${MERCHANT_ID}:${outSum}:${invId}:***${shpSuffix}`
+    "  E (Receipt+Password1+Shp, used) MD5:",
+    md5(variantWithReceipt),
+    "CRC32:",
+    crc32Hex(variantWithReceipt)
+  );
+  console.log(
+    "[Robokassa] Signature string used:",
+    `${MERCHANT_ID}:${outSum}:${invId}:${receiptPart}***${shpSuffix}`
   );
 
   const shpQuery = Object.entries(shp)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
     .join("");
 
@@ -163,7 +200,7 @@ export function generateRobokassaPaymentUrl(
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
   const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}&SignatureValue=${signature}${receiptQuery}${shpQuery}${testParam}`;
 
-  console.log(`[Robokassa] Payment created: InvId=${invId}`);
+  console.log(`[Robokassa] Payment created: InvId=${invId}, algorithm=MD5`);
   return url;
 }
 
