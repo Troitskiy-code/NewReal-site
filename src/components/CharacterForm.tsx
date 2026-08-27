@@ -159,6 +159,7 @@ export type CharacterFormValues = {
   exampleDialogs: string;
   descriptionCard: string;
   tags: string;
+  avatarPrompt: string;
   isPublic: boolean;
 };
 
@@ -171,6 +172,7 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
   exampleDialogs: "",
   descriptionCard: "",
   tags: "",
+  avatarPrompt: "",
   isPublic: false,
 };
 
@@ -275,6 +277,7 @@ export default function CharacterForm({
         description: values.description.trim() || undefined,
         scenario: values.scenario.trim() || undefined,
         exampleDialogs: values.exampleDialogs.trim() || undefined,
+        avatarPrompt: values.avatarPrompt.trim() || undefined,
         referenceImage: referenceImage || undefined,
         style,
       });
@@ -494,6 +497,26 @@ export default function CharacterForm({
       </FormBlock>
 
       <FormBlock title="Аватар персонажа" icon={FaImage}>
+        <div className="space-y-3">
+          <label htmlFor="avatarPrompt" className="block text-sm font-medium text-white">
+            Описание для генерации аватара
+          </label>
+          <LimitedTextarea
+            id="avatarPrompt"
+            value={values.avatarPrompt}
+            onChange={(v) => onChange("avatarPrompt", v)}
+            maxLength={CHARACTER_LIMITS.avatarPrompt}
+            rows={4}
+            placeholder="Опишите образ для генерации аватара..."
+          />
+          <p className={HINT_CLASS}>
+            {hintWithCounter(
+              "Если заполнено, используется для создания аватара вместо автоматического промпта из внешности и описания.",
+              values.avatarPrompt,
+              CHARACTER_LIMITS.avatarPrompt
+            )}
+          </p>
+        </div>
         <ImageUploadField
           preview={avatarPreview}
           onChange={onAvatarChange}

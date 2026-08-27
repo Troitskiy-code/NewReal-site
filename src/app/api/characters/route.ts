@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       greeting,
       scenario,
       exampleDialogs,
+      avatarPrompt,
     } = parsed;
 
     if (!name) {
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
         greeting: greeting ?? null,
         scenario: scenario ?? null,
         exampleDialogs: exampleDialogs ?? null,
+        avatarPrompt: avatarPrompt ?? null,
         isPublic,
         userId: session.user.id,
       },

@@ -25,6 +25,7 @@ type GenerateAvatarBody = {
   exampleDialogs?: unknown;
   referenceImage?: unknown;
   style?: unknown;
+  avatarPrompt?: unknown;
 };
 
 function asText(value: unknown): string {
@@ -49,8 +50,13 @@ export async function POST(req: NextRequest) {
     }
 
     // style: 'anime' | 'realistic'; default realistic when missing/invalid
+    // avatarPrompt (if set) becomes the main prompt; otherwise name/appearance/description
     const style = resolveAvatarStyle(body.style);
-    const prompt = buildAvatarPrompt({ ...body, style });
+    const prompt = buildAvatarPrompt({
+      ...body,
+      style,
+      customPrompt: asText(body.avatarPrompt) || undefined,
+    });
     let referenceImage = asText(body.referenceImage);
     if (referenceImage) {
       referenceImage = await convertImageToPNG(referenceImage);

@@ -65,6 +65,7 @@ export default function EditCharacterPage() {
           scenario: data.scenario || "",
           exampleDialogs: data.exampleDialogs || "",
           descriptionCard: data.descriptionCard || "",
+          avatarPrompt: data.avatarPrompt || "",
           tags: data.tags || "",
           isPublic: data.isPublic,
         });
@@ -170,6 +171,7 @@ export default function EditCharacterPage() {
         scenario: form.scenario.trim() || null,
         exampleDialogs: form.exampleDialogs.trim() || null,
         descriptionCard: form.descriptionCard.trim() || null,
+        avatarPrompt: form.avatarPrompt.trim() || null,
         tags: form.tags.trim() || null,
         imageUrl: finalImageUrl,
         imageLora: finalImageLora,

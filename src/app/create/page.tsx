@@ -103,6 +103,7 @@ export default function CreateCharacterPage() {
         scenario: form.scenario.trim() || null,
         exampleDialogs: form.exampleDialogs.trim() || null,
         descriptionCard: form.descriptionCard.trim() || null,
+        avatarPrompt: form.avatarPrompt.trim() || null,
         tags: form.tags.trim() || null,
         imageUrl,
         imageLora,

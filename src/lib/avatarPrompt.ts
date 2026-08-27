@@ -21,12 +21,12 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function sanitizePromptText(value: string): string {
+function sanitizePromptText(value: string, maxLength = 280): string {
   let text = value.replace(REMOVED_WORDS, " ").replace(/\s+/g, " ").trim();
   for (const [pattern, replacement] of WORD_REPLACEMENTS) {
     text = text.replace(pattern, replacement);
   }
-  return text.slice(0, 280);
+  return text.slice(0, maxLength);
 }
 
 export type AvatarStyle = "anime" | "realistic";
@@ -45,11 +45,26 @@ export function buildAvatarPrompt(body: {
   appearance?: unknown;
   description?: unknown;
   style?: unknown;
+  avatarPrompt?: unknown;
+  customPrompt?: unknown;
 }): string {
+  const style = resolveAvatarStyle(body.style);
+  const customPrompt = asText(body.customPrompt) || asText(body.avatarPrompt);
+
+  if (customPrompt) {
+    const custom = sanitizePromptText(customPrompt, 1000);
+    return [
+      "safe, appropriate, family friendly fantasy character portrait",
+      custom,
+      STYLE_PROMPT[style],
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+
   const name = sanitizePromptText(asText(body.name)) || "unnamed character";
   const appearance = sanitizePromptText(asText(body.appearance));
   const description = sanitizePromptText(asText(body.description));
-  const style = resolveAvatarStyle(body.style);
 
   return [
     "safe, appropriate, family friendly fantasy character portrait",

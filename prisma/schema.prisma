@@ -49,6 +49,7 @@ model Character {
   imageLora         String?   // Аватар для улучшенной генерации
   voice             String?   // Голос
   descriptionCard   String?   // Описание карточки персонажа (не влияет на поведение)
+  avatarPrompt      String?   @db.Text // Описание для генерации аватара
 }
 
 model Model {

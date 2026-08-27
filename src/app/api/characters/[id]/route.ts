@@ -77,6 +77,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       greeting?: string | null;
       scenario?: string | null;
       exampleDialogs?: string | null;
+      avatarPrompt?: string | null;
       isPublic?: boolean;
     } = {};
 
@@ -96,6 +97,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.greeting !== undefined) data.greeting = parsed.greeting ?? null;
     if (body.scenario !== undefined) data.scenario = parsed.scenario ?? null;
     if (body.exampleDialogs !== undefined) data.exampleDialogs = parsed.exampleDialogs ?? null;
+    if (body.avatarPrompt !== undefined) data.avatarPrompt = parsed.avatarPrompt ?? null;
     if (body.isPublic !== undefined) data.isPublic = parsed.isPublic;
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
