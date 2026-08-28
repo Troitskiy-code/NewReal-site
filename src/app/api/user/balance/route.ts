@@ -34,6 +34,7 @@ export async function GET() {
         pendingSubscriptionType: true,
         pendingSubscriptionEnd: true,
         isSubscribed: true,
+        robokassaRecurringId: true,
         dailyRequests: true,
         dailyRequestsDate: true,
       },
@@ -54,6 +55,7 @@ export async function GET() {
             pendingSubscriptionType: true,
             pendingSubscriptionEnd: true,
             isSubscribed: true,
+            robokassaRecurringId: true,
           },
         })) ?? user
       : user;
@@ -64,6 +66,7 @@ export async function GET() {
         pendingSubscriptionType: synced.pendingSubscriptionType,
         pendingSubscriptionEnd: synced.pendingSubscriptionEnd,
         isSubscribed: synced.isSubscribed,
+        robokassaRecurringId: synced.robokassaRecurringId,
       }
     );
 

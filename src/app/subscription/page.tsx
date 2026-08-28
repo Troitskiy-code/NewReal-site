@@ -18,6 +18,7 @@ type SubscriptionBalance = {
   pendingSubscriptionType: string | null;
   pendingSubscriptionEnd: string | null;
   pendingSubscriptionLabel: string | null;
+  recurringSetupRequired?: boolean;
 };
 
 const PLAN_ICONS = {
@@ -189,6 +190,16 @@ export default function SubscriptionPage() {
               <p className="rounded-wd border border-wd-border bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
                 После окончания текущей подписки будет включён тариф «{balance.pendingSubscriptionLabel}»
                 ({formatDate(balance.pendingSubscriptionEnd)}).
+              </p>
+            )}
+            {balance.recurringSetupRequired && (
+              <p className="rounded-wd border border-wd-primary/40 bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
+                Автопродление для нового тарифа не настроено. Чтобы списания продолжались автоматически,
+                оформите подписку ещё раз на странице{" "}
+                <Link href="/pricing" className="font-bold text-wd-secondary hover:text-white">
+                  тарифов
+                </Link>
+                .
               </p>
             )}
             <Link href="/pricing" className="inline-flex text-sm font-bold text-wd-secondary hover:text-white">

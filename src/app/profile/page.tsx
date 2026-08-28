@@ -58,6 +58,7 @@ type SubscriptionBalance = {
   daysRemaining: number;
   pendingSubscriptionLabel: string | null;
   pendingSubscriptionEnd: string | null;
+  recurringSetupRequired?: boolean;
 };
 
 function parseTags(tags: string | null): string[] {
@@ -272,6 +273,11 @@ export default function ProfilePage() {
                 {subscription.pendingSubscriptionLabel && (
                   <p className="text-xs text-wd-secondary">
                     Затем: {subscription.pendingSubscriptionLabel}
+                  </p>
+                )}
+                {subscription.recurringSetupRequired && (
+                  <p className="text-xs text-wd-primary">
+                    Для нового тарифа нужно заново настроить автопродление.
                   </p>
                 )}
               </div>

@@ -65,8 +65,11 @@ async function renewDueSubscriptions() {
     const pendingPlan = user.pendingSubscriptionType
       ? getSubscriptionPlan(user.pendingSubscriptionType)
       : null;
-    if (pendingPlan && pendingPlan.monthlyPrice <= 0) {
-      results.push({ userId: user.id, skipped: "pending_free_plan" });
+    if (pendingPlan) {
+      console.log(
+        `[Robokassa] Renew skipped: user=${user.id} has pending=${pendingPlan.id}, RecurringID=${user.robokassaRecurringId}`
+      );
+      results.push({ userId: user.id, skipped: "pending_plan_change" });
       continue;
     }
 

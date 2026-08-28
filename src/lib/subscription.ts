@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_SUBSCRIPTION_TYPE, getSubscriptionPlan } from "@/lib/chatEconomy";
+import { cancelRobokassaRecurring } from "@/lib/robokassa";
 
 export type PendingActivationUser = {
   id: string;
@@ -7,6 +8,7 @@ export type PendingActivationUser = {
   subscriptionEnd?: Date | string | null;
   pendingSubscriptionType?: string | null;
   pendingSubscriptionEnd?: Date | string | null;
+  robokassaRecurringId?: string | null;
 };
 
 function asDate(value: Date | string | null | undefined): Date | null {
@@ -37,6 +39,16 @@ export async function activatePendingSubscriptionIfNeeded(
   const plan = getSubscriptionPlan(user.pendingSubscriptionType);
   const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
 
+  const stored = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { robokassaRecurringId: true },
+  });
+  const previousRecurringId = stored?.robokassaRecurringId ?? user.robokassaRecurringId ?? null;
+
+  console.log(
+    `[Subscription] Activating pending plan=${plan.id} user=${user.id} previousRecurringId=${previousRecurringId || "none"}`
+  );
+
   const activated = await prisma.$transaction(async (tx) => {
     const updated = await tx.user.updateMany({
       where: {
@@ -50,6 +62,7 @@ export async function activatePendingSubscriptionIfNeeded(
         isSubscribed: !isStart,
         pendingSubscriptionType: null,
         pendingSubscriptionEnd: null,
+        robokassaRecurringId: null,
       },
     });
 
@@ -66,8 +79,43 @@ export async function activatePendingSubscriptionIfNeeded(
       },
     });
 
+    if (!isStart) {
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          amount: 0,
+          type: "recurring_disabled_pending",
+          description:
+            `Автопродление отключено при смене тарифа на «${plan.name}». Для нового тарифа нужно заново настроить автосписания.`,
+        },
+      });
+    }
+
     return true;
   });
 
-  return activated;
+  if (!activated) {
+    console.log(`[Subscription] Pending activation skipped (already applied or race) user=${user.id}`);
+    return false;
+  }
+
+  console.log(
+    `[Subscription] Pending plan activated: user=${user.id}, plan=${plan.id}, robokassaRecurringId=null`
+  );
+
+  if (previousRecurringId) {
+    const cancelled = await cancelRobokassaRecurring(previousRecurringId);
+    console.log(
+      `[Subscription] Previous recurring ${cancelled ? "cancelled" : "cancel failed; auto-renew already disabled locally"}: RecurringID=${previousRecurringId}`
+    );
+  } else {
+    console.log(`[Subscription] No previous RecurringID to cancel user=${user.id}`);
+  }
+
+  // A new Robokassa parent payment requires checkout, so auto-renewal is not recreated here.
+  console.log(
+    `[Subscription] New recurring for «${plan.name}» was not created automatically; user must set up auto-renewal via /pricing`
+  );
+
+  return true;
 }

@@ -31,6 +31,7 @@ const SUBSCRIPTION_SELECT = {
   pendingSubscriptionType: true,
   pendingSubscriptionEnd: true,
   isSubscribed: true,
+  robokassaRecurringId: true,
 } as const;
 
 export type SubscriptionState = {
@@ -39,6 +40,7 @@ export type SubscriptionState = {
   pendingSubscriptionType: string | null;
   pendingSubscriptionEnd: Date | null;
   isSubscribed: boolean;
+  robokassaRecurringId?: string | null;
 };
 
 export function serializeSubscriptionState(user: SubscriptionState, now = new Date()) {
@@ -46,6 +48,9 @@ export function serializeSubscriptionState(user: SubscriptionState, now = new Da
   const pendingPlan = user.pendingSubscriptionType
     ? getSubscriptionPlan(user.pendingSubscriptionType)
     : null;
+  const currentPlan = getSubscriptionPlan(user.subscriptionType);
+  const recurringSetupRequired =
+    subscriptionActive && currentPlan.monthlyPrice > 0 && user.robokassaRecurringId === null;
 
   return {
     subscriptionType: user.subscriptionType,
@@ -58,6 +63,7 @@ export function serializeSubscriptionState(user: SubscriptionState, now = new Da
     pendingSubscriptionType: user.pendingSubscriptionType,
     pendingSubscriptionEnd: user.pendingSubscriptionEnd,
     pendingSubscriptionLabel: pendingPlan?.name ?? null,
+    recurringSetupRequired,
   };
 }
 

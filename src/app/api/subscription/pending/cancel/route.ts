@@ -23,6 +23,7 @@ export async function POST() {
         pendingSubscriptionType: true,
         pendingSubscriptionEnd: true,
         isSubscribed: true,
+        robokassaRecurringId: true,
       },
     });
 

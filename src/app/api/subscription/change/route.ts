@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
         pendingSubscriptionType: true,
         pendingSubscriptionEnd: true,
         isSubscribed: true,
+        robokassaRecurringId: true,
       },
     });
 
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
             pendingSubscriptionType: true,
             pendingSubscriptionEnd: true,
             isSubscribed: true,
+            robokassaRecurringId: true,
           },
         });
 
@@ -120,6 +122,7 @@ export async function POST(req: NextRequest) {
         pendingSubscriptionType: true,
         pendingSubscriptionEnd: true,
         isSubscribed: true,
+        robokassaRecurringId: true,
       },
     });
 

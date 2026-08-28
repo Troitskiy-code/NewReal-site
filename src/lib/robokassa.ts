@@ -258,6 +258,54 @@ export async function chargeRobokassaRecurring(options: {
   return { invId };
 }
 
+export async function cancelRobokassaRecurring(recurringId: string): Promise<boolean> {
+  if (!MERCHANT_ID || !PASSWORD) {
+    console.error("[Robokassa] Recurring cancel skipped: merchant or password is not configured");
+    return false;
+  }
+
+  const id = String(recurringId).trim();
+  if (!id) {
+    console.error("[Robokassa] Recurring cancel skipped: RecurringID is empty");
+    return false;
+  }
+
+  const body = new URLSearchParams({
+    MerchantLogin: MERCHANT_ID,
+    RecurringID: id,
+    Password1: PASSWORD,
+    SignatureValue: md5(`${MERCHANT_ID}:${id}:${PASSWORD}`),
+  });
+
+  if (ROBOKASSA_TEST_MODE) {
+    body.set("IsTest", "1");
+  }
+
+  console.log(`[Robokassa] Recurring cancel request: RecurringID=${id}`);
+
+  try {
+    const response = await fetch("https://auth.robokassa.ru/Merchant/Recurring/Cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    const responseText = (await response.text()).trim();
+
+    if (!response.ok) {
+      console.error(
+        `[Robokassa] Recurring cancel failed: RecurringID=${id}, status=${response.status}, body=${responseText}`
+      );
+      return false;
+    }
+
+    console.log(`[Robokassa] Recurring cancel succeeded: RecurringID=${id}, body=${responseText}`);
+    return true;
+  } catch (error) {
+    console.error(`[Robokassa] Recurring cancel error: RecurringID=${id}`, error);
+    return false;
+  }
+}
+
 export function verifyRobokassaResultSignature(
   outSum: string,
   invId: string,

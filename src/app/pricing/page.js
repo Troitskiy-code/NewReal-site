@@ -208,6 +208,12 @@ export default function PricingPage() {
                 </button>
               </div>
             )}
+            {balance?.recurringSetupRequired && (
+              <div className="rounded-wd border border-wd-primary/40 bg-wd-card px-4 py-3 text-center text-sm text-wd-text-secondary">
+                Автопродление для текущего тарифа не настроено. Чтобы списания продолжались
+                автоматически, оформите подписку ещё раз.
+              </div>
+            )}
           </div>
         )}
 
