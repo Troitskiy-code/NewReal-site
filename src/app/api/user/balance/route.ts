@@ -12,7 +12,8 @@ import {
 } from "@/lib/dailyBonus";
 import { normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
 import { replenishAvatarTokens } from "@/lib/avatarTokens";
-import { applyPendingSubscriptionIfDue, serializeSubscriptionState } from "@/lib/subscriptionState";
+import { activatePendingSubscriptionIfNeeded } from "@/lib/subscription";
+import { serializeSubscriptionState } from "@/lib/subscriptionState";
 
 export async function GET() {
   try {
@@ -24,6 +25,7 @@ export async function GET() {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
+        id: true,
         verseCoins: true,
         bonusStreak: true,
         lastBonusDate: true,
@@ -42,7 +44,19 @@ export async function GET() {
     }
 
     await replenishAvatarTokens(session.user.id);
-    const synced = (await applyPendingSubscriptionIfDue(session.user.id)) ?? user;
+    const activated = await activatePendingSubscriptionIfNeeded(user);
+    const synced = activated
+      ? (await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: {
+            subscriptionType: true,
+            subscriptionEnd: true,
+            pendingSubscriptionType: true,
+            pendingSubscriptionEnd: true,
+            isSubscribed: true,
+          },
+        })) ?? user
+      : user;
     const subscription = serializeSubscriptionState(
       {
         subscriptionType: synced.subscriptionType,

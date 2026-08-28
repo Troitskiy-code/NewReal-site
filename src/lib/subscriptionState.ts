@@ -5,6 +5,7 @@ import {
   getSubscriptionPlan,
 } from "@/lib/chatEconomy";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
+import { activatePendingSubscriptionIfNeeded } from "@/lib/subscription";
 
 export function addSubscriptionDays(from: Date, days: number): Date {
   const result = new Date(from);
@@ -24,6 +25,7 @@ export function subscriptionPeriodDays(period: "month" | "year"): number {
 }
 
 const SUBSCRIPTION_SELECT = {
+  id: true,
   subscriptionType: true,
   subscriptionEnd: true,
   pendingSubscriptionType: true,
@@ -70,31 +72,13 @@ export async function applyPendingSubscriptionIfDue(
 
   if (!user) return null;
 
-  if (!user.pendingSubscriptionType) {
+  const activated = await activatePendingSubscriptionIfNeeded(user, now);
+  if (!activated) {
     return user;
   }
 
-  if (user.subscriptionEnd && user.subscriptionEnd > now) {
-    return user;
-  }
-
-  const plan = getSubscriptionPlan(user.pendingSubscriptionType);
-  const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
-  const nextEnd = isStart
-    ? null
-    : user.pendingSubscriptionEnd && user.pendingSubscriptionEnd > now
-      ? user.pendingSubscriptionEnd
-      : addSubscriptionDays(now, 30);
-
-  return prisma.user.update({
+  return prisma.user.findUnique({
     where: { id: userId },
-    data: {
-      subscriptionType: isStart ? DEFAULT_SUBSCRIPTION_TYPE : plan.id,
-      subscriptionEnd: nextEnd,
-      isSubscribed: !isStart,
-      pendingSubscriptionType: null,
-      pendingSubscriptionEnd: null,
-    },
     select: SUBSCRIPTION_SELECT,
   });
 }

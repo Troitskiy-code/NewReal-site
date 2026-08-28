@@ -2,10 +2,32 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { activatePendingSubscriptionIfNeeded } from "./subscription";
 
 /**
  * @type {import("next-auth").AuthOptions}
  */
+
+async function activatePendingForUserId(userId) {
+  if (!userId) return;
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        subscriptionType: true,
+        subscriptionEnd: true,
+        pendingSubscriptionType: true,
+        pendingSubscriptionEnd: true,
+      },
+    });
+    if (dbUser) {
+      await activatePendingSubscriptionIfNeeded(dbUser);
+    }
+  } catch (error) {
+    console.error("[Auth] Pending subscription activation failed:", error);
+  }
+}
 
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
@@ -51,6 +73,7 @@ export const authOptions = {
         session.user.name = token.name;
         session.user.createdAt = token.createdAt;
       }
+      await activatePendingForUserId(token?.sub);
       return session;
     },
     async jwt({ token, user }) {
@@ -59,6 +82,7 @@ export const authOptions = {
         token.email = user.email;
         token.name = user.name;
         token.createdAt = user.createdAt;
+        await activatePendingForUserId(user.id);
       }
       return token;
     },
