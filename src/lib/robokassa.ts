@@ -118,12 +118,54 @@ export function buildReceipt(
   };
 }
 
+export type RobokassaRecurringOptions = {
+  period: "month" | "year";
+  amount: number;
+};
+
+function nextInvId(): string {
+  return String(
+    Math.max(1, (Date.now() % 1_000_000_000) * 2 + (Math.floor(Math.random() * 1000) % 2))
+  );
+}
+
+function buildPaymentSignature(
+  outSum: string,
+  invId: string,
+  shpSuffix: string,
+  receiptEncoded: string
+): string {
+  const signatureString = receiptEncoded
+    ? `${MERCHANT_ID}:${outSum}:${invId}:${receiptEncoded}:${PASSWORD}${shpSuffix}`
+    : `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${shpSuffix}`;
+  return md5(signatureString);
+}
+
+function buildShpQuery(shp: ShpParams): string {
+  return Object.entries(shp)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
+    .join("");
+}
+
+function buildRecurringQuery(recurring?: RobokassaRecurringOptions): string {
+  if (!recurring) {
+    return "";
+  }
+
+  const period = recurring.period === "year" ? "Yearly" : "Monthly";
+  const amount = Number(recurring.amount).toFixed(2);
+  // Recurring* is not part of SignatureValue.
+  return `&Recurring=true&RecurringPeriod=${period}&RecurringAmount=${amount}`;
+}
+
 export function generateRobokassaPaymentUrl(
   userId: string,
   sum: number,
   desc: string,
   extraShp: ShpParams = {},
-  receipt?: RobokassaReceipt
+  receipt?: RobokassaReceipt,
+  recurring?: RobokassaRecurringOptions
 ): string {
   if (!MERCHANT_ID || !PASSWORD) {
     console.error("[Robokassa] Payment error: merchant or password is not configured");
@@ -131,9 +173,7 @@ export function generateRobokassaPaymentUrl(
   }
 
   // InvId must fit Robokassa Int32 range (1..2147483647).
-  const invId = String(
-    Math.max(1, (Date.now() % 1_000_000_000) * 2 + (Math.floor(Math.random() * 1000) % 2))
-  );
+  const invId = nextInvId();
   const outSum = Number(sum).toFixed(2);
   const isSubscription = extraShp.Shp_subscription === "true";
   const shp: ShpParams = {
@@ -145,24 +185,77 @@ export function generateRobokassaPaymentUrl(
 
   // Receipt: JSON → encodeURIComponent (подпись) → encodeURIComponent ещё раз (GET URL).
   const receiptEncoded = receipt ? encodeURIComponent(JSON.stringify(receipt)) : "";
-
-  // Signature: MerchantLogin:OutSum:InvId:ReceiptEncoded:Password1:Shp_*
-  const signatureString = receiptEncoded
-    ? `${MERCHANT_ID}:${outSum}:${invId}:${receiptEncoded}:${PASSWORD}${shpSuffix}`
-    : `${MERCHANT_ID}:${outSum}:${invId}:${PASSWORD}${shpSuffix}`;
-  const signature = md5(signatureString);
-
-  const shpQuery = Object.entries(shp)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
-    .join("");
+  const signature = buildPaymentSignature(outSum, invId, shpSuffix, receiptEncoded);
 
   const receiptQuery = receiptEncoded ? `&Receipt=${encodeURIComponent(receiptEncoded)}` : "";
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
-  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${shpQuery}${testParam}`;
+  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${buildShpQuery(shp)}${buildRecurringQuery(recurring)}${testParam}`;
 
-  console.log(`[Robokassa] Payment created: InvId=${invId}${receiptEncoded ? ", Receipt included" : ""}`);
+  console.log(
+    `[Robokassa] Payment created: InvId=${invId}${receiptEncoded ? ", Receipt included" : ""}${recurring ? ", Recurring=true" : ""}`
+  );
   return url;
+}
+
+export async function chargeRobokassaRecurring(options: {
+  previousInvoiceId: string;
+  sum: number;
+  desc: string;
+  extraShp?: ShpParams;
+  receipt?: RobokassaReceipt;
+}): Promise<{ invId: string }> {
+  if (!MERCHANT_ID || !PASSWORD) {
+    throw new Error("Robokassa is not configured");
+  }
+
+  const previousInvoiceId = String(options.previousInvoiceId).trim();
+  if (!previousInvoiceId) {
+    throw new Error("PreviousInvoiceID is required");
+  }
+
+  const invId = nextInvId();
+  const outSum = Number(options.sum).toFixed(2);
+  const shp = options.extraShp ?? {};
+  const shpSuffix = buildShpSuffix(shp);
+  const receiptEncoded = options.receipt ? encodeURIComponent(JSON.stringify(options.receipt)) : "";
+  const signature = buildPaymentSignature(outSum, invId, shpSuffix, receiptEncoded);
+
+  const body = new URLSearchParams({
+    MerchantLogin: MERCHANT_ID,
+    OutSum: outSum,
+    InvId: invId,
+    InvoiceID: invId,
+    PreviousInvoiceID: previousInvoiceId,
+    Description: options.desc,
+    SignatureValue: signature,
+  });
+
+  for (const [key, value] of Object.entries(shp)) {
+    body.set(key, value);
+  }
+
+  if (receiptEncoded) {
+    body.set("Receipt", receiptEncoded);
+  }
+
+  if (ROBOKASSA_TEST_MODE) {
+    body.set("IsTest", "1");
+  }
+
+  const response = await fetch("https://auth.robokassa.ru/Merchant/Recurring", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  const responseText = (await response.text()).trim();
+  if (!response.ok) {
+    console.error(`[Robokassa] Recurring charge failed: InvId=${invId}, status=${response.status}, body=${responseText}`);
+    throw new Error("Robokassa recurring charge failed");
+  }
+
+  console.log(`[Robokassa] Recurring charge created: InvId=${invId}, PreviousInvoiceID=${previousInvoiceId}`);
+  return { invId };
 }
 
 export function verifyRobokassaResultSignature(

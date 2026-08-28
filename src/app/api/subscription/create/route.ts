@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
         Shp_period: period,
         Shp_applyMode: applyMode,
       },
-      receipt
+      receipt,
+      { period, amount: sum }
     );
 
     return NextResponse.json({ url });

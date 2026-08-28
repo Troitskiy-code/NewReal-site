@@ -24,12 +24,24 @@ function shpValue(shp: Record<string, string>, name: string): string {
   return match?.[1] ?? "";
 }
 
+function storedRecurringId(recurringId: string, invId: string, existing?: string | null): string {
+  if (recurringId && recurringId !== invId) {
+    return recurringId;
+  }
+  if (existing) {
+    return existing;
+  }
+  return recurringId || invId;
+}
+
 async function parseWebhookPayload(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const queryOutSum = firstParam(params, "OutSum", "out_summ", "outsum");
-  const queryInvId = firstParam(params, "InvId", "inv_id", "invid");
+  const queryInvId = firstParam(params, "InvId", "InvoiceID", "inv_id", "invid");
   const querySignature = firstParam(params, "SignatureValue", "crc", "signaturevalue");
   const queryShp = extractShpParams(params.entries());
+  const queryRecurringId = firstParam(params, "RecurringID", "RecurringId", "recurringid", "PreviousInvoiceID");
+  const queryRecurringFlag = firstParam(params, "Recurring", "recurring");
 
   if (queryOutSum && queryInvId && querySignature) {
     return {
@@ -37,6 +49,8 @@ async function parseWebhookPayload(req: NextRequest) {
       invId: queryInvId,
       signature: querySignature,
       shp: queryShp,
+      recurringId: queryRecurringId,
+      recurringFlag: queryRecurringFlag,
     };
   }
 
@@ -48,9 +62,11 @@ async function parseWebhookPayload(req: NextRequest) {
     const body = await req.formData();
     return {
       outSum: firstParam(body, "OutSum", "out_summ", "outsum"),
-      invId: firstParam(body, "InvId", "inv_id", "invid"),
+      invId: firstParam(body, "InvId", "InvoiceID", "inv_id", "invid"),
       signature: firstParam(body, "SignatureValue", "crc", "signaturevalue"),
       shp: extractShpParams(body.entries()),
+      recurringId: firstParam(body, "RecurringID", "RecurringId", "recurringid", "PreviousInvoiceID"),
+      recurringFlag: firstParam(body, "Recurring", "recurring"),
     };
   }
 
@@ -59,6 +75,8 @@ async function parseWebhookPayload(req: NextRequest) {
     invId: queryInvId,
     signature: querySignature,
     shp: queryShp,
+    recurringId: queryRecurringId,
+    recurringFlag: queryRecurringFlag,
   };
 }
 
@@ -69,9 +87,33 @@ function okResponse(invId: string) {
   });
 }
 
+async function resolveUserId(shp: Record<string, string>, recurringId: string): Promise<string> {
+  const fromShp = shpValue(shp, "Shp_userId");
+  if (fromShp) {
+    return fromShp;
+  }
+
+  if (!recurringId) {
+    return "";
+  }
+
+  const owner = await prisma.user.findUnique({
+    where: { robokassaRecurringId: recurringId },
+    select: { id: true },
+  });
+
+  return owner?.id ?? "";
+}
+
 async function handleWebhook(req: NextRequest) {
-  const { outSum, invId, signature, shp } = await parseWebhookPayload(req);
-  const userId = shpValue(shp, "Shp_userId");
+  const { outSum, invId, signature, shp, recurringId, recurringFlag } = await parseWebhookPayload(req);
+  const userId = await resolveUserId(shp, recurringId);
+
+  if (recurringId || recurringFlag) {
+    console.log(
+      `[Robokassa] Recurring payload: Recurring=${recurringFlag || "none"}, RecurringID=${recurringId || "none"}`
+    );
+  }
 
   if (!outSum || !invId || !signature || !userId) {
     console.error("[Robokassa] Webhook error: Missing required fields");
@@ -97,12 +139,27 @@ async function handleWebhook(req: NextRequest) {
     return okResponse(invId);
   }
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      subscriptionType: true,
+      subscriptionEnd: true,
+      robokassaRecurringId: true,
+    },
+  });
+
+  if (!currentUser) {
+    console.error(`[Robokassa] Webhook error: User not found ${userId}`);
+    return NextResponse.json({ error: "User not found" }, { status: 400 });
+  }
+
   const isSubscription = shpValue(shp, "Shp_subscription").toLowerCase() === "true";
   if (isSubscription) {
-    const planId = shpValue(shp, "Shp_plan").trim().toLowerCase();
+    const planId = shpValue(shp, "Shp_plan").trim().toLowerCase() || (currentUser.subscriptionType ?? "");
     const period = shpValue(shp, "Shp_period").trim().toLowerCase() === "year" ? "year" : "month";
     const normalizedPlanId = planId === "history" ? "story" : planId;
     const plan = SUBSCRIPTION_PLANS.find((item) => item.id === normalizedPlanId);
+    const nextRecurringId = storedRecurringId(recurringId, invId, currentUser.robokassaRecurringId);
 
     if (!plan || plan.monthlyPrice <= 0) {
       console.error(`[Robokassa] Webhook error: Unknown subscription plan "${planId}"`);
@@ -111,17 +168,49 @@ async function handleWebhook(req: NextRequest) {
 
     const now = new Date();
     const applyMode = shpValue(shp, "Shp_applyMode").trim() === "afterExpiry" ? "afterExpiry" : "immediate";
+    const isRenewal =
+      (Boolean(recurringId) && recurringId !== invId) ||
+      (Boolean(currentUser.robokassaRecurringId) &&
+        currentUser.robokassaRecurringId !== invId &&
+        isSubscriptionActive(currentUser) &&
+        (currentUser.subscriptionType ?? "") === plan.id &&
+        applyMode !== "afterExpiry");
+
+    if (isRenewal) {
+      const baseDate =
+        currentUser.subscriptionEnd && currentUser.subscriptionEnd > now
+          ? currentUser.subscriptionEnd
+          : now;
+      const subscriptionEnd = addSubscriptionDays(baseDate, period === "year" ? 365 : 30);
+
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            subscriptionType: plan.id,
+            subscriptionEnd,
+            isSubscribed: true,
+            robokassaRecurringId: nextRecurringId,
+          },
+        }),
+        prisma.transaction.create({
+          data: {
+            userId,
+            amount: 0,
+            type: "subscription_renewal",
+            description: paymentMarker,
+          },
+        }),
+      ]);
+
+      console.log(
+        `[Robokassa] Webhook processed successfully: InvId=${invId}, renewal=${plan.id}, period=${period}`
+      );
+      return okResponse(invId);
+    }
 
     if (applyMode === "afterExpiry") {
-      const currentUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          subscriptionType: true,
-          subscriptionEnd: true,
-        },
-      });
-
-      if (currentUser && isSubscriptionActive(currentUser) && currentUser.subscriptionEnd) {
+      if (isSubscriptionActive(currentUser) && currentUser.subscriptionEnd) {
         const pendingEnd = addSubscriptionDays(
           currentUser.subscriptionEnd,
           period === "year" ? 365 : 30
@@ -133,6 +222,7 @@ async function handleWebhook(req: NextRequest) {
             data: {
               pendingSubscriptionType: plan.id,
               pendingSubscriptionEnd: pendingEnd,
+              robokassaRecurringId: nextRecurringId,
             },
           }),
           prisma.transaction.create({
@@ -152,12 +242,7 @@ async function handleWebhook(req: NextRequest) {
       }
     }
 
-    const subscriptionEnd = new Date(now);
-    if (period === "year") {
-      subscriptionEnd.setDate(subscriptionEnd.getDate() + 365);
-    } else {
-      subscriptionEnd.setDate(subscriptionEnd.getDate() + 30);
-    }
+    const subscriptionEnd = addSubscriptionDays(now, period === "year" ? 365 : 30);
 
     await prisma.$transaction([
       prisma.user.update({
@@ -168,6 +253,7 @@ async function handleWebhook(req: NextRequest) {
           isSubscribed: true,
           pendingSubscriptionType: null,
           pendingSubscriptionEnd: null,
+          robokassaRecurringId: nextRecurringId,
         },
       }),
       prisma.transaction.create({

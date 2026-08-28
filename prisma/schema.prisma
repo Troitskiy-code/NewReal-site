@@ -136,6 +136,7 @@ model User {
   subscriptionEnd          DateTime?
   pendingSubscriptionType  String?
   pendingSubscriptionEnd   DateTime?
+  robokassaRecurringId     String?   @unique
   bonusStreak        Int           @default(0)
   lastBonusDate      DateTime?
   dailyRequests      Int           @default(0)
