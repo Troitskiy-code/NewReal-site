@@ -1,14 +1,11 @@
+import type { AuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { activatePendingSubscriptionIfNeeded } from "./subscription";
 
-/**
- * @type {import("next-auth").AuthOptions}
- */
-
-async function activatePendingForUserId(userId) {
+async function activatePendingForUserId(userId?: string | null) {
   if (!userId) return;
   try {
     const dbUser = await prisma.user.findUnique({
@@ -29,7 +26,7 @@ async function activatePendingForUserId(userId) {
   }
 }
 
-export const authOptions = {
+export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
@@ -63,7 +60,9 @@ export const authOptions = {
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt" as const,
+  },
   secret: "a7f9e2c1b5d8e4f6a9c2d3e1f5b8a7c9d4e2f6a3b8c9d1e5f7a2b6c4d8e9f0a1",
   callbacks: {
     async session({ session, token }) {
@@ -81,7 +80,8 @@ export const authOptions = {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.createdAt = user.createdAt;
+        token.createdAt =
+          user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt ?? null;
         await activatePendingForUserId(user.id);
       }
       return token;
