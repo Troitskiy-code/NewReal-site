@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
@@ -53,6 +54,7 @@ export default function PricingPage() {
   const [balance, setBalance] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [applyMode, setApplyMode] = useState("immediate");
+  const [recurringConsent, setRecurringConsent] = useState(false);
   const [cancellingPending, setCancellingPending] = useState(false);
 
   const fetchBalance = useCallback(async () => {
@@ -95,6 +97,7 @@ export default function PricingPage() {
           planId: plan.id,
           period: isYearly ? "year" : "month",
           applyMode: mode,
+          recurringConsent: true,
         }),
       });
       const data = await res.json();
@@ -126,14 +129,22 @@ export default function PricingPage() {
     }
 
     setApplyMode("immediate");
+    setRecurringConsent(false);
     setSelectedPlan(plan);
+  };
+
+  const closeCheckout = () => {
+    setSelectedPlan(null);
+    setRecurringConsent(false);
   };
 
   const handlePay = async () => {
     if (!selectedPlan) return;
+    if (!recurringConsent) return;
     const mode = hasActiveSubscription ? applyMode : "immediate";
-    setSelectedPlan(null);
-    await startCheckout(selectedPlan, mode);
+    const plan = selectedPlan;
+    closeCheckout();
+    await startCheckout(plan, mode);
   };
 
   const handleCancelPending = async () => {
@@ -342,18 +353,45 @@ export default function PricingPage() {
                 </label>
               )}
             </div>
+            <div className="space-y-2">
+              <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={recurringConsent}
+                  onChange={(e) => setRecurringConsent(e.target.checked)}
+                  className="mt-1 accent-[#6C63FF]"
+                />
+                <span>
+                  Я согласен на автоматические списания согласно условиям{" "}
+                  <Link
+                    href="/offer"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-wd-secondary underline hover:text-white"
+                  >
+                    оферты
+                  </Link>
+                </span>
+              </label>
+              {!recurringConsent && (
+                <p className="text-xs text-red-400">
+                  Для оформления подписки необходимо согласие на автосписания
+                </p>
+              )}
+            </div>
             <div className="flex flex-col gap-3">
               <button
                 type="button"
                 onClick={handlePay}
-                disabled={Boolean(subscribingPlanId)}
-                className="wd-button w-full py-3 text-sm disabled:opacity-50"
+                disabled={Boolean(subscribingPlanId) || !recurringConsent}
+                className="wd-button w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Перейти к оплате
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedPlan(null)}
+                onClick={closeCheckout}
                 className="w-full py-2 text-sm font-medium text-wd-text-secondary hover:text-white"
               >
                 Отмена

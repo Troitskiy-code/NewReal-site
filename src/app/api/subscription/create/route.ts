@@ -19,6 +19,13 @@ export async function POST(req: NextRequest) {
     const applyMode =
       body?.applyMode === "afterExpiry" ? "afterExpiry" : body?.applyMode === "immediate" ? "immediate" : "";
 
+    if (body?.recurringConsent !== true) {
+      return NextResponse.json(
+        { error: "Для оформления подписки необходимо согласие на автосписания" },
+        { status: 400 }
+      );
+    }
+
     if (!planId || !period || !applyMode) {
       return NextResponse.json({ error: "planId, period и applyMode обязательны" }, { status: 400 });
     }
