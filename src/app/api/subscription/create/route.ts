@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
-import { generateRobokassaPaymentUrl } from "@/lib/robokassa";
+import { buildReceipt, generateRobokassaPaymentUrl } from "@/lib/robokassa";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 
 export async function POST(req: NextRequest) {
@@ -45,12 +45,19 @@ export async function POST(req: NextRequest) {
     const periodLabel = period === "year" ? "год" : "месяц";
     const desc = `Подписка ${plan.name} на 1 ${periodLabel}`;
 
-    const url = generateRobokassaPaymentUrl(session.user.id, sum, desc, {
-      Shp_subscription: "true",
-      Shp_plan: plan.id,
-      Shp_period: period,
-      Shp_applyMode: applyMode,
-    });
+    const receipt = buildReceipt([{ name: `Подписка ${plan.name} на 1 ${periodLabel}`, price: sum, quantity: 1 }]);
+    const url = generateRobokassaPaymentUrl(
+      session.user.id,
+      sum,
+      desc,
+      {
+        Shp_subscription: "true",
+        Shp_plan: plan.id,
+        Shp_period: period,
+        Shp_applyMode: applyMode,
+      },
+      receipt
+    );
 
     return NextResponse.json({ url });
   } catch (error) {
