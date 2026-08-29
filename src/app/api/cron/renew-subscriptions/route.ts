@@ -4,15 +4,33 @@ import { getSubscriptionPlan } from "@/lib/chatEconomy";
 import { buildReceipt, chargeRobokassaRecurring } from "@/lib/robokassa";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET || process.env.ADMIN_SECRET;
-  if (!secret) {
-    return false;
+function maskSecret(value: string | undefined | null): string {
+  if (value == null || value === "") {
+    return "(undefined)";
+  }
+  if (value.length <= 4) {
+    return `*** (len=${value.length})`;
+  }
+  return `${value.slice(0, 2)}***${value.slice(-2)} (len=${value.length})`;
+}
+
+function getProvidedSecret(req: NextRequest): string {
+  const querySecret = req.nextUrl.searchParams.get("secret");
+  if (querySecret) {
+    return querySecret;
+  }
+
+  const cronHeader = req.headers.get("x-cron-secret");
+  if (cronHeader) {
+    return cronHeader;
   }
 
   const authHeader = req.headers.get("Authorization");
-  const cronHeader = req.headers.get("x-cron-secret");
-  return authHeader === `Bearer ${secret}` || cronHeader === secret;
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice("Bearer ".length).trim();
+  }
+
+  return "";
 }
 
 function addDays(date: Date, days: number): Date {
@@ -144,7 +162,21 @@ async function renewDueSubscriptions() {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  const expected = process.env.CRON_SECRET;
+  const provided = getProvidedSecret(req);
+
+  console.log(`[Cron] CRON_SECRET=${maskSecret(expected)}`);
+  console.log(`[Cron] provided secret=${maskSecret(provided)}`);
+
+  if (!expected) {
+    console.error("[Cron] CRON_SECRET not configured");
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
+
+  if (provided !== expected) {
+    console.error(
+      `Cron secret mismatch: expected ${maskSecret(expected)}, got ${maskSecret(provided)}`
+    );
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
   }
 
