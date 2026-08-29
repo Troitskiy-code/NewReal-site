@@ -37,8 +37,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: "dialog",
     name: "Диалог",
-    monthlyPrice: 499,
-    yearlyPrice: 4_990,
+    monthlyPrice: 20,
+    yearlyPrice: 200,
     vcPerMonth: 2_500,
     contextTokens: 6_000,
     contextMultiplier: 1.5,
