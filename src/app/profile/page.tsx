@@ -58,6 +58,7 @@ type SubscriptionBalance = {
   daysRemaining: number;
   pendingSubscriptionLabel: string | null;
   pendingSubscriptionEnd: string | null;
+  recurringEnabled?: boolean;
   recurringSetupRequired?: boolean;
 };
 
@@ -275,6 +276,9 @@ export default function ProfilePage() {
                     Затем: {subscription.pendingSubscriptionLabel}
                   </p>
                 )}
+                <p className="text-xs text-wd-text-secondary">
+                  {subscription.recurringEnabled ? "Автопродление включено" : "Автопродление отключено"}
+                </p>
                 {subscription.recurringSetupRequired && (
                   <p className="text-xs text-wd-primary">
                     Для нового тарифа нужно заново настроить автопродление.

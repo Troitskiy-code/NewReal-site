@@ -18,6 +18,7 @@ type SubscriptionBalance = {
   pendingSubscriptionType: string | null;
   pendingSubscriptionEnd: string | null;
   pendingSubscriptionLabel: string | null;
+  recurringEnabled?: boolean;
   recurringSetupRequired?: boolean;
 };
 
@@ -57,6 +58,8 @@ export default function SubscriptionPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [changing, setChanging] = useState(false);
+  const [cancellingRecurring, setCancellingRecurring] = useState(false);
+  const [recurringError, setRecurringError] = useState<string | null>(null);
 
   const fetchBalance = useCallback(async () => {
     setLoading(true);
@@ -64,6 +67,7 @@ export default function SubscriptionPage() {
     try {
       const { data } = await axios.get<SubscriptionBalance>("/api/user/balance");
       setBalance(data);
+      setRecurringError(null);
     } catch (err) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
@@ -105,6 +109,39 @@ export default function SubscriptionPage() {
       toast.error(message);
     } finally {
       setChanging(false);
+    }
+  };
+
+  const handleCancelRecurring = async () => {
+    setCancellingRecurring(true);
+    setRecurringError(null);
+    try {
+      const { data } = await axios.post<{
+        success?: boolean;
+        message?: string;
+      } & SubscriptionBalance>("/api/subscription/cancel-recurring");
+      setBalance({
+        subscriptionType: data.subscriptionType,
+        subscriptionEnd: data.subscriptionEnd,
+        subscriptionActive: data.subscriptionActive,
+        subscriptionLabel: data.subscriptionLabel,
+        daysRemaining: data.daysRemaining,
+        pendingSubscriptionType: data.pendingSubscriptionType,
+        pendingSubscriptionEnd: data.pendingSubscriptionEnd,
+        pendingSubscriptionLabel: data.pendingSubscriptionLabel,
+        recurringEnabled: false,
+        recurringSetupRequired: data.recurringSetupRequired,
+      });
+      toast.success(data.message || "Автопродление отключено");
+    } catch (err) {
+      const message =
+        axios.isAxiosError(err) && err.response?.data?.error
+          ? err.response.data.error
+          : "Не удалось отключить автопродление";
+      setRecurringError(message);
+      toast.error(message);
+    } finally {
+      setCancellingRecurring(false);
     }
   };
 
@@ -174,6 +211,9 @@ export default function SubscriptionPage() {
               Текущий тариф
             </p>
             <h2 className="text-2xl font-black text-white">{balance.subscriptionLabel || "Старт"}</h2>
+            <p className="text-sm font-bold text-white">
+              Статус: {balance.subscriptionActive ? "Активна" : "Неактивна"}
+            </p>
             {balance.subscriptionActive && balance.subscriptionEnd ? (
               <>
                 <p className="text-sm text-wd-text-secondary">
@@ -186,12 +226,33 @@ export default function SubscriptionPage() {
             ) : (
               <p className="text-sm text-wd-text-secondary">Бесплатный тариф без срока действия</p>
             )}
-            {balance.pendingSubscriptionLabel && balance.pendingSubscriptionEnd && (
+            {balance.pendingSubscriptionLabel && (
               <p className="rounded-wd border border-wd-border bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
-                После окончания текущей подписки будет включён тариф «{balance.pendingSubscriptionLabel}»
-                ({formatDate(balance.pendingSubscriptionEnd)}).
+                Отложенная подписка: «{balance.pendingSubscriptionLabel}». Дата активации:{" "}
+                {formatDate(balance.pendingSubscriptionEnd)}.
               </p>
             )}
+            <div className="space-y-2 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
+              {balance.recurringEnabled ? (
+                <>
+                  <p className="text-sm text-wd-text-secondary">Автопродление включено</p>
+                  <button
+                    type="button"
+                    disabled={cancellingRecurring}
+                    onClick={handleCancelRecurring}
+                    className="inline-flex items-center justify-center gap-2 rounded-wd-pill border border-wd-primary/40 bg-wd-primary/10 px-4 py-2 text-xs font-bold text-wd-primary transition-colors hover:bg-wd-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {cancellingRecurring && (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
+                    )}
+                    {cancellingRecurring ? "Отключаем…" : "Отключить автопродление"}
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-wd-text-secondary">Автопродление отключено</p>
+              )}
+              {recurringError && <p className="text-xs text-red-400">{recurringError}</p>}
+            </div>
             {balance.recurringSetupRequired && (
               <p className="rounded-wd border border-wd-primary/40 bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
                 Автопродление для нового тарифа не настроено. Чтобы списания продолжались автоматически,

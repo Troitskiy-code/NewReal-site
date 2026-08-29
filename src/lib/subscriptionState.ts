@@ -49,8 +49,9 @@ export function serializeSubscriptionState(user: SubscriptionState, now = new Da
     ? getSubscriptionPlan(user.pendingSubscriptionType)
     : null;
   const currentPlan = getSubscriptionPlan(user.subscriptionType);
+  const recurringEnabled = Boolean(user.robokassaRecurringId);
   const recurringSetupRequired =
-    subscriptionActive && currentPlan.monthlyPrice > 0 && user.robokassaRecurringId === null;
+    subscriptionActive && currentPlan.monthlyPrice > 0 && !recurringEnabled;
 
   return {
     subscriptionType: user.subscriptionType,
@@ -63,6 +64,7 @@ export function serializeSubscriptionState(user: SubscriptionState, now = new Da
     pendingSubscriptionType: user.pendingSubscriptionType,
     pendingSubscriptionEnd: user.pendingSubscriptionEnd,
     pendingSubscriptionLabel: pendingPlan?.name ?? null,
+    recurringEnabled,
     recurringSetupRequired,
   };
 }
