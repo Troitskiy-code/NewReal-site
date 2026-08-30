@@ -797,6 +797,18 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousHtmlOverscroll = html.style.overscrollBehavior;
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      html.style.overscrollBehavior = previousHtmlOverscroll;
+    };
+  }, []);
+
   const handleModelChange = async (modelId: string) => {
     if (modelId === selectedModelId) return;
 
@@ -1241,8 +1253,8 @@ export default function ChatPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-dvh flex flex-col bg-bg-page text-primary-text">
-        <div className="flex-1 flex items-center justify-center">
+      <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-bg-page text-primary-text md:h-[calc(100dvh-5rem)]">
+        <div className="flex flex-1 items-center justify-center">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
@@ -1251,9 +1263,9 @@ export default function ChatPage() {
 
   if (status === "unauthenticated") {
     return (
-      <div className="min-h-dvh flex flex-col bg-bg-page text-primary-text">
+      <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-bg-page text-primary-text md:h-[calc(100dvh-5rem)]">
         <Toaster position="top-right" />
-        <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
+        <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4 overflow-y-auto">
           <h1 className="text-xl font-black uppercase tracking-tight">Чат с персонажем</h1>
           <p className="text-xs text-secondary-text max-w-sm">
             Войдите в аккаунт, чтобы общаться с персонажами.
@@ -1271,20 +1283,19 @@ export default function ChatPage() {
 
   return (
     <div
-      className={`relative flex h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden text-primary-text md:h-[calc(100dvh-5rem)] ${
+      className={`relative flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
         character?.imageUrl ? "" : "bg-bg-page"
       }`}
       style={{
         backgroundImage: character?.imageUrl ? `url(${character.imageUrl})` : "none",
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundAttachment: "fixed",
       }}
     >
       {character?.imageUrl && (
         <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
       )}
-      <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col">
+      <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden">
         <Toaster position="top-right" />
 
         <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
@@ -1373,8 +1384,9 @@ export default function ChatPage() {
           />
         </aside>
 
-        <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-2 px-4 pt-4 md:space-y-4 md:px-4 md:pt-6">
+        <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-12 md:space-y-4 md:px-4 md:pt-6">
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!
@@ -1402,9 +1414,10 @@ export default function ChatPage() {
               ))
             )}
             <div ref={messagesEndRef} />
+            </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 border-t border-[#2A2A2A] bg-[#121212] p-4">
+          <div className="shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-3 py-3 md:p-4">
             <form
               onSubmit={sendMessage}
               className="mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row"
