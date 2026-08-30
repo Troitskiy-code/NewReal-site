@@ -18,6 +18,11 @@ import {
   getBonusMultiplier,
   getNextStreak,
 } from "../src/lib/dailyBonus.ts";
+import {
+  SUBSCRIPTION_ACTIVATED_TRANSACTION_TYPE,
+  getSubscriptionActivationBenefits,
+  getSubscriptionPlan,
+} from "../src/lib/chatEconomy.ts";
 
 let passed = 0;
 let failed = 0;
@@ -138,6 +143,23 @@ console.log("\n5. Активность подписки");
     "истёкшая подписка"
   );
   assert(!isSubscriptionActive({ subscriptionType: "none", subscriptionEnd: null }), "без подписки");
+}
+
+console.log("\n6. Активация подписки заменяет VC и сбрасывает генерации");
+{
+  const now = new Date("2026-08-30T12:00:00");
+  const dialog = getSubscriptionActivationBenefits(getSubscriptionPlan("dialog"), now);
+  assert(dialog.user.verseCoins === 2_500, "Диалог: VC = 2500, не сумма");
+  assert(dialog.user.tokensUsedThisMonth === 0, "Диалог: генерации сброшены");
+  assert(dialog.user.lastTokenMonth.getTime() === now.getTime(), "Диалог: месяц генераций начинается сейчас");
+  assert(dialog.transaction.type === SUBSCRIPTION_ACTIVATED_TRANSACTION_TYPE, "тип транзакции subscription_activated");
+  assert(dialog.transaction.amount === 2_500, "сумма транзакции = VC тарифа");
+
+  const cheaper = getSubscriptionActivationBenefits(getSubscriptionPlan("dialog"), now);
+  const expensive = getSubscriptionActivationBenefits(getSubscriptionPlan("universe"), now);
+  assert(cheaper.user.verseCoins === 2_500, "переход на Диалог: 2500 VC");
+  assert(expensive.user.verseCoins === 30_000, "Вселенная: 30000 VC");
+  assert(cheaper.user.verseCoins < expensive.user.verseCoins, "более дешёвый тариф даёт меньше VC (замена, не сумма)");
 }
 
 console.log(`\nИтого: ${passed} passed, ${failed} failed\n`);

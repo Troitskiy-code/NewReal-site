@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
+import { SUBSCRIPTION_PLANS, getSubscriptionActivationBenefits } from "@/lib/chatEconomy";
 import { extractShpParams, verifyRobokassaResultSignature } from "@/lib/robokassa";
 import { addSubscriptionDays } from "@/lib/subscriptionState";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
@@ -182,6 +182,7 @@ async function handleWebhook(req: NextRequest) {
           ? currentUser.subscriptionEnd
           : now;
       const subscriptionEnd = addSubscriptionDays(baseDate, period === "year" ? 365 : 30);
+      const benefits = getSubscriptionActivationBenefits(plan, now);
 
       await prisma.$transaction([
         prisma.user.update({
@@ -191,6 +192,7 @@ async function handleWebhook(req: NextRequest) {
             subscriptionEnd,
             isSubscribed: true,
             robokassaRecurringId: nextRecurringId,
+            ...benefits.user,
           },
         }),
         prisma.transaction.create({
@@ -199,6 +201,14 @@ async function handleWebhook(req: NextRequest) {
             amount: 0,
             type: "subscription_renewal",
             description: paymentMarker,
+          },
+        }),
+        prisma.transaction.create({
+          data: {
+            userId,
+            amount: benefits.transaction.amount,
+            type: benefits.transaction.type,
+            description: benefits.transaction.description,
           },
         }),
       ]);
@@ -243,6 +253,7 @@ async function handleWebhook(req: NextRequest) {
     }
 
     const subscriptionEnd = addSubscriptionDays(now, period === "year" ? 365 : 30);
+    const benefits = getSubscriptionActivationBenefits(plan, now);
 
     await prisma.$transaction([
       prisma.user.update({
@@ -254,6 +265,7 @@ async function handleWebhook(req: NextRequest) {
           pendingSubscriptionType: null,
           pendingSubscriptionEnd: null,
           robokassaRecurringId: nextRecurringId,
+          ...benefits.user,
         },
       }),
       prisma.transaction.create({
@@ -262,6 +274,14 @@ async function handleWebhook(req: NextRequest) {
           amount: 0,
           type: "subscription",
           description: paymentMarker,
+        },
+      }),
+      prisma.transaction.create({
+        data: {
+          userId,
+          amount: benefits.transaction.amount,
+          type: benefits.transaction.type,
+          description: benefits.transaction.description,
         },
       }),
     ]);

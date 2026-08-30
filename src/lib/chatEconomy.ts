@@ -167,6 +167,23 @@ export type SubscriptionActivationGrant = {
   ragEnabled: boolean;
 };
 
+export const SUBSCRIPTION_ACTIVATED_TRANSACTION_TYPE = "subscription_activated";
+
+export function getSubscriptionActivationBenefits(plan: SubscriptionPlan, now = new Date()) {
+  return {
+    user: {
+      tokensUsedThisMonth: 0,
+      lastTokenMonth: now,
+      verseCoins: plan.vcPerMonth,
+    },
+    transaction: {
+      amount: plan.vcPerMonth,
+      type: SUBSCRIPTION_ACTIVATED_TRANSACTION_TYPE,
+      description: `Зачислено ${plan.vcPerMonth} VC по тарифу «${plan.name}»`,
+    },
+  };
+}
+
 export function buildSubscriptionActivationGrant(
   subscriptionType: string
 ): SubscriptionActivationGrant {

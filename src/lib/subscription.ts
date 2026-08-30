@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_SUBSCRIPTION_TYPE, getSubscriptionPlan } from "@/lib/chatEconomy";
+import {
+  DEFAULT_SUBSCRIPTION_TYPE,
+  getSubscriptionActivationBenefits,
+  getSubscriptionPlan,
+} from "@/lib/chatEconomy";
 import { cancelRobokassaRecurring } from "@/lib/robokassa";
 
 export type PendingActivationUser = {
@@ -38,6 +42,7 @@ export async function activatePendingSubscriptionIfNeeded(
 
   const plan = getSubscriptionPlan(user.pendingSubscriptionType);
   const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
+  const benefits = getSubscriptionActivationBenefits(plan, now);
 
   const stored = await prisma.user.findUnique({
     where: { id: user.id },
@@ -63,6 +68,7 @@ export async function activatePendingSubscriptionIfNeeded(
         pendingSubscriptionType: null,
         pendingSubscriptionEnd: null,
         robokassaRecurringId: null,
+        ...benefits.user,
       },
     });
 
@@ -73,9 +79,9 @@ export async function activatePendingSubscriptionIfNeeded(
     await tx.transaction.create({
       data: {
         userId: user.id,
-        amount: 0,
-        type: "subscription_activated_pending",
-        description: `Активирована отложенная подписка «${plan.name}»`,
+        amount: benefits.transaction.amount,
+        type: benefits.transaction.type,
+        description: `Активирована отложенная подписка «${plan.name}». ${benefits.transaction.description}`,
       },
     });
 

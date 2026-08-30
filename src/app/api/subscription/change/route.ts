@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_SUBSCRIPTION_TYPE, SUBSCRIPTION_PLANS, getSubscriptionPlan } from "@/lib/chatEconomy";
+import {
+  DEFAULT_SUBSCRIPTION_TYPE,
+  SUBSCRIPTION_PLANS,
+  getSubscriptionActivationBenefits,
+  getSubscriptionPlan,
+} from "@/lib/chatEconomy";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import {
   addSubscriptionDays,
@@ -61,6 +66,7 @@ export async function POST(req: NextRequest) {
 
     if (applyMode === "immediate") {
       const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
+      const benefits = getSubscriptionActivationBenefits(plan, now);
       const updated = await prisma.$transaction(async (tx) => {
         const nextUser = await tx.user.update({
           where: { id: userId },
@@ -70,6 +76,7 @@ export async function POST(req: NextRequest) {
             isSubscribed: !isStart,
             pendingSubscriptionType: null,
             pendingSubscriptionEnd: null,
+            ...benefits.user,
           },
           select: {
             subscriptionType: true,
@@ -84,9 +91,9 @@ export async function POST(req: NextRequest) {
         await tx.transaction.create({
           data: {
             userId,
-            amount: 0,
-            type: "subscription_change",
-            description: `Смена подписки на «${plan.name}» (сразу)`,
+            amount: benefits.transaction.amount,
+            type: benefits.transaction.type,
+            description: `Смена подписки на «${plan.name}» (сразу). ${benefits.transaction.description}`,
           },
         });
 
