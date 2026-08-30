@@ -12,6 +12,11 @@ import {
   type EconomyModel,
   type EconomyUser,
 } from "@/lib/verseChatEconomy";
+import {
+  ChatStreamRequestError,
+  fetchAndReadChatStream,
+  type ChatStreamMessage,
+} from "@/lib/chatStream";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
@@ -74,6 +79,18 @@ function createGreetingMessage(content: string): Message {
     role: "assistant",
     content,
     createdAt: new Date().toISOString(),
+  };
+}
+
+function asChatMessage(message: ChatStreamMessage): Message {
+  return {
+    id: message.id,
+    role: message.role === "user" ? "user" : "assistant",
+    content: message.content,
+    createdAt:
+      typeof message.createdAt === "string"
+        ? message.createdAt
+        : new Date(message.createdAt).toISOString(),
   };
 }
 
@@ -298,6 +315,7 @@ type ChatMessageItemProps = {
   isEditing: boolean;
   editingDraft: string;
   actionDisabled: boolean;
+  isStreaming?: boolean;
   onEditDraftChange: (value: string) => void;
   onEditCancel: () => void;
   onEditSave: (messageId: string) => void;
@@ -315,6 +333,7 @@ function ChatMessageItem({
   isEditing,
   editingDraft,
   actionDisabled,
+  isStreaming = false,
   onEditDraftChange,
   onEditCancel,
   onEditSave,
@@ -408,10 +427,17 @@ function ChatMessageItem({
               ? "border-[#9C27B0]/70 bg-black/50 text-white backdrop-blur-sm"
               : "border-[#6C63FF]/40 bg-black/40 text-white backdrop-blur-sm"
           }`}
-          dangerouslySetInnerHTML={{
-            __html: formatMessageContent(message.content),
-          }}
-        />
+        >
+          {isStreaming && !message.content ? (
+            <span className="animate-pulse text-gray-400">Печатает...</span>
+          ) : (
+            <span
+              dangerouslySetInnerHTML={{
+                __html: formatMessageContent(message.content) + (isStreaming ? '<span class="animate-pulse">▍</span>' : ""),
+              }}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -675,6 +701,7 @@ export default function ChatPage() {
   const [clearingChat, setClearingChat] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedModel = useMemo(
@@ -831,6 +858,20 @@ export default function ChatPage() {
   };
 
   const handleApiError = (error: unknown, fallback: string) => {
+    if (error instanceof ChatStreamRequestError) {
+      const statusCode = error.status;
+      const message = error.payload.error || error.message;
+
+      if (statusCode === 402) {
+        toast.error(message || "Недостаточно VerseCoins");
+      } else if (statusCode === 429) {
+        toast.error(message || "Достигнут суточный лимит запросов");
+      } else {
+        toast.error(message || fallback);
+      }
+      return;
+    }
+
     if (axios.isAxiosError(error)) {
       const statusCode = error.response?.status;
       const message = error.response?.data?.error;
@@ -842,6 +883,8 @@ export default function ChatPage() {
       } else {
         toast.error(message || fallback);
       }
+    } else if (error instanceof Error && error.message) {
+      toast.error(error.message);
     } else {
       toast.error(fallback);
     }
@@ -850,17 +893,59 @@ export default function ChatPage() {
   const handleRegenerate = async (messageId: string) => {
     if (sending || actionLoading || !ensureCanPerformPaidAction()) return;
 
+    const original = messages.find((msg) => msg.id === messageId);
+    if (!original) return;
+
     setActionLoading(true);
+    setStreamingMessageId(messageId);
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, content: "" } : msg))
+    );
+
     try {
-      const { data } = await axios.post(`/api/chat/${characterId}/regenerate`, { messageId });
-      updateBalanceFromResponse(data);
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === messageId ? data.assistantMessage : msg))
+      const endEvent = await fetchAndReadChatStream(
+        `/api/chat/${characterId}/regenerate`,
+        { messageId },
+        {
+          onMeta: () => {
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === messageId ? { ...msg, content: "" } : msg))
+            );
+          },
+          onDelta: (text) => {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === messageId ? { ...msg, content: msg.content + text } : msg
+              )
+            );
+          },
+          onEnd: (event) => {
+            updateBalanceFromResponse(event);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === messageId ? asChatMessage(event.assistantMessage) : msg
+              )
+            );
+          },
+        }
       );
+
+      if (!endEvent) {
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === messageId ? original : msg))
+        );
+        toast.error("Поток ответа прервался");
+        return;
+      }
+
       toast.success("Ответ перегенерирован");
     } catch (error) {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? original : msg))
+      );
       handleApiError(error, "Не удалось перегенерировать ответ");
     } finally {
+      setStreamingMessageId(null);
       setActionLoading(false);
     }
   };
@@ -868,22 +953,91 @@ export default function ChatPage() {
   const handleContinue = async () => {
     if (sending || actionLoading || !ensureCanPerformPaidAction()) return;
 
+    const lastAssistant = [...messages].reverse().find((msg) => msg.role === "assistant");
+    const originalContent = lastAssistant?.content ?? "";
+    let targetId = lastAssistant?.id;
+    let createdPlaceholder = false;
+
     setSending(true);
     try {
-      const { data } = await axios.post(`/api/chat/${characterId}`, { continue: true });
-      updateBalanceFromResponse(data);
-      setMessages((prev) => {
-        const incoming = data.assistantMessage;
-        if (!incoming?.id) return prev;
-        if (prev.some((msg) => msg.id === incoming.id)) {
-          return prev.map((msg) => (msg.id === incoming.id ? incoming : msg));
+      const endEvent = await fetchAndReadChatStream(
+        `/api/chat/${characterId}`,
+        { continue: true },
+        {
+          onMeta: (event) => {
+            if (event.appendToId) {
+              targetId = event.appendToId;
+              setStreamingMessageId(event.appendToId);
+              return;
+            }
+
+            const streamingId = `temp-assistant-${Date.now()}`;
+            targetId = streamingId;
+            createdPlaceholder = true;
+            setStreamingMessageId(streamingId);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: streamingId,
+                role: "assistant",
+                content: "",
+                createdAt: new Date().toISOString(),
+              },
+            ]);
+          },
+          onDelta: (text) => {
+            if (!targetId) return;
+            const id = targetId;
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === id ? { ...msg, content: msg.content + text } : msg
+              )
+            );
+          },
+          onEnd: (event) => {
+            updateBalanceFromResponse(event);
+            const saved = asChatMessage(event.assistantMessage);
+            setMessages((prev) => {
+              if (prev.some((msg) => msg.id === saved.id)) {
+                return prev.map((msg) => (msg.id === saved.id ? saved : msg));
+              }
+              if (createdPlaceholder && targetId) {
+                return prev.map((msg) => (msg.id === targetId ? saved : msg));
+              }
+              return [...prev, saved];
+            });
+          },
         }
-        return [...prev, incoming];
-      });
+      );
+
+      if (!endEvent) {
+        if (createdPlaceholder && targetId) {
+          setMessages((prev) => prev.filter((msg) => msg.id !== targetId));
+        } else if (lastAssistant) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === lastAssistant.id ? { ...msg, content: originalContent } : msg
+            )
+          );
+        }
+        toast.error("Поток ответа прервался");
+        return;
+      }
+
       toast.success("Ответ продолжен");
     } catch (error) {
+      if (createdPlaceholder && targetId) {
+        setMessages((prev) => prev.filter((msg) => msg.id !== targetId));
+      } else if (lastAssistant) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === lastAssistant.id ? { ...msg, content: originalContent } : msg
+          )
+        );
+      }
       handleApiError(error, "Не удалось продолжить ответ");
     } finally {
+      setStreamingMessageId(null);
       setSending(false);
     }
   };
@@ -996,45 +1150,91 @@ export default function ChatPage() {
       content: userMessage,
       createdAt: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, optimisticUser]);
+    const streamingAssistant: Message = {
+      id: `temp-assistant-${Date.now()}`,
+      role: "assistant",
+      content: "",
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticUser, streamingAssistant]);
+    setStreamingMessageId(streamingAssistant.id);
+
+    let persistedUser: Message | null = null;
 
     try {
-      const { data } = await axios.post(`/api/chat/${characterId}`, {
-        message: userMessage,
-      });
-
-      updateBalanceFromResponse(data);
-
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id === optimisticUser.id) return data.userMessage;
-          if (msg.id === "greeting" && data.greetingMessage) return data.greetingMessage;
-          return msg;
-        })
+      const endEvent = await fetchAndReadChatStream(
+        `/api/chat/${characterId}`,
+        { message: userMessage },
+        {
+          onMeta: (event) => {
+            if (event.userMessage) {
+              persistedUser = asChatMessage(event.userMessage);
+            }
+            setMessages((prev) =>
+              prev.map((msg) => {
+                if (msg.id === optimisticUser.id && event.userMessage) {
+                  return asChatMessage(event.userMessage);
+                }
+                if (msg.id === "greeting" && event.greetingMessage) {
+                  return asChatMessage(event.greetingMessage);
+                }
+                return msg;
+              })
+            );
+          },
+          onDelta: (text) => {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === streamingAssistant.id
+                  ? { ...msg, content: msg.content + text }
+                  : msg
+              )
+            );
+          },
+          onEnd: (event) => {
+            updateBalanceFromResponse(event);
+            if (event.userMessage) {
+              persistedUser = asChatMessage(event.userMessage);
+            }
+            setMessages((prev) =>
+              prev.map((msg) => {
+                if (msg.id === optimisticUser.id && event.userMessage) {
+                  return asChatMessage(event.userMessage);
+                }
+                if (msg.id === "greeting" && event.greetingMessage) {
+                  return asChatMessage(event.greetingMessage);
+                }
+                if (msg.id === streamingAssistant.id) {
+                  return asChatMessage(event.assistantMessage);
+                }
+                return msg;
+              })
+            );
+          },
+        }
       );
 
-      setTimeout(() => {
-        setMessages((prev) => [...prev, data.assistantMessage]);
-        setSending(false);
-      }, 1000);
-    } catch (error) {
-      setMessages((prev) => prev.filter((msg) => msg.id !== optimisticUser.id));
-
-      if (axios.isAxiosError(error)) {
-        const statusCode = error.response?.status;
-        const message = error.response?.data?.error;
-
-        if (statusCode === 402) {
-          toast.error(message || "Недостаточно VerseCoins");
-        } else if (statusCode === 429) {
-          toast.error(message || "Достигнут суточный лимит запросов");
-        } else {
-          toast.error(message || "Не удалось отправить сообщение");
-        }
-      } else {
-        toast.error("Не удалось отправить сообщение");
+      if (!endEvent) {
+        setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
+        toast.error("Поток ответа прервался");
       }
-      setInput(userMessage);
+    } catch (error) {
+      setMessages((prev) => {
+        const withoutAssistant = prev.filter((msg) => msg.id !== streamingAssistant.id);
+        if (persistedUser) {
+          return withoutAssistant.map((msg) =>
+            msg.id === optimisticUser.id ? persistedUser! : msg
+          );
+        }
+        return withoutAssistant.filter((msg) => msg.id !== optimisticUser.id);
+      });
+
+      if (!persistedUser) {
+        setInput(userMessage);
+      }
+      handleApiError(error, "Не удалось отправить сообщение");
+    } finally {
+      setStreamingMessageId(null);
       setSending(false);
     }
   };
@@ -1189,6 +1389,7 @@ export default function ChatPage() {
                   isEditing={editingMessageId === msg.id}
                   editingDraft={editingDraft}
                   actionDisabled={sending || actionLoading || clearingChat}
+                  isStreaming={streamingMessageId === msg.id}
                   onEditDraftChange={setEditingDraft}
                   onEditCancel={handleEditCancel}
                   onEditSave={handleEditSave}
@@ -1199,13 +1400,6 @@ export default function ChatPage() {
                   onCopy={handleCopy}
                 />
               ))
-            )}
-            {sending && (
-              <div className="flex justify-start">
-                <div className="rounded-lg border border-divider/40 bg-black/40 px-3 py-2 text-sm text-gray-100 backdrop-blur-sm md:px-4">
-                  <span className="animate-pulse">Печатает...</span>
-                </div>
-              </div>
             )}
             <div ref={messagesEndRef} />
           </div>

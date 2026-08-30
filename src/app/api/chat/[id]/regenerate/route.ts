@@ -2,20 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import axios from "axios";
 import {
   buildChatResponsePayload,
-  callChatCompletion,
   chargeForChatRequest,
   logActionOptionsIfPresent,
   prepareChatMessages,
   resolveChatContext,
+  streamChatCompletion,
 } from "@/lib/chatHelpers";
+import {
+  consumeOpenAIChatStream,
+  createChatNdjsonResponse,
+} from "@/lib/chatStream";
 import {
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
   normalizeUserCounters,
 } from "@/lib/verseChatEconomy";
+
+export const maxDuration = 120;
 
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 
@@ -152,41 +157,49 @@ export async function POST(
       historyBeforeMessageId: assistantMessage.id,
     });
 
-    const assistantReply = await callChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
-    logActionOptionsIfPresent(assistantReply);
+    return createChatNdjsonResponse(async (emit) => {
+      emit({
+        type: "meta",
+        appendToId: assistantMessage.id,
+      });
 
-    const charge = await chargeForChatRequest({
-      userId: session.user.id,
-      costVC,
-      counters,
-      characterName: character.name,
-      modelDisplayName: model.displayName,
-    });
+      const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+      const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
+        emit({ type: "delta", text });
+      });
 
-    const updatedMessage = await prisma.message.update({
-      where: { id: assistantMessage.id },
-      data: {
-        content: assistantReply,
-        createdAt: new Date(),
-      },
-    });
+      logActionOptionsIfPresent(assistantReply);
 
-    return NextResponse.json(
-      buildChatResponsePayload({
+      const charge = await chargeForChatRequest({
+        userId: session.user.id,
         costVC,
-        remainingVC: charge.remainingVC,
-        nextDailyRequests: charge.nextDailyRequests,
-        limitWarning: charge.limitWarning,
-        model,
-        assistantMessage: updatedMessage,
-      })
-    );
+        counters,
+        characterName: character.name,
+        modelDisplayName: model.displayName,
+      });
+
+      const updatedMessage = await prisma.message.update({
+        where: { id: assistantMessage.id },
+        data: {
+          content: assistantReply,
+          createdAt: new Date(),
+        },
+      });
+
+      emit({
+        type: "end",
+        ...buildChatResponsePayload({
+          costVC,
+          remainingVC: charge.remainingVC,
+          nextDailyRequests: charge.nextDailyRequests,
+          limitWarning: charge.limitWarning,
+          model,
+          assistantMessage: updatedMessage,
+        }),
+      });
+    });
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error("Regenerate error:", error.response?.status, error.response?.data ?? error.message);
-    } else {
-      console.error("Regenerate error:", error);
-    }
+    console.error("Regenerate error:", error);
     return NextResponse.json({ error: "Ошибка при перегенерации ответа" }, { status: 500 });
   }
 }

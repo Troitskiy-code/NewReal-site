@@ -2,24 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import axios from "axios";
 import { scheduleMessageEmbedding, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
 import {
   buildChatResponsePayload,
-  callChatCompletion,
   chargeForChatRequest,
   prepareChatMessages,
   resolveChatContext,
   isAssistantMessageCutOff,
   logActionOptionsIfPresent,
   mergeAssistantContinuation,
+  streamChatCompletion,
 } from "@/lib/chatHelpers";
+import {
+  consumeOpenAIChatStream,
+  createChatNdjsonResponse,
+} from "@/lib/chatStream";
 import {
   calculateRequestCost,
   DAILY_REQUEST_LIMIT,
   isSubscriptionActive,
   normalizeUserCounters,
 } from "@/lib/verseChatEconomy";
+
+export const maxDuration = 120;
 
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 
@@ -213,53 +218,69 @@ export async function POST(
       continueSourceText: lastAssistant?.content,
     });
 
-    const assistantReply = await callChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
-    logActionOptionsIfPresent(assistantReply);
-
-    const charge = await chargeForChatRequest({
-      userId: session.user.id,
-      costVC,
-      counters,
-      characterName: character.name,
-      modelDisplayName: model.displayName,
-    });
-
-    const assistantMessage =
-      continueChat && continueCutOff && lastAssistant
-        ? await prisma.message.update({
-            where: { id: lastAssistant.id },
-            data: {
-              content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
-            },
-          })
-        : await createMessageAndBumpTotal({
-            characterId: id,
-            chatId: id,
-            userId: session.user.id,
-            role: "assistant",
-            content: assistantReply,
-          });
-
-    scheduleMessageEmbedding(assistantMessage.id, assistantMessage.content, KODIKROUTER_KEY, persistEmbeddings);
-
-    return NextResponse.json(
-      buildChatResponsePayload({
-        costVC,
-        remainingVC: charge.remainingVC,
-        nextDailyRequests: charge.nextDailyRequests,
-        limitWarning: charge.limitWarning,
-        model,
+    return createChatNdjsonResponse(async (emit) => {
+      emit({
+        type: "meta",
         greetingMessage: greetingMessage ?? undefined,
         userMessage: userMessage ?? undefined,
-        assistantMessage,
-      })
-    );
+        appendToId:
+          continueChat && continueCutOff && lastAssistant ? lastAssistant.id : undefined,
+      });
+
+      const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+      const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
+        emit({ type: "delta", text });
+      });
+
+      logActionOptionsIfPresent(assistantReply);
+
+      const charge = await chargeForChatRequest({
+        userId: session.user.id,
+        costVC,
+        counters,
+        characterName: character.name,
+        modelDisplayName: model.displayName,
+      });
+
+      const assistantMessage =
+        continueChat && continueCutOff && lastAssistant
+          ? await prisma.message.update({
+              where: { id: lastAssistant.id },
+              data: {
+                content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
+              },
+            })
+          : await createMessageAndBumpTotal({
+              characterId: id,
+              chatId: id,
+              userId: session.user.id,
+              role: "assistant",
+              content: assistantReply,
+            });
+
+      scheduleMessageEmbedding(
+        assistantMessage.id,
+        assistantMessage.content,
+        KODIKROUTER_KEY,
+        persistEmbeddings
+      );
+
+      emit({
+        type: "end",
+        ...buildChatResponsePayload({
+          costVC,
+          remainingVC: charge.remainingVC,
+          nextDailyRequests: charge.nextDailyRequests,
+          limitWarning: charge.limitWarning,
+          model,
+          greetingMessage: greetingMessage ?? undefined,
+          userMessage: userMessage ?? undefined,
+          assistantMessage,
+        }),
+      });
+    });
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error("Chat API error:", error.response?.status, error.response?.data ?? error.message);
-    } else {
-      console.error("Chat error:", error);
-    }
+    console.error("Chat error:", error);
     return NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 });
   }
 }

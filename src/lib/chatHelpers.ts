@@ -449,6 +449,40 @@ export async function callChatCompletion(
   return reply;
 }
 
+export async function streamChatCompletion(
+  modelName: string,
+  messages: ChatCompletionMessage[],
+  apiKey: string
+): Promise<ReadableStream<Uint8Array>> {
+  const response = await fetch(`${KODIKROUTER_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.7,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(
+      `Ошибка стриминга ИИ: ${response.status}${details ? ` ${details.slice(0, 300)}` : ""}`
+    );
+  }
+
+  if (!response.body) {
+    throw new Error("Пустой поток ответа от ИИ");
+  }
+
+  return response.body;
+}
+
 export async function chargeForChatRequest({
   userId,
   costVC,
