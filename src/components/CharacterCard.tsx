@@ -5,10 +5,6 @@ import { FaComments, FaUser } from "react-icons/fa";
 import FavoriteButton from "@/components/FavoriteButton";
 import { getCardDescription } from "@/lib/characterFields";
 
-function getChatCountStub(id: string) {
-  return (id.charCodeAt(0) + id.charCodeAt(id.length - 1)) % 5;
-}
-
 type CharacterCardProps = {
   character: {
     id: string;
@@ -17,13 +13,14 @@ type CharacterCardProps = {
     descriptionCard?: string | null;
     imageUrl?: string | null;
     isFavorited?: boolean;
+    totalMessages?: number;
   };
   className?: string;
   onFavoriteChange?: (characterId: string, isFavorited: boolean) => void;
 };
 
 export default function CharacterCard({ character, className = "", onFavoriteChange }: CharacterCardProps) {
-  const chatCount = getChatCountStub(character.id);
+  const totalMessages = character.totalMessages ?? 0;
   const description = getCardDescription(character) || "Без описания";
 
   return (
@@ -44,7 +41,9 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
 
           <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-1.5 py-0.5 backdrop-blur-sm max-[400px]:left-1 max-[400px]:top-1 md:left-3 md:top-3 md:gap-1.5 md:px-2.5 md:py-1.5">
             <FaComments className="text-wd-text-secondary" size={11} />
-            <span className="text-[11px] font-semibold leading-none text-white">{chatCount}</span>
+            <span className="text-[11px] font-semibold leading-none text-white">
+              {totalMessages.toLocaleString("ru-RU")}
+            </span>
           </div>
 
           <FavoriteButton

@@ -23,6 +23,24 @@ import {
 
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 
+async function createMessageAndBumpTotal(data: {
+  characterId: string;
+  chatId: string;
+  userId: string;
+  role: string;
+  content: string;
+}) {
+  const [message] = await prisma.$transaction([
+    prisma.message.create({ data }),
+    prisma.character.update({
+      where: { id: data.characterId },
+      data: { totalMessages: { increment: 1 } },
+    }),
+  ]);
+
+  return message;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -152,14 +170,12 @@ export async function POST(
       });
 
       if (existingMessagesCount === 0 && character.greeting?.trim()) {
-        greetingMessage = await prisma.message.create({
-          data: {
-            characterId: id,
-            chatId: id,
-            userId: session.user.id,
-            role: "assistant",
-            content: character.greeting.trim(),
-          },
+        greetingMessage = await createMessageAndBumpTotal({
+          characterId: id,
+          chatId: id,
+          userId: session.user.id,
+          role: "assistant",
+          content: character.greeting.trim(),
         });
 
         scheduleMessageEmbedding(
@@ -170,14 +186,12 @@ export async function POST(
         );
       }
 
-      userMessage = await prisma.message.create({
-        data: {
-          characterId: id,
-          chatId: id,
-          userId: session.user.id,
-          role: "user",
-          content: message,
-        },
+      userMessage = await createMessageAndBumpTotal({
+        characterId: id,
+        chatId: id,
+        userId: session.user.id,
+        role: "user",
+        content: message,
       });
 
       scheduleMessageEmbedding(userMessage.id, message, KODIKROUTER_KEY, persistEmbeddings);
@@ -218,14 +232,12 @@ export async function POST(
               content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
             },
           })
-        : await prisma.message.create({
-            data: {
-              characterId: id,
-              chatId: id,
-              userId: session.user.id,
-              role: "assistant",
-              content: assistantReply,
-            },
+        : await createMessageAndBumpTotal({
+            characterId: id,
+            chatId: id,
+            userId: session.user.id,
+            role: "assistant",
+            content: assistantReply,
           });
 
     scheduleMessageEmbedding(assistantMessage.id, assistantMessage.content, KODIKROUTER_KEY, persistEmbeddings);

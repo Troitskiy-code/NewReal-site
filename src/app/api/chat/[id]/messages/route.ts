@@ -44,6 +44,7 @@ export async function DELETE(
       });
     }
 
+    // totalMessages не уменьшаем: это накопительный счётчик по всем пользователям.
     const result = await prisma.message.deleteMany({
       where: {
         characterId,

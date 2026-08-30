@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
     } else {
       const orderBy =
         sort === "top" || sort === "for-you"
-          ? { messages: { _count: "desc" as const } }
+          ? { totalMessages: "desc" as const }
           : { createdAt: "desc" as const };
 
       characters = await prisma.character.findMany({

@@ -18,6 +18,7 @@ type Character = {
   tags: string | null;
   imageUrl: string | null;
   isPublic: boolean;
+  totalMessages?: number;
   isFavorited?: boolean;
 };
 

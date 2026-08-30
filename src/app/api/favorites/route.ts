@@ -12,6 +12,7 @@ const characterSelect = {
   tags: true,
   imageUrl: true,
   isPublic: true,
+  totalMessages: true,
   createdAt: true,
   user: {
     select: {
