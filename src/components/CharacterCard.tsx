@@ -55,9 +55,9 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
           />
         </div>
 
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/15 to-transparent md:from-black/80 md:via-black/30" />
 
-        <div className="absolute bottom-0 left-0 right-0 z-10 bg-black/30 px-2.5 py-2 backdrop-blur-sm max-[400px]:px-2 max-[400px]:py-1.5 md:bg-transparent md:px-4 md:py-4 md:backdrop-blur-none">
+        <div className="absolute bottom-0 left-0 right-0 z-10 bg-black/15 px-2.5 py-2 backdrop-blur-[2px] max-[400px]:px-2 max-[400px]:py-1.5 md:bg-transparent md:px-4 md:py-4 md:backdrop-blur-none">
           <h2 className="truncate text-base font-bold leading-tight text-white drop-shadow">{character.name}</h2>
           <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-200 drop-shadow md:text-gray-400">
             {description}
