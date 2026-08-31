@@ -1,12 +1,14 @@
 import axios from "axios";
 import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
+import { getRelevantMemories } from "@/lib/advancedMemory";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 import { appendMemoryToSystemPrompt, resolveChatMemorySummary } from "@/lib/chatMemory";
+import type { UserIntent } from "@/lib/intentAnalyzer";
 import {
   appendRagToSystemPrompt,
   formatRagContext,
-  isUniverseRagEligible,
+  isRagEligible,
   RAG_HISTORY_TOKEN_THRESHOLD,
   searchRelevantMessages,
 } from "@/lib/messageEmbeddings";
@@ -86,6 +88,53 @@ export function trimMessagesToTokenLimit(
   return { messages: trimmed, totalTokens };
 }
 
+export const MEMORY_TOKEN_RATIOS = {
+  recentChat: 0.6,
+  summary: 0.2,
+  retrieved: 0.1,
+  coreEpisodic: 0.1,
+} as const;
+
+export function trimTextToTokenLimit(text: string, maxTokens: number): string {
+  if (!text || maxTokens <= 0) return "";
+  if (countTokens(text) <= maxTokens) return text;
+
+  let lo = 0;
+  let hi = text.length;
+  let best = "";
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const slice = text.slice(0, Math.max(0, mid));
+    if (countTokens(slice) <= maxTokens) {
+      best = slice;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  return best.trimEnd();
+}
+
+export function allocateTokens(
+  _messages: ChatCompletionMessage[],
+  maxContextTokens: number,
+  reservedTokens = 0
+) {
+  const available = Math.max(0, maxContextTokens - reservedTokens);
+  const recentChat = Math.floor(available * MEMORY_TOKEN_RATIOS.recentChat);
+  const summary = Math.floor(available * MEMORY_TOKEN_RATIOS.summary);
+  const retrieved = Math.floor(available * MEMORY_TOKEN_RATIOS.retrieved);
+  const coreEpisodic = Math.max(0, available - recentChat - summary - retrieved);
+
+  console.log(
+    `[MemoryAlloc] max=${maxContextTokens} reserved=${reservedTokens} available=${available} recent=${recentChat} summary=${summary} retrieved=${retrieved} coreEpisodic=${coreEpisodic}`
+  );
+
+  return { available, recentChat, summary, retrieved, coreEpisodic };
+}
+
 export async function getOrCreateBaseModel(): Promise<EconomyModel> {
   let baseModel = await prisma.model.findFirst({
     where: { isActive: true },
@@ -162,6 +211,7 @@ type PrepareChatMessagesOptions = {
   continueCutOff?: boolean;
   continueSourceText?: string;
   historyBeforeMessageId?: string;
+  intent?: UserIntent;
 };
 
 const CUT_OFF_CONJUNCTIONS = [
@@ -297,19 +347,18 @@ export async function prepareChatMessages({
   continueCutOff = false,
   continueSourceText,
   historyBeforeMessageId,
+  intent = "general",
 }: PrepareChatMessagesOptions) {
   const subscriptionActive = isSubscriptionActive(user);
   const maxContextTokens = getContextTokenLimit(user);
-  const universeRag = isUniverseRagEligible(user.subscriptionType, subscriptionActive);
+  const ragEligible = isRagEligible(user.subscriptionType, subscriptionActive);
 
-  const memorySummary = await resolveChatMemorySummary(
-    userId,
-    characterId,
-    apiKey,
-    user
-  );
+  const [memorySummary, relevantMemories] = await Promise.all([
+    resolveChatMemorySummary(userId, characterId, apiKey, user),
+    getRelevantMemories(userId, characterId, intent),
+  ]);
 
-  let systemPrompt = appendMemoryToSystemPrompt(buildChatSystemPrompt(character), memorySummary);
+  let systemPrompt = buildChatSystemPrompt(character);
 
   if (continueMode) {
     if (continueCutOff && continueSourceText?.trim()) {
@@ -366,9 +415,10 @@ ${systemPrompt}`;
   }
 
   const totalHistoryTokens = historyRows.reduce((sum, msg) => sum + countTokens(msg.content), 0);
+  let ragContextText: string | null = null;
   let ragUsed = false;
 
-  if (universeRag && ragQueryText) {
+  if (ragEligible && ragQueryText) {
     if (totalHistoryTokens > RAG_HISTORY_TOKEN_THRESHOLD) {
       try {
         const ragMessages = await searchRelevantMessages(
@@ -379,8 +429,8 @@ ${systemPrompt}`;
           excludeMessageId
         );
         console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
-        systemPrompt = appendRagToSystemPrompt(systemPrompt, formatRagContext(ragMessages));
-        ragUsed = ragMessages.length > 0;
+        ragContextText = formatRagContext(ragMessages)?.text ?? null;
+        ragUsed = Boolean(ragContextText);
       } catch (ragError) {
         console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
       }
@@ -389,6 +439,28 @@ ${systemPrompt}`;
         `🔍 RAG: пропущен (история слишком короткая: ${totalHistoryTokens} токенов)`
       );
     }
+  }
+
+  const reservedTokens = countTokens(systemPrompt);
+  const allocations = allocateTokens([], maxContextTokens, reservedTokens);
+  const summaryText = memorySummary
+    ? trimTextToTokenLimit(memorySummary, allocations.summary)
+    : "";
+  const ragText = ragContextText
+    ? trimTextToTokenLimit(ragContextText, allocations.retrieved)
+    : "";
+  const coreEpisodicText = relevantMemories.text
+    ? trimTextToTokenLimit(relevantMemories.text, allocations.coreEpisodic)
+    : "";
+
+  if (coreEpisodicText) {
+    systemPrompt = `${systemPrompt}\n\n${coreEpisodicText}`;
+  }
+  if (summaryText) {
+    systemPrompt = appendMemoryToSystemPrompt(systemPrompt, summaryText);
+  }
+  if (ragText) {
+    systemPrompt = appendRagToSystemPrompt(systemPrompt, { text: ragText, count: 1 });
   }
 
   console.log(
@@ -403,13 +475,19 @@ ${systemPrompt}`;
     })),
   ];
 
+  const systemTokens = countTokens(systemPrompt);
+  const recentBudget = Math.min(
+    allocations.recentChat,
+    Math.max(0, maxContextTokens - systemTokens)
+  );
+
   const { messages: trimmedMessages, totalTokens } = trimMessagesToTokenLimit(
     messagesForAI,
-    maxContextTokens
+    Math.min(maxContextTokens, systemTokens + recentBudget)
   );
 
   console.log(
-    `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens}, лимит: ${maxContextTokens})${memorySummary ? ", с предысторией" : ""}${ragUsed ? ", RAG" : ""}${continueMode ? ", continue" : ""}`
+    `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens}, лимит: ${maxContextTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragUsed ? ", RAG" : ""}${continueMode ? ", continue" : ""}`
   );
 
   return {
