@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy } from "react-icons/fa";
+import MemoryEditor from "@/components/MemoryEditor";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -457,6 +458,7 @@ function ChatSettingsMenu({
   onToggle,
   onClose,
   onOpenModels,
+  onOpenMemory,
   onClearChat,
   disabled,
 }: {
@@ -464,6 +466,7 @@ function ChatSettingsMenu({
   onToggle: () => void;
   onClose: () => void;
   onOpenModels: () => void;
+  onOpenMemory: () => void;
   onClearChat: () => void;
   disabled: boolean;
 }) {
@@ -518,6 +521,17 @@ function ChatSettingsMenu({
             role="menuitem"
             onClick={() => {
               onClose();
+              onOpenMemory();
+            }}
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]"
+          >
+            Редактировать память
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose();
               onClearChat();
             }}
             disabled={disabled}
@@ -535,10 +549,11 @@ type ModalProps = {
   open: boolean;
   onClose: () => void;
   title: string;
+  wide?: boolean;
   children: React.ReactNode;
 };
 
-function Modal({ open, onClose, title, children }: ModalProps) {
+function Modal({ open, onClose, title, wide = false, children }: ModalProps) {
   if (!open) return null;
 
   return (
@@ -548,7 +563,9 @@ function Modal({ open, onClose, title, children }: ModalProps) {
       role="presentation"
     >
       <div
-        className="relative mx-auto flex max-h-[80vh] w-full max-w-sm flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] shadow-xl md:max-w-md"
+        className={`relative mx-auto flex max-h-[80vh] w-full flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] shadow-xl ${
+          wide ? "max-w-lg md:max-w-2xl" : "max-w-sm md:max-w-md"
+        }`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -696,6 +713,7 @@ export default function ChatPage() {
   const [changingModel, setChangingModel] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [memoryEditorOpen, setMemoryEditorOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -1335,6 +1353,15 @@ export default function ChatPage() {
           </div>
         </Modal>
 
+        <Modal
+          open={memoryEditorOpen}
+          onClose={() => setMemoryEditorOpen(false)}
+          title="Редактировать память"
+          wide
+        >
+          <MemoryEditor characterId={characterId} />
+        </Modal>
+
         {/* Мобильная аватарка — только иконка, по клику профиль */}
         <button
           type="button"
@@ -1379,6 +1406,7 @@ export default function ChatPage() {
             onToggle={() => setSettingsMenuOpen((current) => !current)}
             onClose={() => setSettingsMenuOpen(false)}
             onOpenModels={() => setSettingsOpen(true)}
+            onOpenMemory={() => setMemoryEditorOpen(true)}
             onClearChat={handleClearChat}
             disabled={sending || actionLoading || clearingChat}
           />

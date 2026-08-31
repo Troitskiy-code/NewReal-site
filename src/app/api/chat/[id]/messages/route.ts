@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { clearChatMemories } from "@/lib/advancedMemory";
 
 export async function DELETE(
   _req: NextRequest,
@@ -52,12 +53,7 @@ export async function DELETE(
       },
     });
 
-    await prisma.memory.deleteMany({
-      where: {
-        characterId,
-        userId: session.user.id,
-      },
-    });
+    await clearChatMemories(session.user.id, characterId);
 
     return NextResponse.json({
       success: true,

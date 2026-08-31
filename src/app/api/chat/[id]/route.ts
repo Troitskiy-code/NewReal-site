@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scheduleMessageEmbedding, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
+import { analyzeIntent } from "@/lib/intentAnalyzer";
+import { ingestUserMessageMemory } from "@/lib/advancedMemory";
 import {
   buildChatResponsePayload,
   chargeForChatRequest,
@@ -148,6 +150,7 @@ export async function POST(
     let ragQueryText: string | undefined;
     let excludeMessageId: string | undefined;
     let continueCutOff = false;
+    let intent: Awaited<ReturnType<typeof analyzeIntent>>["intent"] = "general";
 
     if (continueChat) {
       lastAssistant = await prisma.message.findFirst({
@@ -202,6 +205,22 @@ export async function POST(
       scheduleMessageEmbedding(userMessage.id, message, KODIKROUTER_KEY, persistEmbeddings);
       ragQueryText = message;
       excludeMessageId = userMessage.id;
+
+      const analysis = await analyzeIntent(message, KODIKROUTER_KEY);
+      intent = analysis.intent;
+
+      const userMessageCount = await prisma.message.count({
+        where: { characterId: id, userId: session.user.id, role: "user" },
+      });
+
+      await ingestUserMessageMemory({
+        userId: session.user.id,
+        characterId: id,
+        userMessage: message,
+        intent,
+        apiKey: KODIKROUTER_KEY,
+        userMessageCount,
+      });
     }
 
     const { messages: trimmedMessages } = await prepareChatMessages({
@@ -216,6 +235,7 @@ export async function POST(
       continueMode: continueChat,
       continueCutOff,
       continueSourceText: lastAssistant?.content,
+      intent,
     });
 
     return createChatNdjsonResponse(async (emit) => {

@@ -10,6 +10,7 @@ import {
   resolveChatContext,
   streamChatCompletion,
 } from "@/lib/chatHelpers";
+import { analyzeIntent } from "@/lib/intentAnalyzer";
 import {
   consumeOpenAIChatStream,
   createChatNdjsonResponse,
@@ -146,6 +147,10 @@ export async function POST(
       orderBy: { createdAt: "desc" },
     });
 
+    const intent = previousUserMessage
+      ? (await analyzeIntent(previousUserMessage.content, KODIKROUTER_KEY)).intent
+      : "general";
+
     const { messages: trimmedMessages } = await prepareChatMessages({
       userId: session.user.id,
       characterId,
@@ -155,6 +160,7 @@ export async function POST(
       apiKey: KODIKROUTER_KEY,
       ragQueryText: previousUserMessage?.content ?? assistantMessage.content,
       historyBeforeMessageId: assistantMessage.id,
+      intent,
     });
 
     return createChatNdjsonResponse(async (emit) => {
