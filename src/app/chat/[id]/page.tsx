@@ -7,6 +7,8 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy } from "react-icons/fa";
 import MemoryEditor from "@/components/MemoryEditor";
+import PersonaSelector from "@/components/PersonaSelector";
+import type { ChatPersona } from "@/lib/persona";
 import {
   calculateRequestCost,
   getEffectiveModelPriceVC,
@@ -459,6 +461,7 @@ function ChatSettingsMenu({
   onClose,
   onOpenModels,
   onOpenMemory,
+  onOpenPersona,
   onClearChat,
   disabled,
 }: {
@@ -467,6 +470,7 @@ function ChatSettingsMenu({
   onClose: () => void;
   onOpenModels: () => void;
   onOpenMemory: () => void;
+  onOpenPersona: () => void;
   onClearChat: () => void;
   disabled: boolean;
 }) {
@@ -526,6 +530,17 @@ function ChatSettingsMenu({
             className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]"
           >
             Редактировать память
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose();
+              onOpenPersona();
+            }}
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]"
+          >
+            Моя личность
           </button>
           <button
             type="button"
@@ -714,6 +729,8 @@ export default function ChatPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [memoryEditorOpen, setMemoryEditorOpen] = useState(false);
+  const [personaSelectorOpen, setPersonaSelectorOpen] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState<ChatPersona | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -758,8 +775,8 @@ export default function ChatPage() {
     !insufficientBalance &&
     (balance?.dailyRequestsRemaining ?? 1) > 0;
 
-  const userDisplayName = session?.user?.name ?? session?.user?.email ?? "Вы";
-  const userAvatarUrl = session?.user?.image ?? null;
+  const userDisplayName = selectedPersona?.name ?? session?.user?.name ?? session?.user?.email ?? "Вы";
+  const userAvatarUrl = selectedPersona?.avatarUrl ?? session?.user?.image ?? null;
   const characterDisplayName = character?.name ?? "Персонаж";
   const characterAvatarUrl = character?.imageUrl ?? null;
 
@@ -775,14 +792,16 @@ export default function ChatPage() {
 
     setMessages([]);
     setCharacter(null);
+    setSelectedPersona(null);
     setLoading(true);
 
     const fetchData = async () => {
       try {
-        const [chatRes, modelsRes, balanceRes] = await Promise.all([
+        const [chatRes, modelsRes, balanceRes, personaRes] = await Promise.all([
           axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`),
           axios.get<ModelsResponse>("/api/models"),
           axios.get<BalanceData>("/api/user/balance"),
+          axios.get<{ persona: ChatPersona | null }>(`/api/chat/${characterId}/persona`),
         ]);
 
         const { messages: loadedMessages, character: loadedCharacter } = chatRes.data;
@@ -797,6 +816,7 @@ export default function ChatPage() {
         setModels(modelsRes.data.models);
         setBaseModelId(modelsRes.data.baseModelId);
         setBalance(balanceRes.data);
+        setSelectedPersona(personaRes.data.persona ?? null);
 
         const initialModelId =
           modelsRes.data.selectedModelId ?? modelsRes.data.models[0]?.id ?? "";
@@ -1362,6 +1382,19 @@ export default function ChatPage() {
           <MemoryEditor characterId={characterId} />
         </Modal>
 
+        <Modal
+          open={personaSelectorOpen}
+          onClose={() => setPersonaSelectorOpen(false)}
+          title="Моя личность"
+          wide
+        >
+          <PersonaSelector
+            characterId={characterId}
+            selectedPersona={selectedPersona}
+            onChange={setSelectedPersona}
+          />
+        </Modal>
+
         {/* Мобильная аватарка — только иконка, по клику профиль */}
         <button
           type="button"
@@ -1407,6 +1440,7 @@ export default function ChatPage() {
             onClose={() => setSettingsMenuOpen(false)}
             onOpenModels={() => setSettingsOpen(true)}
             onOpenMemory={() => setMemoryEditorOpen(true)}
+            onOpenPersona={() => setPersonaSelectorOpen(true)}
             onClearChat={handleClearChat}
             disabled={sending || actionLoading || clearingChat}
           />

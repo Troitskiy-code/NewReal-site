@@ -2,6 +2,8 @@ import axios from "axios";
 import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
 import { getRelevantMemories } from "@/lib/advancedMemory";
+import { appendPersonaToSystemPrompt } from "@/lib/persona";
+import { getSelectedChatPersona } from "@/lib/personaService";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 import { appendMemoryToSystemPrompt, resolveChatMemorySummary } from "@/lib/chatMemory";
 import type { UserIntent } from "@/lib/intentAnalyzer";
@@ -353,12 +355,19 @@ export async function prepareChatMessages({
   const maxContextTokens = getContextTokenLimit(user);
   const ragEligible = isRagEligible(user.subscriptionType, subscriptionActive);
 
-  const [memorySummary, relevantMemories] = await Promise.all([
+  const [memorySummary, relevantMemories, selectedPersona] = await Promise.all([
     resolveChatMemorySummary(userId, characterId, apiKey, user),
     getRelevantMemories(userId, characterId, intent),
+    getSelectedChatPersona(userId, characterId),
   ]);
 
-  let systemPrompt = buildChatSystemPrompt(character);
+  let systemPrompt = appendPersonaToSystemPrompt(
+    buildChatSystemPrompt(character),
+    selectedPersona
+  );
+  if (selectedPersona) {
+    console.log(`[Persona] prompt user=${userId} character=${characterId} persona=${selectedPersona.id}`);
+  }
 
   if (continueMode) {
     if (continueCutOff && continueSourceText?.trim()) {
