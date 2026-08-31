@@ -43,8 +43,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     contextTokens: 6_000,
     contextMultiplier: 1.5,
     priority: false,
-    ragEnabled: false,
-    features: ["2 500 VC в месяц", "Контекст 6К", "Множитель памяти ×1,5"],
+    ragEnabled: true,
+    features: ["2 500 VC в месяц", "Контекст 6К", "Множитель памяти ×1,5", "RAG-память"],
   },
   {
     id: "story",
@@ -55,8 +55,8 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     contextTokens: 10_000,
     contextMultiplier: 2,
     priority: true,
-    ragEnabled: false,
-    features: ["10 000 VC в месяц", "Контекст 10K", "Множитель ×2", "Приоритетная очередь"],
+    ragEnabled: true,
+    features: ["10 000 VC в месяц", "Контекст 10K", "Множитель ×2", "Приоритетная очередь", "RAG-память"],
   },
   {
     id: "universe",

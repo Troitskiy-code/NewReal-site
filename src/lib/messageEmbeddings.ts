@@ -73,18 +73,22 @@ function toVectorString(embedding: Float32Array): string {
   return `[${Array.from(embedding).join(",")}]`;
 }
 
-export function isUniverseRagEligible(
+const RAG_SUBSCRIPTION_TYPES = new Set(["dialog", "history", "story", "universe"]);
+
+export function isRagEligible(
   subscriptionType: string | null | undefined,
   subscriptionActive: boolean
 ): boolean {
-  return subscriptionActive && subscriptionType === "universe";
+  if (!subscriptionActive) return false;
+  const normalized = (subscriptionType ?? "").trim().toLowerCase();
+  return RAG_SUBSCRIPTION_TYPES.has(normalized);
 }
 
 export function shouldPersistEmbeddings(
   subscriptionType: string | null | undefined,
   subscriptionActive: boolean
 ): boolean {
-  return isUniverseRagEligible(subscriptionType, subscriptionActive) || MESSAGE_EMBEDDINGS_ENABLED;
+  return isRagEligible(subscriptionType, subscriptionActive) || MESSAGE_EMBEDDINGS_ENABLED;
 }
 
 export function formatRagContext(messages: RagMessage[]): RagContext | null {

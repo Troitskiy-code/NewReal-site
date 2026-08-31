@@ -162,5 +162,14 @@ console.log("\n6. Активация подписки заменяет VC и с�
   assert(cheaper.user.verseCoins < expensive.user.verseCoins, "более дешёвый тариф даёт меньше VC (замена, не сумма)");
 }
 
+console.log("\n7. RAG для платных подписок");
+{
+  assert(!getSubscriptionPlan("start").ragEnabled, "Старт: RAG выключен");
+  assert(getSubscriptionPlan("dialog").ragEnabled, "Диалог: RAG включён");
+  assert(getSubscriptionPlan("story").ragEnabled, "История: RAG включён");
+  assert(getSubscriptionPlan("history").ragEnabled, "history: RAG включён");
+  assert(getSubscriptionPlan("universe").ragEnabled, "Вселенная: RAG включён");
+}
+
 console.log(`\nИтого: ${passed} passed, ${failed} failed\n`);
 process.exit(failed > 0 ? 1 : 0);
