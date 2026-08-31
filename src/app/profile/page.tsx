@@ -19,6 +19,7 @@ import {
   FaCrown,
 } from "react-icons/fa";
 import FavoriteButton from "@/components/FavoriteButton";
+import PersonaManager from "@/components/PersonaManager";
 import VerseCoinsBalance from "@/components/VerseCoinsBalance";
 import { getCardDescription } from "@/lib/characterFields";
 
@@ -322,6 +323,8 @@ export default function ProfilePage() {
             </p>
           </div>
         </section>
+
+        <PersonaManager />
 
         {/* Characters */}
         <section className="space-y-4">
