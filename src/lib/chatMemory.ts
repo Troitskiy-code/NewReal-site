@@ -2,6 +2,7 @@ import axios from "axios";
 import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
 import { getContextTokenLimit } from "@/lib/chatEconomy";
+import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
@@ -10,8 +11,12 @@ const KEEP_RECENT_MESSAGES = 25;
 const MEMORY_REFRESH_MESSAGE_THRESHOLD = 20;
 const MEMORY_REFRESH_TOKEN_THRESHOLD = 2000;
 
+export const SUMMARY_CONFIG = {
+  maxTokens: 1000,
+} as const;
+
 const SUMMARY_PROMPT =
-  "Сделай краткую выжимку этого диалога (5–7 предложений), сохранив ключевые детали: тему разговора, важные события, эмоциональный фон.";
+  "Сделай подробную выжимку этого диалога (до 1000 токенов). Сохрани ключевые детали: тему разговора, важные события, имена, отношения, договорённости, эмоциональный фон и незакрытые сюжетные линии.";
 
 type DialogMessage = {
   role: string;
@@ -47,7 +52,7 @@ async function requestSummary(apiKey: string, dialogText: string): Promise<strin
         { role: "system", content: SUMMARY_PROMPT },
         { role: "user", content: dialogText },
       ],
-      max_tokens: 400,
+      max_tokens: SUMMARY_CONFIG.maxTokens,
       temperature: 0.4,
     },
     {
@@ -98,6 +103,8 @@ async function saveMemorySummary(
       summary,
     },
   });
+
+  await recordSummaryMemoryEntry(userId, characterId, summary);
 
   return summary;
 }
@@ -179,5 +186,32 @@ export function appendMemoryToSystemPrompt(systemPrompt: string, summary: string
     return systemPrompt;
   }
 
-  return `Краткая предыстория: ${summary.trim()}\n\n${systemPrompt}`;
+  return `${systemPrompt}\n\nКраткая предыстория: ${summary.trim()}`;
+}
+
+export async function forceRefreshMemorySummary(
+  userId: string,
+  characterId: string,
+  apiKey: string
+): Promise<string | null> {
+  const allMessages = await prisma.message.findMany({
+    where: { userId, characterId },
+    orderBy: { createdAt: "asc" },
+    select: { role: true, content: true },
+  });
+
+  const historyToSummarize =
+    allMessages.length > KEEP_RECENT_MESSAGES
+      ? allMessages.slice(0, allMessages.length - KEEP_RECENT_MESSAGES)
+      : allMessages;
+
+  if (historyToSummarize.length === 0) {
+    return null;
+  }
+
+  const summary = await saveMemorySummary(userId, characterId, apiKey, historyToSummarize);
+  console.log(
+    `🔄 Суммаризация принудительно обновлена (${historyToSummarize.length} сообщений, max_tokens=${SUMMARY_CONFIG.maxTokens})`
+  );
+  return summary;
 }
