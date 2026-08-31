@@ -44,6 +44,8 @@ model Character {
   coreMemories      CoreMemory[]
   episodicMemories  EpisodicMemory[]
   memoryEntries     MemoryEntry[]
+  personaSelections PersonaSelection[]
+  scopedPersonas    Persona[]
 
   // Новые поля для редактора WetDreams
   greeting          String?   // Первое сообщение
@@ -153,6 +155,38 @@ model MemoryEntry {
   @@index([userId, characterId, type])
 }
 
+model Persona {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  avatarUrl   String?  @db.Text
+  isGlobal    Boolean  @default(false)
+  characterId String?
+  character   Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  selections  PersonaSelection[]
+
+  @@index([userId, isGlobal])
+  @@index([userId, characterId])
+}
+
+model PersonaSelection {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  personaId   String
+  persona     Persona   @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, characterId])
+  @@index([personaId])
+}
+
 model Favorite {
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -213,6 +247,8 @@ model User {
   coreMemories       CoreMemory[]
   episodicMemories   EpisodicMemory[]
   memoryEntries      MemoryEntry[]
+  personas           Persona[]
+  personaSelections  PersonaSelection[]
   transactions       Transaction[]
 }
 
