@@ -43,7 +43,6 @@ function formatDate(value: string): string {
 export default function MemoryEditor({ characterId }: { characterId: string }) {
   const [loading, setLoading] = useState(true);
   const [savingCore, setSavingCore] = useState(false);
-  const [refreshingSummary, setRefreshingSummary] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingCore, setEditingCore] = useState(false);
   const [coreDraft, setCoreDraft] = useState("");
@@ -112,22 +111,6 @@ export default function MemoryEditor({ characterId }: { characterId: string }) {
       toast.error("Не удалось удалить событие");
     } finally {
       setDeletingId(null);
-    }
-  };
-
-  const handleRefreshSummary = async () => {
-    setRefreshingSummary(true);
-    try {
-      const { data } = await axios.post<{ summary: SummaryMemory }>(
-        `/api/chat/${characterId}/memory/refresh-summary`
-      );
-      setSummary(data.summary);
-      toast.success("Суммаризация обновлена");
-    } catch (error) {
-      const message = axios.isAxiosError(error) ? error.response?.data?.error : null;
-      toast.error(message || "Не удалось обновить суммаризацию");
-    } finally {
-      setRefreshingSummary(false);
     }
   };
 
@@ -233,17 +216,10 @@ export default function MemoryEditor({ characterId }: { characterId: string }) {
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-white">Суммаризация</h3>
-          <button
-            type="button"
-            onClick={handleRefreshSummary}
-            disabled={refreshingSummary}
-            className="rounded-full px-3 py-1 text-xs font-semibold text-[#6C63FF] hover:bg-white/5 disabled:opacity-50"
-          >
-            {refreshingSummary ? "Обновление..." : "Обновить"}
-          </button>
-        </div>
+        <h3 className="text-sm font-bold text-white">Суммаризация</h3>
+        <p className="text-xs leading-relaxed text-gray-500">
+          Суммаризация обновляется автоматически по мере развития диалога.
+        </p>
         <p className="whitespace-pre-wrap rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-gray-300">
           {summary?.summary?.trim() || "Суммаризация ещё не создана."}
         </p>
