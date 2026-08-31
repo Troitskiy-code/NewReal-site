@@ -41,6 +41,9 @@ model Character {
   messages          Message[]
   favorites         Favorite[]
   memories          Memory[]
+  coreMemories      CoreMemory[]
+  episodicMemories  EpisodicMemory[]
+  memoryEntries     MemoryEntry[]
 
   // Новые поля для редактора WetDreams
   greeting          String?   // Первое сообщение
@@ -105,6 +108,51 @@ model Memory {
   @@index([characterId])
 }
 
+enum MemoryEntryType {
+  summary
+  core
+  episodic
+}
+
+model CoreMemory {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  content     String    @db.Text
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@unique([userId, characterId])
+  @@index([characterId])
+}
+
+model EpisodicMemory {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  event       String    @db.Text
+  timestamp   DateTime  @default(now())
+  importance  Int       @default(1)
+
+  @@index([userId, characterId, timestamp])
+}
+
+model MemoryEntry {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String
+  character   Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  type        MemoryEntryType
+  content     String          @db.Text
+  createdAt   DateTime        @default(now())
+
+  @@index([userId, characterId, type])
+}
+
 model Favorite {
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -162,6 +210,9 @@ model User {
   messages           Message[]
   favorites          Favorite[]
   memories           Memory[]
+  coreMemories       CoreMemory[]
+  episodicMemories   EpisodicMemory[]
+  memoryEntries      MemoryEntry[]
   transactions       Transaction[]
 }
 
