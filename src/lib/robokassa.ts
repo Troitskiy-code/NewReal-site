@@ -190,7 +190,15 @@ export function generateRobokassaPaymentUrl(
   const receiptQuery = receiptEncoded ? `&Receipt=${encodeURIComponent(receiptEncoded)}` : "";
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
   const recurringQuery = buildRecurringQuery(recurring);
-  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${buildShpQuery(shp)}${recurringQuery}${testParam}`;
+  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&InvoiceID=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${buildShpQuery(shp)}${recurringQuery}${testParam}`;
+
+  if (recurring) {
+    const period = recurring.period === "year" ? "Yearly" : "Monthly";
+    const amount = Number(recurring.amount).toFixed(2);
+    console.log(
+      `[Robokassa] Recurring params: Recurring=true RecurringPeriod=${period} RecurringAmount=${amount} InvId=${invId}`
+    );
+  }
 
   console.log(
     `[Robokassa] Payment created: InvId=${invId}${receiptEncoded ? ", Receipt included" : ""}${recurringQuery ? ", Recurring=true" : ""}`

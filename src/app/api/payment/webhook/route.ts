@@ -25,58 +25,110 @@ function shpValue(shp: Record<string, string>, name: string): string {
 }
 
 function storedRecurringId(recurringId: string, invId: string, existing?: string | null): string {
+  // Child charge: Robokassa may send the parent id as RecurringID / PreviousInvoiceID.
   if (recurringId && recurringId !== invId) {
     return recurringId;
   }
-  if (existing) {
-    return existing;
+  // Parent payment: ResultURL usually has no RecurringID. The parent InvId is the series id
+  // used later as PreviousInvoiceID.
+  if (!existing || existing === invId) {
+    return invId;
   }
-  return recurringId || invId;
+  return existing;
 }
 
-async function parseWebhookPayload(req: NextRequest) {
-  const params = req.nextUrl.searchParams;
-  const queryOutSum = firstParam(params, "OutSum", "out_summ", "outsum");
-  const queryInvId = firstParam(params, "InvId", "InvoiceID", "inv_id", "invid");
-  const querySignature = firstParam(params, "SignatureValue", "crc", "signaturevalue");
-  const queryShp = extractShpParams(params.entries());
-  const queryRecurringId = firstParam(params, "RecurringID", "RecurringId", "recurringid", "PreviousInvoiceID");
-  const queryRecurringFlag = firstParam(params, "Recurring", "recurring");
+function mergeParam(target: Map<string, string>, key: string, value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return;
+  }
+  target.set(key, String(value));
+}
 
-  if (queryOutSum && queryInvId && querySignature) {
-    return {
-      outSum: queryOutSum,
-      invId: queryInvId,
-      signature: querySignature,
-      shp: queryShp,
-      recurringId: queryRecurringId,
-      recurringFlag: queryRecurringFlag,
-    };
+async function collectWebhookParams(req: NextRequest): Promise<Map<string, string>> {
+  const merged = new Map<string, string>();
+
+  for (const [key, value] of req.nextUrl.searchParams.entries()) {
+    mergeParam(merged, key, value);
+  }
+
+  if (req.method === "GET" || req.method === "HEAD") {
+    return merged;
   }
 
   const contentType = req.headers.get("content-type") ?? "";
-  if (
-    contentType.includes("application/x-www-form-urlencoded") ||
-    contentType.includes("multipart/form-data")
-  ) {
-    const body = await req.formData();
-    return {
-      outSum: firstParam(body, "OutSum", "out_summ", "outsum"),
-      invId: firstParam(body, "InvId", "InvoiceID", "inv_id", "invid"),
-      signature: firstParam(body, "SignatureValue", "crc", "signaturevalue"),
-      shp: extractShpParams(body.entries()),
-      recurringId: firstParam(body, "RecurringID", "RecurringId", "recurringid", "PreviousInvoiceID"),
-      recurringFlag: firstParam(body, "Recurring", "recurring"),
-    };
+
+  try {
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+          mergeParam(merged, key, value);
+        }
+      }
+      return merged;
+    }
+
+    if (
+      contentType.includes("application/x-www-form-urlencoded") ||
+      contentType.includes("multipart/form-data")
+    ) {
+      const body = await req.formData();
+      for (const [key, value] of body.entries()) {
+        mergeParam(merged, key, value);
+      }
+      return merged;
+    }
+
+    const text = (await req.text()).trim();
+    if (!text) {
+      return merged;
+    }
+
+    try {
+      const json = JSON.parse(text) as unknown;
+      if (json && typeof json === "object" && !Array.isArray(json)) {
+        for (const [key, value] of Object.entries(json as Record<string, unknown>)) {
+          mergeParam(merged, key, value);
+        }
+        return merged;
+      }
+    } catch {
+      // Not JSON — parse as querystring / form body.
+    }
+
+    const asParams = new URLSearchParams(text);
+    for (const [key, value] of asParams.entries()) {
+      mergeParam(merged, key, value);
+    }
+  } catch (error) {
+    console.error("[Robokassa] Webhook body parse error:", error instanceof Error ? error.message : error);
   }
 
+  return merged;
+}
+
+async function parseWebhookPayload(req: NextRequest) {
+  const params = await collectWebhookParams(req);
+  const lookup = {
+    get(name: string) {
+      const direct = params.get(name);
+      if (direct) {
+        return direct;
+      }
+      const match = [...params.entries()].find(([key]) => key.toLowerCase() === name.toLowerCase());
+      return match?.[1] ?? null;
+    },
+  };
+
+  console.log(`[Robokassa] Webhook keys: ${[...params.keys()].join(", ") || "(none)"}`);
+
   return {
-    outSum: queryOutSum,
-    invId: queryInvId,
-    signature: querySignature,
-    shp: queryShp,
-    recurringId: queryRecurringId,
-    recurringFlag: queryRecurringFlag,
+    outSum: firstParam(lookup, "OutSum", "out_summ", "outsum"),
+    invId: firstParam(lookup, "InvId", "InvoiceID", "inv_id", "invid"),
+    signature: firstParam(lookup, "SignatureValue", "crc", "signaturevalue"),
+    shp: extractShpParams(params.entries()),
+    recurringId: firstParam(lookup, "RecurringID", "RecurringId", "recurringid", "PreviousInvoiceID"),
+    recurringFlag: firstParam(lookup, "Recurring", "recurring"),
   };
 }
 
@@ -109,11 +161,9 @@ async function handleWebhook(req: NextRequest) {
   const { outSum, invId, signature, shp, recurringId, recurringFlag } = await parseWebhookPayload(req);
   const userId = await resolveUserId(shp, recurringId);
 
-  if (recurringId || recurringFlag) {
-    console.log(
-      `[Robokassa] Recurring payload: Recurring=${recurringFlag || "none"}, RecurringID=${recurringId || "none"}`
-    );
-  }
+  console.log(
+    `[Robokassa] Recurring payload: Recurring=${recurringFlag || "none"}, RecurringID=${recurringId || "none"}, InvId=${invId || "none"}, Shp_subscription=${shpValue(shp, "Shp_subscription") || "none"}`
+  );
 
   if (!outSum || !invId || !signature || !userId) {
     console.error("[Robokassa] Webhook error: Missing required fields");
@@ -134,7 +184,25 @@ async function handleWebhook(req: NextRequest) {
     select: { id: true },
   });
 
+  const isSubscription = shpValue(shp, "Shp_subscription").toLowerCase() === "true";
+
   if (existingPayment) {
+    if (isSubscription) {
+      const current = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { robokassaRecurringId: true },
+      });
+      const nextRecurringId = storedRecurringId(recurringId, invId, current?.robokassaRecurringId);
+      if (current && !current.robokassaRecurringId && nextRecurringId) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { robokassaRecurringId: nextRecurringId },
+        });
+        console.log(
+          `[Robokassa] Backfilled robokassaRecurringId=${nextRecurringId} user=${userId} InvId=${invId}`
+        );
+      }
+    }
     console.log(`[Robokassa] Webhook processed successfully: InvId=${invId}`);
     return okResponse(invId);
   }
@@ -153,13 +221,11 @@ async function handleWebhook(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 400 });
   }
 
-  const isSubscription = shpValue(shp, "Shp_subscription").toLowerCase() === "true";
   if (isSubscription) {
     const planId = shpValue(shp, "Shp_plan").trim().toLowerCase() || (currentUser.subscriptionType ?? "");
     const period = shpValue(shp, "Shp_period").trim().toLowerCase() === "year" ? "year" : "month";
     const normalizedPlanId = planId === "history" ? "story" : planId;
     const plan = SUBSCRIPTION_PLANS.find((item) => item.id === normalizedPlanId);
-    const nextRecurringId = storedRecurringId(recurringId, invId, currentUser.robokassaRecurringId);
 
     if (!plan || plan.monthlyPrice <= 0) {
       console.error(`[Robokassa] Webhook error: Unknown subscription plan "${planId}"`);
@@ -175,6 +241,17 @@ async function handleWebhook(req: NextRequest) {
         isSubscriptionActive(currentUser) &&
         (currentUser.subscriptionType ?? "") === plan.id &&
         applyMode !== "afterExpiry");
+
+    // New parent payment: RecurringID is usually absent, so store InvId.
+    // Renewals keep the existing parent RecurringID.
+    const nextRecurringId = storedRecurringId(
+      recurringId,
+      invId,
+      isRenewal ? currentUser.robokassaRecurringId : null
+    );
+    console.log(
+      `[Robokassa] Will store robokassaRecurringId=${nextRecurringId} user=${userId} RecurringID=${recurringId || "none"} InvId=${invId}`
+    );
 
     if (isRenewal) {
       const baseDate =
@@ -214,7 +291,7 @@ async function handleWebhook(req: NextRequest) {
       ]);
 
       console.log(
-        `[Robokassa] Webhook processed successfully: InvId=${invId}, renewal=${plan.id}, period=${period}`
+        `[Robokassa] Webhook processed successfully: InvId=${invId}, renewal=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
       );
       return okResponse(invId);
     }
@@ -246,7 +323,7 @@ async function handleWebhook(req: NextRequest) {
         ]);
 
         console.log(
-          `[Robokassa] Webhook processed successfully: InvId=${invId}, pending=${plan.id}, period=${period}`
+          `[Robokassa] Webhook processed successfully: InvId=${invId}, pending=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
         );
         return okResponse(invId);
       }
@@ -287,7 +364,7 @@ async function handleWebhook(req: NextRequest) {
     ]);
 
     console.log(
-      `[Robokassa] Webhook processed successfully: InvId=${invId}, subscription=${plan.id}, period=${period}`
+      `[Robokassa] Webhook processed successfully: InvId=${invId}, subscription=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
     );
     return okResponse(invId);
   }
