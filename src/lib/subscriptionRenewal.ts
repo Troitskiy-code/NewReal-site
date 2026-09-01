@@ -28,6 +28,8 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
+const INITIATED_TTL_MS = 24 * 60 * 60 * 1000;
+
 function inferPeriod(subscriptionEnd: Date, lastPaidAt: Date | null): "month" | "year" {
   if (!lastPaidAt) {
     return "month";
@@ -175,13 +177,21 @@ export async function renewSubscriptionIfDue(
       where: {
         userId: user.id,
         type: "subscription_renewal_initiated",
-        createdAt: { gte: addDays(now, -3) },
       },
-      select: { id: true },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, createdAt: true },
     });
 
     if (recentInit) {
-      return { renewed: false, userId, reason: "already_initiated" };
+      const initiatedAt = recentInit.createdAt;
+      const ageMs = now.getTime() - initiatedAt.getTime();
+      if (ageMs < INITIATED_TTL_MS) {
+        return { renewed: false, userId, reason: "already_initiated" };
+      }
+
+      console.log(
+        `[Cron] Resetting stale initiated flag for user=${user.id} (initiated at ${initiatedAt.toISOString()}).`
+      );
     }
   } else {
     console.log("⚠️ Force mode: ignoring already_initiated");
@@ -236,6 +246,18 @@ export async function renewSubscriptionIfDue(
   } catch (error) {
     const message = error instanceof Error ? error.message : "charge_failed";
     console.error(`[Subscription] Renew failed: user=${user.id}`, error);
+    try {
+      await prisma.transaction.create({
+        data: {
+          userId: user.id,
+          amount: 0,
+          type: "subscription_renewal_initiated",
+          description: `Robokassa recurring failed: ${message}`,
+        },
+      });
+    } catch (writeError) {
+      console.error(`[Subscription] Failed to store initiatedAt for user=${user.id}`, writeError);
+    }
     return { renewed: false, userId, reason: "charge_failed", error: message };
   }
 }
