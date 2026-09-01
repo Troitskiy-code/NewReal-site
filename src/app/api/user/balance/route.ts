@@ -100,6 +100,7 @@ export async function GET() {
       nextBonus: applyBonusMultiplier(getNextBonus(user.bonusStreak), bonusSubscriptionType),
       msUntilNextBonus: claimedToday ? getMsUntilNextDay(now) : 0,
       ...subscription,
+      robokassaRecurringId: synced.robokassaRecurringId ?? null,
       dailyRequests: counters.dailyRequests,
       dailyRequestsDate: counters.dailyRequestsDate,
       dailyLimit: DAILY_REQUEST_LIMIT,

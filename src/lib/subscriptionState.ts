@@ -66,6 +66,7 @@ export function serializeSubscriptionState(user: SubscriptionState, now = new Da
     pendingSubscriptionLabel: pendingPlan?.name ?? null,
     recurringEnabled,
     recurringSetupRequired,
+    robokassaRecurringId: user.robokassaRecurringId ?? null,
   };
 }
 
