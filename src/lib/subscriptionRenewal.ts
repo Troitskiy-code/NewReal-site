@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionActivationBenefits, getSubscriptionPlan } from "@/lib/chatEconomy";
 import { buildReceipt, chargeRobokassaRecurring } from "@/lib/robokassa";
+import { applySubscriptionCoinGrant, getExpiringCoins } from "@/lib/verseCoins";
 
 export type RenewFailureReason =
   | "user_not_found"
@@ -64,7 +65,7 @@ async function applySuccessfulRenewal(params: {
 
     const user = await tx.user.findUnique({
       where: { id: params.userId },
-      select: { subscriptionEnd: true },
+      select: { subscriptionEnd: true, verseCoins: true, permanentCoins: true },
     });
 
     if (!user) {
@@ -81,6 +82,11 @@ async function applySuccessfulRenewal(params: {
       user.subscriptionEnd && user.subscriptionEnd > params.now ? user.subscriptionEnd : params.now;
     const subscriptionEnd = addDays(baseDate, periodDays);
 
+    const coinData = applySubscriptionCoinGrant(
+      { id: params.userId, verseCoins: user.verseCoins, permanentCoins: user.permanentCoins },
+      benefits.vcGrant
+    );
+
     await tx.user.update({
       where: { id: params.userId },
       data: {
@@ -88,6 +94,7 @@ async function applySuccessfulRenewal(params: {
         subscriptionEnd,
         isSubscribed: true,
         ...benefits.user,
+        ...coinData,
       },
     });
 
@@ -319,5 +326,33 @@ export async function renewDueSubscriptions(now = new Date()) {
     results.push({ userId: result.userId, skipped: result.reason ?? "unknown" });
   }
 
-  return { checked: users.length, results };
+  const expiredCoins = await expireLapsedSubscriptionCoins(now);
+  return { checked: users.length, results, expiredCoins };
+}
+
+async function expireLapsedSubscriptionCoins(now: Date) {
+  const lapsedBefore = addDays(now, -2);
+  const users = await prisma.user.findMany({
+    where: { subscriptionEnd: { lt: lapsedBefore } },
+    select: { id: true, verseCoins: true, permanentCoins: true },
+  });
+
+  let expired = 0;
+  for (const user of users) {
+    if (getExpiringCoins(user) <= 0) {
+      continue;
+    }
+    const coinData = applySubscriptionCoinGrant(user, 0, true);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: coinData,
+    });
+    expired += 1;
+  }
+
+  if (expired > 0) {
+    console.log(`[Coins] Expired leftover subscription VC for ${expired} users`);
+  }
+
+  return expired;
 }

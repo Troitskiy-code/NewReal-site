@@ -15,6 +15,7 @@ import {
   serializeSubscriptionState,
   subscriptionPeriodDays,
 } from "@/lib/subscriptionState";
+import { applySubscriptionCoinGrant } from "@/lib/verseCoins";
 
 export async function POST(req: NextRequest) {
   try {
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
         pendingSubscriptionEnd: true,
         isSubscribed: true,
         robokassaRecurringId: true,
+        verseCoins: true,
+        permanentCoins: true,
       },
     });
 
@@ -67,6 +70,11 @@ export async function POST(req: NextRequest) {
     if (applyMode === "immediate") {
       const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
       const benefits = getSubscriptionActivationBenefits(plan, now);
+      const coinData = applySubscriptionCoinGrant(
+        { id: userId, verseCoins: user.verseCoins, permanentCoins: user.permanentCoins },
+        benefits.vcGrant,
+        isStart
+      );
       const updated = await prisma.$transaction(async (tx) => {
         const nextUser = await tx.user.update({
           where: { id: userId },
@@ -77,6 +85,7 @@ export async function POST(req: NextRequest) {
             pendingSubscriptionType: null,
             pendingSubscriptionEnd: null,
             ...benefits.user,
+            ...coinData,
           },
           select: {
             subscriptionType: true,

@@ -10,6 +10,12 @@ export function isSameCalendarDay(a: Date, b: Date): boolean {
   return startOfDay(a).getTime() === startOfDay(b).getTime();
 }
 
+export function isPreviousCalendarDay(date: Date, now = new Date()): boolean {
+  const yesterday = startOfDay(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return startOfDay(date).getTime() === yesterday.getTime();
+}
+
 export function getMsUntilNextDay(now = new Date()): number {
   const nextDay = startOfDay(now);
   nextDay.setDate(nextDay.getDate() + 1);

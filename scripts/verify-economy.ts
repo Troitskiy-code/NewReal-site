@@ -145,11 +145,12 @@ console.log("\n5. Активность подписки");
   assert(!isSubscriptionActive({ subscriptionType: "none", subscriptionEnd: null }), "без подписки");
 }
 
-console.log("\n6. Активация подписки заменяет VC и сбрасывает генерации");
+console.log("\n6. Активация подписки заменяет сгораемые VC и сбрасывает генерации");
 {
   const now = new Date("2026-08-30T12:00:00");
   const dialog = getSubscriptionActivationBenefits(getSubscriptionPlan("dialog"), now);
-  assert(dialog.user.verseCoins === 2_500, "Диалог: VC = 2500, не сумма");
+  assert(dialog.vcGrant === 2_500, "Диалог: сгораемые VC = 2500, не сумма");
+  assert(!("verseCoins" in dialog.user), "постоянные VC не перезаписываются");
   assert(dialog.user.tokensUsedThisMonth === 0, "Диалог: генерации сброшены");
   assert(dialog.user.lastTokenMonth.getTime() === now.getTime(), "Диалог: месяц генераций начинается сейчас");
   assert(dialog.transaction.type === SUBSCRIPTION_ACTIVATED_TRANSACTION_TYPE, "тип транзакции subscription_activated");
@@ -157,9 +158,9 @@ console.log("\n6. Активация подписки заменяет VC и с�
 
   const cheaper = getSubscriptionActivationBenefits(getSubscriptionPlan("dialog"), now);
   const expensive = getSubscriptionActivationBenefits(getSubscriptionPlan("universe"), now);
-  assert(cheaper.user.verseCoins === 2_500, "переход на Диалог: 2500 VC");
-  assert(expensive.user.verseCoins === 30_000, "Вселенная: 30000 VC");
-  assert(cheaper.user.verseCoins < expensive.user.verseCoins, "более дешёвый тариф даёт меньше VC (замена, не сумма)");
+  assert(cheaper.vcGrant === 2_500, "переход на Диалог: 2500 сгораемых VC");
+  assert(expensive.vcGrant === 30_000, "Вселенная: 30000 сгораемых VC");
+  assert(cheaper.vcGrant < expensive.vcGrant, "более дешёвый тариф даёт меньше VC (замена, не сумма)");
 }
 
 console.log("\n7. RAG для платных подписок");

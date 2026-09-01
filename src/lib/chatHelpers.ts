@@ -25,6 +25,7 @@ import {
   type EconomyModel,
 } from "@/lib/verseChatEconomy";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
+import { spendCoins } from "@/lib/verseCoins";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -585,14 +586,34 @@ export async function chargeForChatRequest({
 }) {
   const nextDailyRequests = counters.dailyRequests + 1;
 
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      verseCoins: costVC > 0 ? { decrement: costVC } : undefined,
-      dailyRequests: nextDailyRequests,
-      dailyRequestsDate: counters.dailyRequestsDate,
-    },
-    select: { verseCoins: true },
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    const current = await tx.user.findUnique({
+      where: { id: userId },
+      select: { verseCoins: true, permanentCoins: true },
+    });
+
+    if (!current) {
+      throw new Error("Пользователь не найден");
+    }
+
+    const nextCoins =
+      costVC > 0
+        ? spendCoins(
+            { verseCoins: current.verseCoins, permanentCoins: current.permanentCoins },
+            costVC
+          )
+        : current;
+
+    return tx.user.update({
+      where: { id: userId },
+      data: {
+        verseCoins: nextCoins.verseCoins,
+        permanentCoins: nextCoins.permanentCoins,
+        dailyRequests: nextDailyRequests,
+        dailyRequestsDate: counters.dailyRequestsDate,
+      },
+      select: { verseCoins: true, permanentCoins: true },
+    });
   });
 
   if (costVC > 0) {

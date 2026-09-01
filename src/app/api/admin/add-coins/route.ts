@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { grantPermanentUpdate } from "@/lib/verseCoins";
 
 function isAuthorized(req: NextRequest): boolean {
   const adminSecret = process.env.ADMIN_SECRET;
@@ -47,8 +48,8 @@ export async function POST(req: NextRequest) {
     const updatedUser = await prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: user.id },
-        data: { verseCoins: { increment: amount } },
-        select: { id: true, email: true, verseCoins: true },
+        data: grantPermanentUpdate(amount),
+        select: { id: true, email: true, verseCoins: true, permanentCoins: true },
       });
 
       await tx.transaction.create({

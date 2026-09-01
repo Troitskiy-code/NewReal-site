@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { grantPermanentUpdate } from "@/lib/verseCoins";
 
 const PACKAGES: Record<number, { vc: number; price: number; label: string }> = {
   1: { vc: 1000, price: 300, label: "1000 VC" },
@@ -29,9 +30,7 @@ export async function POST(req: NextRequest) {
 
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
-      data: {
-        verseCoins: { increment: pkg.vc },
-      },
+      data: grantPermanentUpdate(pkg.vc),
       select: { verseCoins: true },
     });
 

@@ -4,6 +4,7 @@ import { SUBSCRIPTION_PLANS, getSubscriptionActivationBenefits } from "@/lib/cha
 import { extractShpParams, verifyRobokassaResultSignature } from "@/lib/robokassa";
 import { addSubscriptionDays } from "@/lib/subscriptionState";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
+import { applySubscriptionCoinGrant, grantPermanentUpdate } from "@/lib/verseCoins";
 
 function firstParam(
   source: { get(name: string): string | File | null },
@@ -213,6 +214,8 @@ async function handleWebhook(req: NextRequest) {
       subscriptionType: true,
       subscriptionEnd: true,
       robokassaRecurringId: true,
+      verseCoins: true,
+      permanentCoins: true,
     },
   });
 
@@ -260,6 +263,10 @@ async function handleWebhook(req: NextRequest) {
           : now;
       const subscriptionEnd = addSubscriptionDays(baseDate, period === "year" ? 365 : 30);
       const benefits = getSubscriptionActivationBenefits(plan, now);
+      const coinData = applySubscriptionCoinGrant(
+        { id: userId, verseCoins: currentUser.verseCoins, permanentCoins: currentUser.permanentCoins },
+        benefits.vcGrant
+      );
 
       await prisma.$transaction([
         prisma.user.update({
@@ -270,6 +277,7 @@ async function handleWebhook(req: NextRequest) {
             isSubscribed: true,
             robokassaRecurringId: nextRecurringId,
             ...benefits.user,
+            ...coinData,
           },
         }),
         prisma.transaction.create({
@@ -331,6 +339,10 @@ async function handleWebhook(req: NextRequest) {
 
     const subscriptionEnd = addSubscriptionDays(now, period === "year" ? 365 : 30);
     const benefits = getSubscriptionActivationBenefits(plan, now);
+    const coinData = applySubscriptionCoinGrant(
+      { id: userId, verseCoins: currentUser.verseCoins, permanentCoins: currentUser.permanentCoins },
+      benefits.vcGrant
+    );
 
     await prisma.$transaction([
       prisma.user.update({
@@ -343,6 +355,7 @@ async function handleWebhook(req: NextRequest) {
           pendingSubscriptionEnd: null,
           robokassaRecurringId: nextRecurringId,
           ...benefits.user,
+          ...coinData,
         },
       }),
       prisma.transaction.create({
@@ -377,7 +390,7 @@ async function handleWebhook(req: NextRequest) {
   await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
-      data: { verseCoins: { increment: vcAmount } },
+      data: grantPermanentUpdate(vcAmount),
     }),
     prisma.transaction.create({
       data: {

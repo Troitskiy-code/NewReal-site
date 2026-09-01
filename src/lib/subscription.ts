@@ -5,6 +5,7 @@ import {
   getSubscriptionPlan,
 } from "@/lib/chatEconomy";
 import { cancelRobokassaRecurring } from "@/lib/robokassa";
+import { applySubscriptionCoinGrant } from "@/lib/verseCoins";
 
 export type PendingActivationUser = {
   id: string;
@@ -46,12 +47,22 @@ export async function activatePendingSubscriptionIfNeeded(
 
   const stored = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { robokassaRecurringId: true },
+    select: { robokassaRecurringId: true, verseCoins: true, permanentCoins: true },
   });
   const previousRecurringId = stored?.robokassaRecurringId ?? user.robokassaRecurringId ?? null;
 
   console.log(
     `[Subscription] Activating pending plan=${plan.id} user=${user.id} previousRecurringId=${previousRecurringId || "none"}`
+  );
+
+  const coinData = applySubscriptionCoinGrant(
+    {
+      id: user.id,
+      verseCoins: stored?.verseCoins,
+      permanentCoins: stored?.permanentCoins,
+    },
+    benefits.vcGrant,
+    isStart
   );
 
   const activated = await prisma.$transaction(async (tx) => {
@@ -69,6 +80,7 @@ export async function activatePendingSubscriptionIfNeeded(
         pendingSubscriptionEnd: null,
         robokassaRecurringId: null,
         ...benefits.user,
+        ...coinData,
       },
     });
 

@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { grantPermanentUpdate } from "@/lib/verseCoins";
 import {
   applyBonusMultiplier,
   getBonusForStreak,
   getBonusMultiplier,
   getMsUntilNextDay,
   getNextBonus,
+  isPreviousCalendarDay,
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
@@ -56,7 +58,10 @@ export async function POST() {
     }
 
     let newStreak = user.bonusStreak + 1;
-    if (newStreak > 7) {
+    if (user.lastBonusDate && !isPreviousCalendarDay(user.lastBonusDate, now)) {
+      console.log("Бонус: пропущен день, сброс streak до 1");
+      newStreak = 1;
+    } else if (newStreak > 7) {
       newStreak = 1;
     }
 
@@ -66,7 +71,7 @@ export async function POST() {
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
-        verseCoins: { increment: bonus },
+        ...grantPermanentUpdate(bonus),
         bonusStreak: newStreak,
         lastBonusDate: now,
       },

@@ -214,7 +214,8 @@ model User {
   password           String?
   credits            Int           @default(0)
   realCoins          Int           @default(0)
-  verseCoins         Int           @default(0)
+  verseCoins         Int           @default(0) // total = permanentCoins + expiring
+  permanentCoins     Int           @default(0)
   subscriptionType         String?   @default("none")
   subscriptionEnd          DateTime?
   pendingSubscriptionType  String?

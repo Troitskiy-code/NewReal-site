@@ -174,12 +174,15 @@ export function getSubscriptionActivationBenefits(plan: SubscriptionPlan, now = 
     user: {
       tokensUsedThisMonth: 0,
       lastTokenMonth: now,
-      verseCoins: plan.vcPerMonth,
     },
+    vcGrant: plan.monthlyPrice > 0 ? plan.vcPerMonth : 0,
     transaction: {
-      amount: plan.vcPerMonth,
+      amount: plan.monthlyPrice > 0 ? plan.vcPerMonth : 0,
       type: SUBSCRIPTION_ACTIVATED_TRANSACTION_TYPE,
-      description: `Зачислено ${plan.vcPerMonth} VC по тарифу «${plan.name}»`,
+      description:
+        plan.monthlyPrice > 0
+          ? `Зачислено ${plan.vcPerMonth} VC по тарифу «${plan.name}»`
+          : `Тариф «${plan.name}»: сгораемые VC обнулены`,
     },
   };
 }

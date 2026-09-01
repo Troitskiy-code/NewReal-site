@@ -8,12 +8,14 @@ import {
   getMsUntilNextDay,
   getNextBonus,
   getUpcomingBonusStreak,
+  isPreviousCalendarDay,
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
 import { normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
 import { replenishAvatarTokens } from "@/lib/avatarTokens";
 import { activatePendingSubscriptionIfNeeded } from "@/lib/subscription";
 import { serializeSubscriptionState } from "@/lib/subscriptionState";
+import { serializeCoinBalances } from "@/lib/verseCoins";
 
 export async function GET() {
   try {
@@ -27,6 +29,7 @@ export async function GET() {
       select: {
         id: true,
         verseCoins: true,
+        permanentCoins: true,
         bonusStreak: true,
         lastBonusDate: true,
         subscriptionType: true,
@@ -56,6 +59,8 @@ export async function GET() {
             pendingSubscriptionEnd: true,
             isSubscribed: true,
             robokassaRecurringId: true,
+            verseCoins: true,
+            permanentCoins: true,
           },
         })) ?? user
       : user;
@@ -71,10 +76,20 @@ export async function GET() {
     );
 
     const now = new Date();
+    const coins = serializeCoinBalances({
+      verseCoins: synced.verseCoins ?? user.verseCoins,
+      permanentCoins: synced.permanentCoins ?? user.permanentCoins,
+    });
+    const skippedBonusDay = Boolean(
+      user.lastBonusDate &&
+        !isSameCalendarDay(user.lastBonusDate, now) &&
+        !isPreviousCalendarDay(user.lastBonusDate, now)
+    );
+    const bonusStreakForPreview = skippedBonusDay ? 0 : user.bonusStreak;
     const claimedToday = Boolean(user.lastBonusDate && isSameCalendarDay(user.lastBonusDate, now));
     const canClaimBonus = !claimedToday;
     const bonusSubscriptionType = subscription.subscriptionActive ? subscription.subscriptionType : null;
-    const upcomingStreak = getUpcomingBonusStreak(user.bonusStreak);
+    const upcomingStreak = skippedBonusDay ? 1 : getUpcomingBonusStreak(user.bonusStreak);
     const currentBonusAmount = applyBonusMultiplier(
       getBonusForStreak(upcomingStreak),
       bonusSubscriptionType
@@ -82,7 +97,7 @@ export async function GET() {
     const counters = normalizeUserCounters(
       {
         id: session.user.id,
-        verseCoins: user.verseCoins,
+        verseCoins: coins.verseCoins,
         subscriptionType: subscription.subscriptionType,
         subscriptionEnd: subscription.subscriptionEnd,
         dailyRequests: user.dailyRequests,
@@ -92,12 +107,12 @@ export async function GET() {
     );
 
     return NextResponse.json({
-      verseCoins: user.verseCoins,
+      ...coins,
       bonusStreak: user.bonusStreak,
       lastBonusDate: user.lastBonusDate,
       canClaimBonus,
       currentBonusAmount,
-      nextBonus: applyBonusMultiplier(getNextBonus(user.bonusStreak), bonusSubscriptionType),
+      nextBonus: applyBonusMultiplier(getNextBonus(bonusStreakForPreview), bonusSubscriptionType),
       msUntilNextBonus: claimedToday ? getMsUntilNextDay(now) : 0,
       ...subscription,
       robokassaRecurringId: synced.robokassaRecurringId ?? null,

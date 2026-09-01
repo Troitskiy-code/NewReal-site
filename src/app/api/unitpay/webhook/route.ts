@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { grantPermanentUpdate } from "@/lib/verseCoins";
 import crypto from "crypto";
 
 const SECRET_KEY = process.env.UNITPAY_SECRET_KEY!;
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
       await prisma.$transaction([
         prisma.user.update({
           where: { id: account },
-          data: { verseCoins: { increment: vcAmount } },
+          data: grantPermanentUpdate(vcAmount),
         }),
         prisma.transaction.create({
           data: {
