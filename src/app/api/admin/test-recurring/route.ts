@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const userId = typeof body?.userId === "string" ? body.userId.trim() : "";
+    const force = body?.force === true;
 
     if (!userId) {
       return NextResponse.json({ error: "userId обязателен" }, { status: 400 });
@@ -65,8 +66,14 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[Admin] Test recurring for user ${userId}`);
+    if (force) {
+      console.log("⚠️ Force mode: ignoring already_initiated");
+    }
 
-    const result = await renewSubscriptionIfDue(userId, { force: true });
+    const result = await renewSubscriptionIfDue(userId, {
+      force: true,
+      ignoreInitiated: force,
+    });
     const status = !result.renewed ? (result.reason === "charge_failed" ? 502 : 400) : 200;
 
     if (!result.renewed) {

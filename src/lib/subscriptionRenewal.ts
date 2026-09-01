@@ -122,10 +122,11 @@ async function applySuccessfulRenewal(params: {
 
 export async function renewSubscriptionIfDue(
   userId: string,
-  options?: { force?: boolean; now?: Date }
+  options?: { force?: boolean; ignoreInitiated?: boolean; now?: Date }
 ): Promise<RenewSubscriptionResult> {
   const now = options?.now ?? new Date();
   const force = options?.force === true;
+  const ignoreInitiated = options?.ignoreInitiated === true;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -169,7 +170,7 @@ export async function renewSubscriptionIfDue(
     return { renewed: false, userId, reason: "not_due" };
   }
 
-  if (!force) {
+  if (!ignoreInitiated) {
     const recentInit = await prisma.transaction.findFirst({
       where: {
         userId: user.id,
@@ -182,6 +183,8 @@ export async function renewSubscriptionIfDue(
     if (recentInit) {
       return { renewed: false, userId, reason: "already_initiated" };
     }
+  } else {
+    console.log("⚠️ Force mode: ignoring already_initiated");
   }
 
   const lastPaid = await prisma.transaction.findFirst({
