@@ -241,29 +241,56 @@ export async function renewDueSubscriptions(now = new Date()) {
   const windowStart = addDays(now, -2);
   const windowEnd = addDays(now, 1);
 
+  console.log("[Cron] Looking for users with expired subscriptions...");
+  console.log("[Cron] Current time (UTC):", now.toISOString());
+  console.log("[Cron] Due window (UTC):", {
+    from: windowStart.toISOString(),
+    to: windowEnd.toISOString(),
+    requires: "robokassaRecurringId != null AND isSubscribed = true",
+  });
+
   const users = await prisma.user.findMany({
     where: {
       robokassaRecurringId: { not: null },
       subscriptionEnd: { gte: windowStart, lte: windowEnd },
       isSubscribed: true,
     },
-    select: { id: true },
+    select: {
+      id: true,
+      subscriptionEnd: true,
+      robokassaRecurringId: true,
+      subscriptionType: true,
+    },
   });
+
+  console.log("[Cron] Found users:", users.length);
+  for (const user of users) {
+    console.log("[Cron] Candidate:", {
+      id: user.id,
+      subscriptionEnd: user.subscriptionEnd?.toISOString() ?? null,
+      robokassaRecurringId: user.robokassaRecurringId,
+      subscriptionType: user.subscriptionType,
+    });
+  }
 
   const results: Array<{ userId: string; invId?: string; skipped?: string; error?: string }> = [];
 
   for (const user of users) {
+    console.log(`[Cron] Renewing user=${user.id}...`);
     const result = await renewSubscriptionIfDue(user.id, { now });
     if (result.renewed) {
+      console.log(`[Cron] Renewed user=${result.userId} invId=${result.invId} newEnd=${result.newEnd?.toISOString() ?? "none"}`);
       results.push({ userId: result.userId, invId: result.invId });
       continue;
     }
 
     if (result.reason === "charge_failed") {
+      console.error(`[Cron] Charge failed user=${result.userId} reason=${result.reason} error=${result.error ?? "none"}`);
       results.push({ userId: result.userId, error: result.error ?? result.reason });
       continue;
     }
 
+    console.log(`[Cron] Skipped user=${result.userId} reason=${result.reason ?? "unknown"}`);
     results.push({ userId: result.userId, skipped: result.reason ?? "unknown" });
   }
 

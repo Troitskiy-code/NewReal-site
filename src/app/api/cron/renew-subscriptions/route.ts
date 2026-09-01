@@ -50,7 +50,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    console.log("[Cron] Looking for users with expired subscriptions...");
+    console.log("[Cron] Current time (UTC):", new Date().toISOString());
     const summary = await renewDueSubscriptions();
+    console.log("[Cron] Renewal summary:", {
+      checked: summary.checked,
+      results: summary.results,
+    });
     return NextResponse.json({ ok: true, ...summary });
   } catch (error) {
     console.error("[Robokassa] Subscription renew cron error:", error);
