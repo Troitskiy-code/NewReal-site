@@ -2,28 +2,25 @@ import { prisma } from "@/lib/prisma";
 import { getSubscriptionActivationBenefits, getSubscriptionPlan } from "@/lib/chatEconomy";
 import { buildReceipt, chargeRobokassaRecurring } from "@/lib/robokassa";
 
-export type RenewSubscriptionResult =
-  | {
-      renewed: true;
-      userId: string;
-      invId: string;
-      newEnd: Date;
-      period: "month" | "year";
-    }
-  | {
-      renewed: false;
-      userId: string;
-      reason:
-        | "user_not_found"
-        | "no_recurring_id"
-        | "no_subscription_end"
-        | "pending_plan_change"
-        | "free_plan"
-        | "not_due"
-        | "already_initiated"
-        | "charge_failed";
-      error?: string;
-    };
+export type RenewFailureReason =
+  | "user_not_found"
+  | "no_recurring_id"
+  | "no_subscription_end"
+  | "pending_plan_change"
+  | "free_plan"
+  | "not_due"
+  | "already_initiated"
+  | "charge_failed";
+
+export type RenewSubscriptionResult = {
+  renewed: boolean;
+  userId: string;
+  invId?: string;
+  newEnd?: Date;
+  period?: "month" | "year";
+  reason?: RenewFailureReason;
+  error?: string;
+};
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -267,7 +264,7 @@ export async function renewDueSubscriptions(now = new Date()) {
       continue;
     }
 
-    results.push({ userId: result.userId, skipped: result.reason });
+    results.push({ userId: result.userId, skipped: result.reason ?? "unknown" });
   }
 
   return { checked: users.length, results };

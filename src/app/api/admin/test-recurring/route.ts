@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { renewSubscriptionIfDue } from "@/lib/subscriptionRenewal";
+import { renewSubscriptionIfDue } from "@/lib/subscription";
 
 function isAuthorized(req: NextRequest): boolean {
   const adminSecret = process.env.ADMIN_SECRET;
@@ -67,11 +67,15 @@ export async function POST(req: NextRequest) {
     console.log(`[Admin] Test recurring for user ${userId}`);
 
     const result = await renewSubscriptionIfDue(userId, { force: true });
+    const status = !result.renewed ? (result.reason === "charge_failed" ? 502 : 400) : 200;
 
     if (!result.renewed) {
-      const status = result.reason === "charge_failed" ? 502 : 400;
       return NextResponse.json(
-        { success: false, error: skipMessage(result.reason), reason: result.reason },
+        {
+          success: false,
+          error: skipMessage(result.reason ?? "charge_failed"),
+          reason: result.reason,
+        },
         { status }
       );
     }
@@ -79,7 +83,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Подписка продлена",
-      newSubscriptionEnd: result.newEnd.toISOString(),
+      newSubscriptionEnd: result.newEnd?.toISOString() ?? null,
       invId: result.invId,
       period: result.period,
     });

@@ -125,3 +125,10 @@ export async function activatePendingSubscriptionIfNeeded(
 
   return true;
 }
+
+export {
+  renewDueSubscriptions,
+  renewSubscriptionIfDue,
+  renewSubscriptionIfDue as renewSubscriptionForUser,
+} from "./subscriptionRenewal";
+export type { RenewFailureReason, RenewSubscriptionResult } from "./subscriptionRenewal";
