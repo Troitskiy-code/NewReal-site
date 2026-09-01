@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const rawSubscriptionType =
       typeof body?.subscriptionType === "string" ? body.subscriptionType.trim().toLowerCase() : "";
+    const force = body?.force === true;
 
     if (!userId && !email) {
       return NextResponse.json({ error: "Укажите userId или email" }, { status: 400 });
@@ -65,12 +66,33 @@ export async function POST(req: NextRequest) {
 
     const now = new Date();
     const isStartPlan = subscriptionType === "start";
+    let subscriptionEnd: Date | null = isStartPlan ? null : addDays(now, 30);
+
+    if (!isStartPlan && body?.subscriptionEnd != null) {
+      const parsedEnd = new Date(body.subscriptionEnd);
+      if (Number.isNaN(parsedEnd.getTime())) {
+        return NextResponse.json({ error: "Некорректный subscriptionEnd" }, { status: 400 });
+      }
+
+      if (parsedEnd.getTime() <= now.getTime() && !force) {
+        return NextResponse.json(
+          { error: "subscriptionEnd не может быть в прошлом без force: true" },
+          { status: 400 }
+        );
+      }
+
+      subscriptionEnd = parsedEnd;
+    }
+
+    if (force) {
+      console.log("⚠️ Force mode enabled: setting subscription end to past date");
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         subscriptionType: isStartPlan ? "start" : subscriptionType,
-        subscriptionEnd: isStartPlan ? null : addDays(now, 30),
+        subscriptionEnd,
         isSubscribed: !isStartPlan,
       },
       select: {
