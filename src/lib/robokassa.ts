@@ -153,11 +153,6 @@ function buildRecurringQuery(recurring?: RobokassaRecurringOptions): string {
     return "";
   }
 
-  // Временно отключено до подключения услуги рекуррентных платежей в Robokassa
-  if (process.env.ENABLE_RECURRING !== "true") {
-    return "";
-  }
-
   const period = recurring.period === "year" ? "Yearly" : "Monthly";
   const amount = Number(recurring.amount).toFixed(2);
   // Recurring* is not part of SignatureValue.

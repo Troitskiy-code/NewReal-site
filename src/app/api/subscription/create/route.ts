@@ -53,8 +53,7 @@ export async function POST(req: NextRequest) {
     const desc = `Подписка ${plan.name} на 1 ${periodLabel}`;
 
     const receipt = buildReceipt([{ name: `Подписка ${plan.name} на 1 ${periodLabel}`, price: sum, quantity: 1 }]);
-    // Временно отключено до подключения услуги рекуррентных платежей в Robokassa
-    const enableRecurring = process.env.ENABLE_RECURRING === "true";
+    console.log("[Subscription] Creating recurring payment:", { period, amount: sum });
     const url = generateRobokassaPaymentUrl(
       session.user.id,
       sum,
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest) {
         Shp_applyMode: applyMode,
       },
       receipt,
-      enableRecurring ? { period, amount: sum } : undefined
+      { period, amount: sum }
     );
 
     return NextResponse.json({ url });
