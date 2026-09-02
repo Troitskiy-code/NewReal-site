@@ -10,13 +10,6 @@ type CoreMemory = {
   updatedAt: string;
 };
 
-type EpisodicMemory = {
-  id: string;
-  event: string;
-  timestamp: string;
-  importance: number;
-};
-
 type SummaryMemory = {
   summary: string;
   createdAt: string;
@@ -24,39 +17,31 @@ type SummaryMemory = {
 
 type MemoryPayload = {
   coreMemory: CoreMemory | null;
-  episodicMemories: EpisodicMemory[];
   summary: SummaryMemory | null;
 };
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const EMPTY_HINT = "Память пока пуста. Начните диалог, чтобы ИИ запомнил события.";
+
+function resolveDraft(coreMemory: CoreMemory | null, summary: SummaryMemory | null): string {
+  if (coreMemory?.content?.trim()) return coreMemory.content;
+  if (summary?.summary?.trim()) return summary.summary;
+  return "";
 }
 
-export default function MemoryEditor({ characterId }: { characterId: string }) {
+export default function MemoryEditor({
+  characterId,
+  onClose,
+}: {
+  characterId: string;
+  onClose: () => void;
+}) {
   const [loading, setLoading] = useState(true);
-  const [savingCore, setSavingCore] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editingCore, setEditingCore] = useState(false);
-  const [coreDraft, setCoreDraft] = useState("");
-  const [coreMemory, setCoreMemory] = useState<CoreMemory | null>(null);
-  const [episodicMemories, setEpisodicMemories] = useState<EpisodicMemory[]>([]);
-  const [summary, setSummary] = useState<SummaryMemory | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState("");
 
   const loadMemory = useCallback(async () => {
     const { data } = await axios.get<MemoryPayload>(`/api/chat/${characterId}/memory`);
-    setCoreMemory(data.coreMemory);
-    setCoreDraft(data.coreMemory?.content ?? "");
-    setEpisodicMemories(data.episodicMemories ?? []);
-    setSummary(data.summary);
-    setEditingCore(false);
+    setDraft(resolveDraft(data.coreMemory, data.summary));
   }, [characterId]);
 
   useEffect(() => {
@@ -81,36 +66,21 @@ export default function MemoryEditor({ characterId }: { characterId: string }) {
     };
   }, [loadMemory]);
 
-  const handleSaveCore = async () => {
-    setSavingCore(true);
+  const handleSave = async () => {
+    setSaving(true);
     try {
       const { data } = await axios.put<{ coreMemory: CoreMemory }>(
         `/api/chat/${characterId}/memory/core`,
-        { content: coreDraft }
+        { content: draft }
       );
-      setCoreMemory(data.coreMemory);
-      setCoreDraft(data.coreMemory.content);
-      setEditingCore(false);
-      toast.success("Ключевая память сохранена");
-    } catch {
-      toast.error("Не удалось сохранить ключевую память");
+      setDraft(data.coreMemory.content);
+      console.log("[MemoryEditor] User updated memory.");
+      toast.success("Память обновлена");
+    } catch (error) {
+      const message = axios.isAxiosError(error) ? error.response?.data?.error : null;
+      toast.error(typeof message === "string" ? message : "Не удалось сохранить память");
     } finally {
-      setSavingCore(false);
-    }
-  };
-
-  const handleDeleteEpisodic = async (episodicId: string) => {
-    if (!window.confirm("Удалить это событие из памяти?")) return;
-
-    setDeletingId(episodicId);
-    try {
-      await axios.delete(`/api/chat/${characterId}/memory/episodic/${episodicId}`);
-      setEpisodicMemories((prev) => prev.filter((item) => item.id !== episodicId));
-      toast.success("Событие удалено");
-    } catch {
-      toast.error("Не удалось удалить событие");
-    } finally {
-      setDeletingId(null);
+      setSaving(false);
     }
   };
 
@@ -123,110 +93,39 @@ export default function MemoryEditor({ characterId }: { characterId: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-white">Ключевая память</h3>
-          {!editingCore && (
-            <button
-              type="button"
-              onClick={() => {
-                setCoreDraft(coreMemory?.content ?? "");
-                setEditingCore(true);
-              }}
-              className="rounded-full px-3 py-1 text-xs font-semibold text-[#6C63FF] hover:bg-white/5"
-            >
-              Редактировать
-            </button>
-          )}
+    <div className="flex min-h-[50vh] flex-col gap-3">
+      <label htmlFor="memory-editor-text" className="sr-only">
+        Память диалога
+      </label>
+      <textarea
+        id="memory-editor-text"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder={EMPTY_HINT}
+        disabled={saving}
+        className="min-h-[40vh] w-full flex-1 resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-gray-500">{draft.length} символов</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-full px-4 py-2 text-sm text-gray-400 hover:text-gray-300 disabled:opacity-50"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+          >
+            {saving ? "Сохранение..." : "Сохранить память"}
+          </button>
         </div>
-
-        {editingCore ? (
-          <div className="space-y-2">
-            <textarea
-              value={coreDraft}
-              onChange={(event) => setCoreDraft(event.target.value)}
-              rows={6}
-              className="w-full resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-white outline-none focus:border-[#6C63FF]"
-              placeholder="Что ИИ должен помнить о персонаже и диалоге"
-              disabled={savingCore}
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCoreDraft(coreMemory?.content ?? "");
-                  setEditingCore(false);
-                }}
-                disabled={savingCore}
-                className="rounded-full px-3 py-1 text-xs text-gray-400 hover:text-gray-300 disabled:opacity-50"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveCore}
-                disabled={savingCore}
-                className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
-              >
-                {savingCore ? "Сохранение..." : "Сохранить"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="whitespace-pre-wrap rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-gray-300">
-            {coreMemory?.content?.trim() || "Пока нет ключевой памяти."}
-          </p>
-        )}
-
-        {coreMemory?.updatedAt && (
-          <p className="text-xs text-gray-500">Обновлено: {formatDate(coreMemory.updatedAt)}</p>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <h3 className="text-sm font-bold text-white">События диалога</h3>
-        {episodicMemories.length === 0 ? (
-          <p className="text-sm text-gray-500">Пока нет сохранённых событий.</p>
-        ) : (
-          <ul className="space-y-2">
-            {episodicMemories.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3"
-              >
-                <div className="mb-2 flex items-start justify-between gap-3">
-                  <span className="text-xs text-gray-500">{formatDate(item.timestamp)}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteEpisodic(item.id)}
-                    disabled={deletingId === item.id}
-                    className="shrink-0 rounded-full px-2 py-0.5 text-xs text-red-400 hover:bg-white/5 disabled:opacity-50"
-                  >
-                    {deletingId === item.id ? "Удаление..." : "Удалить"}
-                  </button>
-                </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-300">
-                  {item.event}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <h3 className="text-sm font-bold text-white">Суммаризация</h3>
-        <p className="text-xs leading-relaxed text-gray-500">
-          Суммаризация обновляется автоматически по мере развития диалога.
-        </p>
-        <p className="whitespace-pre-wrap rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-gray-300">
-          {summary?.summary?.trim() || "Суммаризация ещё не создана."}
-        </p>
-        {summary?.createdAt && (
-          <p className="text-xs text-gray-500">Создано: {formatDate(summary.createdAt)}</p>
-        )}
-      </section>
+      </div>
     </div>
   );
 }

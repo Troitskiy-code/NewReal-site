@@ -31,6 +31,7 @@ export async function PUT(
     }
 
     const coreMemory = await setCoreMemoryContent(session.user.id, characterId, content);
+    console.log("[MemoryEditor] User updated memory.");
     return NextResponse.json({ coreMemory });
   } catch (error) {
     console.error("Update core memory error:", error);

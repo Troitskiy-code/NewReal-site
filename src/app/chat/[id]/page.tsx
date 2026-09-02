@@ -1382,7 +1382,10 @@ export default function ChatPage() {
           title="Редактировать память"
           wide
         >
-          <MemoryEditor characterId={characterId} />
+          <MemoryEditor
+            characterId={characterId}
+            onClose={() => setMemoryEditorOpen(false)}
+          />
         </Modal>
 
         <Modal
