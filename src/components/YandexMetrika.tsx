@@ -1,6 +1,7 @@
 import Script from "next/script";
 
-const COUNTER_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID?.trim();
+const DEFAULT_COUNTER_ID = "112171267";
+const COUNTER_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID?.trim() || DEFAULT_COUNTER_ID;
 
 export default function YandexMetrika() {
   if (!COUNTER_ID) return null;
