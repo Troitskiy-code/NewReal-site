@@ -9,7 +9,7 @@ const models = [
   { name: "mistralai/mistral-small-3.1-24b-instruct", displayName: "Mistral Small 3.1 24B", priceVC: 11, maxContextTokens: 12000, description: "Хорошая модель для ролевых игр и сложных персонажей." },
   { name: "anthropic/claude-haiku-4.5", displayName: "Claude Haiku 4.5", priceVC: 34, maxContextTokens: 12000, description: "Надёжный стиль, сильное мышление, без «воды»." },
   { name: "x-ai/grok-4.20", displayName: "Grok 4.20", priceVC: 36, maxContextTokens: 12000, description: "Максимальная реалистичность, минимум галлюцинаций." },
-  { name: "google/gemini-2.5-pro", displayName: "Gemini 2.5 Pro", priceVC: 50, maxContextTokens: 12000, description: "Глубокое понимание контекста, построение миров." },
+  { name: "openai/gpt-5.1", displayName: "GPT-5.1", priceVC: 50, maxContextTokens: 12000, description: "Новейшая модель OpenAI для сложных рассуждений, глубокого понимания контекста и построения миров." },
   { name: "mistralai/mistral-large-2407", displayName: "Mistral Large 2", priceVC: 63, maxContextTokens: 12000, description: "Сложные рассуждения, профессиональные сценарии." },
 ];
 
