@@ -1,10 +1,8 @@
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { PAGE_METADATA } from "@/lib/seo";
 
-export const metadata = {
-  title: "Пользовательское соглашение — NewVerse",
-  description: "Условия использования сервиса NewVerse.",
-};
+export const metadata = PAGE_METADATA.terms;
 
 export default function TermsPage() {
   return (

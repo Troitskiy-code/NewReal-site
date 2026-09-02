@@ -82,12 +82,9 @@ export async function GET(req: NextRequest) {
     ].filter(Boolean);
     const uniqueTags = [...new Set(tagList)];
     const userId = searchParams.get("userId") || "";
+    const publicFlag = searchParams.get("public") ?? searchParams.get("isPublic");
     const isPublic =
-      searchParams.get("isPublic") === "true"
-        ? true
-        : searchParams.get("isPublic") === "false"
-          ? false
-          : undefined;
+      publicFlag === "true" ? true : publicFlag === "false" ? false : undefined;
     const sortParam = searchParams.get("sort") || DEFAULT_CHARACTER_SORT;
     const sort = isCharacterSort(sortParam) ? sortParam : DEFAULT_CHARACTER_SORT;
     const page = parseInt(searchParams.get("page") || "1", 10);

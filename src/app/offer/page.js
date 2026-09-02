@@ -1,10 +1,8 @@
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { PAGE_METADATA } from "@/lib/seo";
 
-export const metadata = {
-  title: "Публичная оферта — NewVerse",
-  description: "Публичная оферта на оказание услуг сервиса NewVerse.",
-};
+export const metadata = PAGE_METADATA.offer;
 
 export default function OfferPage() {
   return (

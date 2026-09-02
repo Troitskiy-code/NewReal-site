@@ -1,10 +1,8 @@
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { PAGE_METADATA } from "@/lib/seo";
 
-export const metadata = {
-  title: "Политика возврата средств — NewVerse",
-  description: "Условия возврата денежных средств в сервисе NewVerse.",
-};
+export const metadata = PAGE_METADATA.refund;
 
 export default function RefundPage() {
   return (
