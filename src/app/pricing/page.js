@@ -33,6 +33,10 @@ const PLAN_BUTTONS = {
     "border border-wd-primary/50 bg-wd-primary/15 hover:bg-wd-primary hover:border-wd-primary text-white",
 };
 
+function metrikaPlanSlug(planId) {
+  return planId === "story" ? "history" : planId;
+}
+
 function formatNumber(value) {
   return value.toLocaleString("ru-RU");
 }
@@ -302,6 +306,8 @@ export default function PricingPage() {
 
                 <button
                   type="button"
+                  id={`subscribe-${metrikaPlanSlug(plan.id)}`}
+                  data-metrika={`subscribe-${metrikaPlanSlug(plan.id)}`}
                   onClick={() => handleSubscribe(plan)}
                   disabled={isFree || subscribingPlanId === plan.id}
                   className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${PLAN_BUTTONS[plan.id]}`}
@@ -389,6 +395,8 @@ export default function PricingPage() {
             <div className="flex flex-col gap-3">
               <button
                 type="button"
+                id={`subscribe-pay-${metrikaPlanSlug(selectedPlan.id)}`}
+                data-metrika={`subscribe-pay-${metrikaPlanSlug(selectedPlan.id)}`}
                 onClick={handlePay}
                 disabled={Boolean(subscribingPlanId) || !recurringConsent}
                 className="wd-button w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"

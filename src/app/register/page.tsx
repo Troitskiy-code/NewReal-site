@@ -99,6 +99,8 @@ function RegisterContent() {
           />
           <button
             type="submit"
+            id="register-submit"
+            data-metrika="register"
             style={{
               width: "100%",
               padding: 10,

@@ -286,6 +286,8 @@ export default function EditCharacterPage() {
                 </button>
                 <button
                   type="submit"
+                  id="character-save-submit"
+                  data-metrika="character-save"
                   disabled={submitting}
                   className="w-full rounded-lg bg-[#6C63FF] px-8 py-3 text-base font-bold text-white transition-colors hover:bg-[#5a52e0] disabled:opacity-50 sm:w-auto"
                 >

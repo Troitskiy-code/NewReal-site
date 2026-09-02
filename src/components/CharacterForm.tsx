@@ -572,6 +572,8 @@ export default function CharacterForm({
           </div>
           <button
             type="button"
+            id="generate-avatar-btn"
+            data-metrika="generate-avatar"
             onClick={handleGenerateAvatar}
             disabled={generatingAvatar || (tokenStatus !== null && !canGenerate)}
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"

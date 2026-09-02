@@ -1482,7 +1482,8 @@ export default function ChatPage() {
           <div className="shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-3 py-3 md:p-4">
             <form
               onSubmit={sendMessage}
-              className="mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row"
+              className="chat-form mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row"
+              data-metrika="chat-form"
             >
               <input
                 type="text"
@@ -1494,6 +1495,8 @@ export default function ChatPage() {
               />
               <button
                 type="submit"
+                id="chat-send-btn"
+                data-metrika="chat-send"
                 disabled={!canSend}
                 className="min-h-[44px] w-full shrink-0 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
               >

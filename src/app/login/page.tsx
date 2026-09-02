@@ -49,7 +49,7 @@ export default function LoginPage() {
           required
           style={{ width: "100%", marginBottom: 10, padding: 8 }}
         />
-        <button type="submit" style={{ width: "100%", padding: 10 }}>
+        <button type="submit" id="login-submit" data-metrika="login" style={{ width: "100%", padding: 10 }}>
           Войти
         </button>
       </form>

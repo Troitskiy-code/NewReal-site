@@ -309,8 +309,11 @@ export default function CoinsPage() {
                     <td className="px-4 py-4 text-right">
                       <button
                         type="button"
+                        id={`buy-vc-${pkg.vc}`}
+                        data-metrika="buy-vc"
+                        data-metrika-package={String(pkg.vc)}
                         onClick={() => handleBuy(pkg.price, pkg.vc)}
-                        className="rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
+                        className="buy-vc-btn rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
                       >
                         Купить
                       </button>
