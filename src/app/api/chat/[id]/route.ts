@@ -209,17 +209,12 @@ export async function POST(
       const analysis = await analyzeIntent(message, KODIKROUTER_KEY);
       intent = analysis.intent;
 
-      const userMessageCount = await prisma.message.count({
-        where: { characterId: id, userId: session.user.id, role: "user" },
-      });
-
       await ingestUserMessageMemory({
         userId: session.user.id,
         characterId: id,
         userMessage: message,
         intent,
         apiKey: KODIKROUTER_KEY,
-        userMessageCount,
       });
     }
 

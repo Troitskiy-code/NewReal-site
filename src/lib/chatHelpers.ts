@@ -11,7 +11,7 @@ import {
   appendRagToSystemPrompt,
   formatRagContext,
   isRagEligible,
-  RAG_HISTORY_TOKEN_THRESHOLD,
+  shouldUseRag,
   searchRelevantMessages,
 } from "@/lib/messageEmbeddings";
 import { appendRandomEventToPrompt, pickRandomSceneEvent } from "@/lib/randomEvent";
@@ -98,6 +98,25 @@ export const MEMORY_TOKEN_RATIOS = {
   coreEpisodic: 0.1,
 } as const;
 
+export type MemoryTokenRatios = {
+  recentChat: number;
+  summary: number;
+  retrieved: number;
+  coreEpisodic: number;
+};
+
+export function getMemoryTokenRatios(intent: UserIntent = "general"): MemoryTokenRatios {
+  if (intent === "story" || intent === "action") {
+    return { recentChat: 0.4, summary: 0.15, retrieved: 0.05, coreEpisodic: 0.4 };
+  }
+
+  if (intent === "fact") {
+    return { recentChat: 0.45, summary: 0.15, retrieved: 0.3, coreEpisodic: 0.1 };
+  }
+
+  return MEMORY_TOKEN_RATIOS;
+}
+
 export function trimTextToTokenLimit(text: string, maxTokens: number): string {
   if (!text || maxTokens <= 0) return "";
   if (countTokens(text) <= maxTokens) return text;
@@ -123,16 +142,18 @@ export function trimTextToTokenLimit(text: string, maxTokens: number): string {
 export function allocateTokens(
   _messages: ChatCompletionMessage[],
   maxContextTokens: number,
-  reservedTokens = 0
+  reservedTokens = 0,
+  intent: UserIntent = "general"
 ) {
   const available = Math.max(0, maxContextTokens - reservedTokens);
-  const recentChat = Math.floor(available * MEMORY_TOKEN_RATIOS.recentChat);
-  const summary = Math.floor(available * MEMORY_TOKEN_RATIOS.summary);
-  const retrieved = Math.floor(available * MEMORY_TOKEN_RATIOS.retrieved);
+  const ratios = getMemoryTokenRatios(intent);
+  const recentChat = Math.floor(available * ratios.recentChat);
+  const summary = Math.floor(available * ratios.summary);
+  const retrieved = Math.floor(available * ratios.retrieved);
   const coreEpisodic = Math.max(0, available - recentChat - summary - retrieved);
 
   console.log(
-    `[MemoryAlloc] max=${maxContextTokens} reserved=${reservedTokens} available=${available} recent=${recentChat} summary=${summary} retrieved=${retrieved} coreEpisodic=${coreEpisodic}`
+    `[ContextStrategy] intent=${intent} recent=${recentChat} summary=${summary} rag=${retrieved} episodic=${coreEpisodic} available=${available}`
   );
 
   return { available, recentChat, summary, retrieved, coreEpisodic };
@@ -358,7 +379,7 @@ export async function prepareChatMessages({
 
   const [memorySummary, relevantMemories, selectedPersona] = await Promise.all([
     resolveChatMemorySummary(userId, characterId, apiKey, user),
-    getRelevantMemories(userId, characterId, intent),
+    getRelevantMemories(userId, characterId, intent, maxContextTokens),
     getSelectedChatPersona(userId, characterId),
   ]);
 
@@ -428,31 +449,35 @@ ${systemPrompt}`;
   let ragContextText: string | null = null;
   let ragUsed = false;
 
-  if (ragEligible && ragQueryText) {
-    if (totalHistoryTokens > RAG_HISTORY_TOKEN_THRESHOLD) {
-      try {
-        const ragMessages = await searchRelevantMessages(
-          userId,
-          characterId,
-          ragQueryText,
-          apiKey,
-          excludeMessageId
-        );
-        console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
-        ragContextText = formatRagContext(ragMessages)?.text ?? null;
-        ragUsed = Boolean(ragContextText);
-      } catch (ragError) {
-        console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
-      }
-    } else {
-      console.log(
-        `🔍 RAG: пропущен (история слишком короткая: ${totalHistoryTokens} токенов)`
+  const ragDecision = shouldUseRag({
+    ragEligible,
+    userQuery: ragQueryText,
+    intent,
+    historyTokens: totalHistoryTokens,
+  });
+  console.log(
+    `[RAGDecision] use=${ragDecision.use ? "yes" : "no"} reason=${ragDecision.reason} tokens=${totalHistoryTokens} intent=${intent}`
+  );
+
+  if (ragDecision.use && ragQueryText) {
+    try {
+      const ragMessages = await searchRelevantMessages(
+        userId,
+        characterId,
+        ragQueryText,
+        apiKey,
+        excludeMessageId
       );
+      console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
+      ragContextText = formatRagContext(ragMessages)?.text ?? null;
+      ragUsed = Boolean(ragContextText);
+    } catch (ragError) {
+      console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
     }
   }
 
   const reservedTokens = countTokens(systemPrompt);
-  const allocations = allocateTokens([], maxContextTokens, reservedTokens);
+  const allocations = allocateTokens([], maxContextTokens, reservedTokens, intent);
   const summaryText = memorySummary
     ? trimTextToTokenLimit(memorySummary, allocations.summary)
     : "";

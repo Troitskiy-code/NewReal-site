@@ -6,8 +6,49 @@ const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const CORE_MEMORY_MODEL = "openai/gpt-4o-mini";
 const EPISODIC_CAP = 100;
 
-const CORE_MEMORY_PROMPT =
-  "Обнови ключевую память о персонаже и диалоге. Сохрани устойчивые факты: имена, отношения, договорённости, характер, важные предпочтения. Объедини старую память и новую информацию в краткий связный текст без воды.";
+const CORE_DELTA_PROMPT =
+  "Сравни ключевую память диалога с новым сообщением пользователя. Если в сообщении нет устойчивых новых фактов (имена, отношения, договорённости, характер, предпочтения, сюжетные решения), ответь строго одним словом: UNCHANGED. Иначе верни только обновлённую ключевую память целиком: краткий связный текст без воды, объединяющий старую память и новую информацию.";
+
+const SHORT_CONTEXT_IMPORTANCE_THRESHOLD = 2;
+const LONG_CONTEXT_IMPORTANCE_THRESHOLD = 1;
+const SHORT_CONTEXT_TOKEN_LIMIT = 8000;
+
+export function importanceScoreForIntent(intent: UserIntent): number {
+  if (intent === "story" || intent === "action") return 3;
+  if (intent === "fact") return 2;
+  return 1;
+}
+
+export function episodicImportanceThreshold(maxContextTokens: number): number {
+  return maxContextTokens < SHORT_CONTEXT_TOKEN_LIMIT
+    ? SHORT_CONTEXT_IMPORTANCE_THRESHOLD
+    : LONG_CONTEXT_IMPORTANCE_THRESHOLD;
+}
+
+function extractContentTokens(text: string): string[] {
+  return text.toLowerCase().replace(/ё/g, "е").match(/[a-zа-я]{4,}/g) ?? [];
+}
+
+export function hasSubstantialNewCoreInfo(existingCore: string, userMessage: string): boolean {
+  const message = userMessage.trim();
+  if (message.length < 16) return false;
+
+  const core = existingCore.trim().toLowerCase().replace(/ё/g, "е");
+  if (!core) return true;
+
+  const messageNorm = message.toLowerCase().replace(/ё/g, "е");
+  if (core.includes(messageNorm)) return false;
+
+  const tokens = extractContentTokens(message);
+  if (tokens.length === 0) return false;
+
+  const novel = tokens.filter((token) => !core.includes(token));
+  return novel.length / tokens.length >= 0.3;
+}
+
+function isUnchangedDelta(text: string): boolean {
+  return /^\s*unchanged\b/i.test(text.trim());
+}
 
 export type EpisodicMemoryItem = {
   id: string;
@@ -49,10 +90,10 @@ async function summarizeCoreMemory(apiKey: string, previous: string, newInfo: st
     {
       model: CORE_MEMORY_MODEL,
       messages: [
-        { role: "system", content: CORE_MEMORY_PROMPT },
+        { role: "system", content: CORE_DELTA_PROMPT },
         {
           role: "user",
-          content: `Старая память:\n${previous.trim() || "(пусто)"}\n\nНовая информация:\n${newInfo.trim()}`,
+          content: `Старая память:\n${previous.trim() || "(пусто)"}\n\nНовое сообщение пользователя:\n${newInfo.trim()}`,
         },
       ],
       max_tokens: 500,
@@ -108,7 +149,22 @@ export async function updateCoreMemory(
 
   try {
     const existing = await ensureCoreMemory(userId, characterId);
+
+    if (!hasSubstantialNewCoreInfo(existing.content, info)) {
+      console.log(
+        `[CoreUpdate] skipped no-new-info user=${userId} character=${characterId}`
+      );
+      return existing;
+    }
+
     const content = await summarizeCoreMemory(apiKey, existing.content, info);
+
+    if (isUnchangedDelta(content) || content.trim() === existing.content.trim()) {
+      console.log(
+        `[CoreUpdate] skipped unchanged user=${userId} character=${characterId}`
+      );
+      return existing;
+    }
 
     const saved = await prisma.coreMemory.upsert({
       where: { userId_characterId: { userId, characterId } },
@@ -118,10 +174,14 @@ export async function updateCoreMemory(
 
     await upsertMemoryEntry(userId, characterId, "core", content, true);
     console.log(
+      `[CoreUpdate] updated user=${userId} character=${characterId} chars=${content.length}`
+    );
+    console.log(
       `[CoreMemory] updated user=${userId} character=${characterId} chars=${content.length}`
     );
     return saved;
   } catch (error) {
+    console.error("[CoreUpdate] update failed", error);
     console.error("[CoreMemory] update failed", error);
     return null;
   }
@@ -201,7 +261,7 @@ function episodicLimitForIntent(intent: UserIntent): number {
   switch (intent) {
     case "story":
     case "action":
-      return 5;
+      return 10;
     case "fact":
     case "question":
       return 2;
@@ -232,9 +292,10 @@ export async function getRelevantMemories(
   userId: string,
   characterId: string,
   intent: UserIntent,
-  limit = 5
+  maxContextTokens = 6000
 ): Promise<RelevantMemories> {
-  const episodicTake = Math.min(limit, episodicLimitForIntent(intent));
+  const episodicTake = episodicLimitForIntent(intent);
+  const minImportance = episodicImportanceThreshold(maxContextTokens);
 
   const [core, episodic] = await Promise.all([
     prisma.coreMemory.findUnique({
@@ -242,7 +303,7 @@ export async function getRelevantMemories(
       select: { content: true },
     }),
     prisma.episodicMemory.findMany({
-      where: { userId, characterId },
+      where: { userId, characterId, importance: { gte: minImportance } },
       orderBy: [{ importance: "desc" }, { timestamp: "desc" }],
       take: episodicTake,
       select: { id: true, event: true, timestamp: true, importance: true },
@@ -258,7 +319,7 @@ export async function getRelevantMemories(
 
   console.log(`[CoreMemory] retrieved user=${userId} character=${characterId} present=${memories.core ? "yes" : "no"}`);
   console.log(
-    `[Episodic] retrieved intent=${intent} events=${episodic.length}`
+    `[Episodic] retrieved intent=${intent} minImportance=${minImportance} events=${episodic.length}`
   );
 
   return memories;
@@ -327,30 +388,18 @@ export async function ingestUserMessageMemory({
   userMessage,
   intent,
   apiKey,
-  userMessageCount,
 }: {
   userId: string;
   characterId: string;
   userMessage: string;
   intent: UserIntent;
   apiKey: string;
-  userMessageCount: number;
 }) {
   await ensureCoreMemory(userId, characterId);
 
-  const isFirst = userMessageCount <= 1;
-  const shouldRecordEpisode =
-    isFirst || intent === "story" || intent === "action" || intent === "fact";
+  const importance = importanceScoreForIntent(intent);
+  console.log(`[Importance] intent=${intent} score=${importance}`);
+  await addEpisodicMemory(userId, characterId, userMessage, importance);
 
-  if (shouldRecordEpisode) {
-    const importance = intent === "story" ? 3 : intent === "fact" ? 2 : 1;
-    await addEpisodicMemory(userId, characterId, userMessage, importance);
-  }
-
-  const shouldUpdateCore =
-    isFirst || intent === "fact" || intent === "story" || userMessageCount % 5 === 0;
-
-  if (shouldUpdateCore) {
-    await updateCoreMemory(userId, characterId, userMessage, apiKey);
-  }
+  await updateCoreMemory(userId, characterId, userMessage, apiKey);
 }

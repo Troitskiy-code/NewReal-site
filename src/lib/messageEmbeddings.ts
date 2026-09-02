@@ -6,7 +6,50 @@ const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;
 const RAG_TOP_K = 5;
 const RAG_MIN_SIMILARITY = 0.25;
-export const RAG_HISTORY_TOKEN_THRESHOLD = 5000;
+export const RAG_HISTORY_TOKEN_THRESHOLD = 3000;
+
+const RAG_QUESTION_WORD_RE =
+  /(?:^|[^\p{L}])(?:кто|что|где|когда|почему|как)(?=[^\p{L}]|$)/iu;
+
+export type RagDecision = {
+  use: boolean;
+  reason: string;
+};
+
+export function shouldUseRag({
+  ragEligible,
+  userQuery,
+  intent,
+  historyTokens,
+}: {
+  ragEligible: boolean;
+  userQuery?: string | null;
+  intent: string;
+  historyTokens: number;
+}): RagDecision {
+  if (!ragEligible) {
+    return { use: false, reason: "not-eligible" };
+  }
+
+  const query = userQuery?.trim() ?? "";
+  if (!query) {
+    return { use: false, reason: "no-query" };
+  }
+
+  if (RAG_QUESTION_WORD_RE.test(query)) {
+    return { use: true, reason: "question-words" };
+  }
+
+  if (intent === "fact" || intent === "question") {
+    return { use: true, reason: `intent=${intent}` };
+  }
+
+  if (historyTokens > RAG_HISTORY_TOKEN_THRESHOLD) {
+    return { use: true, reason: `history=${historyTokens}` };
+  }
+
+  return { use: false, reason: "not-needed" };
+}
 
 export const MESSAGE_EMBEDDINGS_ENABLED =
   process.env.ENABLE_RAG_EMBEDDINGS === "true";
