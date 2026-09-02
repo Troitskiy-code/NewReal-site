@@ -1,12 +1,17 @@
 import Script from "next/script";
 
 const DEFAULT_COUNTER_ID = "112171267";
-const COUNTER_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID?.trim() || DEFAULT_COUNTER_ID;
+
+function resolveCounterId() {
+  const fromEnv = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID?.trim();
+  if (fromEnv && /^\d+$/.test(fromEnv)) return fromEnv;
+  return DEFAULT_COUNTER_ID;
+}
+
+const COUNTER_ID = resolveCounterId();
 
 export default function YandexMetrika() {
   if (!COUNTER_ID) return null;
-
-  const ymId = /^\d+$/.test(COUNTER_ID) ? COUNTER_ID : JSON.stringify(COUNTER_ID);
 
   return (
     <>
@@ -18,7 +23,7 @@ export default function YandexMetrika() {
             (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
             m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
             (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
-            ym(${ymId}, "init", {});
+            ym(${COUNTER_ID}, "init", {});
           `,
         }}
       />
