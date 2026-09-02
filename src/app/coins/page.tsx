@@ -8,6 +8,7 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaCoins, FaCrown, FaGift } from "react-icons/fa";
 import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 type BalanceData = {
   verseCoins: number;
@@ -91,6 +92,7 @@ export default function CoinsPage() {
   }, [status, fetchBalance]);
 
   const handleBuy = async (price: number, coins: number) => {
+    reachGoal(METRIKA_GOALS.buyVc);
     try {
       const res = await fetch("/api/payment/create", {
         method: "POST",

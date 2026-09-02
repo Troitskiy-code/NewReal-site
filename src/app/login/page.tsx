@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    reachGoal(METRIKA_GOALS.login);
     setError("");
 
     const result = await signIn("credentials", {

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 function RegisterContent() {
   const router = useRouter();
@@ -18,6 +19,7 @@ function RegisterContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    reachGoal(METRIKA_GOALS.register);
     console.log("✅ Форма отправлена (обработчик вызван)");
     setError("");
     setSuccess("");

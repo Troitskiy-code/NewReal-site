@@ -20,6 +20,7 @@ import {
   fetchAndReadChatStream,
   type ChatStreamMessage,
 } from "@/lib/chatStream";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
@@ -1179,6 +1180,8 @@ export default function ChatPage() {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || sending) return;
+
+    reachGoal(METRIKA_GOALS.sendMessage);
 
     if (insufficientBalance) {
       toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);

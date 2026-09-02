@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
+import { reachGoal, subscriptionGoal } from "@/lib/metrika";
 import toast, { Toaster } from "react-hot-toast";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 
@@ -127,6 +128,9 @@ export default function PricingPage() {
       return;
     }
 
+    const goal = subscriptionGoal(plan.id);
+    if (goal) reachGoal(goal);
+
     if (status !== "authenticated") {
       router.push("/login");
       return;
@@ -145,6 +149,8 @@ export default function PricingPage() {
   const handlePay = async () => {
     if (!selectedPlan) return;
     if (!recurringConsent) return;
+    const goal = subscriptionGoal(selectedPlan.id);
+    if (goal) reachGoal(goal);
     const mode = hasActiveSubscription ? applyMode : "immediate";
     const plan = selectedPlan;
     closeCheckout();

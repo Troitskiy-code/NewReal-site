@@ -19,6 +19,7 @@ import {
 import { CHARACTER_LIMITS } from "@/lib/characterFields";
 import { ensureReferenceImageDataUrl, ensureReferenceImageFile } from "@/lib/convertAvifToPng";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
 const HINT_CLASS = "text-sm text-gray-400 leading-relaxed";
@@ -261,6 +262,7 @@ export default function CharacterForm({
   }, []);
 
   const handleGenerateAvatar = async () => {
+    reachGoal(METRIKA_GOALS.generateAvatar);
     if (!values.name.trim()) {
       toast.error("Сначала укажите имя персонажа");
       return;

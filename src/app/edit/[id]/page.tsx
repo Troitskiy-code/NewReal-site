@@ -12,6 +12,7 @@ import CharacterForm, {
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaUser } from "react-icons/fa";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 type Character = CharacterFormValues & {
   id: string;
@@ -147,6 +148,7 @@ export default function EditCharacterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    reachGoal(METRIKA_GOALS.saveCharacter);
 
     if (!form.name.trim()) {
       toast.error("Введите имя персонажа");
