@@ -215,3 +215,57 @@
 .animate-gradient-x {
   animation: gradientX 6s ease infinite;
 }
+
+/*
+  Mobile drawer: animate `left`, not transform/translate.
+  Tailwind v4 translate-* uses the `translate` property, which
+  `transition-transform` does not interpolate — the panel pops in.
+  `left` matches the desktop width interpolation path.
+*/
+.nv-mobile-drawer {
+  position: fixed;
+  top: 3.5rem;
+  left: -240px;
+  z-index: 50;
+  display: flex;
+  width: 240px;
+  height: calc(100vh - 3.5rem);
+  height: calc(100dvh - 3.5rem);
+  flex-direction: column;
+  overflow: hidden;
+  transition: left 300ms ease-in-out;
+}
+
+.nv-mobile-drawer.is-open {
+  left: 0;
+}
+
+.nv-mobile-nav-overlay {
+  position: fixed;
+  inset: 3.5rem 0 0 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 0.6);
+  opacity: 0;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+  transition: opacity 300ms ease-in-out;
+}
+
+.nv-mobile-nav-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  .nv-mobile-drawer,
+  .nv-mobile-nav-overlay {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nv-mobile-drawer,
+  .nv-mobile-nav-overlay {
+    transition: none;
+  }
+}

@@ -169,7 +169,7 @@ function NavMenuList({ pathname, showLabels, iconSize, onItemClick }) {
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { isExpanded, sidebarWidth, mobileDrawerWidth, collapse, isMobile } = useSidebar();
+  const { isExpanded, sidebarWidth, collapse, isMobile } = useSidebar();
 
   const desktopPanelWidth = isExpanded ? SIDEBAR_EXPANDED_DESKTOP : SIDEBAR_COLLAPSED_DESKTOP;
   const showDesktopLabels = isExpanded;
@@ -211,25 +211,17 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Mobile overlay menu */}
+      {/* Mobile overlay menu — slide via CSS `left`, same 300ms as desktop width */}
       <div
-        className={`fixed inset-x-0 bottom-0 top-14 z-40 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 ease-in-out md:hidden ${
-          isExpanded ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-        }`}
+        className={`nv-mobile-nav-overlay ${isExpanded ? "is-open" : ""}`}
         onClick={collapse}
         aria-hidden={!isExpanded}
       />
 
       <aside
-        className={`fixed left-0 top-14 z-50 flex h-[calc(100vh-3.5rem)] flex-col border-r border-[#2A2A2A] bg-[#1A1A1A] text-white shadow-2xl md:hidden ${
-          isExpanded ? "" : "pointer-events-none"
+        className={`nv-mobile-drawer border-r border-[#2A2A2A] bg-[#1A1A1A] text-white shadow-2xl ${
+          isExpanded ? "is-open" : "pointer-events-none"
         }`}
-        style={{
-          width: mobileDrawerWidth,
-          transform: isExpanded ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform 300ms ease-in-out",
-          willChange: "transform",
-        }}
         aria-hidden={!isExpanded}
       >
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
