@@ -217,27 +217,39 @@
 }
 
 /*
-  Mobile drawer: animate `left`, not transform/translate.
-  Tailwind v4 translate-* uses the `translate` property, which
-  `transition-transform` does not interpolate — the panel pops in.
-  `left` matches the desktop width interpolation path.
+  Mobile drawer uses the same property as the desktop sidebar: width.
+  Overlay stays below the header (top: 3.5rem, z-index 40) so the burger
+  is not dimmed. Do not animate Tailwind translate — it does not tween.
 */
 .nv-mobile-drawer {
   position: fixed;
   top: 3.5rem;
-  left: -240px;
+  left: 0;
   z-index: 50;
   display: flex;
-  width: 240px;
+  width: 0;
   height: calc(100vh - 3.5rem);
   height: calc(100dvh - 3.5rem);
   flex-direction: column;
   overflow: hidden;
-  transition: left 300ms ease-in-out;
+  border-right-style: solid;
+  border-right-width: 0;
+  box-shadow: none;
+  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nv-mobile-drawer.is-open {
-  left: 0;
+  width: 240px;
+  border-right-width: 1px;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.nv-mobile-drawer-inner {
+  display: flex;
+  width: 240px;
+  min-width: 240px;
+  height: 100%;
+  flex-direction: column;
 }
 
 .nv-mobile-nav-overlay {
@@ -248,7 +260,7 @@
   opacity: 0;
   pointer-events: none;
   backdrop-filter: blur(2px);
-  transition: opacity 300ms ease-in-out;
+  transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nv-mobile-nav-overlay.is-open {
@@ -260,12 +272,5 @@
   .nv-mobile-drawer,
   .nv-mobile-nav-overlay {
     display: none !important;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nv-mobile-drawer,
-  .nv-mobile-nav-overlay {
-    transition: none;
   }
 }

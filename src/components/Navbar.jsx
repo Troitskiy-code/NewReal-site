@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   FaHome,
@@ -173,6 +173,19 @@ export default function Navbar() {
 
   const desktopPanelWidth = isExpanded ? SIDEBAR_EXPANDED_DESKTOP : SIDEBAR_COLLAPSED_DESKTOP;
   const showDesktopLabels = isExpanded;
+  const [mobileSlideOpen, setMobileSlideOpen] = useState(false);
+
+  // Paint the closed width first, then open — otherwise iOS skips the 300ms width tween.
+  useLayoutEffect(() => {
+    if (!isExpanded) {
+      setMobileSlideOpen(false);
+      return undefined;
+    }
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setMobileSlideOpen(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isExpanded]);
 
   useEffect(() => {
     const headerHeight = isMobile ? HEADER_HEIGHT_MOBILE_PX : HEADER_HEIGHT_DESKTOP_PX;
@@ -211,27 +224,29 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Mobile overlay menu — slide via CSS `left`, same 300ms as desktop width */}
+      {/* Mobile overlay: below header so the burger stays undimmed (z-40 vs header z-60). */}
       <div
-        className={`nv-mobile-nav-overlay ${isExpanded ? "is-open" : ""}`}
+        className={`nv-mobile-nav-overlay ${mobileSlideOpen ? "is-open" : ""}`}
         onClick={collapse}
         aria-hidden={!isExpanded}
       />
 
       <aside
-        className={`nv-mobile-drawer border-r border-[#2A2A2A] bg-[#1A1A1A] text-white shadow-2xl ${
-          isExpanded ? "is-open" : "pointer-events-none"
+        className={`nv-mobile-drawer border-[#2A2A2A] bg-[#1A1A1A] text-white ${
+          mobileSlideOpen ? "is-open" : "pointer-events-none"
         }`}
         aria-hidden={!isExpanded}
       >
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
-          <NavMenuList
-            pathname={pathname}
-            showLabels
-            iconSize={24}
-            onItemClick={handleNavClick}
-          />
-        </nav>
+        <div className="nv-mobile-drawer-inner">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
+            <NavMenuList
+              pathname={pathname}
+              showLabels
+              iconSize={24}
+              onItemClick={handleNavClick}
+            />
+          </nav>
+        </div>
       </aside>
 
       {/* Desktop persistent sidebar */}
