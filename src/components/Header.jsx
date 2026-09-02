@@ -11,12 +11,12 @@ export default function Header() {
   const { toggle, isExpanded, isMobile } = useSidebar();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 m-0 h-14 border-b-2 border-[#2A2A2A] bg-[#1A1A1A]/80 px-0 shadow-lg shadow-black/40 backdrop-blur-sm md:h-20">
+    <header className="fixed top-0 left-0 right-0 z-[60] m-0 h-14 border-b-2 border-[#2A2A2A] bg-[#1A1A1A]/80 px-0 shadow-lg shadow-black/40 backdrop-blur-sm md:h-20">
       <div className="relative flex h-full w-full items-center">
         <button
           type="button"
           onClick={toggle}
-          className="absolute left-0 top-0 z-10 m-0 flex h-full w-14 items-center justify-center rounded-none border-0 border-r border-[#2A2A2A] bg-[#121212] p-0 text-[#A0A0A0] transition-colors hover:border-[#6C63FF]/50 hover:text-white"
+          className="absolute left-0 top-0 z-[60] m-0 flex h-full w-14 items-center justify-center rounded-none border-0 border-r border-[#2A2A2A] bg-[#121212] p-0 text-[#A0A0A0] transition-colors hover:border-[#6C63FF]/50 hover:text-white"
           aria-label={
             isMobile
               ? isExpanded

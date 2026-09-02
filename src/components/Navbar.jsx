@@ -213,7 +213,7 @@ export default function Navbar() {
     <>
       {/* Mobile overlay menu */}
       <div
-        className={`fixed inset-0 z-[200] bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 md:hidden ${
+        className={`fixed inset-x-0 bottom-0 top-14 z-40 bg-black/60 backdrop-blur-[2px] transition-opacity duration-300 md:hidden ${
           isExpanded ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={collapse}
@@ -221,7 +221,7 @@ export default function Navbar() {
       />
 
       <aside
-        className={`fixed left-0 top-14 z-[210] flex h-[calc(100vh-3.5rem)] flex-col border-r border-[#2A2A2A] bg-[#1A1A1A] text-white shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed left-0 top-14 z-50 flex h-[calc(100vh-3.5rem)] flex-col border-r border-[#2A2A2A] bg-[#1A1A1A] text-white shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
           isExpanded ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ width: mobileDrawerWidth }}
