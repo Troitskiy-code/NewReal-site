@@ -7,7 +7,7 @@ export const AUTH_BUTTON_CLASS =
   "w-full rounded-wd-pill bg-primary py-3 font-bold text-white transition hover:bg-primary-hover disabled:opacity-50";
 
 export const AUTH_GOOGLE_BUTTON_CLASS =
-  "flex w-full items-center justify-center gap-2 rounded-wd-pill border border-divider bg-[#0A0A0A] py-3 font-semibold text-white transition hover:border-primary hover:bg-wd-card disabled:opacity-50";
+  "flex w-full items-center justify-center gap-2 rounded-wd-pill border border-wd-secondary/40 bg-[#12101c] py-3 font-semibold text-white transition hover:border-wd-secondary hover:bg-[#1a1630]";
 
 export function AuthCard({
   title,

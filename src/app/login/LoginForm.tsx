@@ -42,21 +42,20 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
 
   const handleGoogleSignIn = () => {
     reachGoal(METRIKA_GOALS.login);
-    signIn("google", { callbackUrl: "/" });
   };
 
   return (
     <AuthCard title="Вход">
       {googleAuthEnabled && (
         <>
-          <button
-            type="button"
+          <a
+            href="/api/auth/signin/google"
             onClick={handleGoogleSignIn}
             className={AUTH_GOOGLE_BUTTON_CLASS}
           >
             <GoogleIcon />
             Войти через Google
-          </button>
+          </a>
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-divider" />
             <span className="text-xs text-wd-text-secondary">или</span>
