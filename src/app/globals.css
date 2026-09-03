@@ -23,6 +23,10 @@
   --color-primary-text: var(--primary-text, #ffffff);
   --color-secondary-text: var(--secondary-text, #a0a0a0);
   --color-primary-btn-text: var(--primary-btn-text, #ffffff);
+
+  --radius-wd: 16px;
+  --radius-wd-pill: 50px;
+  --shadow-wd: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 /* WetDreams — основная тема проекта */

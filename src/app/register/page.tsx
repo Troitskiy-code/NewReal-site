@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { AUTH_BUTTON_CLASS, AUTH_INPUT_CLASS, AuthCard } from "@/components/AuthCard";
 
 function RegisterContent() {
   const router = useRouter();
@@ -63,72 +64,65 @@ function RegisterContent() {
   };
 
   return (
-    <div className="min-h-dvh bg-wd-bg text-wd-text">
-      <div style={{ maxWidth: 400, margin: "50px auto", padding: 20 }}>
-        <h1>Регистрация</h1>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Имя"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            style={{ width: "100%", marginBottom: 10, padding: 8 }}
-          />
-          <input
-            type="email"
-            placeholder="Электронная почта"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", marginBottom: 10, padding: 8 }}
-          />
-          <input
-            type="password"
-            placeholder="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: "100%", marginBottom: 10, padding: 8 }}
-          />
-          <input
-            type="password"
-            placeholder="Подтверждение пароля"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            style={{ width: "100%", marginBottom: 10, padding: 8 }}
-          />
-          <button
-            type="submit"
-            id="register-submit"
-            data-metrika="register"
-            style={{
-              width: "100%",
-              padding: 10,
-              cursor: "pointer",
-              backgroundColor: "#0070f3",
-              color: "#fff",
-              border: "none",
-              borderRadius: 4,
-            }}
-          >
-            Зарегистрироваться
-          </button>
-        </form>
-        {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
-        {success && <p style={{ color: "green", marginTop: 10 }}>{success}</p>}
-        <p style={{ marginTop: 16 }}>
-          Уже есть аккаунт? <Link href="/login">Войти</Link>
-        </p>
-      </div>
-    </div>
+    <AuthCard title="Регистрация">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          type="text"
+          placeholder="Имя"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          className={AUTH_INPUT_CLASS}
+        />
+        <input
+          type="email"
+          placeholder="Электронная почта"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className={AUTH_INPUT_CLASS}
+        />
+        <input
+          type="password"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className={AUTH_INPUT_CLASS}
+        />
+        <input
+          type="password"
+          placeholder="Подтверждение пароля"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          className={AUTH_INPUT_CLASS}
+        />
+        <button type="submit" id="register-submit" data-metrika="register" className={AUTH_BUTTON_CLASS}>
+          Зарегистрироваться
+        </button>
+      </form>
+      {error && <p className="mt-4 text-sm text-primary">{error}</p>}
+      {success && <p className="mt-4 text-sm text-wd-secondary">{success}</p>}
+      <p className="mt-6 text-center text-sm text-wd-text-secondary">
+        Уже есть аккаунт?{" "}
+        <Link href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
+          Войти
+        </Link>
+      </p>
+    </AuthCard>
   );
 }
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="min-h-dvh bg-wd-bg text-wd-text flex items-center justify-center">Загрузка...</div>}>
+    <Suspense
+      fallback={
+        <AuthCard title="Регистрация">
+          <p className="text-center text-sm text-wd-text-secondary">Загрузка...</p>
+        </AuthCard>
+      }
+    >
       <RegisterContent />
     </Suspense>
   );

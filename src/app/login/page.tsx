@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { AUTH_BUTTON_CLASS, AUTH_INPUT_CLASS, AuthCard } from "@/components/AuthCard";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,17 +32,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-wd-bg text-wd-text">
-      <div style={{ maxWidth: 400, margin: "50px auto", padding: 20 }}>
-      <h1>Вход</h1>
-      <form onSubmit={handleSubmit}>
+    <AuthCard title="Вход">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="email"
           placeholder="Электронная почта"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          className={AUTH_INPUT_CLASS}
         />
         <input
           type="password"
@@ -49,15 +48,24 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          className={AUTH_INPUT_CLASS}
         />
-        <button type="submit" id="login-submit" data-metrika="login" style={{ width: "100%", padding: 10 }}>
+        <button type="submit" id="login-submit" data-metrika="login" className={AUTH_BUTTON_CLASS}>
           Войти
         </button>
       </form>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <p>Нет аккаунта? <Link href="/register">Зарегистрироваться</Link></p>
-      </div>
-    </div>
+      {error && <p className="mt-4 text-sm text-primary">{error}</p>}
+      <p className="mt-6 text-center text-sm text-wd-text-secondary">
+        Нет аккаунта?{" "}
+        <Link href="/register" className="font-semibold text-primary transition hover:text-primary-hover">
+          Зарегистрироваться
+        </Link>
+      </p>
+      <p className="mt-3 text-center">
+        <Link href="/support" className="text-sm font-normal text-wd-text-secondary/70 transition hover:text-wd-text-secondary">
+          Забыли пароль?
+        </Link>
+      </p>
+    </AuthCard>
   );
 }
