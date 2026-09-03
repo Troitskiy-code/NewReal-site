@@ -6,6 +6,9 @@ export const AUTH_INPUT_CLASS =
 export const AUTH_BUTTON_CLASS =
   "w-full rounded-wd-pill bg-primary py-3 font-bold text-white transition hover:bg-primary-hover disabled:opacity-50";
 
+export const AUTH_GOOGLE_BUTTON_CLASS =
+  "flex w-full items-center justify-center gap-2 rounded-wd-pill border border-divider bg-[#0A0A0A] py-3 font-semibold text-white transition hover:border-primary hover:bg-wd-card disabled:opacity-50";
+
 export function AuthCard({
   title,
   children,
