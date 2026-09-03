@@ -34,8 +34,41 @@ async function activatePendingForUserId(userId?: string | null) {
   }
 }
 
+const prismaAdapter = PrismaAdapter(prisma);
+
 export const authOptions: AuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: {
+    ...prismaAdapter,
+    async createUser(data) {
+      console.log("[Auth] Adapter createUser:", data);
+      try {
+        const created = await prismaAdapter.createUser!(data);
+        console.log("[Auth] Adapter createUser success:", created);
+        return created;
+      } catch (error) {
+        console.error("[Auth] Adapter createUser failed:", error);
+        throw error;
+      }
+    },
+    async getUserByEmail(email) {
+      const existing = await prismaAdapter.getUserByEmail!(email);
+      console.log("[Auth] Adapter getUserByEmail:", { email, found: Boolean(existing), id: existing?.id });
+      return existing;
+    },
+    async linkAccount(account) {
+      console.log("[Auth] Adapter linkAccount:", {
+        userId: account.userId,
+        provider: account.provider,
+        providerAccountId: account.providerAccountId,
+      });
+      try {
+        return await prismaAdapter.linkAccount!(account);
+      } catch (error) {
+        console.error("[Auth] Adapter linkAccount failed:", error);
+        throw error;
+      }
+    },
+  },
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -81,18 +114,46 @@ export const authOptions: AuthOptions = {
   },
   secret: "a7f9e2c1b5d8e4f6a9c2d3e1f5b8a7c9d4e2f6a3b8c9d1e5f7a2b6c4d8e9f0a1",
   callbacks: {
+    async signIn({ user, account, profile }) {
+      try {
+        console.log("[Auth] Google signIn attempt:", {
+          user,
+          account: account
+            ? {
+                ...account,
+                access_token: account.access_token ? "[redacted]" : undefined,
+                refresh_token: account.refresh_token ? "[redacted]" : undefined,
+                id_token: account.id_token ? "[redacted]" : undefined,
+              }
+            : account,
+          profile,
+        });
+        return true;
+      } catch (error) {
+        console.error("[Auth] Error during signIn:", error);
+        return false;
+      }
+    },
     async session({ session, token, user }) {
       if (session.user) {
         session.user.id = user?.id ?? token?.sub ?? token?.id ?? "";
         session.user.email = session.user.email ?? token.email ?? undefined;
         session.user.name = session.user.name ?? token.name ?? undefined;
         session.user.createdAt = token.createdAt ?? null;
+        console.log("[Auth] Session created for user:", session.user.email, {
+          id: session.user.id,
+        });
       }
       await activatePendingForUserId(user?.id ?? token?.sub);
       return session;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
+        console.log("[Auth] JWT created for user:", {
+          id: user.id,
+          email: user.email,
+          provider: account?.provider,
+        });
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
@@ -101,6 +162,31 @@ export const authOptions: AuthOptions = {
         await activatePendingForUserId(user.id);
       }
       return token;
+    },
+  },
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      console.log("[Auth] signIn event:", {
+        id: user.id,
+        email: user.email,
+        provider: account?.provider,
+        isNewUser,
+      });
+    },
+    async createUser({ user }) {
+      console.log("[Auth] createUser event:", {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      });
+    },
+    async linkAccount({ user, account }) {
+      console.log("[Auth] linkAccount event:", {
+        userId: user.id,
+        email: user.email,
+        provider: account.provider,
+        providerAccountId: account.providerAccountId,
+      });
     },
   },
 };
