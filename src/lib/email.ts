@@ -18,7 +18,13 @@ export async function sendResetPasswordEmail(to: string, token: string): Promise
     throw new Error("Email is not configured");
   }
 
-  const from = process.env.RESEND_FROM_EMAIL?.trim() || "NewVerse <noreply@newvers.ai>";
+  const fromEnv = process.env.RESEND_FROM_EMAIL?.trim();
+  if (!fromEnv) {
+    console.warn(
+      `${LOG} RESEND_FROM_EMAIL is not set; using default sender NewVerse <noreply@newvers.ai>`
+    );
+  }
+  const from = fromEnv || "NewVerse <noreply@newvers.ai>";
   const resend = new Resend(apiKey);
 
   console.log(`${LOG} Sending password reset email`, { to });
