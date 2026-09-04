@@ -68,6 +68,14 @@ export const PAGE_METADATA = {
     "Поддержка — NewVerse",
     "Свяжитесь с нами для решения вопросов."
   ),
+  forgotPassword: createPageMetadata(
+    "Восстановление пароля — NewVerse",
+    "Запросите ссылку для сброса пароля аккаунта NewVerse."
+  ),
+  resetPassword: createPageMetadata(
+    "Сброс пароля — NewVerse",
+    "Задайте новый пароль для аккаунта NewVerse."
+  ),
 } as const;
 
 export function chatPageMetadata(characterName: string): Metadata {

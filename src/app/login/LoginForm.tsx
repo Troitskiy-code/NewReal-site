@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import {
@@ -18,9 +18,11 @@ type LoginFormProps = {
 
 export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const passwordResetSuccess = searchParams.get("reset") === "success";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +82,9 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
         </button>
       </form>
       {error && <p className="mt-4 text-sm text-primary">{error}</p>}
+      {passwordResetSuccess && (
+        <p className="mt-4 text-sm text-wd-secondary">Пароль успешно изменён</p>
+      )}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
         Нет аккаунта?{" "}
         <Link href="/register" className="font-semibold text-primary transition hover:text-primary-hover">
@@ -87,7 +92,7 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
         </Link>
       </p>
       <p className="mt-3 text-center">
-        <Link href="/support" className="text-sm font-normal text-wd-text-secondary/70 transition hover:text-wd-text-secondary">
+        <Link href="/forgot-password" className="text-sm font-normal text-wd-text-secondary/70 transition hover:text-wd-text-secondary">
           Забыли пароль?
         </Link>
       </p>
