@@ -8,7 +8,8 @@
     "build": "node scripts/prisma-generate.cjs && next build",
     "start": "next start",
     "lint": "eslint",
-    "verify:economy": "node --experimental-strip-types scripts/verify-economy.ts"
+    "verify:economy": "node --experimental-strip-types scripts/verify-economy.ts",
+    "translate:characters": "node --experimental-strip-types scripts/translate-characters.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
