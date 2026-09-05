@@ -17,7 +17,6 @@ import {
   FaRegHeart,
   FaRegQuestionCircle,
 } from "react-icons/fa";
-import toast from "react-hot-toast";
 import {
   HEADER_HEIGHT_DESKTOP_PX,
   HEADER_HEIGHT_MOBILE_PX,
@@ -84,8 +83,7 @@ const NAV_ITEMS = [
     path: "/support",
     iconInactive: FaRegQuestionCircle,
     iconActive: FaQuestionCircle,
-    stub: true,
-    stubMessage: "Раздел поддержки скоро будет доступен",
+    matchPaths: ["/support"],
   },
 ];
 
@@ -145,16 +143,6 @@ function NavMenuList({ pathname, showLabels, iconSize, onItemClick }) {
           </>
         );
 
-        if (item.stub) {
-          return (
-            <li key={item.name}>
-              <button type="button" onClick={() => onItemClick(item)} className={linkClass}>
-                {content}
-              </button>
-            </li>
-          );
-        }
-
         return (
           <li key={item.name}>
             <Link href={item.path} onClick={() => onItemClick(item)} className={linkClass}>
@@ -213,12 +201,7 @@ export default function Navbar() {
     };
   }, [isExpanded]);
 
-  const handleNavClick = (item) => {
-    if (item.stub) {
-      toast(item.stubMessage || "Раздел скоро будет доступен", { icon: "🔜" });
-      if (isMobile) collapse();
-      return;
-    }
+  const handleNavClick = () => {
     if (isMobile) collapse();
   };
 
