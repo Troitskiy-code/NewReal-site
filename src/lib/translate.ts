@@ -50,14 +50,41 @@ function getTranslateConfig() {
 
 export async function translateText(text: string, targetLang: TranslateTargetLang): Promise<string> {
   if (!text.trim()) {
+    console.log("[Translate] Empty text, skipping request", { targetLang, textLength: 0 });
     return text;
   }
 
   const { apiKey, folderId } = getTranslateConfig();
   if (!apiKey || !folderId) {
-    console.error("[Translate] Missing YANDEX_API_KEY or YANDEX_FOLDER_ID");
-    return text;
+    console.error("[Translate] Missing YANDEX_API_KEY or YANDEX_FOLDER_ID", {
+      hasApiKey: Boolean(apiKey),
+      hasFolderId: Boolean(folderId),
+    });
+    throw new Error("Missing YANDEX_API_KEY or YANDEX_FOLDER_ID");
   }
+
+  const requestBody = {
+    targetLanguageCode: targetLang,
+    texts: [text],
+    folderId,
+  };
+
+  console.log("[Translate] Request:", {
+    textLength: text.length,
+    targetLang,
+    textPreview: text.slice(0, 80),
+    url: YANDEX_TRANSLATE_URL,
+    body: {
+      targetLanguageCode: requestBody.targetLanguageCode,
+      textsCount: requestBody.texts.length,
+      textsItemLengths: requestBody.texts.map((t) => t.length),
+      folderIdPresent: Boolean(folderId),
+    },
+    headers: {
+      Authorization: "Api-Key ***",
+      "Content-Type": "application/json",
+    },
+  });
 
   try {
     const response = await fetch(YANDEX_TRANSLATE_URL, {
@@ -66,32 +93,52 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
         Authorization: `Api-Key ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        targetLanguageCode: targetLang,
-        texts: [text],
-        folderId,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
-    if (!response.ok) {
-      const details = await response.text().catch(() => "");
-      console.error(
-        `[Translate] API error ${response.status}${details ? `: ${details.slice(0, 300)}` : ""}`
-      );
-      return text;
+    const rawBody = await response.text().catch(() => "");
+    console.log("[Translate] Response status:", response.status);
+
+    let data: YandexTranslateResponse | null = null;
+    if (rawBody) {
+      try {
+        data = JSON.parse(rawBody) as YandexTranslateResponse;
+        console.log("[Translate] Response data:", data);
+      } catch {
+        console.log("[Translate] Response body (non-JSON):", rawBody.slice(0, 500));
+      }
     }
 
-    const data = (await response.json()) as YandexTranslateResponse;
-    const translated = data.translations?.[0]?.text;
-    if (typeof translated !== "string" || !translated) {
-      console.error("[Translate] Unexpected response shape", data);
-      return text;
+    if (!response.ok) {
+      console.error("[Translate] API error:", response.status, data ?? rawBody.slice(0, 500));
+      throw new Error(
+        `Yandex Translate API error ${response.status}${rawBody ? `: ${rawBody.slice(0, 300)}` : ""}`
+      );
     }
+
+    const translated = data?.translations?.[0]?.text;
+    if (typeof translated !== "string" || !translated) {
+      console.error("[Translate] Unexpected response shape", data ?? rawBody.slice(0, 500));
+      throw new Error("Yandex Translate returned unexpected response shape");
+    }
+
+    console.log("[Translate] Success:", {
+      targetLang,
+      originalLength: text.length,
+      translatedLength: translated.length,
+      translatedPreview: translated.slice(0, 80),
+    });
 
     return translated;
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Yandex Translate")) {
+      throw error;
+    }
+    if (error instanceof Error && error.message === "Missing YANDEX_API_KEY or YANDEX_FOLDER_ID") {
+      throw error;
+    }
     console.error("[Translate] Request failed", error);
-    return text;
+    throw error instanceof Error ? error : new Error("Yandex Translate request failed");
   }
 }
 
@@ -116,8 +163,13 @@ export async function translateCharacterFieldsToEn(
         return [enField, null] as const;
       }
 
-      const translated = await translateText(value, "en");
-      return [enField, translated] as const;
+      try {
+        const translated = await translateText(value, "en");
+        return [enField, translated] as const;
+      } catch (error) {
+        console.error(`[Translate] Field "${source}" failed, keeping original`, error);
+        return [enField, value] as const;
+      }
     })
   );
 
