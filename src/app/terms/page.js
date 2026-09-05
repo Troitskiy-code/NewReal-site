@@ -1,8 +1,10 @@
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { PAGE_METADATA } from "@/lib/seo";
+import { getLocalizedPageMetadata } from "@/lib/seo";
 
-export const metadata = PAGE_METADATA.terms;
+export async function generateMetadata() {
+  return getLocalizedPageMetadata("terms");
+}
 
 export default function TermsPage() {
   return (

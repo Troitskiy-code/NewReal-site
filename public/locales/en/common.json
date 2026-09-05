@@ -1,0 +1,315 @@
+{
+  "header": {
+    "title": "NewVerse",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "collapseMenu": "Collapse menu",
+    "expandMenu": "Expand menu",
+    "profileMenu": "Profile menu",
+    "menu": {
+      "home": "Home",
+      "chats": "My chats",
+      "pricing": "Subscription",
+      "coins": "VerseCoins",
+      "create": "Create character",
+      "profile": "Profile",
+      "favorites": "Favorites",
+      "support": "Support"
+    }
+  },
+  "footer": {
+    "offer": "Public offer",
+    "terms": "Terms of use",
+    "refund": "Refund policy",
+    "support": "Support",
+    "copyright": "© {{year}} NewVerse — Your universe of characters"
+  },
+  "language": {
+    "label": "Language",
+    "ru": "RU",
+    "en": "EN"
+  },
+  "auth": {
+    "login": "Sign in",
+    "loginTitle": "Sign in",
+    "register": "Sign up",
+    "registerTitle": "Sign up",
+    "email": "Email",
+    "emailPlaceholder": "Email",
+    "password": "Password",
+    "name": "Name",
+    "confirmPassword": "Confirm password",
+    "forgot_password": "Forgot password?",
+    "login_google": "Sign in with Google",
+    "register_google": "Sign up with Google",
+    "or": "or",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "invalidCredentials": "Invalid email or password",
+    "passwordMismatch": "Passwords do not match",
+    "registerError": "Registration failed",
+    "registerSuccess": "Registration successful! Redirecting to sign in...",
+    "connectionError": "A server connection error occurred",
+    "passwordChanged": "Password changed successfully",
+    "forgotTitle": "Reset password",
+    "sendLink": "Send link",
+    "sending": "Sending...",
+    "linkSent": "A password reset link has been sent to your email",
+    "sendLinkError": "Could not send the link",
+    "rememberedPassword": "Remembered your password?",
+    "resetTitle": "Set a new password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm password",
+    "resetPassword": "Reset password",
+    "saving": "Saving...",
+    "checkingLink": "Checking the link...",
+    "invalidLink": "This link is invalid or has expired",
+    "resetFailed": "Could not reset the password",
+    "requestNewLink": "Request a new link",
+    "backToLogin": "Back to sign in",
+    "minPassword": "Password must be at least {{count}} characters",
+    "loading": "Loading..."
+  },
+  "common": {
+    "submit": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "retry": "Try again",
+    "error": "Error",
+    "loading": "Loading...",
+    "user": "User"
+  },
+  "home": {
+    "searchPlaceholder": "Search by name or tag...",
+    "sort": "Sort",
+    "sortTop": "Top",
+    "sortRandom": "Random",
+    "sortNew": "New",
+    "sortForYou": "For you",
+    "found": "Characters found: ",
+    "noCharacters": "No characters",
+    "noResults": "Nothing matched your search. Try changing the filters.",
+    "noPublished": "No published characters yet. Create the first one!",
+    "loadMore": "Load more",
+    "reset": "Reset",
+    "resetSearch": "Clear search"
+  },
+  "support": {
+    "title": "Support",
+    "intro": "For billing, technical issues, and refunds, use the form below. We will reply to the email you provide within 10 business days.",
+    "formTitle": "Submit a request",
+    "topic": "Topic",
+    "email": "Your email",
+    "message": "Message",
+    "messagePlaceholder": "Describe the issue or question...",
+    "submit": "Send",
+    "mailtoHint": "Clicking “Send” opens your email app with a prefilled message.",
+    "userEmailPrefix": "User email: ",
+    "topics": {
+      "payment": "Billing question",
+      "technical": "Technical issue",
+      "refund": "Refund",
+      "other": "Other"
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "loginPrompt": "Sign in to view your profile and characters.",
+    "registeredAt": "Registered:",
+    "gallery": "Gallery",
+    "subscription": "Subscription",
+    "freePlan": "Free plan",
+    "until": "Until {{date}} · {{days}} days left",
+    "then": "Then: {{label}}",
+    "recurringOn": "Auto-renewal is on",
+    "recurringOff": "Auto-renewal is off",
+    "recurringSetup": "The new plan requires auto-renewal to be set up again.",
+    "manageSubscription": "Manage subscription",
+    "characters": "Characters",
+    "chats": "Chats",
+    "messages": "Messages",
+    "myCharacters": "My characters",
+    "count": "{{count}}",
+    "empty": "You have not created any characters yet",
+    "createFirst": "Create your first character",
+    "private": "Private",
+    "noDescription": "No description",
+    "chat": "Chat",
+    "deleteConfirm": "Delete character “{{name}}”?",
+    "deleted": "Character deleted",
+    "deleteError": "Could not delete the character",
+    "loadError": "Could not load the profile",
+    "settingsSoon": "Settings will be available soon",
+    "notificationsSoon": "Notifications will be available soon",
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "logout": "Sign out",
+    "startPlan": "Start"
+  },
+  "pricing": {
+    "badge": "Subscriptions",
+    "title": "NewVerse plans",
+    "subtitle": "Monthly and yearly plans with bonus VerseCoins, a larger context window, and generation priority. Pick the level that fits your stories and chats.",
+    "activeUntil": "Your subscription: {{label}}, active until {{date}}",
+    "noActive": "You have no active subscription",
+    "pending": "The new {{label}} subscription will start after the current one ends ({{date}})",
+    "cancelling": "Cancelling...",
+    "cancelPending": "Cancel",
+    "recurringMissing": "Auto-renewal is not set up for the current plan. Subscribe again to keep payments automatic.",
+    "month": "Month",
+    "year": "Year",
+    "popular": "Popular",
+    "yearlyPlan": "Yearly subscription",
+    "monthlyPlan": "Monthly subscription",
+    "forever": "forever",
+    "perYear": "per year",
+    "perMonth": "per month",
+    "vcPerMonth": "{{count}} VC / mo",
+    "context": "Context {{tokens}} · multiplier ×{{multiplier}}",
+    "currentBase": "Current free plan",
+    "redirecting": "Redirecting to payment...",
+    "subscribe": "Subscribe",
+    "footnote": "Activating a plan credits bonus VC to your balance. Context and memory multipliers apply automatically. Payments are processed by Robokassa.",
+    "checkoutTitle": "Subscribe to {{name}}",
+    "applyNow": "Apply now",
+    "applyNowHint": "Your current subscription, if any, will be replaced. Remaining time is not refunded.",
+    "applyLater": "Apply after the current plan ends",
+    "applyLaterHint": "The new subscription will start automatically when the current one expires.",
+    "offerConsent": "I agree to automatic charges under the",
+    "offerLink": "offer",
+    "consentRequired": "You must agree to auto-renewal to subscribe",
+    "goToPayment": "Continue to payment",
+    "creatingPayment": "Creating payment...",
+    "paymentError": "Could not create the payment",
+    "startDefault": "The Start plan is available to everyone by default",
+    "cancelPendingSuccess": "Pending subscription cancelled",
+    "cancelPendingError": "Could not cancel the pending subscription"
+  },
+  "coins": {
+    "title": "VerseCoins (VC)",
+    "subtitle": "Buy VC to chat with characters, claim the daily bonus, and track your subscription.",
+    "loginPrompt": "Sign in to see your balance, bonuses, and buy VC",
+    "balance": "Current balance",
+    "yourSubscription": "Your subscription: {{label}}",
+    "validUntil": "Active until {{date}}",
+    "dailyBonus": "Daily bonus",
+    "streakDay": "Streak day: {{day}} / 7",
+    "today": "Today: ",
+    "alreadyClaimed": "Bonus already claimed today",
+    "nextBonus": "Next bonus in: ",
+    "claiming": "Claiming...",
+    "claim": "Claim (+{{amount}} VC)",
+    "unavailable": "Bonus unavailable",
+    "packages": "VC packs",
+    "price": "Price (₽)",
+    "bonus": "Bonus",
+    "action": "Action",
+    "buy": "Buy",
+    "loadError": "Could not load the balance",
+    "paymentError": "Could not create the payment",
+    "createPaymentError": "Error creating the payment",
+    "bonusReceived": "Bonus claimed!",
+    "comeTomorrow": "Come back tomorrow",
+    "bonusError": "Could not claim the bonus",
+    "buyDesc": "Purchase of {{coins}} VC",
+    "min": "0 min",
+    "hoursMinutes": "{{hours}} h {{minutes}} min",
+    "minutes": "{{minutes}} min"
+  },
+  "meta": {
+    "home": {
+      "title": "NewVerse — Your universe of AI roleplay characters",
+      "description": "Chat with unique AI characters in roleplaying games. Create your own worlds and stories."
+    },
+    "gallery": {
+      "title": "NewVerse character gallery",
+      "description": "Pick a character for roleplay. Dozens of unique heroes with different personalities and plots."
+    },
+    "create": {
+      "title": "Create a character — NewVerse",
+      "description": "Create your own unique AI character for roleplaying games."
+    },
+    "edit": {
+      "title": "Edit character — NewVerse",
+      "description": "Adjust your character's appearance, personality, and scenario."
+    },
+    "profile": {
+      "title": "My profile — NewVerse",
+      "description": "Manage your subscription, personas, and account settings."
+    },
+    "pricing": {
+      "title": "NewVerse plans — subscriptions for AI roleplay",
+      "description": "Choose a plan for a larger context window, bonus VC, and avatar generation."
+    },
+    "coins": {
+      "title": "Top up VC — NewVerse",
+      "description": "Buy VerseCoins to chat with AI characters."
+    },
+    "referral": {
+      "title": "Referral program — NewVerse",
+      "description": "Invite friends and earn bonuses."
+    },
+    "subscription": {
+      "title": "Manage subscription — NewVerse",
+      "description": "View and disable subscription auto-renewal."
+    },
+    "offer": {
+      "title": "Public offer — NewVerse",
+      "description": "Terms of use for the NewVerse service."
+    },
+    "refund": {
+      "title": "Refund policy — NewVerse",
+      "description": "Refund terms for NewVerse."
+    },
+    "terms": {
+      "title": "Terms of use — NewVerse",
+      "description": "Rules for using the NewVerse platform."
+    },
+    "support": {
+      "title": "Support — NewVerse",
+      "description": "Contact us to resolve your questions."
+    },
+    "forgotPassword": {
+      "title": "Password recovery — NewVerse",
+      "description": "Request a link to reset your NewVerse account password."
+    },
+    "resetPassword": {
+      "title": "Reset password — NewVerse",
+      "description": "Set a new password for your NewVerse account."
+    },
+    "login": {
+      "title": "Sign in — NewVerse",
+      "description": "Sign in to NewVerse to chat with AI characters."
+    },
+    "register": {
+      "title": "Sign up — NewVerse",
+      "description": "Create a NewVerse account and start roleplaying with AI characters."
+    },
+    "chat": {
+      "title": "Chat with {{name}} — NewVerse",
+      "description": "Roleplay with {{name}}. Dive into the story and keep the plot going."
+    }
+  },
+  "email": {
+    "resetSubject": "Password reset — NewVerse",
+    "resetText": "Follow this link to reset your password: {{url}}",
+    "resetHtmlIntro": "Follow this link to reset your password:",
+    "resetHtmlFooter": "This link is valid for 1 hour. If you did not request a password reset, you can ignore this email."
+  },
+  "api": {
+    "emailRequired": "Email is required",
+    "emailPasswordRequired": "Email and password are required",
+    "userExists": "A user with this email already exists",
+    "internalError": "Internal server error",
+    "tokenPasswordRequired": "Token and password are required",
+    "minPassword": "Password must be at least {{count}} characters",
+    "invalidLink": "This link is invalid or has expired",
+    "unauthorized": "Unauthorized",
+    "userNotFound": "User not found",
+    "wrongPassword": "Incorrect password",
+    "missingCredentials": "Email or password is missing"
+  }
+}

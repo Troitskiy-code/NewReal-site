@@ -1,19 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import {
   AUTH_BUTTON_CLASS,
   AUTH_INPUT_CLASS,
   AuthCard,
 } from "@/components/AuthCard";
+import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
+import { withLocale } from "@/lib/i18nConfig";
 
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const params = useParams();
+  const { t, i18n } = useTranslation();
+  const locale = useCurrentLocale();
   const token = typeof params.token === "string" ? params.token : "";
 
   const [password, setPassword] = useState("");
@@ -25,7 +29,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (!token) {
-      setTokenError("Ссылка недействительна или истекла");
+      setTokenError(t("auth.invalidLink"));
       setCheckingToken(false);
       return;
     }
@@ -38,12 +42,12 @@ export default function ResetPasswordPage() {
         const data = await res.json().catch(() => null);
         if (cancelled) return;
         if (!res.ok || !data?.valid) {
-          setTokenError("Ссылка недействительна или истекла");
+          setTokenError(t("auth.invalidLink"));
         }
       } catch (err) {
         console.error("[ResetPassword] Token check failed:", err);
         if (!cancelled) {
-          setTokenError("Ссылка недействительна или истекла");
+          setTokenError(t("auth.invalidLink"));
         }
       } finally {
         if (!cancelled) setCheckingToken(false);
@@ -54,19 +58,19 @@ export default function ResetPasswordPage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Пароли не совпадают");
+      setError(t("auth.passwordMismatch"));
       return;
     }
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Пароль должен содержать минимум ${MIN_PASSWORD_LENGTH} символов`);
+      setError(t("auth.minPassword", { count: MIN_PASSWORD_LENGTH }));
       return;
     }
 
@@ -75,15 +79,15 @@ export default function ResetPasswordPage() {
     try {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-locale": i18n.language },
         body: JSON.stringify({ token, password }),
       });
 
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const message = data?.error || "Не удалось сбросить пароль";
-        if (message.includes("недействительна") || message.includes("истекла")) {
+        const message = data?.error || t("auth.resetFailed");
+        if (data?.code === "invalidLink" || /invalid|expired|недействительна|истекла/i.test(message)) {
           setTokenError(message);
         } else {
           setError(message);
@@ -91,10 +95,10 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      router.push("/login?reset=success");
+      router.push(`${withLocale("/login", locale)}?reset=success`);
     } catch (err) {
       console.error("[ResetPassword] Request failed:", err);
-      setError("Произошла ошибка соединения с сервером");
+      setError(t("auth.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -102,31 +106,31 @@ export default function ResetPasswordPage() {
 
   if (checkingToken) {
     return (
-      <AuthCard title="Сброс пароля">
-        <p className="text-center text-sm text-wd-text-secondary">Проверяем ссылку...</p>
+      <AuthCard title={t("auth.resetTitle")}>
+        <p className="text-center text-sm text-wd-text-secondary">{t("auth.checkingLink")}</p>
       </AuthCard>
     );
   }
 
   if (tokenError) {
     return (
-      <AuthCard title="Сброс пароля">
+      <AuthCard title={t("auth.resetTitle")}>
         <p className="text-sm text-primary">{tokenError}</p>
         <p className="mt-6 text-center text-sm text-wd-text-secondary">
-          <Link href="/forgot-password" className="font-semibold text-primary transition hover:text-primary-hover">
-            Запросить новую ссылку
-          </Link>
+          <LocaleLink href="/forgot-password" className="font-semibold text-primary transition hover:text-primary-hover">
+            {t("auth.requestNewLink")}
+          </LocaleLink>
         </p>
       </AuthCard>
     );
   }
 
   return (
-    <AuthCard title="Сброс пароля">
+    <AuthCard title={t("auth.resetTitle")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="password"
-          placeholder="Новый пароль"
+          placeholder={t("auth.newPassword")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -135,7 +139,7 @@ export default function ResetPasswordPage() {
         />
         <input
           type="password"
-          placeholder="Подтвердите пароль"
+          placeholder={t("auth.confirmNewPassword")}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
@@ -143,14 +147,14 @@ export default function ResetPasswordPage() {
           className={AUTH_INPUT_CLASS}
         />
         <button type="submit" disabled={loading} className={AUTH_BUTTON_CLASS}>
-          {loading ? "Сохранение..." : "Сбросить пароль"}
+          {loading ? t("auth.saving") : t("auth.resetPassword")}
         </button>
       </form>
       {error && <p className="mt-4 text-sm text-primary">{error}</p>}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
-        <Link href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
-          Вернуться ко входу
-        </Link>
+        <LocaleLink href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
+          {t("auth.backToLogin")}
+        </LocaleLink>
       </p>
     </AuthCard>
   );

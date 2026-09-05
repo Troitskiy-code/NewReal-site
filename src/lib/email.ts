@@ -1,16 +1,22 @@
 import { Resend } from "resend";
 import { SITE_URL } from "@/lib/seo";
+import { DEFAULT_LOCALE, type Locale, withLocale } from "@/lib/i18nConfig";
+import { translate } from "@/lib/getDictionary";
 
 const LOG = "[Email]";
 
-function getResetPasswordUrl(token: string): string {
+function getResetPasswordUrl(token: string, locale: Locale): string {
   const baseUrl = (process.env.NEXTAUTH_URL || SITE_URL).replace(/\/$/, "");
-  return `${baseUrl}/reset-password/${token}`;
+  return `${baseUrl}${withLocale(`/reset-password/${token}`, locale)}`;
 }
 
-export async function sendResetPasswordEmail(to: string, token: string): Promise<void> {
-  const resetUrl = getResetPasswordUrl(token);
-  const text = `Перейдите по ссылке для сброса пароля: ${resetUrl}`;
+export async function sendResetPasswordEmail(
+  to: string,
+  token: string,
+  locale: Locale = DEFAULT_LOCALE
+): Promise<void> {
+  const resetUrl = getResetPasswordUrl(token, locale);
+  const text = translate(locale, "email.resetText", { url: resetUrl });
   const apiKey = process.env.RESEND_API_KEY?.trim();
 
   if (!apiKey) {
@@ -27,14 +33,14 @@ export async function sendResetPasswordEmail(to: string, token: string): Promise
   const from = fromEnv || "NewVerse <noreply@newvers.ai>";
   const resend = new Resend(apiKey);
 
-  console.log(`${LOG} Sending password reset email`, { to });
+  console.log(`${LOG} Sending password reset email`, { to, locale });
 
   const { error } = await resend.emails.send({
     from,
     to,
-    subject: "Сброс пароля — NewVerse",
+    subject: translate(locale, "email.resetSubject"),
     text,
-    html: `<p>Перейдите по ссылке для сброса пароля:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Ссылка действует 1 час. Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>`,
+    html: `<p>${translate(locale, "email.resetHtmlIntro")}</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>${translate(locale, "email.resetHtmlFooter")}</p>`,
   });
 
   if (error) {

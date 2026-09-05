@@ -1,6 +1,8 @@
-import { PAGE_METADATA } from "@/lib/seo";
+import { getLocalizedPageMetadata } from "@/lib/seo";
 
-export const metadata = PAGE_METADATA.edit;
+export async function generateMetadata() {
+  return getLocalizedPageMetadata("edit");
+}
 
 export default function EditLayout({ children }: { children: React.ReactNode }) {
   return children;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import {
   AUTH_BUTTON_CLASS,
@@ -10,6 +10,8 @@ import {
   AuthCard,
   GoogleAuthButton,
 } from "@/components/AuthCard";
+import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
+import { withLocale } from "@/lib/i18nConfig";
 
 type RegisterFormProps = {
   googleAuthEnabled: boolean;
@@ -18,6 +20,8 @@ type RegisterFormProps = {
 export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t, i18n } = useTranslation();
+  const locale = useCurrentLocale();
   const ref = searchParams.get("ref");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,22 +33,18 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     reachGoal(METRIKA_GOALS.register);
-    console.log("✅ Форма отправлена (обработчик вызван)");
     setError("");
     setSuccess("");
 
     if (password !== confirmPassword) {
-      console.log("❌ Пароли не совпадают");
-      setError("Пароли не совпадают");
+      setError(t("auth.passwordMismatch"));
       return;
     }
-
-    console.log("📦 Отправляем данные:", { name, email, password: "***" });
 
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-locale": i18n.language },
         body: JSON.stringify({
           name,
           email,
@@ -53,34 +53,30 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
         }),
       });
 
-      console.log("📡 Статус ответа:", res.status);
-
       const data = await res.json();
-      console.log("📨 Ответ сервера:", data);
 
       if (!res.ok) {
-        setError(data.error || "Ошибка регистрации");
+        setError(data.error || t("auth.registerError"));
       } else {
-        setSuccess("Регистрация прошла успешно! Перенаправляем на вход...");
-        console.log("✅ Регистрация успешна, перенаправление через 2 секунды");
-        setTimeout(() => router.push("/login"), 2000);
+        setSuccess(t("auth.registerSuccess"));
+        setTimeout(() => router.push(withLocale("/login", locale)), 2000);
       }
     } catch (err) {
-      console.error("❌ Ошибка при отправке запроса:", err);
-      setError("Произошла ошибка соединения с сервером. Проверьте консоль.");
+      console.error("Register request failed:", err);
+      setError(t("auth.connectionError"));
     }
   };
 
   return (
-    <AuthCard title="Регистрация">
+    <AuthCard title={t("auth.registerTitle")}>
       {googleAuthEnabled && (
         <>
           <GoogleAuthButton onClick={() => reachGoal(METRIKA_GOALS.register)}>
-            Зарегистрироваться через Google
+            {t("auth.register_google")}
           </GoogleAuthButton>
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-divider" />
-            <span className="text-xs text-wd-text-secondary">или</span>
+            <span className="text-xs text-wd-text-secondary">{t("auth.or")}</span>
             <div className="h-px flex-1 bg-divider" />
           </div>
         </>
@@ -88,7 +84,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
-          placeholder="Имя"
+          placeholder={t("auth.name")}
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -96,7 +92,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
         />
         <input
           type="email"
-          placeholder="Электронная почта"
+          placeholder={t("auth.emailPlaceholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -104,7 +100,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
         />
         <input
           type="password"
-          placeholder="Пароль"
+          placeholder={t("auth.password")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -112,23 +108,23 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
         />
         <input
           type="password"
-          placeholder="Подтверждение пароля"
+          placeholder={t("auth.confirmPassword")}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
           className={AUTH_INPUT_CLASS}
         />
         <button type="submit" id="register-submit" data-metrika="register" className={AUTH_BUTTON_CLASS}>
-          Зарегистрироваться
+          {t("auth.register")}
         </button>
       </form>
       {error && <p className="mt-4 text-sm text-primary">{error}</p>}
       {success && <p className="mt-4 text-sm text-wd-secondary">{success}</p>}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
-        Уже есть аккаунт?{" "}
-        <Link href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
-          Войти
-        </Link>
+        {t("auth.hasAccount")}{" "}
+        <LocaleLink href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
+          {t("auth.login")}
+        </LocaleLink>
       </p>
     </AuthCard>
   );

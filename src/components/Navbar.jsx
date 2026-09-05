@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import LocaleLink, { useLocalizedPathname } from "./LocaleLink";
+import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import {
   FaHome,
   FaComments,
@@ -29,35 +29,35 @@ const ACTIVE_BLUE = "#4A90D9";
 
 const NAV_ITEMS = [
   {
-    name: "Главная",
+    nameKey: "header.menu.home",
     path: "/",
     iconActive: FaHome,
     iconInactive: FaHome,
     inactiveMuted: true,
   },
   {
-    name: "Мои чаты",
+    nameKey: "header.menu.chats",
     path: "/chats",
     iconInactive: FaRegComments,
     iconActive: FaComments,
     matchPaths: ["/chats", "/chat"],
   },
   {
-    name: "Подписка",
+    nameKey: "header.menu.pricing",
     path: "/pricing",
     iconInactive: FaRegStar,
     iconActive: FaStar,
     matchPaths: ["/pricing", "/subscription"],
   },
   {
-    name: "VerseCoins",
+    nameKey: "header.menu.coins",
     path: "/coins",
     iconActive: FaCoins,
     iconInactive: FaCoins,
     inactiveMuted: true,
   },
   {
-    name: "Создать персонажа",
+    nameKey: "header.menu.create",
     path: "/create",
     iconInactive: FaPlusCircle,
     iconActive: FaPlusCircle,
@@ -65,21 +65,21 @@ const NAV_ITEMS = [
     matchPaths: ["/create", "/edit"],
   },
   {
-    name: "Профиль",
+    nameKey: "header.menu.profile",
     path: "/profile",
     iconInactive: FaUser,
     iconActive: FaUser,
     matchPaths: ["/profile", "/edit"],
   },
   {
-    name: "Избранное",
+    nameKey: "header.menu.favorites",
     path: "/favorites",
     iconInactive: FaRegHeart,
     iconActive: FaHeart,
     matchPaths: ["/favorites"],
   },
   {
-    name: "Поддержка",
+    nameKey: "header.menu.support",
     path: "/support",
     iconInactive: FaRegQuestionCircle,
     iconActive: FaQuestionCircle,
@@ -109,10 +109,13 @@ function isNavItemActive(item, pathname) {
 }
 
 function NavMenuList({ pathname, showLabels, iconSize, onItemClick }) {
+  const { t } = useTranslation();
+
   return (
     <ul className={`space-y-2 ${showLabels ? "px-2" : "px-1"}`}>
       {NAV_ITEMS.map((item) => {
         const isActive = isNavItemActive(item, pathname);
+        const name = t(item.nameKey);
 
         const linkClass = `flex w-full items-center rounded-xl border transition-all duration-300 ${
           showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-3 md:py-4"
@@ -138,16 +141,16 @@ function NavMenuList({ pathname, showLabels, iconSize, onItemClick }) {
                 showLabels ? "max-w-[200px] opacity-100" : "max-w-0 opacity-0"
               }`}
             >
-              {item.name}
+              {name}
             </span>
           </>
         );
 
         return (
-          <li key={item.name}>
-            <Link href={item.path} onClick={() => onItemClick(item)} className={linkClass}>
+          <li key={item.nameKey}>
+            <LocaleLink href={item.path} onClick={() => onItemClick(item)} className={linkClass}>
               {content}
-            </Link>
+            </LocaleLink>
           </li>
         );
       })}
@@ -156,7 +159,7 @@ function NavMenuList({ pathname, showLabels, iconSize, onItemClick }) {
 }
 
 export default function Navbar() {
-  const pathname = usePathname();
+  const pathname = useLocalizedPathname();
   const { isExpanded, sidebarWidth, collapse, isMobile } = useSidebar();
 
   const desktopPanelWidth = isExpanded ? SIDEBAR_EXPANDED_DESKTOP : SIDEBAR_COLLAPSED_DESKTOP;

@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import LocaleLink, { useCurrentLocale, useLocalizedPathname } from "./LocaleLink";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
 import { FaUser, FaCog, FaBell, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import VerseCoinsBalance from "./VerseCoinsBalance";
+import { withLocale } from "@/lib/i18nConfig";
 
 function getInitials(name, email) {
   const source = (name || email || "U").trim();
@@ -17,7 +18,9 @@ function getInitials(name, email) {
 
 export default function UserAvatarMenu() {
   const { data: session, status } = useSession();
-  const pathname = usePathname();
+  const pathname = useLocalizedPathname();
+  const locale = useCurrentLocale();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -37,14 +40,14 @@ export default function UserAvatarMenu() {
 
   if (status === "unauthenticated") {
     return (
-      <Link
+      <LocaleLink
         href="/login"
         className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:bg-[#2A2A2A] md:h-10 md:w-10"
-        title="Войти"
+        title={t("auth.login")}
       >
         <FaSignInAlt size={16} className="md:hidden" />
         <FaSignInAlt size={18} className="hidden md:block" />
-      </Link>
+      </LocaleLink>
     );
   }
 
@@ -53,18 +56,18 @@ export default function UserAvatarMenu() {
   const isProfileActive = pathname === "/profile" || pathname.startsWith("/edit/");
 
   const dropdownItems = [
-    { name: "Профиль", path: "/profile", icon: FaUser, active: isProfileActive },
+    { name: t("header.menu.profile"), path: "/profile", icon: FaUser, active: isProfileActive },
     {
-      name: "Настройки",
+      name: t("profile.settings"),
       stub: true,
       icon: FaCog,
-      message: "Настройки скоро будут доступны",
+      message: t("profile.settingsSoon"),
     },
     {
-      name: "Уведомления",
+      name: t("profile.notifications"),
       stub: true,
       icon: FaBell,
-      message: "Уведомления скоро будут доступны",
+      message: t("profile.notificationsSoon"),
     },
   ];
 
@@ -75,11 +78,11 @@ export default function UserAvatarMenu() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-[#2A2A2A] bg-[#0A0A0A] transition-colors hover:border-[#4A90D9]/50 md:h-10 md:w-10"
-        aria-label="Меню профиля"
+        aria-label={t("header.profileMenu")}
         aria-expanded={open}
       >
         {user?.image ? (
-          <img src={user.image} alt={user.name || "Профиль"} className="h-full w-full object-cover" />
+          <img src={user.image} alt={user.name || t("header.menu.profile")} className="h-full w-full object-cover" />
         ) : (
           <span className="text-xs font-bold text-white">{initials}</span>
         )}
@@ -123,10 +126,10 @@ export default function UserAvatarMenu() {
 
               return (
                 <li key={item.name}>
-                  <Link href={item.path} className={itemClass} onClick={() => setOpen(false)}>
+                  <LocaleLink href={item.path} className={itemClass} onClick={() => setOpen(false)}>
                     <Icon size={16} className="shrink-0" />
                     {item.name}
-                  </Link>
+                  </LocaleLink>
                 </li>
               );
             })}
@@ -137,12 +140,12 @@ export default function UserAvatarMenu() {
               type="button"
               onClick={() => {
                 setOpen(false);
-                signOut({ callbackUrl: "/login" });
+                signOut({ callbackUrl: withLocale("/login", locale) });
               }}
               className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-[#FF2D55] transition-colors hover:bg-[#2A2A2A]"
             >
               <FaSignOutAlt size={16} />
-              Выйти
+              {t("profile.logout")}
             </button>
           </div>
         </div>

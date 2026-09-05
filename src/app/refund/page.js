@@ -1,8 +1,10 @@
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { PAGE_METADATA } from "@/lib/seo";
+import { getLocalizedPageMetadata } from "@/lib/seo";
 
-export const metadata = PAGE_METADATA.refund;
+export async function generateMetadata() {
+  return getLocalizedPageMetadata("refund");
+}
 
 export default function RefundPage() {
   return (

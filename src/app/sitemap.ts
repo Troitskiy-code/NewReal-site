@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { SITE_URL } from "@/lib/seo";
+import { LOCALES, withLocale } from "@/lib/i18nConfig";
 
 export const revalidate = 3600;
 
@@ -32,12 +33,14 @@ async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
       select: { id: true, updatedAt: true },
     });
 
-    return characters.map((character) => ({
-      url: `${SITE_URL}/chat/${character.id}`,
-      lastModified: character.updatedAt,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    }));
+    return characters.flatMap((character) =>
+      LOCALES.map((locale) => ({
+        url: `${SITE_URL}${withLocale(`/chat/${character.id}`, locale)}`,
+        lastModified: character.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      }))
+    );
   } catch (error) {
     console.error("Failed to load public characters for sitemap:", error);
     return [];
@@ -46,12 +49,14 @@ async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const staticEntries: MetadataRoute.Sitemap = STATIC_PAGES.map((page) => ({
-    url: `${SITE_URL}${page.path}`,
-    lastModified: now,
-    changeFrequency: page.changeFrequency,
-    priority: page.priority,
-  }));
+  const staticEntries: MetadataRoute.Sitemap = STATIC_PAGES.flatMap((page) =>
+    LOCALES.map((locale) => ({
+      url: `${SITE_URL}${withLocale(page.path, locale)}`,
+      lastModified: now,
+      changeFrequency: page.changeFrequency,
+      priority: page.priority,
+    }))
+  );
 
   const characterEntries = await getPublicCharacterEntries();
   return [...staticEntries, ...characterEntries];

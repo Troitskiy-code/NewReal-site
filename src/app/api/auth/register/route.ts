@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { apiT } from "@/lib/apiI18n";
 
 const REFERRAL_BONUS = 100;
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email и пароль обязательны" },
+        { error: apiT(req, "api.emailPasswordRequired") },
         { status: 400 }
       );
     }
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "Пользователь с таким email уже существует" },
+        { error: apiT(req, "api.userExists") },
         { status: 400 }
       );
     }
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Ошибка регистрации:", error);
     return NextResponse.json(
-      { error: "Внутренняя ошибка сервера" },
+      { error: apiT(req, "api.internalError") },
       { status: 500 }
     );
   }

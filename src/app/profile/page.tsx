@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import LocaleLink from "@/components/LocaleLink";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
@@ -22,6 +22,8 @@ import FavoriteButton from "@/components/FavoriteButton";
 import PersonaManager from "@/components/PersonaManager";
 import VerseCoinsBalance from "@/components/VerseCoinsBalance";
 import { getCardDescription } from "@/lib/characterFields";
+import { useTranslation } from "react-i18next";
+import { dateLocale } from "@/lib/i18nConfig";
 
 type Character = {
   id: string;
@@ -80,11 +82,11 @@ function getInitials(name?: string | null, email?: string | null): string {
   return source.slice(0, 2).toUpperCase();
 }
 
-function formatRegistrationDate(value?: string | Date | null): string {
+function formatRegistrationDate(value?: string | Date | null, locale = "ru"): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("ru-RU", {
+  return date.toLocaleDateString(dateLocale(locale), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -94,6 +96,7 @@ function formatRegistrationDate(value?: string | Date | null): string {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionBalance | null>(null);
@@ -126,7 +129,7 @@ export default function ProfilePage() {
         const message =
           axios.isAxiosError(err) && err.response?.data?.error
             ? err.response.data.error
-            : "Не удалось загрузить профиль";
+            : t("profile.loadError");
         setError(message);
         setCharacters([]);
         setStats(null);
@@ -146,9 +149,9 @@ export default function ProfilePage() {
 
   const handleDelete = async (id: string) => {
     const character = characters.find((c) => c.id === id);
-    const name = character?.name || "персонажа";
+    const name = character?.name || t("header.menu.create");
 
-    if (!window.confirm(`Удалить персонажа «${name}»?`)) {
+    if (!window.confirm(t("profile.deleteConfirm", { name }))) {
       return;
     }
 
@@ -159,12 +162,12 @@ export default function ProfilePage() {
       setStats((prev) =>
         prev ? { ...prev, charactersCount: Math.max(0, prev.charactersCount - 1) } : prev
       );
-      toast.success("Персонаж удалён");
+      toast.success(t("profile.deleted"));
     } catch (err) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
-          : "Не удалось удалить персонажа";
+            : t("profile.deleteError");
       toast.error(message);
     } finally {
       setDeletingId(null);
@@ -188,20 +191,20 @@ export default function ProfilePage() {
         <Toaster position="top-right" />
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
           <FaUser className="text-4xl opacity-30 text-wd-primary" />
-          <h1 className="text-xl font-black uppercase tracking-tight">Мой профиль</h1>
+          <h1 className="text-xl font-black uppercase tracking-tight">{t("profile.title")}</h1>
           <p className="text-xs text-wd-text-secondary max-w-sm">
-            Войдите в аккаунт, чтобы просматривать свой профиль и персонажей.
+            {t("profile.loginPrompt")}
           </p>
-          <Link href="/login" className="wd-button px-6 py-2.5 text-sm">
-            Войти
-          </Link>
+          <LocaleLink href="/login" className="wd-button px-6 py-2.5 text-sm">
+            {t("auth.login")}
+          </LocaleLink>
         </main>
         <Footer />
       </div>
     );
   }
 
-  const userName = session?.user?.name || session?.user?.email || "Пользователь";
+  const userName = session?.user?.name || session?.user?.email || t("common.user");
   const userEmail = session?.user?.email || "";
   const userImage = session?.user?.image;
   const initials = getInitials(session?.user?.name, session?.user?.email);
@@ -232,25 +235,25 @@ export default function ProfilePage() {
                   </p>
                 )}
                 <p className="text-xs text-wd-text-secondary">
-                  Дата регистрации:{" "}
-                  <span className="font-semibold text-white">{formatRegistrationDate(registeredAt)}</span>
+                  {t("profile.registeredAt")}{" "}
+                  <span className="font-semibold text-white">{formatRegistrationDate(registeredAt, i18n.language)}</span>
                 </p>
               </div>
               <VerseCoinsBalance size="md" className="ml-auto lg:ml-0" />
             </div>
 
             <div className="flex flex-wrap gap-3 lg:ml-auto">
-              <Link href="/create" className="wd-button inline-flex items-center gap-2 px-5 py-2.5 text-xs">
+              <LocaleLink href="/create" className="wd-button inline-flex items-center gap-2 px-5 py-2.5 text-xs">
                 <FaPlus className="text-[10px]" />
-                Создать персонажа
-              </Link>
-              <Link
+                {t("header.menu.create")}
+              </LocaleLink>
+              <LocaleLink
                 href="/gallery"
                 className="inline-flex items-center gap-2 rounded-[50px] border border-wd-border bg-[#0A0A0A] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:border-[#6C63FF]"
               >
                 <FaImages className="text-[10px] text-[#6C63FF]" />
-                Галерея
-              </Link>
+                {t("profile.gallery")}
+              </LocaleLink>
             </div>
           </div>
         </section>
@@ -261,35 +264,37 @@ export default function ProfilePage() {
               <FaCrown className="mt-1 shrink-0 text-wd-secondary" />
               <div className="space-y-1">
                 <p className="text-xs font-bold uppercase tracking-widest text-wd-text-secondary">
-                  Подписка
+                  {t("profile.subscription")}
                 </p>
-                <h2 className="text-lg font-black text-white">{subscription.subscriptionLabel || "Старт"}</h2>
+                <h2 className="text-lg font-black text-white">{subscription.subscriptionLabel || t("profile.startPlan")}</h2>
                 {subscription.subscriptionActive && subscription.subscriptionEnd ? (
                   <p className="text-xs text-wd-text-secondary">
-                    До {new Date(subscription.subscriptionEnd).toLocaleDateString("ru-RU")} · осталось{" "}
-                    {subscription.daysRemaining} дн.
+                    {t("profile.until", {
+                      date: new Date(subscription.subscriptionEnd).toLocaleDateString(dateLocale(i18n.language)),
+                      days: subscription.daysRemaining,
+                    })}
                   </p>
                 ) : (
-                  <p className="text-xs text-wd-text-secondary">Бесплатный тариф</p>
+                  <p className="text-xs text-wd-text-secondary">{t("profile.freePlan")}</p>
                 )}
                 {subscription.pendingSubscriptionLabel && (
                   <p className="text-xs text-wd-secondary">
-                    Затем: {subscription.pendingSubscriptionLabel}
+                    {t("profile.then", { label: subscription.pendingSubscriptionLabel })}
                   </p>
                 )}
                 <p className="text-xs text-wd-text-secondary">
-                  {subscription.recurringEnabled ? "Автопродление включено" : "Автопродление отключено"}
+                  {subscription.recurringEnabled ? t("profile.recurringOn") : t("profile.recurringOff")}
                 </p>
                 {subscription.recurringSetupRequired && (
                   <p className="text-xs text-wd-primary">
-                    Для нового тарифа нужно заново настроить автопродление.
+                    {t("profile.recurringSetup")}
                   </p>
                 )}
               </div>
             </div>
-            <Link href="/subscription" className="wd-button px-5 py-2.5 text-xs">
-              Управление подпиской
-            </Link>
+            <LocaleLink href="/subscription" className="wd-button px-5 py-2.5 text-xs">
+              {t("profile.manageSubscription")}
+            </LocaleLink>
           </section>
         )}
 
@@ -298,7 +303,7 @@ export default function ProfilePage() {
           <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
             <FaRobot className="mx-auto text-base text-wd-primary md:text-lg" />
             <p className="text-[9px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-[11px] md:tracking-widest">
-              Персонажи
+              {t("profile.characters")}
             </p>
             <p className="text-xl font-black text-white md:text-3xl">
               {statsLoading ? "—" : (stats?.charactersCount ?? 0)}
@@ -307,7 +312,7 @@ export default function ProfilePage() {
           <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
             <FaComments className="mx-auto text-base text-[#6C63FF] md:text-lg" />
             <p className="text-[9px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-[11px] md:tracking-widest">
-              Чаты
+              {t("profile.chats")}
             </p>
             <p className="text-xl font-black text-white md:text-3xl">
               {statsLoading ? "—" : (stats?.chatsCount ?? 0)}
@@ -316,7 +321,7 @@ export default function ProfilePage() {
           <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
             <FaEnvelope className="mx-auto text-base text-wd-primary md:text-lg" />
             <p className="text-[9px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-[11px] md:tracking-widest">
-              Сообщения
+              {t("profile.messages")}
             </p>
             <p className="text-xl font-black text-white md:text-3xl">
               {statsLoading ? "—" : (stats?.messagesCount ?? 0)}
@@ -329,9 +334,9 @@ export default function ProfilePage() {
         {/* Characters */}
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-black uppercase tracking-wide text-white">Мои персонажи</h2>
+            <h2 className="text-lg font-black uppercase tracking-wide text-white">{t("profile.myCharacters")}</h2>
             {!loading && (
-              <span className="text-xs text-wd-text-secondary">{characters.length} шт.</span>
+              <span className="text-xs text-wd-text-secondary">{t("profile.count", { count: characters.length })}</span>
             )}
           </div>
 
@@ -341,16 +346,16 @@ export default function ProfilePage() {
             </div>
           ) : error ? (
             <div className="wd-card p-8 text-center">
-              <p className="text-sm font-extrabold uppercase text-wd-primary">Ошибка</p>
+              <p className="text-sm font-extrabold uppercase text-wd-primary">{t("common.error")}</p>
               <p className="text-xs text-wd-text-secondary max-w-xs mx-auto mt-2">{error}</p>
             </div>
           ) : characters.length === 0 ? (
             <div className="wd-card p-10 text-center space-y-4">
               <FaUser className="text-4xl opacity-20 mx-auto" />
-              <h3 className="text-sm font-extrabold uppercase">Вы ещё не создали ни одного персонажа</h3>
-              <Link href="/create" className="wd-button inline-flex px-5 py-2.5 text-xs">
-                Создать первого персонажа
-              </Link>
+              <h3 className="text-sm font-extrabold uppercase">{t("profile.empty")}</h3>
+              <LocaleLink href="/create" className="wd-button inline-flex px-5 py-2.5 text-xs">
+                {t("profile.createFirst")}
+              </LocaleLink>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-6">
@@ -378,7 +383,7 @@ export default function ProfilePage() {
                       />
                       {!character.isPublic && (
                         <span className="absolute top-2 left-2 text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-[#0A0A0A]/90 text-wd-text-secondary border border-wd-border">
-                          Приватный
+                          {t("profile.private")}
                         </span>
                       )}
                     </div>
@@ -386,7 +391,7 @@ export default function ProfilePage() {
                     <div className="p-4 flex flex-col gap-2 flex-1">
                       <h3 className="text-sm font-extrabold text-white truncate">{character.name}</h3>
                       <p className="text-xs text-wd-text-secondary line-clamp-3 leading-relaxed flex-1">
-                        {getCardDescription(character) || "Без описания"}
+                        {getCardDescription(character) || t("profile.noDescription")}
                       </p>
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
@@ -401,12 +406,12 @@ export default function ProfilePage() {
                         </div>
                       )}
                       <div className="flex flex-col gap-2 pt-2 border-t border-wd-border mt-1">
-                        <Link
+                        <LocaleLink
                           href={`/chat/${character.id}`}
                           className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-[#6C63FF]/30 bg-[#6C63FF]/10 text-white transition-all hover:bg-[#6C63FF]/20"
                         >
-                          Общаться
-                        </Link>
+                          {t("profile.chat")}
+                        </LocaleLink>
                         <div className="flex gap-2">
                           <button
                             type="button"
@@ -414,7 +419,7 @@ export default function ProfilePage() {
                             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-[#6C63FF]"
                           >
                             <FaEdit className="text-[9px]" />
-                            Редактировать
+                            {t("common.edit")}
                           </button>
                           <button
                             type="button"
@@ -423,7 +428,7 @@ export default function ProfilePage() {
                             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-primary/30 bg-wd-primary/10 text-wd-primary transition-all disabled:opacity-50"
                           >
                             <FaTrash className="text-[9px]" />
-                            Удалить
+                            {t("common.delete")}
                           </button>
                         </div>
                       </div>

@@ -1,6 +1,8 @@
-import { PAGE_METADATA } from "@/lib/seo";
+import { getLocalizedPageMetadata } from "@/lib/seo";
 
-export const metadata = PAGE_METADATA.pricing;
+export async function generateMetadata() {
+  return getLocalizedPageMetadata("pricing");
+}
 
 export default function PricingLayout({ children }: { children: React.ReactNode }) {
   return children;

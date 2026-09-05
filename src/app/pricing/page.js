@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
+import LocaleLink from "@/components/LocaleLink";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { reachGoal, subscriptionGoal } from "@/lib/metrika";
 import toast, { Toaster } from "react-hot-toast";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
+import { dateLocale, withLocale } from "@/lib/i18nConfig";
+import { useCurrentLocale } from "@/components/LocaleLink";
 
 const PLAN_ICONS = {
   start: FaStar,
@@ -38,13 +41,13 @@ function metrikaPlanSlug(planId) {
   return planId === "story" ? "history" : planId;
 }
 
-function formatNumber(value) {
-  return value.toLocaleString("ru-RU");
+function formatNumber(value, locale = "ru") {
+  return value.toLocaleString(dateLocale(locale));
 }
 
-function formatDate(value) {
+function formatDate(value, locale = "ru") {
   if (!value) return "—";
-  return new Date(value).toLocaleDateString("ru-RU", {
+  return new Date(value).toLocaleDateString(dateLocale(locale), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -54,6 +57,8 @@ function formatDate(value) {
 export default function PricingPage() {
   const { status } = useSession();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
+  const locale = useCurrentLocale();
   const [isYearly, setIsYearly] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState(null);
   const [balance, setBalance] = useState(null);
@@ -92,7 +97,7 @@ export default function PricingPage() {
 
   const startCheckout = async (plan, mode) => {
     setSubscribingPlanId(plan.id);
-    const toastId = toast.loading("Создание платежа...");
+    const toastId = toast.loading(t("pricing.creatingPayment"));
 
     try {
       const res = await fetch("/api/subscription/create", {
@@ -108,13 +113,13 @@ export default function PricingPage() {
       const data = await res.json();
 
       if (!res.ok || !data.url) {
-        throw new Error(data.error || "Не удалось создать платёж");
+        throw new Error(data.error || t("pricing.paymentError"));
       }
 
       toast.dismiss(toastId);
       window.location.href = data.url;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Ошибка при создании платежа", {
+      toast.error(error instanceof Error ? error.message : t("pricing.paymentError"), {
         id: toastId,
       });
       setSubscribingPlanId(null);
@@ -124,7 +129,7 @@ export default function PricingPage() {
   const handleSubscribe = (plan) => {
     const isFree = plan.monthlyPrice === 0;
     if (isFree) {
-      toast("Тариф «Старт» доступен всем пользователям по умолчанию", { icon: "✨" });
+      toast(t("pricing.startDefault"), { icon: "✨" });
       return;
     }
 
@@ -132,7 +137,7 @@ export default function PricingPage() {
     if (goal) reachGoal(goal);
 
     if (status !== "authenticated") {
-      router.push("/login");
+      router.push(withLocale("/login", locale));
       return;
     }
 
@@ -163,12 +168,12 @@ export default function PricingPage() {
       const res = await fetch("/api/subscription/pending/cancel", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Не удалось отменить ожидающую подписку");
+        throw new Error(data.error || t("pricing.cancelPendingError"));
       }
       setBalance((prev) => (prev ? { ...prev, ...data } : data));
-      toast.success("Ожидающая подписка отменена");
+      toast.success(t("pricing.cancelPendingSuccess"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Не удалось отменить ожидающую подписку");
+      toast.error(error instanceof Error ? error.message : t("pricing.cancelPendingError"));
     } finally {
       setCancellingPending(false);
     }
@@ -183,15 +188,14 @@ export default function PricingPage() {
           <div className="mb-1 inline-flex items-center gap-2 rounded-wd-pill border border-wd-secondary/30 bg-wd-secondary/10 px-3 py-1">
             <FaCrown className="text-xs text-wd-secondary" />
             <span className="text-[10px] font-black uppercase tracking-widest text-wd-secondary">
-              Подписки
+              {t("pricing.badge")}
             </span>
           </div>
           <h1 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
-            Тарифы NewVerse
+            {t("pricing.title")}
           </h1>
           <p className="mx-auto max-w-2xl text-sm leading-relaxed text-wd-text-secondary">
-            Ежемесячные и годовые планы с бонусными VerseCoins, расширенным контекстом и приоритетом
-            генерации. Выберите уровень для ваших историй и диалогов.
+            {t("pricing.subtitle")}
           </p>
         </div>
 
@@ -199,14 +203,19 @@ export default function PricingPage() {
           <div className="flex w-full max-w-3xl flex-col gap-3">
             <div className="rounded-wd border border-wd-secondary/30 bg-wd-card px-4 py-3 text-center text-sm text-white">
               {hasActiveSubscription
-                ? `Ваша подписка: ${balance.subscriptionLabel || "активна"}, действует до ${formatDate(balance.subscriptionEnd)}`
-                : "У вас нет активной подписки"}
+                ? t("pricing.activeUntil", {
+                    label: balance.subscriptionLabel || t("pricing.subscribe"),
+                    date: formatDate(balance.subscriptionEnd, i18n.language),
+                  })
+                : t("pricing.noActive")}
             </div>
             {balance?.pendingSubscriptionType && balance.pendingSubscriptionLabel && (
               <div className="flex flex-col items-center gap-3 rounded-wd border border-wd-border bg-wd-card px-4 py-3 text-center sm:flex-row sm:justify-between sm:text-left">
                 <p className="text-sm text-wd-text-secondary">
-                  Новая подписка {balance.pendingSubscriptionLabel} начнётся после окончания текущей (
-                  {formatDate(balance.subscriptionEnd)})
+                  {t("pricing.pending", {
+                    label: balance.pendingSubscriptionLabel,
+                    date: formatDate(balance.subscriptionEnd, i18n.language),
+                  })}
                 </p>
                 <button
                   type="button"
@@ -214,14 +223,13 @@ export default function PricingPage() {
                   disabled={cancellingPending}
                   className="shrink-0 rounded-wd-pill border border-wd-border px-4 py-2 text-xs font-bold text-white transition-colors hover:border-wd-primary disabled:opacity-50"
                 >
-                  {cancellingPending ? "Отмена..." : "Отменить"}
+                  {cancellingPending ? t("pricing.cancelling") : t("pricing.cancelPending")}
                 </button>
               </div>
             )}
             {balance?.recurringSetupRequired && (
               <div className="rounded-wd border border-wd-primary/40 bg-wd-card px-4 py-3 text-center text-sm text-wd-text-secondary">
-                Автопродление для текущего тарифа не настроено. Чтобы списания продолжались
-                автоматически, оформите подписку ещё раз.
+                {t("pricing.recurringMissing")}
               </div>
             )}
           </div>
@@ -237,7 +245,7 @@ export default function PricingPage() {
                 : "text-wd-text-secondary hover:text-white"
             }`}
           >
-            Месяц
+            {t("pricing.month")}
           </button>
           <button
             type="button"
@@ -248,7 +256,7 @@ export default function PricingPage() {
                 : "text-wd-text-secondary hover:text-white"
             }`}
           >
-            Год
+            {t("pricing.year")}
           </button>
         </div>
 
@@ -268,7 +276,7 @@ export default function PricingPage() {
               >
                 {isPopular && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow">
-                    Популярный
+                    {t("pricing.popular")}
                   </span>
                 )}
 
@@ -279,25 +287,27 @@ export default function PricingPage() {
                   <div>
                     <h2 className="text-lg font-black text-white">{plan.name}</h2>
                     <p className="text-xs text-wd-text-secondary">
-                      {isFree ? "Бесплатный тариф" : isYearly ? "Годовая подписка" : "Ежемесячная подписка"}
+                      {isFree ? t("profile.freePlan") : isYearly ? t("pricing.yearlyPlan") : t("pricing.monthlyPlan")}
                     </p>
                   </div>
                 </div>
 
                 <div className="mb-5 space-y-1">
                   <p className="text-4xl font-black leading-none text-white">
-                    {isFree ? "0 ₽" : `${formatNumber(price)} ₽`}
+                    {isFree ? "0 ₽" : `${formatNumber(price, i18n.language)} ₽`}
                   </p>
                   <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
-                    {isFree ? "навсегда" : isYearly ? "в год" : "в месяц"}
+                    {isFree ? t("pricing.forever") : isYearly ? t("pricing.perYear") : t("pricing.perMonth")}
                   </p>
                 </div>
 
                 <div className="mb-5 rounded-wd border border-wd-border bg-[#0A0A0A] p-4 text-sm">
-                  <p className="font-black text-white">{formatNumber(plan.vcPerMonth)} VC / мес</p>
+                  <p className="font-black text-white">{t("pricing.vcPerMonth", { count: formatNumber(plan.vcPerMonth, i18n.language) })}</p>
                   <p className="mt-1 text-xs text-wd-text-secondary">
-                    Контекст {formatNumber(plan.contextTokens)} · множитель ×
-                    {plan.contextMultiplier.toLocaleString("ru-RU")}
+                    {t("pricing.context", {
+                      tokens: formatNumber(plan.contextTokens, i18n.language),
+                      multiplier: plan.contextMultiplier.toLocaleString(dateLocale(i18n.language)),
+                    })}
                   </p>
                 </div>
 
@@ -319,10 +329,10 @@ export default function PricingPage() {
                   className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${PLAN_BUTTONS[plan.id]}`}
                 >
                   {isFree
-                    ? "Текущий базовый тариф"
+                    ? t("pricing.currentBase")
                     : subscribingPlanId === plan.id
-                      ? "Переход к оплате..."
-                      : "Подписаться"}
+                      ? t("pricing.redirecting")
+                      : t("pricing.subscribe")}
                 </button>
               </article>
             );
@@ -330,15 +340,14 @@ export default function PricingPage() {
         </div>
 
         <p className="max-w-3xl text-center text-xs text-wd-text-secondary">
-          При активации подписки на баланс начисляются бонусные VC согласно тарифу. Контекст и
-          множитель памяти применяются автоматически. Оплата проходит через Robokassa.
+          {t("pricing.footnote")}
         </p>
       </main>
 
       {selectedPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
           <div className="wd-card w-full max-w-md space-y-5 p-6">
-            <h2 className="text-lg font-black text-white">Оформление подписки {selectedPlan.name}</h2>
+            <h2 className="text-lg font-black text-white">{t("pricing.checkoutTitle", { name: selectedPlan.name })}</h2>
             <div className="space-y-3 text-sm text-wd-text-secondary">
               <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
                 <input
@@ -350,8 +359,8 @@ export default function PricingPage() {
                   className="mt-1"
                 />
                 <span>
-                  <span className="block font-bold text-white">Применить сейчас</span>
-                  Старая подписка, если есть, будет заменена, остаток средств не возвращается
+                  <span className="block font-bold text-white">{t("pricing.applyNow")}</span>
+                  {t("pricing.applyNowHint")}
                 </span>
               </label>
               {hasActiveSubscription && (
@@ -365,8 +374,8 @@ export default function PricingPage() {
                     className="mt-1"
                   />
                   <span>
-                    <span className="block font-bold text-white">Применить после окончания текущей</span>
-                    Новая подписка начнётся автоматически после истечения старой
+                    <span className="block font-bold text-white">{t("pricing.applyLater")}</span>
+                    {t("pricing.applyLaterHint")}
                   </span>
                 </label>
               )}
@@ -380,21 +389,21 @@ export default function PricingPage() {
                   className="mt-1 accent-[#6C63FF]"
                 />
                 <span>
-                  Я согласен на автоматические списания согласно условиям{" "}
-                  <Link
+                  {t("pricing.offerConsent")}{" "}
+                  <LocaleLink
                     href="/offer"
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="text-wd-secondary underline hover:text-white"
                   >
-                    оферты
-                  </Link>
+                    {t("pricing.offerLink")}
+                  </LocaleLink>
                 </span>
               </label>
               {!recurringConsent && (
                 <p className="text-xs text-red-400">
-                  Для оформления подписки необходимо согласие на автосписания
+                  {t("pricing.consentRequired")}
                 </p>
               )}
             </div>
@@ -407,14 +416,14 @@ export default function PricingPage() {
                 disabled={Boolean(subscribingPlanId) || !recurringConsent}
                 className="wd-button w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Перейти к оплате
+                {t("pricing.goToPayment")}
               </button>
               <button
                 type="button"
                 onClick={closeCheckout}
                 className="w-full py-2 text-sm font-medium text-wd-text-secondary hover:text-white"
               >
-                Отмена
+                {t("common.cancel")}
               </button>
             </div>
           </div>

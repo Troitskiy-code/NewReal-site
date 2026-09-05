@@ -5,6 +5,8 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { activatePendingSubscriptionIfNeeded } from "./subscription";
+import { translate } from "./getDictionary";
+import { DEFAULT_LOCALE } from "./i18nConfig";
 
 export function isGoogleAuthEnabled(): boolean {
   return Boolean(
@@ -75,7 +77,7 @@ export const authOptions: AuthOptions = {
       credentials: { email: { label: "Email", type: "email" }, password: { label: "Password", type: "password" } },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Не указаны email или пароль");
+          throw new Error(translate(DEFAULT_LOCALE, "api.missingCredentials"));
         }
 
         const user = await prisma.user.findUnique({
@@ -84,12 +86,12 @@ export const authOptions: AuthOptions = {
         });
 
         if (!user || !user.password) {
-          throw new Error("Пользователь не найден");
+          throw new Error(translate(DEFAULT_LOCALE, "api.userNotFound"));
         }
 
         const passwordMatch = await bcrypt.compare(credentials.password, user.password);
         if (!passwordMatch) {
-          throw new Error("Неверный пароль");
+          throw new Error(translate(DEFAULT_LOCALE, "api.wrongPassword"));
         }
 
         return {

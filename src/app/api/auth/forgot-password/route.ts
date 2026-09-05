@@ -2,6 +2,8 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendResetPasswordEmail } from "@/lib/email";
+import { apiT, getApiLocale } from "@/lib/apiI18n";
+import { isLocale } from "@/lib/i18nConfig";
 
 const LOG = "[ForgotPassword]";
 
@@ -15,7 +17,7 @@ export async function POST(req: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim() : "";
 
     if (!email) {
-      return NextResponse.json({ error: "Email обязателен" }, { status: 400 });
+      return NextResponse.json({ error: apiT(req, "api.emailRequired") }, { status: 400 });
     }
 
     const user = await prisma.user.findFirst({
@@ -52,7 +54,11 @@ export async function POST(req: NextRequest) {
     });
 
     try {
-      await sendResetPasswordEmail(user.email || email, token);
+      await sendResetPasswordEmail(
+        user.email || email,
+        token,
+        isLocale(body?.locale) ? body.locale : getApiLocale(req)
+      );
       console.log(`${LOG} Email sent`, { userId: user.id });
     } catch (error) {
       console.error(`${LOG} Failed to send email`, { userId: user.id, error });
@@ -61,6 +67,6 @@ export async function POST(req: NextRequest) {
     return success();
   } catch (error) {
     console.error(`${LOG} Error:`, error);
-    return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
+    return NextResponse.json({ error: apiT(req, "api.internalError") }, { status: 500 });
   }
 }

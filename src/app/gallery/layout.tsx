@@ -1,6 +1,8 @@
-import { PAGE_METADATA } from "@/lib/seo";
+import { getLocalizedPageMetadata } from "@/lib/seo";
 
-export const metadata = PAGE_METADATA.gallery;
+export async function generateMetadata() {
+  return getLocalizedPageMetadata("gallery");
+}
 
 export default function GalleryLayout({ children }: { children: React.ReactNode }) {
   return children;

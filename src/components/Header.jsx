@@ -1,14 +1,17 @@
 "use client";
 
-import Link from "next/link";
+import LocaleLink from "./LocaleLink";
 import Image from "next/image";
 import { FaBars } from "react-icons/fa";
 import Logo from "./Logo";
 import UserAvatarMenu from "./UserAvatarMenu";
+import LanguageSwitcher from "./LanguageSwitcher";
 import { useSidebar } from "./SidebarContext";
+import { useTranslation } from "react-i18next";
 
 export default function Header() {
   const { toggle, isExpanded, isMobile } = useSidebar();
+  const { t } = useTranslation();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-[60] m-0 h-14 border-b-2 border-[#2A2A2A] bg-[#1A1A1A]/80 px-0 shadow-lg shadow-black/40 backdrop-blur-sm md:h-20">
@@ -20,11 +23,11 @@ export default function Header() {
           aria-label={
             isMobile
               ? isExpanded
-                ? "Закрыть меню"
-                : "Открыть меню"
+                ? t("header.closeMenu")
+                : t("header.openMenu")
               : isExpanded
-                ? "Свернуть меню"
-                : "Развернуть меню"
+                ? t("header.collapseMenu")
+                : t("header.expandMenu")
           }
           aria-expanded={isExpanded}
         >
@@ -32,7 +35,7 @@ export default function Header() {
         </button>
 
         <div className="flex w-full items-center justify-between pr-4 md:pr-6">
-          <Link href="/" className="ml-14 flex min-w-0 items-center gap-2 md:gap-3">
+          <LocaleLink href="/" className="ml-14 flex min-w-0 items-center gap-2 md:gap-3">
             <Image
               src="/logo.png"
               alt="NewVerse"
@@ -42,9 +45,10 @@ export default function Header() {
               priority
             />
             <Logo size="sm" className="truncate text-base md:text-2xl lg:text-3xl" />
-          </Link>
+          </LocaleLink>
 
-          <div className="shrink-0">
+          <div className="flex shrink-0 items-center gap-3">
+            <LanguageSwitcher />
             <UserAvatarMenu />
           </div>
         </div>
