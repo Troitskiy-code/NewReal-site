@@ -14,7 +14,9 @@ import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 type Character = {
   id: string;
   name: string;
+  name_en?: string | null;
   description: string | null;
+  description_en?: string | null;
   descriptionCard?: string | null;
   appearance: string | null;
   tags: string | null;

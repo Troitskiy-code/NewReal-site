@@ -25,6 +25,7 @@ import {
   isSubscriptionActive,
   normalizeUserCounters,
 } from "@/lib/verseChatEconomy";
+import { getApiLocale } from "@/lib/apiI18n";
 
 export const maxDuration = 120;
 
@@ -79,6 +80,12 @@ export async function POST(
         exampleDialogs: true,
         isPublic: true,
         userId: true,
+        name_en: true,
+        description_en: true,
+        appearance_en: true,
+        greeting_en: true,
+        scenario_en: true,
+        exampleDialogs_en: true,
       },
     });
 
@@ -144,6 +151,11 @@ export async function POST(
       );
     }
 
+    const locale = getApiLocale(req);
+    const localizedGreeting =
+      locale === "en" && character.greeting_en?.trim()
+        ? character.greeting_en.trim()
+        : character.greeting?.trim();
     let greetingMessage = null;
     let userMessage = null;
     let lastAssistant = null;
@@ -177,13 +189,13 @@ export async function POST(
         where: { characterId: id, userId: session.user.id },
       });
 
-      if (existingMessagesCount === 0 && character.greeting?.trim()) {
+      if (existingMessagesCount === 0 && localizedGreeting) {
         greetingMessage = await createMessageAndBumpTotal({
           characterId: id,
           chatId: id,
           userId: session.user.id,
           role: "assistant",
-          content: character.greeting.trim(),
+          content: localizedGreeting,
         });
 
         scheduleMessageEmbedding(
@@ -231,6 +243,7 @@ export async function POST(
       continueCutOff,
       continueSourceText: lastAssistant?.content,
       intent,
+      locale,
     });
 
     return createChatNdjsonResponse(async (emit) => {
@@ -317,7 +330,17 @@ export async function GET(
 
     const character = await prisma.character.findUnique({
       where: { id },
-      select: { isPublic: true, userId: true, name: true, greeting: true, imageUrl: true, description: true },
+      select: {
+        isPublic: true,
+        userId: true,
+        name: true,
+        greeting: true,
+        imageUrl: true,
+        description: true,
+        name_en: true,
+        greeting_en: true,
+        description_en: true,
+      },
     });
 
     if (!character) {
@@ -340,6 +363,9 @@ export async function GET(
         greeting: character.greeting,
         imageUrl: character.imageUrl,
         description: character.description,
+        name_en: character.name_en,
+        greeting_en: character.greeting_en,
+        description_en: character.description_en,
       },
     });
   } catch (error) {

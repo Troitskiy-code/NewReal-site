@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
+import { translateCharacterFieldsToEn } from "@/lib/translate";
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -79,6 +80,13 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       exampleDialogs?: string | null;
       avatarPrompt?: string | null;
       isPublic?: boolean;
+      name_en?: string | null;
+      description_en?: string | null;
+      appearance_en?: string | null;
+      greeting_en?: string | null;
+      scenario_en?: string | null;
+      exampleDialogs_en?: string | null;
+      avatarPrompt_en?: string | null;
     } = {};
 
     if (body.name !== undefined) {
@@ -101,6 +109,21 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.isPublic !== undefined) data.isPublic = parsed.isPublic;
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
+    }
+
+    try {
+      const translations = await translateCharacterFieldsToEn({
+        ...(body.name !== undefined ? { name: parsed.name } : {}),
+        ...(body.description !== undefined ? { description: data.description } : {}),
+        ...(body.appearance !== undefined ? { appearance: data.appearance } : {}),
+        ...(body.greeting !== undefined ? { greeting: data.greeting } : {}),
+        ...(body.scenario !== undefined ? { scenario: data.scenario } : {}),
+        ...(body.exampleDialogs !== undefined ? { exampleDialogs: data.exampleDialogs } : {}),
+        ...(body.avatarPrompt !== undefined ? { avatarPrompt: data.avatarPrompt } : {}),
+      });
+      Object.assign(data, translations);
+    } catch (translateError) {
+      console.error("[Translate] Failed to update character translations", translateError);
     }
 
     const character = await prisma.character.update({

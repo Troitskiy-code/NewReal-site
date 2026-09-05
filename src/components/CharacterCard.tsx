@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { FaComments, FaUser } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import FavoriteButton from "@/components/FavoriteButton";
-import { getCardDescription } from "@/lib/characterFields";
+import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 
 type CharacterCardProps = {
   character: {
     id: string;
     name: string;
+    name_en?: string | null;
     description?: string | null;
+    description_en?: string | null;
     descriptionCard?: string | null;
     imageUrl?: string | null;
     isFavorited?: boolean;
@@ -20,8 +23,11 @@ type CharacterCardProps = {
 };
 
 export default function CharacterCard({ character, className = "", onFavoriteChange }: CharacterCardProps) {
+  const { i18n } = useTranslation();
+  const locale = i18n.language;
   const totalMessages = character.totalMessages ?? 0;
-  const description = getCardDescription(character) || "Без описания";
+  const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
+  const description = getLocalizedCardDescription(character, locale) || "Без описания";
 
   return (
     <Link href={`/chat/${character.id}`} className={`group block min-w-0 w-full max-w-full ${className}`}>
@@ -30,7 +36,7 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
           {character.imageUrl ? (
             <img
               src={character.imageUrl}
-              alt={character.name}
+              alt={name}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
@@ -59,7 +65,7 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
 
         <div className="relative z-10 flex min-h-0 flex-[2] flex-col justify-center bg-black/20 px-2.5 py-2 backdrop-blur-none max-[400px]:px-2 max-[400px]:py-1.5 sm:bg-black/30 sm:backdrop-blur-sm md:absolute md:bottom-0 md:left-0 md:right-0 md:flex-none md:p-4">
           <h2 className="truncate text-base font-bold leading-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
-            {character.name}
+            {name}
           </h2>
           <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-200 [text-shadow:0_1px_2px_rgba(0,0,0,0.85)] md:text-gray-400">
             {description}

@@ -20,6 +20,7 @@ import {
   DAILY_REQUEST_LIMIT,
   normalizeUserCounters,
 } from "@/lib/verseChatEconomy";
+import { getApiLocale } from "@/lib/apiI18n";
 
 export const maxDuration = 120;
 
@@ -86,6 +87,12 @@ export async function POST(
         exampleDialogs: true,
         isPublic: true,
         userId: true,
+        name_en: true,
+        description_en: true,
+        appearance_en: true,
+        greeting_en: true,
+        scenario_en: true,
+        exampleDialogs_en: true,
       },
     });
 
@@ -161,6 +168,7 @@ export async function POST(
       ragQueryText: previousUserMessage?.content ?? assistantMessage.content,
       historyBeforeMessageId: assistantMessage.id,
       intent,
+      locale: getApiLocale(req),
     });
 
     return createChatNdjsonResponse(async (emit) => {

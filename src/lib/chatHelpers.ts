@@ -45,7 +45,30 @@ export type CharacterForChat = {
   exampleDialogs: string | null;
   isPublic: boolean;
   userId: string;
+  name_en?: string | null;
+  description_en?: string | null;
+  appearance_en?: string | null;
+  greeting_en?: string | null;
+  scenario_en?: string | null;
+  exampleDialogs_en?: string | null;
 };
+
+export function localizeCharacterForChat(
+  character: CharacterForChat,
+  locale: string | null | undefined
+): CharacterForChat {
+  if (locale !== "en") return character;
+
+  return {
+    ...character,
+    name: character.name_en?.trim() || character.name,
+    description: character.description_en?.trim() || character.description,
+    appearance: character.appearance_en?.trim() || character.appearance,
+    greeting: character.greeting_en?.trim() || character.greeting,
+    scenario: character.scenario_en?.trim() || character.scenario,
+    exampleDialogs: character.exampleDialogs_en?.trim() || character.exampleDialogs,
+  };
+}
 
 export type ChatUser = {
   id: string;
@@ -236,6 +259,7 @@ type PrepareChatMessagesOptions = {
   continueSourceText?: string;
   historyBeforeMessageId?: string;
   intent?: UserIntent;
+  locale?: string;
 };
 
 const CUT_OFF_CONJUNCTIONS = [
@@ -372,6 +396,7 @@ export async function prepareChatMessages({
   continueSourceText,
   historyBeforeMessageId,
   intent = "general",
+  locale,
 }: PrepareChatMessagesOptions) {
   const subscriptionActive = isSubscriptionActive(user);
   const maxContextTokens = getContextTokenLimit(user);
@@ -384,7 +409,7 @@ export async function prepareChatMessages({
   ]);
 
   let systemPrompt = appendPersonaToSystemPrompt(
-    buildChatSystemPrompt(character),
+    buildChatSystemPrompt(localizeCharacterForChat(character, locale)),
     selectedPersona
   );
   if (selectedPersona) {

@@ -6,7 +6,9 @@ import { prisma } from "@/lib/prisma";
 const characterSelect = {
   id: true,
   name: true,
+  name_en: true,
   description: true,
+  description_en: true,
   descriptionCard: true,
   appearance: true,
   tags: true,

@@ -61,3 +61,28 @@ export function getCardDescription(character: {
 }): string | null {
   return character.descriptionCard?.trim() || character.description?.trim() || null;
 }
+
+export function pickLocalizedText(
+  original: string | null | undefined,
+  translated: string | null | undefined,
+  locale: string | null | undefined
+): string | null {
+  if (locale === "en" && translated?.trim()) {
+    return translated;
+  }
+  return original?.trim() || null;
+}
+
+export function getLocalizedCardDescription(
+  character: {
+    descriptionCard?: string | null;
+    description?: string | null;
+    description_en?: string | null;
+  },
+  locale: string | null | undefined
+): string | null {
+  if (locale === "en" && character.description_en?.trim()) {
+    return character.description_en;
+  }
+  return getCardDescription(character);
+}

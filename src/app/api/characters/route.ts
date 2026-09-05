@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
+import { translateCharacterFieldsToEn } from "@/lib/translate";
 
 // ------------------ POST (создание персонажа) ------------------
 export async function POST(req: NextRequest) {
@@ -59,6 +60,28 @@ export async function POST(req: NextRequest) {
         userId: session.user.id,
       },
     });
+
+    try {
+      const translations = await translateCharacterFieldsToEn({
+        name,
+        description,
+        appearance,
+        greeting,
+        scenario,
+        exampleDialogs,
+        avatarPrompt,
+      });
+
+      if (Object.keys(translations).length > 0) {
+        const translated = await prisma.character.update({
+          where: { id: character.id },
+          data: translations,
+        });
+        return NextResponse.json(translated, { status: 201 });
+      }
+    } catch (translateError) {
+      console.error("[Translate] Failed to save character translations", translateError);
+    }
 
     return NextResponse.json(character, { status: 201 });
   } catch (error) {

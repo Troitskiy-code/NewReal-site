@@ -56,6 +56,14 @@ model Character {
   descriptionCard   String?   // Описание карточки персонажа (не влияет на поведение)
   avatarPrompt      String?   @db.Text // Описание для генерации аватара
   totalMessages     Int       @default(0) // Накопительное число сообщений (не уменьшается при очистке чата)
+
+  name_en           String?
+  description_en    String?
+  appearance_en     String?
+  greeting_en       String?
+  scenario_en       String?
+  exampleDialogs_en String?
+  avatarPrompt_en   String?   @db.Text
 }
 
 model Model {

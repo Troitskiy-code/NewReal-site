@@ -21,6 +21,8 @@ import {
   type ChatStreamMessage,
 } from "@/lib/chatStream";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { useTranslation } from "react-i18next";
+import { pickLocalizedText } from "@/lib/characterFields";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
@@ -60,9 +62,12 @@ type BalanceData = {
 
 type ChatCharacter = {
   name: string;
+  name_en?: string | null;
   greeting: string | null;
+  greeting_en?: string | null;
   imageUrl: string | null;
   description: string | null;
+  description_en?: string | null;
 };
 
 type ChatHistoryResponse = {
@@ -716,6 +721,8 @@ export default function ChatPage() {
   const params = useParams();
   const characterId = params.id as string;
   const { data: session, status } = useSession();
+  const { i18n } = useTranslation();
+  const locale = i18n.language;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [character, setCharacter] = useState<ChatCharacter | null>(null);
@@ -778,7 +785,14 @@ export default function ChatPage() {
 
   const userDisplayName = selectedPersona?.name ?? session?.user?.name ?? session?.user?.email ?? "Вы";
   const userAvatarUrl = selectedPersona?.avatarUrl ?? session?.user?.image ?? null;
-  const characterDisplayName = character?.name ?? "Персонаж";
+  const characterDisplayName =
+    pickLocalizedText(character?.name, character?.name_en, locale) ?? "Персонаж";
+  const characterDescription = pickLocalizedText(
+    character?.description,
+    character?.description_en,
+    locale
+  );
+  const characterGreeting = pickLocalizedText(character?.greeting, character?.greeting_en, locale);
   const characterAvatarUrl = character?.imageUrl ?? null;
 
   useEffect(() => {
@@ -807,7 +821,11 @@ export default function ChatPage() {
 
         const { messages: loadedMessages, character: loadedCharacter } = chatRes.data;
         setCharacter(loadedCharacter);
-        const greeting = loadedCharacter.greeting?.trim();
+        const greeting = pickLocalizedText(
+          loadedCharacter.greeting,
+          loadedCharacter.greeting_en,
+          locale
+        );
 
         if (loadedMessages.length === 0 && greeting) {
           setMessages([createGreetingMessage(greeting)]);
@@ -1155,7 +1173,7 @@ export default function ChatPage() {
     setClearingChat(true);
     try {
       await axios.delete(`/api/chat/${characterId}/messages`);
-      const greeting = character?.greeting?.trim();
+      const greeting = characterGreeting;
       setMessages(greeting ? [createGreetingMessage(greeting)] : []);
       setEditingMessageId(null);
       setEditingDraft("");
@@ -1344,7 +1362,7 @@ export default function ChatPage() {
             {character?.imageUrl ? (
               <img
                 src={character.imageUrl}
-                alt={character.name}
+                alt={characterDisplayName}
                 className="h-24 w-24 rounded-full object-cover"
               />
             ) : (
@@ -1352,9 +1370,9 @@ export default function ChatPage() {
                 <FaUser className="text-4xl text-white" />
               </div>
             )}
-            <h3 className="text-lg font-semibold text-white">{character?.name ?? "Персонаж"}</h3>
+            <h3 className="text-lg font-semibold text-white">{characterDisplayName}</h3>
             <p className="text-left text-sm leading-relaxed text-secondary-text whitespace-pre-wrap">
-              {character?.description?.trim() || "Описание не указано."}
+              {characterDescription || "Описание не указано."}
             </p>
           </div>
         </Modal>
@@ -1406,13 +1424,13 @@ export default function ChatPage() {
           type="button"
           onClick={() => setProfileOpen(true)}
           className="fixed left-2 top-16 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm md:hidden"
-          title={character?.name ?? "Профиль персонажа"}
+          title={characterDisplayName}
           aria-label="Профиль персонажа"
         >
           {character?.imageUrl ? (
             <img
               src={character.imageUrl}
-              alt={character.name}
+              alt={characterDisplayName}
               className="h-10 w-10 rounded-full object-cover"
             />
           ) : (
@@ -1425,7 +1443,7 @@ export default function ChatPage() {
           {character?.imageUrl ? (
             <img
               src={character.imageUrl}
-              alt={character.name}
+              alt={characterDisplayName}
               className="h-12 w-12 shrink-0 rounded-full object-cover"
             />
           ) : (
@@ -1434,7 +1452,7 @@ export default function ChatPage() {
             </div>
           )}
           <span className="line-clamp-3 text-center text-base font-semibold text-white">
-            {character?.name ?? "Персонаж"}
+            {characterDisplayName}
           </span>
         </aside>
 
