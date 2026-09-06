@@ -11,8 +11,10 @@ import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "@/lib/i18nConfig";
+import CurrencySelector from "@/components/CurrencySelector";
 import { useCurrency } from "@/components/CurrencyContext";
-import { formatPriceFromRUB, getCurrencySymbol } from "@/lib/currency";
+import { convertPrice, formatPrice, getCurrencySymbol } from "@/lib/currency";
+import { VC_PACKAGES } from "@/lib/vcPackages";
 
 type BalanceData = {
   verseCoins: number;
@@ -27,22 +29,6 @@ type BalanceData = {
   subscriptionLabel: string | null;
   subscriptionEnd: string | null;
 };
-
-type TokenPackage = {
-  id: number;
-  vc: number;
-  price: number;
-  bonus?: string;
-};
-
-const PACKAGES: TokenPackage[] = [
-  { id: 1, vc: 1000, price: 300 },
-  { id: 2, vc: 2500, price: 600, bonus: "+20%" },
-  { id: 3, vc: 7000, price: 1500, bonus: "+40%" },
-  { id: 4, vc: 16000, price: 3000, bonus: "+60%" },
-  { id: 5, vc: 35000, price: 6000, bonus: "+80%" },
-  { id: 6, vc: 100000, price: 15000, bonus: "+100%" },
-];
 
 function formatCoins(value: number, locale = "ru"): string {
   return value.toLocaleString(dateLocale(locale));
@@ -67,7 +53,7 @@ function formatDate(value: string, locale = "ru"): string {
 export default function CoinsPage() {
   const { status } = useSession();
   const { t, i18n } = useTranslation();
-  const { currency } = useCurrency();
+  const { currency, setCurrency } = useCurrency();
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -97,14 +83,14 @@ export default function CoinsPage() {
     }
   }, [status, fetchBalance]);
 
-  const handleBuy = async (price: number, coins: number) => {
+  const handleBuy = async (packageId: number, coins: number) => {
     reachGoal(METRIKA_GOALS.buyVc);
     try {
       const res = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sum: price,
+          packageId,
           desc: t("coins.buyDesc", { coins }),
         }),
       });
@@ -287,7 +273,10 @@ export default function CoinsPage() {
         )}
 
         <section className="space-y-4">
-          <h2 className="text-xl font-black text-white">{t("coins.packages")}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-black text-white">{t("coins.packages")}</h2>
+            <CurrencySelector value={currency} onChange={setCurrency} />
+          </div>
           <div className="overflow-x-auto rounded-wd border border-wd-border">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-wd-border bg-[#121212] text-xs uppercase tracking-wider text-wd-text-secondary">
@@ -299,12 +288,12 @@ export default function CoinsPage() {
                 </tr>
               </thead>
               <tbody>
-                {PACKAGES.map((pkg) => {
+                {VC_PACKAGES.map((pkg) => {
                   console.log("📦 Пакет:", pkg);
                   return (
                   <tr key={pkg.id} className="border-b border-wd-border/60 bg-wd-card last:border-b-0">
                     <td className="px-4 py-4 font-black text-white">{formatCoins(pkg.vc, i18n.language)}</td>
-                    <td className="px-4 py-4 text-white">{formatPriceFromRUB(pkg.price, currency)}</td>
+                    <td className="px-4 py-4 text-white">{formatPrice(convertPrice(pkg.price, currency), currency)}</td>
                     <td className="px-4 py-4">
                       {pkg.bonus ? (
                         <span className="rounded-wd-pill border border-wd-primary/40 bg-wd-primary/15 px-2.5 py-1 text-xs font-bold text-wd-primary">
@@ -320,7 +309,7 @@ export default function CoinsPage() {
                         id={`buy-vc-${pkg.vc}`}
                         data-metrika="buy-vc"
                         data-metrika-package={String(pkg.vc)}
-                        onClick={() => handleBuy(pkg.price, pkg.vc)}
+                        onClick={() => handleBuy(pkg.id, pkg.vc)}
                         className="buy-vc-btn rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
                       >
                         {t("coins.buy")}

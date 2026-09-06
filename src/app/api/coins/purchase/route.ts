@@ -3,15 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { grantPermanentUpdate } from "@/lib/verseCoins";
-
-const PACKAGES: Record<number, { vc: number; price: number; label: string }> = {
-  1: { vc: 1000, price: 300, label: "1000 VC" },
-  2: { vc: 2500, price: 600, label: "2500 VC" },
-  3: { vc: 7000, price: 1500, label: "7000 VC" },
-  4: { vc: 16000, price: 3000, label: "16000 VC" },
-  5: { vc: 35000, price: 6000, label: "35000 VC" },
-  6: { vc: 100000, price: 15000, label: "100000 VC" },
-};
+import { getVcPackage } from "@/lib/vcPackages";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const packageId = Number(body?.packageId);
-    const pkg = PACKAGES[packageId];
+    const pkg = getVcPackage(packageId);
 
     if (!pkg) {
       return NextResponse.json({ error: "Неизвестный пакет VC" }, { status: 400 });

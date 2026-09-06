@@ -9,7 +9,7 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import { useCurrency } from "@/components/CurrencyContext";
-import { formatPriceFromRUB } from "@/lib/currency";
+import { convertPrice, formatPrice } from "@/lib/currency";
 
 type SubscriptionBalance = {
   subscriptionType: string | null;
@@ -284,7 +284,9 @@ export default function SubscriptionPage() {
                     <div>
                       <h3 className="text-base font-black text-white">{plan.name}</h3>
                       <p className="text-xs text-wd-text-secondary">
-                        {plan.monthlyPrice === 0 ? "Бесплатно" : `${formatPriceFromRUB(plan.monthlyPrice, currency)} / мес`}
+                        {plan.monthlyPrice === 0
+                          ? "Бесплатно"
+                          : `${formatPrice(convertPrice(plan.monthlyPrice, currency), currency)} / мес`}
                       </p>
                     </div>
                   </div>

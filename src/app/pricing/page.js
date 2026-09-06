@@ -12,8 +12,9 @@ import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { useCurrentLocale } from "@/components/LocaleLink";
+import CurrencySelector from "@/components/CurrencySelector";
 import { useCurrency } from "@/components/CurrencyContext";
-import { formatPriceFromRUB } from "@/lib/currency";
+import { convertPrice, formatPrice } from "@/lib/currency";
 
 const PLAN_ICONS = {
   start: FaStar,
@@ -61,7 +62,7 @@ export default function PricingPage() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const locale = useCurrentLocale();
-  const { currency } = useCurrency();
+  const { currency, setCurrency } = useCurrency();
   const [isYearly, setIsYearly] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState(null);
   const [balance, setBalance] = useState(null);
@@ -238,29 +239,32 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="inline-flex rounded-wd-pill border border-wd-border bg-wd-card p-1">
-          <button
-            type="button"
-            onClick={() => setIsYearly(false)}
-            className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
-              !isYearly
-                ? "bg-wd-secondary text-white shadow"
-                : "text-wd-text-secondary hover:text-white"
-            }`}
-          >
-            {t("pricing.month")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsYearly(true)}
-            className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
-              isYearly
-                ? "bg-wd-secondary text-white shadow"
-                : "text-wd-text-secondary hover:text-white"
-            }`}
-          >
-            {t("pricing.year")}
-          </button>
+        <div className="flex flex-col items-center gap-4">
+          <CurrencySelector value={currency} onChange={setCurrency} />
+          <div className="inline-flex rounded-wd-pill border border-wd-border bg-wd-card p-1">
+            <button
+              type="button"
+              onClick={() => setIsYearly(false)}
+              className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
+                !isYearly
+                  ? "bg-wd-secondary text-white shadow"
+                  : "text-wd-text-secondary hover:text-white"
+              }`}
+            >
+              {t("pricing.month")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsYearly(true)}
+              className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
+                isYearly
+                  ? "bg-wd-secondary text-white shadow"
+                  : "text-wd-text-secondary hover:text-white"
+              }`}
+            >
+              {t("pricing.year")}
+            </button>
+          </div>
         </div>
 
         <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -268,7 +272,8 @@ export default function PricingPage() {
             const Icon = PLAN_ICONS[plan.id] ?? FaStar;
             const isFree = plan.monthlyPrice === 0;
             const isPopular = plan.id === "story";
-            const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+            const priceInRUB = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+            const price = convertPrice(priceInRUB, currency);
 
             return (
               <article
@@ -297,7 +302,7 @@ export default function PricingPage() {
 
                 <div className="mb-5 space-y-1">
                   <p className="text-4xl font-black leading-none text-white">
-                    {formatPriceFromRUB(price, currency)}
+                    {formatPrice(price, currency)}
                   </p>
                   <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
                     {isFree ? t("pricing.forever") : isYearly ? t("pricing.perYear") : t("pricing.perMonth")}

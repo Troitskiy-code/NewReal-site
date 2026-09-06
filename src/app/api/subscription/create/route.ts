@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
     const periodLabel = period === "year" ? "год" : "месяц";
     const desc = `Подписка ${plan.name} на 1 ${periodLabel}`;
 
+    // Robokassa accepts RUB only. Display currency never changes this amount.
+
     const receipt = buildReceipt([{ name: `Подписка ${plan.name} на 1 ${periodLabel}`, price: sum, quantity: 1 }]);
     console.log("[Subscription] Creating recurring payment:", { period, amount: sum });
     const url = generateRobokassaPaymentUrl(

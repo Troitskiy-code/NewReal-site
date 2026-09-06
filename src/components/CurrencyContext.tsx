@@ -3,8 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_CURRENCY,
-  PREFERRED_CURRENCY_KEY,
-  isCurrency,
+  getPreferredCurrency,
+  setPreferredCurrency,
   type Currency,
 } from "@/lib/currency";
 
@@ -19,23 +19,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>(DEFAULT_CURRENCY);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(PREFERRED_CURRENCY_KEY);
-      if (isCurrency(stored)) {
-        setCurrencyState(stored);
-      }
-    } catch {
-      // Ignore storage access errors (private mode, disabled storage).
-    }
+    setCurrencyState(getPreferredCurrency());
   }, []);
 
   const setCurrency = useCallback((next: Currency) => {
+    setPreferredCurrency(next);
     setCurrencyState(next);
-    try {
-      window.localStorage.setItem(PREFERRED_CURRENCY_KEY, next);
-    } catch {
-      // Ignore storage access errors (private mode, disabled storage).
-    }
   }, []);
 
   const value = useMemo(() => ({ currency, setCurrency }), [currency, setCurrency]);

@@ -6,7 +6,6 @@ import { FaBars } from "react-icons/fa";
 import Logo from "./Logo";
 import UserAvatarMenu from "./UserAvatarMenu";
 import LanguageSwitcher from "./LanguageSwitcher";
-import CurrencySwitcher from "./CurrencySwitcher";
 import { useSidebar } from "./SidebarContext";
 import { useTranslation } from "react-i18next";
 
@@ -45,11 +44,10 @@ export default function Header() {
               className="h-7 w-7 shrink-0 md:h-10 md:w-10 lg:h-[45px] lg:w-[45px]"
               priority
             />
-            <Logo size="sm" className="hidden truncate text-base sm:inline md:text-2xl lg:text-3xl" />
+            <Logo size="sm" className="truncate text-base md:text-2xl lg:text-3xl" />
           </LocaleLink>
 
-          <div className="flex min-w-0 shrink-0 items-center gap-1.5 overflow-x-auto sm:gap-3">
-            <CurrencySwitcher />
+          <div className="flex shrink-0 items-center gap-3">
             <LanguageSwitcher />
             <UserAvatarMenu />
           </div>

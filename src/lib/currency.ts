@@ -9,7 +9,6 @@ function envRate(name: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-// 1 USD = N RUB, 1 EUR = N RUB (overridable via NEXT_PUBLIC_ env)
 const RUB_TO_USD = envRate("NEXT_PUBLIC_RUB_TO_USD", 90);
 const RUB_TO_EUR = envRate("NEXT_PUBLIC_RUB_TO_EUR", 100);
 
@@ -43,4 +42,23 @@ export function getCurrencySymbol(currency: Currency): string {
   if (currency === "USD") return "$";
   if (currency === "EUR") return "€";
   return "₽";
+}
+
+export function getPreferredCurrency(): Currency {
+  if (typeof window === "undefined") return DEFAULT_CURRENCY;
+  try {
+    const saved = localStorage.getItem(PREFERRED_CURRENCY_KEY);
+    return isCurrency(saved) ? saved : DEFAULT_CURRENCY;
+  } catch {
+    return DEFAULT_CURRENCY;
+  }
+}
+
+export function setPreferredCurrency(currency: Currency): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(PREFERRED_CURRENCY_KEY, currency);
+  } catch {
+    // Ignore storage access errors (private mode, disabled storage).
+  }
 }
