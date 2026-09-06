@@ -181,12 +181,17 @@ export async function resolveChatMemorySummary(
   return summary;
 }
 
-export function appendMemoryToSystemPrompt(systemPrompt: string, summary: string | null): string {
+export function appendMemoryToSystemPrompt(
+  systemPrompt: string,
+  summary: string | null,
+  locale?: string
+): string {
   if (!summary?.trim()) {
     return systemPrompt;
   }
 
-  return `${systemPrompt}\n\nКраткая предыстория: ${summary.trim()}`;
+  const heading = locale === "en" ? "Brief backstory" : "Краткая предыстория";
+  return `${systemPrompt}\n\n${heading}: ${summary.trim()}`;
 }
 
 export async function forceRefreshMemorySummary(

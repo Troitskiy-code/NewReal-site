@@ -396,7 +396,7 @@ export async function prepareChatMessages({
   continueSourceText,
   historyBeforeMessageId,
   intent = "general",
-  locale,
+  locale = "ru",
 }: PrepareChatMessagesOptions) {
   const subscriptionActive = isSubscriptionActive(user);
   const maxContextTokens = getContextTokenLimit(user);
@@ -409,29 +409,39 @@ export async function prepareChatMessages({
   ]);
 
   let systemPrompt = appendPersonaToSystemPrompt(
-    buildChatSystemPrompt(localizeCharacterForChat(character, locale)),
-    selectedPersona
+    buildChatSystemPrompt(localizeCharacterForChat(character, locale), locale),
+    selectedPersona,
+    locale
   );
   if (selectedPersona) {
     console.log(`[Persona] prompt user=${userId} character=${characterId} persona=${selectedPersona.id}`);
   }
 
   if (continueMode) {
+    const english = locale === "en";
     if (continueCutOff && continueSourceText?.trim()) {
-      systemPrompt = `Внимание: ты должен продолжить предыдущее сообщение ассистента, которое было оборвано. Вот текст, который нужно продолжить:
+      systemPrompt = english
+        ? `Attention: you must continue the previous assistant message that was cut off. Here is the text to continue:
+"${continueSourceText.trim()}"
+Continue exactly from where it stopped. Do not repeat what was already written, and do not start over. Just write the missing part.
+
+${systemPrompt}`
+        : `Внимание: ты должен продолжить предыдущее сообщение ассистента, которое было оборвано. Вот текст, который нужно продолжить:
 «${continueSourceText.trim()}»
 Продолжи ровно с того места, где остановился, не повторяй предыдущее, не начинай заново. Просто допиши недостающую часть.
 
 ${systemPrompt}`;
     } else {
-      systemPrompt = `${systemPrompt}\n\nПродолжи ответ с того места, где остановился.`;
+      systemPrompt = english
+        ? `${systemPrompt}\n\nContinue your reply from where you left off.`
+        : `${systemPrompt}\n\nПродолжи ответ с того места, где остановился.`;
     }
   }
 
   if (!continueCutOff) {
-    const randomEvent = pickRandomSceneEvent();
+    const randomEvent = pickRandomSceneEvent(locale);
     if (randomEvent) {
-      systemPrompt = appendRandomEventToPrompt(systemPrompt, randomEvent);
+      systemPrompt = appendRandomEventToPrompt(systemPrompt, randomEvent, locale);
       console.log(`🎲 Случайное событие: ${randomEvent}`);
     }
   }
@@ -517,10 +527,10 @@ ${systemPrompt}`;
     systemPrompt = `${systemPrompt}\n\n${coreEpisodicText}`;
   }
   if (summaryText) {
-    systemPrompt = appendMemoryToSystemPrompt(systemPrompt, summaryText);
+    systemPrompt = appendMemoryToSystemPrompt(systemPrompt, summaryText, locale);
   }
   if (ragText) {
-    systemPrompt = appendRagToSystemPrompt(systemPrompt, { text: ragText, count: 1 });
+    systemPrompt = appendRagToSystemPrompt(systemPrompt, { text: ragText, count: 1 }, locale);
   }
 
   console.log(

@@ -261,9 +261,17 @@ export async function readChatNdjsonStream(
 }
 
 export async function fetchChatNdjsonStream(url: string, body: unknown): Promise<Response> {
+  const locale =
+    typeof document !== "undefined" && (document.documentElement.lang === "en" || document.documentElement.lang === "ru")
+      ? document.documentElement.lang
+      : "";
+
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(locale ? { "x-locale": locale } : {}),
+    },
     body: JSON.stringify(body),
   });
 

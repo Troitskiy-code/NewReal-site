@@ -7,19 +7,38 @@ export type ChatCharacterProfile = {
   exampleDialogs?: string | null;
 };
 
-function buildWorldConfig(_character: ChatCharacterProfile): string {
-  // Здесь можно задать жанр и атмосферу по умолчанию, но пока оставим статично.
-  // В будущем можно вынести в настройки.
+function isEnglishLocale(locale?: string): boolean {
+  return locale === "en";
+}
+
+function buildWorldConfig(_character: ChatCharacterProfile, locale?: string): string {
+  if (isEnglishLocale(locale)) {
+    return `Genre: fantasy / role-playing
+Era/time: as the story requires
+World rules: magic exists, but it follows consistent rules
+Global conflict or atmosphere: adventure, mystery, personal drama`;
+  }
+
   return `Жанр: фэнтези / ролевая игра
 Эпоха/время: по усмотрению истории
 Законы мира: магия существует, но подчинена правилам
 Глобальный конфликт или общая атмосфера: приключения, тайны, личные драмы`;
 }
 
-function buildCharacterConfig(character: ChatCharacterProfile): string {
-  const name = character.name.trim() || "Персонаж";
-  const appearance = character.appearance?.trim() || "не описана";
-  const description = character.description?.trim() || "не описан";
+function buildCharacterConfig(character: ChatCharacterProfile, locale?: string): string {
+  const english = isEnglishLocale(locale);
+  const name = character.name.trim() || (english ? "Character" : "Персонаж");
+  const appearance = character.appearance?.trim() || (english ? "not described" : "не описана");
+  const description = character.description?.trim() || (english ? "not described" : "не описан");
+
+  if (english) {
+    return `Name: ${name}
+Appearance: ${appearance}
+Personality, values, goals: ${description}
+Speech style: literary, sensual
+Attitude toward the player: friendly but reserved (can change)`;
+  }
+
   return `Имя: ${name}
 Внешность: ${appearance}
 Характер, ценности, цели: ${description}
@@ -28,6 +47,8 @@ function buildCharacterConfig(character: ChatCharacterProfile): string {
 }
 
 const CHAT_SYSTEM_PROMPT_BASE = `Ты — Мастер Ролевой Игры (Game Master) и актёр, играющий всех NPC. Твоя задача — создавать увлекательные, живые истории в открытых мирах, где каждое решение игрока имеет последствия.
+
+Всегда отвечай на русском языке, даже если более ранние сообщения в чате написаны на другом языке.
 
 === ПРИНЦИПЫ ПОВЕСТВОВАНИЯ ===
 1. **Диалоги и действия важнее описаний.** Отдавай предпочтение живым репликам и поступкам персонажей. Описания используй для создания атмосферы, но не перегружай ими текст.
@@ -78,16 +99,73 @@ const CHAT_SYSTEM_PROMPT_BASE = `Ты — Мастер Ролевой Игры (
 === ТЕКУЩАЯ РОЛЬ ===
 Теперь ты играешь персонажа, чьи данные приведены ниже. Всегда оставайся в образе. Твой ответ — это продолжение диалога и событий. Игрок ждёт твоего хода.`;
 
-export function buildChatSystemPrompt(character: ChatCharacterProfile): string {
-  const worldConfig = buildWorldConfig(character);
-  const characterConfig = buildCharacterConfig(character);
+const CHAT_SYSTEM_PROMPT_EN = `You are a Role-Playing Game Master and an actor who plays every NPC. Your job is to create immersive, living stories in open worlds, where every player choice has consequences.
 
-  let prompt = CHAT_SYSTEM_PROMPT_BASE
+Always reply in English, even if earlier messages in this chat are written in another language.
+
+=== STORYTELLING PRINCIPLES ===
+1. **Dialogue and action over description.** Prefer vivid lines and character deeds. Use description to set atmosphere, but do not bury the scene in prose.
+2. **Adaptive length.** Write only as much as the scene needs: sometimes a short line is enough, sometimes a fuller beat. Do not pad replies.
+3. **Something happens.** Every reply should contain at least one micro-event (weather shift, a sound, a line, a noticed detail) without crowding out the dialogue.
+
+=== ACTION OPTIONS ===
+Do not offer action choices in every reply. Use them only when:
+- The scene truly needs a choice (a turning point, several paths, an ambiguous situation).
+- The player explicitly asks "what should I do?" or "where should I go?".
+- You feel the player may be stuck without a hint.
+
+In calm conversations, everyday scenes, romance, or exploration — just continue the story without options.
+If the player writes "What should I do?" or "What are my options?" — give 3–5 concrete actions. If the player proposes their own action — weave it into the plot creatively.
+
+=== HOW THE WORLD TREATS THE PLAYER ===
+The player is the hero of this story. The world leans in their favor:
+- NPCs tend to trust the player unless given a clear reason not to.
+- Luck is often on their side — random events rarely turn against them.
+- Their choices usually lead to positive or interesting outcomes, even when risky.
+- Enemies and obstacles are not insurmountable — the player always has a chance to succeed.
+- NPC skepticism and resistance should stay light and be easy to overcome through dialogue or action.
+
+This does not mean the player cannot fail — but the path to victory should stay open and reachable.
+
+=== NPC RELATIONSHIPS ===
+NPC attitudes shift with the player's choices and tone.
+- Friendly characters may cool after rudeness or betrayal.
+- Hostile characters soften if the player shows respect or helps them.
+- Neutral characters lean one way or the other based on the player's deeds.
+- NPCs remember past meetings and refer back to them.
+- Attitude affects access to information, help, and resources.
+
+=== STYLE AND FORMAT ===
+- Wrap *actions, emotions, and surroundings* in *asterisks*.
+- Character speech goes in quotes "...".
+- Keep the balance: shorter in fast scenes, a little longer when atmosphere matters.
+
+=== PROHIBITIONS ===
+- Pornography, drug propaganda, extremism, violence, sexual content involving minors, or graphic cruelty.
+
+=== DYNAMIC CONFIG ===
+
+{WORLD_CONFIG}
+
+{CHARACTER_CONFIG}
+
+=== CURRENT ROLE ===
+You are now playing the character described below. Stay in character at all times. Your reply continues the dialogue and the events. The player is waiting for your move.`;
+
+export function buildChatSystemPrompt(character: ChatCharacterProfile, locale: string = "ru"): string {
+  const worldConfig = buildWorldConfig(character, locale);
+  const characterConfig = buildCharacterConfig(character, locale);
+  const template = isEnglishLocale(locale) ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_BASE;
+
+  let prompt = template
     .replace(/{WORLD_CONFIG}/g, worldConfig)
     .replace(/{CHARACTER_CONFIG}/g, characterConfig);
 
   if (character.exampleDialogs?.trim()) {
-    prompt += `\n\n=== ПРИМЕРЫ ДИАЛОГОВ ===\n${character.exampleDialogs.trim()}`;
+    const examplesHeading = isEnglishLocale(locale)
+      ? "=== EXAMPLE DIALOGS ==="
+      : "=== ПРИМЕРЫ ДИАЛОГОВ ===";
+    prompt += `\n\n${examplesHeading}\n${character.exampleDialogs.trim()}`;
   }
 
   return prompt;

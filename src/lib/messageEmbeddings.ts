@@ -151,13 +151,16 @@ export function formatRagContext(messages: RagMessage[]): RagContext | null {
 
 export function appendRagToSystemPrompt(
   systemPrompt: string,
-  ragContext: RagContext | null
+  ragContext: RagContext | null,
+  locale?: string
 ): string {
   if (!ragContext?.text) {
     return systemPrompt;
   }
 
-  return `${systemPrompt}\n\nНа основе прошлых разговоров:\n${ragContext.text}`;
+  const heading =
+    locale === "en" ? "Based on past conversations:" : "На основе прошлых разговоров:";
+  return `${systemPrompt}\n\n${heading}\n${ragContext.text}`;
 }
 
 export async function saveMessageEmbedding(

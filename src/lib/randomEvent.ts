@@ -18,14 +18,39 @@ const RANDOM_EVENTS = [
   "На миг показалось, что кто-то произнёс твоё имя.",
 ];
 
-export function pickRandomSceneEvent(): string | null {
+const RANDOM_EVENTS_EN = [
+  "A door slams somewhere in the distance.",
+  "A cold wind suddenly picks up.",
+  "You hear footsteps behind you.",
+  "The light flickers for a moment.",
+  "A quiet rustle comes from behind the wall.",
+  "A thin film of dust sifts down from the ceiling.",
+  "Glass clinks nearby.",
+  "The air carries a hint of smoke and ash.",
+  "A night bird cries outside.",
+  "A quick shadow darts across the floor.",
+  "A floorboard creaks, though nobody moved.",
+  "A drop of water falls into the silence with a metallic sound.",
+  "Muffled laughter carries from far away.",
+  "The candle flame wavers as if someone passed by.",
+  "For a second it seems someone whispered your name.",
+];
+
+export function pickRandomSceneEvent(locale?: string): string | null {
   if (Math.random() >= RANDOM_EVENT_CHANCE) {
     return null;
   }
 
-  return RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
+  const events = locale === "en" ? RANDOM_EVENTS_EN : RANDOM_EVENTS;
+  return events[Math.floor(Math.random() * events.length)];
 }
 
-export function appendRandomEventToPrompt(systemPrompt: string, event: string): string {
-  return `${systemPrompt}\n\nСлучайное событие: впиши в сцену уместно, не ломая сюжет: ${event}`;
+export function appendRandomEventToPrompt(
+  systemPrompt: string,
+  event: string,
+  locale?: string
+): string {
+  return locale === "en"
+    ? `${systemPrompt}\n\nRandom event: weave this into the scene without breaking the plot: ${event}`
+    : `${systemPrompt}\n\nСлучайное событие: впиши в сцену уместно, не ломая сюжет: ${event}`;
 }
