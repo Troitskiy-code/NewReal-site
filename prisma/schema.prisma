@@ -64,6 +64,13 @@ model Character {
   scenario_en       String?
   exampleDialogs_en String?
   avatarPrompt_en   String?   @db.Text
+
+  @@index([isPublic])
+  @@index([totalMessages])
+  @@index([createdAt])
+  @@index([name])
+  @@index([isPublic, createdAt])
+  @@index([isPublic, totalMessages])
 }
 
 model Model {

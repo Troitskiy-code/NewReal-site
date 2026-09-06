@@ -151,16 +151,29 @@ export async function GET(req: NextRequest) {
 
     const queryWhere = andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
-    const userInclude = {
+    const characterCardSelect = {
+      id: true,
+      name: true,
+      name_en: true,
+      description: true,
+      description_en: true,
+      descriptionCard: true,
+      tags: true,
+      imageUrl: true,
+      isPublic: true,
+      userId: true,
+      totalMessages: true,
+      createdAt: true,
       user: {
         select: {
           name: true,
           image: true,
         },
       },
-    };
+    } as const;
 
     let characters;
+    const startedAt = Date.now();
     const total = await prisma.character.count({ where: queryWhere });
 
     if (sort === "random") {
@@ -176,10 +189,12 @@ export async function GET(req: NextRequest) {
       } else {
         const rows = await prisma.character.findMany({
           where: { id: { in: pageIds } },
-          include: userInclude,
+          select: characterCardSelect,
         });
         const byId = new Map(rows.map((row) => [row.id, row]));
-        characters = pageIds.map((id) => byId.get(id)).filter(Boolean);
+        characters = pageIds
+          .map((id) => byId.get(id))
+          .filter((row): row is NonNullable<typeof row> => row != null);
       }
     } else {
       const orderBy =
@@ -192,14 +207,17 @@ export async function GET(req: NextRequest) {
         orderBy,
         skip,
         take: limit,
-        include: userInclude,
+        select: characterCardSelect,
       });
     }
 
     let favoriteIds = new Set<string>();
-    if (session?.user?.id) {
+    if (session?.user?.id && characters.length > 0) {
       const favorites = await prisma.favorite.findMany({
-        where: { userId: session.user.id },
+        where: {
+          userId: session.user.id,
+          characterId: { in: characters.map((character) => character.id) },
+        },
         select: { characterId: true },
       });
       favoriteIds = new Set(favorites.map((favorite) => favorite.characterId));
@@ -209,6 +227,10 @@ export async function GET(req: NextRequest) {
       ...character,
       isFavorited: favoriteIds.has(character.id),
     }));
+
+    console.log(
+      `[characters] GET ${Date.now() - startedAt}ms page=${page} limit=${limit} sort=${sort} total=${total} returned=${data.length}`
+    );
 
     return NextResponse.json({
       data,
