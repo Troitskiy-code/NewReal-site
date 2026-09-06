@@ -92,6 +92,7 @@ export default function CoinsPage() {
         body: JSON.stringify({
           packageId,
           desc: t("coins.buyDesc", { coins }),
+          currency,
         }),
       });
       const data = await res.json();

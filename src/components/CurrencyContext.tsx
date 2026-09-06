@@ -19,7 +19,9 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>(DEFAULT_CURRENCY);
 
   useEffect(() => {
-    setCurrencyState(getPreferredCurrency());
+    const stored = getPreferredCurrency();
+    setCurrencyState(stored);
+    setPreferredCurrency(stored);
   }, []);
 
   const setCurrency = useCallback((next: Currency) => {

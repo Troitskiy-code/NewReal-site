@@ -37,6 +37,18 @@ export function formatPriceFromRUB(priceInRUB: number, currency: Currency): stri
   return formatPrice(convertPrice(priceInRUB, currency), currency);
 }
 
+/** Amount sent to Robokassa in the selected currency (2 decimal places). */
+export function convertPaymentAmount(priceInRUB: number, currency: Currency): number {
+  return Number(convertPrice(priceInRUB, currency).toFixed(2));
+}
+
+export function resolveCurrency(...candidates: unknown[]): Currency {
+  for (const value of candidates) {
+    if (isCurrency(value)) return value;
+  }
+  return DEFAULT_CURRENCY;
+}
+
 export function getCurrencySymbol(currency: Currency): string {
   if (currency === "RUB") return "₽";
   if (currency === "USD") return "$";
@@ -61,4 +73,5 @@ export function setPreferredCurrency(currency: Currency): void {
   } catch {
     // Ignore storage access errors (private mode, disabled storage).
   }
+  document.cookie = `${PREFERRED_CURRENCY_KEY}=${currency}; path=/; max-age=31536000; samesite=lax`;
 }

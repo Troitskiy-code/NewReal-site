@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { grantPermanentUpdate } from "@/lib/verseCoins";
+import { convertPaymentAmount, formatPrice, PREFERRED_CURRENCY_KEY, resolveCurrency } from "@/lib/currency";
 import { getVcPackage } from "@/lib/vcPackages";
 
 export async function POST(req: NextRequest) {
@@ -15,10 +16,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const packageId = Number(body?.packageId);
     const pkg = getVcPackage(packageId);
+    const currency = resolveCurrency(body?.currency, req.cookies.get(PREFERRED_CURRENCY_KEY)?.value);
 
     if (!pkg) {
       return NextResponse.json({ error: "Неизвестный пакет VC" }, { status: 400 });
     }
+
+    const amount = convertPaymentAmount(pkg.price, currency);
 
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
@@ -31,7 +35,7 @@ export async function POST(req: NextRequest) {
         userId: session.user.id,
         amount: pkg.vc,
         type: "purchase",
-        description: `Покупка ${pkg.label} (${pkg.price} ₽)`,
+        description: `Покупка ${pkg.label} (${formatPrice(amount, currency)})`,
       },
     });
 
