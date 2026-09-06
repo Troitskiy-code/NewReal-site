@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { useEffect } from "react";
 import config from "@/lib/config";
 import I18nProvider from "@/components/I18nProvider";
+import { CurrencyProvider } from "@/components/CurrencyContext";
 
 export function Providers({ children, locale = "ru" }) {
   useEffect(() => {
@@ -15,7 +16,9 @@ export function Providers({ children, locale = "ru" }) {
 
   return (
     <I18nProvider locale={locale}>
-      <SessionProvider>{children}</SessionProvider>
+      <SessionProvider>
+        <CurrencyProvider>{children}</CurrencyProvider>
+      </SessionProvider>
     </I18nProvider>
   );
 }

@@ -12,6 +12,8 @@ import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { useCurrentLocale } from "@/components/LocaleLink";
+import { useCurrency } from "@/components/CurrencyContext";
+import { formatPriceFromRUB } from "@/lib/currency";
 
 const PLAN_ICONS = {
   start: FaStar,
@@ -59,6 +61,7 @@ export default function PricingPage() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const locale = useCurrentLocale();
+  const { currency } = useCurrency();
   const [isYearly, setIsYearly] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState(null);
   const [balance, setBalance] = useState(null);
@@ -294,7 +297,7 @@ export default function PricingPage() {
 
                 <div className="mb-5 space-y-1">
                   <p className="text-4xl font-black leading-none text-white">
-                    {isFree ? "0 ₽" : `${formatNumber(price, i18n.language)} ₽`}
+                    {formatPriceFromRUB(price, currency)}
                   </p>
                   <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
                     {isFree ? t("pricing.forever") : isYearly ? t("pricing.perYear") : t("pricing.perMonth")}

@@ -3,6 +3,7 @@
 import LocaleLink from "./LocaleLink";
 import Logo from "./Logo";
 import LanguageSwitcher from "./LanguageSwitcher";
+import CurrencySwitcher from "./CurrencySwitcher";
 import { useTranslation } from "react-i18next";
 
 export default function Footer() {
@@ -25,7 +26,10 @@ export default function Footer() {
           {t("footer.support")}
         </LocaleLink>
       </nav>
-      <LanguageSwitcher className="mb-3" />
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-3">
+        <CurrencySwitcher />
+        <LanguageSwitcher />
+      </div>
       <p className="text-xs text-wd-text-secondary">
         {t("footer.copyright", { year: new Date().getFullYear() })}
       </p>

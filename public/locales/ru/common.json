@@ -29,6 +29,12 @@
     "ru": "RU",
     "en": "EN"
   },
+  "currency": {
+    "label": "Валюта",
+    "RUB": "RUB",
+    "USD": "USD",
+    "EUR": "EUR"
+  },
   "auth": {
     "login": "Войти",
     "loginTitle": "Вход",
@@ -204,7 +210,7 @@
     "claim": "Получить (+{{amount}} VC)",
     "unavailable": "Бонус недоступен",
     "packages": "Пакеты VC",
-    "price": "Цена (₽)",
+    "price": "Цена ({{symbol}})",
     "bonus": "Бонус",
     "action": "Действие",
     "buy": "Купить",

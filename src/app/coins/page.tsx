@@ -11,6 +11,8 @@ import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "@/lib/i18nConfig";
+import { useCurrency } from "@/components/CurrencyContext";
+import { formatPriceFromRUB, getCurrencySymbol } from "@/lib/currency";
 
 type BalanceData = {
   verseCoins: number;
@@ -65,6 +67,7 @@ function formatDate(value: string, locale = "ru"): string {
 export default function CoinsPage() {
   const { status } = useSession();
   const { t, i18n } = useTranslation();
+  const { currency } = useCurrency();
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -290,7 +293,7 @@ export default function CoinsPage() {
               <thead className="border-b border-wd-border bg-[#121212] text-xs uppercase tracking-wider text-wd-text-secondary">
                 <tr>
                   <th className="px-4 py-3 font-bold">VC</th>
-                  <th className="px-4 py-3 font-bold">{t("coins.price")}</th>
+                  <th className="px-4 py-3 font-bold">{t("coins.price", { symbol: getCurrencySymbol(currency) })}</th>
                   <th className="px-4 py-3 font-bold">{t("coins.bonus")}</th>
                   <th className="px-4 py-3 font-bold text-right">{t("coins.action")}</th>
                 </tr>
@@ -301,7 +304,7 @@ export default function CoinsPage() {
                   return (
                   <tr key={pkg.id} className="border-b border-wd-border/60 bg-wd-card last:border-b-0">
                     <td className="px-4 py-4 font-black text-white">{formatCoins(pkg.vc, i18n.language)}</td>
-                    <td className="px-4 py-4 text-white">{formatCoins(pkg.price, i18n.language)}</td>
+                    <td className="px-4 py-4 text-white">{formatPriceFromRUB(pkg.price, currency)}</td>
                     <td className="px-4 py-4">
                       {pkg.bonus ? (
                         <span className="rounded-wd-pill border border-wd-primary/40 bg-wd-primary/15 px-2.5 py-1 text-xs font-bold text-wd-primary">
