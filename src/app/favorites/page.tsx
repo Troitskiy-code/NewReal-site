@@ -20,6 +20,7 @@ type Character = {
   isPublic: boolean;
   totalMessages?: number;
   isFavorited?: boolean;
+  activityStatus?: string | null;
 };
 
 type FavoritesResponse = {

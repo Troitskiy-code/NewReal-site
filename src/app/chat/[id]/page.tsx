@@ -68,6 +68,8 @@ type ChatCharacter = {
   imageUrl: string | null;
   description: string | null;
   description_en?: string | null;
+  lastActive?: string | null;
+  activityStatus?: string | null;
 };
 
 type ChatHistoryResponse = {
@@ -1371,6 +1373,9 @@ export default function ChatPage() {
               </div>
             )}
             <h3 className="text-lg font-semibold text-white">{characterDisplayName}</h3>
+            {character?.activityStatus && (
+              <p className="text-sm text-[#C8C4FF]">{character.activityStatus}</p>
+            )}
             <p className="text-left text-sm leading-relaxed text-secondary-text whitespace-pre-wrap">
               {characterDescription || "Описание не указано."}
             </p>
@@ -1454,6 +1459,11 @@ export default function ChatPage() {
           <span className="line-clamp-3 text-center text-base font-semibold text-white">
             {characterDisplayName}
           </span>
+          {character?.activityStatus && (
+            <span className="line-clamp-2 text-center text-xs font-medium text-[#C8C4FF]">
+              {character.activityStatus}
+            </span>
+          )}
         </aside>
 
         {/* Настройки: мобиль — правый угол, десктоп — у баланса */}

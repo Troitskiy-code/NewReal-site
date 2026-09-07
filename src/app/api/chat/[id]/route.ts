@@ -26,6 +26,7 @@ import {
   normalizeUserCounters,
 } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
+import { formatCharacterStatus } from "@/lib/characterActivity";
 
 export const maxDuration = 120;
 
@@ -42,7 +43,7 @@ async function createMessageAndBumpTotal(data: {
     prisma.message.create({ data }),
     prisma.character.update({
       where: { id: data.characterId },
-      data: { totalMessages: { increment: 1 } },
+      data: { totalMessages: { increment: 1 }, lastActive: new Date() },
     }),
   ]);
 
@@ -340,6 +341,7 @@ export async function GET(
         name_en: true,
         greeting_en: true,
         description_en: true,
+        lastActive: true,
       },
     });
 
@@ -351,10 +353,20 @@ export async function GET(
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
-    const messages = await prisma.message.findMany({
-      where: { characterId: id, userId: session.user.id },
-      orderBy: { createdAt: "asc" },
-    });
+    const [messages, latestEvent] = await Promise.all([
+      prisma.message.findMany({
+        where: { characterId: id, userId: session.user.id },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.worldEvent.findFirst({
+        where: {
+          type: { in: ["action", "conversation", "travel"] },
+          OR: [{ characterId: id }, { initiatorId: id }, { participants: { has: id } }],
+        },
+        orderBy: { timestamp: "desc" },
+        select: { description: true, location: true, timestamp: true },
+      }),
+    ]);
 
     return NextResponse.json({
       messages,
@@ -366,6 +378,8 @@ export async function GET(
         name_en: character.name_en,
         greeting_en: character.greeting_en,
         description_en: character.description_en,
+        lastActive: character.lastActive,
+        activityStatus: formatCharacterStatus(character.name, latestEvent),
       },
     });
   } catch (error) {

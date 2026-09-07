@@ -48,9 +48,10 @@ model Character {
   coreMemories      CoreMemory[]
   episodicMemories  EpisodicMemory[]
   memoryEntries     MemoryEntry[]
-  worldEvents       WorldEvent[]
-  personaSelections PersonaSelection[]
-  scopedPersonas    Persona[]
+  worldEvents          WorldEvent[] @relation("CharacterEvents")
+  initiatedWorldEvents WorldEvent[] @relation("InitiatedEvents")
+  personaSelections    PersonaSelection[]
+  scopedPersonas       Persona[]
 
   // Новые поля для редактора WetDreams
   greeting          String?   // Первое сообщение
@@ -76,6 +77,7 @@ model Character {
   @@index([name])
   @@index([isPublic, createdAt])
   @@index([isPublic, totalMessages])
+  @@index([lastActive])
 }
 
 model Model {
@@ -131,18 +133,21 @@ model Memory {
 }
 
 model WorldEvent {
-  id           String    @id @default(cuid())
+  id           String     @id @default(cuid())
   characterId  String
-  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character    Character  @relation("CharacterEvents", fields: [characterId], references: [id], onDelete: Cascade)
+  initiatorId  String?
+  initiator    Character? @relation("InitiatedEvents", fields: [initiatorId], references: [id], onDelete: SetNull)
   type         String
   participants String[]
-  description  String    @db.Text
-  timestamp    DateTime  @default(now())
-  importance   Int       @default(1)
+  description  String     @db.Text
+  timestamp    DateTime   @default(now())
+  importance   Int        @default(1)
   location     String?
 
   @@index([characterId])
   @@index([characterId, timestamp])
+  @@index([initiatorId])
 }
 
 enum MemoryEntryType {

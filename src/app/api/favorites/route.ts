@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withActivityStatus } from "@/lib/characterLifecycle";
 
 const characterSelect = {
   id: true,
@@ -41,13 +42,15 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({
-      data: favorites.map((favorite) => ({
+    const data = await withActivityStatus(
+      favorites.map((favorite) => ({
         ...favorite.character,
         isFavorited: true,
         favoritedAt: favorite.createdAt,
-      })),
-    });
+      }))
+    );
+
+    return NextResponse.json({ data });
   } catch (error) {
     console.error("Favorites GET error:", error);
     return NextResponse.json({ error: "Ошибка получения избранного" }, { status: 500 });

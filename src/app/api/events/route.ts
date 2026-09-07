@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
     const event = await prisma.worldEvent.create({
       data: {
         characterId,
+        initiatorId: characterId,
         type,
         participants,
         description,
