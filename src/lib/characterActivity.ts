@@ -14,6 +14,19 @@ export function extractLocation(text: string): string | null {
   return location;
 }
 
+export function toIsoDate(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString();
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+  return null;
+}
+
 export function formatCharacterStatus(
   name: string,
   activity: CharacterActivity | null | undefined

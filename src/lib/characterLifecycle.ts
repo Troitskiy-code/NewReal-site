@@ -2,7 +2,7 @@ import axios from "axios";
 import type { WorldEvent } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { memoryToText } from "@/lib/persistentMemory";
-import { extractLocation, formatCharacterStatus } from "@/lib/characterActivity";
+import { extractLocation, formatCharacterStatus, toIsoDate } from "@/lib/characterActivity";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const LIFECYCLE_MODEL = "openai/gpt-4o-mini";
@@ -279,7 +279,7 @@ export async function runCharacterLifecycleTick(
 
 export async function withActivityStatus<T extends { id: string; name: string }>(
   characters: T[]
-): Promise<Array<T & { activityStatus: string | null; lastActive: Date | null }>> {
+): Promise<Array<Omit<T, "lastActive" | "activityStatus"> & { activityStatus: string | null; lastActive: string | null }>> {
   if (characters.length === 0) {
     return [];
   }
@@ -307,10 +307,19 @@ export async function withActivityStatus<T extends { id: string; name: string }>
     }),
   ]);
 
-  const latestByCharacter = new Map<string, (typeof events)[number]>();
-  for (const event of events) {
+  const latestByCharacter = new Map<
+    string,
+    { description: unknown; location: unknown; timestamp: unknown }
+  >();
+  for (const event of events as Array<{
+    characterId?: unknown;
+    initiatorId?: unknown;
+    description?: unknown;
+    location?: unknown;
+    timestamp?: unknown;
+  }>) {
     const ownerIds = [event.characterId, event.initiatorId].filter(
-      (value): value is string => Boolean(value)
+      (value): value is string => typeof value === "string" && value.length > 0
     );
     for (const ownerId of ownerIds) {
       if (!latestByCharacter.has(ownerId)) {
@@ -319,14 +328,32 @@ export async function withActivityStatus<T extends { id: string; name: string }>
     }
   }
 
-  const lastActiveById = new Map(lastActiveRows.map((row) => [row.id, row.lastActive]));
+  const lastActiveById = new Map<string, string | null>();
+  for (const row of lastActiveRows as Array<{ id?: unknown; lastActive?: unknown }>) {
+    if (typeof row.id !== "string") continue;
+    lastActiveById.set(row.id, toIsoDate(row.lastActive));
+  }
 
   return characters.map((character) => {
     const event = latestByCharacter.get(character.id);
+    const activityStatus: string | null = formatCharacterStatus(
+      character.name,
+      event
+        ? {
+            description: typeof event.description === "string" ? event.description : null,
+            location: typeof event.location === "string" ? event.location : null,
+            timestamp: toIsoDate(event.timestamp),
+          }
+        : null
+    );
+    const lastActive: string | null = lastActiveById.get(character.id) ?? null;
     return {
       ...character,
-      lastActive: lastActiveById.get(character.id) ?? null,
-      activityStatus: formatCharacterStatus(character.name, event ?? null),
+      lastActive,
+      activityStatus,
+    } as Omit<T, "lastActive" | "activityStatus"> & {
+      activityStatus: string | null;
+      lastActive: string | null;
     };
   });
 }
