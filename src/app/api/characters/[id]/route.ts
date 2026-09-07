@@ -102,12 +102,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     try {
       const translations = await translateCharacterFieldsToEn({
         ...(body.name !== undefined ? { name: parsed.name } : {}),
-        ...(body.description !== undefined ? { description: data.description } : {}),
-        ...(body.appearance !== undefined ? { appearance: data.appearance } : {}),
-        ...(body.greeting !== undefined ? { greeting: data.greeting } : {}),
-        ...(body.scenario !== undefined ? { scenario: data.scenario } : {}),
-        ...(body.exampleDialogs !== undefined ? { exampleDialogs: data.exampleDialogs } : {}),
-        ...(body.avatarPrompt !== undefined ? { avatarPrompt: data.avatarPrompt } : {}),
+        ...(body.description !== undefined ? { description: parsed.description ?? undefined } : {}),
+        ...(body.appearance !== undefined ? { appearance: parsed.appearance ?? undefined } : {}),
+        ...(body.greeting !== undefined ? { greeting: parsed.greeting ?? undefined } : {}),
+        ...(body.scenario !== undefined ? { scenario: parsed.scenario ?? undefined } : {}),
+        ...(body.exampleDialogs !== undefined
+          ? { exampleDialogs: parsed.exampleDialogs ?? undefined }
+          : {}),
+        ...(body.avatarPrompt !== undefined ? { avatarPrompt: parsed.avatarPrompt ?? undefined } : {}),
       });
       Object.assign(data, translations);
     } catch (translateError) {
