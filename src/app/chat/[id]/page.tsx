@@ -875,9 +875,6 @@ export default function ChatPage() {
           setAnonymousRemaining(remaining);
           if (remaining <= 0) {
             setShowAnonymousLimitModal(true);
-          } else if (!anonymousWelcomeShown.current) {
-            anonymousWelcomeShown.current = true;
-            toast.success(`У вас осталось ${remaining} бесплатных сообщений`);
           }
           return;
         }
@@ -898,8 +895,13 @@ export default function ChatPage() {
         const initialModelId =
           modelsRes.data.selectedModelId ?? modelsRes.data.models[0]?.id ?? "";
         setSelectedModelId(initialModelId);
-      } catch {
-        toast.error("Ошибка загрузки чата");
+      } catch (error) {
+        const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined;
+        if (guest || statusCode === 401) {
+          console.warn("[Chat] Failed to load history", statusCode ?? error);
+        } else {
+          toast.error("Ошибка загрузки чата");
+        }
       } finally {
         setLoading(false);
       }
@@ -1278,6 +1280,10 @@ export default function ChatPage() {
       if ((anonymousRemaining ?? 0) <= 0) {
         setShowAnonymousLimitModal(true);
         return;
+      }
+      if (!anonymousWelcomeShown.current && anonymousRemaining != null) {
+        anonymousWelcomeShown.current = true;
+        toast.success(`У вас осталось ${anonymousRemaining} бесплатных сообщений`);
       }
     } else {
       if (insufficientBalance) {
