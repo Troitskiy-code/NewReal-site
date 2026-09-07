@@ -9,6 +9,8 @@ const LIFECYCLE_MODEL = "openai/gpt-4o-mini";
 const INITIATE_CHANCE = 0.1;
 const MAX_EVENTS_IN_PROMPT = 8;
 const MAX_ACTION_LENGTH = 280;
+const INTERACTION_PATTERN =
+  /с игроком|к игроку|других игроков|с персонажем|к персонажу|поговорил|пригласил|встретил|вместе с|npc|\bplayer\b/i;
 const UNSAFE_ACTION_PATTERN =
   /уби(ть|й)|напаст|избить|насили|suicide|rape|kill|attack|murder|bomb|terror/i;
 
@@ -43,6 +45,10 @@ function isSafeAction(text: string): boolean {
   return Boolean(text) && !UNSAFE_ACTION_PATTERN.test(text);
 }
 
+function isSoloStateAction(text: string): boolean {
+  return isSafeAction(text) && !INTERACTION_PATTERN.test(text);
+}
+
 function formatWorldEvents(worldEvents: WorldEvent[]): string {
   if (worldEvents.length === 0) return "нет недавних событий";
 
@@ -65,7 +71,7 @@ async function completeLifecyclePrompt(prompt: string, maxTokens: number): Promi
         {
           role: "system",
           content:
-            "Ты автономный персонаж в безопасном ролевом мире. Отвечай кратко, одним предложением. Никакой агрессии, насилия и принуждения.",
+            "Ты автономный персонаж в безопасном ролевом мире. Действуй только в одиночку: меняй своё состояние или место. Не взаимодействуй с другими игроками и персонажами. Отвечай кратко, одним предложением. Никакой агрессии, насилия и принуждения.",
         },
         { role: "user", content: prompt },
       ],
@@ -129,11 +135,11 @@ export async function updateCharacterState(
   }
 
   const publicMemory = memoryToText(character.publicMemory) || "память пуста";
-  const prompt = `Ты персонаж ${character.name}. Вот твоя публичная память: ${publicMemory}. Вот события в мире: ${formatWorldEvents(worldEvents)}. Что ты делаешь сейчас? Ответь кратко (одно предложение).`;
+  const prompt = `Ты персонаж ${character.name}. Вот твоя публичная память: ${publicMemory}. Вот события в мире: ${formatWorldEvents(worldEvents)}. Что ты делаешь сейчас в одиночку? Не обращайся к другим игрокам. Ответь кратко (одно предложение).`;
 
   const action = await completeLifecyclePrompt(prompt, 80);
-  if (!isSafeAction(action)) {
-    console.log(`[Lifecycle] Unsafe or empty action skipped character=${characterId}`);
+  if (!isSoloStateAction(action)) {
+    console.log(`[Lifecycle] Unsafe, empty or social action skipped character=${characterId}`);
     await prisma.character.update({
       where: { id: characterId },
       data: { lastActive: new Date() },
@@ -181,46 +187,30 @@ export async function maybeInitiateInteraction(characterId: string): Promise<boo
     return false;
   }
 
-  const peers = await prisma.character.findMany({
-    where: { isPublic: true, id: { not: characterId } },
-    select: { id: true, name: true, publicMemory: true },
-    orderBy: { lastActive: "desc" },
-    take: 20,
-  });
-
-  if (peers.length === 0) {
-    console.log(`[CharacterEcho] No peers for character=${characterId}`);
-    return false;
-  }
-
-  const peer = peers[Math.floor(Math.random() * peers.length)];
-  if (!peer) {
-    return false;
-  }
   const publicMemory = memoryToText(character.publicMemory) || "память пуста";
-  const peerMemory = memoryToText(peer.publicMemory) || "память пуста";
-  const prompt = `Ты персонаж ${character.name}. Публичная память: ${publicMemory}. Рядом находится персонаж ${peer.name}. Его публичная память: ${peerMemory}. Инициируй безопасное доброжелательное взаимодействие: короткое обращение, приглашение или совместное мирное действие. Одно предложение.`;
+  const prompt = `Ты персонаж ${character.name}. Публичная память: ${publicMemory}. Соверши одно простое действие в одиночку, которое меняет твоё состояние или место: прогулка, тренировка, чтение, отдых, работа. Запрещено взаимодействовать с другими игроками и персонажами. Одно предложение, например: «${character.name} пошёл в библиотеку».`;
 
   const action = await completeLifecyclePrompt(prompt, 80);
-  if (!isSafeAction(action)) {
-    console.log(`[CharacterEcho] Unsafe initiate skipped character=${characterId}`);
+  if (!isSoloStateAction(action)) {
+    console.log(`[CharacterEcho] Social or unsafe initiate skipped character=${characterId}`);
     return false;
   }
 
+  const location = extractLocation(action);
   const event = await prisma.worldEvent.create({
     data: {
       characterId,
       initiatorId: characterId,
-      type: "conversation",
-      participants: [characterId, peer.id],
+      type: location ? "travel" : "action",
+      participants: [characterId],
       description: action,
-      importance: 2,
-      location: extractLocation(action),
+      importance: 1,
+      location,
     },
   });
 
   console.log(
-    `[CharacterEcho] Initiated character=${characterId} peer=${peer.id} event=${event.id} action="${action}"`
+    `[CharacterEcho] Solo state action character=${characterId} event=${event.id} action="${action}"`
   );
 
   return true;
@@ -299,7 +289,7 @@ export async function withActivityStatus<T extends { id: string; name: string }>
   const [events, lastActiveRows] = await Promise.all([
     prisma.worldEvent.findMany({
       where: {
-        type: { in: ["action", "conversation", "travel"] },
+        type: { in: ["action", "discovery", "travel"] },
         OR: [{ characterId: { in: ids } }, { initiatorId: { in: ids } }],
       },
       orderBy: { timestamp: "desc" },

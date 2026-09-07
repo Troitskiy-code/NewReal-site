@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runCharacterLifecycleTick } from "@/lib/characterLifecycle";
 
+// RelaxDev / cron-job.org: GET or POST /api/cron/update-characters
+// Auth: Authorization: Bearer CRON_SECRET, x-cron-secret, or ?secret=
+
 export const maxDuration = 60;
 
 function maskSecret(value: string | undefined | null): string {
@@ -52,9 +55,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    console.log("[Lifecycle] Cron update-characters started");
+    console.log("[Lifecycle] RelaxDev cron-job.org update-characters started");
     const summary = await runCharacterLifecycleTick();
-    console.log("[Lifecycle] Cron summary:", summary);
+    console.log("[Lifecycle] RelaxDev cron summary:", summary);
     return NextResponse.json({ ok: true, ...summary });
   } catch (error) {
     console.error("[Lifecycle] Cron update-characters failed", error);

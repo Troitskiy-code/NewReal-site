@@ -360,7 +360,7 @@ export async function GET(
       }),
       prisma.worldEvent.findFirst({
         where: {
-          type: { in: ["action", "conversation", "travel"] },
+          type: { in: ["action", "discovery", "travel"] },
           OR: [{ characterId: id }, { initiatorId: id }, { participants: { has: id } }],
         },
         orderBy: { timestamp: "desc" },

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renewDueSubscriptions } from "@/lib/subscriptionRenewal";
 
+// RelaxDev / cron-job.org: GET or POST /api/cron/renew-subscriptions
+// Auth: Authorization: Bearer CRON_SECRET, x-cron-secret, or ?secret=
+
 function maskSecret(value: string | undefined | null): string {
   if (value == null || value === "") {
     return "(undefined)";
