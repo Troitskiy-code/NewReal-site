@@ -8,12 +8,24 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import VerseCoinsBalance from "./VerseCoinsBalance";
 import { withLocale } from "@/lib/i18nConfig";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 function getInitials(name, email) {
   const source = (name || email || "U").trim();
   const parts = source.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   return source.slice(0, 2).toUpperCase();
+}
+
+function MobileLanguageRow() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="md:hidden border-t border-[#2A2A2A] px-4 py-2.5">
+      <p className="mb-1.5 text-xs text-[#A0A0A0]">{t("language.label")}</p>
+      <LanguageSwitcher variant="menu" />
+    </div>
+  );
 }
 
 export default function UserAvatarMenu() {
@@ -40,14 +52,43 @@ export default function UserAvatarMenu() {
 
   if (status === "unauthenticated") {
     return (
-      <LocaleLink
-        href="/login"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:bg-[#2A2A2A] md:h-10 md:w-10"
-        title={t("auth.login")}
-      >
-        <FaSignInAlt size={16} className="md:hidden" />
-        <FaSignInAlt size={18} className="hidden md:block" />
-      </LocaleLink>
+      <div ref={menuRef} className="relative flex items-center">
+        <LocaleLink
+          href="/login"
+          className="hidden h-10 w-10 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:bg-[#2A2A2A] md:flex"
+          title={t("auth.login")}
+        >
+          <FaSignInAlt size={18} />
+        </LocaleLink>
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:bg-[#2A2A2A] md:hidden"
+          title={t("auth.login")}
+          aria-label={t("auth.login")}
+          aria-expanded={open}
+        >
+          <FaSignInAlt size={16} />
+        </button>
+        {open && (
+          <div className="absolute right-0 top-full z-50 mt-2 min-w-[200px] overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] py-1 shadow-xl md:hidden">
+            <div className="px-4 py-2.5">
+              <p className="mb-1.5 text-xs text-[#A0A0A0]">{t("language.label")}</p>
+              <LanguageSwitcher variant="menu" />
+            </div>
+            <div className="border-t border-[#2A2A2A] py-1">
+              <LocaleLink
+                href="/login"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#2A2A2A]"
+                onClick={() => setOpen(false)}
+              >
+                <FaSignInAlt size={16} className="shrink-0" />
+                {t("auth.login")}
+              </LocaleLink>
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -134,6 +175,8 @@ export default function UserAvatarMenu() {
               );
             })}
           </ul>
+
+          <MobileLanguageRow />
 
           <div className="border-t border-[#2A2A2A] py-1">
             <button

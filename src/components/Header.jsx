@@ -48,7 +48,9 @@ export default function Header() {
           </LocaleLink>
 
           <div className="flex shrink-0 items-center gap-3">
-            <LanguageSwitcher />
+            <div className="hidden md:block">
+              <LanguageSwitcher />
+            </div>
             <UserAvatarMenu />
           </div>
         </div>

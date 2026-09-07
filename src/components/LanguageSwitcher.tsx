@@ -8,10 +8,17 @@ function persistLocale(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
 }
 
-export default function LanguageSwitcher({ className = "" }: { className?: string }) {
+export default function LanguageSwitcher({
+  className = "",
+  variant = "header",
+}: {
+  className?: string;
+  variant?: "header" | "menu";
+}) {
   const pathname = usePathname();
   const { i18n, t } = useTranslation();
   const current = (LOCALES.includes(i18n.language as Locale) ? i18n.language : "ru") as Locale;
+  const isMenu = variant === "menu";
 
   const switchLocale = (locale: Locale) => {
     if (locale === current) return;
@@ -22,13 +29,18 @@ export default function LanguageSwitcher({ className = "" }: { className?: strin
   };
 
   return (
-    <div className={`inline-flex items-center gap-1 ${className}`} aria-label={t("language.label")}>
+    <div
+      className={`${isMenu ? "flex w-full" : "inline-flex"} items-center gap-1 ${className}`}
+      aria-label={t("language.label")}
+    >
       {LOCALES.map((locale) => (
         <button
           key={locale}
           type="button"
           onClick={() => switchLocale(locale)}
           className={`rounded px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide transition-colors ${
+            isMenu ? "flex-1 px-3 py-1.5" : ""
+          } ${
             current === locale
               ? "bg-white/10 text-white"
               : "text-[#A0A0A0] hover:text-white"
