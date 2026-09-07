@@ -495,6 +495,19 @@ function formatMessageContent(content: string): string {
   return escaped.replace(/\*(.*?)\*/g, '<span style="color: #B39DDB;">$1</span>').replace(/\n/g, "<br />");
 }
 
+function CharacterDescriptionCard({ description }: { description: string }) {
+  return (
+    <section className="w-full rounded-xl border border-wd-secondary/40 bg-wd-secondary/10 px-4 py-3 text-center">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#C8C4FF]">
+        Описание персонажа
+      </p>
+      <p className="whitespace-pre-wrap text-sm italic leading-relaxed text-gray-200">
+        {description}
+      </p>
+    </section>
+  );
+}
+
 function ChatSettingsMenu({
   open,
   onToggle,
@@ -776,7 +789,6 @@ export default function ChatPage() {
   const [memoryEditorOpen, setMemoryEditorOpen] = useState(false);
   const [personaSelectorOpen, setPersonaSelectorOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<ChatPersona | null>(null);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -1457,31 +1469,6 @@ export default function ChatPage() {
           </div>
         </Modal>
 
-        <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
-          <div className="flex flex-col items-center gap-4 text-center">
-            {character?.imageUrl ? (
-              <img
-                src={character.imageUrl}
-                alt={characterDisplayName}
-                className="h-24 w-24 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-transparent">
-                <FaUser className="text-4xl text-white" />
-              </div>
-            )}
-            <h3 className="text-lg font-semibold text-white">{characterDisplayName}</h3>
-            <p className="text-left text-sm leading-relaxed text-secondary-text whitespace-pre-wrap">
-              {characterDescription || "Описание не указано."}
-            </p>
-            {!isAnonymous && (
-              <div className="w-full">
-                <AbsenceActivityReport characterId={characterId} />
-              </div>
-            )}
-          </div>
-        </Modal>
-
         <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Модели чата">
           <div className="-mx-4 -mb-4 md:-mx-6 md:-mb-6">
             {models.length === 0 ? (
@@ -1524,43 +1511,6 @@ export default function ChatPage() {
           />
         </Modal>
 
-        {/* Мобильная аватарка — только иконка, по клику профиль */}
-        <button
-          type="button"
-          onClick={() => setProfileOpen(true)}
-          className="fixed left-2 top-16 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 backdrop-blur-sm md:hidden"
-          title={characterDisplayName}
-          aria-label="Профиль персонажа"
-        >
-          {character?.imageUrl ? (
-            <img
-              src={character.imageUrl}
-              alt={characterDisplayName}
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <FaUser className="text-lg text-white" />
-          )}
-        </button>
-
-        {/* Десктоп: аватар + имя */}
-        <aside className="fixed left-[100px] top-16 z-10 hidden w-[200px] flex-col items-center gap-2 bg-transparent px-3 py-4 backdrop-blur-sm md:top-20 md:flex">
-          {character?.imageUrl ? (
-            <img
-              src={character.imageUrl}
-              alt={characterDisplayName}
-              className="h-12 w-12 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-transparent">
-              <FaUser className="text-xl text-white" />
-            </div>
-          )}
-          <span className="line-clamp-3 text-center text-base font-semibold text-white">
-            {characterDisplayName}
-          </span>
-        </aside>
-
         {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
         {!isAnonymous && (
           <aside className="fixed right-2 top-16 z-20 flex w-10 justify-center bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
@@ -1579,7 +1529,10 @@ export default function ChatPage() {
 
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-12 md:space-y-4 md:px-4 md:pt-6">
+            <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-4 md:space-y-4 md:px-4 md:pt-6">
+            {characterDescription?.trim() ? (
+              <CharacterDescriptionCard description={characterDescription.trim()} />
+            ) : null}
             {!isAnonymous && <AbsenceActivityReport characterId={characterId} />}
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
