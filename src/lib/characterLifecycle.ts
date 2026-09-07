@@ -84,20 +84,22 @@ async function completeLifecyclePrompt(prompt: string, maxTokens: number): Promi
   return firstSentence(typeof raw === "string" ? raw : "");
 }
 
-async function runPool<T, R>(
+async function runPool<T>(
   items: T[],
   concurrency: number,
-  worker: (item: T) => Promise<R>
-): Promise<PromiseSettledResult<R>[]> {
-  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  worker: (item: T) => Promise<{ initiated: boolean }>
+): Promise<PromiseSettledResult<{ initiated: boolean }>[]> {
+  const results: PromiseSettledResult<{ initiated: boolean }>[] = [];
   let index = 0;
 
   async function next(): Promise<void> {
     while (index < items.length) {
       const current = index;
       index += 1;
+      const item = items[current];
+      if (item === undefined) continue;
       try {
-        const value = await worker(items[current]);
+        const value = await worker(item);
         results[current] = { status: "fulfilled", value };
       } catch (reason) {
         results[current] = { status: "rejected", reason };
@@ -192,6 +194,9 @@ export async function maybeInitiateInteraction(characterId: string): Promise<boo
   }
 
   const peer = peers[Math.floor(Math.random() * peers.length)];
+  if (!peer) {
+    return false;
+  }
   const publicMemory = memoryToText(character.publicMemory) || "память пуста";
   const peerMemory = memoryToText(peer.publicMemory) || "память пуста";
   const prompt = `Ты персонаж ${character.name}. Публичная память: ${publicMemory}. Рядом находится персонаж ${peer.name}. Его публичная память: ${peerMemory}. Инициируй безопасное доброжелательное взаимодействие: короткое обращение, приглашение или совместное мирное действие. Одно предложение.`;
@@ -244,13 +249,15 @@ export async function runCharacterLifecycleTick(
     take: limit,
   });
 
+  const characterIds = characters.map((character) => character.id);
+
   console.log(
-    `[Lifecycle] Tick start candidates=${characters.length} since=${since.toISOString()} concurrency=${LIFECYCLE_CONCURRENCY}`
+    `[Lifecycle] Tick start candidates=${characterIds.length} since=${since.toISOString()} concurrency=${LIFECYCLE_CONCURRENCY}`
   );
 
-  const results = await runPool(characters, LIFECYCLE_CONCURRENCY, async (row) => {
-    const events = await loadRecentWorldEvents(row.id);
-    return updateCharacterState(row.id, events);
+  const results = await runPool(characterIds, LIFECYCLE_CONCURRENCY, async (characterId) => {
+    const events = await loadRecentWorldEvents(characterId);
+    return updateCharacterState(characterId, events);
   });
 
   const updated = results.filter((result) => result.status === "fulfilled").length;
@@ -259,7 +266,7 @@ export async function runCharacterLifecycleTick(
     (result) => result.status === "fulfilled" && result.value.initiated
   ).length;
 
-  const summary = { checked: characters.length, updated, errors, initiated };
+  const summary = { checked: characterIds.length, updated, errors, initiated };
   console.log("[Lifecycle] Tick finished", summary);
   return summary;
 }
