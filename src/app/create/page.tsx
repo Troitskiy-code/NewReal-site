@@ -97,7 +97,7 @@ export default function CreateCharacterPage() {
       if (!generatedAvatarUrl && avatarFile) imageUrl = await uploadImage(avatarFile);
       if (loraFile) imageLora = await uploadImage(loraFile);
 
-      await axios.post("/api/characters", {
+      const { data } = await axios.post<{ promptError?: string }>("/api/characters", {
         name: form.name.trim(),
         appearance: form.appearance.trim() || null,
         description: form.description.trim() || null,
@@ -106,6 +106,7 @@ export default function CreateCharacterPage() {
         exampleDialogs: form.exampleDialogs.trim() || null,
         descriptionCard: form.descriptionCard.trim() || null,
         avatarPrompt: form.avatarPrompt.trim() || null,
+        systemPrompt: form.systemPrompt.trim() || null,
         tags: form.tags.trim() || null,
         imageUrl,
         imageLora,
@@ -115,6 +116,9 @@ export default function CreateCharacterPage() {
       });
 
       toast.success("Персонаж создан!", { id: toastId });
+      if (data.promptError) {
+        toast.error(data.promptError);
+      }
       router.push("/gallery");
     } catch (err: unknown) {
       const message =

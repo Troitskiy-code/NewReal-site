@@ -51,6 +51,7 @@ export type CharacterForChat = {
   greeting_en?: string | null;
   scenario_en?: string | null;
   exampleDialogs_en?: string | null;
+  systemPrompt?: string | null;
 };
 
 export function localizeCharacterForChat(
@@ -68,6 +69,19 @@ export function localizeCharacterForChat(
     scenario: character.scenario_en?.trim() || character.scenario,
     exampleDialogs: character.exampleDialogs_en?.trim() || character.exampleDialogs,
   };
+}
+
+export function resolveChatSystemPrompt(
+  character: CharacterForChat,
+  locale: string | null | undefined
+): string {
+  const stored = character.systemPrompt?.trim();
+  if (stored) {
+    console.log(`[Chat] Using stored systemPrompt character=${character.id}`);
+    return stored;
+  }
+  console.log(`[Chat] Fallback buildChatSystemPrompt character=${character.id}`);
+  return buildChatSystemPrompt(localizeCharacterForChat(character, locale), locale);
 }
 
 export type ChatUser = {
@@ -409,7 +423,7 @@ export async function prepareChatMessages({
   ]);
 
   let systemPrompt = appendPersonaToSystemPrompt(
-    buildChatSystemPrompt(localizeCharacterForChat(character, locale), locale),
+    resolveChatSystemPrompt(character, locale),
     selectedPersona,
     locale
   );

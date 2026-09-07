@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getApiLocale } from "@/lib/apiI18n";
 import {
-  localizeCharacterForChat,
+  resolveChatSystemPrompt,
   streamChatCompletion,
   trimMessagesToTokenLimit,
   type ChatCompletionMessage,
 } from "@/lib/chatHelpers";
-import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
 import { consumeOpenAIChatStream, createChatNdjsonResponse } from "@/lib/chatStream";
 import {
   ANONYMOUS_LIMIT_CODE,
@@ -165,6 +164,7 @@ export async function handleAnonymousChatPost(
       greeting_en: true,
       scenario_en: true,
       exampleDialogs_en: true,
+      systemPrompt: true,
     },
   });
 
@@ -207,8 +207,7 @@ export async function handleAnonymousChatPost(
   }
 
   const locale = getApiLocale(req);
-  const localized = localizeCharacterForChat(character, locale);
-  const systemPrompt = buildChatSystemPrompt(localized, locale);
+  const systemPrompt = resolveChatSystemPrompt(character, locale);
   const history = asHistory(body.history);
   const promptMessages: ChatCompletionMessage[] = [
     { role: "system", content: systemPrompt },

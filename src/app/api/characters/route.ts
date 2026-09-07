@@ -6,6 +6,9 @@ import { parseCharacterBody } from "@/lib/characterFields";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
 import { buildInitialPublicMemory } from "@/lib/persistentMemory";
+import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
+
+export const maxDuration = 60;
 
 // ------------------ POST (создание персонажа) ------------------
 export async function POST(req: NextRequest) {
@@ -41,6 +44,7 @@ export async function POST(req: NextRequest) {
       publicMemory,
       privateMemory,
       memoryPermissions,
+      systemPrompt: providedSystemPrompt,
     } = parsed;
 
     if (!name) {
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
     const seededPublicMemory = publicMemory ?? buildInitialPublicMemory(name, description);
     const initialPermissions = memoryPermissions ?? { privateAccessUserIds: [] };
 
-    const character = await prisma.character.create({
+    let character = await prisma.character.create({
       data: {
         name,
         description: description ?? null,
@@ -69,6 +73,7 @@ export async function POST(req: NextRequest) {
         privateMemory: privateMemory ?? undefined,
         memoryPermissions: initialPermissions,
         lastActive: new Date(),
+        systemPrompt: providedSystemPrompt ?? null,
       },
     });
 
@@ -88,17 +93,38 @@ export async function POST(req: NextRequest) {
       });
 
       if (Object.keys(translations).length > 0) {
-        const translated = await prisma.character.update({
+        character = await prisma.character.update({
           where: { id: character.id },
           data: translations,
         });
-        return NextResponse.json(translated, { status: 201 });
       }
     } catch (translateError) {
       console.error("[Translate] Failed to save character translations", translateError);
     }
 
-    return NextResponse.json(character, { status: 201 });
+    let promptError: string | undefined;
+    if (!character.systemPrompt) {
+      const generated = await tryGenerateCharacterPrompt({
+        name,
+        appearance,
+        description,
+        scenario,
+        exampleDialogs,
+      });
+      if (generated) {
+        character = await prisma.character.update({
+          where: { id: character.id },
+          data: { systemPrompt: generated },
+        });
+      } else {
+        promptError = "Не удалось сгенерировать системный промпт. Персонаж создан без него.";
+      }
+    }
+
+    return NextResponse.json(
+      promptError ? { ...character, promptError } : character,
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Character creation error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });

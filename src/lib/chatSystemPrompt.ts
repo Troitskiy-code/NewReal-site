@@ -1,3 +1,4 @@
+// Fallback when Character.systemPrompt is empty. Chat prefers the stored AI-generated prompt.
 export type ChatCharacterProfile = {
   name: string;
   appearance?: string | null;

@@ -7,7 +7,6 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy } from "react-icons/fa";
 import MemoryEditor from "@/components/MemoryEditor";
-import AbsenceActivityReport from "@/components/AbsenceActivityReport";
 import PersonaSelector from "@/components/PersonaSelector";
 import type { ChatPersona } from "@/lib/persona";
 import {
@@ -1530,7 +1529,6 @@ export default function ChatPage() {
             {characterCardDescription ? (
               <CharacterDescriptionCard description={characterCardDescription} />
             ) : null}
-            {!isAnonymous && <AbsenceActivityReport characterId={characterId} />}
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!

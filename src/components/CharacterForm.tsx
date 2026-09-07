@@ -163,6 +163,7 @@ export type CharacterFormValues = {
   descriptionCard: string;
   tags: string;
   avatarPrompt: string;
+  systemPrompt: string;
   isPublic: boolean;
   publicMemory: string;
   privateMemory: string;
@@ -178,6 +179,7 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
   descriptionCard: "",
   tags: "",
   avatarPrompt: "",
+  systemPrompt: "",
   isPublic: false,
   publicMemory: "",
   privateMemory: "",
@@ -238,6 +240,7 @@ export default function CharacterForm({
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
+  const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
 
   const usesSd = Boolean(loraFile || loraPreview);
   const canGenerate = Boolean(tokenStatus && tokenStatus.monthlyRemaining > 0);
@@ -292,6 +295,31 @@ export default function CharacterForm({
       toast.error(message);
     } finally {
       setSavingMemory(false);
+    }
+  };
+
+  const handleRegeneratePrompt = async () => {
+    if (!characterId) {
+      toast.error("Сначала сохраните персонажа, чтобы перегенерировать промпт");
+      return;
+    }
+
+    setRegeneratingPrompt(true);
+    const toastId = toast.loading("Генерация промпта...");
+    try {
+      const { data } = await axios.post<{ systemPrompt: string }>(
+        `/api/characters/${characterId}/regenerate-prompt`
+      );
+      onChange("systemPrompt", data.systemPrompt || "");
+      toast.success("Промпт обновлён", { id: toastId });
+    } catch (err: unknown) {
+      const message =
+        axios.isAxiosError(err) && typeof err.response?.data?.error === "string"
+          ? err.response.data.error
+          : "Не удалось сгенерировать промпт";
+      toast.error(message, { id: toastId });
+    } finally {
+      setRegeneratingPrompt(false);
     }
   };
 
@@ -506,6 +534,40 @@ export default function CharacterForm({
           </div>
         )}
       </section>
+
+      <FormBlock
+        title="Сгенерированный промпт"
+        icon={FaMagic}
+        hints={[
+          hintWithCounter(
+            "Используется как системный промпт в чате. Можно править вручную.",
+            values.systemPrompt,
+            CHARACTER_LIMITS.systemPrompt
+          ),
+        ]}
+      >
+        <LimitedTextarea
+          id="systemPrompt"
+          value={values.systemPrompt}
+          onChange={(v) => onChange("systemPrompt", v)}
+          maxLength={CHARACTER_LIMITS.systemPrompt}
+          rows={10}
+          placeholder="Промпт появится после создания персонажа или нажмите «Перегенерировать промпт»..."
+        />
+        <button
+          type="button"
+          onClick={handleRegeneratePrompt}
+          disabled={regeneratingPrompt}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
+        >
+          {regeneratingPrompt ? (
+            <FaSpinner className="animate-spin text-sm" />
+          ) : (
+            <FaMagic className="text-sm" />
+          )}
+          {regeneratingPrompt ? "Генерация..." : "Перегенерировать промпт"}
+        </button>
+      </FormBlock>
 
       <FormBlock
         title="Описание карточки персонажа"

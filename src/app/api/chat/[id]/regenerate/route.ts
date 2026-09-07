@@ -93,6 +93,7 @@ export async function POST(
         greeting_en: true,
         scenario_en: true,
         exampleDialogs_en: true,
+        systemPrompt: true,
       },
     });
 
