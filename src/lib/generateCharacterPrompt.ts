@@ -2,7 +2,7 @@ import axios from "axios";
 import { memoryToText } from "@/lib/persistentMemory";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const DEFAULT_PROMPT_MODEL = "google/gemma-4-31b-it";
+const DEFAULT_PROMPT_MODEL = "openai/gpt-4o-mini";
 const FALLBACK_PROMPT_MODELS = ["google/gemma-4-31b-it", "deepseek/deepseek-v4-flash"];
 
 export type CharacterPromptSource = {
@@ -21,7 +21,7 @@ function memoryOrFallback(value: unknown, emptyLabel: string): string {
 
 function promptModels(): string[] {
   const preferred = process.env.CHARACTER_PROMPT_MODEL?.trim() || DEFAULT_PROMPT_MODEL;
-  return [preferred, ...FALLBACK_PROMPT_MODELS.filter((model) => model !== preferred)];
+  return [...new Set([DEFAULT_PROMPT_MODEL, preferred, ...FALLBACK_PROMPT_MODELS])];
 }
 
 function formatKodikError(error: unknown): string {
