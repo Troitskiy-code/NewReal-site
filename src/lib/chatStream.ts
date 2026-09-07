@@ -28,6 +28,8 @@ export type ChatStreamEndEvent = {
   chargedVC?: number;
   limitWarning?: string | null;
   model?: { id: string; displayName: string };
+  anonymous?: boolean;
+  remainingMessages?: number;
 };
 
 export type ChatStreamErrorEvent = {
@@ -43,9 +45,9 @@ export type ChatStreamEvent =
 
 export class ChatStreamRequestError extends Error {
   status: number;
-  payload: { error?: string };
+  payload: { error?: string; code?: string };
 
-  constructor(message: string, status = 500, payload: { error?: string } = {}) {
+  constructor(message: string, status = 500, payload: { error?: string; code?: string } = {}) {
     super(message);
     this.name = "ChatStreamRequestError";
     this.status = status;
@@ -268,6 +270,7 @@ export async function fetchChatNdjsonStream(url: string, body: unknown): Promise
 
   const response = await fetch(url, {
     method: "POST",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(locale ? { "x-locale": locale } : {}),
@@ -279,7 +282,7 @@ export async function fetchChatNdjsonStream(url: string, body: unknown): Promise
   const isStream = contentType.includes("ndjson") || contentType.includes("event-stream");
 
   if (!isStream) {
-    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+    const payload = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
     throw new ChatStreamRequestError(
       payload.error || "Не удалось отправить сообщение",
       response.status,

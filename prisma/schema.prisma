@@ -361,3 +361,11 @@ model PasswordResetToken {
 
   @@index([userId])
 }
+
+model AnonymousSession {
+  id            String   @id @default(cuid())
+  sessionId     String   @unique
+  messagesCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

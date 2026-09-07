@@ -7,6 +7,12 @@ import {
   LOCALE_HEADER,
   withLocale,
 } from "@/lib/i18nConfig";
+import {
+  ANONYMOUS_SESSION_COOKIE,
+  createAnonymousSessionId,
+  isAuthCookiePresent,
+  isValidAnonymousSessionId,
+} from "@/lib/anonymousCookie";
 
 const PUBLIC_FILE = /\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|xml|txt|woff2?)$/i;
 
@@ -17,6 +23,26 @@ function resolveLocale(request) {
   const accept = request.headers.get("accept-language")?.toLowerCase() ?? "";
   if (accept.startsWith("en")) return "en";
   return DEFAULT_LOCALE;
+}
+
+function attachAnonymousCookie(request, response) {
+  if (isAuthCookiePresent((name) => request.cookies.get(name))) {
+    return response;
+  }
+
+  const existing = request.cookies.get(ANONYMOUS_SESSION_COOKIE)?.value;
+  if (isValidAnonymousSessionId(existing)) {
+    return response;
+  }
+
+  response.cookies.set(ANONYMOUS_SESSION_COOKIE, createAnonymousSessionId(), {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  console.log("[Anonymous] Issued session cookie");
+  return response;
 }
 
 export default async function proxy(request) {
@@ -50,7 +76,7 @@ export default async function proxy(request) {
       maxAge: 60 * 60 * 24 * 365,
       sameSite: "lax",
     });
-    return response;
+    return attachAnonymousCookie(request, response);
   }
 
   const locale = resolveLocale(request);
@@ -62,7 +88,7 @@ export default async function proxy(request) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
-  return response;
+  return attachAnonymousCookie(request, response);
 }
 
 export const config = {

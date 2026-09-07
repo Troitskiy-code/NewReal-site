@@ -26,6 +26,7 @@ import {
   normalizeUserCounters,
 } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
+import { getAnonymousChatPayload, handleAnonymousChatPost } from "@/lib/anonymousChat";
 
 export const maxDuration = 120;
 
@@ -55,17 +56,18 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json({ error: "ID персонажа не указан" }, { status: 400 });
     }
 
     if (!KODIKROUTER_KEY) {
       return NextResponse.json({ error: "KODIKROUTER_API_KEY не настроен" }, { status: 500 });
     }
 
-    const { id } = await params;
-    if (!id) {
-      return NextResponse.json({ error: "ID персонажа не указан" }, { status: 400 });
+    if (!session?.user?.id) {
+      const body = await req.json().catch(() => ({}));
+      return handleAnonymousChatPost(req, id, body);
     }
 
     const character = await prisma.character.findUnique({
@@ -319,13 +321,13 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
-
     const { id } = await params;
     if (!id) {
       return NextResponse.json({ error: "ID персонажа не указан" }, { status: 400 });
+    }
+
+    if (!session?.user?.id) {
+      return getAnonymousChatPayload(req, id);
     }
 
     const character = await prisma.character.findUnique({

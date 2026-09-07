@@ -23,7 +23,9 @@ import {
 } from "@/lib/chatStream";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { useTranslation } from "react-i18next";
+import LocaleLink from "@/components/LocaleLink";
 import { pickLocalizedText } from "@/lib/characterFields";
+import { ANONYMOUS_LIMIT_CODE } from "@/lib/anonymousCookie";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
@@ -74,6 +76,8 @@ type ChatCharacter = {
 type ChatHistoryResponse = {
   messages: Message[];
   character: ChatCharacter;
+  anonymous?: boolean;
+  remainingMessages?: number;
 };
 
 type ModelsResponse = {
@@ -105,7 +109,30 @@ function asChatMessage(message: ChatStreamMessage): Message {
 }
 
 function isPersistedMessage(message: Message): boolean {
-  return message.id !== "greeting" && !message.id.startsWith("temp-");
+  return (
+    message.id !== "greeting" &&
+    !message.id.startsWith("temp-") &&
+    !message.id.startsWith("anon-")
+  );
+}
+
+function isAnonymousLimitError(error: unknown): boolean {
+  if (error instanceof ChatStreamRequestError) {
+    return error.payload.code === ANONYMOUS_LIMIT_CODE;
+  }
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.code === ANONYMOUS_LIMIT_CODE;
+  }
+  return false;
+}
+
+function toAnonymousHistory(messages: Message[]): Array<{ role: "user" | "assistant"; content: string }> {
+  const items: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const message of messages) {
+    if (!message.content.trim() || message.id.startsWith("temp-")) continue;
+    items.push({ role: message.role, content: message.content });
+  }
+  return items.slice(-8);
 }
 
 type MessageMenuProps = {
@@ -578,16 +605,17 @@ type ModalProps = {
   onClose: () => void;
   title: string;
   wide?: boolean;
+  dismissible?: boolean;
   children: React.ReactNode;
 };
 
-function Modal({ open, onClose, title, wide = false, children }: ModalProps) {
+function Modal({ open, onClose, title, wide = false, dismissible = true, children }: ModalProps) {
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center bg-black/80 p-4 pt-16 backdrop-blur-sm md:items-center md:pt-4"
-      onClick={onClose}
+      onClick={dismissible ? onClose : undefined}
       role="presentation"
     >
       <div
@@ -599,16 +627,18 @@ function Modal({ open, onClose, title, wide = false, children }: ModalProps) {
         aria-modal="true"
         aria-labelledby="chat-modal-title"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-2xl leading-none text-white transition-colors hover:bg-black/70 active:scale-95"
-          aria-label="Закрыть"
-        >
-          ✕
-        </button>
+        {dismissible && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-3 top-3 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-2xl leading-none text-white transition-colors hover:bg-black/70 active:scale-95"
+            aria-label="Закрыть"
+          >
+            ✕
+          </button>
+        )}
 
-        <div className="shrink-0 border-b border-[#2A2A2A] p-4 pr-16 md:p-6 md:pr-20">
+        <div className={`shrink-0 border-b border-[#2A2A2A] p-4 md:p-6 ${dismissible ? "pr-16 md:pr-20" : ""}`}>
           <h2 id="chat-modal-title" className="text-base font-black text-white md:text-lg">
             {title}
           </h2>
@@ -752,8 +782,13 @@ export default function ChatPage() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [anonymousRemaining, setAnonymousRemaining] = useState<number | null>(null);
+  const [showAnonymousLimitModal, setShowAnonymousLimitModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const anonymousWelcomeShown = useRef(false);
+
+  const isAnonymous = status === "unauthenticated";
 
   const selectedModel = useMemo(
     () => models.find((model) => model.id === selectedModelId) ?? models[0] ?? null,
@@ -783,13 +818,18 @@ export default function ChatPage() {
   const requestCostVC = costPreview?.ok ? costPreview.costVC : 0;
   const insufficientBalance =
     Boolean(costPreview?.ok && requestCostVC > 0 && balance && balance.verseCoins < requestCostVC);
-  const canSend =
-    !sending &&
-    !actionLoading &&
-    !clearingChat &&
-    Boolean(input.trim()) &&
-    !insufficientBalance &&
-    (balance?.dailyRequestsRemaining ?? 1) > 0;
+  const canSend = isAnonymous
+    ? !sending &&
+      !actionLoading &&
+      Boolean(input.trim()) &&
+      (anonymousRemaining ?? 0) > 0 &&
+      !showAnonymousLimitModal
+    : !sending &&
+      !actionLoading &&
+      !clearingChat &&
+      Boolean(input.trim()) &&
+      !insufficientBalance &&
+      (balance?.dailyRequestsRemaining ?? 1) > 0;
 
   const userDisplayName = selectedPersona?.name ?? session?.user?.name ?? session?.user?.email ?? "Вы";
   const userAvatarUrl = selectedPersona?.avatarUrl ?? session?.user?.image ?? null;
@@ -804,22 +844,44 @@ export default function ChatPage() {
   const characterAvatarUrl = character?.imageUrl ?? null;
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      setLoading(false);
+    if (!characterId || status === "loading") {
       return;
     }
 
-    if (!characterId || status !== "authenticated") {
-      return;
-    }
-
+    const guest = status === "unauthenticated";
     setMessages([]);
     setCharacter(null);
     setSelectedPersona(null);
+    setAnonymousRemaining(null);
+    setShowAnonymousLimitModal(false);
     setLoading(true);
+
+    const applyChatPayload = (data: ChatHistoryResponse) => {
+      setCharacter(data.character);
+      const greeting = pickLocalizedText(data.character.greeting, data.character.greeting_en, locale);
+      if (data.messages.length === 0 && greeting) {
+        setMessages([createGreetingMessage(greeting)]);
+      } else {
+        setMessages(data.messages);
+      }
+    };
 
     const fetchData = async () => {
       try {
+        if (guest) {
+          const chatRes = await axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`);
+          applyChatPayload(chatRes.data);
+          const remaining = chatRes.data.remainingMessages ?? 0;
+          setAnonymousRemaining(remaining);
+          if (remaining <= 0) {
+            setShowAnonymousLimitModal(true);
+          } else if (!anonymousWelcomeShown.current) {
+            anonymousWelcomeShown.current = true;
+            toast.success(`У вас осталось ${remaining} бесплатных сообщений`);
+          }
+          return;
+        }
+
         const [chatRes, modelsRes, balanceRes, personaRes] = await Promise.all([
           axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`),
           axios.get<ModelsResponse>("/api/models"),
@@ -827,19 +889,7 @@ export default function ChatPage() {
           axios.get<{ persona: ChatPersona | null }>(`/api/chat/${characterId}/persona`),
         ]);
 
-        const { messages: loadedMessages, character: loadedCharacter } = chatRes.data;
-        setCharacter(loadedCharacter);
-        const greeting = pickLocalizedText(
-          loadedCharacter.greeting,
-          loadedCharacter.greeting_en,
-          locale
-        );
-
-        if (loadedMessages.length === 0 && greeting) {
-          setMessages([createGreetingMessage(greeting)]);
-        } else {
-          setMessages(loadedMessages);
-        }
+        applyChatPayload(chatRes.data);
         setModels(modelsRes.data.models);
         setBaseModelId(modelsRes.data.baseModelId);
         setBalance(balanceRes.data);
@@ -939,6 +989,12 @@ export default function ChatPage() {
   };
 
   const handleApiError = (error: unknown, fallback: string) => {
+    if (isAnonymousLimitError(error)) {
+      setAnonymousRemaining(0);
+      setShowAnonymousLimitModal(true);
+      return;
+    }
+
     if (error instanceof ChatStreamRequestError) {
       const statusCode = error.status;
       const message = error.payload.error || error.message;
@@ -954,6 +1010,11 @@ export default function ChatPage() {
     }
 
     if (axios.isAxiosError(error)) {
+      if (error.response?.data?.code === ANONYMOUS_LIMIT_CODE) {
+        setAnonymousRemaining(0);
+        setShowAnonymousLimitModal(true);
+        return;
+      }
       const statusCode = error.response?.status;
       const message = error.response?.data?.error;
 
@@ -1213,17 +1274,25 @@ export default function ChatPage() {
 
     reachGoal(METRIKA_GOALS.sendMessage);
 
-    if (insufficientBalance) {
-      toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
-      return;
-    }
+    if (isAnonymous) {
+      if ((anonymousRemaining ?? 0) <= 0) {
+        setShowAnonymousLimitModal(true);
+        return;
+      }
+    } else {
+      if (insufficientBalance) {
+        toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+        return;
+      }
 
-    if (balance && balance.dailyRequestsRemaining <= 0) {
-      toast.error("Достигнут суточный лимит запросов");
-      return;
+      if (balance && balance.dailyRequestsRemaining <= 0) {
+        toast.error("Достигнут суточный лимит запросов");
+        return;
+      }
     }
 
     const userMessage = input.trim();
+    const history = isAnonymous ? toAnonymousHistory(messages) : undefined;
     setInput("");
     setSending(true);
 
@@ -1247,7 +1316,7 @@ export default function ChatPage() {
     try {
       const endEvent = await fetchAndReadChatStream(
         `/api/chat/${characterId}`,
-        { message: userMessage },
+        isAnonymous ? { message: userMessage, history } : { message: userMessage },
         {
           onMeta: (event) => {
             if (event.userMessage) {
@@ -1276,6 +1345,12 @@ export default function ChatPage() {
           },
           onEnd: (event) => {
             updateBalanceFromResponse(event);
+            if (typeof event.remainingMessages === "number") {
+              setAnonymousRemaining(event.remainingMessages);
+              if (event.anonymous && event.remainingMessages <= 0) {
+                setShowAnonymousLimitModal(true);
+              }
+            }
             if (event.userMessage) {
               persistedUser = asChatMessage(event.userMessage);
             }
@@ -1332,26 +1407,6 @@ export default function ChatPage() {
     );
   }
 
-  if (status === "unauthenticated") {
-    return (
-      <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-bg-page text-primary-text md:h-[calc(100dvh-5rem)]">
-        <Toaster position="top-right" />
-        <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4 overflow-y-auto">
-          <h1 className="text-xl font-black uppercase tracking-tight">Чат с персонажем</h1>
-          <p className="text-xs text-secondary-text max-w-sm">
-            Войдите в аккаунт, чтобы общаться с персонажами.
-          </p>
-          <a
-            href="/login"
-            className="bg-primary text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-primary-hover transition-all"
-          >
-            Войти
-          </a>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div
       className={`relative flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
@@ -1368,6 +1423,33 @@ export default function ChatPage() {
       )}
       <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden">
         <Toaster position="top-right" />
+
+        <Modal
+          open={showAnonymousLimitModal}
+          onClose={() => undefined}
+          title="Лимит бесплатных сообщений"
+          dismissible={false}
+        >
+          <div className="flex flex-col gap-4 text-center">
+            <p className="text-sm leading-relaxed text-secondary-text">
+              Вы использовали все 5 бесплатных сообщений. Зарегистрируйтесь, чтобы продолжить общение с персонажами!
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <LocaleLink
+                href="/register"
+                className="flex-1 rounded-full bg-primary px-6 py-2.5 text-center text-sm font-bold text-white transition-all hover:bg-primary-hover"
+              >
+                Зарегистрироваться
+              </LocaleLink>
+              <LocaleLink
+                href="/login"
+                className="flex-1 rounded-full border border-[#2A2A2A] px-6 py-2.5 text-center text-sm font-bold text-white transition-all hover:bg-[#2A2A2A]"
+              >
+                Войти
+              </LocaleLink>
+            </div>
+          </div>
+        </Modal>
 
         <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Профиль персонажа">
           <div className="flex flex-col items-center gap-4 text-center">
@@ -1386,9 +1468,11 @@ export default function ChatPage() {
             <p className="text-left text-sm leading-relaxed text-secondary-text whitespace-pre-wrap">
               {characterDescription || "Описание не указано."}
             </p>
-            <div className="w-full">
-              <AbsenceActivityReport characterId={characterId} />
-            </div>
+            {!isAnonymous && (
+              <div className="w-full">
+                <AbsenceActivityReport characterId={characterId} />
+              </div>
+            )}
           </div>
         </Modal>
 
@@ -1472,23 +1556,25 @@ export default function ChatPage() {
         </aside>
 
         {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
-        <aside className="fixed right-2 top-16 z-20 flex w-10 justify-center bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
-          <ChatSettingsMenu
-            open={settingsMenuOpen}
-            onToggle={() => setSettingsMenuOpen((current) => !current)}
-            onClose={() => setSettingsMenuOpen(false)}
-            onOpenModels={() => setSettingsOpen(true)}
-            onOpenMemory={() => setMemoryEditorOpen(true)}
-            onOpenPersona={() => setPersonaSelectorOpen(true)}
-            onClearChat={handleClearChat}
-            disabled={sending || actionLoading || clearingChat}
-          />
-        </aside>
+        {!isAnonymous && (
+          <aside className="fixed right-2 top-16 z-20 flex w-10 justify-center bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
+            <ChatSettingsMenu
+              open={settingsMenuOpen}
+              onToggle={() => setSettingsMenuOpen((current) => !current)}
+              onClose={() => setSettingsMenuOpen(false)}
+              onOpenModels={() => setSettingsOpen(true)}
+              onOpenMemory={() => setMemoryEditorOpen(true)}
+              onOpenPersona={() => setPersonaSelectorOpen(true)}
+              onClearChat={handleClearChat}
+              disabled={sending || actionLoading || clearingChat}
+            />
+          </aside>
+        )}
 
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-12 md:space-y-4 md:px-4 md:pt-6">
-            <AbsenceActivityReport characterId={characterId} />
+            {!isAnonymous && <AbsenceActivityReport characterId={characterId} />}
             {messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
                 Начните диалог с персонажем. Напишите что-нибудь!
@@ -1520,6 +1606,11 @@ export default function ChatPage() {
           </div>
 
           <div className="shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-3 py-3 md:p-4">
+            {isAnonymous && anonymousRemaining !== null && (
+              <p className="mx-auto mb-2 w-full max-w-3xl text-center text-xs text-secondary-text">
+                Осталось бесплатных сообщений: {anonymousRemaining}
+              </p>
+            )}
             <form
               onSubmit={sendMessage}
               className="chat-form mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row sm:items-end"
