@@ -277,9 +277,20 @@ export async function runCharacterLifecycleTick(
   return summary;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null;
+  return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
 export async function withActivityStatus<T extends { id: string; name: string }>(
   characters: T[]
-): Promise<Array<Omit<T, "lastActive" | "activityStatus"> & { activityStatus: string | null; lastActive: string | null }>> {
+): Promise<
+  Array<Omit<T, "lastActive" | "activityStatus"> & { activityStatus: string | null; lastActive: string | null }>
+> {
   if (characters.length === 0) {
     return [];
   }
@@ -309,43 +320,38 @@ export async function withActivityStatus<T extends { id: string; name: string }>
 
   const latestByCharacter = new Map<
     string,
-    { description: unknown; location: unknown; timestamp: unknown }
+    { description: string | null; location: string | null; timestamp: string | null }
   >();
-  for (const event of events as Array<{
-    characterId?: unknown;
-    initiatorId?: unknown;
-    description?: unknown;
-    location?: unknown;
-    timestamp?: unknown;
-  }>) {
-    const ownerIds = [event.characterId, event.initiatorId].filter(
-      (value): value is string => typeof value === "string" && value.length > 0
+
+  for (const item of events as unknown[]) {
+    const event = asRecord(item);
+    if (!event) continue;
+    const activity = {
+      description: asString(event.description),
+      location: asString(event.location),
+      timestamp: toIsoDate(event.timestamp),
+    };
+    const ownerIds = [asString(event.characterId), asString(event.initiatorId)].filter(
+      (value): value is string => Boolean(value)
     );
     for (const ownerId of ownerIds) {
       if (!latestByCharacter.has(ownerId)) {
-        latestByCharacter.set(ownerId, event);
+        latestByCharacter.set(ownerId, activity);
       }
     }
   }
 
   const lastActiveById = new Map<string, string | null>();
-  for (const row of lastActiveRows as Array<{ id?: unknown; lastActive?: unknown }>) {
-    if (typeof row.id !== "string") continue;
-    lastActiveById.set(row.id, toIsoDate(row.lastActive));
+  for (const item of lastActiveRows as unknown[]) {
+    const row = asRecord(item);
+    const id = asString(row?.id);
+    if (!id) continue;
+    lastActiveById.set(id, toIsoDate(row.lastActive));
   }
 
   return characters.map((character) => {
-    const event = latestByCharacter.get(character.id);
-    const activityStatus: string | null = formatCharacterStatus(
-      character.name,
-      event
-        ? {
-            description: typeof event.description === "string" ? event.description : null,
-            location: typeof event.location === "string" ? event.location : null,
-            timestamp: toIsoDate(event.timestamp),
-          }
-        : null
-    );
+    const event = latestByCharacter.get(character.id) ?? null;
+    const activityStatus: string | null = formatCharacterStatus(character.name, event);
     const lastActive: string | null = lastActiveById.get(character.id) ?? null;
     return {
       ...character,
