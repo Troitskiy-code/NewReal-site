@@ -34,6 +34,15 @@ export function createPageMetadata(title: string, description: string): Metadata
       description,
       images: [{ url: OG_IMAGE }],
     },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/icon-192x192.png", type: "image/png", sizes: "192x192" },
+        { url: "/icon-512x512.png", type: "image/png", sizes: "512x512" },
+      ],
+      apple: "/apple-touch-icon.png",
+    },
+    manifest: "/manifest.json",
   };
 }
 
