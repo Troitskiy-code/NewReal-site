@@ -26,37 +26,34 @@ export async function handleUserLogin(userId: string): Promise<void> {
   if (!user) return;
 
   const now = new Date();
-  const lastSeen = asDate(user.lastSeen) ?? now;
-  const hoursAway = (now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60);
+  const lastSeen = asDate(user.lastSeen);
 
-  if (hoursAway < INACTIVITY_THRESHOLD_HOURS) {
-    // Keep lastSeen fresh while the user is active, but avoid a write on every JWT tick.
-    const touchAfterMs = 5 * 60 * 1000;
-    if (now.getTime() - lastSeen.getTime() >= touchAfterMs) {
-      await prisma.user.updateMany({
-        where: { id: userId, lastSeen: { lte: lastSeen } },
-        data: { lastSeen: now },
-      });
-    }
-    return;
+  const activityAgg = await prisma.character.aggregate({
+    where: { userId },
+    _max: { lastActive: true },
+  });
+  const maxLastActive = asDate(activityAgg._max.lastActive);
+  const activityAt = maxLastActive ?? lastSeen ?? now;
+  const hoursAway = (now.getTime() - activityAt.getTime()) / (1000 * 60 * 60);
+
+  console.log(
+    `[LoginEvents] maxLastActive: ${maxLastActive?.toISOString() ?? "null"}, hoursAway: ${hoursAway.toFixed(2)} user=${userId} lastSeen=${lastSeen?.toISOString() ?? "null"} threshold=${INACTIVITY_THRESHOLD_HOURS}`
+  );
+
+  const shouldGenerate = hoursAway > INACTIVITY_THRESHOLD_HOURS;
+  const lastSeenAgeMs = lastSeen ? now.getTime() - lastSeen.getTime() : Number.POSITIVE_INFINITY;
+  if (shouldGenerate || lastSeenAgeMs >= 5 * 60 * 1000) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { lastSeen: now },
+    });
   }
 
-  const claimed = await prisma.user.updateMany({
-    where: {
-      id: userId,
-      lastSeen: { lte: new Date(now.getTime() - INACTIVITY_THRESHOLD_HOURS * 60 * 60 * 1000) },
-    },
-    data: { lastSeen: now },
-  });
-
-  if (claimed.count === 0) {
+  if (!shouldGenerate) {
     return;
   }
 
   const awayHours = Math.min(hoursAway, 24);
-  console.log(
-    `[LoginEvents] User returned user=${userId} hoursAway=${hoursAway.toFixed(2)} threshold=${INACTIVITY_THRESHOLD_HOURS}`
-  );
 
   const lastMessage = await prisma.message.findFirst({
     where: { userId, role: "user" },
