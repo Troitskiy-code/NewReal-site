@@ -236,7 +236,6 @@ export default function CharacterForm({
   onLoraRemove,
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [savingMemory, setSavingMemory] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
@@ -272,31 +271,6 @@ export default function CharacterForm({
       cancelled = true;
     };
   }, []);
-
-  const handleSaveMemory = async () => {
-    if (!characterId) {
-      toast.success("Память сохранится вместе с персонажем");
-      return;
-    }
-
-    setSavingMemory(true);
-    try {
-      await axios.put(`/api/characters/${characterId}/memory`, {
-        publicMemory: values.publicMemory,
-        privateMemory: values.privateMemory,
-      });
-      console.log(`[Memory] Saved from form character=${characterId}`);
-      toast.success("Память сохранена");
-    } catch (err: unknown) {
-      const message =
-        axios.isAxiosError(err) && typeof err.response?.data?.error === "string"
-          ? err.response.data.error
-          : "Не удалось сохранить память";
-      toast.error(message);
-    } finally {
-      setSavingMemory(false);
-    }
-  };
 
   const handleRegeneratePrompt = async () => {
     if (!characterId) {
@@ -545,40 +519,6 @@ export default function CharacterForm({
       </section>
 
       <FormBlock
-        title="Сгенерированный промпт"
-        icon={FaMagic}
-        hints={[
-          hintWithCounter(
-            "Используется как системный промпт в чате. Можно править вручную.",
-            values.systemPrompt,
-            CHARACTER_LIMITS.systemPrompt
-          ),
-        ]}
-      >
-        <LimitedTextarea
-          id="systemPrompt"
-          value={values.systemPrompt}
-          onChange={(v) => onChange("systemPrompt", v)}
-          maxLength={CHARACTER_LIMITS.systemPrompt}
-          rows={10}
-          placeholder="Промпт появится после создания персонажа или нажмите «Перегенерировать промпт»..."
-        />
-        <button
-          type="button"
-          onClick={handleRegeneratePrompt}
-          disabled={regeneratingPrompt}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
-        >
-          {regeneratingPrompt ? (
-            <FaSpinner className="animate-spin text-sm" />
-          ) : (
-            <FaMagic className="text-sm" />
-          )}
-          {regeneratingPrompt ? "Генерация..." : "Перегенерировать промпт"}
-        </button>
-      </FormBlock>
-
-      <FormBlock
         title="Описание карточки персонажа"
         icon={FaIdCard}
         hints={[
@@ -741,17 +681,43 @@ export default function CharacterForm({
                 )}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleSaveMemory}
-              disabled={savingMemory}
-              className="w-full rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
-            >
-              {savingMemory ? "Сохранение..." : "Сохранить изменения"}
-            </button>
           </div>
         </FormBlock>
       </section>
+
+      <FormBlock
+        title="Сгенерированный промпт"
+        icon={FaMagic}
+        hints={[
+          hintWithCounter(
+            "Используется как системный промпт в чате. Можно править вручную. Сохраняется вместе с персонажем.",
+            values.systemPrompt,
+            CHARACTER_LIMITS.systemPrompt
+          ),
+        ]}
+      >
+        <LimitedTextarea
+          id="systemPrompt"
+          value={values.systemPrompt}
+          onChange={(v) => onChange("systemPrompt", v)}
+          maxLength={CHARACTER_LIMITS.systemPrompt}
+          rows={10}
+          placeholder="Промпт появится после создания персонажа или нажмите «Перегенерировать промпт»..."
+        />
+        <button
+          type="button"
+          onClick={handleRegeneratePrompt}
+          disabled={regeneratingPrompt}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
+        >
+          {regeneratingPrompt ? (
+            <FaSpinner className="animate-spin text-sm" />
+          ) : (
+            <FaMagic className="text-sm" />
+          )}
+          {regeneratingPrompt ? "Генерация..." : "Перегенерировать промпт"}
+        </button>
+      </FormBlock>
 
       <section>
         <VisibilityToggle isPublic={values.isPublic} onChange={(v) => onChange("isPublic", v)} />
