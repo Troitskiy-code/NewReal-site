@@ -84,10 +84,10 @@ async function completeLifecyclePrompt(prompt: string, maxTokens: number): Promi
   return firstSentence(typeof raw === "string" ? raw : "");
 }
 
-async function runPool<T>(
-  items: T[],
+async function runPool(
+  items: string[],
   concurrency: number,
-  worker: (item: T) => Promise<{ initiated: boolean }>
+  worker: (item: string) => Promise<{ initiated: boolean }>
 ): Promise<PromiseSettledResult<{ initiated: boolean }>[]> {
   const results: PromiseSettledResult<{ initiated: boolean }>[] = [];
   let index = 0;
@@ -97,7 +97,7 @@ async function runPool<T>(
       const current = index;
       index += 1;
       const item = items[current];
-      if (item === undefined) continue;
+      if (!item) continue;
       try {
         const value = await worker(item);
         results[current] = { status: "fulfilled", value };
@@ -242,23 +242,29 @@ export async function runCharacterLifecycleTick(
   const limit = options.limit ?? LIFECYCLE_BATCH_LIMIT;
   const since = new Date(Date.now() - LIFECYCLE_ACTIVE_WINDOW_MS);
 
-  const characters = await prisma.character.findMany({
+  const rows = (await prisma.character.findMany({
     where: { lastActive: { gt: since } },
     select: { id: true },
     orderBy: { lastActive: "desc" },
     take: limit,
-  });
+  })) as Array<{ id: string }>;
 
-  const characterIds = characters.map((character) => character.id);
+  const characterIds: string[] = rows
+    .map((row) => row.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
 
   console.log(
     `[Lifecycle] Tick start candidates=${characterIds.length} since=${since.toISOString()} concurrency=${LIFECYCLE_CONCURRENCY}`
   );
 
-  const results = await runPool(characterIds, LIFECYCLE_CONCURRENCY, async (characterId) => {
-    const events = await loadRecentWorldEvents(characterId);
-    return updateCharacterState(characterId, events);
-  });
+  const results = await runPool(
+    characterIds,
+    LIFECYCLE_CONCURRENCY,
+    async (characterId: string) => {
+      const events = await loadRecentWorldEvents(characterId);
+      return updateCharacterState(characterId, events);
+    }
+  );
 
   const updated = results.filter((result) => result.status === "fulfilled").length;
   const errors = results.filter((result) => result.status === "rejected").length;
