@@ -112,7 +112,6 @@ export default function PricingPage() {
           period: isYearly ? "year" : "month",
           applyMode: mode,
           recurringConsent: true,
-          currency,
         }),
       });
       const data = await res.json();

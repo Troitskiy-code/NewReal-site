@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
-import { convertPaymentAmount, PREFERRED_CURRENCY_KEY, resolveCurrency } from "@/lib/currency";
 import { buildReceipt, generateRobokassaPaymentUrl } from "@/lib/robokassa";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 
@@ -50,16 +49,19 @@ export async function POST(req: NextRequest) {
     }
 
     const sumRUB = period === "year" ? plan.yearlyPrice : plan.monthlyPrice;
-    const currency = resolveCurrency(body?.currency, req.cookies.get(PREFERRED_CURRENCY_KEY)?.value);
-    const sum = convertPaymentAmount(sumRUB, currency);
     const periodLabel = period === "year" ? "год" : "месяц";
     const desc = `Подписка ${plan.name} на 1 ${periodLabel}`;
 
-    const receipt = buildReceipt([{ name: `Подписка ${plan.name} на 1 ${periodLabel}`, price: sum, quantity: 1 }]);
-    console.log("[Subscription] Creating recurring payment:", { period, amount: sum, currency, amountRUB: sumRUB });
+    const receipt = buildReceipt([{ name: `Подписка ${plan.name} на 1 ${periodLabel}`, price: sumRUB, quantity: 1 }]);
+    console.log("[Subscription] Creating recurring payment:", {
+      period,
+      amount: sumRUB,
+      currency: "RUB",
+      amountRUB: sumRUB,
+    });
     const url = generateRobokassaPaymentUrl(
       session.user.id,
-      sum,
+      sumRUB,
       desc,
       {
         Shp_subscription: "true",
@@ -68,8 +70,7 @@ export async function POST(req: NextRequest) {
         Shp_applyMode: applyMode,
       },
       receipt,
-      { period, amount: sum },
-      currency
+      { period, amount: sumRUB }
     );
 
     return NextResponse.json({ url });

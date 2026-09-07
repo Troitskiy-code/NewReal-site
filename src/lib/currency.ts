@@ -37,7 +37,7 @@ export function formatPriceFromRUB(priceInRUB: number, currency: Currency): stri
   return formatPrice(convertPrice(priceInRUB, currency), currency);
 }
 
-/** Amount sent to Robokassa in the selected currency (2 decimal places). */
+/** Display-only converted amount. Robokassa always charges the RUB price. */
 export function convertPaymentAmount(priceInRUB: number, currency: Currency): number {
   return Number(convertPrice(priceInRUB, currency).toFixed(2));
 }
