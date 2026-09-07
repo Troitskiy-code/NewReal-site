@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const LIFECYCLE_MODEL = "openai/gpt-4o-mini";
+const LIFECYCLE_MODEL = "google/gemma-4-31b-it";
 const MAX_ACTION_LENGTH = 280;
 
 function getKodikApiKey(): string {

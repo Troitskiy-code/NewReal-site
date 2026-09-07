@@ -2,7 +2,8 @@ import axios from "axios";
 import { memoryToText } from "@/lib/persistentMemory";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const DEFAULT_PROMPT_MODEL = "openai/gpt-4o-mini";
+const DEFAULT_PROMPT_MODEL = "google/gemma-4-31b-it";
+const FALLBACK_PROMPT_MODELS = ["google/gemma-4-31b-it", "deepseek/deepseek-v4-flash"];
 
 export type CharacterPromptSource = {
   name: string;
@@ -18,8 +19,33 @@ function memoryOrFallback(value: unknown, emptyLabel: string): string {
   return memoryToText(value).trim() || emptyLabel;
 }
 
-function promptModel(): string {
-  return process.env.CHARACTER_PROMPT_MODEL?.trim() || DEFAULT_PROMPT_MODEL;
+function promptModels(): string[] {
+  const preferred = process.env.CHARACTER_PROMPT_MODEL?.trim() || DEFAULT_PROMPT_MODEL;
+  return [preferred, ...FALLBACK_PROMPT_MODELS.filter((model) => model !== preferred)];
+}
+
+function formatKodikError(error: unknown): string {
+  if (!axios.isAxiosError(error)) {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  const payload = error.response?.data as
+    | { error?: { message?: string } | string; message?: string }
+    | string
+    | undefined;
+  const payloadObject = typeof payload === "object" && payload ? payload : null;
+  const message =
+    typeof payloadObject?.error === "object"
+      ? payloadObject.error?.message
+      : typeof payloadObject?.error === "string"
+        ? payloadObject.error
+        : typeof payloadObject?.message === "string"
+          ? payloadObject.message
+          : typeof payload === "string"
+            ? payload
+            : error.message;
+
+  return `status=${error.response?.status ?? "network"} message=${message || "unknown"}`;
 }
 
 export async function generateCharacterPrompt(
@@ -48,27 +74,48 @@ export async function generateCharacterPrompt(
 Создай промпт (не более 500 слов), который можно использовать как системный промпт для чата.
 `.trim();
 
-  const response = await axios.post(
-    `${KODIKROUTER_URL}/chat/completions`,
-    {
-      model: promptModel(),
-      messages: [
-        { role: "system", content: "Ты — ассистент для создания персонажей." },
-        { role: "user", content: prompt },
-      ],
-      max_tokens: 1000,
-      temperature: 0.7,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const messages = [
+    { role: "system", content: "Ты — ассистент для создания персонажей." },
+    { role: "user", content: prompt },
+  ];
 
-  const content = response.data?.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content.trim() : "";
+  let lastError: unknown;
+  for (const model of promptModels()) {
+    try {
+      console.log(`[CharacterPrompt] Requesting model=${model}`);
+      const response = await axios.post(
+        `${KODIKROUTER_URL}/chat/completions`,
+        {
+          model,
+          messages,
+          max_tokens: 1000,
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const content = response.data?.choices?.[0]?.message?.content;
+      const promptText = typeof content === "string" ? content.trim() : "";
+      if (promptText) {
+        console.log(`[CharacterPrompt] Success model=${model} length=${promptText.length}`);
+        return promptText;
+      }
+      console.error(`[CharacterPrompt] Empty response model=${model}`);
+    } catch (error) {
+      lastError = error;
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      console.error(`[CharacterPrompt] model=${model} failed ${formatKodikError(error)}`);
+      if (status === 404 || status === 400) continue;
+      throw error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Не удалось сгенерировать промпт");
 }
 
 export async function tryGenerateCharacterPrompt(
@@ -91,7 +138,7 @@ export async function tryGenerateCharacterPrompt(
     );
     return prompt;
   } catch (error) {
-    console.error("[CharacterPrompt] Generation failed", error);
+    console.error(`[CharacterPrompt] Generation failed ${formatKodikError(error)}`);
     return null;
   }
 }

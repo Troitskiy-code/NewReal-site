@@ -5,7 +5,7 @@ import { getContextTokenLimit } from "@/lib/chatEconomy";
 import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const SUMMARY_MODEL = "openai/gpt-4o-mini";
+const SUMMARY_MODEL = "google/gemma-4-31b-it";
 const MEMORY_TOKEN_THRESHOLD_RATIO = 0.5;
 const KEEP_RECENT_MESSAGES = 25;
 const MEMORY_REFRESH_MESSAGE_THRESHOLD = 20;

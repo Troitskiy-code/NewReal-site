@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const CORE_MEMORY_MODEL = "openai/gpt-4o-mini";
+const CORE_MEMORY_MODEL = "google/gemma-4-31b-it";
 const EPISODIC_CAP = 100;
 
 const CORE_DELTA_PROMPT =

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const INTENT_MODEL = "openai/gpt-4o-mini";
+const INTENT_MODEL = "google/gemma-4-31b-it";
 
 export const USER_INTENTS = ["general", "story", "fact", "question", "action"] as const;
 
@@ -91,7 +91,8 @@ export async function analyzeIntent(userMessage: string, apiKey: string): Promis
     console.log(`[Intent] intent=${parsed.intent} confidence=${parsed.confidence.toFixed(2)}`);
     return parsed;
   } catch (error) {
-    console.error("[Intent] analysis failed, fallback general", error);
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    console.error(`[Intent] analysis failed, fallback general status=${status ?? "network"}`);
     return FALLBACK_INTENT;
   }
 }
