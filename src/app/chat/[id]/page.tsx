@@ -71,6 +71,7 @@ type ChatCharacter = {
   imageUrl: string | null;
   description: string | null;
   description_en?: string | null;
+  descriptionCard: string | null;
 };
 
 type ChatHistoryResponse = {
@@ -847,12 +848,8 @@ export default function ChatPage() {
   const userAvatarUrl = selectedPersona?.avatarUrl ?? session?.user?.image ?? null;
   const characterDisplayName =
     pickLocalizedText(character?.name, character?.name_en, locale) ?? "Персонаж";
-  const characterDescription = pickLocalizedText(
-    character?.description,
-    character?.description_en,
-    locale
-  );
   const characterGreeting = pickLocalizedText(character?.greeting, character?.greeting_en, locale);
+  const characterCardDescription = character?.descriptionCard?.trim() || null;
   const characterAvatarUrl = character?.imageUrl ?? null;
 
   useEffect(() => {
@@ -1530,8 +1527,8 @@ export default function ChatPage() {
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-4 md:space-y-4 md:px-4 md:pt-6">
-            {characterDescription?.trim() ? (
-              <CharacterDescriptionCard description={characterDescription.trim()} />
+            {characterCardDescription ? (
+              <CharacterDescriptionCard description={characterCardDescription} />
             ) : null}
             {!isAnonymous && <AbsenceActivityReport characterId={characterId} />}
             {messages.length === 0 ? (
