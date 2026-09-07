@@ -453,6 +453,12 @@ function ChatMessageItem({
   );
 }
 
+function resizeComposer(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+}
+
 function formatMessageContent(content: string): string {
   const escaped = content
     .replace(/&/g, "&amp;")
@@ -747,6 +753,7 @@ export default function ChatPage() {
   const [editingDraft, setEditingDraft] = useState("");
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedModel = useMemo(
     () => models.find((model) => model.id === selectedModelId) ?? models[0] ?? null,
@@ -854,6 +861,10 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    resizeComposer(inputRef.current);
+  }, [input]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -1511,15 +1522,25 @@ export default function ChatPage() {
           <div className="shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-3 py-3 md:p-4">
             <form
               onSubmit={sendMessage}
-              className="chat-form mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row"
+              className="chat-form mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row sm:items-end"
               data-metrika="chat-form"
             >
-              <input
-                type="text"
+              <textarea
+                ref={inputRef}
+                rows={1}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onInput={(e) => resizeComposer(e.currentTarget)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (canSend) {
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }
+                }}
                 placeholder="Напишите сообщение..."
-                className="min-h-[44px] w-full min-w-0 flex-1 rounded-full border border-divider bg-bg-card px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/60"
+                className="max-h-[200px] min-h-[44px] w-full min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl border border-divider bg-bg-card px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/60"
                 disabled={sending || actionLoading || clearingChat}
               />
               <button
