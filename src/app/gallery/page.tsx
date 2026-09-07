@@ -24,7 +24,6 @@ type Character = {
   isPublic: boolean;
   totalMessages?: number;
   createdAt: string;
-  activityStatus?: string | null;
   user?: {
     name: string | null;
     image: string | null;

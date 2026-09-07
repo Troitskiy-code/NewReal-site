@@ -6,7 +6,6 @@ import { parseCharacterBody } from "@/lib/characterFields";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
 import { buildInitialPublicMemory } from "@/lib/persistentMemory";
-import { withActivityStatus } from "@/lib/characterLifecycle";
 
 // ------------------ POST (создание персонажа) ------------------
 export async function POST(req: NextRequest) {
@@ -239,12 +238,10 @@ export async function GET(req: NextRequest) {
       favoriteIds = new Set(favorites.map((favorite) => favorite.characterId));
     }
 
-    const data = await withActivityStatus(
-      characters.map((character) => ({
-        ...character,
-        isFavorited: favoriteIds.has(character.id),
-      }))
-    );
+    const data = characters.map((character) => ({
+      ...character,
+      isFavorited: favoriteIds.has(character.id),
+    }));
 
     console.log(
       `[characters] GET ${Date.now() - startedAt}ms page=${page} limit=${limit} sort=${sort} total=${total} returned=${data.length}`

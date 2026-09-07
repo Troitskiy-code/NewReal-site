@@ -17,7 +17,6 @@ type CharacterCardProps = {
     imageUrl?: string | null;
     isFavorited?: boolean;
     totalMessages?: number;
-    activityStatus?: string | null;
   };
   className?: string;
   onFavoriteChange?: (characterId: string, isFavorited: boolean) => void;
@@ -68,11 +67,6 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
           <h2 className="truncate text-base font-bold leading-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
             {name}
           </h2>
-          {character.activityStatus && (
-            <p className="mt-0.5 truncate text-[11px] font-medium leading-snug text-[#C8C4FF] [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
-              {character.activityStatus}
-            </p>
-          )}
           <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-200 [text-shadow:0_1px_2px_rgba(0,0,0,0.85)] md:text-gray-400">
             {description}
           </p>

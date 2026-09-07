@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { withActivityStatus } from "@/lib/characterLifecycle";
 
 const characterSelect = {
   id: true,
@@ -42,13 +41,11 @@ export async function GET() {
       },
     });
 
-    const data = await withActivityStatus(
-      favorites.map((favorite) => ({
-        ...favorite.character,
-        isFavorited: true,
-        favoritedAt: favorite.createdAt,
-      }))
-    );
+    const data = favorites.map((favorite) => ({
+      ...favorite.character,
+      isFavorited: true,
+      favoritedAt: favorite.createdAt,
+    }));
 
     return NextResponse.json({ data });
   } catch (error) {

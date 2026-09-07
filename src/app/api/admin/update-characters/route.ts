@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runCharacterLifecycleTick } from "@/lib/characterLifecycle";
+// import { runCharacterLifecycleTick } from "@/lib/characterLifecycle";
+
+// Временно отключено. Будет использовано в будущем для расширенной системы живых персонажей.
 
 export const maxDuration = 60;
 
@@ -20,15 +22,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const limitRaw = typeof body === "object" && body ? Number((body as { limit?: unknown }).limit) : NaN;
-    const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : undefined;
+    // const body = await req.json().catch(() => ({}));
+    // const limitRaw = typeof body === "object" && body ? Number((body as { limit?: unknown }).limit) : NaN;
+    // const limit = Number.isInteger(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : undefined;
+    // console.log("[Lifecycle] Admin tick started", { limit: limit ?? "default" });
+    // const summary = await runCharacterLifecycleTick({ limit });
+    // console.log("[Lifecycle] Admin tick finished", summary);
+    // return NextResponse.json({ ok: true, ...summary });
 
-    console.log("[Lifecycle] Admin tick started", { limit: limit ?? "default" });
-    const summary = await runCharacterLifecycleTick({ limit });
-    console.log("[Lifecycle] Admin tick finished", summary);
-
-    return NextResponse.json({ ok: true, ...summary });
+    console.log("[Lifecycle] Admin tick disabled");
+    return NextResponse.json({ ok: true, message: "Disabled for now" });
   } catch (error) {
     console.error("[Lifecycle] Admin update-characters failed", error);
     return NextResponse.json({ error: "Не удалось обновить персонажей" }, { status: 500 });

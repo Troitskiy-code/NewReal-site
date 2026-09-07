@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runCharacterLifecycleTick } from "@/lib/characterLifecycle";
+// import { runCharacterLifecycleTick } from "@/lib/characterLifecycle";
 
 // RelaxDev / cron-job.org: GET or POST /api/cron/update-characters
 // Auth: Authorization: Bearer CRON_SECRET, x-cron-secret, or ?secret=
+// Временно отключено. Будет использовано в будущем для расширенной системы живых персонажей.
 
 export const maxDuration = 60;
 
@@ -54,15 +55,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
   }
 
-  try {
-    console.log("[Lifecycle] RelaxDev cron-job.org update-characters started");
-    const summary = await runCharacterLifecycleTick();
-    console.log("[Lifecycle] RelaxDev cron summary:", summary);
-    return NextResponse.json({ ok: true, ...summary });
-  } catch (error) {
-    console.error("[Lifecycle] Cron update-characters failed", error);
-    return NextResponse.json({ error: "Не удалось обновить персонажей" }, { status: 500 });
-  }
+  console.log("[Lifecycle] RelaxDev cron-job.org update-characters disabled");
+  return NextResponse.json({ ok: true, message: "Disabled for now" });
+
+  // try {
+  //   console.log("[Lifecycle] RelaxDev cron-job.org update-characters started");
+  //   const summary = await runCharacterLifecycleTick();
+  //   console.log("[Lifecycle] RelaxDev cron summary:", summary);
+  //   return NextResponse.json({ ok: true, ...summary });
+  // } catch (error) {
+  //   console.error("[Lifecycle] Cron update-characters failed", error);
+  //   return NextResponse.json({ error: "Не удалось обновить персонажей" }, { status: 500 });
+  // }
 }
 
 export async function POST(req: NextRequest) {
