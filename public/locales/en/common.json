@@ -103,6 +103,9 @@
     "reset": "Reset",
     "resetSearch": "Clear search"
   },
+  "characterCard": {
+    "knownAbout": "Known about the character:"
+  },
   "support": {
     "title": "Support",
     "intro": "For billing, technical issues, and refunds, use the form below. We will reply to the email you provide within 10 business days.",

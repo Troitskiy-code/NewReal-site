@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
         description,
         scenario,
         exampleDialogs,
+        publicMemory: seededPublicMemory,
+        privateMemory,
       });
       if (generated) {
         character = await prisma.character.update({
@@ -199,6 +201,7 @@ export async function GET(req: NextRequest) {
       description: true,
       description_en: true,
       descriptionCard: true,
+      publicMemory: true,
       tags: true,
       imageUrl: true,
       isPublic: true,

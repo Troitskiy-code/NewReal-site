@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
+import { memoryToText } from "@/lib/persistentMemory";
 
 export const maxDuration = 60;
 
@@ -10,7 +11,12 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function POST(_req: NextRequest, context: RouteContext) {
+function textOrStored(value: unknown, stored: unknown): string {
+  if (typeof value === "string") return value;
+  return memoryToText(stored);
+}
+
+export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -28,6 +34,8 @@ export async function POST(_req: NextRequest, context: RouteContext) {
         description: true,
         scenario: true,
         exampleDialogs: true,
+        publicMemory: true,
+        privateMemory: true,
       },
     });
 
@@ -39,12 +47,31 @@ export async function POST(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    const name =
+      typeof body.name === "string" && body.name.trim() ? body.name.trim() : character.name;
+    const appearance =
+      typeof body.appearance === "string" ? body.appearance : character.appearance;
+    const description =
+      typeof body.description === "string" ? body.description : character.description;
+    const scenario = typeof body.scenario === "string" ? body.scenario : character.scenario;
+    const exampleDialogs =
+      typeof body.exampleDialogs === "string" ? body.exampleDialogs : character.exampleDialogs;
+    const publicMemory = textOrStored(body.publicMemory, character.publicMemory);
+    const privateMemory = textOrStored(body.privateMemory, character.privateMemory);
+
+    console.log(
+      `[CharacterPrompt] regenerate character=${character.id} user=${session.user.id} hasPublic=${Boolean(publicMemory.trim())} hasPrivate=${Boolean(privateMemory.trim())}`
+    );
+
     const systemPrompt = await tryGenerateCharacterPrompt({
-      name: character.name,
-      appearance: character.appearance,
-      description: character.description,
-      scenario: character.scenario,
-      exampleDialogs: character.exampleDialogs,
+      name,
+      appearance,
+      description,
+      scenario,
+      exampleDialogs,
+      publicMemory,
+      privateMemory,
     });
 
     if (!systemPrompt) {

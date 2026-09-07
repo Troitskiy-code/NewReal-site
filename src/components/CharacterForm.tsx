@@ -308,7 +308,16 @@ export default function CharacterForm({
     const toastId = toast.loading("Генерация промпта...");
     try {
       const { data } = await axios.post<{ systemPrompt: string }>(
-        `/api/characters/${characterId}/regenerate-prompt`
+        `/api/characters/${characterId}/regenerate-prompt`,
+        {
+          name: values.name,
+          appearance: values.appearance,
+          description: values.description,
+          scenario: values.scenario,
+          exampleDialogs: values.exampleDialogs,
+          publicMemory: values.publicMemory,
+          privateMemory: values.privateMemory,
+        }
       );
       onChange("systemPrompt", data.systemPrompt || "");
       toast.success("Промпт обновлён", { id: toastId });
@@ -690,9 +699,6 @@ export default function CharacterForm({
         <FormBlock
           title="Память персонажа"
           icon={FaBook}
-          hints={[
-            "Публичная память видна всем. Приватная доступна только создателю и пользователям с разрешением.",
-          ]}
         >
           <div className="space-y-4">
             <div className="space-y-2">
@@ -705,10 +711,14 @@ export default function CharacterForm({
                 onChange={(v) => onChange("publicMemory", v)}
                 maxLength={MEMORY_CONTENT_LIMIT}
                 rows={5}
-                placeholder="Факты и события, которые могут знать все..."
+                placeholder="То, что персонаж рассказывает всем..."
               />
               <p className={HINT_CLASS}>
-                {hintWithCounter("Видна всем.", values.publicMemory, MEMORY_CONTENT_LIMIT)}
+                {hintWithCounter(
+                  "То, что персонаж рассказывает всем. Будет отображаться в карточке и влиять на его поведение.",
+                  values.publicMemory,
+                  MEMORY_CONTENT_LIMIT
+                )}
               </p>
             </div>
             <div className="space-y-2">
@@ -721,10 +731,14 @@ export default function CharacterForm({
                 onChange={(v) => onChange("privateMemory", v)}
                 maxLength={MEMORY_CONTENT_LIMIT}
                 rows={5}
-                placeholder="Заметки только для создателя..."
+                placeholder="Секреты, страхи, привычки..."
               />
               <p className={HINT_CLASS}>
-                {hintWithCounter("Только для создателя.", values.privateMemory, MEMORY_CONTENT_LIMIT)}
+                {hintWithCounter(
+                  "Секреты, страхи, привычки. Видны только вам. Влияют на поведение персонажа, но не раскрываются напрямую.",
+                  values.privateMemory,
+                  MEMORY_CONTENT_LIMIT
+                )}
               </p>
             </div>
             <button

@@ -6,7 +6,6 @@ import { parseCharacterBody } from "@/lib/characterFields";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
 import { Prisma } from "@prisma/client";
-import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
 
 export const maxDuration = 60;
 
@@ -99,33 +98,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       data.memoryPermissions = parsed.memoryPermissions ?? Prisma.DbNull;
     }
 
-    const promptFieldsChanged =
-      body.name !== undefined ||
-      body.appearance !== undefined ||
-      body.description !== undefined ||
-      body.scenario !== undefined ||
-      body.exampleDialogs !== undefined;
-
     if (body.systemPrompt !== undefined) {
       data.systemPrompt = parsed.systemPrompt ?? null;
-    } else if (promptFieldsChanged) {
-      const generated = await tryGenerateCharacterPrompt({
-        name: parsed.name || authResult.character.name,
-        appearance:
-          body.appearance !== undefined ? parsed.appearance : authResult.character.appearance,
-        description:
-          body.description !== undefined ? parsed.description : authResult.character.description,
-        scenario: body.scenario !== undefined ? parsed.scenario : authResult.character.scenario,
-        exampleDialogs:
-          body.exampleDialogs !== undefined
-            ? parsed.exampleDialogs
-            : authResult.character.exampleDialogs,
-      });
-      if (generated) {
-        data.systemPrompt = generated;
-      } else {
-        console.error(`[CharacterPrompt] PUT regenerate failed character=${id}`);
-      }
     }
 
     if (Object.keys(data).length === 0) {

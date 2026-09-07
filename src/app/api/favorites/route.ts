@@ -10,6 +10,7 @@ const characterSelect = {
   description: true,
   description_en: true,
   descriptionCard: true,
+  publicMemory: true,
   appearance: true,
   tags: true,
   imageUrl: true,
