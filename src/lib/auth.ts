@@ -7,6 +7,7 @@ import { prisma } from "./prisma";
 import { activatePendingSubscriptionIfNeeded } from "./subscription";
 import { translate } from "./getDictionary";
 import { DEFAULT_LOCALE } from "./i18nConfig";
+import { handleUserLogin } from "./userActivity";
 
 export function isGoogleAuthEnabled(): boolean {
   return Boolean(
@@ -163,6 +164,12 @@ export const authOptions: AuthOptions = {
           user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt ?? null;
         await activatePendingForUserId(user.id);
       }
+      const userId = typeof user?.id === "string" ? user.id : typeof token.sub === "string" ? token.sub : "";
+      if (userId) {
+        void handleUserLogin(userId).catch((error) => {
+          console.error("[LoginEvents] Error handling events:", error);
+        });
+      }
       return token;
     },
   },
@@ -174,6 +181,11 @@ export const authOptions: AuthOptions = {
         provider: account?.provider,
         isNewUser,
       });
+      if (typeof user.id === "string" && user.id) {
+        void handleUserLogin(user.id).catch((error) => {
+          console.error("[LoginEvents] Error handling events:", error);
+        });
+      }
     },
     async createUser({ user }) {
       console.log("[Auth] createUser event:", {

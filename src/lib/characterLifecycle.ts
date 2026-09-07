@@ -90,6 +90,37 @@ async function completeLifecyclePrompt(prompt: string, maxTokens: number): Promi
   return firstSentence(typeof raw === "string" ? raw : "");
 }
 
+export async function generateCharacterEvent(prompt: string): Promise<string> {
+  const response = await axios.post(
+    `${KODIKROUTER_URL}/chat/completions`,
+    {
+      model: LIFECYCLE_MODEL,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Ответь одним коротким предложением от первого лица, не больше 15 слов. Без агрессии и без обращения к другим игрокам.",
+        },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 60,
+      temperature: 0.8,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${getKodikApiKey()}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const raw = response.data?.choices?.[0]?.message?.content;
+  const sentence = firstSentence(typeof raw === "string" ? raw : "");
+  const words = sentence.split(/\s+/).filter(Boolean);
+  if (words.length <= 15) return sentence;
+  return words.slice(0, 15).join(" ");
+}
+
 async function runPool(
   items: string[],
   concurrency: number,

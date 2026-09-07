@@ -105,6 +105,7 @@ model Message {
   role        String   // "user" или "assistant"
   content     String   @db.Text
   createdAt   DateTime @default(now())
+  isAutoEvent Boolean  @default(false)
   embedding   MessageEmbedding?
 
   @@index([userId, characterId])
@@ -273,6 +274,7 @@ model User {
   referralCode       String?       @unique
   referredBy         String?
   createdAt          DateTime      @default(now())
+  lastSeen           DateTime      @default(now())
   selectedModelId    String?
   selectedModel      Model?        @relation(fields: [selectedModelId], references: [id])
   isSubscribed       Boolean       @default(false)

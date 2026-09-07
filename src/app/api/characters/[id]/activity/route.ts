@@ -7,7 +7,7 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-const ACTIVITY_TYPES = ["action", "discovery", "travel"] as const;
+const ACTIVITY_TYPES = ["action", "discovery", "travel", "auto_event"] as const;
 const ACTIVITY_LIMIT = 10;
 
 export async function GET(_req: NextRequest, context: RouteContext) {
