@@ -17,22 +17,18 @@ import { useCurrency } from "@/components/CurrencyContext";
 import { convertPrice, formatPrice } from "@/lib/currency";
 
 const PLAN_ICONS = {
-  start: FaStar,
   dialog: FaRocket,
   story: FaCrown,
   universe: FaGlobe,
 };
 
 const PLAN_ACCENTS = {
-  start: "border-wd-border",
   dialog: "border-wd-border",
   story: "border-wd-secondary/50",
   universe: "border-wd-primary/50",
 };
 
 const PLAN_BUTTONS = {
-  start:
-    "border border-wd-border bg-[#121212] text-wd-text-secondary cursor-default",
   dialog:
     "border border-wd-border bg-[#121212] hover:border-wd-secondary/50 hover:bg-wd-secondary/10",
   story: "wd-button",
@@ -131,12 +127,6 @@ export default function PricingPage() {
   };
 
   const handleSubscribe = (plan) => {
-    const isFree = plan.monthlyPrice === 0;
-    if (isFree) {
-      toast(t("pricing.startDefault"), { icon: "✨" });
-      return;
-    }
-
     const goal = subscriptionGoal(plan.id);
     if (goal) reachGoal(goal);
 
@@ -267,13 +257,15 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {SUBSCRIPTION_PLANS.map((plan) => {
             const Icon = PLAN_ICONS[plan.id] ?? FaStar;
-            const isFree = plan.monthlyPrice === 0;
             const isPopular = plan.id === "story";
             const priceInRUB = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
             const price = convertPrice(priceInRUB, currency);
+            const featureKey = metrikaPlanSlug(plan.id);
+            const localizedFeatures = t(`pricing.planFeatures.${featureKey}`, { returnObjects: true });
+            const features = Array.isArray(localizedFeatures) ? localizedFeatures : plan.features;
 
             return (
               <article
@@ -295,7 +287,7 @@ export default function PricingPage() {
                   <div>
                     <h2 className="text-lg font-black text-white">{plan.name}</h2>
                     <p className="text-xs text-wd-text-secondary">
-                      {isFree ? t("profile.freePlan") : isYearly ? t("pricing.yearlyPlan") : t("pricing.monthlyPlan")}
+                      {isYearly ? t("pricing.yearlyPlan") : t("pricing.monthlyPlan")}
                     </p>
                   </div>
                 </div>
@@ -305,7 +297,7 @@ export default function PricingPage() {
                     {formatPrice(price, currency)}
                   </p>
                   <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
-                    {isFree ? t("pricing.forever") : isYearly ? t("pricing.perYear") : t("pricing.perMonth")}
+                    {isYearly ? t("pricing.perYear") : t("pricing.perMonth")}
                   </p>
                 </div>
 
@@ -320,7 +312,7 @@ export default function PricingPage() {
                 </div>
 
                 <ul className="mb-6 flex-1 space-y-2.5 border-t border-wd-border pt-5 text-xs text-wd-text-secondary">
-                  {plan.features.map((feature) => (
+                  {features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2">
                       <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
                       <span>{feature}</span>
@@ -333,14 +325,12 @@ export default function PricingPage() {
                   id={`subscribe-${metrikaPlanSlug(plan.id)}`}
                   data-metrika={`subscribe-${metrikaPlanSlug(plan.id)}`}
                   onClick={() => handleSubscribe(plan)}
-                  disabled={isFree || subscribingPlanId === plan.id}
+                  disabled={subscribingPlanId === plan.id}
                   className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${PLAN_BUTTONS[plan.id]}`}
                 >
-                  {isFree
-                    ? t("pricing.currentBase")
-                    : subscribingPlanId === plan.id
-                      ? t("pricing.redirecting")
-                      : t("pricing.subscribe")}
+                  {subscribingPlanId === plan.id
+                    ? t("pricing.redirecting")
+                    : t("pricing.subscribe")}
                 </button>
               </article>
             );

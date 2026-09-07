@@ -21,19 +21,21 @@ export type SubscriptionPlan = {
   features: string[];
 };
 
+/** Paid plans shown on /pricing. Free users stay on type "start" without a public card. */
+const FREE_PLAN: SubscriptionPlan = {
+  id: "start",
+  name: "Старт",
+  monthlyPrice: 0,
+  yearlyPrice: 0,
+  vcPerMonth: 100,
+  contextTokens: 6_000,
+  contextMultiplier: 1,
+  priority: false,
+  ragEnabled: false,
+  features: [],
+};
+
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
-  {
-    id: "start",
-    name: "Старт",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    vcPerMonth: 100,
-    contextTokens: 6_000,
-    contextMultiplier: 1,
-    priority: false,
-    ragEnabled: false,
-    features: ["100 VC в месяц", "Контекст 6K", "Базовый доступ к моделям"],
-  },
   {
     id: "dialog",
     name: "Диалог",
@@ -44,7 +46,11 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     contextMultiplier: 1.5,
     priority: false,
     ragEnabled: true,
-    features: ["2 500 VC в месяц", "Контекст 6К", "Множитель памяти ×1,5", "RAG-память"],
+    features: [
+      "2 500 VC в месяц",
+      "Для непринуждённых диалогов и повседневных сцен",
+      "Множитель ежедневного бонуса ×1,5",
+    ],
   },
   {
     id: "story",
@@ -56,7 +62,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     contextMultiplier: 2,
     priority: true,
     ragEnabled: true,
-    features: ["10 000 VC в месяц", "Контекст 10K", "Множитель ×2", "Приоритетная очередь", "RAG-память"],
+    features: [
+      "10 000 VC в месяц",
+      "Для длительных ролевых игр и развития сюжета",
+      "Множитель ежедневного бонуса ×2",
+      "Приоритетная очередь",
+    ],
   },
   {
     id: "universe",
@@ -68,7 +79,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     contextMultiplier: 2.5,
     priority: true,
     ragEnabled: true,
-    features: ["30 000 VC в месяц", "Контекст 16K", "Множитель ×2,5", "Приоритет + RAG-память"],
+    features: [
+      "30 000 VC в месяц",
+      "Для глубоких миров и сложных сюжетных арок",
+      "Множитель ежедневного бонуса ×2,5",
+      "Приоритетная очередь",
+    ],
   },
 ];
 
@@ -77,12 +93,16 @@ export const DEFAULT_SUBSCRIPTION_TYPE = "start";
 export function getSubscriptionPlan(type: string | null | undefined): SubscriptionPlan {
   const raw = type === "none" || !type ? DEFAULT_SUBSCRIPTION_TYPE : type;
   const normalized = raw === "history" ? "story" : raw;
-  return SUBSCRIPTION_PLANS.find((plan) => plan.id === normalized) ?? SUBSCRIPTION_PLANS[0];
+  if (normalized === DEFAULT_SUBSCRIPTION_TYPE) {
+    return FREE_PLAN;
+  }
+  return SUBSCRIPTION_PLANS.find((plan) => plan.id === normalized) ?? FREE_PLAN;
 }
 
 export function getSubscriptionLabel(type: string | null | undefined): string | null {
   const plan = getSubscriptionPlan(type);
-  return plan.id === DEFAULT_SUBSCRIPTION_TYPE && (type === "none" || !type) ? null : plan.name;
+  if (plan.id === DEFAULT_SUBSCRIPTION_TYPE) return null;
+  return plan.name;
 }
 
 export function getContextTokenLimit(

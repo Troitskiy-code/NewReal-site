@@ -22,6 +22,7 @@ import {
   SUBSCRIPTION_ACTIVATED_TRANSACTION_TYPE,
   getSubscriptionActivationBenefits,
   getSubscriptionPlan,
+  SUBSCRIPTION_PLANS,
 } from "../src/lib/chatEconomy.ts";
 
 let passed = 0;
@@ -165,7 +166,9 @@ console.log("\n6. Активация подписки заменяет сгор�
 
 console.log("\n7. RAG для платных подписок");
 {
-  assert(!getSubscriptionPlan("start").ragEnabled, "Старт: RAG выключен");
+  assert(SUBSCRIPTION_PLANS.length === 3, "публичные тарифы: Диалог, История, Вселенная");
+  assert(!SUBSCRIPTION_PLANS.some((plan) => plan.id === "start"), "Старт не в списке тарифов");
+  assert(!getSubscriptionPlan("start").ragEnabled, "без подписки: RAG выключен");
   assert(getSubscriptionPlan("dialog").ragEnabled, "Диалог: RAG включён");
   assert(getSubscriptionPlan("story").ragEnabled, "История: RAG включён");
   assert(getSubscriptionPlan("history").ragEnabled, "history: RAG включён");

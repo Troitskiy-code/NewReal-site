@@ -25,7 +25,6 @@ type SubscriptionBalance = {
 };
 
 const PLAN_ICONS = {
-  start: FaStar,
   dialog: FaRocket,
   story: FaCrown,
   universe: FaGlobe,
@@ -209,7 +208,7 @@ export default function SubscriptionPage() {
             <p className="text-xs font-bold uppercase tracking-widest text-wd-text-secondary">
               Текущий тариф
             </p>
-            <h2 className="text-2xl font-black text-white">{balance.subscriptionLabel || "Старт"}</h2>
+            <h2 className="text-2xl font-black text-white">{balance.subscriptionLabel || "Нет активной подписки"}</h2>
             <p className="text-sm font-bold text-white">
               Статус: {balance.subscriptionActive ? "Активна" : "Неактивна"}
             </p>
@@ -223,7 +222,7 @@ export default function SubscriptionPage() {
                 </p>
               </>
             ) : (
-              <p className="text-sm text-wd-text-secondary">Бесплатный тариф без срока действия</p>
+              <p className="text-sm text-wd-text-secondary">Подписка не оформлена</p>
             )}
             {balance.pendingSubscriptionLabel && (
               <p className="rounded-wd border border-wd-border bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
