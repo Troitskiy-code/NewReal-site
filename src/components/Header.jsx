@@ -35,7 +35,7 @@ export default function Header() {
         </button>
 
         <div className="flex w-full items-center justify-between pr-4 md:pr-6">
-          <LocaleLink href="/" className="ml-14 flex min-w-0 items-center gap-2 md:gap-3">
+          <LocaleLink href="/" className="ml-16 flex min-w-0 items-center gap-2 md:ml-28 md:gap-3">
             <Image
               src="/logo.png"
               alt="NewVerse"
