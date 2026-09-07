@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
+import { buildInitialPublicMemory } from "@/lib/persistentMemory";
 
 // ------------------ POST (создание персонажа) ------------------
 export async function POST(req: NextRequest) {
@@ -37,11 +38,17 @@ export async function POST(req: NextRequest) {
       scenario,
       exampleDialogs,
       avatarPrompt,
+      publicMemory,
+      privateMemory,
+      memoryPermissions,
     } = parsed;
 
     if (!name) {
       return NextResponse.json({ error: "Имя обязательно" }, { status: 400 });
     }
+
+    const seededPublicMemory = publicMemory ?? buildInitialPublicMemory(name, description);
+    const initialPermissions = memoryPermissions ?? { privateAccessUserIds: [] };
 
     const character = await prisma.character.create({
       data: {
@@ -58,8 +65,16 @@ export async function POST(req: NextRequest) {
         avatarPrompt: avatarPrompt ?? null,
         isPublic,
         userId: session.user.id,
+        publicMemory: seededPublicMemory,
+        privateMemory: privateMemory ?? undefined,
+        memoryPermissions: initialPermissions,
+        lastActive: new Date(),
       },
     });
+
+    console.log(
+      `[Memory] Seeded public memory for character=${character.id} user=${session.user.id}`
+    );
 
     try {
       const translations = await translateCharacterFieldsToEn({

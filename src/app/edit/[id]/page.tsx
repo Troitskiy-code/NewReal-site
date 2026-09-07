@@ -13,12 +13,15 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaUser } from "react-icons/fa";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { memoryToText } from "@/lib/persistentMemory";
 
 type Character = CharacterFormValues & {
   id: string;
   imageUrl: string | null;
   imageLora: string | null;
   userId: string;
+  publicMemory?: unknown;
+  privateMemory?: unknown;
 };
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -69,6 +72,8 @@ export default function EditCharacterPage() {
           avatarPrompt: data.avatarPrompt || "",
           tags: data.tags || "",
           isPublic: data.isPublic,
+          publicMemory: memoryToText(data.publicMemory),
+          privateMemory: memoryToText(data.privateMemory),
         });
         setImageUrl(data.imageUrl);
         setImageLora(data.imageLora);
@@ -178,6 +183,8 @@ export default function EditCharacterPage() {
         imageUrl: finalImageUrl,
         imageLora: finalImageLora,
         isPublic: form.isPublic,
+        publicMemory: form.publicMemory,
+        privateMemory: form.privateMemory,
       });
 
       toast.success("Персонаж обновлён!", { id: toastId });
@@ -254,6 +261,7 @@ export default function EditCharacterPage() {
             className="w-full space-y-4 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-base md:space-y-8 md:p-6"
           >
             <CharacterForm
+              characterId={id}
               values={form}
               onChange={updateField}
               avatarPreview={avatarPreview}

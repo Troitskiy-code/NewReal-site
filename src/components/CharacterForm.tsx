@@ -11,12 +11,14 @@ import {
   FaIdCard,
   FaImage,
   FaInfoCircle,
+  FaBook,
   FaMagic,
   FaSpinner,
   FaTags,
   FaUser,
 } from "react-icons/fa";
 import { CHARACTER_LIMITS } from "@/lib/characterFields";
+import { MEMORY_CONTENT_LIMIT } from "@/lib/persistentMemory";
 import { ensureReferenceImageDataUrl, ensureReferenceImageFile } from "@/lib/convertAvifToPng";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
@@ -162,6 +164,8 @@ export type CharacterFormValues = {
   tags: string;
   avatarPrompt: string;
   isPublic: boolean;
+  publicMemory: string;
+  privateMemory: string;
 };
 
 export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
@@ -175,9 +179,12 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
   tags: "",
   avatarPrompt: "",
   isPublic: false,
+  publicMemory: "",
+  privateMemory: "",
 };
 
 type CharacterFormProps = {
+  characterId?: string;
   values: CharacterFormValues;
   onChange: <K extends keyof CharacterFormValues>(field: K, value: CharacterFormValues[K]) => void;
   avatarPreview: string | null;
@@ -214,6 +221,7 @@ type AvatarLimitStatus = {
 };
 
 export default function CharacterForm({
+  characterId,
   values,
   onChange,
   avatarPreview,
@@ -226,6 +234,7 @@ export default function CharacterForm({
   onLoraRemove,
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [savingMemory, setSavingMemory] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
@@ -260,6 +269,31 @@ export default function CharacterForm({
       cancelled = true;
     };
   }, []);
+
+  const handleSaveMemory = async () => {
+    if (!characterId) {
+      toast.success("Память сохранится вместе с персонажем");
+      return;
+    }
+
+    setSavingMemory(true);
+    try {
+      await axios.put(`/api/characters/${characterId}/memory`, {
+        publicMemory: values.publicMemory,
+        privateMemory: values.privateMemory,
+      });
+      console.log(`[Memory] Saved from form character=${characterId}`);
+      toast.success("Память сохранена");
+    } catch (err: unknown) {
+      const message =
+        axios.isAxiosError(err) && typeof err.response?.data?.error === "string"
+          ? err.response.data.error
+          : "Не удалось сохранить память";
+      toast.error(message);
+    } finally {
+      setSavingMemory(false);
+    }
+  };
 
   const handleGenerateAvatar = async () => {
     reachGoal(METRIKA_GOALS.generateAvatar);
@@ -589,6 +623,59 @@ export default function CharacterForm({
           </button>
         </div>
       </FormBlock>
+
+      <section>
+        <FormBlock
+          title="Память персонажа"
+          icon={FaBook}
+          hints={[
+            "Публичная память видна всем. Приватная доступна только создателю и пользователям с разрешением.",
+          ]}
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="publicMemory" className="block text-sm font-medium text-white">
+                Публичная память
+              </label>
+              <LimitedTextarea
+                id="publicMemory"
+                value={values.publicMemory}
+                onChange={(v) => onChange("publicMemory", v)}
+                maxLength={MEMORY_CONTENT_LIMIT}
+                rows={5}
+                placeholder="Факты и события, которые могут знать все..."
+              />
+              <p className={HINT_CLASS}>
+                {hintWithCounter("Видна всем.", values.publicMemory, MEMORY_CONTENT_LIMIT)}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="privateMemory" className="block text-sm font-medium text-white">
+                Приватная память
+              </label>
+              <LimitedTextarea
+                id="privateMemory"
+                value={values.privateMemory}
+                onChange={(v) => onChange("privateMemory", v)}
+                maxLength={MEMORY_CONTENT_LIMIT}
+                rows={5}
+                placeholder="Заметки только для создателя..."
+              />
+              <p className={HINT_CLASS}>
+                {hintWithCounter("Только для создателя.", values.privateMemory, MEMORY_CONTENT_LIMIT)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveMemory}
+              disabled={savingMemory}
+              className="w-full rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
+            >
+              {savingMemory ? "Сохранение..." : "Сохранить изменения"}
+            </button>
+          </div>
+        </FormBlock>
+      </section>
 
       <section>
         <VisibilityToggle isPublic={values.isPublic} onChange={(v) => onChange("isPublic", v)} />

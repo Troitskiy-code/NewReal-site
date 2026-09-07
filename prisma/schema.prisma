@@ -38,12 +38,17 @@ model Character {
   user              User     @relation(fields: [userId], references: [id])
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  lastActive        DateTime @default(now())
+  privateMemory     Json?
+  publicMemory      Json?
+  memoryPermissions Json?
   messages          Message[]
   favorites         Favorite[]
   memories          Memory[]
   coreMemories      CoreMemory[]
   episodicMemories  EpisodicMemory[]
   memoryEntries     MemoryEntry[]
+  worldEvents       WorldEvent[]
   personaSelections PersonaSelection[]
   scopedPersonas    Persona[]
 
@@ -123,6 +128,21 @@ model Memory {
 
   @@unique([userId, characterId])
   @@index([characterId])
+}
+
+model WorldEvent {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  type         String
+  participants String[]
+  description  String    @db.Text
+  timestamp    DateTime  @default(now())
+  importance   Int       @default(1)
+  location     String?
+
+  @@index([characterId])
+  @@index([characterId, timestamp])
 }
 
 enum MemoryEntryType {

@@ -110,6 +110,8 @@ export default function CreateCharacterPage() {
         imageUrl,
         imageLora,
         isPublic: form.isPublic,
+        publicMemory: form.publicMemory.trim() || undefined,
+        privateMemory: form.privateMemory.trim() || undefined,
       });
 
       toast.success("Персонаж создан!", { id: toastId });

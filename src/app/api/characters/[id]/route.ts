@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
+import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
+import { Prisma } from "@prisma/client";
+
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -39,7 +42,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
-    return NextResponse.json(character);
+    return NextResponse.json(sanitizeCharacterMemory(character, session?.user?.id ?? null));
   } catch (error) {
     console.error("Character fetch error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
@@ -67,27 +70,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const data: {
-      name?: string;
-      description?: string | null;
-      descriptionCard?: string | null;
-      appearance?: string | null;
-      tags?: string | null;
-      imageUrl?: string | null;
-      imageLora?: string | null;
-      greeting?: string | null;
-      scenario?: string | null;
-      exampleDialogs?: string | null;
-      avatarPrompt?: string | null;
-      isPublic?: boolean;
-      name_en?: string | null;
-      description_en?: string | null;
-      appearance_en?: string | null;
-      greeting_en?: string | null;
-      scenario_en?: string | null;
-      exampleDialogs_en?: string | null;
-      avatarPrompt_en?: string | null;
-    } = {};
+    const data: Prisma.CharacterUpdateInput = {};
 
     if (body.name !== undefined) {
       if (!parsed.name) {
@@ -107,6 +90,11 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.exampleDialogs !== undefined) data.exampleDialogs = parsed.exampleDialogs ?? null;
     if (body.avatarPrompt !== undefined) data.avatarPrompt = parsed.avatarPrompt ?? null;
     if (body.isPublic !== undefined) data.isPublic = parsed.isPublic;
+    if (body.publicMemory !== undefined) data.publicMemory = parsed.publicMemory ?? Prisma.DbNull;
+    if (body.privateMemory !== undefined) data.privateMemory = parsed.privateMemory ?? Prisma.DbNull;
+    if (body.memoryPermissions !== undefined) {
+      data.memoryPermissions = parsed.memoryPermissions ?? Prisma.DbNull;
+    }
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
     }
@@ -128,10 +116,25 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     const character = await prisma.character.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        ...(body.publicMemory !== undefined ||
+        body.privateMemory !== undefined ||
+        body.memoryPermissions !== undefined
+          ? { lastActive: new Date() }
+          : {}),
+      },
     });
 
-    return NextResponse.json(character);
+    if (
+      body.publicMemory !== undefined ||
+      body.privateMemory !== undefined ||
+      body.memoryPermissions !== undefined
+    ) {
+      console.log(`[Memory] Updated via character PUT character=${id} user=${session.user.id}`);
+    }
+
+    return NextResponse.json(sanitizeCharacterMemory(character, session.user.id));
   } catch (error) {
     console.error("Character update error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
