@@ -28,27 +28,56 @@ async function writePng(image, file) {
   console.log("wrote", file, image.bitmap.width);
 }
 
+function writePngIco(entries, file) {
+  const count = entries.length;
+  const headerSize = 6 + 16 * count;
+  let offset = headerSize;
+  const header = Buffer.alloc(headerSize);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(count, 4);
+
+  const chunks = [header];
+  entries.forEach((entry, index) => {
+    const dir = 6 + index * 16;
+    const size = entry.width >= 256 ? 0 : entry.width;
+    header.writeUInt8(size, dir);
+    header.writeUInt8(size, dir + 1);
+    header.writeUInt8(0, dir + 2);
+    header.writeUInt8(0, dir + 3);
+    header.writeUInt16LE(1, dir + 4);
+    header.writeUInt16LE(32, dir + 6);
+    header.writeUInt32LE(entry.buffer.length, dir + 8);
+    header.writeUInt32LE(offset, dir + 12);
+    offset += entry.buffer.length;
+    chunks.push(entry.buffer);
+  });
+
+  const dest = path.join(ROOT, "public", file);
+  writeFileSync(dest, Buffer.concat(chunks));
+  console.log("wrote", file, entries.map((entry) => `${entry.width}x${entry.width}`).join("+"));
+}
+
 (async () => {
   const source = await Jimp.read(LOGO);
   console.log("logo", source.bitmap.width, source.bitmap.height);
 
-  const favicon = await makeSquare(source, 32);
-  await writePng(favicon, "favicon.png");
-  const pngBuffer = Buffer.from(await favicon.getBuffer("image/png"));
-  const header = Buffer.alloc(22);
-  header.writeUInt16LE(0, 0);
-  header.writeUInt16LE(1, 2);
-  header.writeUInt16LE(1, 4);
-  header.writeUInt8(32, 6);
-  header.writeUInt8(32, 7);
-  header.writeUInt8(0, 8);
-  header.writeUInt8(0, 9);
-  header.writeUInt16LE(1, 10);
-  header.writeUInt16LE(32, 12);
-  header.writeUInt32LE(pngBuffer.length, 14);
-  header.writeUInt32LE(22, 18);
-  writeFileSync(path.join(ROOT, "public", "favicon.ico"), Buffer.concat([header, pngBuffer]));
-  console.log("wrote favicon.ico", pngBuffer.length);
+  const favicon32 = await makeSquare(source, 32);
+  const favicon48 = await makeSquare(source, 48);
+  const favicon96 = await makeSquare(source, 96);
+
+  await writePng(favicon32, "favicon.png");
+  await writePng(favicon48, "favicon-48x48.png");
+  await writePng(favicon96, "favicon-96x96.png");
+
+  writePngIco(
+    [
+      { width: 32, buffer: Buffer.from(await favicon32.getBuffer("image/png")) },
+      { width: 48, buffer: Buffer.from(await favicon48.getBuffer("image/png")) },
+      { width: 96, buffer: Buffer.from(await favicon96.getBuffer("image/png")) },
+    ],
+    "favicon.ico"
+  );
 
   await writePng(await makeSquare(source, 180, { background: APPLE_BG }), "apple-touch-icon.png");
   await writePng(await makeSquare(source, 192), "icon-192x192.png");

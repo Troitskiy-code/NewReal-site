@@ -36,6 +36,8 @@ export function createPageMetadata(title: string, description: string): Metadata
     },
     icons: {
       icon: [
+        { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
+        { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
         { url: "/favicon.ico", sizes: "any" },
         { url: "/icon-192x192.png", type: "image/png", sizes: "192x192" },
         { url: "/icon-512x512.png", type: "image/png", sizes: "512x512" },
