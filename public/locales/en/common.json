@@ -115,7 +115,8 @@
     "share": "Share",
     "copied": "Link copied",
     "shareFailed": "Could not copy the link",
-    "about": "About character"
+    "about": "About character",
+    "close": "Close"
   },
   "support": {
     "title": "Support",

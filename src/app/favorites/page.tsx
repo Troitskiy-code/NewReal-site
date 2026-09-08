@@ -8,6 +8,7 @@ import CharacterCard from "@/components/CharacterCard";
 import { Toaster } from "react-hot-toast";
 import { FaHeart, FaUser } from "react-icons/fa";
 import axios from "axios";
+import { useRestoreCharacterScroll } from "@/lib/characterReturn";
 
 type Character = {
   id: string;
@@ -61,6 +62,8 @@ function FavoritesPageContent() {
     }
   };
 
+  useRestoreCharacterScroll(status === "authenticated" && !loading);
+
   if (status === "loading" || loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-[#121212]">
@@ -101,7 +104,7 @@ function FavoritesPageContent() {
         </div>
       </div>
 
-      <main className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-6 md:px-6 md:pt-4">
+      <main data-character-list-scroll className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-6 md:px-6 md:pt-4">
         {error ? (
           <div className="rounded-wd border border-wd-primary/30 bg-wd-card p-10 text-center shadow-wd">
             <p className="text-sm font-extrabold uppercase text-wd-primary">Ошибка</p>

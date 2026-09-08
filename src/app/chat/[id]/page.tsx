@@ -23,6 +23,7 @@ import {
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
+import { captureCharacterReturn } from "@/lib/characterReturn";
 import { pickLocalizedText } from "@/lib/characterFields";
 import { ANONYMOUS_LIMIT_CODE } from "@/lib/anonymousCookie";
 
@@ -1514,6 +1515,7 @@ export default function ChatPage() {
             {character?.slug ? (
               <LocaleLink
                 href={`/character/${character.slug}`}
+                onClick={captureCharacterReturn}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-[#6C63FF] md:bg-transparent md:backdrop-blur-none"
                 title="О персонаже"
                 aria-label="О персонаже"
@@ -1537,7 +1539,7 @@ export default function ChatPage() {
         )}
 
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div data-character-list-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-4 md:space-y-4 md:px-4 md:pt-6">
             {characterCardDescription ? (
               <CharacterDescriptionCard description={characterCardDescription} />

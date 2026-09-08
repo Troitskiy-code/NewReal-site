@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import LocaleLink from "@/components/LocaleLink";
 import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
@@ -14,9 +14,8 @@ import { useTranslation } from "react-i18next";
 function HomePageContent() {
   const { t } = useTranslation();
   const { sort, setSort } = useCharacterSortUrl();
-  const [search, setSearch] = useState("");
-  const { characters, loading, loadingMore, error, hasMore, total, loadMore, reload } =
-    usePaginatedCharacters({ search, sort });
+  const { search, setSearch, characters, loading, loadingMore, error, hasMore, total, loadMore, reload } =
+    usePaginatedCharacters({ sort, listKey: "home" });
 
   const hasFilters = search.trim().length > 0;
 
@@ -31,7 +30,7 @@ function HomePageContent() {
         onSortChange={setSort}
       />
 
-      <main className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-6 md:px-6 md:pt-4">
+      <main data-character-list-scroll className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-6 md:px-6 md:pt-4">
         {!loading && total > 0 && (
           <p className="text-xs text-wd-text-secondary">
             {t("home.found")}<span className="font-bold text-white">{total}</span>

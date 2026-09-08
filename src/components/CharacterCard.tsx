@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import FavoriteButton from "@/components/FavoriteButton";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { memoryToText } from "@/lib/persistentMemory";
+import { captureCharacterReturn } from "@/lib/characterReturn";
 
 type CharacterCardProps = {
   character: {
@@ -36,7 +37,11 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
   const href = character.slug ? `/character/${character.slug}` : `/chat/${character.id}`;
 
   return (
-    <LocaleLink href={href} className={`group block min-w-0 w-full max-w-full ${className}`}>
+    <LocaleLink
+      href={href}
+      onClick={captureCharacterReturn}
+      className={`group block min-w-0 w-full max-w-full ${className}`}
+    >
       <article className="relative flex h-[260px] min-w-0 flex-col overflow-hidden rounded-xl border border-wd-border bg-[#2A2A2A] shadow-wd transition-all duration-300 max-[400px]:h-[240px] md:block md:h-[340px] md:rounded-3xl lg:h-[380px] hover:-translate-y-0.5 hover:border-wd-secondary/50 hover:shadow-[0_12px_32px_rgba(108,99,255,0.18)] md:hover:-translate-y-1 md:hover:scale-[1.02] md:hover:shadow-[0_16px_48px_rgba(108,99,255,0.2)]">
         <div className="absolute inset-0 overflow-hidden">
           {character.imageUrl ? (

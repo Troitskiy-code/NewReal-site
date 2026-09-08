@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import toast, { Toaster } from "react-hot-toast";
-import { FaComments, FaShareAlt, FaUser } from "react-icons/fa";
-import LocaleLink from "@/components/LocaleLink";
+import { FaComments, FaShareAlt, FaTimes, FaUser } from "react-icons/fa";
+import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { pickLocalizedText } from "@/lib/characterFields";
 import { memoryToText } from "@/lib/persistentMemory";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
-import { dateLocale } from "@/lib/i18nConfig";
+import { dateLocale, withLocale } from "@/lib/i18nConfig";
+import { closeCharacterPage } from "@/lib/characterReturn";
 
 export type CharacterPublicViewData = {
   id: string;
@@ -29,9 +31,10 @@ export type CharacterPublicViewData = {
 };
 
 export default function CharacterPublicView({ character }: { character: CharacterPublicViewData }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const router = useRouter();
+  const locale = useCurrentLocale();
   const [copied, setCopied] = useState(false);
-  const locale = i18n.language;
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description = character.descriptionCard?.trim() || "";
   const publicMemory = memoryToText(character.publicMemory).trim();
@@ -42,10 +45,29 @@ export default function CharacterPublicView({ character }: { character: Characte
     year: "numeric",
   });
 
+  const handleClose = useCallback(() => {
+    closeCharacterPage(router, withLocale("/gallery", locale));
+  }, [locale, router]);
+
   useEffect(() => {
     reachGoal(METRIKA_GOALS.characterPageView);
     console.log("[Character] Page view", { slug: character.slug, id: character.id });
   }, [character.id, character.slug]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+      }
+      event.preventDefault();
+      handleClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleClose]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -64,6 +86,15 @@ export default function CharacterPublicView({ character }: { character: Characte
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <Toaster position="top-right" />
+      <button
+        type="button"
+        onClick={handleClose}
+        className="fixed right-3 top-16 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-black/70 md:right-5 md:top-[5.75rem]"
+        aria-label={t("characterPage.close")}
+        title={t("characterPage.close")}
+      >
+        <FaTimes size={16} />
+      </button>
       <div className="overflow-hidden rounded-wd border border-wd-border bg-wd-card shadow-wd">
         <div className="relative aspect-[4/3] bg-[#0A0A0A] sm:aspect-[16/9]">
           {character.imageUrl ? (

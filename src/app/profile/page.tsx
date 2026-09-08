@@ -25,6 +25,7 @@ import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterF
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "@/lib/i18nConfig";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
+import { captureCharacterReturn, useRestoreCharacterScroll } from "@/lib/characterReturn";
 
 type Character = {
   id: string;
@@ -113,6 +114,7 @@ export default function ProfilePage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
+  useRestoreCharacterScroll(!loading);
 
   const fetchCharacters = useCallback(
     async (pageNum: number, append: boolean) => {
@@ -251,7 +253,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text overflow-hidden">
       <Toaster position="top-right" />
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
+      <main data-character-list-scroll className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         {/* Profile header */}
         <section className="wd-card p-4 md:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
@@ -448,6 +450,7 @@ export default function ProfilePage() {
                         {character.slug && (
                           <LocaleLink
                             href={`/character/${character.slug}`}
+                            onClick={captureCharacterReturn}
                             className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-[#6C63FF]"
                           >
                             {t("characterPage.about")}
