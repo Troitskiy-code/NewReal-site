@@ -30,7 +30,6 @@ type Character = {
   name: string;
   slug?: string | null;
   description: string | null;
-  description: string | null;
   appearance: string | null;
   tags: string | null;
   imageUrl: string | null;

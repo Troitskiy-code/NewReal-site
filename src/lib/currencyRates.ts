@@ -14,7 +14,7 @@ export type CurrencyRates = {
 };
 
 const CACHE_PATHS = [
-  path.join(process.cwd(), ".currency-cache.json"),
+  path.join(/* turbopackIgnore: true */ process.cwd(), ".currency-cache.json"),
   path.join(os.tmpdir(), "newverse-currency-cache.json"),
 ];
 
