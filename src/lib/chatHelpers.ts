@@ -14,7 +14,6 @@ import {
   shouldUseRag,
   searchRelevantMessages,
 } from "@/lib/messageEmbeddings";
-import { appendRandomEventToPrompt, pickRandomSceneEvent } from "@/lib/randomEvent";
 import {
   DAILY_REQUEST_LIMIT,
   getContextTokenLimit,
@@ -449,14 +448,6 @@ ${systemPrompt}`;
       systemPrompt = english
         ? `${systemPrompt}\n\nContinue your reply from where you left off.`
         : `${systemPrompt}\n\nПродолжи ответ с того места, где остановился.`;
-    }
-  }
-
-  if (!continueCutOff) {
-    const randomEvent = pickRandomSceneEvent(locale);
-    if (randomEvent) {
-      systemPrompt = appendRandomEventToPrompt(systemPrompt, randomEvent, locale);
-      console.log(`🎲 Случайное событие: ${randomEvent}`);
     }
   }
 
