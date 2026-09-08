@@ -42,6 +42,18 @@ export function convertPaymentAmount(priceInRUB: number, currency: Currency): nu
   return Number(convertPrice(priceInRUB, currency).toFixed(2));
 }
 
+/** Display-only USD/EUR equivalent. Returns null for RUB so the UI can hide the extra line. */
+export function formatCbrEquivalent(priceInRUB: number, currency: Currency): string | null {
+  if (currency === "RUB") return null;
+  const amount = convertPaymentAmount(priceInRUB, currency);
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function resolveCurrency(...candidates: unknown[]): Currency {
   for (const value of candidates) {
     if (isCurrency(value)) return value;

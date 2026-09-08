@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { useCurrentLocale } from "@/components/LocaleLink";
 import CurrencySelector from "@/components/CurrencySelector";
+import PaymentChargeSummary from "@/components/PaymentChargeSummary";
 import { useCurrency } from "@/components/CurrencyContext";
 import { convertPrice, formatPrice } from "@/lib/currency";
 
@@ -130,11 +131,6 @@ export default function PricingPage() {
     const goal = subscriptionGoal(plan.id);
     if (goal) reachGoal(goal);
 
-    if (status !== "authenticated") {
-      router.push(withLocale("/login", locale));
-      return;
-    }
-
     setApplyMode("immediate");
     setRecurringConsent(false);
     setSelectedPlan(plan);
@@ -148,6 +144,10 @@ export default function PricingPage() {
   const handlePay = async () => {
     if (!selectedPlan) return;
     if (!recurringConsent) return;
+    if (status !== "authenticated") {
+      router.push(withLocale("/login", locale));
+      return;
+    }
     const goal = subscriptionGoal(selectedPlan.id);
     if (goal) reachGoal(goal);
     const mode = hasActiveSubscription ? applyMode : "immediate";
@@ -346,6 +346,10 @@ export default function PricingPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
           <div className="wd-card w-full max-w-md space-y-5 p-6">
             <h2 className="text-lg font-black text-white">{t("pricing.checkoutTitle", { name: selectedPlan.name })}</h2>
+            <PaymentChargeSummary
+              amountRub={isYearly ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice}
+              context="subscription"
+            />
             <div className="space-y-3 text-sm text-wd-text-secondary">
               <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
                 <input

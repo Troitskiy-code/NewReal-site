@@ -234,6 +234,9 @@
     "bonus": "Bonus",
     "action": "Action",
     "buy": "Buy",
+    "checkoutTitle": "Purchase {{label}}",
+    "goToPayment": "Continue to payment",
+    "paying": "Redirecting to payment...",
     "loadError": "Could not load the balance",
     "paymentError": "Could not create the payment",
     "createPaymentError": "Error creating the payment",
@@ -244,6 +247,10 @@
     "min": "0 min",
     "hoursMinutes": "{{hours}} h {{minutes}} min",
     "minutes": "{{minutes}} min"
+  },
+  "payment": {
+    "chargeLabel": "Amount due",
+    "cbrEquivalent": "~ {{amount}} (CBR exchange rate)"
   },
   "meta": {
     "home": {

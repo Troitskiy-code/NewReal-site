@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import LocaleLink from "@/components/LocaleLink";
+import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
 import axios from "axios";
@@ -10,11 +11,12 @@ import { FaCoins, FaCrown, FaGift } from "react-icons/fa";
 import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { useTranslation } from "react-i18next";
-import { dateLocale } from "@/lib/i18nConfig";
+import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import CurrencySelector from "@/components/CurrencySelector";
+import PaymentChargeSummary from "@/components/PaymentChargeSummary";
 import { useCurrency } from "@/components/CurrencyContext";
 import { convertPrice, formatPrice, getCurrencySymbol } from "@/lib/currency";
-import { VC_PACKAGES } from "@/lib/vcPackages";
+import { VC_PACKAGES, type VcPackage } from "@/lib/vcPackages";
 
 type BalanceData = {
   verseCoins: number;
@@ -52,12 +54,16 @@ function formatDate(value: string, locale = "ru"): string {
 
 export default function CoinsPage() {
   const { status } = useSession();
+  const router = useRouter();
   const { t, i18n } = useTranslation();
+  const locale = useCurrentLocale();
   const { currency, setCurrency } = useCurrency();
   const [balance, setBalance] = useState<BalanceData | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingPackage, setPendingPackage] = useState<VcPackage | null>(null);
+  const [paying, setPaying] = useState(false);
 
   const fetchBalance = useCallback(async () => {
     setLoadingBalance(true);
@@ -83,26 +89,46 @@ export default function CoinsPage() {
     }
   }, [status, fetchBalance]);
 
-  const handleBuy = async (packageId: number, coins: number) => {
+  const openCheckout = (pkg: VcPackage) => {
     reachGoal(METRIKA_GOALS.buyVc);
+    setPendingPackage(pkg);
+  };
+
+  const closeCheckout = () => {
+    if (paying) return;
+    setPendingPackage(null);
+  };
+
+  const handleBuy = async () => {
+    if (!pendingPackage) return;
+    if (status !== "authenticated") {
+      router.push(withLocale("/login", locale));
+      return;
+    }
+    setPaying(true);
     try {
       const res = await fetch("/api/payment/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          packageId,
-          desc: t("coins.buyDesc", { coins }),
+          packageId: pendingPackage.id,
+          desc: t("coins.buyDesc", { coins: pendingPackage.vc }),
         }),
       });
       const data = await res.json();
       if (data.url) {
-        console.log("🔗 URL для оплаты:", data.url);
+        console.log("[Payment] Redirecting to Robokassa", {
+          packageId: pendingPackage.id,
+          amountRUB: pendingPackage.price,
+        });
         window.location.href = data.url;
-      } else {
-        toast.error(t("coins.paymentError"));
+        return;
       }
+      toast.error(data.error || t("coins.paymentError"));
+      setPaying(false);
     } catch (error) {
       toast.error(t("coins.createPaymentError"));
+      setPaying(false);
     }
   };
 
@@ -309,7 +335,7 @@ export default function CoinsPage() {
                         id={`buy-vc-${pkg.vc}`}
                         data-metrika="buy-vc"
                         data-metrika-package={String(pkg.vc)}
-                        onClick={() => handleBuy(pkg.id, pkg.vc)}
+                        onClick={() => openCheckout(pkg)}
                         className="buy-vc-btn rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
                       >
                         {t("coins.buy")}
@@ -323,6 +349,35 @@ export default function CoinsPage() {
           </div>
         </section>
       </main>
+
+      {pendingPackage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="wd-card w-full max-w-md space-y-5 p-6">
+            <h2 className="text-lg font-black text-white">
+              {t("coins.checkoutTitle", { label: pendingPackage.label })}
+            </h2>
+            <PaymentChargeSummary amountRub={pendingPackage.price} context="vc" />
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={handleBuy}
+                disabled={paying}
+                className="wd-button w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {paying ? t("coins.paying") : t("coins.goToPayment")}
+              </button>
+              <button
+                type="button"
+                onClick={closeCheckout}
+                disabled={paying}
+                className="w-full py-2 text-sm font-medium text-wd-text-secondary hover:text-white disabled:opacity-50"
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

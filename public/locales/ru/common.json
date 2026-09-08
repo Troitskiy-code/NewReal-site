@@ -234,6 +234,9 @@
     "bonus": "Бонус",
     "action": "Действие",
     "buy": "Купить",
+    "checkoutTitle": "Покупка {{label}}",
+    "goToPayment": "Перейти к оплате",
+    "paying": "Переход к оплате...",
     "loadError": "Не удалось загрузить баланс",
     "paymentError": "Не удалось создать платёж",
     "createPaymentError": "Ошибка при создании платежа",
@@ -244,6 +247,10 @@
     "min": "0 мин.",
     "hoursMinutes": "{{hours}} ч. {{minutes}} мин.",
     "minutes": "{{minutes}} мин."
+  },
+  "payment": {
+    "chargeLabel": "К оплате",
+    "cbrEquivalent": "~ {{amount}} (по курсу ЦБ РФ)"
   },
   "meta": {
     "home": {
