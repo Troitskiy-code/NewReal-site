@@ -106,6 +106,17 @@
   "characterCard": {
     "knownAbout": "Известно о персонаже:"
   },
+  "characterPage": {
+    "author": "Автор",
+    "unknownAuthor": "NewVerse",
+    "messages": "Сообщений: {{count}}",
+    "knownAbout": "Известно о персонаже",
+    "startChat": "Начать чат",
+    "share": "Поделиться",
+    "copied": "Ссылка скопирована",
+    "shareFailed": "Не удалось скопировать ссылку",
+    "about": "О персонаже"
+  },
   "support": {
     "title": "Поддержка",
     "intro": "По вопросам оплаты, техническим проблемам и возвратам используйте форму ниже. Мы ответим на указанный email в течение 10 рабочих дней.",
@@ -325,6 +336,12 @@
     "chat": {
       "title": "Чат с персонажем {{name}} — NewVerse",
       "description": "Ролевая игра с персонажем {{name}}. Погрузитесь в историю и развивайте сюжет."
+    },
+    "character": {
+      "title": "{{name}} — NewVerse",
+      "description": "Персонаж {{name}} в NewVerse. Начните ролевую игру и узнайте его историю.",
+      "fallbackTitle": "Персонаж — NewVerse",
+      "fallbackDescription": "Публичная страница персонажа NewVerse."
     }
   },
   "email": {

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
+import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { Prisma } from "@prisma/client";
 
 export const maxDuration = 60;
@@ -79,6 +80,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: "Имя обязательно" }, { status: 400 });
       }
       data.name = parsed.name;
+      if (parsed.name !== authResult.character.name) {
+        data.slug = await allocateCharacterSlug(parsed.name, id);
+      }
     }
 
     if (body.description !== undefined) data.description = parsed.description ?? null;

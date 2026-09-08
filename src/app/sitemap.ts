@@ -30,12 +30,12 @@ async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
   try {
     const characters = await prisma.character.findMany({
       where: { isPublic: true },
-      select: { id: true, updatedAt: true },
+      select: { id: true, slug: true, updatedAt: true },
     });
 
     return characters.flatMap((character) =>
       LOCALES.map((locale) => ({
-        url: `${SITE_URL}${withLocale(`/chat/${character.id}`, locale)}`,
+        url: `${SITE_URL}${withLocale(`/character/${character.slug}`, locale)}`,
         lastModified: character.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.7,

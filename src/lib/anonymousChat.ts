@@ -76,6 +76,7 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
     select: {
       isPublic: true,
       name: true,
+      slug: true,
       greeting: true,
       imageUrl: true,
       description: true,
@@ -107,6 +108,7 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
       messages: [],
       character: {
         name: character.name,
+        slug: character.slug,
         greeting: character.greeting,
         imageUrl: character.imageUrl,
         description: character.description,

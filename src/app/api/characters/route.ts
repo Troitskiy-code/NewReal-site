@@ -7,6 +7,8 @@ import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
 import { buildInitialPublicMemory } from "@/lib/persistentMemory";
 import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
+import { allocateCharacterSlug } from "@/lib/characterPublic";
+import { temporaryCharacterSlug } from "@/lib/characterSlug";
 
 export const maxDuration = 60;
 
@@ -57,6 +59,7 @@ export async function POST(req: NextRequest) {
     let character = await prisma.character.create({
       data: {
         name,
+        slug: temporaryCharacterSlug(),
         description: description ?? null,
         descriptionCard: descriptionCard ?? null,
         appearance: appearance ?? null,
@@ -76,6 +79,13 @@ export async function POST(req: NextRequest) {
         systemPrompt: providedSystemPrompt ?? null,
       },
     });
+
+    const slug = await allocateCharacterSlug(name, character.id);
+    character = await prisma.character.update({
+      where: { id: character.id },
+      data: { slug },
+    });
+    console.log(`[Character] Created slug=${slug} id=${character.id}`);
 
     console.log(
       `[Memory] Seeded public memory for character=${character.id} user=${session.user.id}`
@@ -205,6 +215,7 @@ export async function GET(req: NextRequest) {
       tags: true,
       imageUrl: true,
       isPublic: true,
+      slug: true,
       userId: true,
       totalMessages: true,
       createdAt: true,

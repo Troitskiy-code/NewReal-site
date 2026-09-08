@@ -25,14 +25,20 @@ export type MetaPageKey =
   | "login"
   | "register";
 
-export function createPageMetadata(title: string, description: string): Metadata {
+export function createPageMetadata(title: string, description: string, image: string = OG_IMAGE): Metadata {
   return {
     title,
     description,
     openGraph: {
       title,
       description,
-      images: [{ url: OG_IMAGE }],
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
     },
     icons: {
       icon: [

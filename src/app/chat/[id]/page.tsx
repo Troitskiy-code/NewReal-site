@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
-import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy } from "react-icons/fa";
+import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy, FaInfoCircle } from "react-icons/fa";
 import MemoryEditor from "@/components/MemoryEditor";
 import PersonaSelector from "@/components/PersonaSelector";
 import type { ChatPersona } from "@/lib/persona";
@@ -64,6 +64,7 @@ type BalanceData = {
 
 type ChatCharacter = {
   name: string;
+  slug?: string | null;
   name_en?: string | null;
   greeting: string | null;
   greeting_en?: string | null;
@@ -1508,18 +1509,30 @@ export default function ChatPage() {
         </Modal>
 
         {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
-        {!isAnonymous && (
-          <aside className="fixed right-2 top-16 z-20 flex w-10 justify-center bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
-            <ChatSettingsMenu
-              open={settingsMenuOpen}
-              onToggle={() => setSettingsMenuOpen((current) => !current)}
-              onClose={() => setSettingsMenuOpen(false)}
-              onOpenModels={() => setSettingsOpen(true)}
-              onOpenMemory={() => setMemoryEditorOpen(true)}
-              onOpenPersona={() => setPersonaSelectorOpen(true)}
-              onClearChat={handleClearChat}
-              disabled={sending || actionLoading || clearingChat}
-            />
+        {(character?.slug || !isAnonymous) && (
+          <aside className="fixed right-2 top-16 z-20 flex w-10 flex-col items-center gap-2 bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
+            {character?.slug ? (
+              <LocaleLink
+                href={`/character/${character.slug}`}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-[#6C63FF] md:bg-transparent md:backdrop-blur-none"
+                title="О персонаже"
+                aria-label="О персонаже"
+              >
+                <FaInfoCircle size={18} />
+              </LocaleLink>
+            ) : null}
+            {!isAnonymous && (
+              <ChatSettingsMenu
+                open={settingsMenuOpen}
+                onToggle={() => setSettingsMenuOpen((current) => !current)}
+                onClose={() => setSettingsMenuOpen(false)}
+                onOpenModels={() => setSettingsOpen(true)}
+                onOpenMemory={() => setMemoryEditorOpen(true)}
+                onOpenPersona={() => setPersonaSelectorOpen(true)}
+                onClearChat={handleClearChat}
+                disabled={sending || actionLoading || clearingChat}
+              />
+            )}
           </aside>
         )}
 

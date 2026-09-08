@@ -106,6 +106,17 @@
   "characterCard": {
     "knownAbout": "Known about the character:"
   },
+  "characterPage": {
+    "author": "Author",
+    "unknownAuthor": "NewVerse",
+    "messages": "Messages: {{count}}",
+    "knownAbout": "Known about the character",
+    "startChat": "Start chat",
+    "share": "Share",
+    "copied": "Link copied",
+    "shareFailed": "Could not copy the link",
+    "about": "About character"
+  },
   "support": {
     "title": "Support",
     "intro": "For billing, technical issues, and refunds, use the form below. We will reply to the email you provide within 10 business days.",
@@ -325,6 +336,12 @@
     "chat": {
       "title": "Chat with {{name}} — NewVerse",
       "description": "Roleplay with {{name}}. Dive into the story and keep the plot going."
+    },
+    "character": {
+      "title": "{{name}} — NewVerse",
+      "description": "{{name}} on NewVerse. Start a roleplay and learn their story.",
+      "fallbackTitle": "Character — NewVerse",
+      "fallbackDescription": "Public character page on NewVerse."
     }
   },
   "email": {

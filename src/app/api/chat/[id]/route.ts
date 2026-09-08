@@ -337,6 +337,7 @@ export async function GET(
         isPublic: true,
         userId: true,
         name: true,
+        slug: true,
         greeting: true,
         imageUrl: true,
         description: true,
@@ -364,6 +365,7 @@ export async function GET(
       messages,
       character: {
         name: character.name,
+        slug: character.slug,
         greeting: character.greeting,
         imageUrl: character.imageUrl,
         description: character.description,

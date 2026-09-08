@@ -18,7 +18,7 @@ export const METRIKA_GOALS = {
   saveCharacter: "save_character",
   sendMessage: "send_message",
   register: "register",
-  login: "login",
+  characterPageView: "character_page_view",
 } as const;
 
 export type MetrikaGoal = (typeof METRIKA_GOALS)[keyof typeof METRIKA_GOALS];

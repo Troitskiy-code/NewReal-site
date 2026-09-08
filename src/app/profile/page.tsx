@@ -28,6 +28,8 @@ import { dateLocale } from "@/lib/i18nConfig";
 type Character = {
   id: string;
   name: string;
+  slug?: string | null;
+  description: string | null;
   description: string | null;
   appearance: string | null;
   tags: string | null;
@@ -406,6 +408,14 @@ export default function ProfilePage() {
                         </div>
                       )}
                       <div className="flex flex-col gap-2 pt-2 border-t border-wd-border mt-1">
+                        {character.slug && (
+                          <LocaleLink
+                            href={`/character/${character.slug}`}
+                            className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-[#6C63FF]"
+                          >
+                            {t("characterPage.about")}
+                          </LocaleLink>
+                        )}
                         <LocaleLink
                           href={`/chat/${character.id}`}
                           className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-[#6C63FF]/30 bg-[#6C63FF]/10 text-white transition-all hover:bg-[#6C63FF]/20"
