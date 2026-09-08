@@ -62,7 +62,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description =
-    pickLocalizedText(character.description, character.description_en, locale) ||
     character.descriptionCard?.trim() ||
     memoryToText(character.publicMemory).trim() ||
     translate(locale, "meta.character.description", { name });

@@ -33,10 +33,7 @@ export default function CharacterPublicView({ character }: { character: Characte
   const [copied, setCopied] = useState(false);
   const locale = i18n.language;
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
-  const description =
-    pickLocalizedText(character.description, character.description_en, locale) ||
-    character.descriptionCard?.trim() ||
-    "";
+  const description = character.descriptionCard?.trim() || "";
   const publicMemory = memoryToText(character.publicMemory).trim();
   const author = character.user.name?.trim() || t("characterPage.unknownAuthor");
   const createdAt = new Date(character.createdAt).toLocaleDateString(dateLocale(locale), {
