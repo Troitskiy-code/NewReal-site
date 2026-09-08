@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "verify:economy": "node --experimental-strip-types scripts/verify-economy.ts",
+    "verify:intent": "node --experimental-strip-types scripts/verify-intent.ts",
     "translate:characters": "node --experimental-strip-types scripts/translate-characters.ts"
   },
   "dependencies": {
