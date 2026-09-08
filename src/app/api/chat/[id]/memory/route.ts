@@ -25,9 +25,12 @@ export async function GET(
     }
 
     const payload = await getChatMemoryPayload(session.user.id, characterId);
+    console.log(
+      `[MemoryEditor] loaded character=${characterId} summary=${payload.summary ? "yes" : "no"} core=${payload.core ? "yes" : "no"} episodic=${payload.episodic.length}`
+    );
     return NextResponse.json(payload);
   } catch (error) {
-    console.error("Get chat memory error:", error);
+    console.error("[MemoryEditor] Get chat memory error:", error);
     return NextResponse.json({ error: "Не удалось загрузить память" }, { status: 500 });
   }
 }

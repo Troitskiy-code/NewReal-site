@@ -29,9 +29,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Событие не найдено" }, { status: 404 });
     }
 
+    console.log(`[MemoryEditor] episodic deleted id=${episodicId} character=${characterId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete episodic memory error:", error);
+    console.error("[MemoryEditor] episodic delete failed", error);
     return NextResponse.json({ error: "Не удалось удалить событие" }, { status: 500 });
   }
 }

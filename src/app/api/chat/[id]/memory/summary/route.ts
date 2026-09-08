@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
-import { setCoreMemoryContent } from "@/lib/advancedMemory";
+import { setSummaryContent } from "@/lib/advancedMemory";
 
 export async function PUT(
   req: NextRequest,
@@ -20,9 +20,9 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const content = body?.content;
-    if (typeof content !== "string") {
-      return NextResponse.json({ error: "content обязателен" }, { status: 400 });
+    const summary = body?.summary ?? body?.content;
+    if (typeof summary !== "string") {
+      return NextResponse.json({ error: "summary обязателен" }, { status: 400 });
     }
 
     const access = await getAuthorizedCharacterForChat(session.user.id, characterId);
@@ -30,11 +30,14 @@ export async function PUT(
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    const coreMemory = await setCoreMemoryContent(session.user.id, characterId, content);
-    console.log("[MemoryEditor] core updated");
-    return NextResponse.json({ coreMemory, core: coreMemory });
+    const saved = await setSummaryContent(session.user.id, characterId, summary);
+    return NextResponse.json({
+      summary: saved
+        ? { summary: saved.summary, createdAt: saved.createdAt }
+        : null,
+    });
   } catch (error) {
-    console.error("[MemoryEditor] core save failed", error);
-    return NextResponse.json({ error: "Не удалось сохранить ключевую память" }, { status: 500 });
+    console.error("[MemoryEditor] summary save failed", error);
+    return NextResponse.json({ error: "Не удалось сохранить суммаризацию" }, { status: 500 });
   }
 }

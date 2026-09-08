@@ -5,6 +5,8 @@ import type { UserIntent } from "@/lib/intentAnalyzer";
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const CORE_MEMORY_MODEL = "google/gemma-4-31b-it";
 const EPISODIC_CAP = 100;
+export const EDITOR_EPISODIC_MIN_IMPORTANCE = 2;
+export const MANUAL_EPISODIC_IMPORTANCE = 3;
 
 const CORE_DELTA_PROMPT =
   "Сравни ключевую память диалога с новым сообщением пользователя. Если в сообщении нет устойчивых новых фактов (имена, отношения, договорённости, характер, предпочтения, сюжетные решения), ответь строго одним словом: UNCHANGED. Иначе верни только обновлённую ключевую память целиком: краткий связный текст без воды, объединяющий старую память и новую информацию.";
@@ -253,7 +255,7 @@ export async function deleteEpisodicMemory(
     },
   });
 
-  console.log(`[Episodic] deleted id=${episodicId} user=${userId} character=${characterId}`);
+  console.log(`[MemoryEditor] episodic deleted id=${episodicId} user=${userId} character=${characterId}`);
   return true;
 }
 
@@ -340,7 +342,7 @@ export async function getChatMemoryPayload(userId: string, characterId: string) 
       select: { id: true, content: true, updatedAt: true },
     }),
     prisma.episodicMemory.findMany({
-      where: { userId, characterId },
+      where: { userId, characterId, importance: { gte: EDITOR_EPISODIC_MIN_IMPORTANCE } },
       orderBy: { timestamp: "desc" },
       select: { id: true, event: true, timestamp: true, importance: true },
     }),
@@ -350,7 +352,36 @@ export async function getChatMemoryPayload(userId: string, characterId: string) 
     }),
   ]);
 
-  return { coreMemory, episodicMemories, summary };
+  return {
+    summary,
+    core: coreMemory,
+    coreMemory,
+    episodic: episodicMemories,
+    episodicMemories,
+  };
+}
+
+export async function setSummaryContent(userId: string, characterId: string, summary: string) {
+  const trimmed = summary.trim();
+
+  if (!trimmed) {
+    await prisma.memory.deleteMany({ where: { userId, characterId } });
+    await prisma.memoryEntry.deleteMany({
+      where: { userId, characterId, type: "summary" },
+    });
+    console.log(`[MemoryEditor] summary cleared user=${userId} character=${characterId}`);
+    return null;
+  }
+
+  const saved = await prisma.memory.upsert({
+    where: { userId_characterId: { userId, characterId } },
+    create: { userId, characterId, summary: trimmed },
+    update: { summary: trimmed },
+  });
+
+  await recordSummaryMemoryEntry(userId, characterId, trimmed);
+  console.log(`[MemoryEditor] summary saved user=${userId} character=${characterId} chars=${trimmed.length}`);
+  return saved;
 }
 
 export async function setCoreMemoryContent(userId: string, characterId: string, content: string) {
@@ -369,7 +400,7 @@ export async function setCoreMemoryContent(userId: string, characterId: string, 
     });
   }
 
-  console.log(`[CoreMemory] saved manually user=${userId} character=${characterId}`);
+  console.log(`[MemoryEditor] core saved user=${userId} character=${characterId}`);
   return saved;
 }
 
