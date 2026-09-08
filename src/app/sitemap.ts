@@ -29,18 +29,19 @@ const STATIC_PAGES: Array<{
 async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
   try {
     const characters = await prisma.character.findMany({
-      where: { isPublic: true },
+      where: { isPublic: true, slug: { not: null } },
       select: { id: true, slug: true, updatedAt: true },
     });
 
-    return characters.flatMap((character) =>
-      LOCALES.map((locale) => ({
+    return characters.flatMap((character) => {
+      if (!character.slug) return [];
+      return LOCALES.map((locale) => ({
         url: `${SITE_URL}${withLocale(`/character/${character.slug}`, locale)}`,
         lastModified: character.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.7,
-      }))
-    );
+      }));
+    });
   } catch (error) {
     console.error("Failed to load public characters for sitemap:", error);
     return [];

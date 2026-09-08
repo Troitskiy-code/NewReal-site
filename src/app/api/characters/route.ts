@@ -9,6 +9,7 @@ import { buildInitialPublicMemory } from "@/lib/persistentMemory";
 import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { temporaryCharacterSlug } from "@/lib/characterSlug";
+import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 
 export const maxDuration = 60;
 
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    await ensureCharacterSlugColumn();
 
     const body = await req.json();
 
@@ -146,6 +149,11 @@ export async function POST(req: NextRequest) {
 // ------------------ GET (получение списка персонажей) ------------------
 export async function GET(req: NextRequest) {
   try {
+    try {
+      await ensureCharacterSlugColumn();
+    } catch (error) {
+      console.error("[characters] Could not ensure slug column", error);
+    }
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
     const tagsParam = searchParams.get("tags") || "";
@@ -204,7 +212,7 @@ export async function GET(req: NextRequest) {
 
     const queryWhere = andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
-    const characterCardSelect = {
+    const characterCardSelectNoSlug = {
       id: true,
       name: true,
       name_en: true,
@@ -215,7 +223,6 @@ export async function GET(req: NextRequest) {
       tags: true,
       imageUrl: true,
       isPublic: true,
-      slug: true,
       userId: true,
       totalMessages: true,
       createdAt: true,
@@ -227,43 +234,60 @@ export async function GET(req: NextRequest) {
       },
     } as const;
 
+    const characterCardSelect = {
+      ...characterCardSelectNoSlug,
+      slug: true,
+    } as const;
+
     let characters;
     const startedAt = Date.now();
     const total = await prisma.character.count({ where: queryWhere });
 
-    if (sort === "random") {
-      const ids = await prisma.character.findMany({
-        where: queryWhere,
-        select: { id: true },
-      });
-      const shuffled = [...ids].sort(() => Math.random() - 0.5);
-      const pageIds = shuffled.slice(skip, skip + limit).map((row) => row.id);
+    const loadCharacters = async (
+      cardSelect: typeof characterCardSelect | typeof characterCardSelectNoSlug
+    ) => {
+      if (sort === "random") {
+        const ids = await prisma.character.findMany({
+          where: queryWhere,
+          select: { id: true },
+        });
+        const shuffled = [...ids].sort(() => Math.random() - 0.5);
+        const pageIds = shuffled.slice(skip, skip + limit).map((row) => row.id);
 
-      if (pageIds.length === 0) {
-        characters = [];
-      } else {
+        if (pageIds.length === 0) {
+          return [];
+        }
+
         const rows = await prisma.character.findMany({
           where: { id: { in: pageIds } },
-          select: characterCardSelect,
+          select: cardSelect,
         });
         const byId = new Map(rows.map((row) => [row.id, row]));
-        characters = pageIds
+        return pageIds
           .map((id) => byId.get(id))
           .filter((row): row is NonNullable<typeof row> => row != null);
       }
-    } else {
+
       const orderBy =
         sort === "top" || sort === "for-you"
           ? { totalMessages: "desc" as const }
           : { createdAt: "desc" as const };
 
-      characters = await prisma.character.findMany({
+      return prisma.character.findMany({
         where: queryWhere,
         orderBy,
         skip,
         take: limit,
-        select: characterCardSelect,
+        select: cardSelect,
       });
+    };
+
+    try {
+      characters = await loadCharacters(characterCardSelect);
+    } catch (error) {
+      if (!isMissingSlugColumn(error)) throw error;
+      console.error("[characters] Listing without slug column");
+      characters = await loadCharacters(characterCardSelectNoSlug);
     }
 
     let favoriteIds = new Set<string>();

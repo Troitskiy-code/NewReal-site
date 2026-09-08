@@ -29,7 +29,7 @@ model Account {
 model Character {
   id                String   @id @default(cuid())
   name              String
-  slug              String   @unique
+  slug              String?  @unique
   description       String?
   appearance        String?
   tags              String?

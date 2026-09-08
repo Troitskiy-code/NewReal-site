@@ -6,6 +6,7 @@ import { parseCharacterBody } from "@/lib/characterFields";
 import { translateCharacterFieldsToEn } from "@/lib/translate";
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
+import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
 import { Prisma } from "@prisma/client";
 
 export const maxDuration = 60;
@@ -30,6 +31,7 @@ async function getAuthorizedCharacter(id: string, userId: string) {
 
 export async function GET(_req: NextRequest, context: RouteContext) {
   try {
+    await ensureCharacterSlugColumn();
     const { id } = await context.params;
     const session = await getServerSession(authOptions);
 
@@ -58,6 +60,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    await ensureCharacterSlugColumn();
 
     const { id } = await context.params;
     const authResult = await getAuthorizedCharacter(id, session.user.id);

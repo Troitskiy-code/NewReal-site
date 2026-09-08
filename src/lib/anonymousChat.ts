@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { getApiLocale } from "@/lib/apiI18n";
 import {
   resolveChatSystemPrompt,
@@ -71,21 +72,31 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
   const { sessionId, isNew } = resolveAnonymousSessionId(req);
   const remainingMessages = await getAnonymousRemaining(sessionId);
 
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: {
-      isPublic: true,
-      name: true,
-      slug: true,
-      greeting: true,
-      imageUrl: true,
-      description: true,
-      descriptionCard: true,
-      name_en: true,
-      greeting_en: true,
-      description_en: true,
-    },
-  });
+  const characterSelectNoSlug = {
+    isPublic: true,
+    name: true,
+    greeting: true,
+    imageUrl: true,
+    description: true,
+    descriptionCard: true,
+    name_en: true,
+    greeting_en: true,
+    description_en: true,
+  } as const;
+
+  let character;
+  try {
+    character = await prisma.character.findUnique({
+      where: { id: characterId },
+      select: { ...characterSelectNoSlug, slug: true },
+    });
+  } catch (error) {
+    if (!isMissingSlugColumn(error)) throw error;
+    character = await prisma.character.findUnique({
+      where: { id: characterId },
+      select: characterSelectNoSlug,
+    });
+  }
 
   if (!character) {
     return withCookie(
@@ -108,7 +119,7 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
       messages: [],
       character: {
         name: character.name,
-        slug: character.slug,
+        slug: "slug" in character ? character.slug : null,
         greeting: character.greeting,
         imageUrl: character.imageUrl,
         description: character.description,

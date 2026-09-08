@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { scheduleMessageEmbedding, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
 import { analyzeIntent } from "@/lib/intentAnalyzer";
 import { ingestUserMessageMemory } from "@/lib/advancedMemory";
@@ -331,22 +332,38 @@ export async function GET(
       return getAnonymousChatPayload(req, id);
     }
 
-    const character = await prisma.character.findUnique({
-      where: { id },
-      select: {
-        isPublic: true,
-        userId: true,
-        name: true,
-        slug: true,
-        greeting: true,
-        imageUrl: true,
-        description: true,
-        descriptionCard: true,
-        name_en: true,
-        greeting_en: true,
-        description_en: true,
-      },
-    });
+    try {
+      await ensureCharacterSlugColumn();
+    } catch (error) {
+      console.error("[chat] Could not ensure slug column", error);
+    }
+
+    const characterSelectNoSlug = {
+      isPublic: true,
+      userId: true,
+      name: true,
+      greeting: true,
+      imageUrl: true,
+      description: true,
+      descriptionCard: true,
+      name_en: true,
+      greeting_en: true,
+      description_en: true,
+    } as const;
+
+    let character;
+    try {
+      character = await prisma.character.findUnique({
+        where: { id },
+        select: { ...characterSelectNoSlug, slug: true },
+      });
+    } catch (error) {
+      if (!isMissingSlugColumn(error)) throw error;
+      character = await prisma.character.findUnique({
+        where: { id },
+        select: characterSelectNoSlug,
+      });
+    }
 
     if (!character) {
       return NextResponse.json({ error: "Персонаж не найден" }, { status: 404 });
@@ -365,7 +382,7 @@ export async function GET(
       messages,
       character: {
         name: character.name,
-        slug: character.slug,
+        slug: "slug" in character ? character.slug : null,
         greeting: character.greeting,
         imageUrl: character.imageUrl,
         description: character.description,

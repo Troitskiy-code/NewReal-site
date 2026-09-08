@@ -33,12 +33,14 @@ export const revalidate = 3600;
 export async function generateStaticParams() {
   try {
     const characters = await prisma.character.findMany({
-      where: { isPublic: true },
+      where: { isPublic: true, slug: { not: null } },
       select: { slug: true },
       orderBy: { totalMessages: "desc" },
       take: 300,
     });
-    return characters.map((character) => ({ slug: character.slug }));
+    return characters
+      .filter((character): character is { slug: string } => Boolean(character.slug))
+      .map((character) => ({ slug: character.slug }));
   } catch (error) {
     console.error("[Character] generateStaticParams failed", error);
     return [];

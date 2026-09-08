@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildCharacterSlug } from "@/lib/characterSlug";
+import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
 
 export const publicCharacterSelect = {
   id: true,
@@ -68,6 +69,7 @@ export async function findCharacterBySlugForViewer(
   slug: string,
   viewerId: string | null
 ): Promise<PublicCharacterRecord | null> {
+  await ensureCharacterSlugColumn();
   const character = await prisma.character.findUnique({
     where: { slug },
     select: publicCharacterSelect,
@@ -77,6 +79,7 @@ export async function findCharacterBySlugForViewer(
 
   const isOwner = Boolean(viewerId && viewerId === character.userId);
   if (!character.isPublic && !isOwner) return null;
+  if (!character.slug) return null;
 
   return {
     id: character.id,

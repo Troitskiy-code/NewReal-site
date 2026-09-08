@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 
-const characterSelect = {
+const characterSelectNoSlug = {
   id: true,
   name: true,
   name_en: true,
@@ -15,7 +16,6 @@ const characterSelect = {
   tags: true,
   imageUrl: true,
   isPublic: true,
-  slug: true,
   totalMessages: true,
   createdAt: true,
   user: {
@@ -26,6 +26,11 @@ const characterSelect = {
   },
 } as const;
 
+const characterSelect = {
+  ...characterSelectNoSlug,
+  slug: true,
+} as const;
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -33,15 +38,31 @@ export async function GET() {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const favorites = await prisma.favorite.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      include: {
-        character: {
-          select: characterSelect,
+    try {
+      await ensureCharacterSlugColumn();
+    } catch (error) {
+      console.error("[favorites] Could not ensure slug column", error);
+    }
+
+    const loadFavorites = (select: typeof characterSelect | typeof characterSelectNoSlug) =>
+      prisma.favorite.findMany({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: "desc" },
+        include: {
+          character: {
+            select,
+          },
         },
-      },
-    });
+      });
+
+    let favorites;
+    try {
+      favorites = await loadFavorites(characterSelect);
+    } catch (error) {
+      if (!isMissingSlugColumn(error)) throw error;
+      console.error("[favorites] Listing without slug column");
+      favorites = await loadFavorites(characterSelectNoSlug);
+    }
 
     const data = favorites.map((favorite) => ({
       ...favorite.character,
