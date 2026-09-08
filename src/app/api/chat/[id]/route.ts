@@ -6,14 +6,18 @@ import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureChar
 import { scheduleMessageEmbedding, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
 import { analyzeIntent } from "@/lib/intentAnalyzer";
 import { ingestUserMessageMemory } from "@/lib/advancedMemory";
+import { resolveChatMemorySummary } from "@/lib/chatMemory";
 import {
+  assemblePreparedChatMessages,
   buildChatResponsePayload,
   chargeForChatRequest,
-  prepareChatMessages,
-  resolveChatContext,
   isAssistantMessageCutOff,
   logActionOptionsIfPresent,
   mergeAssistantContinuation,
+  prepareFastContext,
+  resolveChatContext,
+  searchRagContext,
+  shouldWaitForRag,
   streamChatCompletion,
 } from "@/lib/chatHelpers";
 import {
@@ -166,7 +170,6 @@ export async function POST(
     let ragQueryText: string | undefined;
     let excludeMessageId: string | undefined;
     let continueCutOff = false;
-    let intent: Awaited<ReturnType<typeof analyzeIntent>>["intent"] = "general";
 
     if (continueChat) {
       lastAssistant = await prisma.message.findFirst({
@@ -221,20 +224,10 @@ export async function POST(
       scheduleMessageEmbedding(userMessage.id, message, KODIKROUTER_KEY, persistEmbeddings);
       ragQueryText = message;
       excludeMessageId = userMessage.id;
-
-      const analysis = await analyzeIntent(message, KODIKROUTER_KEY);
-      intent = analysis.intent;
-
-      await ingestUserMessageMemory({
-        userId: session.user.id,
-        characterId: id,
-        userMessage: message,
-        intent,
-        apiKey: KODIKROUTER_KEY,
-      });
     }
 
-    const { messages: trimmedMessages } = await prepareChatMessages({
+    const ttftStartedAt = Date.now();
+    const prepareOptions = {
       userId: session.user.id,
       characterId: id,
       character,
@@ -246,9 +239,82 @@ export async function POST(
       continueMode: continueChat,
       continueCutOff,
       continueSourceText: lastAssistant?.content,
-      intent,
       locale,
-    });
+      refreshSummary: false,
+    };
+
+    const [fastContext, analysis] = await Promise.all([
+      (async () => {
+        const started = Date.now();
+        try {
+          const context = await prepareFastContext({ ...prepareOptions, intent: "general" });
+          console.log(`[ChatTTFT] Fast context prepared in ${Date.now() - started}ms`);
+          return context;
+        } catch (error) {
+          console.error("[ChatTTFT] Fast context failed", error);
+          throw error;
+        }
+      })(),
+      (async () => {
+        if (continueChat || typeof message !== "string") {
+          console.log("[ChatTTFT] Intent analysis: general, 0ms");
+          return { intent: "general" as const, confidence: 0 };
+        }
+        const started = Date.now();
+        try {
+          const result = await analyzeIntent(message, KODIKROUTER_KEY);
+          console.log(`[ChatTTFT] Intent analysis: ${result.intent}, ${Date.now() - started}ms`);
+          return result;
+        } catch (error) {
+          console.error("[ChatTTFT] Intent analysis failed, fallback general", error);
+          console.log(`[ChatTTFT] Intent analysis: general, ${Date.now() - started}ms`);
+          return { intent: "general" as const, confidence: 0 };
+        }
+      })(),
+    ]);
+
+    const intent = analysis.intent;
+    const waitForRag = shouldWaitForRag(intent);
+    console.log(`[ChatTTFT] Waiting for RAG: ${waitForRag}`);
+
+    let ragContextText: string | null = null;
+    if (waitForRag) {
+      try {
+        ragContextText = await searchRagContext({
+          userId: session.user.id,
+          characterId: id,
+          apiKey: KODIKROUTER_KEY,
+          ragQueryText,
+          excludeMessageId,
+          intent,
+          ragEligible: fastContext.ragEligible,
+          totalHistoryTokens: fastContext.totalHistoryTokens,
+        });
+      } catch (error) {
+        console.error("[ChatTTFT] RAG failed, continuing without it", error);
+      }
+    }
+
+    const { messages: trimmedMessages } = assemblePreparedChatMessages(
+      fastContext,
+      intent,
+      ragContextText
+    );
+
+    if (!continueChat && typeof message === "string") {
+      void ingestUserMessageMemory({
+        userId: session.user.id,
+        characterId: id,
+        userMessage: message,
+        intent,
+        apiKey: KODIKROUTER_KEY,
+      }).catch((error) => {
+        console.error("[ChatTTFT] background memory ingest failed", error);
+      });
+      void resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY, user).catch((error) => {
+        console.error("[ChatTTFT] background summary refresh failed", error);
+      });
+    }
 
     return createChatNdjsonResponse(async (emit) => {
       emit({
@@ -260,9 +326,17 @@ export async function POST(
       });
 
       const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+      let loggedTtft = false;
       const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
+        if (!loggedTtft) {
+          loggedTtft = true;
+          console.log(`[ChatTTFT] Total TTFT: ${Date.now() - ttftStartedAt}ms`);
+        }
         emit({ type: "delta", text });
       });
+      if (!loggedTtft) {
+        console.log(`[ChatTTFT] Total TTFT: ${Date.now() - ttftStartedAt}ms`);
+      }
 
       logActionOptionsIfPresent(assistantReply);
 

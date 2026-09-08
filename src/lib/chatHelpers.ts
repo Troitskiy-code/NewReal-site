@@ -5,7 +5,11 @@ import { getRelevantMemories } from "@/lib/advancedMemory";
 import { appendPersonaToSystemPrompt } from "@/lib/persona";
 import { getSelectedChatPersona } from "@/lib/personaService";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
-import { appendMemoryToSystemPrompt, resolveChatMemorySummary } from "@/lib/chatMemory";
+import {
+  appendMemoryToSystemPrompt,
+  readChatMemorySummary,
+  resolveChatMemorySummary,
+} from "@/lib/chatMemory";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import {
   appendRagToSystemPrompt,
@@ -273,7 +277,32 @@ type PrepareChatMessagesOptions = {
   historyBeforeMessageId?: string;
   intent?: UserIntent;
   locale?: string;
+  refreshSummary?: boolean;
 };
+
+export type PreparedChatMessages = {
+  messages: ChatCompletionMessage[];
+  totalTokens: number;
+  maxContextTokens: number;
+  memorySummary: string | null;
+};
+
+export type FastChatContext = {
+  systemPromptBase: string;
+  memorySummary: string | null;
+  relevantMemoriesText: string;
+  historyRows: Array<{ role: string; content: string }>;
+  totalHistoryTokens: number;
+  ragEligible: boolean;
+  maxContextTokens: number;
+  historyLimit: number;
+  subscriptionLogType: string;
+  locale: string;
+};
+
+export function shouldWaitForRag(intent: string): boolean {
+  return intent === "fact" || intent === "question";
+}
 
 const CUT_OFF_CONJUNCTIONS = [
   "несмотря на",
@@ -396,32 +425,140 @@ export function mergeAssistantContinuation(original: string, continuation: strin
   return needsSpace ? `${left} ${right}` : `${left}${right}`;
 }
 
-export async function prepareChatMessages({
+async function loadChatHistoryRows({
+  userId,
+  characterId,
+  historyLimit,
+  historyBeforeMessageId,
+}: {
+  userId: string;
+  characterId: string;
+  historyLimit: number;
+  historyBeforeMessageId?: string;
+}) {
+  if (historyBeforeMessageId) {
+    const cutoffMessage = await prisma.message.findUnique({
+      where: { id: historyBeforeMessageId },
+      select: { createdAt: true },
+    });
+
+    if (!cutoffMessage) {
+      throw new Error("Сообщение для истории не найдено");
+    }
+
+    const rows = await prisma.message.findMany({
+      where: {
+        characterId,
+        userId,
+        createdAt: { lt: cutoffMessage.createdAt },
+      },
+      orderBy: { createdAt: "desc" },
+      take: historyLimit,
+      select: { role: true, content: true },
+    });
+    return rows.reverse();
+  }
+
+  const rows = await prisma.message.findMany({
+    where: { characterId, userId },
+    orderBy: { createdAt: "desc" },
+    take: historyLimit,
+    select: { role: true, content: true },
+  });
+  return rows.reverse();
+}
+
+export function assemblePreparedChatMessages(
+  context: FastChatContext,
+  intent: UserIntent = "general",
+  ragContextText: string | null = null
+): PreparedChatMessages {
+  let systemPrompt = context.systemPromptBase;
+  const reservedTokens = countTokens(systemPrompt);
+  const allocations = allocateTokens([], context.maxContextTokens, reservedTokens, intent);
+  const summaryText = context.memorySummary
+    ? trimTextToTokenLimit(context.memorySummary, allocations.summary)
+    : "";
+  const ragText = ragContextText ? trimTextToTokenLimit(ragContextText, allocations.retrieved) : "";
+  const coreEpisodicText = context.relevantMemoriesText
+    ? trimTextToTokenLimit(context.relevantMemoriesText, allocations.coreEpisodic)
+    : "";
+
+  if (coreEpisodicText) {
+    systemPrompt = `${systemPrompt}\n\n${coreEpisodicText}`;
+  }
+  if (summaryText) {
+    systemPrompt = appendMemoryToSystemPrompt(systemPrompt, summaryText, context.locale);
+  }
+  if (ragText) {
+    systemPrompt = appendRagToSystemPrompt(systemPrompt, { text: ragText, count: 1 }, context.locale);
+  }
+
+  console.log(
+    `📚 Загружено ${context.historyRows.length} сообщений для подписки ${context.subscriptionLogType} (лимит: ${context.historyLimit}, контекст: ${context.maxContextTokens})`
+  );
+
+  const messagesForAI: ChatCompletionMessage[] = [
+    { role: "system", content: systemPrompt },
+    ...context.historyRows.map((msg) => ({
+      role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
+      content: msg.content,
+    })),
+  ];
+
+  const systemTokens = countTokens(systemPrompt);
+  const recentBudget = Math.min(
+    allocations.recentChat,
+    Math.max(0, context.maxContextTokens - systemTokens)
+  );
+
+  const { messages, totalTokens } = trimMessagesToTokenLimit(
+    messagesForAI,
+    Math.min(context.maxContextTokens, systemTokens + recentBudget)
+  );
+
+  console.log(
+    `📊 Отправлено ${messages.length} сообщений (токенов: ${totalTokens}, лимит: ${context.maxContextTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragText ? ", RAG" : ""}`
+  );
+
+  return {
+    messages,
+    totalTokens,
+    maxContextTokens: context.maxContextTokens,
+    memorySummary: context.memorySummary,
+  };
+}
+
+export async function prepareFastContext({
   userId,
   characterId,
   character,
   user,
   apiKey,
-  ragQueryText,
-  excludeMessageId,
   continueMode = false,
   continueCutOff = false,
   continueSourceText,
   historyBeforeMessageId,
   intent = "general",
   locale = "ru",
-}: PrepareChatMessagesOptions) {
+  refreshSummary = false,
+}: PrepareChatMessagesOptions): Promise<FastChatContext> {
   const subscriptionActive = isSubscriptionActive(user);
   const maxContextTokens = getContextTokenLimit(user);
   const ragEligible = isRagEligible(user.subscriptionType, subscriptionActive);
+  const historyLimit = getHistoryMessageLimit(user.subscriptionType, subscriptionActive);
+  const subscriptionLogType = subscriptionActive ? user.subscriptionType ?? "unknown" : "start";
 
-  const [memorySummary, relevantMemories, selectedPersona] = await Promise.all([
-    resolveChatMemorySummary(userId, characterId, apiKey, user),
+  const [memorySummary, relevantMemories, selectedPersona, historyRows] = await Promise.all([
+    refreshSummary
+      ? resolveChatMemorySummary(userId, characterId, apiKey, user)
+      : readChatMemorySummary(userId, characterId),
     getRelevantMemories(userId, characterId, intent, maxContextTokens),
     getSelectedChatPersona(userId, characterId),
+    loadChatHistoryRows({ userId, characterId, historyLimit, historyBeforeMessageId }),
   ]);
 
-  let systemPrompt = appendPersonaToSystemPrompt(
+  let systemPromptBase = appendPersonaToSystemPrompt(
     resolveChatSystemPrompt(character, locale),
     selectedPersona,
     locale
@@ -433,62 +570,59 @@ export async function prepareChatMessages({
   if (continueMode) {
     const english = locale === "en";
     if (continueCutOff && continueSourceText?.trim()) {
-      systemPrompt = english
+      systemPromptBase = english
         ? `Attention: you must continue the previous assistant message that was cut off. Here is the text to continue:
 "${continueSourceText.trim()}"
 Continue exactly from where it stopped. Do not repeat what was already written, and do not start over. Just write the missing part.
 
-${systemPrompt}`
+${systemPromptBase}`
         : `Внимание: ты должен продолжить предыдущее сообщение ассистента, которое было оборвано. Вот текст, который нужно продолжить:
 «${continueSourceText.trim()}»
 Продолжи ровно с того места, где остановился, не повторяй предыдущее, не начинай заново. Просто допиши недостающую часть.
 
-${systemPrompt}`;
+${systemPromptBase}`;
     } else {
-      systemPrompt = english
-        ? `${systemPrompt}\n\nContinue your reply from where you left off.`
-        : `${systemPrompt}\n\nПродолжи ответ с того места, где остановился.`;
+      systemPromptBase = english
+        ? `${systemPromptBase}\n\nContinue your reply from where you left off.`
+        : `${systemPromptBase}\n\nПродолжи ответ с того места, где остановился.`;
     }
-  }
-
-  const historyLimit = getHistoryMessageLimit(user.subscriptionType, subscriptionActive);
-  const subscriptionLogType = subscriptionActive ? user.subscriptionType ?? "unknown" : "start";
-
-  let historyRows;
-
-  if (historyBeforeMessageId) {
-    const cutoffMessage = await prisma.message.findUnique({
-      where: { id: historyBeforeMessageId },
-      select: { createdAt: true },
-    });
-
-    if (!cutoffMessage) {
-      throw new Error("Сообщение для истории не найдено");
-    }
-
-    historyRows = await prisma.message.findMany({
-      where: {
-        characterId,
-        userId,
-        createdAt: { lt: cutoffMessage.createdAt },
-      },
-      orderBy: { createdAt: "desc" },
-      take: historyLimit,
-    });
-    historyRows = historyRows.reverse();
-  } else {
-    historyRows = await prisma.message.findMany({
-      where: { characterId, userId },
-      orderBy: { createdAt: "desc" },
-      take: historyLimit,
-    });
-    historyRows = historyRows.reverse();
   }
 
   const totalHistoryTokens = historyRows.reduce((sum, msg) => sum + countTokens(msg.content), 0);
-  let ragContextText: string | null = null;
-  let ragUsed = false;
 
+  return {
+    systemPromptBase,
+    memorySummary,
+    relevantMemoriesText: relevantMemories.text ?? "",
+    historyRows,
+    totalHistoryTokens,
+    ragEligible,
+    maxContextTokens,
+    historyLimit,
+    subscriptionLogType,
+    locale,
+  };
+}
+
+export async function searchRagContext({
+  userId,
+  characterId,
+  apiKey,
+  ragQueryText,
+  excludeMessageId,
+  intent,
+  ragEligible,
+  totalHistoryTokens,
+}: {
+  userId: string;
+  characterId: string;
+  apiKey: string;
+  ragQueryText?: string;
+  excludeMessageId?: string;
+  intent: UserIntent;
+  ragEligible: boolean;
+  totalHistoryTokens: number;
+}): Promise<string | null> {
   const ragDecision = shouldUseRag({
     ragEligible,
     userQuery: ragQueryText,
@@ -499,78 +633,40 @@ ${systemPrompt}`;
     `[RAGDecision] use=${ragDecision.use ? "yes" : "no"} reason=${ragDecision.reason} tokens=${totalHistoryTokens} intent=${intent}`
   );
 
-  if (ragDecision.use && ragQueryText) {
-    try {
-      const ragMessages = await searchRelevantMessages(
-        userId,
-        characterId,
-        ragQueryText,
-        apiKey,
-        excludeMessageId
-      );
-      console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
-      ragContextText = formatRagContext(ragMessages)?.text ?? null;
-      ragUsed = Boolean(ragContextText);
-    } catch (ragError) {
-      console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
-    }
+  if (!ragDecision.use || !ragQueryText) {
+    return null;
   }
 
-  const reservedTokens = countTokens(systemPrompt);
-  const allocations = allocateTokens([], maxContextTokens, reservedTokens, intent);
-  const summaryText = memorySummary
-    ? trimTextToTokenLimit(memorySummary, allocations.summary)
-    : "";
-  const ragText = ragContextText
-    ? trimTextToTokenLimit(ragContextText, allocations.retrieved)
-    : "";
-  const coreEpisodicText = relevantMemories.text
-    ? trimTextToTokenLimit(relevantMemories.text, allocations.coreEpisodic)
-    : "";
-
-  if (coreEpisodicText) {
-    systemPrompt = `${systemPrompt}\n\n${coreEpisodicText}`;
+  try {
+    const ragMessages = await searchRelevantMessages(
+      userId,
+      characterId,
+      ragQueryText,
+      apiKey,
+      excludeMessageId
+    );
+    console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
+    return formatRagContext(ragMessages)?.text ?? null;
+  } catch (ragError) {
+    console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
+    return null;
   }
-  if (summaryText) {
-    systemPrompt = appendMemoryToSystemPrompt(systemPrompt, summaryText, locale);
-  }
-  if (ragText) {
-    systemPrompt = appendRagToSystemPrompt(systemPrompt, { text: ragText, count: 1 }, locale);
-  }
+}
 
-  console.log(
-    `📚 Загружено ${historyRows.length} сообщений для подписки ${subscriptionLogType} (лимит: ${historyLimit}, контекст: ${maxContextTokens})`
-  );
-
-  const messagesForAI: ChatCompletionMessage[] = [
-    { role: "system", content: systemPrompt },
-    ...historyRows.map((msg) => ({
-      role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
-      content: msg.content,
-    })),
-  ];
-
-  const systemTokens = countTokens(systemPrompt);
-  const recentBudget = Math.min(
-    allocations.recentChat,
-    Math.max(0, maxContextTokens - systemTokens)
-  );
-
-  const { messages: trimmedMessages, totalTokens } = trimMessagesToTokenLimit(
-    messagesForAI,
-    Math.min(maxContextTokens, systemTokens + recentBudget)
-  );
-
-  console.log(
-    `📊 Отправлено ${trimmedMessages.length} сообщений (токенов: ${totalTokens}, лимит: ${maxContextTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragUsed ? ", RAG" : ""}${continueMode ? ", continue" : ""}`
-  );
-
-  return {
-    messages: trimmedMessages,
-    totalTokens,
-    maxContextTokens,
-    memorySummary,
-  };
+export async function prepareChatMessages(options: PrepareChatMessagesOptions): Promise<PreparedChatMessages> {
+  const intent = options.intent ?? "general";
+  const fastContext = await prepareFastContext({ ...options, refreshSummary: options.refreshSummary ?? true });
+  const ragContextText = await searchRagContext({
+    userId: options.userId,
+    characterId: options.characterId,
+    apiKey: options.apiKey,
+    ragQueryText: options.ragQueryText,
+    excludeMessageId: options.excludeMessageId,
+    intent,
+    ragEligible: fastContext.ragEligible,
+    totalHistoryTokens: fastContext.totalHistoryTokens,
+  });
+  return assemblePreparedChatMessages(fastContext, intent, ragContextText);
 }
 
 export async function callChatCompletion(

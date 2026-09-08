@@ -181,6 +181,17 @@ export async function resolveChatMemorySummary(
   return summary;
 }
 
+export async function readChatMemorySummary(
+  userId: string,
+  characterId: string
+): Promise<string | null> {
+  const existingMemory = await prisma.memory.findUnique({
+    where: { userId_characterId: { userId, characterId } },
+    select: { summary: true },
+  });
+  return existingMemory?.summary?.trim() || null;
+}
+
 export function appendMemoryToSystemPrompt(
   systemPrompt: string,
   summary: string | null,
