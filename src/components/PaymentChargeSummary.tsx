@@ -15,8 +15,9 @@ export default function PaymentChargeSummary({
   context = "payment",
 }: PaymentChargeSummaryProps) {
   const { t } = useTranslation();
-  const { currency } = useCurrency();
-  const equivalent = formatCbrEquivalent(amountRub, currency);
+  const { currency, rates, ratesReady } = useCurrency();
+  const equivalent =
+    currency !== "RUB" && ratesReady ? formatCbrEquivalent(amountRub, currency, rates) : null;
 
   useEffect(() => {
     console.log("[Payment] Charge preview", {
@@ -24,8 +25,10 @@ export default function PaymentChargeSummary({
       amountRUB: amountRub,
       displayCurrency: currency,
       equivalent,
+      ratesReady,
+      rates,
     });
-  }, [amountRub, context, currency, equivalent]);
+  }, [amountRub, context, currency, equivalent, rates, ratesReady]);
 
   return (
     <div className="rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3">
@@ -35,6 +38,9 @@ export default function PaymentChargeSummary({
       <p className="mt-1 text-2xl font-black leading-none text-white">
         {formatPrice(amountRub, "RUB")}
       </p>
+      {currency !== "RUB" && !ratesReady && (
+        <p className="mt-1.5 text-xs text-wd-text-secondary">{t("payment.ratesLoading")}</p>
+      )}
       {equivalent && (
         <p className="mt-1.5 text-xs text-wd-text-secondary">
           {t("payment.cbrEquivalent", { amount: equivalent })}

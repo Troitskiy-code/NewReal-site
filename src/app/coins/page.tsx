@@ -15,7 +15,8 @@ import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import CurrencySelector from "@/components/CurrencySelector";
 import PaymentChargeSummary from "@/components/PaymentChargeSummary";
 import { useCurrency } from "@/components/CurrencyContext";
-import { convertPrice, formatPrice, getCurrencySymbol } from "@/lib/currency";
+import ConvertedPrice from "@/components/ConvertedPrice";
+import { getCurrencySymbol } from "@/lib/currency";
 import { VC_PACKAGES, type VcPackage } from "@/lib/vcPackages";
 
 type BalanceData = {
@@ -319,7 +320,9 @@ export default function CoinsPage() {
                   return (
                   <tr key={pkg.id} className="border-b border-wd-border/60 bg-wd-card last:border-b-0">
                     <td className="px-4 py-4 font-black text-white">{formatCoins(pkg.vc, i18n.language)}</td>
-                    <td className="px-4 py-4 text-white">{formatPrice(convertPrice(pkg.price, currency), currency)}</td>
+                    <td className="px-4 py-4 text-white">
+                      <ConvertedPrice amountRub={pkg.price} />
+                    </td>
                     <td className="px-4 py-4">
                       {pkg.bonus ? (
                         <span className="rounded-wd-pill border border-wd-primary/40 bg-wd-primary/15 px-2.5 py-1 text-xs font-bold text-wd-primary">

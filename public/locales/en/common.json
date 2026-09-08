@@ -250,7 +250,8 @@
   },
   "payment": {
     "chargeLabel": "Amount due",
-    "cbrEquivalent": "~ {{amount}} (CBR exchange rate)"
+    "cbrEquivalent": "~ {{amount}} (CBR exchange rate)",
+    "ratesLoading": "Loading CBR exchange rate..."
   },
   "meta": {
     "home": {

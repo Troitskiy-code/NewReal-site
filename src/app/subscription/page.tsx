@@ -8,8 +8,7 @@ import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/chatEconomy";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
-import { useCurrency } from "@/components/CurrencyContext";
-import { convertPrice, formatPrice } from "@/lib/currency";
+import ConvertedPrice from "@/components/ConvertedPrice";
 
 type SubscriptionBalance = {
   subscriptionType: string | null;
@@ -50,7 +49,6 @@ function daysLabel(days: number): string {
 
 export default function SubscriptionPage() {
   const { status } = useSession();
-  const { currency } = useCurrency();
   const [balance, setBalance] = useState<SubscriptionBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -283,9 +281,13 @@ export default function SubscriptionPage() {
                     <div>
                       <h3 className="text-base font-black text-white">{plan.name}</h3>
                       <p className="text-xs text-wd-text-secondary">
-                        {plan.monthlyPrice === 0
-                          ? "Бесплатно"
-                          : `${formatPrice(convertPrice(plan.monthlyPrice, currency), currency)} / мес`}
+                        {plan.monthlyPrice === 0 ? (
+                          "Бесплатно"
+                        ) : (
+                          <>
+                            <ConvertedPrice amountRub={plan.monthlyPrice} /> / мес
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>

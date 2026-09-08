@@ -13,9 +13,9 @@ import { useTranslation } from "react-i18next";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { useCurrentLocale } from "@/components/LocaleLink";
 import CurrencySelector from "@/components/CurrencySelector";
+import ConvertedPrice from "@/components/ConvertedPrice";
 import PaymentChargeSummary from "@/components/PaymentChargeSummary";
 import { useCurrency } from "@/components/CurrencyContext";
-import { convertPrice, formatPrice } from "@/lib/currency";
 
 const PLAN_ICONS = {
   dialog: FaRocket,
@@ -262,7 +262,6 @@ export default function PricingPage() {
             const Icon = PLAN_ICONS[plan.id] ?? FaStar;
             const isPopular = plan.id === "story";
             const priceInRUB = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
-            const price = convertPrice(priceInRUB, currency);
             const featureKey = metrikaPlanSlug(plan.id);
             const localizedFeatures = t(`pricing.planFeatures.${featureKey}`, { returnObjects: true });
             const features = Array.isArray(localizedFeatures) ? localizedFeatures : plan.features;
@@ -294,7 +293,7 @@ export default function PricingPage() {
 
                 <div className="mb-5 space-y-1">
                   <p className="text-4xl font-black leading-none text-white">
-                    {formatPrice(price, currency)}
+                    <ConvertedPrice amountRub={priceInRUB} />
                   </p>
                   <p className="text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
                     {isYearly ? t("pricing.perYear") : t("pricing.perMonth")}

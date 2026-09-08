@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { grantPermanentUpdate } from "@/lib/verseCoins";
 import { convertPaymentAmount, formatPrice, PREFERRED_CURRENCY_KEY, resolveCurrency } from "@/lib/currency";
+import { getCurrencyRates } from "@/lib/currencyRates";
 import { getVcPackage } from "@/lib/vcPackages";
 
 export async function POST(req: NextRequest) {
@@ -22,7 +23,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Неизвестный пакет VC" }, { status: 400 });
     }
 
-    const amount = convertPaymentAmount(pkg.price, currency);
+    const rates = await getCurrencyRates();
+    const amount = convertPaymentAmount(pkg.price, currency, rates);
 
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },

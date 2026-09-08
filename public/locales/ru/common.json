@@ -250,7 +250,8 @@
   },
   "payment": {
     "chargeLabel": "К оплате",
-    "cbrEquivalent": "~ {{amount}} (по курсу ЦБ РФ)"
+    "cbrEquivalent": "~ {{amount}} (по курсу ЦБ РФ)",
+    "ratesLoading": "Загрузка курса ЦБ РФ..."
   },
   "meta": {
     "home": {

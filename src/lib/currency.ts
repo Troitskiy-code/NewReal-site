@@ -4,23 +4,26 @@ export const CURRENCIES: Currency[] = ["RUB", "USD", "EUR"];
 export const DEFAULT_CURRENCY: Currency = "RUB";
 export const PREFERRED_CURRENCY_KEY = "preferredCurrency";
 
-function envRate(name: string, fallback: number): number {
-  const parsed = Number(process.env[name]);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
+export type CbrRates = {
+  USD: number;
+  EUR: number;
+};
 
-const RUB_TO_USD = envRate("NEXT_PUBLIC_RUB_TO_USD", 90);
-const RUB_TO_EUR = envRate("NEXT_PUBLIC_RUB_TO_EUR", 100);
+export const FALLBACK_RATES: CbrRates = { USD: 90, EUR: 100 };
 
 export function isCurrency(value: unknown): value is Currency {
   return value === "RUB" || value === "USD" || value === "EUR";
 }
 
-export function convertPrice(priceInRUB: number, currency: Currency): number {
+export function convertPrice(
+  priceInRUB: number,
+  currency: Currency,
+  rates: CbrRates = FALLBACK_RATES
+): number {
   if (currency === "RUB") return priceInRUB;
-  if (currency === "USD") return priceInRUB / RUB_TO_USD;
-  if (currency === "EUR") return priceInRUB / RUB_TO_EUR;
-  return priceInRUB;
+  const rate = currency === "USD" ? rates.USD : currency === "EUR" ? rates.EUR : 0;
+  if (!rate || rate <= 0) return priceInRUB;
+  return priceInRUB / rate;
 }
 
 export function formatPrice(price: number, currency: Currency): string {
@@ -33,19 +36,31 @@ export function formatPrice(price: number, currency: Currency): string {
   return formatter.format(price);
 }
 
-export function formatPriceFromRUB(priceInRUB: number, currency: Currency): string {
-  return formatPrice(convertPrice(priceInRUB, currency), currency);
+export function formatPriceFromRUB(
+  priceInRUB: number,
+  currency: Currency,
+  rates: CbrRates = FALLBACK_RATES
+): string {
+  return formatPrice(convertPrice(priceInRUB, currency, rates), currency);
 }
 
 /** Display-only converted amount. Robokassa always charges the RUB price. */
-export function convertPaymentAmount(priceInRUB: number, currency: Currency): number {
-  return Number(convertPrice(priceInRUB, currency).toFixed(2));
+export function convertPaymentAmount(
+  priceInRUB: number,
+  currency: Currency,
+  rates: CbrRates = FALLBACK_RATES
+): number {
+  return Number(convertPrice(priceInRUB, currency, rates).toFixed(2));
 }
 
 /** Display-only USD/EUR equivalent. Returns null for RUB so the UI can hide the extra line. */
-export function formatCbrEquivalent(priceInRUB: number, currency: Currency): string | null {
+export function formatCbrEquivalent(
+  priceInRUB: number,
+  currency: Currency,
+  rates: CbrRates = FALLBACK_RATES
+): string | null {
   if (currency === "RUB") return null;
-  const amount = convertPaymentAmount(priceInRUB, currency);
+  const amount = convertPaymentAmount(priceInRUB, currency, rates);
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency,

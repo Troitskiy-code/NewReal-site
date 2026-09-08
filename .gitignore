@@ -24,6 +24,9 @@ yarn-error.log*
 # negative ignore exception to ensure .env.example is tracked
 !.env.example
 
+# CBR daily FX cache
+.currency-cache.json
+
 # vercel
 .vercel
 
