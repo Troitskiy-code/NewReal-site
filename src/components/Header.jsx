@@ -19,7 +19,7 @@ export default function Header() {
         <button
           type="button"
           onClick={toggle}
-          className="absolute left-0 top-0 z-[60] m-0 flex h-full w-14 items-center justify-center rounded-none border-0 border-r border-[#2A2A2A] bg-[#121212] p-0 text-[#A0A0A0] transition-colors hover:border-[#6C63FF]/50 hover:text-white"
+          className="absolute left-0 top-0 z-[60] m-0 flex h-full w-14 items-center justify-center rounded-none border-0 border-r border-[#2A2A2A] bg-[#121212] p-0 text-[#A0A0A0] transition-colors hover:border-[#6C63FF]/50 hover:text-white md:w-20"
           aria-label={
             isMobile
               ? isExpanded
@@ -35,7 +35,7 @@ export default function Header() {
         </button>
 
         <div className="flex w-full items-center justify-between pr-4 md:pr-6">
-          <LocaleLink href="/" className="ml-16 flex min-w-0 items-center gap-2 md:ml-28 md:gap-3">
+          <LocaleLink href="/" className="ml-16 flex min-w-0 items-center gap-2 md:ml-24 md:gap-3">
             <Image
               src="/logo.png"
               alt="NewVerse"
