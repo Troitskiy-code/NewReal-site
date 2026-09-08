@@ -77,6 +77,8 @@ model Character {
   @@index([totalMessages])
   @@index([createdAt])
   @@index([name])
+  @@index([userId])
+  @@index([userId, createdAt])
   @@index([isPublic, createdAt])
   @@index([isPublic, totalMessages])
   @@index([lastActive])

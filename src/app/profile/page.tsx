@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LocaleLink from "@/components/LocaleLink";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -21,19 +21,23 @@ import {
 import FavoriteButton from "@/components/FavoriteButton";
 import PersonaManager from "@/components/PersonaManager";
 import VerseCoinsBalance from "@/components/VerseCoinsBalance";
-import { getCardDescription } from "@/lib/characterFields";
+import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "@/lib/i18nConfig";
+import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 
 type Character = {
   id: string;
   name: string;
+  name_en?: string | null;
   slug?: string | null;
   description: string | null;
-  appearance: string | null;
+  description_en?: string | null;
+  descriptionCard?: string | null;
   tags: string | null;
   imageUrl: string | null;
   isPublic: boolean;
+  totalMessages?: number;
   createdAt: string;
   isFavorited?: boolean;
 };
@@ -102,47 +106,78 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionBalance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchProfileData = async () => {
-      setLoading(true);
-      setStatsLoading(true);
-      setError(null);
+  const fetchCharacters = useCallback(
+    async (pageNum: number, append: boolean) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setError(null);
+      }
 
       try {
-        const [charactersRes, statsRes, balanceRes] = await Promise.all([
-          axios.get<CharactersResponse>(`/api/characters?userId=${session.user.id}&limit=100`),
-          axios.get<UserStats>("/api/user/stats"),
-          axios.get<SubscriptionBalance>("/api/user/balance"),
-        ]);
-        setCharacters(charactersRes.data.data);
-        setStats(statsRes.data);
-        setSubscription(balanceRes.data);
+        const params = new URLSearchParams();
+        params.set("page", String(pageNum));
+        params.set("limit", String(CHARACTERS_PAGE_LIMIT));
+        params.set("sort", "new");
+
+        const { data } = await axios.get<CharactersResponse>(`/api/user/characters?${params.toString()}`);
+        setCharacters((prev) => (append ? [...prev, ...data.data] : data.data));
+        setTotal(data.meta.total);
+        setHasMore(data.meta.page < data.meta.totalPages);
+        setPage(data.meta.page);
       } catch (err) {
         const message =
           axios.isAxiosError(err) && err.response?.data?.error
             ? err.response.data.error
             : t("profile.loadError");
         setError(message);
-        setCharacters([]);
+        if (!append) setCharacters([]);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [t]
+  );
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.id) {
+      setLoading(false);
+      setStatsLoading(false);
+      return;
+    }
+
+    const fetchProfileMeta = async () => {
+      setStatsLoading(true);
+
+      try {
+        const [statsRes, balanceRes] = await Promise.all([
+          axios.get<UserStats>("/api/user/stats"),
+          axios.get<SubscriptionBalance>("/api/user/balance"),
+        ]);
+        setStats(statsRes.data);
+        setSubscription(balanceRes.data);
+      } catch (err) {
+        console.error("[profile] Failed to load profile meta", err);
         setStats(null);
         setSubscription(null);
       } finally {
-        setLoading(false);
         setStatsLoading(false);
       }
     };
 
-    fetchProfileData();
-  }, [session?.user?.id, status]);
+    fetchProfileMeta();
+    fetchCharacters(1, false);
+  }, [session?.user?.id, status, fetchCharacters]);
 
   const handleEdit = (id: string) => {
     router.push(`/edit/${id}`);
@@ -160,6 +195,7 @@ export default function ProfilePage() {
     try {
       await axios.delete(`/api/characters/${id}`);
       setCharacters((prev) => prev.filter((c) => c.id !== id));
+      setTotal((prev) => Math.max(0, prev - 1));
       setStats((prev) =>
         prev ? { ...prev, charactersCount: Math.max(0, prev.charactersCount - 1) } : prev
       );
@@ -337,7 +373,7 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-black uppercase tracking-wide text-white">{t("profile.myCharacters")}</h2>
             {!loading && (
-              <span className="text-xs text-wd-text-secondary">{t("profile.count", { count: characters.length })}</span>
+              <span className="text-xs text-wd-text-secondary">{t("profile.count", { count: total })}</span>
             )}
           </div>
 
@@ -359,16 +395,18 @@ export default function ProfilePage() {
               </LocaleLink>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-6">
               {characters.map((character) => {
                 const tags = parseTags(character.tags);
+                const name = pickLocalizedText(character.name, character.name_en, i18n.language) ?? character.name;
                 return (
                   <article key={character.id} className="wd-card overflow-hidden flex flex-col transition-transform hover:-translate-y-1">
                     <div className="aspect-square bg-[#0A0A0A] overflow-hidden relative">
                       {character.imageUrl ? (
                         <img
                           src={character.imageUrl}
-                          alt={character.name}
+                          alt={name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -390,9 +428,9 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="p-4 flex flex-col gap-2 flex-1">
-                      <h3 className="text-sm font-extrabold text-white truncate">{character.name}</h3>
+                      <h3 className="text-sm font-extrabold text-white truncate">{name}</h3>
                       <p className="text-xs text-wd-text-secondary line-clamp-3 leading-relaxed flex-1">
-                        {getCardDescription(character) || t("profile.noDescription")}
+                        {getLocalizedCardDescription(character, i18n.language) || t("profile.noDescription")}
                       </p>
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
@@ -446,6 +484,19 @@ export default function ProfilePage() {
                 );
               })}
             </div>
+            {hasMore && (
+              <div className="flex justify-center pb-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => fetchCharacters(page + 1, true)}
+                  disabled={loadingMore}
+                  className="rounded-wd-pill border border-wd-border bg-wd-card px-6 py-3 text-xs font-bold text-white transition-all hover:border-wd-secondary disabled:opacity-50"
+                >
+                  {loadingMore ? t("common.loading") : t("home.loadMore")}
+                </button>
+              </div>
+            )}
+            </>
           )}
         </section>
       </main>
