@@ -1,3 +1,5 @@
+import { memoryToText } from "@/lib/persistentMemory";
+
 const YANDEX_TRANSLATE_URL = "https://translate.api.cloud.yandex.net/translate/v2/translate";
 
 export type TranslateTargetLang = "en" | "ru";
@@ -12,6 +14,7 @@ type YandexTranslateResponse = {
 export const CHARACTER_EN_FIELDS = [
   "name_en",
   "description_en",
+  "descriptionCard_en",
   "appearance_en",
   "greeting_en",
   "scenario_en",
@@ -24,6 +27,7 @@ export type CharacterEnField = (typeof CHARACTER_EN_FIELDS)[number];
 export type CharacterSourceField =
   | "name"
   | "description"
+  | "descriptionCard"
   | "appearance"
   | "greeting"
   | "scenario"
@@ -33,6 +37,7 @@ export type CharacterSourceField =
 const SOURCE_TO_EN_FIELD: Record<CharacterSourceField, CharacterEnField> = {
   name: "name_en",
   description: "description_en",
+  descriptionCard: "descriptionCard_en",
   appearance: "appearance_en",
   greeting: "greeting_en",
   scenario: "scenario_en",
@@ -174,4 +179,19 @@ export async function translateCharacterFieldsToEn(
   );
 
   return Object.fromEntries(results);
+}
+
+export async function translateMemoryFieldToEn(
+  value: unknown
+): Promise<{ content: string } | null> {
+  const text = memoryToText(value).trim();
+  if (!text) return null;
+
+  try {
+    const translated = await translateText(text, "en");
+    return { content: translated };
+  } catch (error) {
+    console.error("[Translate] Memory field failed, keeping original", error);
+    return { content: text };
+  }
 }

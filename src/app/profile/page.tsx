@@ -36,6 +36,7 @@ type Character = {
   description: string | null;
   description_en?: string | null;
   descriptionCard?: string | null;
+  descriptionCard_en?: string | null;
   tags: string | null;
   imageUrl: string | null;
   isPublic: boolean;

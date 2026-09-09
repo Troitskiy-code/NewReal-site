@@ -8,6 +8,7 @@ import {
   sanitizeCharacterMemory,
 } from "@/lib/persistentMemory";
 import { Prisma } from "@prisma/client";
+import { translateMemoryFieldToEn } from "@/lib/translate";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -91,8 +92,16 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     const data: Prisma.CharacterUpdateInput = { lastActive: new Date() };
 
-    if (body.publicMemory !== undefined) data.publicMemory = publicMemory ?? Prisma.DbNull;
-    if (body.privateMemory !== undefined) data.privateMemory = privateMemory ?? Prisma.DbNull;
+    if (body.publicMemory !== undefined) {
+      data.publicMemory = publicMemory ?? Prisma.DbNull;
+      const publicMemoryEn = await translateMemoryFieldToEn(publicMemory);
+      data.publicMemory_en = publicMemoryEn ?? Prisma.DbNull;
+    }
+    if (body.privateMemory !== undefined) {
+      data.privateMemory = privateMemory ?? Prisma.DbNull;
+      const privateMemoryEn = await translateMemoryFieldToEn(privateMemory);
+      data.privateMemory_en = privateMemoryEn ?? Prisma.DbNull;
+    }
 
     if (body.publicMemory === undefined && body.privateMemory === undefined) {
       return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });

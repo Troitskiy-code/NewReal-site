@@ -6,8 +6,7 @@ import { useTranslation } from "react-i18next";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaComments, FaShareAlt, FaTimes, FaUser } from "react-icons/fa";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
-import { pickLocalizedText } from "@/lib/characterFields";
-import { memoryToText } from "@/lib/persistentMemory";
+import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { closeCharacterPage } from "@/lib/characterReturn";
@@ -20,8 +19,10 @@ export type CharacterPublicViewData = {
   description: string | null;
   description_en: string | null;
   descriptionCard: string | null;
+  descriptionCard_en: string | null;
   imageUrl: string | null;
   publicMemory: unknown;
+  publicMemory_en: unknown;
   totalMessages: number;
   createdAt: string;
   user: {
@@ -36,8 +37,8 @@ export default function CharacterPublicView({ character }: { character: Characte
   const locale = useCurrentLocale();
   const [copied, setCopied] = useState(false);
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
-  const description = character.descriptionCard?.trim() || "";
-  const publicMemory = memoryToText(character.publicMemory).trim();
+  const description = getLocalizedCardDescription(character, locale) || "";
+  const publicMemory = pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale);
   const author = character.user.name?.trim() || t("characterPage.unknownAuthor");
   const createdAt = new Date(character.createdAt).toLocaleDateString(dateLocale(locale), {
     day: "numeric",

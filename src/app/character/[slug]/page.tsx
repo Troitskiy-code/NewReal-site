@@ -7,8 +7,7 @@ import { findCharacterBySlugForViewer, getViewerId } from "@/lib/characterPublic
 import { createPageMetadata, OG_IMAGE, SITE_URL } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { translate } from "@/lib/getDictionary";
-import { pickLocalizedText } from "@/lib/characterFields";
-import { memoryToText } from "@/lib/persistentMemory";
+import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -62,8 +61,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description =
-    character.descriptionCard?.trim() ||
-    memoryToText(character.publicMemory).trim() ||
+    getLocalizedCardDescription(character, locale) ||
+    pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) ||
     translate(locale, "meta.character.description", { name });
 
   const metadata = createPageMetadata(

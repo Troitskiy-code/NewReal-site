@@ -12,6 +12,7 @@ const profileCharacterSelectNoSlug = {
   description: true,
   description_en: true,
   descriptionCard: true,
+  descriptionCard_en: true,
   tags: true,
   imageUrl: true,
   isPublic: true,

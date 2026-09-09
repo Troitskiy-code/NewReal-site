@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { apiT } from "@/lib/apiI18n";
 import { ensureUserConsentColumns, isAcceptedFlag } from "@/lib/ensureUserConsent";
+import { applySignupBenefits } from "@/lib/provisionNewUser";
 
 const REFERRAL_BONUS = 100;
 
@@ -76,6 +77,12 @@ export async function POST(req: NextRequest) {
         acceptedPrivacyAt: acceptedAt,
       },
     });
+
+    try {
+      await applySignupBenefits(user.id);
+    } catch (error) {
+      console.error("[Signup] Failed to grant start plan / VC", error);
+    }
 
     console.log("[Consent] register", {
       userId: user.id,

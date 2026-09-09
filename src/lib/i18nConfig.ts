@@ -29,5 +29,9 @@ export function withLocale(pathname: string, locale: Locale): string {
 }
 
 export function dateLocale(locale: string): string {
-  return locale === "en" ? "en-US" : "ru-RU";
+  return isEnglishLocale(locale) ? "en-US" : "ru-RU";
+}
+
+export function isEnglishLocale(locale: string | null | undefined): boolean {
+  return (locale ?? "").toLowerCase().split("-")[0] === "en";
 }

@@ -1,5 +1,6 @@
 import { normalizeTagsString } from "@/lib/characterTags";
-import { parseMemoryInput, parseMemoryPermissionsInput } from "@/lib/persistentMemory";
+import { parseMemoryInput, parseMemoryPermissionsInput, memoryToText } from "@/lib/persistentMemory";
+import { isEnglishLocale } from "@/lib/i18nConfig";
 
 export const CHARACTER_LIMITS = {
   appearance: 2000,
@@ -74,7 +75,7 @@ export function pickLocalizedText(
   translated: string | null | undefined,
   locale: string | null | undefined
 ): string | null {
-  if (locale === "en" && translated?.trim()) {
+  if (isEnglishLocale(locale) && translated?.trim()) {
     return translated;
   }
   return original?.trim() || null;
@@ -83,13 +84,31 @@ export function pickLocalizedText(
 export function getLocalizedCardDescription(
   character: {
     descriptionCard?: string | null;
+    descriptionCard_en?: string | null;
     description?: string | null;
     description_en?: string | null;
   },
   locale: string | null | undefined
 ): string | null {
-  if (locale === "en" && character.description_en?.trim()) {
-    return character.description_en;
+  if (isEnglishLocale(locale)) {
+    return (
+      character.descriptionCard_en?.trim() ||
+      character.description_en?.trim() ||
+      character.descriptionCard?.trim() ||
+      character.description?.trim() ||
+      null
+    );
   }
   return getCardDescription(character);
+}
+
+export function pickLocalizedMemory(
+  original: unknown,
+  translated: unknown,
+  locale: string | null | undefined
+): string {
+  if (isEnglishLocale(locale)) {
+    return memoryToText(translated).trim() || memoryToText(original).trim();
+  }
+  return memoryToText(original).trim();
 }

@@ -12,8 +12,10 @@ export const publicCharacterSelect = {
   description: true,
   description_en: true,
   descriptionCard: true,
+  descriptionCard_en: true,
   imageUrl: true,
   publicMemory: true,
+  publicMemory_en: true,
   totalMessages: true,
   createdAt: true,
   isPublic: true,
@@ -34,8 +36,10 @@ export type PublicCharacterRecord = {
   description: string | null;
   description_en: string | null;
   descriptionCard: string | null;
+  descriptionCard_en: string | null;
   imageUrl: string | null;
   publicMemory: unknown;
+  publicMemory_en: unknown;
   totalMessages: number;
   createdAt: Date;
   isPublic: boolean;
@@ -89,8 +93,10 @@ export async function findCharacterBySlugForViewer(
     description: character.description,
     description_en: character.description_en,
     descriptionCard: character.descriptionCard,
+    descriptionCard_en: character.descriptionCard_en,
     imageUrl: character.imageUrl,
     publicMemory: character.publicMemory,
+    publicMemory_en: character.publicMemory_en,
     totalMessages: character.totalMessages,
     createdAt: character.createdAt,
     isPublic: character.isPublic,
@@ -112,8 +118,10 @@ export function toPublicCharacterPayload(character: PublicCharacterRecord) {
     description: character.description,
     description_en: character.description_en,
     descriptionCard: character.descriptionCard,
+    descriptionCard_en: character.descriptionCard_en,
     imageUrl: character.imageUrl,
     publicMemory: character.publicMemory,
+    publicMemory_en: character.publicMemory_en,
     totalMessages: character.totalMessages,
     createdAt: character.createdAt,
     user: character.user,

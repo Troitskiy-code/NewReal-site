@@ -108,7 +108,8 @@
     "resetSearch": "Сбросить поиск"
   },
   "characterCard": {
-    "knownAbout": "Известно о персонаже:"
+    "knownAbout": "Известно о персонаже:",
+    "noDescription": "Без описания"
   },
   "characterPage": {
     "author": "Автор",

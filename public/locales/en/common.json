@@ -108,7 +108,8 @@
     "resetSearch": "Clear search"
   },
   "characterCard": {
-    "knownAbout": "Known about the character:"
+    "knownAbout": "Known about the character:",
+    "noDescription": "No description"
   },
   "characterPage": {
     "author": "Author",

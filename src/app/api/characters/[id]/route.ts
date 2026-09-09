@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
-import { translateCharacterFieldsToEn } from "@/lib/translate";
+import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
@@ -118,6 +118,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       const translations = await translateCharacterFieldsToEn({
         ...(body.name !== undefined ? { name: parsed.name } : {}),
         ...(body.description !== undefined ? { description: parsed.description ?? undefined } : {}),
+        ...(body.descriptionCard !== undefined
+          ? { descriptionCard: parsed.descriptionCard ?? undefined }
+          : {}),
         ...(body.appearance !== undefined ? { appearance: parsed.appearance ?? undefined } : {}),
         ...(body.greeting !== undefined ? { greeting: parsed.greeting ?? undefined } : {}),
         ...(body.scenario !== undefined ? { scenario: parsed.scenario ?? undefined } : {}),
@@ -127,6 +130,15 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         ...(body.avatarPrompt !== undefined ? { avatarPrompt: parsed.avatarPrompt ?? undefined } : {}),
       });
       Object.assign(data, translations);
+
+      if (body.publicMemory !== undefined) {
+        const publicMemoryEn = await translateMemoryFieldToEn(parsed.publicMemory);
+        data.publicMemory_en = publicMemoryEn ?? Prisma.DbNull;
+      }
+      if (body.privateMemory !== undefined) {
+        const privateMemoryEn = await translateMemoryFieldToEn(parsed.privateMemory);
+        data.privateMemory_en = privateMemoryEn ?? Prisma.DbNull;
+      }
     } catch (translateError) {
       console.error("[Translate] Failed to update character translations", translateError);
     }

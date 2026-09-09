@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
-import { translateCharacterFieldsToEn } from "@/lib/translate";
+import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
 import { buildInitialPublicMemory } from "@/lib/persistentMemory";
 import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
@@ -98,19 +98,24 @@ export async function POST(req: NextRequest) {
       const translations = await translateCharacterFieldsToEn({
         name,
         description,
+        descriptionCard,
         appearance,
         greeting,
         scenario,
         exampleDialogs,
         avatarPrompt,
       });
+      const publicMemoryEn = await translateMemoryFieldToEn(seededPublicMemory);
+      const privateMemoryEn = await translateMemoryFieldToEn(privateMemory);
 
-      if (Object.keys(translations).length > 0) {
-        character = await prisma.character.update({
-          where: { id: character.id },
-          data: translations,
-        });
-      }
+      character = await prisma.character.update({
+        where: { id: character.id },
+        data: {
+          ...translations,
+          ...(publicMemoryEn ? { publicMemory_en: publicMemoryEn } : {}),
+          ...(privateMemoryEn ? { privateMemory_en: privateMemoryEn } : {}),
+        },
+      });
     } catch (translateError) {
       console.error("[Translate] Failed to save character translations", translateError);
     }
@@ -219,7 +224,9 @@ export async function GET(req: NextRequest) {
       description: true,
       description_en: true,
       descriptionCard: true,
+      descriptionCard_en: true,
       publicMemory: true,
+      publicMemory_en: true,
       tags: true,
       imageUrl: true,
       isPublic: true,

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { buildCharacterSlug } from "@/lib/characterSlug";
+import { ensureCharacterLocaleColumns } from "@/lib/ensureCharacterLocaleColumns";
 
 let ensurePromise: Promise<void> | null = null;
 
@@ -53,6 +54,7 @@ async function runEnsure(): Promise<void> {
   await prisma.$executeRawUnsafe(
     `CREATE UNIQUE INDEX IF NOT EXISTS "Character_slug_key" ON "Character"("slug")`
   );
+  await ensureCharacterLocaleColumns();
   console.log("[Character] Slug column is ready");
 }
 

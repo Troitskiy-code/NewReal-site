@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  translateMemoryFieldToEn,
   translateText,
   type CharacterEnField,
   type CharacterSourceField,
 } from "@/lib/translate";
+import { memoryToText } from "@/lib/persistentMemory";
 
 export const maxDuration = 300;
 
@@ -13,18 +15,24 @@ const CHARACTER_SELECT = {
   id: true,
   name: true,
   description: true,
+  descriptionCard: true,
   appearance: true,
   greeting: true,
   scenario: true,
   exampleDialogs: true,
   avatarPrompt: true,
+  publicMemory: true,
+  privateMemory: true,
   name_en: true,
   description_en: true,
+  descriptionCard_en: true,
   appearance_en: true,
   greeting_en: true,
   scenario_en: true,
   exampleDialogs_en: true,
   avatarPrompt_en: true,
+  publicMemory_en: true,
+  privateMemory_en: true,
 } satisfies Prisma.CharacterSelect;
 
 type CharacterWithTranslations = Prisma.CharacterGetPayload<{
@@ -48,6 +56,12 @@ const FIELD_PAIRS: Array<{
     target: "description_en",
     getSource: (c) => c.description,
     getTarget: (c) => c.description_en,
+  },
+  {
+    source: "descriptionCard",
+    target: "descriptionCard_en",
+    getSource: (c) => c.descriptionCard,
+    getTarget: (c) => c.descriptionCard_en,
   },
   {
     source: "appearance",
@@ -104,6 +118,22 @@ function isBlank(value: string | null | undefined): boolean {
  * - or force=true (retranslate even if _en already set)
  * - or _en is an exact copy of source (failed translate fallback)
  */
+function needsMemoryTranslation(source: unknown, target: unknown, force = false): boolean {
+  const sourceText = memoryToText(source).trim();
+  if (!sourceText) return false;
+  if (force) return true;
+  const targetText = memoryToText(target).trim();
+  return !targetText || targetText === sourceText;
+}
+
+function characterNeedsTranslation(character: CharacterWithTranslations, force = false): boolean {
+  return (
+    missingSourceFields(character, force).length > 0 ||
+    needsMemoryTranslation(character.publicMemory, character.publicMemory_en, force) ||
+    needsMemoryTranslation(character.privateMemory, character.privateMemory_en, force)
+  );
+}
+
 function missingSourceFields(
   character: CharacterWithTranslations,
   force = false
@@ -209,9 +239,7 @@ export async function POST(req: NextRequest) {
       orderBy: { createdAt: "asc" },
     })) as CharacterWithTranslations[];
 
-    const pending = characters.filter(
-      (character) => missingSourceFields(character, force).length > 0
-    );
+    const pending = characters.filter((character) => characterNeedsTranslation(character, force));
     const skipped = characters.length - pending.length;
 
     const sample = characters.slice(0, 5).map((c) => ({
@@ -242,8 +270,18 @@ export async function POST(req: NextRequest) {
       async (character, index) => {
         const label = `${character.id} (${character.name})`;
         const fields = missingSourceFields(character, force);
+        const translatePublic = needsMemoryTranslation(
+          character.publicMemory,
+          character.publicMemory_en,
+          force
+        );
+        const translatePrivate = needsMemoryTranslation(
+          character.privateMemory,
+          character.privateMemory_en,
+          force
+        );
 
-        if (fields.length === 0) {
+        if (fields.length === 0 && !translatePublic && !translatePrivate) {
           console.log(`[Admin:TranslateAll] Skip (already complete): ${label}`);
           return;
         }
@@ -254,17 +292,29 @@ export async function POST(req: NextRequest) {
             id: character.id,
             name: character.name,
             fields,
+            translatePublic,
+            translatePrivate,
           });
 
-          const translations = await translateMissingFields(character, fields);
+          const translations = fields.length > 0 ? await translateMissingFields(character, fields) : {};
+          const data: Prisma.CharacterUpdateInput = { ...translations };
 
-          if (Object.keys(translations).length === 0) {
+          if (translatePublic) {
+            const publicMemoryEn = await translateMemoryFieldToEn(character.publicMemory);
+            data.publicMemory_en = publicMemoryEn ?? Prisma.DbNull;
+          }
+          if (translatePrivate) {
+            const privateMemoryEn = await translateMemoryFieldToEn(character.privateMemory);
+            data.privateMemory_en = privateMemoryEn ?? Prisma.DbNull;
+          }
+
+          if (Object.keys(data).length === 0) {
             throw new Error("No fields were translated successfully");
           }
 
           await prisma.character.update({
             where: { id: character.id },
-            data: translations,
+            data,
           });
 
           updated += 1;

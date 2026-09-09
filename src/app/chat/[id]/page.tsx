@@ -24,7 +24,7 @@ import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
 import { captureCharacterReturn } from "@/lib/characterReturn";
-import { pickLocalizedText } from "@/lib/characterFields";
+import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT } from "@/lib/anonymousCookie";
 import ConfirmModal from "@/components/ConfirmModal";
 
@@ -74,6 +74,7 @@ type ChatCharacter = {
   description: string | null;
   description_en?: string | null;
   descriptionCard: string | null;
+  descriptionCard_en?: string | null;
 };
 
 type ChatHistoryResponse = {
@@ -859,7 +860,9 @@ export default function ChatPage() {
   const characterDisplayName =
     pickLocalizedText(character?.name, character?.name_en, locale) ?? "Персонаж";
   const characterGreeting = pickLocalizedText(character?.greeting, character?.greeting_en, locale);
-  const characterCardDescription = character?.descriptionCard?.trim() || null;
+  const characterCardDescription = character
+    ? getLocalizedCardDescription(character, locale)
+    : null;
   const characterAvatarUrl = character?.imageUrl ?? null;
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import { activatePendingSubscriptionIfNeeded } from "./subscription";
 import { translate } from "./getDictionary";
 import { DEFAULT_LOCALE } from "./i18nConfig";
 import { REGISTER_CONSENT_COOKIE } from "./consentCookie";
+import { applySignupBenefits } from "./provisionNewUser";
 import { ensureUserConsentColumns } from "./ensureUserConsent";
 import { isGoogleAuthEnabled } from "./googleAuth";
 
@@ -49,6 +50,11 @@ export const authOptions: AuthOptions = {
         }
         const created = await prismaAdapter.createUser!(data);
         console.log("[Auth] Adapter createUser success:", created);
+        try {
+          await applySignupBenefits(created.id);
+        } catch (error) {
+          console.error("[Signup] Google user start grant failed", error);
+        }
         try {
           const { cookies } = await import("next/headers");
           const jar = await cookies();

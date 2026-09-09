@@ -15,6 +15,7 @@ type Character = {
   description: string | null;
   descriptionCard?: string | null;
   publicMemory?: unknown;
+  publicMemory_en?: unknown;
   appearance: string | null;
   tags: string | null;
   imageUrl: string | null;

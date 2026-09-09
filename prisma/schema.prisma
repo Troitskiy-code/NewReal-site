@@ -66,11 +66,14 @@ model Character {
 
   name_en           String?
   description_en    String?
+  descriptionCard_en String?
   appearance_en     String?
   greeting_en       String?
   scenario_en       String?
   exampleDialogs_en String?
   avatarPrompt_en   String?   @db.Text
+  publicMemory_en   Json?
+  privateMemory_en  Json?
   systemPrompt      String?   @db.Text
 
   @@index([isPublic])
@@ -261,7 +264,7 @@ model User {
   realCoins          Int           @default(0)
   verseCoins         Int           @default(0) // total = permanentCoins + expiring
   permanentCoins     Int           @default(0)
-  subscriptionType         String?   @default("none")
+  subscriptionType         String?   @default("start")
   subscriptionEnd          DateTime?
   pendingSubscriptionType  String?
   pendingSubscriptionEnd   DateTime?
