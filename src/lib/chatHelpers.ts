@@ -285,6 +285,7 @@ export type PreparedChatMessages = {
 };
 
 export type FastChatContext = {
+  userId: string;
   systemPromptBase: string;
   memorySummary: string | null;
   relevantMemoriesText: string;
@@ -514,8 +515,9 @@ export function assemblePreparedChatMessages(
     Math.min(context.maxContextTokens, systemTokens + recentBudget)
   );
 
+  const remainingTokens = Math.max(0, context.maxContextTokens - totalTokens);
   console.log(
-    `📊 Отправлено ${messages.length} сообщений (токенов: ${totalTokens}, лимит: ${context.maxContextTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragText ? ", RAG" : ""}`
+    `📊 Отправлено ${messages.length} сообщений user=${context.userId} (токенов: ${totalTokens}, лимит: ${context.maxContextTokens}, осталось: ${remainingTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragText ? ", RAG" : ""}`
   );
 
   return {
@@ -588,6 +590,7 @@ ${systemPromptBase}`;
   const totalHistoryTokens = historyRows.reduce((sum, msg) => sum + countTokens(msg.content), 0);
 
   return {
+    userId,
     systemPromptBase,
     memorySummary,
     relevantMemoriesText: relevantMemories.text ?? "",
@@ -778,6 +781,10 @@ export async function chargeForChatRequest({
       },
     });
   }
+
+  console.log(
+    `💰 После отправки user=${userId} осталось ${updatedUser.verseCoins} VC (списано ${costVC})`
+  );
 
   return {
     remainingVC: updatedUser.verseCoins,
