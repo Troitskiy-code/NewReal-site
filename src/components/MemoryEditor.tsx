@@ -205,7 +205,7 @@ export default function MemoryEditor({
             id="memory-summary"
             value={summaryDraft}
             onChange={(event) => setSummaryDraft(event.target.value)}
-            placeholder="Краткая выжимка диалога. Можно править вручную."
+            placeholder="Краткая выжимка диалога, появляется при длительных диалогах для сохранения качества памяти"
             disabled={saving}
             className="min-h-[32vh] w-full flex-1 resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60"
           />
@@ -239,7 +239,7 @@ export default function MemoryEditor({
             id="memory-core"
             value={coreDraft}
             onChange={(event) => setCoreDraft(event.target.value)}
-            placeholder="Устойчивые факты о персонаже и отношениях. Можно править вручную."
+            placeholder="Устойчивые факты о персонаже и отношениях."
             disabled={saving}
             className="min-h-[32vh] w-full flex-1 resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60"
           />
