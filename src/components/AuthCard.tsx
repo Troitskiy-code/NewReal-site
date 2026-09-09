@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 
 export const AUTH_INPUT_CLASS =
   "w-full border-0 border-b border-divider bg-[#0A0A0A] px-4 py-3 text-white placeholder:text-wd-text-secondary outline-none transition-colors focus:border-primary";
@@ -37,7 +37,7 @@ export function GoogleAuthButton({
   onClick,
 }: {
   children: ReactNode;
-  onClick?: () => void;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
 }) {
   return (
     <a href="/api/auth/signin/google?callbackUrl=/" onClick={onClick} className={AUTH_GOOGLE_BUTTON_CLASS}>

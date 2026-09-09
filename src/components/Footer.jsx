@@ -18,6 +18,9 @@ export default function Footer() {
         <LocaleLink href="/terms" className="text-wd-text-secondary transition-colors hover:text-white">
           {t("footer.terms")}
         </LocaleLink>
+        <LocaleLink href="/privacy" className="text-wd-text-secondary transition-colors hover:text-white">
+          {t("footer.privacy")}
+        </LocaleLink>
         <LocaleLink href="/refund" className="text-wd-text-secondary transition-colors hover:text-white">
           {t("footer.refund")}
         </LocaleLink>

@@ -20,6 +20,7 @@
   "footer": {
     "offer": "Public offer",
     "terms": "Terms of use",
+    "privacy": "Privacy policy",
     "refund": "Refund policy",
     "support": "Support",
     "copyright": "© {{year}} NewVerse — Your universe of characters"
@@ -74,7 +75,10 @@
     "requestNewLink": "Request a new link",
     "backToLogin": "Back to sign in",
     "minPassword": "Password must be at least {{count}} characters",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "consentTerms": "I accept the <terms>Terms of Use</terms> and consent to personal data processing under the <privacy>Privacy Policy</privacy>.",
+    "consentOffer": "I have read the <offer>Public Offer</offer> and accept its terms.",
+    "consentRequired": "Please accept both required consents to sign up."
   },
   "common": {
     "submit": "Confirm",
@@ -217,7 +221,7 @@
     "applyNowHint": "Your current subscription, if any, will be replaced. Remaining time is not refunded.",
     "applyLater": "Apply after the current plan ends",
     "applyLaterHint": "The new subscription will start automatically when the current one expires.",
-    "offerConsent": "I agree to automatic charges under the",
+    "offerConsent": "I agree to automatic charges when the subscription renews under the terms of the",
     "offerLink": "offer",
     "consentRequired": "You must agree to auto-renewal to subscribe",
     "goToPayment": "Continue to payment",
@@ -314,6 +318,10 @@
       "title": "Terms of use — NewVerse",
       "description": "Rules for using the NewVerse platform."
     },
+    "privacy": {
+      "title": "Privacy policy — NewVerse",
+      "description": "How NewVerse processes personal data."
+    },
     "support": {
       "title": "Support — NewVerse",
       "description": "Contact us to resolve your questions."
@@ -362,6 +370,7 @@
     "unauthorized": "Unauthorized",
     "userNotFound": "User not found",
     "wrongPassword": "Incorrect password",
-    "missingCredentials": "Email or password is missing"
+    "missingCredentials": "Email or password is missing",
+    "consentRequired": "You must accept the terms of use, privacy policy, and public offer"
   }
 }

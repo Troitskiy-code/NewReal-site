@@ -7,6 +7,7 @@ import { prisma } from "./prisma";
 import { activatePendingSubscriptionIfNeeded } from "./subscription";
 import { translate } from "./getDictionary";
 import { DEFAULT_LOCALE } from "./i18nConfig";
+import { ensureUserConsentColumns, REGISTER_CONSENT_COOKIE } from "./ensureUserConsent";
 
 export function isGoogleAuthEnabled(): boolean {
   return Boolean(
@@ -44,8 +45,31 @@ export const authOptions: AuthOptions = {
     async createUser(data) {
       console.log("[Auth] Adapter createUser:", data);
       try {
+        try {
+          await ensureUserConsentColumns();
+        } catch (error) {
+          console.error("[Consent] Could not ensure User consent columns", error);
+        }
         const created = await prismaAdapter.createUser!(data);
         console.log("[Auth] Adapter createUser success:", created);
+        try {
+          const { cookies } = await import("next/headers");
+          const jar = await cookies();
+          if (jar.get(REGISTER_CONSENT_COOKIE)?.value === "1") {
+            const acceptedAt = new Date();
+            await prisma.user.update({
+              where: { id: created.id },
+              data: { acceptedTermsAt: acceptedAt, acceptedPrivacyAt: acceptedAt },
+            });
+            console.log("[Consent] google register", {
+              userId: created.id,
+              acceptedTermsAt: acceptedAt.toISOString(),
+              acceptedPrivacyAt: acceptedAt.toISOString(),
+            });
+          }
+        } catch (error) {
+          console.error("[Consent] google stamp failed", error);
+        }
         return created;
       } catch (error) {
         console.error("[Auth] Adapter createUser failed:", error);

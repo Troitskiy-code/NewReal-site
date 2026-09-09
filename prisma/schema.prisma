@@ -279,6 +279,8 @@ model User {
   referredBy         String?
   createdAt          DateTime      @default(now())
   lastSeen           DateTime      @default(now())
+  acceptedTermsAt    DateTime?
+  acceptedPrivacyAt  DateTime?
   selectedModelId    String?
   selectedModel      Model?        @relation(fields: [selectedModelId], references: [id])
   isSubscribed       Boolean       @default(false)

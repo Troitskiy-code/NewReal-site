@@ -19,6 +19,7 @@ export type MetaPageKey =
   | "offer"
   | "refund"
   | "terms"
+  | "privacy"
   | "support"
   | "forgotPassword"
   | "resetPassword"

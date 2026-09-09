@@ -26,6 +26,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[Consent] recurring subscription", {
+      userId: session.user.id,
+      planId,
+      period,
+    });
+
     if (!planId || !period || !applyMode) {
       return NextResponse.json({ error: "planId, period и applyMode обязательны" }, { status: 400 });
     }

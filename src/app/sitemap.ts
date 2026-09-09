@@ -24,6 +24,7 @@ const STATIC_PAGES: Array<{
   { path: "/offer", changeFrequency: "monthly", priority: 0.3 },
   { path: "/refund", changeFrequency: "monthly", priority: 0.3 },
   { path: "/terms", changeFrequency: "monthly", priority: 0.3 },
+  { path: "/privacy", changeFrequency: "monthly", priority: 0.3 },
 ];
 
 async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {

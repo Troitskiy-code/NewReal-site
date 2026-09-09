@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import {
   AUTH_BUTTON_CLASS,
@@ -12,10 +12,24 @@ import {
 } from "@/components/AuthCard";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
+import { REGISTER_CONSENT_COOKIE } from "@/lib/ensureUserConsent";
 
 type RegisterFormProps = {
   googleAuthEnabled: boolean;
 };
+
+function ConsentLink({ href, children }: { href: string; children?: React.ReactNode }) {
+  return (
+    <LocaleLink
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-semibold text-primary underline hover:text-primary-hover"
+    >
+      {children}
+    </LocaleLink>
+  );
+}
 
 export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   const router = useRouter();
@@ -27,8 +41,29 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedOffer, setAcceptedOffer] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const markConsentCookie = () => {
+    document.cookie = `${REGISTER_CONSENT_COOKIE}=1; Path=/; Max-Age=600; SameSite=Lax`;
+  };
+
+  const ensureConsent = () => {
+    if (acceptedTerms && acceptedOffer) return true;
+    setError(t("auth.consentRequired"));
+    return false;
+  };
+
+  const handleGoogleRegister = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    reachGoal(METRIKA_GOALS.register);
+    if (!ensureConsent()) {
+      event.preventDefault();
+      return;
+    }
+    markConsentCookie();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +76,10 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
       return;
     }
 
+    if (!ensureConsent()) {
+      return;
+    }
+
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -49,6 +88,8 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
           name,
           email,
           password,
+          acceptedTerms: true,
+          acceptedOffer: true,
           ...(ref ? { ref } : {}),
         }),
       });
@@ -71,7 +112,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
     <AuthCard title={t("auth.registerTitle")}>
       {googleAuthEnabled && (
         <>
-          <GoogleAuthButton onClick={() => reachGoal(METRIKA_GOALS.register)}>
+          <GoogleAuthButton onClick={handleGoogleRegister}>
             {t("auth.register_google")}
           </GoogleAuthButton>
           <div className="my-6 flex items-center gap-3">
@@ -114,6 +155,41 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
           required
           className={AUTH_INPUT_CLASS}
         />
+        <div className="space-y-3">
+          <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-wd-text-secondary">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 accent-[#6C63FF]"
+            />
+            <span>
+              <Trans
+                i18nKey="auth.consentTerms"
+                components={{
+                  terms: <ConsentLink href="/terms" />,
+                  privacy: <ConsentLink href="/privacy" />,
+                }}
+              />
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-wd-text-secondary">
+            <input
+              type="checkbox"
+              checked={acceptedOffer}
+              onChange={(e) => setAcceptedOffer(e.target.checked)}
+              className="mt-0.5 accent-[#6C63FF]"
+            />
+            <span>
+              <Trans
+                i18nKey="auth.consentOffer"
+                components={{
+                  offer: <ConsentLink href="/offer" />,
+                }}
+              />
+            </span>
+          </label>
+        </div>
         <button type="submit" id="register-submit" data-metrika="register" className={AUTH_BUTTON_CLASS}>
           {t("auth.register")}
         </button>

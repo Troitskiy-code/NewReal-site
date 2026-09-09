@@ -150,6 +150,7 @@ export default function PricingPage() {
     }
     const goal = subscriptionGoal(selectedPlan.id);
     if (goal) reachGoal(goal);
+    console.log("[Consent] recurring checkout", { planId: selectedPlan.id });
     const mode = hasActiveSubscription ? applyMode : "immediate";
     const plan = selectedPlan;
     closeCheckout();
@@ -392,7 +393,7 @@ export default function PricingPage() {
                 <span>
                   {t("pricing.offerConsent")}{" "}
                   <LocaleLink
-                    href="/offer"
+                    href="/offer#recurring"
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}

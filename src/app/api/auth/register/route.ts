@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { apiT } from "@/lib/apiI18n";
+import { ensureUserConsentColumns, isAcceptedFlag } from "@/lib/ensureUserConsent";
 
 const REFERRAL_BONUS = 100;
 
@@ -19,13 +20,17 @@ async function generateUniqueReferralCode(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, ref } = await req.json();
+    const { name, email, password, ref, acceptedTerms, acceptedOffer } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
         { error: apiT(req, "api.emailPasswordRequired") },
         { status: 400 }
       );
+    }
+
+    if (!isAcceptedFlag(acceptedTerms) || !isAcceptedFlag(acceptedOffer)) {
+      return NextResponse.json({ error: apiT(req, "api.consentRequired") }, { status: 400 });
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -52,6 +57,13 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const referralCode = await generateUniqueReferralCode();
+    const acceptedAt = new Date();
+
+    try {
+      await ensureUserConsentColumns();
+    } catch (error) {
+      console.error("[Consent] Could not ensure User consent columns", error);
+    }
 
     const user = await prisma.user.create({
       data: {
@@ -60,7 +72,15 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         referralCode,
         referredBy,
+        acceptedTermsAt: acceptedAt,
+        acceptedPrivacyAt: acceptedAt,
       },
+    });
+
+    console.log("[Consent] register", {
+      userId: user.id,
+      acceptedTermsAt: acceptedAt.toISOString(),
+      acceptedPrivacyAt: acceptedAt.toISOString(),
     });
 
     if (referredBy) {
