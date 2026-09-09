@@ -26,9 +26,7 @@ import {
 } from "@/lib/chatStream";
 import {
   calculateRequestCost,
-  DAILY_REQUEST_LIMIT,
   isSubscriptionActive,
-  normalizeUserCounters,
 } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
 import { getAnonymousChatPayload, handleAnonymousChatPost } from "@/lib/anonymousChat";
@@ -119,21 +117,8 @@ export async function POST(
     }
 
     const { user, model, baseModel } = resolved;
-    const now = new Date();
-    const counters = normalizeUserCounters(user, now);
     const subscriptionActive = isSubscriptionActive(user);
     const persistEmbeddings = shouldPersistEmbeddings(user.subscriptionType, subscriptionActive);
-
-    if (counters.dailyRequests >= DAILY_REQUEST_LIMIT) {
-      return NextResponse.json(
-        {
-          error: "Достигнут суточный лимит запросов",
-          dailyRequests: counters.dailyRequests,
-          dailyLimit: DAILY_REQUEST_LIMIT,
-        },
-        { status: 429 }
-      );
-    }
 
     const costResult = calculateRequestCost(user, model, baseModel);
     if (costResult.ok === false) {
@@ -343,7 +328,6 @@ export async function POST(
       const charge = await chargeForChatRequest({
         userId: session.user.id,
         costVC,
-        counters,
         characterName: character.name,
         modelDisplayName: model.displayName,
       });
@@ -376,8 +360,6 @@ export async function POST(
         ...buildChatResponsePayload({
           costVC,
           remainingVC: charge.remainingVC,
-          nextDailyRequests: charge.nextDailyRequests,
-          limitWarning: charge.limitWarning,
           model,
           greetingMessage: greetingMessage ?? undefined,
           userMessage: userMessage ?? undefined,

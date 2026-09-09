@@ -4,8 +4,6 @@
  */
 import {
   calculateRequestCost,
-  DAILY_REQUEST_LIMIT,
-  getDailyLimitWarning,
   isSubscriptionActive,
   normalizeUserCounters,
   type EconomyModel,
@@ -121,16 +119,14 @@ console.log("\n4b. Множитель ежедневного бонуса");
   assert(applyBonusMultiplier(10, "universe") === 25, "день 1 Вселенная: 25");
 }
 
-console.log("\n4. Суточный лимит 300");
+console.log("\n4. Суточный счётчик не ограничивает отправку");
 {
-  const user = makeUser({ dailyRequests: 299 });
-  const counters = normalizeUserCounters(user, now);
-  assert(counters.dailyRequests === 299, "299 запросов — ещё можно");
-  assert(counters.dailyRequests < DAILY_REQUEST_LIMIT, "300-й запрос допустим");
+  const user = makeUser({ dailyRequests: 500 });
+  const sameDay = normalizeUserCounters(user, now);
+  assert(sameDay.dailyRequests === 500, "счётчик не блокирует запросы");
 
-  const blocked = normalizeUserCounters(makeUser({ dailyRequests: 300 }), now);
-  assert(blocked.dailyRequests >= DAILY_REQUEST_LIMIT, "300+ — блокировка");
-  assert(getDailyLimitWarning(270) !== null, "предупреждение с 270");
+  const nextDay = normalizeUserCounters(user, new Date("2026-08-12T01:00:00"));
+  assert(nextDay.dailyRequests === 0, "на новый календарный день счётчик сбрасывается");
 }
 
 console.log("\n5. Активность подписки");

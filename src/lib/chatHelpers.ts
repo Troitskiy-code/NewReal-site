@@ -19,12 +19,9 @@ import {
   searchRelevantMessages,
 } from "@/lib/messageEmbeddings";
 import {
-  DAILY_REQUEST_LIMIT,
   getContextTokenLimit,
-  getDailyLimitWarning,
   getHistoryMessageLimit,
   isSubscriptionActive,
-  normalizeUserCounters,
   type EconomyModel,
 } from "@/lib/verseChatEconomy";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
@@ -735,18 +732,14 @@ export async function streamChatCompletion(
 export async function chargeForChatRequest({
   userId,
   costVC,
-  counters,
   characterName,
   modelDisplayName,
 }: {
   userId: string;
   costVC: number;
-  counters: ReturnType<typeof normalizeUserCounters>;
   characterName: string;
   modelDisplayName: string;
 }) {
-  const nextDailyRequests = counters.dailyRequests + 1;
-
   const updatedUser = await prisma.$transaction(async (tx) => {
     const current = await tx.user.findUnique({
       where: { id: userId },
@@ -770,8 +763,6 @@ export async function chargeForChatRequest({
       data: {
         verseCoins: nextCoins.verseCoins,
         permanentCoins: nextCoins.permanentCoins,
-        dailyRequests: nextDailyRequests,
-        dailyRequestsDate: counters.dailyRequestsDate,
       },
       select: { verseCoins: true, permanentCoins: true },
     });
@@ -790,16 +781,12 @@ export async function chargeForChatRequest({
 
   return {
     remainingVC: updatedUser.verseCoins,
-    nextDailyRequests,
-    limitWarning: getDailyLimitWarning(nextDailyRequests),
   };
 }
 
 export function buildChatResponsePayload({
   costVC,
   remainingVC,
-  nextDailyRequests,
-  limitWarning,
   model,
   greetingMessage,
   userMessage,
@@ -807,8 +794,6 @@ export function buildChatResponsePayload({
 }: {
   costVC: number;
   remainingVC: number;
-  nextDailyRequests: number;
-  limitWarning: string | null;
   model: EconomyModel;
   greetingMessage?: { id: string; role: string; content: string; createdAt: Date };
   userMessage?: { id: string; role: string; content: string; createdAt: Date };
@@ -825,9 +810,6 @@ export function buildChatResponsePayload({
     chargedVC: costVC,
     remainingVC,
     isFree: costVC === 0,
-    dailyRequests: nextDailyRequests,
-    dailyLimit: DAILY_REQUEST_LIMIT,
-    limitWarning,
     chargedCoins: costVC,
     remainingCoins: remainingVC,
   };

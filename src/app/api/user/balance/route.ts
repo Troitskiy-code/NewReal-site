@@ -11,7 +11,6 @@ import {
   isPreviousCalendarDay,
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
-import { normalizeUserCounters, DAILY_REQUEST_LIMIT } from "@/lib/verseChatEconomy";
 import { replenishAvatarTokens } from "@/lib/avatarTokens";
 import { activatePendingSubscriptionIfNeeded } from "@/lib/subscription";
 import { serializeSubscriptionState } from "@/lib/subscriptionState";
@@ -94,17 +93,6 @@ export async function GET() {
       getBonusForStreak(upcomingStreak),
       bonusSubscriptionType
     );
-    const counters = normalizeUserCounters(
-      {
-        id: session.user.id,
-        verseCoins: coins.verseCoins,
-        subscriptionType: subscription.subscriptionType,
-        subscriptionEnd: subscription.subscriptionEnd,
-        dailyRequests: user.dailyRequests,
-        dailyRequestsDate: user.dailyRequestsDate,
-      },
-      now
-    );
 
     return NextResponse.json({
       ...coins,
@@ -116,10 +104,8 @@ export async function GET() {
       msUntilNextBonus: claimedToday ? getMsUntilNextDay(now) : 0,
       ...subscription,
       robokassaRecurringId: synced.robokassaRecurringId ?? null,
-      dailyRequests: counters.dailyRequests,
-      dailyRequestsDate: counters.dailyRequestsDate,
-      dailyLimit: DAILY_REQUEST_LIMIT,
-      dailyRequestsRemaining: Math.max(0, DAILY_REQUEST_LIMIT - counters.dailyRequests),
+      dailyRequests: user.dailyRequests,
+      dailyRequestsDate: user.dailyRequestsDate,
     });
   } catch (error) {
     console.error("Balance fetch error:", error);

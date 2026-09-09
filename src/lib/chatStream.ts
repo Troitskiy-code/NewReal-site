@@ -23,10 +23,7 @@ export type ChatStreamEndEvent = {
   greetingMessage?: ChatStreamMessage;
   userMessage?: ChatStreamMessage;
   remainingVC?: number;
-  dailyRequests?: number;
-  dailyLimit?: number;
   chargedVC?: number;
-  limitWarning?: string | null;
   model?: { id: string; displayName: string };
   anonymous?: boolean;
   remainingMessages?: number;

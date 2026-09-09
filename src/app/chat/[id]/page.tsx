@@ -57,8 +57,6 @@ type BalanceData = {
   verseCoins: number;
   subscriptionActive: boolean;
   dailyRequests: number;
-  dailyLimit: number;
-  dailyRequestsRemaining: number;
   dailyRequestsDate: string;
   subscriptionType: string | null;
   subscriptionEnd: string | null;
@@ -852,8 +850,7 @@ export default function ChatPage() {
       !actionLoading &&
       !clearingChat &&
       Boolean(input.trim()) &&
-      !insufficientBalance &&
-      (balance?.dailyRequestsRemaining ?? 1) > 0;
+      !insufficientBalance;
 
   const userDisplayName = selectedPersona?.name ?? session?.user?.name ?? session?.user?.email ?? "Вы";
   const userAvatarUrl = selectedPersona?.avatarUrl ?? session?.user?.image ?? null;
@@ -974,19 +971,12 @@ export default function ChatPage() {
 
   const updateBalanceFromResponse = (data: {
     remainingVC?: number;
-    dailyRequests?: number;
-    dailyLimit?: number;
   }) => {
     setBalance((prev) =>
       prev
         ? {
             ...prev,
             verseCoins: data.remainingVC ?? prev.verseCoins,
-            dailyRequests: data.dailyRequests ?? prev.dailyRequests,
-            dailyRequestsRemaining:
-              data.dailyLimit !== undefined && data.dailyRequests !== undefined
-                ? Math.max(0, data.dailyLimit - data.dailyRequests)
-                : prev.dailyRequestsRemaining,
           }
         : prev
     );
@@ -1001,11 +991,6 @@ export default function ChatPage() {
   const ensureCanPerformPaidAction = (): boolean => {
     if (insufficientBalance) {
       showError(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
-      return false;
-    }
-
-    if (balance && balance.dailyRequestsRemaining <= 0) {
-      showError("Достигнут суточный лимит запросов");
       return false;
     }
 
@@ -1025,8 +1010,6 @@ export default function ChatPage() {
 
       if (statusCode === 402) {
         showError(message || "Недостаточно VerseCoins");
-      } else if (statusCode === 429) {
-        showError(message || "Достигнут суточный лимит запросов");
       } else {
         showError(message || fallback);
       }
@@ -1044,8 +1027,6 @@ export default function ChatPage() {
 
       if (statusCode === 402) {
         showError(message || "Недостаточно VerseCoins");
-      } else if (statusCode === 429) {
-        showError(message || "Достигнут суточный лимит запросов");
       } else {
         showError(message || fallback);
       }
@@ -1312,11 +1293,6 @@ export default function ChatPage() {
     } else {
       if (insufficientBalance) {
         showError(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
-        return;
-      }
-
-      if (balance && balance.dailyRequestsRemaining <= 0) {
-        showError("Достигнут суточный лимит запросов");
         return;
       }
     }

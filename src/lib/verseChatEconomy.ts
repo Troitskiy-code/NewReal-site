@@ -1,5 +1,3 @@
-export const DAILY_REQUEST_LIMIT = 300;
-export const DAILY_LIMIT_WARNING_AT = 270;
 export const BASE_MODEL_COST_VC = 2;
 
 export {
@@ -91,9 +89,3 @@ export function calculateRequestCost(
   };
 }
 
-export function getDailyLimitWarning(dailyRequests: number): string | null {
-  if (dailyRequests >= DAILY_LIMIT_WARNING_AT) {
-    return `Вы использовали ${dailyRequests} из ${DAILY_REQUEST_LIMIT} суточных запросов.`;
-  }
-  return null;
-}
