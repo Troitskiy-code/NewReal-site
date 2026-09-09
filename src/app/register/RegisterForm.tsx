@@ -12,7 +12,7 @@ import {
 } from "@/components/AuthCard";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
-import { REGISTER_CONSENT_COOKIE } from "@/lib/ensureUserConsent";
+import { REGISTER_CONSENT_COOKIE } from "@/lib/consentCookie";
 
 type RegisterFormProps = {
   googleAuthEnabled: boolean;

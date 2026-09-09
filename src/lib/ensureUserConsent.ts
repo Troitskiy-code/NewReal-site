@@ -21,8 +21,6 @@ export function ensureUserConsentColumns(): Promise<void> {
   return ensurePromise;
 }
 
-export const REGISTER_CONSENT_COOKIE = "nv-register-consent";
-
 export function isAcceptedFlag(value: unknown): boolean {
   return value === true || value === "true";
 }

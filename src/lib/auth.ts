@@ -7,14 +7,11 @@ import { prisma } from "./prisma";
 import { activatePendingSubscriptionIfNeeded } from "./subscription";
 import { translate } from "./getDictionary";
 import { DEFAULT_LOCALE } from "./i18nConfig";
-import { ensureUserConsentColumns, REGISTER_CONSENT_COOKIE } from "./ensureUserConsent";
+import { REGISTER_CONSENT_COOKIE } from "./consentCookie";
+import { ensureUserConsentColumns } from "./ensureUserConsent";
+import { isGoogleAuthEnabled } from "./googleAuth";
 
-export function isGoogleAuthEnabled(): boolean {
-  return Boolean(
-    process.env.GOOGLE_CLIENT_ID?.trim() &&
-      process.env.GOOGLE_CLIENT_SECRET?.trim()
-  );
-}
+export { isGoogleAuthEnabled };
 
 async function activatePendingForUserId(userId?: string | null) {
   if (!userId) return;

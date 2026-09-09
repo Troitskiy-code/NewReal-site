@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { isGoogleAuthEnabled } from "@/lib/auth";
+import { isGoogleAuthEnabled } from "@/lib/googleAuth";
 import { AuthCard } from "@/components/AuthCard";
 import LoginForm from "./LoginForm";
 import { getRequestLocale } from "@/lib/getRequestLocale";
