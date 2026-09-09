@@ -85,7 +85,7 @@ export default function CharacterPublicView({ character }: { character: Characte
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <button>
+      <button
         type="button"
         onClick={handleClose}
         className="fixed right-3 top-16 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-black/70 md:right-5 md:top-[5.75rem]"
