@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import {
   FaUser,
   FaEdit,
@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import { dateLocale } from "@/lib/i18nConfig";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 import { captureCharacterReturn, useRestoreCharacterScroll } from "@/lib/characterReturn";
+import ConfirmModal from "@/components/ConfirmModal";
 
 type Character = {
   id: string;
@@ -110,6 +111,7 @@ export default function ProfilePage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Character | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -185,29 +187,23 @@ export default function ProfilePage() {
     router.push(`/edit/${id}`);
   };
 
-  const handleDelete = async (id: string) => {
-    const character = characters.find((c) => c.id === id);
-    const name = character?.name || t("header.menu.create");
-
-    if (!window.confirm(t("profile.deleteConfirm", { name }))) {
-      return;
-    }
-
-    setDeletingId(id);
+  const handleDelete = async (character: Character) => {
+    setDeletingId(character.id);
     try {
-      await axios.delete(`/api/characters/${id}`);
-      setCharacters((prev) => prev.filter((c) => c.id !== id));
+      await axios.delete(`/api/characters/${character.id}`);
+      setCharacters((prev) => prev.filter((c) => c.id !== character.id));
       setTotal((prev) => Math.max(0, prev - 1));
       setStats((prev) =>
         prev ? { ...prev, charactersCount: Math.max(0, prev.charactersCount - 1) } : prev
       );
-      toast.success(t("profile.deleted"));
+      setDeleteTarget(null);
+      showSuccess(t("profile.deleted"));
     } catch (err) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
-            : t("profile.deleteError");
-      toast.error(message);
+          : t("profile.deleteError");
+      showError(message);
     } finally {
       setDeletingId(null);
     }
@@ -227,7 +223,6 @@ export default function ProfilePage() {
   if (status === "unauthenticated") {
     return (
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
-        <Toaster position="top-right" />
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
           <FaUser className="text-4xl opacity-30 text-wd-primary" />
           <h1 className="text-xl font-black uppercase tracking-tight">{t("profile.title")}</h1>
@@ -252,7 +247,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text overflow-hidden">
-      <Toaster position="top-right" />
       <main data-character-list-scroll className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         {/* Profile header */}
         <section className="wd-card p-4 md:p-6">
@@ -473,7 +467,7 @@ export default function ProfilePage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDelete(character.id)}
+                            onClick={() => setDeleteTarget(character)}
                             disabled={deletingId === character.id}
                             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-primary/30 bg-wd-primary/10 text-wd-primary transition-all disabled:opacity-50"
                           >
@@ -504,6 +498,26 @@ export default function ProfilePage() {
         </section>
       </main>
 
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title={t("common.delete")}
+        description={t("profile.deleteConfirm", {
+          name: deleteTarget
+            ? pickLocalizedText(deleteTarget.name, deleteTarget.name_en, i18n.language) ??
+              deleteTarget.name
+            : "",
+        })}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
+        danger
+        loading={Boolean(deletingId)}
+        onConfirm={() => {
+          if (deleteTarget) void handleDelete(deleteTarget);
+        }}
+        onClose={() => {
+          if (!deletingId) setDeleteTarget(null);
+        }}
+      />
       <Footer />
     </div>
   );

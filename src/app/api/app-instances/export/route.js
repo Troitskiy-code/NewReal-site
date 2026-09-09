@@ -226,7 +226,21 @@ export default function StandaloneWorkspace() {
 
   return (
     <div className="min-h-dvh flex flex-col bg-bg-page select-none text-primary-text overflow-hidden">
-      <Toaster position="top-right" />
+      <Toaster
+        position="bottom-center"
+        containerStyle={{ bottom: 20, zIndex: 9999 }}
+        toastOptions={{
+          style: {
+            background: "#1A1A1A",
+            color: "#FFFFFF",
+            borderRadius: "12px",
+            border: "1px solid #2A2A2A",
+            fontSize: "14px",
+            padding: "12px 20px",
+            maxWidth: "400px",
+          },
+        }}
+      />
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 py-8 sm:px-6 lg:px-8 gap-6 overflow-y-auto scrollbar-subtle">

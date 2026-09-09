@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FaUser, FaRobot, FaPaperPlane } from "react-icons/fa";
 import { FiRefreshCw } from "react-icons/fi";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { dismissToast, showError, showLoading, showSuccess } from "@/lib/toast";
 import config from "@/lib/config";
 
 export default function ChatTemplate({ appInstance, userCredits, activeCreation, onCreationCompleted }) {
@@ -24,7 +24,7 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
     setInput("");
     setGenerating(true);
 
-    const toastId = toast.loading("Формируем ответ...");
+    const toastId = showLoading("Формируем ответ...");
 
     try {
       const { data } = await axios.post("/api/generation", {
@@ -37,16 +37,19 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
       });
 
       if (data.status === "failed") {
-        toast.error("Генерация не удалась. Кредиты возвращены.", { id: toastId });
+        dismissToast(toastId);
+        showError("Генерация не удалась. Кредиты возвращены.");
         setMessages((prev) => [...prev, { role: "assistant", content: "Ошибка: задача генерации не выполнена." }]);
       } else {
-        toast.success("Сообщение получено!", { id: toastId });
+        dismissToast(toastId);
+        showSuccess("Сообщение получено!");
         // The resultImage field holds the output text in our generic db model
         setMessages((prev) => [...prev, { role: "assistant", content: data.resultImage || "Готово." }]);
       }
       onCreationCompleted();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Ошибка чата.", { id: toastId });
+      dismissToast(toastId);
+      showError(err.response?.data?.error || "Ошибка чата.");
       setMessages((prev) => [...prev, { role: "assistant", content: "Ошибка: проблема с подключением." }]);
     } finally {
       setGenerating(false);

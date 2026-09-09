@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { FaEdit, FaGlobe, FaPlus, FaTrash, FaUser } from "react-icons/fa";
 import type { ChatPersona } from "@/lib/persona";
 import PersonaForm, { type PersonaFormValues } from "@/components/PersonaForm";
+import LoadErrorBlock from "@/components/LoadErrorBlock";
 
 export default function PersonaManager() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [personas, setPersonas] = useState<ChatPersona[]>([]);
   const [creating, setCreating] = useState(false);
@@ -20,25 +22,21 @@ export default function PersonaManager() {
     setPersonas(data.personas ?? []);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        await loadPersonas();
-      } catch {
-        if (!cancelled) toast.error("Не удалось загрузить личности");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
+  const fetchPersonas = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await loadPersonas();
+    } catch {
+      setLoadError("Не удалось загрузить личности");
+    } finally {
+      setLoading(false);
+    }
   }, [loadPersonas]);
+
+  useEffect(() => {
+    void fetchPersonas();
+  }, [fetchPersonas]);
 
   const handleCreate = async (values: PersonaFormValues) => {
     setSaving(true);
@@ -46,10 +44,10 @@ export default function PersonaManager() {
       await axios.post("/api/personas", values);
       setCreating(false);
       await loadPersonas();
-      toast.success("Личность создана");
+      showSuccess("Личность создана");
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.error : null;
-      toast.error(message || "Не удалось создать личность");
+      showError(message || "Не удалось создать личность");
     } finally {
       setSaving(false);
     }
@@ -61,10 +59,10 @@ export default function PersonaManager() {
       await axios.put(`/api/personas/${personaId}`, values);
       setEditingId(null);
       await loadPersonas();
-      toast.success("Личность обновлена");
+      showSuccess("Личность обновлена");
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.error : null;
-      toast.error(message || "Не удалось сохранить личность");
+      showError(message || "Не удалось сохранить личность");
     } finally {
       setSaving(false);
     }
@@ -80,9 +78,9 @@ export default function PersonaManager() {
         isGlobal: true,
       });
       await loadPersonas();
-      toast.success("Личность доступна во всех чатах");
+      showSuccess("Личность доступна во всех чатах");
     } catch {
-      toast.error("Не удалось сделать личность глобальной");
+      showError("Не удалось сделать личность глобальной");
     } finally {
       setSaving(false);
     }
@@ -97,9 +95,9 @@ export default function PersonaManager() {
     try {
       await axios.delete(`/api/personas/${persona.id}`);
       setPersonas((prev) => prev.filter((item) => item.id !== persona.id));
-      toast.success("Личность удалена");
+      showSuccess("Личность удалена");
     } catch {
-      toast.error("Не удалось удалить личность");
+      showError("Не удалось удалить личность");
     } finally {
       setDeletingId(null);
     }
@@ -120,6 +118,8 @@ export default function PersonaManager() {
         <div className="flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
         </div>
+      ) : loadError ? (
+        <LoadErrorBlock message={loadError} onRetry={() => void fetchPersonas()} />
       ) : (
         <>
           {creating ? (

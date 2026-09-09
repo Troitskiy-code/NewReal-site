@@ -5,7 +5,6 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
-import { Toaster } from "react-hot-toast";
 import { FaUser, FaPlus } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
@@ -19,7 +18,6 @@ function GalleryPageContent() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-[#121212] select-none text-wd-text">
-      <Toaster position="top-right" />
 
       <div className="mb-2 w-full border-b border-[#2A2A2A] px-4 py-3 md:mb-0 md:py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

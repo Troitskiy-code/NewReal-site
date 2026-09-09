@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { reachGoal, subscriptionGoal } from "@/lib/metrika";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
+import ConfirmModal from "@/components/ConfirmModal";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
@@ -67,6 +68,7 @@ export default function PricingPage() {
   const [applyMode, setApplyMode] = useState("immediate");
   const [recurringConsent, setRecurringConsent] = useState(false);
   const [cancellingPending, setCancellingPending] = useState(false);
+  const [confirmCancelPending, setConfirmCancelPending] = useState(false);
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -98,7 +100,6 @@ export default function PricingPage() {
 
   const startCheckout = async (plan, mode) => {
     setSubscribingPlanId(plan.id);
-    const toastId = toast.loading(t("pricing.creatingPayment"));
 
     try {
       const res = await fetch("/api/subscription/create", {
@@ -117,12 +118,9 @@ export default function PricingPage() {
         throw new Error(data.error || t("pricing.paymentError"));
       }
 
-      toast.dismiss(toastId);
       window.location.href = data.url;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("pricing.paymentError"), {
-        id: toastId,
-      });
+      showError(error instanceof Error ? error.message : t("pricing.paymentError"));
       setSubscribingPlanId(null);
     }
   };
@@ -153,7 +151,6 @@ export default function PricingPage() {
     console.log("[Consent] recurring checkout", { planId: selectedPlan.id });
     const mode = hasActiveSubscription ? applyMode : "immediate";
     const plan = selectedPlan;
-    closeCheckout();
     await startCheckout(plan, mode);
   };
 
@@ -166,9 +163,10 @@ export default function PricingPage() {
         throw new Error(data.error || t("pricing.cancelPendingError"));
       }
       setBalance((prev) => (prev ? { ...prev, ...data } : data));
-      toast.success(t("pricing.cancelPendingSuccess"));
+      setConfirmCancelPending(false);
+      showSuccess(t("pricing.cancelPendingSuccess"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("pricing.cancelPendingError"));
+      showError(error instanceof Error ? error.message : t("pricing.cancelPendingError"));
     } finally {
       setCancellingPending(false);
     }
@@ -176,7 +174,6 @@ export default function PricingPage() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
-      <Toaster position="top-right" />
 
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center gap-10 overflow-y-auto px-4 py-12 scrollbar-subtle sm:px-6 lg:px-8">
         <div className="space-y-4 text-center">
@@ -214,7 +211,7 @@ export default function PricingPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={handleCancelPending}
+                  onClick={() => setConfirmCancelPending(true)}
                   disabled={cancellingPending}
                   className="shrink-0 rounded-wd-pill border border-wd-border px-4 py-2 text-xs font-bold text-white transition-colors hover:border-wd-primary disabled:opacity-50"
                 >
@@ -343,7 +340,7 @@ export default function PricingPage() {
       </main>
 
       {selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/70 px-4">
           <div className="wd-card w-full max-w-md space-y-5 p-6">
             <h2 className="text-lg font-black text-white">{t("pricing.checkoutTitle", { name: selectedPlan.name })}</h2>
             <PaymentChargeSummary
@@ -418,12 +415,20 @@ export default function PricingPage() {
                 disabled={Boolean(subscribingPlanId) || !recurringConsent}
                 className="wd-button w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {t("pricing.goToPayment")}
+                {subscribingPlanId ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    {t("pricing.redirecting")}
+                  </span>
+                ) : (
+                  t("pricing.goToPayment")
+                )}
               </button>
               <button
                 type="button"
                 onClick={closeCheckout}
-                className="w-full py-2 text-sm font-medium text-wd-text-secondary hover:text-white"
+                disabled={Boolean(subscribingPlanId)}
+                className="w-full py-2 text-sm font-medium text-wd-text-secondary hover:text-white disabled:opacity-50"
               >
                 {t("common.cancel")}
               </button>
@@ -431,6 +436,18 @@ export default function PricingPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmCancelPending}
+        title={t("pricing.cancelPendingConfirmTitle")}
+        description={t("pricing.cancelPendingConfirm")}
+        confirmLabel={t("pricing.cancelPending")}
+        cancelLabel={t("common.cancel")}
+        danger
+        loading={cancellingPending}
+        onConfirm={() => void handleCancelPending()}
+        onClose={() => setConfirmCancelPending(false)}
+      />
 
       <Footer />
     </div>

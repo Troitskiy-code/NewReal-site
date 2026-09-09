@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
+import LoadErrorBlock from "@/components/LoadErrorBlock";
 
 type TabId = "summary" | "core" | "episodic";
 
@@ -63,12 +64,14 @@ export default function MemoryEditor({
 }) {
   const [tab, setTab] = useState<TabId>("summary");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState("");
   const [coreDraft, setCoreDraft] = useState("");
   const [events, setEvents] = useState<EpisodicItem[]>([]);
   const [addingEvent, setAddingEvent] = useState(false);
   const [newEvent, setNewEvent] = useState("");
+  const [eventError, setEventError] = useState<string | null>(null);
   const [newImportance, setNewImportance] = useState(3);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -79,25 +82,21 @@ export default function MemoryEditor({
     setEvents(data.episodic ?? data.episodicMemories ?? []);
   }, [characterId]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchMemory = async () => {
-      setLoading(true);
-      try {
-        await loadMemory();
-      } catch {
-        if (!cancelled) toast.error("Не удалось загрузить память");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchMemory();
-    return () => {
-      cancelled = true;
-    };
+  const fetchMemory = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await loadMemory();
+    } catch {
+      setLoadError("Не удалось загрузить память");
+    } finally {
+      setLoading(false);
+    }
   }, [loadMemory]);
+
+  useEffect(() => {
+    void fetchMemory();
+  }, [fetchMemory]);
 
   const handleSaveSummary = async () => {
     setSaving(true);
@@ -108,9 +107,9 @@ export default function MemoryEditor({
       );
       setSummaryDraft(data.summary?.summary ?? "");
       console.log("[MemoryEditor] summary saved");
-      toast.success("Суммаризация сохранена");
+      showSuccess("Суммаризация сохранена");
     } catch (error) {
-      toast.error(apiError(error, "Не удалось сохранить суммаризацию"));
+      showError(apiError(error, "Не удалось сохранить суммаризацию"));
     } finally {
       setSaving(false);
     }
@@ -125,9 +124,9 @@ export default function MemoryEditor({
       );
       setCoreDraft(data.core?.content ?? data.coreMemory.content);
       console.log("[MemoryEditor] core saved");
-      toast.success("Постоянная память сохранена");
+      showSuccess("Постоянная память сохранена");
     } catch (error) {
-      toast.error(apiError(error, "Не удалось сохранить постоянную память"));
+      showError(apiError(error, "Не удалось сохранить постоянную память"));
     } finally {
       setSaving(false);
     }
@@ -135,10 +134,11 @@ export default function MemoryEditor({
 
   const handleAddEvent = async () => {
     if (!newEvent.trim()) {
-      toast.error("Введите текст события");
+      setEventError("Введите текст события");
       return;
     }
 
+    setEventError(null);
     setSaving(true);
     try {
       const { data } = await axios.post<{ episodic: EpisodicItem }>(
@@ -149,9 +149,9 @@ export default function MemoryEditor({
       setNewEvent("");
       setAddingEvent(false);
       console.log("[MemoryEditor] episodic added");
-      toast.success("Событие добавлено");
+      showSuccess("Событие добавлено");
     } catch (error) {
-      toast.error(apiError(error, "Не удалось добавить событие"));
+      showError(apiError(error, "Не удалось добавить событие"));
     } finally {
       setSaving(false);
     }
@@ -163,9 +163,9 @@ export default function MemoryEditor({
       await axios.delete(`/api/chat/${characterId}/memory/episodic/${episodicId}`);
       setEvents((prev) => prev.filter((item) => item.id !== episodicId));
       console.log("[MemoryEditor] episodic deleted");
-      toast.success("Событие удалено");
+      showSuccess("Событие удалено");
     } catch (error) {
-      toast.error(apiError(error, "Не удалось удалить событие"));
+      showError(apiError(error, "Не удалось удалить событие"));
     } finally {
       setDeletingId(null);
     }
@@ -177,6 +177,10 @@ export default function MemoryEditor({
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  if (loadError) {
+    return <LoadErrorBlock message={loadError} onRetry={() => void fetchMemory()} />;
   }
 
   return (
@@ -273,11 +277,17 @@ export default function MemoryEditor({
             <div className="space-y-2 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3">
               <textarea
                 value={newEvent}
-                onChange={(event) => setNewEvent(event.target.value)}
+                onChange={(event) => {
+                  setNewEvent(event.target.value);
+                  if (eventError) setEventError(null);
+                }}
                 placeholder="Что произошло?"
                 disabled={saving}
-                className="min-h-[96px] w-full resize-y rounded-lg border border-[#2A2A2A] bg-[#121212] p-2 text-sm text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60"
+                className={`min-h-[96px] w-full resize-y rounded-lg border bg-[#121212] p-2 text-sm text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60 ${
+                  eventError ? "border-red-500" : "border-[#2A2A2A]"
+                }`}
               />
+              {eventError && <p className="text-xs text-red-400">{eventError}</p>}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label className="flex items-center gap-2 text-xs text-gray-400">
                   Важность

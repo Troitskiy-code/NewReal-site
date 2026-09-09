@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { FaCoins, FaCrown, FaGift } from "react-icons/fa";
 import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
@@ -125,10 +125,10 @@ export default function CoinsPage() {
         window.location.href = data.url;
         return;
       }
-      toast.error(data.error || t("coins.paymentError"));
+      showError(data.error || t("coins.paymentError"));
       setPaying(false);
     } catch (error) {
-      toast.error(t("coins.createPaymentError"));
+      showError(t("coins.createPaymentError"));
       setPaying(false);
     }
   };
@@ -137,7 +137,7 @@ export default function CoinsPage() {
     setClaiming(true);
     try {
       const { data } = await axios.post<{ message: string; verseCoins: number }>("/api/daily-bonus");
-      toast.success(data.message || t("coins.bonusReceived"));
+      showSuccess(data.message || t("coins.bonusReceived"));
       window.dispatchEvent(
         new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: data.verseCoins } })
       );
@@ -145,14 +145,14 @@ export default function CoinsPage() {
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 400) {
         const data = err.response.data as { error?: string };
-        toast.error(data.error || t("coins.comeTomorrow"));
+        showError(data.error || t("coins.comeTomorrow"));
         await fetchBalance();
       } else {
         const message =
           axios.isAxiosError(err) && err.response?.data?.error
             ? err.response.data.error
             : t("coins.bonusError");
-        toast.error(message);
+        showError(message);
       }
     } finally {
       setClaiming(false);
@@ -170,7 +170,6 @@ export default function CoinsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
-      <Toaster position="top-right" />
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 overflow-y-auto px-4 py-8 scrollbar-subtle sm:px-6 lg:px-8">
         <div className="space-y-2">
@@ -354,7 +353,7 @@ export default function CoinsPage() {
       </main>
 
       {pendingPackage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/70 px-4">
           <div className="wd-card w-full max-w-md space-y-5 p-6">
             <h2 className="text-lg font-black text-white">
               {t("coins.checkoutTitle", { label: pendingPackage.label })}
@@ -367,7 +366,14 @@ export default function CoinsPage() {
                 disabled={paying}
                 className="wd-button w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {paying ? t("coins.paying") : t("coins.goToPayment")}
+                {paying ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    {t("coins.paying")}
+                  </span>
+                ) : (
+                  t("coins.goToPayment")
+                )}
               </button>
               <button
                 type="button"

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FaVideo, FaMagic, FaDownload, FaImage, FaPlay, FaPause, FaMicrophone } from "react-icons/fa";
 import { FiRefreshCw } from "react-icons/fi";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { dismissToast, showError, showLoading, showSuccess } from "@/lib/toast";
 import config from "@/lib/config";
 
 const DURATION_PRESETS = [
@@ -121,9 +121,9 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
     try {
       const { data } = await axios.post("/api/upload", formData);
       setSourceImage(data.url);
-      toast.success("Исходный кадр загружен!");
+      showSuccess("Исходный кадр загружен!");
     } catch (err) {
-      toast.error("Не удалось загрузить изображение.");
+      showError("Не удалось загрузить изображение.");
     } finally {
       setUploading(false);
     }
@@ -146,9 +146,9 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
           [key]: [...currentList, data.url].slice(0, maxInputs)
         };
       });
-      toast.success(`${fileTypeLabel} успешно загружен!`);
+      showSuccess(`${fileTypeLabel} успешно загружен!`);
     } catch (err) {
-      toast.error(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
+      showError(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
     } finally {
       setUploading(false);
     }
@@ -176,12 +176,12 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
     }
 
     if (!finalPrompt.trim()) {
-      toast.error("Введите запрос с описанием видео.");
+      showError("Введите запрос с описанием видео.");
       return;
     }
 
     setGenerating(true);
-    const toastId = toast.loading("Генерация видео...");
+    const toastId = showLoading("Генерация видео...");
 
     try {
       const customParams = {};
@@ -226,15 +226,19 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
       });
 
       if (data.status === "failed") {
-        toast.error("Генерация видео не удалась. Кредиты возвращены.", { id: toastId });
+        dismissToast(toastId);
+        showError("Генерация видео не удалась. Кредиты возвращены.");
       } else if (data.status === "completed") {
-        toast.success("Генерация видео завершена!", { id: toastId });
+        dismissToast(toastId);
+        showSuccess("Генерация видео завершена!");
       } else {
-        toast.success("Генерация видео запущена! Ожидаем результат...", { id: toastId });
+        dismissToast(toastId);
+        showSuccess("Генерация видео запущена! Ожидаем результат...");
       }
       onCreationCompleted(data);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Генерация не удалась.", { id: toastId });
+      dismissToast(toastId);
+      showError(err.response?.data?.error || "Генерация не удалась.");
     } finally {
       setGenerating(false);
     }

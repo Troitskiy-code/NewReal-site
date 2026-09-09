@@ -163,7 +163,7 @@
     "private": "Private",
     "noDescription": "No description",
     "chat": "Chat",
-    "deleteConfirm": "Delete character “{{name}}”?",
+    "deleteConfirm": "Are you sure you want to delete {{name}}? This cannot be undone.",
     "deleted": "Character deleted",
     "deleteError": "Could not delete the character",
     "loadError": "Could not load the profile",
@@ -213,7 +213,7 @@
         "Priority queue"
       ]
     },
-    "redirecting": "Redirecting to payment...",
+    "redirecting": "Payment...",
     "subscribe": "Subscribe",
     "footnote": "Activating a plan credits bonus VC to your balance. Context and memory multipliers apply automatically. Payments are processed by Robokassa.",
     "checkoutTitle": "Subscribe to {{name}}",
@@ -228,7 +228,9 @@
     "creatingPayment": "Creating payment...",
     "paymentError": "Could not create the payment",
     "cancelPendingSuccess": "Pending subscription cancelled",
-    "cancelPendingError": "Could not cancel the pending subscription"
+    "cancelPendingError": "Could not cancel the pending subscription",
+    "cancelPendingConfirmTitle": "Cancel the pending subscription?",
+    "cancelPendingConfirm": "The new plan will not start when the current subscription ends."
   },
   "coins": {
     "title": "VerseCoins (VC)",
@@ -252,7 +254,7 @@
     "buy": "Buy",
     "checkoutTitle": "Purchase {{label}}",
     "goToPayment": "Continue to payment",
-    "paying": "Redirecting to payment...",
+    "paying": "Payment...",
     "loadError": "Could not load the balance",
     "paymentError": "Could not create the payment",
     "createPaymentError": "Error creating the payment",

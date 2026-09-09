@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import {
   FaChevronDown,
   FaCog,
@@ -93,12 +93,17 @@ type ImageUploadProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
   footerHint?: string;
+  error?: string;
 };
 
-function ImageUploadField({ preview, onChange, onRemove, footerHint }: ImageUploadProps) {
+function ImageUploadField({ preview, onChange, onRemove, footerHint, error }: ImageUploadProps) {
   return (
     <div className="space-y-3">
-      <div className="relative flex min-h-[160px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-500 bg-[#0A0A0A] p-6 transition-colors hover:border-[#6C63FF]/50">
+      <div
+        className={`relative flex min-h-[160px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-[#0A0A0A] p-6 transition-colors hover:border-[#6C63FF]/50 ${
+          error ? "border-red-500" : "border-gray-500"
+        }`}
+      >
         {preview ? (
           <div className="group relative h-full min-h-[120px] w-full max-w-xs">
             <img src={preview} alt="Превью" className="mx-auto h-full max-h-48 w-full rounded-lg object-contain" />
@@ -118,6 +123,7 @@ function ImageUploadField({ preview, onChange, onRemove, footerHint }: ImageUplo
           </label>
         )}
       </div>
+      {error && <p className="text-xs text-red-400">{error}</p>}
       {footerHint && <p className={HINT_CLASS}>{footerHint}</p>}
     </div>
   );
@@ -197,6 +203,12 @@ type CharacterFormProps = {
   loraFile?: File | null;
   onLoraChange: (file: File) => void;
   onLoraRemove: () => void;
+  errors?: {
+    name?: string;
+    avatar?: string;
+    lora?: string;
+  };
+  onClearError?: (field: "name" | "avatar" | "lora") => void;
 };
 
 async function fileToDataUrl(file: File): Promise<string> {
@@ -234,12 +246,15 @@ export default function CharacterForm({
   loraFile,
   onLoraChange,
   onLoraRemove,
+  errors,
+  onClearError,
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
+  const [localErrors, setLocalErrors] = useState<{ name?: string; lora?: string; prompt?: string }>({});
 
   const usesSd = Boolean(loraFile || loraPreview);
   const canGenerate = Boolean(tokenStatus && tokenStatus.monthlyRemaining > 0);
@@ -248,12 +263,17 @@ export default function CharacterForm({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    setLocalErrors((current) => ({ ...current, lora: undefined }));
+    onClearError?.("lora");
     try {
       const ready = await ensureReferenceImageFile(file);
       onLoraChange(ready);
     } catch (error) {
       console.error("[CharacterForm] AVIF conversion failed:", error);
-      toast.error("Не удалось обработать AVIF. Загрузите PNG или JPEG.");
+      setLocalErrors((current) => ({
+        ...current,
+        lora: "Не удалось обработать AVIF. Загрузите PNG или JPEG.",
+      }));
     }
   };
 
@@ -274,12 +294,15 @@ export default function CharacterForm({
 
   const handleRegeneratePrompt = async () => {
     if (!characterId) {
-      toast.error("Сначала сохраните персонажа, чтобы перегенерировать промпт");
+      setLocalErrors((current) => ({
+        ...current,
+        prompt: "Сначала сохраните персонажа, чтобы перегенерировать промпт",
+      }));
       return;
     }
 
+    setLocalErrors((current) => ({ ...current, prompt: undefined }));
     setRegeneratingPrompt(true);
-    const toastId = toast.loading("Генерация промпта...");
     try {
       const { data } = await axios.post<{ systemPrompt: string }>(
         `/api/characters/${characterId}/regenerate-prompt`,
@@ -294,13 +317,13 @@ export default function CharacterForm({
         }
       );
       onChange("systemPrompt", data.systemPrompt || "");
-      toast.success("Промпт обновлён", { id: toastId });
+      showSuccess("Промпт обновлён");
     } catch (err: unknown) {
       const message =
         axios.isAxiosError(err) && typeof err.response?.data?.error === "string"
           ? err.response.data.error
           : "Не удалось сгенерировать промпт";
-      toast.error(message, { id: toastId });
+      showError(message);
     } finally {
       setRegeneratingPrompt(false);
     }
@@ -309,13 +332,13 @@ export default function CharacterForm({
   const handleGenerateAvatar = async () => {
     reachGoal(METRIKA_GOALS.generateAvatar);
     if (!values.name.trim()) {
-      toast.error("Сначала укажите имя персонажа");
+      setLocalErrors((current) => ({ ...current, name: "Сначала укажите имя персонажа" }));
       return;
     }
 
+    setLocalErrors((current) => ({ ...current, name: undefined }));
+    onClearError?.("name");
     setGeneratingAvatar(true);
-    const toastId = toast.loading("Генерация аватара...");
-
     try {
       const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
       const { data } = await axios.post<{ imageUrl: string }>("/api/generate-avatar", {
@@ -343,7 +366,7 @@ export default function CharacterForm({
             }
           : prev
       );
-      toast.success("Аватар сгенерирован", { id: toastId });
+      showSuccess("Аватар сгенерирован");
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       const serverError =
@@ -356,7 +379,7 @@ export default function CharacterForm({
             "Ваш запрос был отклонён из-за политики безопасности. Попробуйте изменить описание персонажа или использовать более нейтральные формулировки."
           : serverError ||
             (err instanceof Error ? err.message : "Не удалось сгенерировать аватар");
-      toast.error(message, { id: toastId });
+      showError(message);
     } finally {
       setGeneratingAvatar(false);
     }
@@ -369,11 +392,17 @@ export default function CharacterForm({
           id="name"
           type="text"
           value={values.name}
-          onChange={(e) => onChange("name", e.target.value)}
+          onChange={(e) => {
+            onChange("name", e.target.value);
+            if (localErrors.name) setLocalErrors((current) => ({ ...current, name: undefined }));
+            onClearError?.("name");
+          }}
           placeholder="Введите имя персонажа"
-          required
-          className={INPUT_CLASS}
+          className={`${INPUT_CLASS} ${localErrors.name || errors?.name ? "border-red-500" : ""}`}
         />
+        {(localErrors.name || errors?.name) && (
+          <p className="text-xs text-red-400">{localErrors.name || errors?.name}</p>
+        )}
       </FormBlock>
 
       <FormBlock
@@ -512,7 +541,12 @@ export default function CharacterForm({
                   Лучше всего подходит четкое изображение лица или полный образ без лишних деталей.
                 </li>
               </ul>
-              <ImageUploadField preview={loraPreview} onChange={handleLoraInput} onRemove={onLoraRemove} />
+              <ImageUploadField
+                preview={loraPreview}
+                onChange={handleLoraInput}
+                onRemove={onLoraRemove}
+                error={localErrors.lora || errors?.lora}
+              />
             </FormBlock>
           </div>
         )}
@@ -546,9 +580,13 @@ export default function CharacterForm({
       <FormBlock title="Аватар персонажа" icon={FaImage}>
         <ImageUploadField
           preview={avatarPreview}
-          onChange={onAvatarChange}
+          onChange={(event) => {
+            onClearError?.("avatar");
+            onAvatarChange(event);
+          }}
           onRemove={onAvatarRemove}
           footerHint="Максимальный размер: 5 МБ. Рекомендуемое соотношение: 3:5."
+          error={errors?.avatar}
         />
         <div className="space-y-3">
           <label htmlFor="avatarPrompt" className="block text-sm font-medium text-white">
@@ -717,6 +755,7 @@ export default function CharacterForm({
           )}
           {regeneratingPrompt ? "Генерация..." : "Перегенерировать промпт"}
         </button>
+        {localErrors.prompt && <p className="text-xs text-red-400">{localErrors.prompt}</p>}
       </FormBlock>
 
       <section>

@@ -1,6 +1,7 @@
 import { Inter } from "next/font/google";
 import { Providers } from "./providers";
 import AppShell from "@/components/AppShell";
+import AppToaster from "@/components/AppToaster";
 import YandexMetrika from "@/components/YandexMetrika";
 import { getLocalizedPageMetadata, SITE_URL } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
@@ -28,6 +29,7 @@ export default async function RootLayout({ children }) {
       <body className={`${inter.className} h-full antialiased bg-wd-bg text-wd-text`}>
         <YandexMetrika />
         <Providers locale={locale}>
+          <AppToaster />
           <AppShell>{children}</AppShell>
         </Providers>
       </body>

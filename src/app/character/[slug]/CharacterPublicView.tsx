@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { FaComments, FaShareAlt, FaTimes, FaUser } from "react-icons/fa";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { pickLocalizedText } from "@/lib/characterFields";
@@ -74,10 +74,10 @@ export default function CharacterPublicView({ character }: { character: Characte
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      toast.success(t("characterPage.copied"));
+      showSuccess(t("characterPage.copied"));
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error(t("characterPage.shareFailed"));
+      showError(t("characterPage.shareFailed"));
     }
   };
 
@@ -85,8 +85,7 @@ export default function CharacterPublicView({ character }: { character: Characte
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <Toaster position="top-right" />
-      <button
+      <button>
         type="button"
         onClick={handleClose}
         className="fixed right-3 top-16 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-black/70 md:right-5 md:top-[5.75rem]"

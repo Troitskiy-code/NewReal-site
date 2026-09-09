@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
-import { Toaster } from "react-hot-toast";
 import { FaComments, FaUser } from "react-icons/fa";
 import axios from "axios";
 
@@ -104,7 +103,6 @@ function ChatsPageContent() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-[#121212] text-wd-text">
-      <Toaster position="top-right" />
 
       <div className="mb-2 w-full border-b border-[#2A2A2A] px-4 py-3 md:py-4">
         <div className="space-y-1">

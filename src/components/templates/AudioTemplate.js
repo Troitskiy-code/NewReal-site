@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FaMicrophone, FaDownload, FaFileAlt, FaImage, FaVideo } from "react-icons/fa";
 import { FiRefreshCw } from "react-icons/fi";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { dismissToast, showError, showLoading, showSuccess } from "@/lib/toast";
 import config from "@/lib/config";
 
 function CustomSelect({ value, onChange, options, placeholder = "Выберите вариант", className = "" }) {
@@ -111,9 +111,9 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
     try {
       const { data } = await axios.post("/api/upload", formData);
       setAudioUrl(data.url);
-      toast.success("Аудиофайл загружен!");
+      showSuccess("Аудиофайл загружен!");
     } catch (err) {
-      toast.error("Не удалось загрузить аудио.");
+      showError("Не удалось загрузить аудио.");
     } finally {
       setUploading(false);
     }
@@ -136,9 +136,9 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
           [key]: [...currentList, data.url].slice(0, maxInputs)
         };
       });
-      toast.success(`${fileTypeLabel} успешно загружен!`);
+      showSuccess(`${fileTypeLabel} успешно загружен!`);
     } catch (err) {
-      toast.error(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
+      showError(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
     } finally {
       setUploading(false);
     }
@@ -194,12 +194,12 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
     }
 
     if (!inputAudioVal) {
-      toast.error("Сначала загрузите аудиофайл.");
+      showError("Сначала загрузите аудиофайл.");
       return;
     }
 
     setGenerating(true);
-    const toastId = toast.loading("Обработка расшифровки аудио...");
+    const toastId = showLoading("Обработка расшифровки аудио...");
 
     try {
       const { data } = await axios.post("/api/generation", {
@@ -211,15 +211,19 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
       });
 
       if (data.status === "failed") {
-        toast.error("Расшифровка не удалась. Кредиты возвращены.", { id: toastId });
+        dismissToast(toastId);
+        showError("Расшифровка не удалась. Кредиты возвращены.");
       } else if (data.status === "completed") {
-        toast.success("Расшифровка завершена!", { id: toastId });
+        dismissToast(toastId);
+        showSuccess("Расшифровка завершена!");
       } else {
-        toast.success("Расшифровка запущена! Ожидаем результат...", { id: toastId });
+        dismissToast(toastId);
+        showSuccess("Расшифровка запущена! Ожидаем результат...");
       }
       onCreationCompleted(data);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Расшифровка не удалась.", { id: toastId });
+      dismissToast(toastId);
+      showError(err.response?.data?.error || "Расшифровка не удалась.");
     } finally {
       setGenerating(false);
     }

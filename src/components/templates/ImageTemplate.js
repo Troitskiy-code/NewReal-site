@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { FaImage, FaMagic, FaDownload, FaExclamationTriangle, FaVideo, FaMicrophone } from "react-icons/fa";
 import { FiRefreshCw } from "react-icons/fi";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { dismissToast, showError, showLoading, showSuccess } from "@/lib/toast";
 import config from "@/lib/config";
 
 const ASPECT_RATIOS = [
@@ -124,9 +124,9 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
     try {
       const { data } = await axios.post("/api/upload", formData);
       setImage(data.url);
-      toast.success("Эталонное изображение загружено!");
+      showSuccess("Эталонное изображение загружено!");
     } catch (err) {
-      toast.error("Не удалось загрузить изображение.");
+      showError("Не удалось загрузить изображение.");
     } finally {
       setUploading(false);
     }
@@ -149,9 +149,9 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
           [key]: [...currentList, data.url].slice(0, maxInputs)
         };
       });
-      toast.success(`${fileTypeLabel} успешно загружен!`);
+      showSuccess(`${fileTypeLabel} успешно загружен!`);
     } catch (err) {
-      toast.error(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
+      showError(`Не удалось загрузить ${fileTypeLabel.toLowerCase()}.`);
     } finally {
       setUploading(false);
     }
@@ -180,12 +180,12 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
     }
 
     if (!finalPrompt.trim()) {
-      toast.error("Введите запрос.");
+      showError("Введите запрос.");
       return;
     }
 
     setGenerating(true);
-    const toastId = toast.loading("Генерация изображения...");
+    const toastId = showLoading("Генерация изображения...");
 
     try {
       // Gather other custom fields
@@ -230,15 +230,19 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
       });
 
       if (data.status === "failed") {
-        toast.error("Генерация не удалась. Кредиты возвращены.", { id: toastId });
+        dismissToast(toastId);
+        showError("Генерация не удалась. Кредиты возвращены.");
       } else if (data.status === "completed") {
-        toast.success("Генерация завершена!", { id: toastId });
+        dismissToast(toastId);
+        showSuccess("Генерация завершена!");
       } else {
-        toast.success("Генерация запущена! Ожидаем результат...", { id: toastId });
+        dismissToast(toastId);
+        showSuccess("Генерация запущена! Ожидаем результат...");
       }
       onCreationCompleted(data);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Генерация не удалась.", { id: toastId });
+      dismissToast(toastId);
+      showError(err.response?.data?.error || "Генерация не удалась.");
     } finally {
       setGenerating(false);
     }

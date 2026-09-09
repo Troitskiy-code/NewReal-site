@@ -4,7 +4,6 @@ import LocaleLink, { useCurrentLocale, useLocalizedPathname } from "./LocaleLink
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 import { FaUser, FaCog, FaBell, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
-import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import VerseCoinsBalance from "./VerseCoinsBalance";
 import { withLocale } from "@/lib/i18nConfig";
@@ -99,16 +98,14 @@ export default function UserAvatarMenu() {
   const dropdownItems = [
     { name: t("header.menu.profile"), path: "/profile", icon: FaUser, active: isProfileActive },
     {
-      name: t("profile.settings"),
+      name: `${t("profile.settings")} 🔜`,
       stub: true,
       icon: FaCog,
-      message: t("profile.settingsSoon"),
     },
     {
-      name: t("profile.notifications"),
+      name: `${t("profile.notifications")} 🔜`,
       stub: true,
       icon: FaBell,
-      message: t("profile.notificationsSoon"),
     },
   ];
 
@@ -150,17 +147,10 @@ export default function UserAvatarMenu() {
               if (item.stub) {
                 return (
                   <li key={item.name}>
-                    <button
-                      type="button"
-                      className={itemClass}
-                      onClick={() => {
-                        toast(item.message, { icon: "🔜" });
-                        setOpen(false);
-                      }}
-                    >
+                    <span className={`${itemClass} cursor-default opacity-70`}>
                       <Icon size={16} className="shrink-0" />
                       {item.name}
-                    </button>
+                    </span>
                   </li>
                 );
               }

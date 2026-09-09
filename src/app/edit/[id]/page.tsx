@@ -10,7 +10,7 @@ import CharacterForm, {
   type CharacterFormValues,
 } from "@/components/CharacterForm";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { FaUser } from "react-icons/fa";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { memoryToText } from "@/lib/persistentMemory";
@@ -51,6 +51,7 @@ export default function EditCharacterPage() {
   const [loraFile, setLoraFile] = useState<File | null>(null);
   const [loraPreview, setLoraPreview] = useState<string | null>(null);
   const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; avatar?: string; lora?: string }>({});
 
   useEffect(() => {
     if (!id) return;
@@ -102,10 +103,11 @@ export default function EditCharacterPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      toast.error("Максимальный размер изображения — 5 МБ");
+      setFieldErrors((current) => ({ ...current, avatar: "Максимальный размер изображения — 5 МБ" }));
       e.target.value = "";
       return;
     }
+    setFieldErrors((current) => ({ ...current, avatar: undefined }));
     setAvatarFile(file);
     setGeneratedAvatarUrl(null);
     setAvatarPreview(URL.createObjectURL(file));
@@ -113,9 +115,10 @@ export default function EditCharacterPage() {
 
   const handleLoraChange = (file: File) => {
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      toast.error("Максимальный размер изображения — 5 МБ");
+      setFieldErrors((current) => ({ ...current, lora: "Максимальный размер изображения — 5 МБ" }));
       return;
     }
+    setFieldErrors((current) => ({ ...current, lora: undefined }));
     if (loraPreview?.startsWith("blob:")) URL.revokeObjectURL(loraPreview);
     setLoraFile(file);
     setLoraPreview(URL.createObjectURL(file));
@@ -149,7 +152,8 @@ export default function EditCharacterPage() {
     setImageUrl(null);
     setImageLora(null);
     setGeneratedAvatarUrl(null);
-    toast.success("Черновик очищен");
+    setFieldErrors({});
+    showSuccess("Черновик очищен");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,13 +161,12 @@ export default function EditCharacterPage() {
     reachGoal(METRIKA_GOALS.saveCharacter);
 
     if (!form.name.trim()) {
-      toast.error("Введите имя персонажа");
+      setFieldErrors((current) => ({ ...current, name: "Введите имя персонажа" }));
       return;
     }
 
+    setFieldErrors((current) => ({ ...current, name: undefined }));
     setSubmitting(true);
-    const toastId = toast.loading("Сохранение изменений...");
-
     try {
       let finalImageUrl = generatedAvatarUrl ?? imageUrl;
       let finalImageLora = imageLora;
@@ -189,14 +192,14 @@ export default function EditCharacterPage() {
         privateMemory: form.privateMemory,
       });
 
-      toast.success("Персонаж обновлён!", { id: toastId });
+      showSuccess("Персонаж обновлён!");
       router.push("/profile");
     } catch (err: unknown) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
           : "Не удалось сохранить изменения";
-      toast.error(message, { id: toastId });
+      showError(message);
     } finally {
       setSubmitting(false);
     }
@@ -216,7 +219,6 @@ export default function EditCharacterPage() {
   if (status === "unauthenticated") {
     return (
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
-        <Toaster position="top-right" />
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <FaUser className="text-4xl text-wd-primary opacity-30" />
           <h1 className="text-xl font-black uppercase tracking-tight">Редактирование персонажа</h1>
@@ -235,7 +237,6 @@ export default function EditCharacterPage() {
   if (error) {
     return (
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
-        <Toaster position="top-right" />
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <p className="text-sm font-extrabold uppercase text-wd-primary">Ошибка</p>
           <p className="max-w-sm text-xs text-wd-text-secondary">{error}</p>
@@ -250,7 +251,6 @@ export default function EditCharacterPage() {
 
   return (
     <div className="min-h-dvh flex flex-col overflow-hidden bg-[#121212] text-white select-none">
-      <Toaster position="top-right" />
       <main className="flex w-full flex-1 flex-col overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:py-8 lg:px-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 md:gap-8">
           <header className="space-y-1 border-b border-[#2A2A2A] pb-4 md:pb-5">
@@ -266,6 +266,10 @@ export default function EditCharacterPage() {
               characterId={id}
               values={form}
               onChange={updateField}
+              errors={fieldErrors}
+              onClearError={(field) =>
+                setFieldErrors((current) => ({ ...current, [field]: undefined }))
+              }
               avatarPreview={avatarPreview}
               onAvatarChange={handleAvatarChange}
               onAvatarRemove={handleRemoveAvatar}
@@ -303,7 +307,14 @@ export default function EditCharacterPage() {
                   disabled={submitting}
                   className="w-full rounded-lg bg-[#6C63FF] px-8 py-3 text-base font-bold text-white transition-colors hover:bg-[#5a52e0] disabled:opacity-50 sm:w-auto"
                 >
-                  {submitting ? "Сохранение..." : "Сохранить"}
+                  {submitting ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Сохранение...
+                    </span>
+                  ) : (
+                    "Сохранить"
+                  )}
                 </button>
               </div>
             </div>

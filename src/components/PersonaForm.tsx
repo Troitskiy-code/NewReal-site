@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
 import { FaUser } from "react-icons/fa";
 import {
   PERSONA_DESCRIPTION_MAX,
@@ -52,6 +51,7 @@ export default function PersonaForm({
 }) {
   const [form, setForm] = useState<PersonaFormValues>(() => toFormValues(persona));
   const [uploading, setUploading] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; avatar?: string }>({});
 
   useEffect(() => {
     setForm(toFormValues(persona));
@@ -60,10 +60,11 @@ export default function PersonaForm({
   const handleAvatarChange = async (file: File | null) => {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Максимальный размер файла — 5 МБ");
+      setErrors((current) => ({ ...current, avatar: "Максимальный размер файла — 5 МБ" }));
       return;
     }
 
+    setErrors((current) => ({ ...current, avatar: undefined }));
     setUploading(true);
     try {
       const formData = new FormData();
@@ -71,7 +72,7 @@ export default function PersonaForm({
       const { data } = await axios.post<{ url: string }>("/api/upload", formData);
       setForm((current) => ({ ...current, avatarUrl: data.url }));
     } catch {
-      toast.error("Не удалось загрузить аватар");
+      setErrors((current) => ({ ...current, avatar: "Не удалось загрузить аватар" }));
     } finally {
       setUploading(false);
     }
@@ -80,9 +81,10 @@ export default function PersonaForm({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.name.trim()) {
-      toast.error("Укажите имя личности");
+      setErrors((current) => ({ ...current, name: "Укажите имя личности" }));
       return;
     }
+    setErrors((current) => ({ ...current, name: undefined }));
     await onSubmit({
       ...form,
       name: form.name.trim(),
@@ -92,38 +94,41 @@ export default function PersonaForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
-          {form.avatarUrl ? (
-            <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <FaUser className="text-gray-500" />
+      <div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
+            {form.avatarUrl ? (
+              <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <FaUser className="text-gray-500" />
+            )}
+          </div>
+          <label className="cursor-pointer text-xs font-semibold text-[#6C63FF] hover:underline">
+            {uploading ? "Загрузка..." : "Загрузить аватар"}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploading || submitting}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                event.target.value = "";
+                void handleAvatarChange(file);
+              }}
+            />
+          </label>
+          {form.avatarUrl && (
+            <button
+              type="button"
+              onClick={() => setForm((current) => ({ ...current, avatarUrl: null }))}
+              className="text-xs text-gray-500 hover:text-gray-300"
+              disabled={submitting}
+            >
+              Убрать
+            </button>
           )}
         </div>
-        <label className="cursor-pointer text-xs font-semibold text-[#6C63FF] hover:underline">
-          {uploading ? "Загрузка..." : "Загрузить аватар"}
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            disabled={uploading || submitting}
-            onChange={(event) => {
-              const file = event.target.files?.[0] ?? null;
-              event.target.value = "";
-              void handleAvatarChange(file);
-            }}
-          />
-        </label>
-        {form.avatarUrl && (
-          <button
-            type="button"
-            onClick={() => setForm((current) => ({ ...current, avatarUrl: null }))}
-            className="text-xs text-gray-500 hover:text-gray-300"
-            disabled={submitting}
-          >
-            Убрать
-          </button>
-        )}
+        {errors.avatar && <p className="mt-1 text-xs text-red-400">{errors.avatar}</p>}
       </div>
 
       <div>
@@ -132,12 +137,15 @@ export default function PersonaForm({
           type="text"
           value={form.name}
           maxLength={PERSONA_NAME_MAX}
-          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-          className={INPUT_CLASS}
+          onChange={(event) => {
+            setForm((current) => ({ ...current, name: event.target.value }));
+            if (errors.name) setErrors((current) => ({ ...current, name: undefined }));
+          }}
+          className={`${INPUT_CLASS} ${errors.name ? "border-red-500" : ""}`}
           placeholder="Как к вам обращаться"
           disabled={submitting}
-          required
         />
+        {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
       </div>
 
       <div>
@@ -183,7 +191,7 @@ export default function PersonaForm({
         )}
         <button
           type="submit"
-          disabled={submitting || uploading || !form.name.trim()}
+          disabled={submitting || uploading}
           className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
         >
           {submitting ? "Сохранение..." : submitLabel}

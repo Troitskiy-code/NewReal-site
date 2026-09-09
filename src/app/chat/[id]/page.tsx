@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy, FaInfoCircle } from "react-icons/fa";
 import MemoryEditor from "@/components/MemoryEditor";
 import PersonaSelector from "@/components/PersonaSelector";
@@ -25,7 +25,8 @@ import { useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
 import { captureCharacterReturn } from "@/lib/characterReturn";
 import { pickLocalizedText } from "@/lib/characterFields";
-import { ANONYMOUS_LIMIT_CODE } from "@/lib/anonymousCookie";
+import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT } from "@/lib/anonymousCookie";
+import ConfirmModal from "@/components/ConfirmModal";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
@@ -353,6 +354,7 @@ type ChatMessageItemProps = {
   avatarUrl: string | null;
   isEditing: boolean;
   editingDraft: string;
+  editError?: boolean;
   actionDisabled: boolean;
   isStreaming?: boolean;
   onEditDraftChange: (value: string) => void;
@@ -371,6 +373,7 @@ function ChatMessageItem({
   avatarUrl,
   isEditing,
   editingDraft,
+  editError = false,
   actionDisabled,
   isStreaming = false,
   onEditDraftChange,
@@ -437,9 +440,14 @@ function ChatMessageItem({
             value={editingDraft}
             onChange={(e) => onEditDraftChange(e.target.value)}
             rows={3}
-            className="w-full resize-y rounded-md border border-divider bg-[#121212] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
+            className={`w-full resize-y rounded-md border bg-[#121212] px-3 py-2 text-sm text-white outline-none focus:border-primary/60 ${
+              editError ? "border-red-500" : "border-divider"
+            }`}
             disabled={actionDisabled}
           />
+          {editError && (
+            <p className="mt-1 text-xs text-red-400">Сообщение не может быть пустым</p>
+          )}
           <div className={`mt-2 flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
             <button
               type="button"
@@ -452,7 +460,7 @@ function ChatMessageItem({
             <button
               type="button"
               onClick={() => onEditSave(message.id)}
-              disabled={actionDisabled || !editingDraft.trim()}
+              disabled={actionDisabled}
               className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
             >
               Сохранить
@@ -629,7 +637,7 @@ function Modal({ open, onClose, title, wide = false, dismissible = true, childre
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/80 p-4 pt-16 backdrop-blur-sm md:items-center md:pt-4"
+      className="fixed inset-0 z-[10050] flex items-start justify-center bg-black/80 p-4 pt-16 backdrop-blur-sm md:items-center md:pt-4"
       onClick={dismissible ? onClose : undefined}
       role="presentation"
     >
@@ -795,12 +803,13 @@ export default function ChatPage() {
   const [clearingChat, setClearingChat] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
+  const [editingError, setEditingError] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [anonymousRemaining, setAnonymousRemaining] = useState<number | null>(null);
   const [showAnonymousLimitModal, setShowAnonymousLimitModal] = useState(false);
+  const [confirmClearChat, setConfirmClearChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const anonymousWelcomeShown = useRef(false);
 
   const isAnonymous = status === "unauthenticated";
 
@@ -910,7 +919,7 @@ export default function ChatPage() {
         if (guest || statusCode === 401) {
           console.warn("[Chat] Failed to load history", statusCode ?? error);
         } else {
-          toast.error("Ошибка загрузки чата");
+          showError("Ошибка загрузки чата");
         }
       } finally {
         setLoading(false);
@@ -950,7 +959,7 @@ export default function ChatPage() {
       await axios.post("/api/user/select-model", { modelId });
     } catch (err) {
       setSelectedModelId(previousId);
-      toast.error(
+      showError(
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
           : "Не удалось выбрать модель"
@@ -988,12 +997,12 @@ export default function ChatPage() {
 
   const ensureCanPerformPaidAction = (): boolean => {
     if (insufficientBalance) {
-      toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+      showError(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
       return false;
     }
 
     if (balance && balance.dailyRequestsRemaining <= 0) {
-      toast.error("Достигнут суточный лимит запросов");
+      showError("Достигнут суточный лимит запросов");
       return false;
     }
 
@@ -1012,11 +1021,11 @@ export default function ChatPage() {
       const message = error.payload.error || error.message;
 
       if (statusCode === 402) {
-        toast.error(message || "Недостаточно VerseCoins");
+        showError(message || "Недостаточно VerseCoins");
       } else if (statusCode === 429) {
-        toast.error(message || "Достигнут суточный лимит запросов");
+        showError(message || "Достигнут суточный лимит запросов");
       } else {
-        toast.error(message || fallback);
+        showError(message || fallback);
       }
       return;
     }
@@ -1031,16 +1040,16 @@ export default function ChatPage() {
       const message = error.response?.data?.error;
 
       if (statusCode === 402) {
-        toast.error(message || "Недостаточно VerseCoins");
+        showError(message || "Недостаточно VerseCoins");
       } else if (statusCode === 429) {
-        toast.error(message || "Достигнут суточный лимит запросов");
+        showError(message || "Достигнут суточный лимит запросов");
       } else {
-        toast.error(message || fallback);
+        showError(message || fallback);
       }
     } else if (error instanceof Error && error.message) {
-      toast.error(error.message);
+      showError(error.message);
     } else {
-      toast.error(fallback);
+      showError(fallback);
     }
   };
 
@@ -1088,11 +1097,11 @@ export default function ChatPage() {
         setMessages((prev) =>
           prev.map((msg) => (msg.id === messageId ? original : msg))
         );
-        toast.error("Поток ответа прервался");
+        showError("Поток ответа прервался");
         return;
       }
 
-      toast.success("Ответ перегенерирован");
+      showSuccess("Ответ перегенерирован");
     } catch (error) {
       setMessages((prev) =>
         prev.map((msg) => (msg.id === messageId ? original : msg))
@@ -1174,11 +1183,11 @@ export default function ChatPage() {
             )
           );
         }
-        toast.error("Поток ответа прервался");
+        showError("Поток ответа прервался");
         return;
       }
 
-      toast.success("Ответ продолжен");
+      showSuccess("Ответ продолжен");
     } catch (error) {
       if (createdPlaceholder && targetId) {
         setMessages((prev) => prev.filter((msg) => msg.id !== targetId));
@@ -1207,8 +1216,9 @@ export default function ChatPage() {
       if (editingMessageId === messageId) {
         setEditingMessageId(null);
         setEditingDraft("");
+    setEditingError(false);
       }
-      toast.success("Сообщение удалено");
+      showSuccess("Сообщение удалено");
     } catch (error) {
       handleApiError(error, "Не удалось удалить сообщение");
     } finally {
@@ -1221,19 +1231,22 @@ export default function ChatPage() {
     if (!message) return;
     setEditingMessageId(messageId);
     setEditingDraft(message.content);
+    setEditingError(false);
   };
 
   const handleEditCancel = () => {
     setEditingMessageId(null);
     setEditingDraft("");
+    setEditingError(false);
   };
 
   const handleEditSave = async (messageId: string) => {
     const trimmed = editingDraft.trim();
     if (!trimmed) {
-      toast.error("Сообщение не может быть пустым");
+      setEditingError(true);
       return;
     }
+    setEditingError(false);
 
     setActionLoading(true);
     try {
@@ -1243,7 +1256,8 @@ export default function ChatPage() {
       setMessages((prev) => prev.map((msg) => (msg.id === messageId ? data : msg)));
       setEditingMessageId(null);
       setEditingDraft("");
-      toast.success("Сообщение обновлено");
+      setEditingError(false);
+      showSuccess("Сообщение обновлено");
     } catch (error) {
       handleApiError(error, "Не удалось сохранить сообщение");
     } finally {
@@ -1253,7 +1267,6 @@ export default function ChatPage() {
 
   const handleClearChat = async () => {
     if (sending || actionLoading || clearingChat) return;
-    if (!window.confirm("Очистить всю историю чата с этим персонажем?")) return;
 
     setClearingChat(true);
     try {
@@ -1262,8 +1275,10 @@ export default function ChatPage() {
       setMessages(greeting ? [createGreetingMessage(greeting)] : []);
       setEditingMessageId(null);
       setEditingDraft("");
+      setEditingError(false);
       setSettingsMenuOpen(false);
-      toast.success("История чата очищена");
+      setConfirmClearChat(false);
+      showSuccess("История чата очищена");
     } catch (error) {
       handleApiError(error, "Не удалось очистить чат");
     } finally {
@@ -1274,9 +1289,9 @@ export default function ChatPage() {
   const handleCopy = async (content: string) => {
     try {
       await navigator.clipboard.writeText(content);
-      toast.success("Скопировано");
+      showSuccess("Скопировано");
     } catch {
-      toast.error("Не удалось скопировать");
+      showError("Не удалось скопировать");
     }
   };
 
@@ -1291,18 +1306,14 @@ export default function ChatPage() {
         setShowAnonymousLimitModal(true);
         return;
       }
-      if (!anonymousWelcomeShown.current && anonymousRemaining != null) {
-        anonymousWelcomeShown.current = true;
-        toast.success(`У вас осталось ${anonymousRemaining} бесплатных сообщений`);
-      }
     } else {
       if (insufficientBalance) {
-        toast.error(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+        showError(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
         return;
       }
 
       if (balance && balance.dailyRequestsRemaining <= 0) {
-        toast.error("Достигнут суточный лимит запросов");
+        showError("Достигнут суточный лимит запросов");
         return;
       }
     }
@@ -1390,7 +1401,7 @@ export default function ChatPage() {
 
       if (!endEvent) {
         setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
-        toast.error("Поток ответа прервался");
+        showError("Поток ответа прервался");
       }
     } catch (error) {
       setMessages((prev) => {
@@ -1438,7 +1449,6 @@ export default function ChatPage() {
         <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
       )}
       <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-        <Toaster position="top-right" />
 
         <Modal
           open={showAnonymousLimitModal}
@@ -1531,7 +1541,10 @@ export default function ChatPage() {
                 onOpenModels={() => setSettingsOpen(true)}
                 onOpenMemory={() => setMemoryEditorOpen(true)}
                 onOpenPersona={() => setPersonaSelectorOpen(true)}
-                onClearChat={handleClearChat}
+                onClearChat={() => {
+                  setSettingsMenuOpen(false);
+                  setConfirmClearChat(true);
+                }}
                 disabled={sending || actionLoading || clearingChat}
               />
             )}
@@ -1557,9 +1570,13 @@ export default function ChatPage() {
                   avatarUrl={msg.role === "user" ? userAvatarUrl : characterAvatarUrl}
                   isEditing={editingMessageId === msg.id}
                   editingDraft={editingDraft}
+                  editError={editingError}
                   actionDisabled={sending || actionLoading || clearingChat}
                   isStreaming={streamingMessageId === msg.id}
-                  onEditDraftChange={setEditingDraft}
+                  onEditDraftChange={(value) => {
+                    setEditingDraft(value);
+                    if (editingError) setEditingError(false);
+                  }}
                   onEditCancel={handleEditCancel}
                   onEditSave={handleEditSave}
                   onRegenerate={handleRegenerate}
@@ -1577,7 +1594,7 @@ export default function ChatPage() {
           <div className="shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-3 py-3 md:p-4">
             {isAnonymous && anonymousRemaining !== null && (
               <p className="mx-auto mb-2 w-full max-w-3xl text-center text-xs text-secondary-text">
-                Осталось бесплатных сообщений: {anonymousRemaining}
+                Осталось {anonymousRemaining}/{ANONYMOUS_MESSAGE_LIMIT}
               </p>
             )}
             <form
@@ -1616,6 +1633,16 @@ export default function ChatPage() {
           </div>
         </main>
       </div>
+      <ConfirmModal
+        open={confirmClearChat}
+        title="Очистить чат"
+        description="Очистить всю историю чата с этим персонажем?"
+        confirmLabel="Очистить"
+        danger
+        loading={clearingChat}
+        onConfirm={() => void handleClearChat()}
+        onClose={() => setConfirmClearChat(false)}
+      />
     </div>
   );
 }

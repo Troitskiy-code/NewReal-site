@@ -1,4 +1,5 @@
 export const ANONYMOUS_SESSION_COOKIE = "anonymousSessionId";
+export const ANONYMOUS_MESSAGE_LIMIT = 5;
 export const ANONYMOUS_LIMIT_CODE = "ANONYMOUS_LIMIT_EXCEEDED";
 export const ANONYMOUS_LIMIT_MESSAGE =
   "Вы использовали все бесплатные сообщения. Зарегистрируйтесь, чтобы продолжить общение";

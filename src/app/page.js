@@ -5,7 +5,6 @@ import LocaleLink from "@/components/LocaleLink";
 import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
-import { Toaster } from "react-hot-toast";
 import { FaUser } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
@@ -21,7 +20,6 @@ function HomePageContent() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-[#121212] text-wd-text">
-      <Toaster position="top-right" />
 
       <CharacterSearchFilters
         search={search}

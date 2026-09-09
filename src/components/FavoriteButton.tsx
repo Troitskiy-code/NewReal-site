@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { FaRegStar, FaStar } from "react-icons/fa";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 
 type FavoriteButtonProps = {
   characterId: string;
@@ -36,7 +36,7 @@ export default function FavoriteButton({
     e.stopPropagation();
 
     if (status === "unauthenticated") {
-      toast.error("Войдите, чтобы добавить в избранное");
+      showError("Войдите, чтобы добавить в избранное");
       router.push("/login");
       return;
     }
@@ -53,9 +53,9 @@ export default function FavoriteButton({
       });
       setIsFavorited(data.isFavorited);
       onChange?.(data.isFavorited);
-      toast.success(data.isFavorited ? "Добавлено в избранное" : "Удалено из избранного");
+      showSuccess(data.isFavorited ? "Добавлено в избранное" : "Удалено из избранного");
     } catch {
-      toast.error("Не удалось обновить избранное");
+      showError("Не удалось обновить избранное");
     } finally {
       setLoading(false);
     }

@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { FaUser } from "react-icons/fa";
 import type { ChatPersona } from "@/lib/persona";
 import PersonaForm, { type PersonaFormValues } from "@/components/PersonaForm";
+import LoadErrorBlock from "@/components/LoadErrorBlock";
 
 export default function PersonaSelector({
   characterId,
@@ -17,6 +18,7 @@ export default function PersonaSelector({
   onChange: (persona: ChatPersona | null) => void;
 }) {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [personas, setPersonas] = useState<ChatPersona[]>([]);
@@ -28,35 +30,31 @@ export default function PersonaSelector({
     setPersonas(data.personas ?? []);
   }, [characterId]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        await loadPersonas();
-      } catch {
-        if (!cancelled) toast.error("Не удалось загрузить личности");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
+  const fetchPersonas = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await loadPersonas();
+    } catch {
+      setLoadError("Не удалось загрузить личности");
+    } finally {
+      setLoading(false);
+    }
   }, [loadPersonas]);
+
+  useEffect(() => {
+    void fetchPersonas();
+  }, [fetchPersonas]);
 
   const handleSelect = async (persona: ChatPersona) => {
     setSaving(true);
     try {
       await axios.post(`/api/chat/${characterId}/persona`, { personaId: persona.id });
       onChange(persona);
-      toast.success(`Личность «${persona.name}» выбрана`);
+      showSuccess(`Личность «${persona.name}» выбрана`);
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.error : null;
-      toast.error(message || "Не удалось выбрать личность");
+      showError(message || "Не удалось выбрать личность");
     } finally {
       setSaving(false);
     }
@@ -67,9 +65,9 @@ export default function PersonaSelector({
     try {
       await axios.delete(`/api/chat/${characterId}/persona`);
       onChange(null);
-      toast.success("Используется анонимная личность");
+      showSuccess("Используется анонимная личность");
     } catch {
-      toast.error("Не удалось сбросить личность");
+      showError("Не удалось сбросить личность");
     } finally {
       setSaving(false);
     }
@@ -88,10 +86,10 @@ export default function PersonaSelector({
       onChange(data.persona);
       setCreating(false);
       await loadPersonas();
-      toast.success("Личность создана и применена к чату");
+      showSuccess("Личность создана и применена к чату");
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.error : null;
-      toast.error(message || "Не удалось создать личность");
+      showError(message || "Не удалось создать личность");
     } finally {
       setSaving(false);
     }
@@ -103,6 +101,10 @@ export default function PersonaSelector({
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  if (loadError) {
+    return <LoadErrorBlock message={loadError} onRetry={() => void fetchPersonas()} />;
   }
 
   return (

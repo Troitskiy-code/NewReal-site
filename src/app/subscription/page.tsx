@@ -6,7 +6,8 @@ import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/chatEconomy";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
+import ConfirmModal from "@/components/ConfirmModal";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import ConvertedPrice from "@/components/ConvertedPrice";
 
@@ -55,6 +56,7 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [changing, setChanging] = useState(false);
   const [cancellingRecurring, setCancellingRecurring] = useState(false);
+  const [confirmCancelRecurring, setConfirmCancelRecurring] = useState(false);
   const [recurringError, setRecurringError] = useState<string | null>(null);
 
   const fetchBalance = useCallback(async () => {
@@ -92,7 +94,7 @@ export default function SubscriptionPage() {
       });
       setBalance(data);
       setSelectedPlan(null);
-      toast.success(
+      showSuccess(
         applyMode === "immediate"
           ? `Тариф «${selectedPlan.name}» применён`
           : `Тариф «${selectedPlan.name}» будет включён после окончания текущей подписки`
@@ -102,7 +104,7 @@ export default function SubscriptionPage() {
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
           : "Не удалось изменить подписку";
-      toast.error(message);
+      showError(message);
     } finally {
       setChanging(false);
     }
@@ -128,14 +130,15 @@ export default function SubscriptionPage() {
         recurringEnabled: false,
         recurringSetupRequired: data.recurringSetupRequired,
       });
-      toast.success(data.message || "Автопродление отключено");
+      showSuccess(data.message || "Автопродление отключено");
+      setConfirmCancelRecurring(false);
     } catch (err) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
           : "Не удалось отключить автопродление";
       setRecurringError(message);
-      toast.error(message);
+      showError(message);
     } finally {
       setCancellingRecurring(false);
     }
@@ -155,7 +158,6 @@ export default function SubscriptionPage() {
   if (status === "unauthenticated") {
     return (
       <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
-        <Toaster position="top-right" />
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <FaCrown className="text-4xl text-wd-secondary opacity-40" />
           <h1 className="text-xl font-black uppercase tracking-tight">Управление подпиской</h1>
@@ -178,7 +180,6 @@ export default function SubscriptionPage() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
-      <Toaster position="top-right" />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 overflow-y-auto px-4 py-10 scrollbar-subtle sm:px-6 lg:px-8">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 text-wd-secondary">
@@ -235,7 +236,7 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     disabled={cancellingRecurring}
-                    onClick={handleCancelRecurring}
+                    onClick={() => setConfirmCancelRecurring(true)}
                     className="inline-flex items-center justify-center gap-2 rounded-wd-pill border border-wd-primary/40 bg-wd-primary/10 px-4 py-2 text-xs font-bold text-wd-primary transition-colors hover:bg-wd-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {cancellingRecurring && (
@@ -320,7 +321,7 @@ export default function SubscriptionPage() {
       </main>
 
       {selectedPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/70 px-4">
           <div className="wd-card w-full max-w-md space-y-4 p-6">
             <h2 className="text-lg font-black text-white">Перейти на тариф «{selectedPlan.name}»</h2>
             <p className="text-sm text-wd-text-secondary">
@@ -355,6 +356,18 @@ export default function SubscriptionPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmCancelRecurring}
+        title="Отключить автопродление"
+        description="Вы уверены, что хотите отключить автопродление? Подписка не будет продлена автоматически."
+        confirmLabel="Отключить"
+        cancelLabel="Отмена"
+        danger
+        loading={cancellingRecurring}
+        onConfirm={() => void handleCancelRecurring()}
+        onClose={() => setConfirmCancelRecurring(false)}
+      />
 
       <Footer />
     </div>

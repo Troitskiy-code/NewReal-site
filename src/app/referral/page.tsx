@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import { showError, showSuccess } from "@/lib/toast";
 import { FaUserFriends, FaCopy, FaCoins } from "react-icons/fa";
 
 type ReferralStats = {
@@ -52,9 +52,9 @@ export default function ReferralPage() {
     if (!referralLink) return;
     try {
       await navigator.clipboard.writeText(referralLink);
-      toast.success("Ссылка скопирована!");
+      showSuccess("Ссылка скопирована!");
     } catch {
-      toast.error("Не удалось скопировать ссылку");
+      showError("Не удалось скопировать ссылку");
     }
   };
 
@@ -74,7 +74,6 @@ export default function ReferralPage() {
   if (status === "unauthenticated") {
     return (
       <div className="min-h-dvh flex flex-col bg-bg-page text-primary-text">
-        <Toaster position="top-right" />
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
           <FaUserFriends className="text-4xl opacity-30 text-primary" />
           <h1 className="text-xl font-black uppercase tracking-tight">Реферальная программа</h1>
@@ -93,7 +92,6 @@ export default function ReferralPage() {
 
   return (
     <div className="min-h-dvh flex flex-col bg-bg-page select-none text-primary-text overflow-hidden">
-      <Toaster position="top-right" />
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-8 sm:px-6 lg:px-8 flex flex-col gap-6 overflow-y-auto scrollbar-subtle">
         <div className="space-y-1 border-b border-divider/40 pb-4">
           <h1 className="text-2xl font-black tracking-tight uppercase flex items-center gap-2">
