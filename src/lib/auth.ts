@@ -172,9 +172,6 @@ export const authOptions: AuthOptions = {
         session.user.email = session.user.email ?? token.email ?? undefined;
         session.user.name = session.user.name ?? token.name ?? undefined;
         session.user.createdAt = token.createdAt ?? null;
-        console.log("[Auth] Session created for user:", session.user.email, {
-          id: session.user.id,
-        });
       }
       await activatePendingForUserId(user?.id ?? token?.sub);
       return session;
