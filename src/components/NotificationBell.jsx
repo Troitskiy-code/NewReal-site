@@ -56,6 +56,16 @@ export default function NotificationBell() {
     }
   }, [status]);
 
+  const markAllRead = useCallback(async () => {
+    try {
+      await axios.post("/api/notifications/read-all");
+      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+      setUnreadCount(0);
+    } catch {
+      // Keep current unread state.
+    }
+  }, []);
+
   useEffect(() => {
     if (status !== "authenticated") {
       setNotifications([]);
@@ -78,30 +88,12 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  const markAllRead = async () => {
-    if (unreadCount === 0) return;
-    try {
-      await axios.post("/api/notifications/read-all");
-      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-      setUnreadCount(0);
-    } catch {
-      // Keep current unread state.
-    }
-  };
-
-  const markOneRead = async (notification) => {
-    if (notification.read) return;
-    try {
-      await axios.post("/api/notifications/read", {
-        notificationIds: [notification.id],
-      });
-      setNotifications((prev) =>
-        prev.map((item) => (item.id === notification.id ? { ...item, read: true } : item))
-      );
-      setUnreadCount((count) => Math.max(0, count - 1));
-    } catch {
-      // Navigation still proceeds if the item has a link.
-    }
+  const openDropdown = async () => {
+    const willOpen = !open;
+    setOpen(willOpen);
+    if (!willOpen) return;
+    await fetchNotifications();
+    await markAllRead();
   };
 
   if (status !== "authenticated") {
@@ -115,10 +107,7 @@ export default function NotificationBell() {
     <div ref={menuRef} className="relative">
       <button
         type="button"
-        onClick={() => {
-          setOpen((prev) => !prev);
-          if (!open) fetchNotifications();
-        }}
+        onClick={openDropdown}
         className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:border-[#6C63FF]/50 hover:text-white md:h-10 md:w-10"
         aria-label={t("notifications.open")}
         aria-expanded={open}
@@ -151,57 +140,26 @@ export default function NotificationBell() {
             <ul className="max-h-[22rem] overflow-y-auto py-1">
               {preview.map((notification) => {
                 const Icon = typeIcon(notification.type);
-                const content = (
-                  <span className="flex items-start gap-3">
-                    <Icon
-                      size={14}
-                      className={`mt-0.5 shrink-0 ${notification.read ? "text-[#A0A0A0]" : "text-[#6C63FF]"}`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-white">
-                        {notification.title}
-                      </span>
-                      <span className="mt-0.5 line-clamp-2 block text-xs text-[#A0A0A0]">
-                        {notification.message}
-                      </span>
-                      <span className="mt-1 block text-[11px] text-[#A0A0A0]">
-                        {formatRelativeTime(notification.createdAt, t, locale)}
-                      </span>
-                    </span>
-                    {!notification.read && (
-                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#FF2D55]" />
-                    )}
-                  </span>
-                );
-                const itemClass = `block w-full px-4 py-2.5 text-left transition-colors hover:bg-[#2A2A2A] ${
-                  notification.read ? "opacity-80" : "bg-[#6C63FF]/5"
-                }`;
-
                 return (
-                  <li key={notification.id}>
-                    {notification.link ? (
-                      <LocaleLink
-                        href={notification.link}
-                        className={itemClass}
-                        onClick={() => {
-                          markOneRead(notification);
-                          setOpen(false);
-                        }}
-                      >
-                        {content}
-                      </LocaleLink>
-                    ) : (
-                      <button
-                        type="button"
-                        className={itemClass}
-                        onClick={() => {
-                          markOneRead(notification);
-                          setOpen(false);
-                        }}
-                      >
-                        {content}
-                      </button>
-                    )}
+                  <li
+                    key={notification.id}
+                    className={`px-4 py-2.5 ${
+                      notification.read ? "opacity-80" : "bg-[#6C63FF]/5"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Icon
+                        size={14}
+                        className={`mt-0.5 shrink-0 ${notification.read ? "text-[#A0A0A0]" : "text-[#6C63FF]"}`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">{notification.title}</p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-[#A0A0A0]">{notification.message}</p>
+                        <p className="mt-1 text-[11px] text-[#A0A0A0]">
+                          {formatRelativeTime(notification.createdAt, t, locale)}
+                        </p>
+                      </div>
+                    </div>
                   </li>
                 );
               })}

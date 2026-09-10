@@ -114,21 +114,6 @@ export default function NotificationsPage() {
     }
   };
 
-  const markOneRead = async (notification: NotificationItem) => {
-    if (notification.read) return;
-    try {
-      await axios.post("/api/notifications/read", {
-        notificationIds: [notification.id],
-      });
-      setNotifications((prev) =>
-        prev.map((item) => (item.id === notification.id ? { ...item, read: true } : item))
-      );
-      setUnreadCount((count) => Math.max(0, count - 1));
-    } catch {
-      // Follow the link even if the read request fails.
-    }
-  };
-
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 overflow-y-auto px-4 py-8 scrollbar-subtle sm:px-6 lg:px-8">
@@ -194,45 +179,27 @@ export default function NotificationsPage() {
               <ul className="space-y-3">
                 {visible.map((notification) => {
                   const Icon = typeIcon(notification.type);
-                  const body = (
-                    <span className="flex items-start gap-3">
-                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
-                        <Icon size={14} className={notification.read ? "text-[#A0A0A0]" : "text-[#6C63FF]"} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-start justify-between gap-3">
-                          <span className="text-sm font-bold text-white">{notification.title}</span>
-                          <span className="shrink-0 text-xs text-[#A0A0A0]">
-                            {formatRelativeTime(notification.createdAt, t, locale)}
-                          </span>
-                        </span>
-                        <span className="mt-1 block text-sm text-[#A0A0A0]">{notification.message}</span>
-                      </span>
-                    </span>
-                  );
-                  const itemClass = `wd-card block p-4 transition-colors hover:border-[#6C63FF]/40 ${
-                    notification.read ? "" : "border-[#6C63FF]/30 bg-[#6C63FF]/5"
-                  }`;
-
                   return (
-                    <li key={notification.id}>
-                      {notification.link ? (
-                        <LocaleLink
-                          href={notification.link}
-                          className={itemClass}
-                          onClick={() => markOneRead(notification)}
-                        >
-                          {body}
-                        </LocaleLink>
-                      ) : (
-                        <button
-                          type="button"
-                          className={`${itemClass} w-full text-left`}
-                          onClick={() => markOneRead(notification)}
-                        >
-                          {body}
-                        </button>
-                      )}
+                    <li
+                      key={notification.id}
+                      className={`wd-card p-4 ${
+                        notification.read ? "" : "border-[#6C63FF]/30 bg-[#6C63FF]/5"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
+                          <Icon size={14} className={notification.read ? "text-[#A0A0A0]" : "text-[#6C63FF]"} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-bold text-white">{notification.title}</p>
+                            <p className="shrink-0 text-xs text-[#A0A0A0]">
+                              {formatRelativeTime(notification.createdAt, t, locale)}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-sm text-[#A0A0A0]">{notification.message}</p>
+                        </div>
+                      </div>
                     </li>
                   );
                 })}

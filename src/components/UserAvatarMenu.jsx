@@ -3,7 +3,7 @@
 import LocaleLink, { useCurrentLocale, useLocalizedPathname } from "./LocaleLink";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
-import { FaUser, FaBell, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
+import { FaUser, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import VerseCoinsBalance from "./VerseCoinsBalance";
 import { withLocale } from "@/lib/i18nConfig";
@@ -94,16 +94,9 @@ export default function UserAvatarMenu() {
   const user = session?.user;
   const initials = getInitials(user?.name, user?.email);
   const isProfileActive = pathname === "/profile" || pathname.startsWith("/edit/");
-  const isNotificationsActive = pathname === "/notifications";
 
   const dropdownItems = [
     { name: t("header.menu.profile"), path: "/profile", icon: FaUser, active: isProfileActive },
-    {
-      name: t("profile.notifications"),
-      path: "/notifications",
-      icon: FaBell,
-      active: isNotificationsActive,
-    },
   ];
 
   return (
