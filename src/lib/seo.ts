@@ -16,6 +16,7 @@ export type MetaPageKey =
   | "coins"
   | "referral"
   | "subscription"
+  | "notifications"
   | "offer"
   | "refund"
   | "terms"

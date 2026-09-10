@@ -302,6 +302,7 @@ model User {
   personas           Persona[]
   personaSelections  PersonaSelection[]
   transactions       Transaction[]
+  notifications      Notification[]
   passwordResetTokens PasswordResetToken[]
 }
 
@@ -313,6 +314,21 @@ model Transaction {
   type        String
   description String
   createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String   @db.Text
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
 }
 
 model AppInstance {

@@ -175,6 +175,25 @@
     "logout": "Выйти",
     "startPlan": "Нет подписки"
   },
+  "notifications": {
+    "title": "Уведомления",
+    "empty": "У вас пока нет уведомлений",
+    "markAllRead": "Отметить все как прочитанные",
+    "showAll": "Показать все",
+    "loginPrompt": "Войдите, чтобы видеть уведомления",
+    "loadError": "Не удалось загрузить уведомления",
+    "justNow": "только что",
+    "minutesAgo": "{{count}} мин. назад",
+    "hoursAgo": "{{count}} ч. назад",
+    "daysAgo": "{{count}} дн. назад",
+    "filterAll": "Все",
+    "typePurchaseVc": "Покупка VC",
+    "typePurchaseSubscription": "Подписка",
+    "typeDailyBonus": "Ежедневный бонус",
+    "typeAdmin": "От администрации",
+    "open": "Открыть уведомления",
+    "markedRead": "Все уведомления отмечены как прочитанные"
+  },
   "pricing": {
     "badge": "Подписки",
     "title": "Тарифы NewVerse",
@@ -308,6 +327,10 @@
     "subscription": {
       "title": "Управление подпиской — NewVerse",
       "description": "Просмотр и отключение автопродления подписки."
+    },
+    "notifications": {
+      "title": "Уведомления — NewVerse",
+      "description": "Просматривайте уведомления о покупках, бонусах и сообщениях администрации."
     },
     "offer": {
       "title": "Публичная оферта — NewVerse",

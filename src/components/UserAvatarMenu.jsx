@@ -3,7 +3,7 @@
 import LocaleLink, { useCurrentLocale, useLocalizedPathname } from "./LocaleLink";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
-import { FaUser, FaCog, FaBell, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
+import { FaUser, FaBell, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import VerseCoinsBalance from "./VerseCoinsBalance";
 import { withLocale } from "@/lib/i18nConfig";
@@ -94,18 +94,15 @@ export default function UserAvatarMenu() {
   const user = session?.user;
   const initials = getInitials(user?.name, user?.email);
   const isProfileActive = pathname === "/profile" || pathname.startsWith("/edit/");
+  const isNotificationsActive = pathname === "/notifications";
 
   const dropdownItems = [
     { name: t("header.menu.profile"), path: "/profile", icon: FaUser, active: isProfileActive },
     {
-      name: `${t("profile.settings")} 🔜`,
-      stub: true,
-      icon: FaCog,
-    },
-    {
-      name: `${t("profile.notifications")} 🔜`,
-      stub: true,
+      name: t("profile.notifications"),
+      path: "/notifications",
       icon: FaBell,
+      active: isNotificationsActive,
     },
   ];
 
@@ -143,17 +140,6 @@ export default function UserAvatarMenu() {
                   ? "bg-[#4A90D9]/15 text-[#4A90D9]"
                   : "text-white hover:bg-[#2A2A2A]"
               }`;
-
-              if (item.stub) {
-                return (
-                  <li key={item.name}>
-                    <span className={`${itemClass} cursor-default opacity-70`}>
-                      <Icon size={16} className="shrink-0" />
-                      {item.name}
-                    </span>
-                  </li>
-                );
-              }
 
               return (
                 <li key={item.name}>

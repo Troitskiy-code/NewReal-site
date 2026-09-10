@@ -5,6 +5,7 @@ import Image from "next/image";
 import { FaBars } from "react-icons/fa";
 import Logo from "./Logo";
 import UserAvatarMenu from "./UserAvatarMenu";
+import NotificationBell from "./NotificationBell";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useSidebar } from "./SidebarContext";
 import { useTranslation } from "react-i18next";
@@ -51,6 +52,7 @@ export default function Header() {
             <div className="hidden md:block">
               <LanguageSwitcher />
             </div>
+            <NotificationBell />
             <UserAvatarMenu />
           </div>
         </div>

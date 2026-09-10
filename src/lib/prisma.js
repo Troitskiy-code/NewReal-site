@@ -7,6 +7,7 @@ const basePrisma = new PrismaClient({
 });
 
 let slugColumnPromise = null;
+let notificationTablePromise = null;
 
 function ensureSlugColumnSql() {
   if (!slugColumnPromise) {
@@ -26,8 +27,58 @@ function ensureSlugColumnSql() {
   return slugColumnPromise;
 }
 
+function ensureNotificationTableSql() {
+  if (!notificationTablePromise) {
+    notificationTablePromise = (async () => {
+      await basePrisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Notification" (
+          "id" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "type" TEXT NOT NULL,
+          "title" TEXT NOT NULL,
+          "message" TEXT NOT NULL,
+          "link" TEXT,
+          "read" BOOLEAN NOT NULL DEFAULT false,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+        )
+      `);
+      await basePrisma.$executeRawUnsafe(
+        `CREATE INDEX IF NOT EXISTS "Notification_userId_read_idx" ON "Notification"("userId", "read")`
+      );
+      await basePrisma.$executeRawUnsafe(
+        `CREATE INDEX IF NOT EXISTS "Notification_userId_createdAt_idx" ON "Notification"("userId", "createdAt")`
+      );
+      await basePrisma.$executeRawUnsafe(`
+        DO $$ BEGIN
+          ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey"
+            FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+      console.log("[Prisma] Notification table is ready");
+    })().catch((error) => {
+      notificationTablePromise = null;
+      console.error("[Prisma] Failed to ensure Notification table", error);
+      throw error;
+    });
+  }
+  return notificationTablePromise;
+}
+
 const prisma = basePrisma.$extends({
   query: {
+    notification: {
+      async $allOperations({ args, query }) {
+        try {
+          await ensureNotificationTableSql();
+        } catch (error) {
+          console.error("[Prisma] Notification table ensure skipped", error);
+        }
+        return query(args);
+      },
+    },
     character: {
       async $allOperations({ args, query }) {
         try {

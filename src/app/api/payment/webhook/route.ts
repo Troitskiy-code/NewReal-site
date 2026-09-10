@@ -5,6 +5,7 @@ import { extractShpParams, verifyRobokassaResultSignature } from "@/lib/robokass
 import { addSubscriptionDays } from "@/lib/subscriptionState";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { applySubscriptionCoinGrant, grantPermanentUpdate } from "@/lib/verseCoins";
+import { createNotification } from "@/lib/notifications";
 
 function firstParam(
   source: { get(name: string): string | File | null },
@@ -138,6 +139,28 @@ function okResponse(invId: string) {
     status: 200,
     headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
+}
+
+function formatSubscriptionEnd(date: Date): string {
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+async function notifySubscriptionActivated(
+  userId: string,
+  planName: string,
+  subscriptionEnd: Date
+) {
+  await createNotification(
+    userId,
+    "purchase_subscription",
+    "Подписка активирована",
+    `Подписка «${planName}» активна до ${formatSubscriptionEnd(subscriptionEnd)}.`,
+    "/subscription"
+  );
 }
 
 async function resolveUserId(shp: Record<string, string>, recurringId: string): Promise<string> {
@@ -301,6 +324,7 @@ async function handleWebhook(req: NextRequest) {
       console.log(
         `[Robokassa] Webhook processed successfully: InvId=${invId}, renewal=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
       );
+      await notifySubscriptionActivated(userId, plan.name, subscriptionEnd);
       return okResponse(invId);
     }
 
@@ -379,6 +403,7 @@ async function handleWebhook(req: NextRequest) {
     console.log(
       `[Robokassa] Webhook processed successfully: InvId=${invId}, subscription=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
     );
+    await notifySubscriptionActivated(userId, plan.name, subscriptionEnd);
     return okResponse(invId);
   }
 
@@ -403,6 +428,13 @@ async function handleWebhook(req: NextRequest) {
   ]);
 
   console.log(`[Robokassa] Webhook processed successfully: InvId=${invId}, vcAmount=${vcAmount}`);
+  await createNotification(
+    userId,
+    "purchase_vc",
+    "VerseCoins зачислены",
+    `На ваш баланс зачислено ${vcAmount} VC.`,
+    "/coins"
+  );
   return okResponse(invId);
 }
 

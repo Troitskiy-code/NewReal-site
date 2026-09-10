@@ -13,6 +13,7 @@ import {
   isSameCalendarDay,
 } from "@/lib/dailyBonus";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST() {
   try {
@@ -90,6 +91,14 @@ export async function POST() {
         description: `Ежедневный бонус, день ${newStreak}, x${multiplier}`,
       },
     });
+
+    await createNotification(
+      session.user.id,
+      "daily_bonus",
+      "Ежедневный бонус получен",
+      `Вы получили +${bonus} VC. Серия: ${newStreak} дней.`,
+      "/coins"
+    );
 
     return NextResponse.json({
       coins: updatedUser.verseCoins,

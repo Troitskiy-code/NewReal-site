@@ -175,6 +175,25 @@
     "logout": "Sign out",
     "startPlan": "No subscription"
   },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "You have no notifications yet",
+    "markAllRead": "Mark all as read",
+    "showAll": "Show all",
+    "loginPrompt": "Sign in to see your notifications",
+    "loadError": "Could not load notifications",
+    "justNow": "just now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "filterAll": "All",
+    "typePurchaseVc": "VC purchase",
+    "typePurchaseSubscription": "Subscription",
+    "typeDailyBonus": "Daily bonus",
+    "typeAdmin": "From the team",
+    "open": "Open notifications",
+    "markedRead": "All notifications marked as read"
+  },
   "pricing": {
     "badge": "Subscriptions",
     "title": "NewVerse plans",
@@ -308,6 +327,10 @@
     "subscription": {
       "title": "Manage subscription — NewVerse",
       "description": "View and disable subscription auto-renewal."
+    },
+    "notifications": {
+      "title": "Notifications — NewVerse",
+      "description": "See purchase, bonus, and admin notifications."
     },
     "offer": {
       "title": "Public offer — NewVerse",
