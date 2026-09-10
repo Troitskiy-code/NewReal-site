@@ -17,6 +17,7 @@ import {
 } from "@/lib/chatStream";
 import { calculateRequestCost } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
+import { runWithLogUser } from "@/lib/logger";
 
 export const maxDuration = 120;
 
@@ -36,6 +37,7 @@ export async function POST(
       return NextResponse.json({ error: "KODIKROUTER_API_KEY не настроен" }, { status: 500 });
     }
 
+    return await runWithLogUser(session.user.id, async () => {
     const { id: characterId } = await params;
     const { messageId } = await req.json();
 
@@ -192,6 +194,7 @@ export async function POST(
           assistantMessage: updatedMessage,
         }),
       });
+    });
     });
   } catch (error) {
     console.error("Regenerate error:", error);

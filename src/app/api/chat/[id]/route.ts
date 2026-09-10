@@ -30,6 +30,7 @@ import {
 } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
 import { getAnonymousChatPayload, handleAnonymousChatPost } from "@/lib/anonymousChat";
+import { runWithLogUser } from "@/lib/logger";
 
 export const maxDuration = 120;
 
@@ -73,6 +74,7 @@ export async function POST(
       return handleAnonymousChatPost(req, id, body);
     }
 
+    return await runWithLogUser(session.user.id, async () => {
     const character = await prisma.character.findUnique({
       where: { id },
       select: {
@@ -366,6 +368,7 @@ export async function POST(
           assistantMessage,
         }),
       });
+    });
     });
   } catch (error) {
     console.error("Chat error:", error);
