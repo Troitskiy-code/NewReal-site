@@ -13,8 +13,8 @@ import {
 import { analyzeIntent } from "@/lib/intentAnalyzer";
 import {
   consumeOpenAIChatStream,
-  createChatNdjsonResponse,
 } from "@/lib/chatStream";
+import { createChatNdjsonResponse } from "@/lib/chatStream.server";
 import { calculateRequestCost } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
 import { runWithLogUser } from "@/lib/logger";

@@ -22,8 +22,8 @@ import {
 } from "@/lib/chatHelpers";
 import {
   consumeOpenAIChatStream,
-  createChatNdjsonResponse,
 } from "@/lib/chatStream";
+import { createChatNdjsonResponse } from "@/lib/chatStream.server";
 import {
   calculateRequestCost,
   isSubscriptionActive,
