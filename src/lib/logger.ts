@@ -1,19 +1,11 @@
 import { Logtail } from "@logtail/node";
 
-function resolveEndpoint(host: string | undefined): string {
-  const fallback = "https://in.logtail.com";
-  const raw = host?.trim() || fallback;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  return `https://${raw}`;
-}
-
 function createLogtail(): Logtail | null {
   const token = process.env.LOGTAIL_SOURCE_TOKEN?.trim();
-  if (!token) return null;
+  const endpoint = process.env.LOGTAIL_INGESTING_HOST?.trim();
+  if (!token || !endpoint) return null;
 
-  return new Logtail(token, {
-    endpoint: resolveEndpoint(process.env.LOGTAIL_INGESTING_HOST),
-  });
+  return new Logtail(token, { endpoint });
 }
 
 const logtail = createLogtail();
