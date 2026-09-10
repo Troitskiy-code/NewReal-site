@@ -3,6 +3,7 @@ import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
 import { getContextTokenLimit } from "@/lib/chatEconomy";
 import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
+import { debugLog } from "@/lib/logger";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "google/gemma-4-31b-it";
@@ -144,7 +145,7 @@ export async function resolveChatMemorySummary(
       newTokens > MEMORY_REFRESH_TOKEN_THRESHOLD;
 
     if (!shouldRefresh) {
-      console.log(`🧠 Используется сохранённая суммаризация для user=${userId}, character=${characterId}`);
+      debugLog("Memory", `Используется сохранённая суммаризация для user=${userId}, character=${characterId}`);
       return existingMemory.summary;
     }
 
@@ -154,7 +155,7 @@ export async function resolveChatMemorySummary(
     }
 
     const summary = await saveMemorySummary(userId, characterId, apiKey, historyToSummarize);
-    console.log(`🔄 Суммаризация обновлена (добавлено ${newMessages.length} новых сообщений)`);
+    debugLog("Memory", `Суммаризация обновлена (добавлено ${newMessages.length} новых сообщений)`);
     return summary ?? existingMemory.summary;
   }
 
@@ -162,7 +163,7 @@ export async function resolveChatMemorySummary(
   const totalTokens = allMessages.reduce((sum, message) => sum + countTokens(message.content), 0);
 
   if (totalTokens <= threshold) {
-    console.log(`🧠 Суммаризация не нужна: ${totalTokens} токенов (порог ${threshold}, 50% от ${maxContextTokens})`);
+    debugLog("Memory", `Суммаризация не нужна: ${totalTokens} токенов (порог ${threshold}, 50% от ${maxContextTokens})`);
     return null;
   }
 
@@ -171,12 +172,13 @@ export async function resolveChatMemorySummary(
     return null;
   }
 
-  console.log(
-    `🧠 Создание суммаризации: ${historyToSummarize.length} старых сообщений (${totalTokens} токенов, порог ${threshold})`
+  debugLog(
+    "Memory",
+    `Создание суммаризации: ${historyToSummarize.length} старых сообщений (${totalTokens} токенов, порог ${threshold})`
   );
 
   const summary = await saveMemorySummary(userId, characterId, apiKey, historyToSummarize);
-  console.log(`🧠 Суммаризация сохранена (${historyToSummarize.length} сообщений в выжимке, сообщения в БД сохранены)`);
+  debugLog("Memory", `Суммаризация сохранена (${historyToSummarize.length} сообщений в выжимке, сообщения в БД сохранены)`);
 
   return summary;
 }
@@ -226,8 +228,9 @@ export async function forceRefreshMemorySummary(
   }
 
   const summary = await saveMemorySummary(userId, characterId, apiKey, historyToSummarize);
-  console.log(
-    `🔄 Суммаризация принудительно обновлена (${historyToSummarize.length} сообщений, max_tokens=${SUMMARY_CONFIG.maxTokens})`
+  debugLog(
+    "Memory",
+    `Суммаризация принудительно обновлена (${historyToSummarize.length} сообщений, max_tokens=${SUMMARY_CONFIG.maxTokens})`
   );
   return summary;
 }

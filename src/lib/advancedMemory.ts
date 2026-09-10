@@ -1,6 +1,7 @@
 import axios from "axios";
 import { prisma } from "@/lib/prisma";
 import type { UserIntent } from "@/lib/intentAnalyzer";
+import { debugLog, errorLog } from "@/lib/logger";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const CORE_MEMORY_MODEL = "google/gemma-4-31b-it";
@@ -136,7 +137,7 @@ export async function ensureCoreMemory(userId: string, characterId: string, seed
     await upsertMemoryEntry(userId, characterId, "core", created.content, true);
   }
 
-  console.log(`[CoreMemory] created user=${userId} character=${characterId}`);
+  debugLog("CoreMemory", `created user=${userId} character=${characterId}`);
   return created;
 }
 
@@ -153,8 +154,9 @@ export async function updateCoreMemory(
     const existing = await ensureCoreMemory(userId, characterId);
 
     if (!hasSubstantialNewCoreInfo(existing.content, info)) {
-      console.log(
-        `[CoreUpdate] skipped no-new-info user=${userId} character=${characterId}`
+      debugLog(
+        "CoreUpdate",
+        `skipped no-new-info user=${userId} character=${characterId}`
       );
       return existing;
     }
@@ -162,8 +164,9 @@ export async function updateCoreMemory(
     const content = await summarizeCoreMemory(apiKey, existing.content, info);
 
     if (isUnchangedDelta(content) || content.trim() === existing.content.trim()) {
-      console.log(
-        `[CoreUpdate] skipped unchanged user=${userId} character=${characterId}`
+      debugLog(
+        "CoreUpdate",
+        `skipped unchanged user=${userId} character=${characterId}`
       );
       return existing;
     }
@@ -175,16 +178,18 @@ export async function updateCoreMemory(
     });
 
     await upsertMemoryEntry(userId, characterId, "core", content, true);
-    console.log(
-      `[CoreUpdate] updated user=${userId} character=${characterId} chars=${content.length}`
+    debugLog(
+      "CoreUpdate",
+      `updated user=${userId} character=${characterId} chars=${content.length}`
     );
-    console.log(
-      `[CoreMemory] updated user=${userId} character=${characterId} chars=${content.length}`
+    debugLog(
+      "CoreMemory",
+      `updated user=${userId} character=${characterId} chars=${content.length}`
     );
     return saved;
   } catch (error) {
-    console.error("[CoreUpdate] update failed", error);
-    console.error("[CoreMemory] update failed", error);
+    errorLog("CoreUpdate", "update failed", error);
+    errorLog("CoreMemory", "update failed", error);
     return null;
   }
 }
@@ -228,8 +233,9 @@ export async function addEpisodicMemory(
     }
   }
 
-  console.log(
-    `[Episodic] added user=${userId} character=${characterId} importance=${clampedImportance}`
+  debugLog(
+    "Episodic",
+    `added user=${userId} character=${characterId} importance=${clampedImportance}`
   );
   return created;
 }
@@ -255,7 +261,7 @@ export async function deleteEpisodicMemory(
     },
   });
 
-  console.log(`[MemoryEditor] episodic deleted id=${episodicId} user=${userId} character=${characterId}`);
+  debugLog("MemoryEditor", `episodic deleted id=${episodicId} user=${userId} character=${characterId}`);
   return true;
 }
 
@@ -319,9 +325,10 @@ export async function getRelevantMemories(
   };
   memories.text = formatRelevantMemories(memories);
 
-  console.log(`[CoreMemory] retrieved user=${userId} character=${characterId} present=${memories.core ? "yes" : "no"}`);
-  console.log(
-    `[Episodic] retrieved intent=${intent} minImportance=${minImportance} events=${episodic.length}`
+  debugLog("CoreMemory", `retrieved user=${userId} character=${characterId} present=${memories.core ? "yes" : "no"}`);
+  debugLog(
+    "Episodic",
+    `retrieved intent=${intent} minImportance=${minImportance} events=${episodic.length}`
   );
 
   return memories;
@@ -369,7 +376,7 @@ export async function setSummaryContent(userId: string, characterId: string, sum
     await prisma.memoryEntry.deleteMany({
       where: { userId, characterId, type: "summary" },
     });
-    console.log(`[MemoryEditor] summary cleared user=${userId} character=${characterId}`);
+    debugLog("MemoryEditor", `summary cleared user=${userId} character=${characterId}`);
     return null;
   }
 
@@ -380,7 +387,7 @@ export async function setSummaryContent(userId: string, characterId: string, sum
   });
 
   await recordSummaryMemoryEntry(userId, characterId, trimmed);
-  console.log(`[MemoryEditor] summary saved user=${userId} character=${characterId} chars=${trimmed.length}`);
+  debugLog("MemoryEditor", `summary saved user=${userId} character=${characterId} chars=${trimmed.length}`);
   return saved;
 }
 
@@ -400,7 +407,7 @@ export async function setCoreMemoryContent(userId: string, characterId: string, 
     });
   }
 
-  console.log(`[MemoryEditor] core saved user=${userId} character=${characterId}`);
+  debugLog("MemoryEditor", `core saved user=${userId} character=${characterId}`);
   return saved;
 }
 
@@ -429,7 +436,7 @@ export async function ingestUserMessageMemory({
   await ensureCoreMemory(userId, characterId);
 
   const importance = importanceScoreForIntent(intent);
-  console.log(`[Importance] intent=${intent} score=${importance}`);
+  debugLog("Importance", `intent=${intent} score=${importance}`);
   await addEpisodicMemory(userId, characterId, userMessage, importance);
 
   await updateCoreMemory(userId, characterId, userMessage, apiKey);

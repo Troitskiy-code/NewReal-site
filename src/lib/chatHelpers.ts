@@ -26,6 +26,7 @@ import {
 } from "@/lib/verseChatEconomy";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { spendCoins } from "@/lib/verseCoins";
+import { debugLog, errorLog } from "@/lib/logger";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -77,10 +78,10 @@ export function resolveChatSystemPrompt(
 ): string {
   const stored = character.systemPrompt?.trim();
   if (stored) {
-    console.log(`[Chat] Using stored systemPrompt character=${character.id}`);
+    debugLog("Chat", `Using stored systemPrompt character=${character.id}`);
     return stored;
   }
-  console.log(`[Chat] Fallback buildChatSystemPrompt character=${character.id}`);
+  debugLog("Chat", `Fallback buildChatSystemPrompt character=${character.id}`);
   return buildChatSystemPrompt(localizeCharacterForChat(character, locale), locale);
 }
 
@@ -189,8 +190,9 @@ export function allocateTokens(
   const retrieved = Math.floor(available * ratios.retrieved);
   const coreEpisodic = Math.max(0, available - recentChat - summary - retrieved);
 
-  console.log(
-    `[ContextStrategy] intent=${intent} recent=${recentChat} summary=${summary} rag=${retrieved} episodic=${coreEpisodic} available=${available}`
+  debugLog(
+    "ContextStrategy",
+    `intent=${intent} recent=${recentChat} summary=${summary} rag=${retrieved} episodic=${coreEpisodic} available=${available}`
   );
 
   return { available, recentChat, summary, retrieved, coreEpisodic };
@@ -410,7 +412,7 @@ export function replyHasActionOptions(content: string | null | undefined): boole
 
 export function logActionOptionsIfPresent(content: string | null | undefined): void {
   if (replyHasActionOptions(content)) {
-    console.log("📋 Предложены варианты действий");
+    debugLog("Chat", "Предложены варианты действий");
   }
 }
 
@@ -492,8 +494,9 @@ export function assemblePreparedChatMessages(
     systemPrompt = appendRagToSystemPrompt(systemPrompt, { text: ragText, count: 1 }, context.locale);
   }
 
-  console.log(
-    `📚 Загружено ${context.historyRows.length} сообщений для подписки ${context.subscriptionLogType} (лимит: ${context.historyLimit}, контекст: ${context.maxContextTokens})`
+  debugLog(
+    "Chat",
+    `Загружено ${context.historyRows.length} сообщений для подписки ${context.subscriptionLogType} (лимит: ${context.historyLimit}, контекст: ${context.maxContextTokens})`
   );
 
   const messagesForAI: ChatCompletionMessage[] = [
@@ -516,8 +519,9 @@ export function assemblePreparedChatMessages(
   );
 
   const remainingTokens = Math.max(0, context.maxContextTokens - totalTokens);
-  console.log(
-    `📊 Отправлено ${messages.length} сообщений user=${context.userId} (токенов: ${totalTokens}, лимит: ${context.maxContextTokens}, осталось: ${remainingTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragText ? ", RAG" : ""}`
+  debugLog(
+    "Chat",
+    `Отправлено ${messages.length} сообщений user=${context.userId} (токенов: ${totalTokens}, лимит: ${context.maxContextTokens}, осталось: ${remainingTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragText ? ", RAG" : ""}`
   );
 
   return {
@@ -563,7 +567,7 @@ export async function prepareFastContext({
     locale
   );
   if (selectedPersona) {
-    console.log(`[Persona] prompt user=${userId} character=${characterId} persona=${selectedPersona.id}`);
+    debugLog("Persona", `prompt user=${userId} character=${characterId} persona=${selectedPersona.id}`);
   }
 
   if (continueMode) {
@@ -629,8 +633,9 @@ export async function searchRagContext({
     intent,
     historyTokens: totalHistoryTokens,
   });
-  console.log(
-    `[RAGDecision] use=${ragDecision.use ? "yes" : "no"} reason=${ragDecision.reason} tokens=${totalHistoryTokens} intent=${intent}`
+  debugLog(
+    "RAGDecision",
+    `use=${ragDecision.use ? "yes" : "no"} reason=${ragDecision.reason} tokens=${totalHistoryTokens} intent=${intent}`
   );
 
   if (!ragDecision.use || !ragQueryText) {
@@ -645,10 +650,10 @@ export async function searchRagContext({
       apiKey,
       excludeMessageId
     );
-    console.log(`🔍 RAG: найдено ${ragMessages.length} релевантных сообщений`);
+    debugLog("RAG", `найдено ${ragMessages.length} релевантных сообщений`);
     return formatRagContext(ragMessages)?.text ?? null;
   } catch (ragError) {
-    console.error("🔍 RAG: ошибка поиска релевантных сообщений", ragError);
+    errorLog("RAG", "ошибка поиска релевантных сообщений", ragError);
     return null;
   }
 }
@@ -782,8 +787,9 @@ export async function chargeForChatRequest({
     });
   }
 
-  console.log(
-    `💰 После отправки user=${userId} осталось ${updatedUser.verseCoins} VC (списано ${costVC})`
+  debugLog(
+    "Chat",
+    `После отправки user=${userId} осталось ${updatedUser.verseCoins} VC (списано ${costVC})`
   );
 
   return {

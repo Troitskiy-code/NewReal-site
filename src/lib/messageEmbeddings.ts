@@ -1,5 +1,6 @@
 import axios from "axios";
 import { prisma } from "@/lib/prisma";
+import { debugLog, errorLog } from "@/lib/logger";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
@@ -107,7 +108,7 @@ async function getQueryEmbedding(
   try {
     return await fetchEmbedding(query, apiKey);
   } catch (error) {
-    console.error("🔍 pgvector: не удалось получить эмбеддинг запроса", error);
+    errorLog("RAG", "pgvector: не удалось получить эмбеддинг запроса", error);
     return null;
   }
 }
@@ -179,11 +180,12 @@ export async function saveMessageEmbedding(
       VALUES (gen_random_uuid()::text, ${messageId}, ${vectorString}::vector, NOW())
     `;
 
-    console.log(
-      `🔍 Эмбеддинг сохранён для message=${messageId} (${embedding.length} dims)`
+    debugLog(
+      "RAG",
+      `Эмбеддинг сохранён для message=${messageId} (${embedding.length} dims)`
     );
   } catch (error) {
-    console.error(`🔍 Ошибка эмбеддинга message=${messageId}:`, error);
+    errorLog("RAG", `Ошибка эмбеддинга message=${messageId}:`, error);
   }
 }
 
@@ -198,7 +200,7 @@ async function saveMessageEmbeddingFromContent(
   });
 
   if (existing) {
-    console.log(`🔍 Эмбеддинг уже есть для message=${messageId}`);
+    debugLog("RAG", `Эмбеддинг уже есть для message=${messageId}`);
     return;
   }
 
@@ -217,7 +219,7 @@ export function scheduleMessageEmbedding(
   }
 
   void saveMessageEmbeddingFromContent(messageId, content, apiKey).catch((error) => {
-    console.error(`🔍 Ошибка эмбеддинга message=${messageId}:`, error);
+    errorLog("RAG", `Ошибка эмбеддинга message=${messageId}:`, error);
   });
 }
 
@@ -273,8 +275,9 @@ export async function searchRelevantMessages(
 
     const filtered = results.filter((row) => Number(row.similarity) > threshold);
 
-    console.log(
-      `🔍 RAG: найдено ${filtered.length} релевантных сообщений (проверено ${results.length})`
+    debugLog(
+      "RAG",
+      `найдено ${filtered.length} релевантных сообщений (проверено ${results.length})`
     );
 
     return filtered.map((row) => ({
@@ -284,7 +287,7 @@ export async function searchRelevantMessages(
       similarity: Number(row.similarity),
     }));
   } catch (error) {
-    console.error("🔍 RAG: ошибка поиска релевантных сообщений", error);
+    errorLog("RAG", "ошибка поиска релевантных сообщений", error);
     return [];
   }
 }

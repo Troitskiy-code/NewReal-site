@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { str as crc32str } from "crc-32";
+import { debugLog, errorLog, infoLog } from "@/lib/logger";
 
 const MERCHANT_ID = process.env.ROBOKASSA_MERCHANT_ID ?? "";
 const PASSWORD = process.env.ROBOKASSA_PASSWORD ?? "";
@@ -169,7 +170,7 @@ export function generateRobokassaPaymentUrl(
   recurring?: RobokassaRecurringOptions
 ): string {
   if (!MERCHANT_ID || !PASSWORD) {
-    console.error("[Robokassa] Payment error: merchant or password is not configured");
+    errorLog("Robokassa", "Payment error: merchant or password is not configured");
     throw new Error("Robokassa is not configured");
   }
 
@@ -196,13 +197,15 @@ export function generateRobokassaPaymentUrl(
   if (recurring) {
     const period = recurring.period === "year" ? "Yearly" : "Monthly";
     const amount = Number(recurring.amount).toFixed(2);
-    console.log(
-      `[Robokassa] Recurring params: Recurring=true RecurringPeriod=${period} RecurringAmount=${amount} InvId=${invId}`
+    debugLog(
+      "Robokassa",
+      `Recurring params: Recurring=true RecurringPeriod=${period} RecurringAmount=${amount} InvId=${invId}`
     );
   }
 
-  console.log(
-    `[Robokassa] Payment created: InvId=${invId}, OutSum=${outSum} RUB${receiptEncoded ? ", Receipt included" : ""}${recurringQuery ? ", Recurring=true" : ""}`
+  infoLog(
+    "Robokassa",
+    `Payment created: InvId=${invId}, OutSum=${outSum} RUB${receiptEncoded ? ", Receipt included" : ""}${recurringQuery ? ", Recurring=true" : ""}`
   );
   return url;
 }
@@ -260,23 +263,23 @@ export async function chargeRobokassaRecurring(options: {
 
   const responseText = (await response.text()).trim();
   if (!response.ok) {
-    console.error(`[Robokassa] Recurring charge failed: InvId=${invId}, status=${response.status}, body=${responseText}`);
+    errorLog("Robokassa", `Recurring charge failed: InvId=${invId}, status=${response.status}, body=${responseText}`);
     throw new Error("Robokassa recurring charge failed");
   }
 
-  console.log(`[Robokassa] Recurring charge created: InvId=${invId}, PreviousInvoiceID=${previousInvoiceId}`);
+  infoLog("Robokassa", `Recurring charge created: InvId=${invId}, PreviousInvoiceID=${previousInvoiceId}`);
   return { invId };
 }
 
 export async function cancelRobokassaRecurring(recurringId: string): Promise<boolean> {
   if (!MERCHANT_ID || !PASSWORD) {
-    console.error("[Robokassa] Recurring cancel skipped: merchant or password is not configured");
+    errorLog("Robokassa", "Recurring cancel skipped: merchant or password is not configured");
     return false;
   }
 
   const id = String(recurringId).trim();
   if (!id) {
-    console.error("[Robokassa] Recurring cancel skipped: RecurringID is empty");
+    errorLog("Robokassa", "Recurring cancel skipped: RecurringID is empty");
     return false;
   }
 
@@ -291,7 +294,7 @@ export async function cancelRobokassaRecurring(recurringId: string): Promise<boo
     body.set("IsTest", "1");
   }
 
-  console.log(`[Robokassa] Recurring cancel request: RecurringID=${id}`);
+  infoLog("Robokassa", `Recurring cancel request: RecurringID=${id}`);
 
   try {
     const response = await fetch("https://auth.robokassa.ru/Merchant/Recurring/Cancel", {
@@ -302,16 +305,17 @@ export async function cancelRobokassaRecurring(recurringId: string): Promise<boo
     const responseText = (await response.text()).trim();
 
     if (!response.ok) {
-      console.error(
-        `[Robokassa] Recurring cancel failed: RecurringID=${id}, status=${response.status}, body=${responseText}`
+      errorLog(
+        "Robokassa",
+        `Recurring cancel failed: RecurringID=${id}, status=${response.status}, body=${responseText}`
       );
       return false;
     }
 
-    console.log(`[Robokassa] Recurring cancel succeeded: RecurringID=${id}, body=${responseText}`);
+    infoLog("Robokassa", `Recurring cancel succeeded: RecurringID=${id}, body=${responseText}`);
     return true;
   } catch (error) {
-    console.error(`[Robokassa] Recurring cancel error: RecurringID=${id}`, error);
+    errorLog("Robokassa", `Recurring cancel error: RecurringID=${id}`, error);
     return false;
   }
 }
@@ -327,7 +331,7 @@ export function verifyRobokassaResultSignature(
   const passwords = passwordCandidates();
 
   if (!passwords.length) {
-    console.error("[Robokassa] Webhook error: passwords are not configured");
+    errorLog("Robokassa", "Webhook error: passwords are not configured");
     return false;
   }
 

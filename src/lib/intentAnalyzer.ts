@@ -1,4 +1,5 @@
 import axios from "axios";
+import { debugLog, errorLog } from "@/lib/logger";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const INTENT_MODEL = "google/gemma-4-31b-it";
@@ -132,22 +133,24 @@ export function applyIntentConfidenceGuard(
     return { ...analysis, source: "model" };
   }
 
-  console.log(
-    `[Intent] low-confidence fallback general confidence=${analysis.confidence.toFixed(2)} rawIntent=${analysis.intent} message=${userMessage.slice(0, 240)}`
+  debugLog(
+    "Intent",
+    `low-confidence fallback general confidence=${analysis.confidence.toFixed(2)} rawIntent=${analysis.intent} message=${userMessage.slice(0, 240)}`
   );
   return { intent: "general", confidence: analysis.confidence, source: "low-confidence" };
 }
 
 function logIntent(analysis: IntentAnalysis, source: IntentSource) {
-  console.log(
-    `[Intent] intent=${analysis.intent} confidence=${analysis.confidence.toFixed(2)} source=${source}`
+  debugLog(
+    "Intent",
+    `intent=${analysis.intent} confidence=${analysis.confidence.toFixed(2)} source=${source}`
   );
 }
 
 export async function analyzeIntent(userMessage: string, apiKey: string): Promise<IntentAnalysis> {
   const text = userMessage.trim();
   if (!text) {
-    console.log("[Intent] empty message, fallback general");
+    debugLog("Intent", "empty message, fallback general");
     return FALLBACK_INTENT;
   }
 
@@ -180,7 +183,7 @@ export async function analyzeIntent(userMessage: string, apiKey: string): Promis
     const raw = response.data?.choices?.[0]?.message?.content ?? "";
     const parsed = parseIntentPayload(typeof raw === "string" ? raw : String(raw));
     if (!parsed) {
-      console.log("[Intent] unparseable response, fallback general:", String(raw).slice(0, 200));
+      debugLog("Intent", "unparseable response, fallback general:", String(raw).slice(0, 200));
       return FALLBACK_INTENT;
     }
 
@@ -189,7 +192,7 @@ export async function analyzeIntent(userMessage: string, apiKey: string): Promis
     return { intent: guarded.intent, confidence: guarded.confidence };
   } catch (error) {
     const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-    console.error(`[Intent] analysis failed, fallback general status=${status ?? "network"}`);
+    errorLog("Intent", `analysis failed, fallback general status=${status ?? "network"}`);
     return FALLBACK_INTENT;
   }
 }

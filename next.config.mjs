@@ -5,7 +5,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["tiktoken", "jimp"],
+  serverExternalPackages: ["tiktoken", "jimp", "@logtail/node", "@logtail/core"],
 };
 
 export default nextConfig;
