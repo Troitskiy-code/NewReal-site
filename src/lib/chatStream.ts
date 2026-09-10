@@ -93,6 +93,44 @@ export function extractChatStreamDelta(payload: unknown): string {
   return "";
 }
 
+export function createChatNdjsonResponse(
+  run: (emit: (event: ChatStreamEvent) => void) => Promise<void>
+): Response {
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const emit = (event: ChatStreamEvent) => {
+        controller.enqueue(encodeChatStreamEvent(event));
+      };
+
+      try {
+        await run(emit);
+      } catch (error) {
+        console.error("Chat stream error:", error);
+        try {
+          emit({
+            type: "error",
+            error: error instanceof Error && error.message === "Пустой ответ от ИИ"
+              ? error.message
+              : "Ошибка при обработке запроса",
+          });
+        } catch {
+          // Client already disconnected.
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
 export async function consumeOpenAIChatStream(
   stream: ReadableStream<Uint8Array>,
   onDelta: (text: string) => void

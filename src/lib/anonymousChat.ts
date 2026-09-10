@@ -8,8 +8,7 @@ import {
   trimMessagesToTokenLimit,
   type ChatCompletionMessage,
 } from "@/lib/chatHelpers";
-import { consumeOpenAIChatStream } from "@/lib/chatStream";
-import { createChatNdjsonResponse } from "@/lib/chatStream.server";
+import { consumeOpenAIChatStream, createChatNdjsonResponse } from "@/lib/chatStream";
 import {
   ANONYMOUS_LIMIT_CODE,
   ANONYMOUS_LIMIT_MESSAGE,

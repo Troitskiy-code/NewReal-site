@@ -13,11 +13,10 @@ import {
 import { analyzeIntent } from "@/lib/intentAnalyzer";
 import {
   consumeOpenAIChatStream,
+  createChatNdjsonResponse,
 } from "@/lib/chatStream";
-import { createChatNdjsonResponse } from "@/lib/chatStream.server";
 import { calculateRequestCost } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
-import { runWithLogUser } from "@/lib/logger";
 
 export const maxDuration = 120;
 
@@ -37,7 +36,6 @@ export async function POST(
       return NextResponse.json({ error: "KODIKROUTER_API_KEY не настроен" }, { status: 500 });
     }
 
-    return await runWithLogUser(session.user.id, async () => {
     const { id: characterId } = await params;
     const { messageId } = await req.json();
 
@@ -194,7 +192,6 @@ export async function POST(
           assistantMessage: updatedMessage,
         }),
       });
-    });
     });
   } catch (error) {
     console.error("Regenerate error:", error);
