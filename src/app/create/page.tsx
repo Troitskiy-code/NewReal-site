@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Footer from "@/components/Footer";
+import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
+import { withLocale } from "@/lib/i18nConfig";
 import CharacterForm, {
   EMPTY_CHARACTER_FORM,
   type CharacterFormValues,
@@ -26,6 +27,7 @@ async function uploadImage(file: File): Promise<string> {
 export default function CreateCharacterPage() {
   const { status } = useSession();
   const router = useRouter();
+  const locale = useCurrentLocale();
 
   const [form, setForm] = useState<CharacterFormValues>(EMPTY_CHARACTER_FORM);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -122,7 +124,7 @@ export default function CreateCharacterPage() {
       if (data.promptError) {
         showError(data.promptError);
       }
-      router.push("/gallery");
+      router.push(withLocale("/", locale));
     } catch (err: unknown) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error
@@ -154,9 +156,9 @@ export default function CreateCharacterPage() {
           <p className="max-w-sm text-xs text-wd-text-secondary">
             Войдите в аккаунт, чтобы создавать и сохранять персонажей.
           </p>
-          <Link href="/login" className="wd-button px-6 py-2.5 text-sm">
+          <LocaleLink href="/login" className="wd-button px-6 py-2.5 text-sm">
             Войти
-          </Link>
+          </LocaleLink>
         </main>
         <Footer />
       </div>
