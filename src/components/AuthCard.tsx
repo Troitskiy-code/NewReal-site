@@ -37,13 +37,13 @@ export function GoogleAuthButton({
   onClick,
 }: {
   children: ReactNode;
-  onClick?: MouseEventHandler<HTMLAnchorElement>;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 }) {
   return (
-    <a href="/api/auth/signin/google?callbackUrl=/" onClick={onClick} className={AUTH_GOOGLE_BUTTON_CLASS}>
+    <button type="button" onClick={onClick} className={AUTH_GOOGLE_BUTTON_CLASS}>
       <GoogleIcon />
       {children}
-    </a>
+    </button>
   );
 }
 

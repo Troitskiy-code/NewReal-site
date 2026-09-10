@@ -48,6 +48,7 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
 
   const handleGoogleSignIn = () => {
     reachGoal(METRIKA_GOALS.login);
+    void signIn("google", { callbackUrl: withLocale("/", locale) });
   };
 
   return (
