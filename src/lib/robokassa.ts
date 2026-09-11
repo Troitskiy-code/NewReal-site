@@ -161,6 +161,10 @@ function buildRecurringQuery(recurring?: RobokassaRecurringOptions): string {
   return `&Recurring=true&RecurringPeriod=${period}&RecurringAmount=${amount}`;
 }
 
+/**
+ * Builds a Robokassa payment URL.
+ * `sum` is always RUB. OutSumCurrency is never included in the URL or signature.
+ */
 export function generateRobokassaPaymentUrl(
   userId: string,
   sum: number,
@@ -189,10 +193,25 @@ export function generateRobokassaPaymentUrl(
   const receiptEncoded = receipt ? encodeURIComponent(JSON.stringify(receipt)) : "";
   const signature = buildPaymentSignature(outSum, invId, shpSuffix, receiptEncoded);
 
+  const shpQuery = buildShpQuery(shp);
   const receiptQuery = receiptEncoded ? `&Receipt=${encodeURIComponent(receiptEncoded)}` : "";
+  // IsTest must be omitted in production. Only ROBOKASSA_TEST_MODE=1 adds it.
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
   const recurringQuery = buildRecurringQuery(recurring);
-  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&InvoiceID=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${buildShpQuery(shp)}${recurringQuery}${testParam}`;
+  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&InvoiceID=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${shpQuery}${recurringQuery}${testParam}`;
+
+  console.log("[Robokassa] Payment params:", {
+    merchantLogin: MERCHANT_ID,
+    outSum,
+    invId,
+    description: desc,
+    shp: shpQuery,
+    hasReceipt: Boolean(receipt),
+    hasRecurring: Boolean(recurring),
+    isTest: ROBOKASSA_TEST_MODE,
+    outSumCurrencyPresent: url.includes("OutSumCurrency"),
+    isTestParamPresent: /(?:^|[?&])IsTest=/.test(url),
+  });
 
   if (recurring) {
     const period = recurring.period === "year" ? "Yearly" : "Monthly";
