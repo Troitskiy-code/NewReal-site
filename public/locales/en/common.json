@@ -87,7 +87,9 @@
     "resendSuccess": "The email has been sent. Check your inbox.",
     "resendError": "Could not send the email",
     "goToProfile": "Go to profile",
-    "verifyBanner": "Confirm your email to unlock full access."
+    "verifyBanner": "Confirm your email to unlock full access.",
+    "refreshStatus": "Refresh status",
+    "refreshStatusError": "Could not refresh the status"
   },
   "common": {
     "submit": "Confirm",

@@ -10,7 +10,7 @@ declare module "next-auth" {
     user: {
       id: string;
       createdAt?: string | null;
-      emailVerified?: boolean;
+      emailVerified?: Date | string | null;
     } & DefaultSession["user"];
   }
 }
@@ -19,6 +19,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     createdAt?: string | null;
-    emailVerified?: boolean;
+    emailVerified?: Date | string | boolean | null;
+    emailVerifiedChecked?: number;
   }
 }

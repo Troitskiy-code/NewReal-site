@@ -14,8 +14,41 @@ import { isGoogleAuthEnabled } from "./googleAuth";
 import { isEmailVerified } from "./emailVerification";
 import { grantReferralBonusIfEligible } from "./referralBonus";
 import { infoLog } from "./logger";
+import type { JWT } from "next-auth/jwt";
 
 export { isGoogleAuthEnabled };
+
+const EMAIL_VERIFIED_REFRESH_MS = 5 * 60 * 1000;
+
+function toEmailVerifiedTokenValue(
+  value: Date | string | null | undefined
+): string | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  return value;
+}
+
+async function refreshEmailVerifiedToken(token: JWT, userId: string): Promise<void> {
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      emailVerified: true,
+      createdAt: true,
+      accounts: { select: { provider: true } },
+    },
+  });
+
+  if (!dbUser) return;
+
+  token.emailVerified = isEmailVerified(dbUser)
+    ? toEmailVerifiedTokenValue(dbUser.emailVerified) ??
+      toEmailVerifiedTokenValue(dbUser.createdAt) ??
+      new Date().toISOString()
+    : null;
+  token.emailVerifiedChecked = Date.now();
+}
 
 async function activatePendingForUserId(userId?: string | null) {
   if (!userId) return;
@@ -189,7 +222,13 @@ export const authOptions: AuthOptions = {
         session.user.email = session.user.email ?? token.email ?? undefined;
         session.user.name = session.user.name ?? token.name ?? undefined;
         session.user.createdAt = token.createdAt ?? null;
-        session.user.emailVerified = token.emailVerified === true;
+        if (token.emailVerified === true) {
+          session.user.emailVerified = new Date().toISOString();
+        } else if (token.emailVerified === false || token.emailVerified == null) {
+          session.user.emailVerified = null;
+        } else {
+          session.user.emailVerified = token.emailVerified;
+        }
       }
       await activatePendingForUserId(user?.id ?? token?.sub);
       return session;
@@ -207,25 +246,24 @@ export const authOptions: AuthOptions = {
         token.createdAt =
           user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt ?? null;
         token.emailVerified =
-          account?.provider === "google" ||
-          isEmailVerified({
-            emailVerified: user.emailVerified,
-            createdAt: user.createdAt,
-          });
+          account?.provider === "google"
+            ? toEmailVerifiedTokenValue(user.emailVerified) ?? new Date().toISOString()
+            : toEmailVerifiedTokenValue(user.emailVerified);
         await activatePendingForUserId(user.id);
       }
 
-      if (trigger === "update" && (token.sub || token.id)) {
-        const userId = String(token.sub || token.id);
-        const dbUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: {
-            emailVerified: true,
-            createdAt: true,
-            accounts: { select: { provider: true } },
-          },
-        });
-        token.emailVerified = isEmailVerified(dbUser);
+      const userId = String(token.id || token.sub || "");
+      const shouldRefresh =
+        trigger === "update" ||
+        !token.emailVerifiedChecked ||
+        Date.now() - Number(token.emailVerifiedChecked || 0) > EMAIL_VERIFIED_REFRESH_MS;
+
+      if (userId && shouldRefresh) {
+        try {
+          await refreshEmailVerifiedToken(token, userId);
+        } catch (error) {
+          console.error("[EmailVerification] Failed to refresh emailVerified from DB", error);
+        }
       }
 
       return token;

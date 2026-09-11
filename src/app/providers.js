@@ -16,7 +16,7 @@ export function Providers({ children, locale = "ru" }) {
 
   return (
     <I18nProvider locale={locale}>
-      <SessionProvider>
+      <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus>
         <CurrencyProvider>{children}</CurrencyProvider>
       </SessionProvider>
     </I18nProvider>
