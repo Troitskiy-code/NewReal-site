@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { errorLog, infoLog } from "@/lib/logger";
 
-const BATCH_SIZE = 20;
 const DEFAULT_MIN = 0;
 const DEFAULT_MAX = 100;
 
@@ -64,32 +63,32 @@ export async function POST(req: NextRequest) {
     });
     console.log("[Admin:SimulateActivity] Loaded characters:", characters.length);
 
-    let totalAdded = 0;
-    const updates = characters.flatMap((character) => {
-      const delta = randomDelta(min, max);
-      totalAdded += delta;
-      if (delta === 0) return [];
-      return [
-        prisma.character.update({
-          where: { id: character.id },
-          data: { totalMessages: { increment: delta } },
-        }),
-      ];
-    });
+    const increments = characters.map((character) => ({
+      id: character.id,
+      delta: randomDelta(min, max),
+    }));
+    const totalAdded = increments.reduce((sum, item) => sum + item.delta, 0);
+    const toApply = increments.filter((item) => item.delta > 0);
 
-    console.log("[Admin:SimulateActivity] Applying updates:", updates.length);
-    for (let i = 0; i < updates.length; i += BATCH_SIZE) {
-      const batch = updates.slice(i, i + BATCH_SIZE);
-      console.log(
-        `[Admin:SimulateActivity] Batch ${Math.floor(i / BATCH_SIZE) + 1} size=${batch.length}`
-      );
-      await Promise.all(batch);
+    console.log("[Admin:SimulateActivity] Applying updates:", toApply.length);
+
+    if (toApply.length > 0) {
+      await prisma.$executeRaw`
+        UPDATE "Character"
+        SET "totalMessages" = "totalMessages" + CASE "id"
+          ${Prisma.join(
+            toApply.map((item) => Prisma.sql`WHEN ${item.id} THEN ${item.delta}`),
+            " "
+          )}
+        END
+        WHERE "id" IN (${Prisma.join(toApply.map((item) => Prisma.sql`${item.id}`))})
+      `;
     }
 
     infoLog(
       "Admin:SimulateActivity",
       `Updated ${characters.length} characters, added ${totalAdded} messages`,
-      { onlyPublic, min, max, batches: Math.ceil(updates.length / BATCH_SIZE) }
+      { onlyPublic, min, max, applied: toApply.length }
     );
 
     return NextResponse.json({
