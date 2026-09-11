@@ -8,7 +8,6 @@ import { ensureEmailVerificationTable } from "@/lib/ensureEmailVerification";
 import { errorLog, infoLog } from "@/lib/logger";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18nConfig";
 
-export const EMAIL_VERIFICATION_REQUIRED_AFTER = new Date("2026-09-11T07:00:00.000Z");
 export const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 type EmailVerificationUser = {
@@ -17,17 +16,35 @@ type EmailVerificationUser = {
   accounts?: { provider: string }[];
 };
 
+function getVerificationCutoffDate(): Date | null {
+  const raw = process.env.EMAIL_VERIFICATION_CUTOFF_DATE?.trim();
+  if (!raw) return null;
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    console.error("[EmailVerification] Invalid EMAIL_VERIFICATION_CUTOFF_DATE", raw);
+    return null;
+  }
+
+  return parsed;
+}
+
 export function isEmailVerified(user: EmailVerificationUser | null | undefined): boolean {
   if (!user) return false;
   if (user.emailVerified) return true;
   if (user.accounts?.some((account) => account.provider === "google")) return true;
-  if (user.createdAt) {
+
+  // Temporary grandfathering until POST /api/admin/verify-all-users is applied.
+  // Remove this cutoff after the backfill; then only emailVerified and Google count.
+  const cutoff = getVerificationCutoffDate();
+  if (cutoff && user.createdAt) {
     const createdAt =
       user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
-    if (!Number.isNaN(createdAt.getTime()) && createdAt < EMAIL_VERIFICATION_REQUIRED_AFTER) {
+    if (!Number.isNaN(createdAt.getTime()) && createdAt < cutoff) {
       return true;
     }
   }
+
   return false;
 }
 
