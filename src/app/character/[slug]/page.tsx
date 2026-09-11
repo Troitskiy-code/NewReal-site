@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
 import CharacterPublicView from "./CharacterPublicView";
-import { prisma } from "@/lib/prisma";
 import { findCharacterBySlugForViewer, getViewerId } from "@/lib/characterPublic";
 import { createPageMetadata, OG_IMAGE, SITE_URL } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
@@ -26,25 +25,7 @@ function truncateDescription(text: string, max = 160): string {
   return `${compact.slice(0, max - 1).trim()}…`;
 }
 
-export const dynamicParams = true;
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  try {
-    const characters = await prisma.character.findMany({
-      where: { isPublic: true, slug: { not: null } },
-      select: { slug: true },
-      orderBy: { totalMessages: "desc" },
-      take: 300,
-    });
-    return characters
-      .filter((character): character is { slug: string } => Boolean(character.slug))
-      .map((character) => ({ slug: character.slug }));
-  } catch (error) {
-    console.error("[Character] generateStaticParams failed", error);
-    return [];
-  }
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
