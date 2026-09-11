@@ -5,14 +5,15 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
+import CharacterPagination from "@/components/CharacterPagination";
 import { FaUser, FaPlus } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
 
 function GalleryPageContent() {
-  const { sort, setSort } = useCharacterSortUrl();
-  const { search, setSearch, characters, loading, loadingMore, error, hasMore, total, loadMore, reload } =
-    usePaginatedCharacters({ sort, listKey: "gallery" });
+  const { sort, setSort, page, setPage } = useCharacterSortUrl();
+  const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload } =
+    usePaginatedCharacters({ sort, page, setPage, listKey: "gallery" });
 
   const hasFilters = search.trim().length > 0;
 
@@ -90,18 +91,12 @@ function GalleryPageContent() {
               ))}
             </div>
 
-            {hasMore && (
-              <div className="flex justify-center pb-6 pt-2">
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="rounded-wd-pill border border-wd-border bg-wd-card px-6 py-3 text-xs font-bold text-white transition-all hover:border-wd-secondary disabled:opacity-50"
-                >
-                  {loadingMore ? "Загрузка..." : "Загрузить ещё"}
-                </button>
-              </div>
-            )}
+            <CharacterPagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+              disabled={loading}
+            />
           </>
         )}
       </main>

@@ -10,6 +10,7 @@ import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { temporaryCharacterSlug } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
+import { clampCharactersPageLimit } from "@/lib/charactersList";
 
 export const maxDuration = 60;
 
@@ -176,8 +177,8 @@ export async function GET(req: NextRequest) {
       publicFlag === "true" ? true : publicFlag === "false" ? false : undefined;
     const sortParam = searchParams.get("sort") || DEFAULT_CHARACTER_SORT;
     const sort = isCharacterSort(sortParam) ? sortParam : DEFAULT_CHARACTER_SORT;
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "24", 10);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = clampCharactersPageLimit(parseInt(searchParams.get("limit") || "24", 10));
     const skip = (page - 1) * limit;
 
     const session = await getServerSession(authOptions);

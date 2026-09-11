@@ -115,6 +115,10 @@
     "noResults": "Nothing matched your search. Try changing the filters.",
     "noPublished": "No published characters yet. Create the first one!",
     "loadMore": "Load more",
+    "pagination": "Page navigation",
+    "page": "Page {{page}} of {{pages}}",
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
     "reset": "Reset",
     "resetSearch": "Clear search"
   },

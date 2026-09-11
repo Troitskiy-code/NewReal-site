@@ -5,6 +5,7 @@ import LocaleLink from "@/components/LocaleLink";
 import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
+import CharacterPagination from "@/components/CharacterPagination";
 import { FaUser } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
@@ -12,9 +13,9 @@ import { useTranslation } from "react-i18next";
 
 function HomePageContent() {
   const { t } = useTranslation();
-  const { sort, setSort } = useCharacterSortUrl();
-  const { search, setSearch, characters, loading, loadingMore, error, hasMore, total, loadMore, reload } =
-    usePaginatedCharacters({ sort, listKey: "home" });
+  const { sort, setSort, page, setPage } = useCharacterSortUrl();
+  const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload } =
+    usePaginatedCharacters({ sort, page, setPage, listKey: "home" });
 
   const hasFilters = search.trim().length > 0;
 
@@ -68,18 +69,12 @@ function HomePageContent() {
               ))}
             </div>
 
-            {hasMore && (
-              <div className="flex justify-center pb-6 pt-2">
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="rounded-wd-pill border border-wd-border bg-wd-card px-8 py-3 text-xs font-bold text-white shadow-wd transition-all hover:border-wd-secondary disabled:opacity-50"
-                >
-                  {loadingMore ? t("common.loading") : t("home.loadMore")}
-                </button>
-              </div>
-            )}
+            <CharacterPagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+              disabled={loading}
+            />
           </>
         )}
       </main>

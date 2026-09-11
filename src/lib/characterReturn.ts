@@ -13,6 +13,7 @@ export type CharacterReturnSnapshot = {
   page?: number;
   hasMore?: boolean;
   total?: number;
+  totalPages?: number;
   windowY: number;
   mainY: number;
 };
@@ -25,6 +26,7 @@ type ListState = {
   page: number;
   hasMore: boolean;
   total: number;
+  totalPages?: number;
 };
 
 let pendingList: ListState | null = null;
