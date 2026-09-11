@@ -10,6 +10,11 @@ function getResetPasswordUrl(token: string, locale: Locale): string {
   return `${baseUrl}${withLocale(`/reset-password/${token}`, locale)}`;
 }
 
+function getVerifyEmailUrl(token: string, locale: Locale): string {
+  const baseUrl = (process.env.NEXTAUTH_URL || SITE_URL).replace(/\/$/, "");
+  return `${baseUrl}${withLocale(`/verify-email/${token}`, locale)}`;
+}
+
 export async function sendResetPasswordEmail(
   to: string,
   token: string,
@@ -49,4 +54,45 @@ export async function sendResetPasswordEmail(
   }
 
   console.log(`${LOG} Password reset email sent`, { to });
+}
+
+export async function sendVerificationEmail(
+  to: string,
+  token: string,
+  locale: Locale = DEFAULT_LOCALE
+): Promise<void> {
+  const verifyUrl = getVerifyEmailUrl(token, locale);
+  const text = translate(locale, "email.verifyText", { url: verifyUrl });
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+
+  if (!apiKey) {
+    console.error(`${LOG} RESEND_API_KEY is not set; cannot send verification email`, { to });
+    throw new Error("Email is not configured");
+  }
+
+  const fromEnv = process.env.RESEND_FROM_EMAIL?.trim();
+  if (!fromEnv) {
+    console.warn(
+      `${LOG} RESEND_FROM_EMAIL is not set; using default sender NewVerse <noreply@newvers.ai>`
+    );
+  }
+  const from = fromEnv || "NewVerse <noreply@newvers.ai>";
+  const resend = new Resend(apiKey);
+
+  console.log(`${LOG} Sending verification email`, { to, locale });
+
+  const { error } = await resend.emails.send({
+    from,
+    to,
+    subject: translate(locale, "email.verifySubject"),
+    text,
+    html: `<p>${translate(locale, "email.verifyHtmlIntro")}</p><p><a href="${verifyUrl}">${verifyUrl}</a></p><p>${translate(locale, "email.verifyHtmlFooter")}</p>`,
+  });
+
+  if (error) {
+    console.error(`${LOG} Resend API error`, { to, error });
+    throw new Error("Failed to send verification email");
+  }
+
+  console.log(`${LOG} Verification email sent`, { to });
 }

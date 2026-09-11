@@ -55,7 +55,7 @@
     "invalidCredentials": "Invalid email or password",
     "passwordMismatch": "Passwords do not match",
     "registerError": "Registration failed",
-    "registerSuccess": "Registration successful! Redirecting to sign in...",
+    "registerSuccess": "Registration successful! We sent a confirmation email. Redirecting to sign in...",
     "connectionError": "A server connection error occurred",
     "passwordChanged": "Password changed successfully",
     "forgotTitle": "Reset password",
@@ -78,7 +78,16 @@
     "loading": "Loading...",
     "consentTerms": "I accept the <terms>Terms of Use</terms> and consent to personal data processing under the <privacy>Privacy Policy</privacy>.",
     "consentOffer": "I have read the <offer>Public Offer</offer> and accept its terms.",
-    "consentRequired": "Please accept both required consents to sign up."
+    "consentRequired": "Please accept both required consents to sign up.",
+    "verifyTitle": "Confirm email",
+    "verifying": "Confirming your email...",
+    "verifySuccess": "Email confirmed! You now have full access to all features.",
+    "verifyInvalid": "This link is invalid or has expired. Request a new email.",
+    "resendEmail": "Resend confirmation email",
+    "resendSuccess": "The email has been sent. Check your inbox.",
+    "resendError": "Could not send the email",
+    "goToProfile": "Go to profile",
+    "verifyBanner": "Confirm your email to unlock full access."
   },
   "common": {
     "submit": "Confirm",
@@ -368,6 +377,10 @@
       "title": "Sign up — NewVerse",
       "description": "Create a NewVerse account and start roleplaying with AI characters."
     },
+    "verifyEmail": {
+      "title": "Confirm email — NewVerse",
+      "description": "Confirm your email to unlock full access to NewVerse."
+    },
     "chat": {
       "title": "Chat with {{name}} — NewVerse",
       "description": "Roleplay with {{name}}. Dive into the story and keep the plot going."
@@ -383,7 +396,11 @@
     "resetSubject": "Password reset — NewVerse",
     "resetText": "Follow this link to reset your password: {{url}}",
     "resetHtmlIntro": "Follow this link to reset your password:",
-    "resetHtmlFooter": "This link is valid for 1 hour. If you did not request a password reset, you can ignore this email."
+    "resetHtmlFooter": "This link is valid for 1 hour. If you did not request a password reset, you can ignore this email.",
+    "verifySubject": "Confirm your email — NewVerse",
+    "verifyText": "Hello! Confirm your email in NewVerse by following this link: {{url}}. The link is valid for 24 hours.",
+    "verifyHtmlIntro": "Hello! Confirm your email in NewVerse by following this link:",
+    "verifyHtmlFooter": "The link is valid for 24 hours. If you did not create a NewVerse account, you can ignore this email."
   },
   "api": {
     "emailRequired": "Email is required",
@@ -397,6 +414,11 @@
     "userNotFound": "User not found",
     "wrongPassword": "Incorrect password",
     "missingCredentials": "Email or password is missing",
-    "consentRequired": "You must accept the terms of use, privacy policy, and public offer"
+    "consentRequired": "You must accept the terms of use, privacy policy, and public offer",
+    "tokenRequired": "Token is required",
+    "invalidVerificationLink": "This link is invalid or has expired",
+    "emailAlreadyVerified": "Email is already confirmed",
+    "confirmEmailToPurchase": "Confirm your email to make a purchase",
+    "confirmEmailToClaimBonus": "Confirm your email to claim bonuses"
   }
 }

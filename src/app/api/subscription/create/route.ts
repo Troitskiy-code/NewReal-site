@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { buildReceipt, generateRobokassaPaymentUrl } from "@/lib/robokassa";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
+import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +13,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToPurchase");
+    if (unverified) return unverified;
 
     const body = await req.json();
     const planId = typeof body?.planId === "string" ? body.planId.trim() : "";

@@ -11,6 +11,9 @@ import { REGISTER_CONSENT_COOKIE } from "./consentCookie";
 import { applySignupBenefits } from "./provisionNewUser";
 import { ensureUserConsentColumns } from "./ensureUserConsent";
 import { isGoogleAuthEnabled } from "./googleAuth";
+import { isEmailVerified } from "./emailVerification";
+import { grantReferralBonusIfEligible } from "./referralBonus";
+import { infoLog } from "./logger";
 
 export { isGoogleAuthEnabled };
 
@@ -54,6 +57,19 @@ export const authOptions: AuthOptions = {
           await applySignupBenefits(created.id);
         } catch (error) {
           console.error("[Signup] Google user start grant failed", error);
+        }
+        try {
+          if (!created.emailVerified) {
+            await prisma.user.update({
+              where: { id: created.id },
+              data: { emailVerified: new Date() },
+            });
+            created.emailVerified = new Date();
+          }
+          infoLog("EmailVerification", "Google user marked verified", { userId: created.id });
+          await grantReferralBonusIfEligible(created.id);
+        } catch (error) {
+          console.error("[EmailVerification] Google verify stamp failed", error);
         }
         try {
           const { cookies } = await import("next/headers");
@@ -109,7 +125,7 @@ export const authOptions: AuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
-          select: { id: true, email: true, name: true, password: true, createdAt: true },
+          select: { id: true, email: true, name: true, password: true, createdAt: true, emailVerified: true },
         });
 
         if (!user || !user.password) {
@@ -126,6 +142,7 @@ export const authOptions: AuthOptions = {
           email: user.email,
           name: user.name,
           createdAt: user.createdAt,
+          emailVerified: user.emailVerified,
         };
       },
     }),
@@ -172,11 +189,12 @@ export const authOptions: AuthOptions = {
         session.user.email = session.user.email ?? token.email ?? undefined;
         session.user.name = session.user.name ?? token.name ?? undefined;
         session.user.createdAt = token.createdAt ?? null;
+        session.user.emailVerified = token.emailVerified === true;
       }
       await activatePendingForUserId(user?.id ?? token?.sub);
       return session;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       if (user) {
         console.log("[Auth] JWT created for user:", {
           id: user.id,
@@ -188,8 +206,28 @@ export const authOptions: AuthOptions = {
         token.name = user.name;
         token.createdAt =
           user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt ?? null;
+        token.emailVerified =
+          account?.provider === "google" ||
+          isEmailVerified({
+            emailVerified: user.emailVerified,
+            createdAt: user.createdAt,
+          });
         await activatePendingForUserId(user.id);
       }
+
+      if (trigger === "update" && (token.sub || token.id)) {
+        const userId = String(token.sub || token.id);
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            emailVerified: true,
+            createdAt: true,
+            accounts: { select: { provider: true } },
+          },
+        });
+        token.emailVerified = isEmailVerified(dbUser);
+      }
+
       return token;
     },
   },
@@ -201,6 +239,19 @@ export const authOptions: AuthOptions = {
         provider: account?.provider,
         isNewUser,
       });
+      if (account?.provider === "google" && user.id) {
+        try {
+          const updated = await prisma.user.updateMany({
+            where: { id: user.id, emailVerified: null },
+            data: { emailVerified: new Date() },
+          });
+          if (updated.count > 0) {
+            infoLog("EmailVerification", "Google sign-in marked verified", { userId: user.id });
+          }
+        } catch (error) {
+          console.error("[EmailVerification] Google sign-in verify failed", error);
+        }
+      }
     },
     async createUser({ user }) {
       console.log("[Auth] createUser event:", {

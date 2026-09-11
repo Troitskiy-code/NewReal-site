@@ -8,6 +8,7 @@ const basePrisma = new PrismaClient({
 
 let slugColumnPromise = null;
 let notificationTablePromise = null;
+let emailVerificationTablePromise = null;
 
 function ensureSlugColumnSql() {
   if (!slugColumnPromise) {
@@ -25,6 +26,43 @@ function ensureSlugColumnSql() {
     });
   }
   return slugColumnPromise;
+}
+
+function ensureEmailVerificationTableSql() {
+  if (!emailVerificationTablePromise) {
+    emailVerificationTablePromise = (async () => {
+      await basePrisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "EmailVerificationToken" (
+          "id" TEXT NOT NULL,
+          "token" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "expiresAt" TIMESTAMP(3) NOT NULL,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "EmailVerificationToken_pkey" PRIMARY KEY ("id")
+        )
+      `);
+      await basePrisma.$executeRawUnsafe(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "EmailVerificationToken_token_key" ON "EmailVerificationToken"("token")`
+      );
+      await basePrisma.$executeRawUnsafe(
+        `CREATE INDEX IF NOT EXISTS "EmailVerificationToken_userId_idx" ON "EmailVerificationToken"("userId")`
+      );
+      await basePrisma.$executeRawUnsafe(`
+        DO $$ BEGIN
+          ALTER TABLE "EmailVerificationToken" ADD CONSTRAINT "EmailVerificationToken_userId_fkey"
+            FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+      console.log("[Prisma] EmailVerificationToken table is ready");
+    })().catch((error) => {
+      emailVerificationTablePromise = null;
+      console.error("[Prisma] Failed to ensure EmailVerificationToken table", error);
+      throw error;
+    });
+  }
+  return emailVerificationTablePromise;
 }
 
 function ensureNotificationTableSql() {
@@ -75,6 +113,16 @@ const prisma = basePrisma.$extends({
           await ensureNotificationTableSql();
         } catch (error) {
           console.error("[Prisma] Notification table ensure skipped", error);
+        }
+        return query(args);
+      },
+    },
+    emailVerificationToken: {
+      async $allOperations({ args, query }) {
+        try {
+          await ensureEmailVerificationTableSql();
+        } catch (error) {
+          console.error("[Prisma] EmailVerificationToken table ensure skipped", error);
         }
         return query(args);
       },

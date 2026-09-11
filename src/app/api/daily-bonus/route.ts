@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -14,13 +14,17 @@ import {
 } from "@/lib/dailyBonus";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { createNotification } from "@/lib/notifications";
+import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToClaimBonus");
+    if (unverified) return unverified;
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },

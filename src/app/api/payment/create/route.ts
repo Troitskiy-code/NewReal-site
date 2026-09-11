@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { buildReceipt, generateRobokassaPaymentUrl } from "@/lib/robokassa";
 import { getVcPackage } from "@/lib/vcPackages";
+import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +11,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToPurchase");
+    if (unverified) return unverified;
 
     const body = await req.json();
     const desc = typeof body?.desc === "string" ? body.desc : "";

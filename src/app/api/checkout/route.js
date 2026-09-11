@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { BillingService } from "@/lib/services/billing";
+import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 
 export async function POST(req) {
   try {
@@ -9,6 +10,9 @@ export async function POST(req) {
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized. Please sign in." }, { status: 401 });
     }
+
+    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToPurchase");
+    if (unverified) return unverified;
 
     const { planId } = await req.json();
     if (!planId) {

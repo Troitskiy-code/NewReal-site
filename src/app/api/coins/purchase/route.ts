@@ -6,6 +6,7 @@ import { grantPermanentUpdate } from "@/lib/verseCoins";
 import { convertPaymentAmount, formatPrice, PREFERRED_CURRENCY_KEY, resolveCurrency } from "@/lib/currency";
 import { getCurrencyRates } from "@/lib/currencyRates";
 import { getVcPackage } from "@/lib/vcPackages";
+import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +14,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+
+    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToPurchase");
+    if (unverified) return unverified;
 
     const body = await req.json();
     const packageId = Number(body?.packageId);

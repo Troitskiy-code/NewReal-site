@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { apiT } from "@/lib/apiI18n";
+import { apiT, getApiLocale } from "@/lib/apiI18n";
 import { ensureUserConsentColumns, isAcceptedFlag } from "@/lib/ensureUserConsent";
 import { applySignupBenefits } from "@/lib/provisionNewUser";
-
-const REFERRAL_BONUS = 100;
+import { createAndSendVerificationEmail } from "@/lib/emailVerification";
+import { errorLog, infoLog } from "@/lib/logger";
 
 async function generateUniqueReferralCode(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -90,12 +90,13 @@ export async function POST(req: NextRequest) {
       acceptedPrivacyAt: acceptedAt.toISOString(),
     });
 
-    if (referredBy) {
-      await prisma.user.update({
-        where: { id: referredBy },
-        data: { realCoins: { increment: REFERRAL_BONUS } },
-      });
+    try {
+      await createAndSendVerificationEmail(user.id, email, getApiLocale(req));
+    } catch (error) {
+      errorLog("EmailVerification", "Register email failed", { userId: user.id, error });
     }
+
+    infoLog("EmailVerification", "Credentials user registered", { userId: user.id });
 
     return NextResponse.json(
       { message: "Пользователь создан", userId: user.id },

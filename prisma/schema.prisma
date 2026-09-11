@@ -304,6 +304,7 @@ model User {
   transactions       Transaction[]
   notifications      Notification[]
   passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 }
 
 model Transaction {
@@ -377,6 +378,17 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
   id        String   @id @default(cuid())
   token     String   @unique
   userId    String
