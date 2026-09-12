@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
 import CharacterPublicView from "./CharacterPublicView";
 import { findCharacterBySlugForViewer, getViewerId } from "@/lib/characterPublic";
-import { createPageMetadata, OG_IMAGE, SITE_URL } from "@/lib/seo";
+import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { translate } from "@/lib/getDictionary";
 import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ...metadata.openGraph,
       title: name,
       description: truncatedDescription,
-      images: [{ url: image, width: 1200, height: 630 }],
+      images: [{ url: image, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: name }],
       type: "profile",
       url: pageUrl,
     },

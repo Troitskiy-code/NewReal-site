@@ -5,6 +5,10 @@ import { DEFAULT_LOCALE } from "@/lib/i18nConfig";
 
 export const SITE_URL = "https://newvers.ai";
 export const OG_IMAGE = "/logo.png";
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
+export const OG_IMAGE_ALT = "NewVerse — ролевые игры с ИИ-персонажами";
+export const THEME_COLOR = "#0A0A0A";
 
 export type MetaPageKey =
   | "home"
@@ -35,7 +39,14 @@ export function createPageMetadata(title: string, description: string, image: st
     openGraph: {
       title,
       description,
-      images: [{ url: image }],
+      images: [
+        {
+          url: image,
+          width: OG_IMAGE_WIDTH,
+          height: OG_IMAGE_HEIGHT,
+          alt: OG_IMAGE_ALT,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",

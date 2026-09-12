@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 import AppShell from "@/components/AppShell";
 import AppToaster from "@/components/AppToaster";
 import YandexMetrika from "@/components/YandexMetrika";
-import { getLocalizedPageMetadata, SITE_URL } from "@/lib/seo";
+import { getLocalizedPageMetadata, SITE_URL, THEME_COLOR } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import "./globals.css";
 
@@ -14,6 +14,10 @@ const inter = Inter({
 });
 
 export const dynamic = "force-dynamic";
+
+export const viewport = {
+  themeColor: THEME_COLOR,
+};
 
 export async function generateMetadata() {
   const metadata = await getLocalizedPageMetadata("home");
