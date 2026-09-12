@@ -293,6 +293,36 @@ function throwIfFailed(result: CreateyaRunResult) {
   throw new Error(formatCreateyaError(undefined, result) || "Генерация отклонена");
 }
 
+function buildCreateyaInput(model: string, prompt: string, uploadedUrl?: string): Record<string, unknown> {
+  const isGpt = model.startsWith("gpt-image");
+  const isFluxKontext = model.startsWith("flux-kontext");
+  const input: Record<string, unknown> = { prompt };
+
+  if (isGpt) {
+    input.aspect_ratio = "3:4";
+    input.resolution = "1K";
+  } else {
+    input.num_images = 1;
+    if (!uploadedUrl || isFluxKontext) {
+      input.aspect_ratio = "3:4";
+    }
+    input.output_format = isFluxKontext ? "png" : "webp";
+  }
+
+  if (uploadedUrl) {
+    if (isGpt) {
+      input.input_urls = [uploadedUrl];
+    } else if (isFluxKontext) {
+      input.image_url = uploadedUrl;
+    } else {
+      input.image_url = uploadedUrl;
+      input.image_urls = [uploadedUrl];
+    }
+  }
+
+  return input;
+}
+
 async function pollRun(
   apiUrl: string,
   apiKey: string,
@@ -333,30 +363,23 @@ async function pollRun(
 export async function generateWithCreateya(
   prompt: string,
   referenceImage?: string,
-  modelType?: "FLUX" | "SD"
+  modelName?: string
 ): Promise<string> {
   const { apiKey, apiUrl } = getConfig();
   if (!apiKey) {
     throw new Error("CREATEYA_API_KEY не настроен");
   }
 
-  const hasReference = Boolean(referenceImage) || modelType === "SD";
-  const model = hasReference ? CREATEYA_IMAGE_MODEL : CREATEYA_TEXT_MODEL;
-  const input: Record<string, unknown> = {
-    prompt,
-    num_images: 1,
-    output_format: "webp",
-  };
+  const hasReference = Boolean(referenceImage);
+  const model = modelName || (hasReference ? CREATEYA_IMAGE_MODEL : CREATEYA_TEXT_MODEL);
 
-  if (!hasReference) {
-    input.aspect_ratio = "3:4";
-  } else if (referenceImage) {
-    const uploadedUrl = await uploadReferenceImage(apiUrl, apiKey, referenceImage);
-    input.image_url = uploadedUrl;
-    input.image_urls = [uploadedUrl];
-  } else {
-    throw new Error("Для генерации с референсом нужно изображение");
+  let uploadedUrl: string | undefined;
+  if (referenceImage) {
+    uploadedUrl = await uploadReferenceImage(apiUrl, apiKey, referenceImage);
   }
+
+  const input = buildCreateyaInput(model, prompt, uploadedUrl);
+  const pollTimeoutMs = model.startsWith("gpt-image") ? 120_000 : 90_000;
 
   const runUrl = `${apiUrl}/v1/run`;
   console.info("[Createya] request", {
@@ -370,6 +393,7 @@ export async function generateWithCreateya(
       prompt: `[${prompt.length} chars]`,
       image_url: input.image_url ? "[set]" : undefined,
       image_urls: input.image_urls ? "[set]" : undefined,
+      input_urls: input.input_urls ? "[set]" : undefined,
     },
   });
 
@@ -404,7 +428,7 @@ export async function generateWithCreateya(
         console.error("[Createya] missing run id", JSON.stringify(data));
         throw new Error(MISSING_RUN_ID_MESSAGE);
       }
-      const completed = await pollRun(apiUrl, apiKey, runId);
+      const completed = await pollRun(apiUrl, apiKey, runId, pollTimeoutMs);
       const completedUrl = extractOutputUrl(completed);
       if (!completedUrl) {
         console.error("[Createya] completed without image url", JSON.stringify(completed));

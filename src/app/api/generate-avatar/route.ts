@@ -5,7 +5,6 @@ import {
   canGenerateThisMonth,
   getAvatarUsageUser,
   recordMonthlyGeneration,
-  type AvatarModelType,
 } from "@/lib/avatarTokens";
 import {
   buildAvatarPrompt,
@@ -14,8 +13,9 @@ import {
   SENSITIVE_CLIENT_MESSAGE,
 } from "@/lib/avatarPrompt";
 import { convertImageToPNG, generateWithCreateya, imageUrlToDataUrl } from "@/lib/createya";
+import { getAvatarModel, resolveCreateyaAvatarModel } from "@/lib/avatarModels";
 
-export const maxDuration = 90;
+export const maxDuration = 120;
 
 type GenerateAvatarBody = {
   name?: unknown;
@@ -26,6 +26,7 @@ type GenerateAvatarBody = {
   referenceImage?: unknown;
   style?: unknown;
   avatarPrompt?: unknown;
+  modelId?: unknown;
 };
 
 function asText(value: unknown): string {
@@ -61,7 +62,14 @@ export async function POST(req: NextRequest) {
     if (referenceImage) {
       referenceImage = await convertImageToPNG(referenceImage);
     }
-    const modelType: AvatarModelType = referenceImage ? "SD" : "FLUX";
+    const avatarModel = getAvatarModel(body.modelId);
+    const apiModel = resolveCreateyaAvatarModel(avatarModel.id, Boolean(referenceImage));
+    console.log("[AvatarModel]", {
+      modelId: avatarModel.id,
+      apiModel,
+      hasReference: Boolean(referenceImage),
+      costMultiplier: avatarModel.costMultiplier,
+    });
 
     const user = await getAvatarUsageUser(session.user.id);
     const canGenerate = canGenerateThisMonth(user);
@@ -72,7 +80,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const createdUrl = await generateWithCreateya(prompt, referenceImage || undefined, modelType);
+    const createdUrl = await generateWithCreateya(prompt, referenceImage || undefined, apiModel);
     const imageUrl = await imageUrlToDataUrl(createdUrl);
     await recordMonthlyGeneration(user);
 

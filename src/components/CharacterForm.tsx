@@ -20,6 +20,13 @@ import {
 import { CHARACTER_LIMITS } from "@/lib/characterFields";
 import { MEMORY_CONTENT_LIMIT } from "@/lib/persistentMemory";
 import { ensureReferenceImageDataUrl, ensureReferenceImageFile } from "@/lib/convertAvifToPng";
+import {
+  AVATAR_MODELS,
+  getAvatarModel,
+  readStoredAvatarModelId,
+  storeAvatarModelId,
+  type AvatarModelId,
+} from "@/lib/avatarModels";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
@@ -252,11 +259,13 @@ export default function CharacterForm({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
+  const [avatarModelId, setAvatarModelId] = useState<AvatarModelId>(() => readStoredAvatarModelId(characterId));
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [localErrors, setLocalErrors] = useState<{ name?: string; lora?: string; prompt?: string }>({});
 
   const usesSd = Boolean(loraFile || loraPreview);
+  const selectedAvatarModel = getAvatarModel(avatarModelId);
   const canGenerate = Boolean(tokenStatus && tokenStatus.monthlyRemaining > 0);
 
   const handleLoraInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,6 +285,12 @@ export default function CharacterForm({
       }));
     }
   };
+
+  useEffect(() => {
+    const stored = readStoredAvatarModelId(characterId);
+    setAvatarModelId(stored);
+    console.log("[AvatarModel] restored", { modelId: stored, characterId: characterId ?? "new" });
+  }, [characterId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -339,6 +354,13 @@ export default function CharacterForm({
     setLocalErrors((current) => ({ ...current, name: undefined }));
     onClearError?.("name");
     setGeneratingAvatar(true);
+    const apiModel = usesSd ? selectedAvatarModel.apiModelI2i : selectedAvatarModel.apiModel;
+    console.log("[AvatarModel] generate", {
+      modelId: selectedAvatarModel.id,
+      apiModel,
+      hasReference: usesSd,
+      costMultiplier: selectedAvatarModel.costMultiplier,
+    });
     try {
       const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
       const { data } = await axios.post<{ imageUrl: string }>("/api/generate-avatar", {
@@ -350,6 +372,7 @@ export default function CharacterForm({
         avatarPrompt: values.avatarPrompt.trim() || undefined,
         referenceImage: referenceImage || undefined,
         style,
+        modelId: selectedAvatarModel.id,
       });
 
       if (!data.imageUrl) {
@@ -614,7 +637,8 @@ export default function CharacterForm({
               Месячный лимит: осталось {tokenStatus.monthlyRemaining} из {tokenStatus.monthlyLimit} генераций
             </p>
             <p>
-              Модель: {usesSd ? "Grok Imagine I2I" : "Grok Imagine"}
+              Модель: {selectedAvatarModel.name}
+              {usesSd ? " · референс" : ""}
             </p>
             {tokenStatus.monthlyLimit === 0 && (
               <p className="text-red-400">Генерация доступна по подписке Диалог, История или Вселенная.</p>
@@ -623,6 +647,39 @@ export default function CharacterForm({
               <p className="text-red-400">Достигнут месячный лимит бесплатных генераций.</p>
             )}
           </div>
+        )}
+        <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Модель генерации аватара">
+          {AVATAR_MODELS.map((model) => {
+            const active = avatarModelId === model.id;
+            return (
+              <button
+                key={model.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => {
+                  setAvatarModelId(model.id);
+                  storeAvatarModelId(model.id, characterId);
+                  console.log("[AvatarModel] selected", {
+                    modelId: model.id,
+                    name: model.name,
+                    characterId: characterId ?? "new",
+                  });
+                }}
+                className={`rounded-lg border p-3 text-left transition-colors ${
+                  active
+                    ? "border-[#6C63FF] bg-[#6C63FF]/15 text-white"
+                    : "border-[#2A2A2A] bg-[#0A0A0A] text-gray-300 hover:border-gray-500"
+                }`}
+              >
+                <p className="text-sm font-bold text-white">{model.name}</p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-400">{model.description}</p>
+              </button>
+            );
+          })}
+        </div>
+        {selectedAvatarModel.costMultiplier > 1 && (
+          <p className="text-sm text-amber-400">Генерация с этой моделью может занять больше времени</p>
         )}
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div
