@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect } from "react";
+import { stripLocalePrefix } from "@/lib/i18nConfig";
 
 const STORAGE_KEY = "nv:character-return";
 
@@ -46,12 +47,8 @@ function hrefPathname(href: string) {
   return href.slice(0, end);
 }
 
-function sameOriginReferrer() {
-  try {
-    return Boolean(document.referrer) && new URL(document.referrer).origin === window.location.origin;
-  } catch {
-    return false;
-  }
+function isHomeListHref(href: string) {
+  return stripLocalePrefix(hrefPathname(href)) === "/";
 }
 
 export function rememberCharacterListState(state: ListState) {
@@ -112,19 +109,15 @@ export function restoreCharacterScroll(snapshot: CharacterReturnSnapshot | null)
 }
 
 export function closeCharacterPage(
-  router: { back: () => void; push: (href: string) => void },
-  galleryHref: string
+  router: { replace: (href: string) => void },
+  homeHref: string
 ) {
   const snapshot = readCharacterReturn();
-  if (snapshot && sameOriginReferrer() && window.history.length > 1) {
-    router.back();
+  if (snapshot?.href && isHomeListHref(snapshot.href)) {
+    router.replace(snapshot.href);
     return;
   }
-  if (snapshot?.href) {
-    router.push(snapshot.href);
-    return;
-  }
-  router.push(galleryHref);
+  router.replace(homeHref);
 }
 
 export function clearCharacterReturn() {

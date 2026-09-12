@@ -47,7 +47,7 @@ export default function CharacterPublicView({ character }: { character: Characte
   });
 
   const handleClose = useCallback(() => {
-    closeCharacterPage(router, withLocale("/gallery", locale));
+    closeCharacterPage(router, withLocale("/", locale));
   }, [locale, router]);
 
   useEffect(() => {
