@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
     }
     const avatarModel = getAvatarModel(body.modelId);
     const apiModel = resolveCreateyaAvatarModel(avatarModel.id, Boolean(referenceImage));
+    console.log("[AvatarModel] Selected model:", avatarModel.id);
     console.log("[AvatarModel]", {
       modelId: avatarModel.id,
       apiModel,

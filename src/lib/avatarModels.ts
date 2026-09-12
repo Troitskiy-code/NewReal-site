@@ -25,6 +25,14 @@ export const AVATAR_MODELS = [
     apiModelI2i: "gpt-image2-i2i",
     costMultiplier: 1.5,
   },
+  {
+    id: "nano-banana-2-lite",
+    name: "Nano Banana 2 Lite",
+    description: "Быстрая генерация с высокой детализацией. Хорошо справляется с аниме, реализмом и стилизацией.",
+    apiModel: "nano-banana-2",
+    apiModelI2i: "nano-banana-2",
+    costMultiplier: 1,
+  },
 ] as const;
 
 export type AvatarModel = (typeof AVATAR_MODELS)[number];

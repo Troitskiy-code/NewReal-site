@@ -355,6 +355,7 @@ export default function CharacterForm({
     onClearError?.("name");
     setGeneratingAvatar(true);
     const apiModel = usesSd ? selectedAvatarModel.apiModelI2i : selectedAvatarModel.apiModel;
+    console.log("[AvatarModel] Selected model:", selectedAvatarModel.id);
     console.log("[AvatarModel] generate", {
       modelId: selectedAvatarModel.id,
       apiModel,
@@ -648,7 +649,7 @@ export default function CharacterForm({
             )}
           </div>
         )}
-        <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Модель генерации аватара">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label="Модель генерации аватара">
           {AVATAR_MODELS.map((model) => {
             const active = avatarModelId === model.id;
             return (
@@ -660,11 +661,7 @@ export default function CharacterForm({
                 onClick={() => {
                   setAvatarModelId(model.id);
                   storeAvatarModelId(model.id, characterId);
-                  console.log("[AvatarModel] selected", {
-                    modelId: model.id,
-                    name: model.name,
-                    characterId: characterId ?? "new",
-                  });
+                  console.log("[AvatarModel] Selected model:", model.id);
                 }}
                 className={`rounded-lg border p-3 text-left transition-colors ${
                   active

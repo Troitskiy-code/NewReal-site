@@ -296,11 +296,15 @@ function throwIfFailed(result: CreateyaRunResult) {
 function buildCreateyaInput(model: string, prompt: string, uploadedUrl?: string): Record<string, unknown> {
   const isGpt = model.startsWith("gpt-image");
   const isFluxKontext = model.startsWith("flux-kontext");
+  const isNanoBanana = model.startsWith("nano-banana");
   const input: Record<string, unknown> = { prompt };
 
-  if (isGpt) {
+  if (isGpt || isNanoBanana) {
     input.aspect_ratio = "3:4";
     input.resolution = "1K";
+    if (isNanoBanana) {
+      input.output_format = "png";
+    }
   } else {
     input.num_images = 1;
     if (!uploadedUrl || isFluxKontext) {
@@ -312,6 +316,8 @@ function buildCreateyaInput(model: string, prompt: string, uploadedUrl?: string)
   if (uploadedUrl) {
     if (isGpt) {
       input.input_urls = [uploadedUrl];
+    } else if (isNanoBanana) {
+      input.image_input = [uploadedUrl];
     } else if (isFluxKontext) {
       input.image_url = uploadedUrl;
     } else {
@@ -394,6 +400,7 @@ export async function generateWithCreateya(
       image_url: input.image_url ? "[set]" : undefined,
       image_urls: input.image_urls ? "[set]" : undefined,
       input_urls: input.input_urls ? "[set]" : undefined,
+      image_input: input.image_input ? "[set]" : undefined,
     },
   });
 
