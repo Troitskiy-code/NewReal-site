@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildCharacterSlug } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
-import { stripInlineUserImage, toCardImageUrl } from "@/lib/characterCardImage";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 
 export const publicCharacterSelect = {
   id: true,
@@ -14,7 +14,6 @@ export const publicCharacterSelect = {
   description_en: true,
   descriptionCard: true,
   descriptionCard_en: true,
-  imageUrl: true,
   publicMemory: true,
   publicMemory_en: true,
   totalMessages: true,
@@ -25,7 +24,6 @@ export const publicCharacterSelect = {
   user: {
     select: {
       name: true,
-      image: true,
     },
   },
 } as const;
@@ -103,7 +101,7 @@ export async function findCharacterBySlugForViewer(
     description_en: character.description_en,
     descriptionCard: character.descriptionCard,
     descriptionCard_en: character.descriptionCard_en,
-    imageUrl: toCardImageUrl(character.id, character.imageUrl, character.updatedAt),
+    imageUrl: characterAvatarPath(character.id, character.updatedAt),
     publicMemory: character.publicMemory,
     publicMemory_en: character.publicMemory_en,
     totalMessages: character.totalMessages,
@@ -112,14 +110,19 @@ export async function findCharacterBySlugForViewer(
     isPublic: character.isPublic,
     user: {
       name: character.user?.name ?? null,
-      image: stripInlineUserImage(character.user?.image),
+      image: null,
     },
   };
 }
 
 export async function getViewerId(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
-  return session?.user?.id ?? null;
+  try {
+    const session = await getServerSession(authOptions);
+    return session?.user?.id ?? null;
+  } catch (error) {
+    console.error("[Character] getViewerId failed", error);
+    return null;
+  }
 }
 
 export function toPublicCharacterPayload(character: PublicCharacterRecord) {

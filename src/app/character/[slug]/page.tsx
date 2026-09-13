@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
-import JsonLd from "@/components/JsonLd";
-import CharacterPublicView from "./CharacterPublicView";
+import CharacterPublicViewLoader from "./CharacterPublicViewLoader";
 import { findCharacterBySlugForViewer, getViewerId } from "@/lib/characterPublic";
 import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { translate } from "@/lib/getDictionary";
 import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
-import { absoluteAssetUrl, absoluteSiteUrl, buildCharacterJsonLd } from "@/lib/jsonLd";
+import { absoluteAssetUrl, absoluteSiteUrl } from "@/lib/jsonLd";
 import { withLocale } from "@/lib/i18nConfig";
 
 type PageProps = {
@@ -30,9 +28,9 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const locale = await getRequestLocale();
 
   try {
+    const locale = await getRequestLocale();
     const viewerId = await getViewerId();
     const character = await findCharacterBySlugForViewer(slug, viewerId);
 
@@ -89,6 +87,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return result;
   } catch (error) {
     console.error("[Character] generateMetadata failed", { slug, error });
+    const locale = await getRequestLocale().catch(() => "ru" as const);
     return createPageMetadata(
       translate(locale, "meta.character.fallbackTitle"),
       translate(locale, "meta.character.fallbackDescription")
@@ -98,62 +97,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CharacterPage({ params }: PageProps) {
   const { slug } = await params;
-  const locale = await getRequestLocale();
-  const viewerId = await getViewerId();
-  const character = await findCharacterBySlugForViewer(slug, viewerId);
-
-  if (!character) {
-    notFound();
-  }
-
-  console.log("[Character] View", { slug: character.slug, id: character.id, public: character.isPublic });
-
-  const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
-  const description =
-    getLocalizedCardDescription(character, locale) ||
-    pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) ||
-    "";
 
   return (
     <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
-      {character.isPublic ? (
-        <JsonLd
-          data={buildCharacterJsonLd(
-            {
-              slug: character.slug,
-              name,
-              description,
-              imageUrl: character.imageUrl,
-              createdAt: character.createdAt,
-              totalMessages: character.totalMessages,
-              authorName: character.user?.name ?? null,
-            },
-            locale
-          )}
-        />
-      ) : null}
       <main className="flex-1 px-4 py-8 sm:px-6">
-        <CharacterPublicView
-          character={{
-            id: character.id,
-            slug: character.slug,
-            name: character.name,
-            name_en: character.name_en,
-            description: character.description,
-            description_en: character.description_en,
-            descriptionCard: character.descriptionCard,
-            descriptionCard_en: character.descriptionCard_en,
-            imageUrl: character.imageUrl,
-            publicMemory: character.publicMemory,
-            publicMemory_en: character.publicMemory_en,
-            totalMessages: character.totalMessages ?? 0,
-            createdAt: character.createdAt.toISOString(),
-            user: {
-              name: character.user?.name ?? null,
-              image: character.user?.image ?? null,
-            },
-          }}
-        />
+        <CharacterPublicViewLoader slug={slug} />
       </main>
       <Footer />
     </div>

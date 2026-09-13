@@ -98,7 +98,14 @@ export default function CharacterPublicView({ character }: { character: Characte
       <div className="overflow-hidden rounded-wd border border-wd-border bg-wd-card shadow-wd">
         <div className="relative aspect-[4/3] bg-[#0A0A0A] sm:aspect-[16/9]">
           {character.imageUrl ? (
-            <img src={character.imageUrl} alt={name} className="h-full w-full object-cover" />
+            <img
+              src={character.imageUrl}
+              alt={name}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <FaUser className="text-6xl text-wd-text-secondary/30" />
