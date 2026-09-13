@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { PaymentGoalTracker } from "@/lib/goalTracking";
+import { metrikaPlanSlug } from "@/lib/metrika";
 import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
@@ -37,10 +38,6 @@ const PLAN_BUTTONS = {
   universe:
     "border border-wd-primary/50 bg-wd-primary/15 hover:bg-wd-primary hover:border-wd-primary text-white",
 };
-
-function metrikaPlanSlug(planId) {
-  return planId === "story" ? "history" : planId;
-}
 
 function formatNumber(value, locale = "ru") {
   return value.toLocaleString(dateLocale(locale));

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { METRIKA_GOALS, reachGoal, subscriptionGoal } from "@/lib/metrika";
+import { METRIKA_GOALS, metrikaPlanSlug, reachGoal, subscriptionGoal } from "@/lib/metrika";
 
 function shp(searchParams: URLSearchParams, key: string): string {
   return (searchParams.get(key) || searchParams.get(key.toLowerCase()) || "").trim();
@@ -19,7 +19,8 @@ export function usePaymentGoal() {
   useEffect(() => {
     const payment = searchParams.get("payment");
     const type = searchParams.get("type") || shp(searchParams, "Shp_type");
-    const plan = searchParams.get("plan") || shp(searchParams, "Shp_plan") || "unknown";
+    const rawPlan = searchParams.get("plan") || shp(searchParams, "Shp_plan") || "unknown";
+    const plan = metrikaPlanSlug(rawPlan);
     const isSubscription =
       type === "subscription" || shp(searchParams, "Shp_subscription").toLowerCase() === "true";
     const isVc = type === "vc" || Boolean(shp(searchParams, "Shp_vc") && !isSubscription);

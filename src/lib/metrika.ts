@@ -32,6 +32,7 @@ declare global {
   }
 }
 
+/** Metrika / public plan slug. DB id stays `story`; goals and Success URL use `history`. */
 export function metrikaPlanSlug(planId: string): string {
   return planId === "story" ? "history" : planId;
 }
