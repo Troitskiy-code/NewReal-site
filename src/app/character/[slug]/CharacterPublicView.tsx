@@ -10,6 +10,7 @@ import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } f
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { closeCharacterPage } from "@/lib/characterReturn";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 
 export type CharacterPublicViewData = {
   id: string;
@@ -83,6 +84,7 @@ export default function CharacterPublicView({ character }: { character: Characte
   };
 
   const chatHref = `/chat/${character.id}`;
+  const avatarUrl = characterAvatarPath(character.id);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -97,9 +99,9 @@ export default function CharacterPublicView({ character }: { character: Characte
       </button>
       <div className="overflow-hidden rounded-wd border border-wd-border bg-wd-card shadow-wd">
         <div className="relative aspect-[4/3] bg-[#0A0A0A] sm:aspect-[16/9]">
-          {character.imageUrl ? (
+          {avatarUrl ? (
             <img
-              src={character.imageUrl}
+              src={avatarUrl}
               alt={name}
               className="h-full w-full object-cover"
               onError={(event) => {

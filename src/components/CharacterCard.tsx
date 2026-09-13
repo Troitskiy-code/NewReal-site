@@ -18,7 +18,6 @@ type CharacterCardProps = {
     description_en?: string | null;
     descriptionCard?: string | null;
     descriptionCard_en?: string | null;
-    imageUrl?: string | null;
     updatedAt?: string | Date | null;
     isFavorited?: boolean;
     totalMessages?: number;
@@ -35,9 +34,7 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
   const description = getLocalizedCardDescription(character, locale) || t("characterCard.noDescription");
 
   const href = character.slug ? `/character/${character.slug}` : `/chat/${character.id}`;
-  const avatarUrl = character.imageUrl?.includes("/api/characters/")
-    ? characterAvatarPath(character.id, character.updatedAt)
-    : character.imageUrl;
+  const avatarUrl = characterAvatarPath(character.id, character.updatedAt);
 
   return (
     <LocaleLink
@@ -52,6 +49,9 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
               src={avatarUrl}
               alt={name}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[#2A2A2A]">

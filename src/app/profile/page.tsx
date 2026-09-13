@@ -18,6 +18,7 @@ import {
   FaRobot,
   FaCrown,
 } from "react-icons/fa";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 import FavoriteButton from "@/components/FavoriteButton";
 import PersonaManager from "@/components/PersonaManager";
 import VerseCoinsBalance from "@/components/VerseCoinsBalance";
@@ -42,6 +43,7 @@ type Character = {
   isPublic: boolean;
   totalMessages?: number;
   createdAt: string;
+  updatedAt?: string | null;
   isFavorited?: boolean;
 };
 
@@ -400,11 +402,14 @@ export default function ProfilePage() {
                 return (
                   <article key={character.id} className="wd-card overflow-hidden flex flex-col transition-transform hover:-translate-y-1">
                     <div className="aspect-square bg-[#0A0A0A] overflow-hidden relative">
-                      {character.imageUrl ? (
+                      {character.id ? (
                         <img
-                          src={character.imageUrl}
+                          src={characterAvatarPath(character.id, character.updatedAt)}
                           alt={name}
                           className="w-full h-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">

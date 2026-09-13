@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
-import { toCardImageUrl } from "@/lib/characterCardImage";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 
 const profileCharacterSelectNoSlug = {
@@ -15,7 +15,6 @@ const profileCharacterSelectNoSlug = {
   descriptionCard: true,
   descriptionCard_en: true,
   tags: true,
-  imageUrl: true,
   isPublic: true,
   totalMessages: true,
   createdAt: true,
@@ -115,7 +114,7 @@ export async function GET(req: NextRequest) {
 
     const data = characters.map((character) => ({
       ...character,
-      imageUrl: toCardImageUrl(character.id, character.imageUrl, character.updatedAt),
+      imageUrl: characterAvatarPath(character.id, character.updatedAt),
       isFavorited: favoriteIds.has(character.id),
     }));
 

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
-import { stripInlineUserImage, toCardImageUrl } from "@/lib/characterCardImage";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 
 const characterSelectNoSlug = {
   id: true,
@@ -14,7 +14,6 @@ const characterSelectNoSlug = {
   descriptionCard: true,
   descriptionCard_en: true,
   tags: true,
-  imageUrl: true,
   isPublic: true,
   userId: true,
   totalMessages: true,
@@ -23,7 +22,6 @@ const characterSelectNoSlug = {
   user: {
     select: {
       name: true,
-      image: true,
     },
   },
 } as const;
@@ -68,11 +66,11 @@ export async function GET() {
 
     const data = favorites.map((favorite) => ({
       ...favorite.character,
-      imageUrl: toCardImageUrl(favorite.character.id, favorite.character.imageUrl, favorite.character.updatedAt),
+      imageUrl: characterAvatarPath(favorite.character.id, favorite.character.updatedAt),
       user: favorite.character.user
         ? {
             name: favorite.character.user.name,
-            image: stripInlineUserImage(favorite.character.user.image),
+            image: null,
           }
         : favorite.character.user,
       isFavorited: true,

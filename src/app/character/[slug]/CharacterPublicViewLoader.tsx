@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CharacterPublicView, { type CharacterPublicViewData } from "./CharacterPublicView";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 
 type LoaderState =
   | { status: "loading" }
@@ -33,7 +34,13 @@ function toViewData(raw: Record<string, unknown>): CharacterPublicViewData | nul
     description_en: typeof raw.description_en === "string" ? raw.description_en : null,
     descriptionCard: typeof raw.descriptionCard === "string" ? raw.descriptionCard : null,
     descriptionCard_en: typeof raw.descriptionCard_en === "string" ? raw.descriptionCard_en : null,
-    imageUrl: typeof raw.imageUrl === "string" ? raw.imageUrl : null,
+    imageUrl:
+      typeof raw.id === "string"
+        ? characterAvatarPath(
+            raw.id,
+            typeof raw.updatedAt === "string" || raw.updatedAt instanceof Date ? raw.updatedAt : null
+          )
+        : null,
     publicMemory: raw.publicMemory ?? null,
     publicMemory_en: raw.publicMemory_en ?? null,
     totalMessages: typeof raw.totalMessages === "number" ? raw.totalMessages : 0,
