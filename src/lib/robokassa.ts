@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { str as crc32str } from "crc-32";
 import { debugLog, errorLog, infoLog } from "@/lib/logger";
+import { SITE_URL } from "@/lib/seo";
+import { withLocale, type Locale } from "@/lib/i18nConfig";
 
 const MERCHANT_ID = process.env.ROBOKASSA_MERCHANT_ID ?? "";
 const PASSWORD = process.env.ROBOKASSA_PASSWORD ?? "";
@@ -165,13 +167,23 @@ function buildRecurringQuery(recurring?: RobokassaRecurringOptions): string {
  * Builds a Robokassa payment URL.
  * `sum` is always RUB. OutSumCurrency is never included in the URL or signature.
  */
+export function buildRobokassaSuccessUrl(
+  path: "/pricing" | "/coins",
+  locale: Locale,
+  query: Record<string, string>
+): string {
+  const params = new URLSearchParams(query);
+  return `${SITE_URL}${withLocale(path, locale)}?${params.toString()}`;
+}
+
 export function generateRobokassaPaymentUrl(
   userId: string,
   sum: number,
   desc: string,
   extraShp: ShpParams = {},
   receipt?: RobokassaReceipt,
-  recurring?: RobokassaRecurringOptions
+  recurring?: RobokassaRecurringOptions,
+  successUrl?: string
 ): string {
   if (!MERCHANT_ID || !PASSWORD) {
     errorLog("Robokassa", "Payment error: merchant or password is not configured");
@@ -198,7 +210,8 @@ export function generateRobokassaPaymentUrl(
   // IsTest must be omitted in production. Only ROBOKASSA_TEST_MODE=1 adds it.
   const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
   const recurringQuery = buildRecurringQuery(recurring);
-  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&InvoiceID=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${shpQuery}${recurringQuery}${testParam}`;
+  const successQuery = successUrl ? `&SuccessUrl=${encodeURIComponent(successUrl)}` : "";
+  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&InvoiceID=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${shpQuery}${recurringQuery}${testParam}${successQuery}`;
 
   console.log("[Robokassa] Payment params:", {
     merchantLogin: MERCHANT_ID,
@@ -209,6 +222,7 @@ export function generateRobokassaPaymentUrl(
     hasReceipt: Boolean(receipt),
     hasRecurring: Boolean(recurring),
     isTest: ROBOKASSA_TEST_MODE,
+    successUrl: successUrl || null,
     outSumCurrencyPresent: url.includes("OutSumCurrency"),
     isTestParamPresent: /(?:^|[?&])IsTest=/.test(url),
   });

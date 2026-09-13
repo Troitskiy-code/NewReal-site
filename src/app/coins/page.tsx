@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -10,6 +10,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { FaCoins, FaCrown, FaGift } from "react-icons/fa";
 import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { PaymentGoalTracker } from "@/lib/goalTracking";
 import { useTranslation } from "react-i18next";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import CurrencySelector from "@/components/CurrencySelector";
@@ -170,6 +171,9 @@ export default function CoinsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
+      <Suspense fallback={null}>
+        <PaymentGoalTracker />
+      </Suspense>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 overflow-y-auto px-4 py-8 scrollbar-subtle sm:px-6 lg:px-8">
         <div className="space-y-2">

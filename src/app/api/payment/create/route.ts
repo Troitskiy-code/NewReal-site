@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { buildReceipt, generateRobokassaPaymentUrl } from "@/lib/robokassa";
+import { buildReceipt, buildRobokassaSuccessUrl, generateRobokassaPaymentUrl } from "@/lib/robokassa";
 import { getVcPackage } from "@/lib/vcPackages";
 import { rejectUnverifiedEmail } from "@/lib/emailVerification";
+import { getRequestLocale } from "@/lib/getRequestLocale";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,8 +34,21 @@ export async function POST(req: NextRequest) {
       currency: "RUB",
       priceRUB: pkg.price,
     });
+    const locale = await getRequestLocale();
+    const successUrl = buildRobokassaSuccessUrl("/coins", locale, {
+      payment: "success",
+      type: "vc",
+    });
     const receipt = buildReceipt([{ name: "Пополнение VerseCoins", price: amount, quantity: 1 }]);
-    const url = generateRobokassaPaymentUrl(session.user.id, amount, description, {}, receipt);
+    const url = generateRobokassaPaymentUrl(
+      session.user.id,
+      amount,
+      description,
+      { Shp_type: "vc" },
+      receipt,
+      undefined,
+      successUrl
+    );
     return NextResponse.json({ url });
   } catch (error) {
     console.error("Payment creation error:", error);

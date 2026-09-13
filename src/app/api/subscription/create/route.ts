@@ -3,9 +3,10 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
-import { buildReceipt, generateRobokassaPaymentUrl } from "@/lib/robokassa";
+import { buildReceipt, buildRobokassaSuccessUrl, generateRobokassaPaymentUrl } from "@/lib/robokassa";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { rejectUnverifiedEmail } from "@/lib/emailVerification";
+import { getRequestLocale } from "@/lib/getRequestLocale";
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,18 +70,26 @@ export async function POST(req: NextRequest) {
       currency: "RUB",
       amountRUB: sumRUB,
     });
+    const locale = await getRequestLocale();
+    const successUrl = buildRobokassaSuccessUrl("/pricing", locale, {
+      payment: "success",
+      type: "subscription",
+      plan: plan.id,
+    });
     const url = generateRobokassaPaymentUrl(
       session.user.id,
       sumRUB,
       desc,
       {
         Shp_subscription: "true",
+        Shp_type: "subscription",
         Shp_plan: plan.id,
         Shp_period: period,
         Shp_applyMode: applyMode,
       },
       receipt,
-      { period, amount: sumRUB }
+      { period, amount: sumRUB },
+      successUrl
     );
 
     return NextResponse.json({ url });

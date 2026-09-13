@@ -12,7 +12,9 @@ export const METRIKA_GOALS = {
   subscriptionDialog: "subscription_dialog",
   subscriptionHistory: "subscription_history",
   subscriptionUniverse: "subscription_universe",
+  subscriptionSuccess: "subscription_success",
   buyVc: "buy_vc",
+  vcPurchaseSuccess: "vc_purchase_success",
   generateAvatar: "generate_avatar",
   createCharacter: "create_character",
   saveCharacter: "save_character",
@@ -37,10 +39,14 @@ export function subscriptionGoal(planId: string): MetrikaGoal | null {
   return null;
 }
 
-export function reachGoal(goal: string) {
+export function reachGoal(goal: string, params?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
   if (typeof window.ym !== "function") return;
 
-  window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal);
-  console.log("[metrika] reachGoal", goal);
+  if (params) {
+    window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal, params);
+  } else {
+    window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal);
+  }
+  console.log("[Goal]", goal, params ?? "");
 }

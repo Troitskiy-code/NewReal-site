@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import LocaleLink from "@/components/LocaleLink";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { reachGoal, subscriptionGoal } from "@/lib/metrika";
+import { PaymentGoalTracker } from "@/lib/goalTracking";
 import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
@@ -174,8 +175,9 @@ export default function PricingPage() {
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
-
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center gap-10 overflow-y-auto px-4 py-12 scrollbar-subtle sm:px-6 lg:px-8">
+      <Suspense fallback={null}>
+        <PaymentGoalTracker />
+      </Suspense>
         <div className="space-y-4 text-center">
           <div className="mb-1 inline-flex items-center gap-2 rounded-wd-pill border border-wd-secondary/30 bg-wd-secondary/10 px-3 py-1">
             <FaCrown className="text-xs text-wd-secondary" />
