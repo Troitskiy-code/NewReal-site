@@ -155,12 +155,22 @@ export async function POST(req: NextRequest) {
 
 // ------------------ GET (получение списка персонажей) ------------------
 export async function GET(req: NextRequest) {
+  const t0 = performance.now();
+  console.log("[Characters] handler started at", new Date().toISOString());
+
   try {
     try {
+      const tEnsure = performance.now();
       await ensureCharacterSlugColumn();
+      console.log("[Characters] ensure slug", (performance.now() - tEnsure).toFixed(0), "ms");
     } catch (error) {
       console.error("[characters] Could not ensure slug column", error);
     }
+
+    const tSession = performance.now();
+    const session = await getServerSession(authOptions);
+    console.log("[Characters] session", (performance.now() - tSession).toFixed(0), "ms");
+
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
     const tagsParam = searchParams.get("tags") || "";
@@ -182,7 +192,8 @@ export async function GET(req: NextRequest) {
     const limit = clampCharactersPageLimit(parseInt(searchParams.get("limit") || "24", 10));
     const skip = (page - 1) * limit;
 
-    const session = await getServerSession(authOptions);
+    const t1 = performance.now();
+    console.log("[Characters] init", (t1 - t0).toFixed(0), "ms");
 
     const where: Record<string, unknown> = {};
 
@@ -248,8 +259,9 @@ export async function GET(req: NextRequest) {
     } as const;
 
     let characters;
-    const startedAt = Date.now();
+    const tCount = performance.now();
     const total = await prisma.character.count({ where: queryWhere });
+    console.log("[Characters] prisma count", (performance.now() - tCount).toFixed(0), "ms");
 
     const loadCharacters = async (
       cardSelect: typeof characterCardSelect | typeof characterCardSelectNoSlug
@@ -290,6 +302,7 @@ export async function GET(req: NextRequest) {
       });
     };
 
+    const t2 = performance.now();
     try {
       characters = await loadCharacters(characterCardSelect);
     } catch (error) {
@@ -297,7 +310,10 @@ export async function GET(req: NextRequest) {
       console.error("[characters] Listing without slug column");
       characters = await loadCharacters(characterCardSelectNoSlug);
     }
+    const t3 = performance.now();
+    console.log("[Characters] prisma query", (t3 - t2).toFixed(0), "ms, count:", characters.length);
 
+    const tFavorites = performance.now();
     let favoriteIds = new Set<string>();
     if (session?.user?.id && characters.length > 0) {
       const favorites = await prisma.favorite.findMany({
@@ -309,7 +325,9 @@ export async function GET(req: NextRequest) {
       });
       favoriteIds = new Set(favorites.map((favorite) => favorite.characterId));
     }
+    console.log("[Characters] favorites", (performance.now() - tFavorites).toFixed(0), "ms");
 
+    const t4 = performance.now();
     const data = characters.map((character) => ({
       ...character,
       imageUrl: toCardImageUrl(character.id, character.imageUrl, character.updatedAt),
@@ -321,12 +339,11 @@ export async function GET(req: NextRequest) {
         : character.user,
       isFavorited: favoriteIds.has(character.id),
     }));
+    const mapMs = (performance.now() - t4).toFixed(0);
+    console.log("[Characters] map", mapMs, "ms");
 
-    console.log(
-      `[characters] GET ${Date.now() - startedAt}ms page=${page} limit=${limit} sort=${sort} total=${total} returned=${data.length}`
-    );
-
-    return NextResponse.json({
+    const tJson = performance.now();
+    const payload = {
       data,
       meta: {
         total,
@@ -334,9 +351,26 @@ export async function GET(req: NextRequest) {
         limit,
         totalPages: Math.ceil(total / limit),
       },
-    });
+    };
+    const response = NextResponse.json(payload);
+    const jsonMs = (performance.now() - tJson).toFixed(0);
+    const totalMs = (performance.now() - t0).toFixed(0);
+    console.log("[Characters] json", jsonMs, "ms");
+    console.log("[Characters] total", totalMs, "ms");
+    response.headers.set(
+      "Server-Timing",
+      [
+        `init;dur=${(t1 - t0).toFixed(0)}`,
+        `prisma;dur=${(t3 - t2).toFixed(0)}`,
+        `map;dur=${mapMs}`,
+        `total;dur=${totalMs}`,
+      ].join(", ")
+    );
+
+    return response;
   } catch (error) {
     console.error("Error fetching characters:", error);
+    console.log("[Characters] total", (performance.now() - t0).toFixed(0), "ms");
     return NextResponse.json({ error: "Ошибка получения списка персонажей" }, { status: 500 });
   }
 }

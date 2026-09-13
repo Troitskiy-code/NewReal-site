@@ -2,9 +2,13 @@ import { PrismaClient } from '@prisma/client';
 
 const FALLBACK_URL = "postgresql://postgres:Timofey18012005%21@localhost:5432/ai_characters";
 
-const basePrisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL || FALLBACK_URL,
-});
+const globalForPrisma = globalThis;
+
+const basePrisma =
+  globalForPrisma.prismaBase ||
+  new PrismaClient({
+    datasourceUrl: process.env.DATABASE_URL || FALLBACK_URL,
+  });
 
 let slugColumnPromise = null;
 let notificationTablePromise = null;
@@ -105,7 +109,9 @@ function ensureNotificationTableSql() {
   return notificationTablePromise;
 }
 
-const prisma = basePrisma.$extends({
+const prisma =
+  globalForPrisma.prisma ||
+  basePrisma.$extends({
   query: {
     notification: {
       async $allOperations({ args, query }) {
@@ -173,5 +179,10 @@ const prisma = basePrisma.$extends({
     },
   },
 });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prismaBase = basePrisma;
+  globalForPrisma.prisma = prisma;
+}
 
 export { prisma };
