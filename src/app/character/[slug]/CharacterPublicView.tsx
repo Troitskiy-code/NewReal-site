@@ -39,7 +39,7 @@ export default function CharacterPublicView({ character }: { character: Characte
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description = getLocalizedCardDescription(character, locale) || "";
   const publicMemory = pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale);
-  const author = character.user.name?.trim() || t("characterPage.unknownAuthor");
+  const author = character.user?.name?.trim() || t("characterPage.unknownAuthor");
   const createdAt = new Date(character.createdAt).toLocaleDateString(dateLocale(locale), {
     day: "numeric",
     month: "long",
@@ -118,7 +118,7 @@ export default function CharacterPublicView({ character }: { character: Characte
             </div>
             <p className="flex items-center gap-1.5 rounded-wd-pill border border-wd-border bg-[#0A0A0A] px-3 py-1.5 text-xs font-bold text-white">
               <FaComments className="text-wd-text-secondary" />
-              {t("characterPage.messages", { count: character.totalMessages.toLocaleString(dateLocale(locale)) })}
+              {t("characterPage.messages", { count: (character.totalMessages ?? 0).toLocaleString(dateLocale(locale)) })}
             </p>
           </div>
 

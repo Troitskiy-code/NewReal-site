@@ -6,7 +6,7 @@ export function absoluteSiteUrl(pathname: string, locale: Locale): string {
 }
 
 export function absoluteAssetUrl(path: string | null | undefined): string {
-  if (!path) return `${SITE_URL}/logo.png`;
+  if (!path || path.startsWith("data:")) return `${SITE_URL}/logo.png`;
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   if (path.startsWith("/")) return `${SITE_URL}${path}`;
   return `${SITE_URL}/logo.png`;

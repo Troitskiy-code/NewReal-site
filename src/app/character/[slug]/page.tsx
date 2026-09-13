@@ -15,8 +15,8 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-function characterOgImage(imageUrl: string | null): string {
-  if (!imageUrl) return OG_IMAGE;
+function characterOgImage(imageUrl: string | null | undefined): string {
+  if (!imageUrl || imageUrl.startsWith("data:")) return OG_IMAGE;
   return absoluteAssetUrl(imageUrl);
 }
 
@@ -31,60 +31,69 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const locale = await getRequestLocale();
-  const viewerId = await getViewerId();
-  const character = await findCharacterBySlugForViewer(slug, viewerId);
 
-  if (!character) {
+  try {
+    const viewerId = await getViewerId();
+    const character = await findCharacterBySlugForViewer(slug, viewerId);
+
+    if (!character) {
+      return createPageMetadata(
+        translate(locale, "meta.character.fallbackTitle"),
+        translate(locale, "meta.character.fallbackDescription")
+      );
+    }
+
+    const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name ?? "";
+    const description =
+      getLocalizedCardDescription(character, locale) ||
+      pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) ||
+      translate(locale, "meta.character.description", { name: name || "Character" });
+    const truncatedDescription = truncateDescription(description || "");
+    const image = characterOgImage(character.imageUrl);
+    const pageUrl = absoluteSiteUrl(`/character/${character.slug ?? slug}`, locale);
+    const metadata = createPageMetadata(
+      translate(locale, "meta.character.title", { name: name || "Character" }),
+      truncatedDescription,
+      image
+    );
+
+    const result: Metadata = {
+      ...metadata,
+      openGraph: {
+        ...metadata.openGraph,
+        title: name,
+        description: truncatedDescription,
+        images: [{ url: image, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: name }],
+        type: "profile",
+        url: pageUrl,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: name,
+        description: truncatedDescription,
+        images: [image],
+      },
+      alternates: {
+        canonical: pageUrl,
+        languages: {
+          ru: `${SITE_URL}${withLocale(`/character/${character.slug ?? slug}`, "ru")}`,
+          en: `${SITE_URL}${withLocale(`/character/${character.slug ?? slug}`, "en")}`,
+        },
+      },
+    };
+
+    if (!character.isPublic) {
+      return { ...result, robots: { index: false, follow: false } };
+    }
+
+    return result;
+  } catch (error) {
+    console.error("[Character] generateMetadata failed", { slug, error });
     return createPageMetadata(
       translate(locale, "meta.character.fallbackTitle"),
       translate(locale, "meta.character.fallbackDescription")
     );
   }
-
-  const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
-  const description =
-    getLocalizedCardDescription(character, locale) ||
-    pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) ||
-    translate(locale, "meta.character.description", { name });
-  const truncatedDescription = truncateDescription(description);
-  const image = characterOgImage(character.imageUrl);
-  const pageUrl = absoluteSiteUrl(`/character/${character.slug}`, locale);
-  const metadata = createPageMetadata(
-    translate(locale, "meta.character.title", { name }),
-    truncatedDescription,
-    image
-  );
-
-  const result: Metadata = {
-    ...metadata,
-    openGraph: {
-      ...metadata.openGraph,
-      title: name,
-      description: truncatedDescription,
-      images: [{ url: image, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: name }],
-      type: "profile",
-      url: pageUrl,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: name,
-      description: truncatedDescription,
-      images: [image],
-    },
-    alternates: {
-      canonical: pageUrl,
-      languages: {
-        ru: `${SITE_URL}${withLocale(`/character/${character.slug}`, "ru")}`,
-        en: `${SITE_URL}${withLocale(`/character/${character.slug}`, "en")}`,
-      },
-    },
-  };
-
-  if (!character.isPublic) {
-    return { ...result, robots: { index: false, follow: false } };
-  }
-
-  return result;
 }
 
 export default async function CharacterPage({ params }: PageProps) {
@@ -126,8 +135,23 @@ export default async function CharacterPage({ params }: PageProps) {
       <main className="flex-1 px-4 py-8 sm:px-6">
         <CharacterPublicView
           character={{
-            ...character,
+            id: character.id,
+            slug: character.slug,
+            name: character.name,
+            name_en: character.name_en,
+            description: character.description,
+            description_en: character.description_en,
+            descriptionCard: character.descriptionCard,
+            descriptionCard_en: character.descriptionCard_en,
+            imageUrl: character.imageUrl,
+            publicMemory: character.publicMemory,
+            publicMemory_en: character.publicMemory_en,
+            totalMessages: character.totalMessages ?? 0,
             createdAt: character.createdAt.toISOString(),
+            user: {
+              name: character.user?.name ?? null,
+              image: character.user?.image ?? null,
+            },
           }}
         />
       </main>

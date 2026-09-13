@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildCharacterSlug } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
+import { stripInlineUserImage, toCardImageUrl } from "@/lib/characterCardImage";
 
 export const publicCharacterSelect = {
   id: true,
@@ -18,6 +19,7 @@ export const publicCharacterSelect = {
   publicMemory_en: true,
   totalMessages: true,
   createdAt: true,
+  updatedAt: true,
   isPublic: true,
   userId: true,
   user: {
@@ -42,6 +44,7 @@ export type PublicCharacterRecord = {
   publicMemory_en: unknown;
   totalMessages: number;
   createdAt: Date;
+  updatedAt: Date;
   isPublic: boolean;
   user: {
     name: string | null;
@@ -74,8 +77,14 @@ export async function findCharacterBySlugForViewer(
   viewerId: string | null
 ): Promise<PublicCharacterRecord | null> {
   await ensureCharacterSlugColumn();
+  let normalizedSlug = slug.trim();
+  try {
+    normalizedSlug = decodeURIComponent(slug).trim();
+  } catch {
+    normalizedSlug = slug.trim();
+  }
   const character = await prisma.character.findUnique({
-    where: { slug },
+    where: { slug: normalizedSlug },
     select: publicCharacterSelect,
   });
 
@@ -94,13 +103,17 @@ export async function findCharacterBySlugForViewer(
     description_en: character.description_en,
     descriptionCard: character.descriptionCard,
     descriptionCard_en: character.descriptionCard_en,
-    imageUrl: character.imageUrl,
+    imageUrl: toCardImageUrl(character.id, character.imageUrl, character.updatedAt),
     publicMemory: character.publicMemory,
     publicMemory_en: character.publicMemory_en,
     totalMessages: character.totalMessages,
     createdAt: character.createdAt,
+    updatedAt: character.updatedAt,
     isPublic: character.isPublic,
-    user: character.user,
+    user: {
+      name: character.user?.name ?? null,
+      image: stripInlineUserImage(character.user?.image),
+    },
   };
 }
 
