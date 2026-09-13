@@ -19,6 +19,7 @@ const profileCharacterSelectNoSlug = {
   isPublic: true,
   totalMessages: true,
   createdAt: true,
+  updatedAt: true,
 } as const;
 
 const profileCharacterSelect = {
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
 
     const data = characters.map((character) => ({
       ...character,
-      imageUrl: toCardImageUrl(character.id, character.imageUrl),
+      imageUrl: toCardImageUrl(character.id, character.imageUrl, character.updatedAt),
       isFavorited: favoriteIds.has(character.id),
     }));
 

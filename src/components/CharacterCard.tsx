@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import FavoriteButton from "@/components/FavoriteButton";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { captureCharacterReturn } from "@/lib/characterReturn";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 
 type CharacterCardProps = {
   character: {
@@ -18,6 +19,7 @@ type CharacterCardProps = {
     descriptionCard?: string | null;
     descriptionCard_en?: string | null;
     imageUrl?: string | null;
+    updatedAt?: string | Date | null;
     isFavorited?: boolean;
     totalMessages?: number;
   };
@@ -33,6 +35,9 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
   const description = getLocalizedCardDescription(character, locale) || t("characterCard.noDescription");
 
   const href = character.slug ? `/character/${character.slug}` : `/chat/${character.id}`;
+  const avatarUrl = character.imageUrl?.includes("/api/characters/")
+    ? characterAvatarPath(character.id, character.updatedAt)
+    : character.imageUrl;
 
   return (
     <LocaleLink
@@ -42,9 +47,9 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
     >
       <article className="relative flex h-[260px] min-w-0 flex-col overflow-hidden rounded-xl border border-wd-border bg-[#2A2A2A] shadow-wd transition-all duration-300 max-[400px]:h-[240px] md:block md:h-[340px] md:rounded-3xl lg:h-[380px] hover:-translate-y-0.5 hover:border-wd-secondary/50 hover:shadow-[0_12px_32px_rgba(108,99,255,0.18)] md:hover:-translate-y-1 md:hover:scale-[1.02] md:hover:shadow-[0_16px_48px_rgba(108,99,255,0.2)]">
         <div className="absolute inset-0 overflow-hidden">
-          {character.imageUrl ? (
+          {avatarUrl ? (
             <img
-              src={character.imageUrl}
+              src={avatarUrl}
               alt={name}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />

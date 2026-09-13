@@ -7,6 +7,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+const YEAR_CACHE = "public, max-age=31536000, immutable";
+
 function parseDataUrl(value: string): { mime: string; body: Buffer } | null {
   if (!value.startsWith("data:")) return null;
   const comma = value.indexOf(",");
@@ -20,12 +22,22 @@ function parseDataUrl(value: string): { mime: string; body: Buffer } | null {
   return { mime, body };
 }
 
+function contentTypeFor(mime: string): string {
+  const lower = mime.toLowerCase();
+  if (lower.includes("jpeg") || lower.includes("jpg")) return "image/jpeg";
+  if (lower.includes("png")) return "image/png";
+  if (lower.includes("webp")) return "image/webp";
+  if (lower.includes("gif")) return "image/gif";
+  if (lower.includes("avif")) return "image/avif";
+  return lower.startsWith("image/") ? lower.split(";")[0].trim() : "image/jpeg";
+}
+
 export async function GET(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const character = await prisma.character.findUnique({
       where: { id },
-      select: { imageUrl: true, isPublic: true, userId: true },
+      select: { imageUrl: true, isPublic: true, userId: true, updatedAt: true },
     });
 
     if (!character?.imageUrl) {
@@ -40,9 +52,12 @@ export async function GET(req: NextRequest, context: RouteContext) {
     }
 
     const imageUrl = character.imageUrl;
+    const cacheControl = character.isPublic ? YEAR_CACHE : "private, no-store";
 
     if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("/")) {
-      return NextResponse.redirect(new URL(imageUrl, req.url));
+      const response = NextResponse.redirect(new URL(imageUrl, req.url));
+      response.headers.set("Cache-Control", cacheControl);
+      return response;
     }
 
     const parsed = imageUrl.startsWith("data:") ? parseDataUrl(imageUrl) : null;
@@ -52,8 +67,9 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
     return new NextResponse(new Uint8Array(parsed.body), {
       headers: {
-        "Content-Type": parsed.mime,
-        "Cache-Control": "public, max-age=86400",
+        "Content-Type": contentTypeFor(parsed.mime),
+        "Cache-Control": cacheControl,
+        "CDN-Cache-Control": cacheControl,
       },
     });
   } catch (error) {

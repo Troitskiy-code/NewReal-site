@@ -19,6 +19,7 @@ const characterSelectNoSlug = {
   userId: true,
   totalMessages: true,
   createdAt: true,
+  updatedAt: true,
   user: {
     select: {
       name: true,
@@ -67,7 +68,7 @@ export async function GET() {
 
     const data = favorites.map((favorite) => ({
       ...favorite.character,
-      imageUrl: toCardImageUrl(favorite.character.id, favorite.character.imageUrl),
+      imageUrl: toCardImageUrl(favorite.character.id, favorite.character.imageUrl, favorite.character.updatedAt),
       user: favorite.character.user
         ? {
             name: favorite.character.user.name,

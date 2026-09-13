@@ -233,6 +233,7 @@ export async function GET(req: NextRequest) {
       userId: true,
       totalMessages: true,
       createdAt: true,
+      updatedAt: true,
       user: {
         select: {
           name: true,
@@ -311,7 +312,7 @@ export async function GET(req: NextRequest) {
 
     const data = characters.map((character) => ({
       ...character,
-      imageUrl: toCardImageUrl(character.id, character.imageUrl),
+      imageUrl: toCardImageUrl(character.id, character.imageUrl, character.updatedAt),
       user: character.user
         ? {
             name: character.user.name,
