@@ -178,6 +178,8 @@ export default function PricingPage() {
       <Suspense fallback={null}>
         <PaymentGoalTracker />
       </Suspense>
+
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center gap-10 overflow-y-auto px-4 py-12 scrollbar-subtle sm:px-6 lg:px-8">
         <div className="space-y-4 text-center">
           <div className="mb-1 inline-flex items-center gap-2 rounded-wd-pill border border-wd-secondary/30 bg-wd-secondary/10 px-3 py-1">
             <FaCrown className="text-xs text-wd-secondary" />
