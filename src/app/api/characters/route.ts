@@ -11,6 +11,7 @@ import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { temporaryCharacterSlug } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { clampCharactersPageLimit } from "@/lib/charactersList";
+import { stripInlineUserImage, toCardImageUrl } from "@/lib/characterCardImage";
 
 export const maxDuration = 60;
 
@@ -226,8 +227,6 @@ export async function GET(req: NextRequest) {
       description_en: true,
       descriptionCard: true,
       descriptionCard_en: true,
-      publicMemory: true,
-      publicMemory_en: true,
       tags: true,
       imageUrl: true,
       isPublic: true,
@@ -312,6 +311,13 @@ export async function GET(req: NextRequest) {
 
     const data = characters.map((character) => ({
       ...character,
+      imageUrl: toCardImageUrl(character.id, character.imageUrl),
+      user: character.user
+        ? {
+            name: character.user.name,
+            image: stripInlineUserImage(character.user.image),
+          }
+        : character.user,
       isFavorited: favoriteIds.has(character.id),
     }));
 

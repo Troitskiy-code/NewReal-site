@@ -18,8 +18,6 @@ import type { JWT } from "next-auth/jwt";
 
 export { isGoogleAuthEnabled };
 
-const EMAIL_VERIFIED_REFRESH_MS = 5 * 60 * 1000;
-
 function toEmailVerifiedTokenValue(
   value: Date | string | null | undefined
 ): string | null {
@@ -230,7 +228,6 @@ export const authOptions: AuthOptions = {
           session.user.emailVerified = token.emailVerified;
         }
       }
-      await activatePendingForUserId(user?.id ?? token?.sub);
       return session;
     },
     async jwt({ token, user, account, trigger }) {
@@ -253,12 +250,7 @@ export const authOptions: AuthOptions = {
       }
 
       const userId = String(token.id || token.sub || "");
-      const shouldRefresh =
-        trigger === "update" ||
-        !token.emailVerifiedChecked ||
-        Date.now() - Number(token.emailVerifiedChecked || 0) > EMAIL_VERIFIED_REFRESH_MS;
-
-      if (userId && shouldRefresh) {
+      if (userId && trigger === "update") {
         try {
           await refreshEmailVerifiedToken(token, userId);
         } catch (error) {

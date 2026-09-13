@@ -4,7 +4,7 @@ import LocaleLink from "@/components/LocaleLink";
 import { FaComments, FaUser } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import FavoriteButton from "@/components/FavoriteButton";
-import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
+import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { captureCharacterReturn } from "@/lib/characterReturn";
 
 type CharacterCardProps = {
@@ -17,8 +17,6 @@ type CharacterCardProps = {
     description_en?: string | null;
     descriptionCard?: string | null;
     descriptionCard_en?: string | null;
-    publicMemory?: unknown;
-    publicMemory_en?: unknown;
     imageUrl?: string | null;
     isFavorited?: boolean;
     totalMessages?: number;
@@ -33,7 +31,6 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
   const totalMessages = character.totalMessages ?? 0;
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description = getLocalizedCardDescription(character, locale) || t("characterCard.noDescription");
-  const publicMemory = pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale);
 
   const href = character.slug ? `/character/${character.slug}` : `/chat/${character.id}`;
 
@@ -82,12 +79,6 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
           <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-200 [text-shadow:0_1px_2px_rgba(0,0,0,0.85)] md:text-gray-400">
             {description}
           </p>
-          {publicMemory ? (
-            <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-gray-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
-              <span className="font-semibold text-white/90">{t("characterCard.knownAbout")} </span>
-              {publicMemory}
-            </p>
-          ) : null}
         </div>
 
         <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-t from-black/85 via-black/25 to-transparent md:block" />
