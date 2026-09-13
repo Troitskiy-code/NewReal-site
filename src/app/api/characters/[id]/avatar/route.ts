@@ -8,11 +8,14 @@ type RouteContext = {
 };
 
 function parseDataUrl(value: string): { mime: string; body: Buffer } | null {
-  const match = value.match(/^data:([^;,]+)?(;base64)?,(.*)$/s);
-  if (!match) return null;
-  const mime = match[1]?.trim() || "application/octet-stream";
-  const base64 = Boolean(match[2]);
-  const payload = match[3] || "";
+  if (!value.startsWith("data:")) return null;
+  const comma = value.indexOf(",");
+  if (comma < 0) return null;
+  const header = value.slice("data:".length, comma);
+  const payload = value.slice(comma + 1);
+  const parts = header.split(";");
+  const mime = parts[0]?.trim() || "application/octet-stream";
+  const base64 = parts.some((part) => part.trim().toLowerCase() === "base64");
   const body = Buffer.from(payload, base64 ? "base64" : "utf8");
   return { mime, body };
 }
