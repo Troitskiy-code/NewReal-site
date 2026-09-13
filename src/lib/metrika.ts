@@ -32,10 +32,15 @@ declare global {
   }
 }
 
+export function metrikaPlanSlug(planId: string): string {
+  return planId === "story" ? "history" : planId;
+}
+
 export function subscriptionGoal(planId: string): MetrikaGoal | null {
-  if (planId === "dialog") return METRIKA_GOALS.subscriptionDialog;
-  if (planId === "story" || planId === "history") return METRIKA_GOALS.subscriptionHistory;
-  if (planId === "universe") return METRIKA_GOALS.subscriptionUniverse;
+  const slug = metrikaPlanSlug(planId);
+  if (slug === "dialog") return METRIKA_GOALS.subscriptionDialog;
+  if (slug === "history") return METRIKA_GOALS.subscriptionHistory;
+  if (slug === "universe") return METRIKA_GOALS.subscriptionUniverse;
   return null;
 }
 

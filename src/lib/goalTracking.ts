@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { METRIKA_GOALS, reachGoal, subscriptionGoal } from "@/lib/metrika";
 
 function shp(searchParams: URLSearchParams, key: string): string {
   return (searchParams.get(key) || searchParams.get(key.toLowerCase()) || "").trim();
@@ -29,11 +29,17 @@ export function usePaymentGoal() {
 
     const timer = window.setTimeout(() => {
       if (isSubscription) {
+        const planGoal = subscriptionGoal(plan);
         reachGoal(METRIKA_GOALS.subscriptionSuccess, { plan });
-        console.log("[Goal] subscription_success fired", { plan });
+        if (planGoal) reachGoal(planGoal);
+        console.log("[Goal] subscription events fired", {
+          type: "subscription",
+          plan,
+          planGoal: planGoal ?? null,
+        });
       } else {
         reachGoal(METRIKA_GOALS.vcPurchaseSuccess);
-        console.log("[Goal] vc_purchase_success fired");
+        console.log("[Goal] vc_purchase_success fired", { type: "vc" });
       }
       clearPaymentQuery();
     }, 1000);

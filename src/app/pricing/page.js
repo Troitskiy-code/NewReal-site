@@ -6,7 +6,6 @@ import LocaleLink from "@/components/LocaleLink";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
-import { reachGoal, subscriptionGoal } from "@/lib/metrika";
 import { PaymentGoalTracker } from "@/lib/goalTracking";
 import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -127,9 +126,6 @@ export default function PricingPage() {
   };
 
   const handleSubscribe = (plan) => {
-    const goal = subscriptionGoal(plan.id);
-    if (goal) reachGoal(goal);
-
     setApplyMode("immediate");
     setRecurringConsent(false);
     setSelectedPlan(plan);
@@ -147,8 +143,6 @@ export default function PricingPage() {
       router.push(withLocale("/login", locale));
       return;
     }
-    const goal = subscriptionGoal(selectedPlan.id);
-    if (goal) reachGoal(goal);
     console.log("[Consent] recurring checkout", { planId: selectedPlan.id });
     const mode = hasActiveSubscription ? applyMode : "immediate";
     const plan = selectedPlan;

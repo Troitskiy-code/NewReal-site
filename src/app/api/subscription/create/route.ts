@@ -7,6 +7,7 @@ import { buildReceipt, buildRobokassaSuccessUrl, generateRobokassaPaymentUrl } f
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 import { getRequestLocale } from "@/lib/getRequestLocale";
+import { metrikaPlanSlug } from "@/lib/metrika";
 
 export async function POST(req: NextRequest) {
   try {
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     const successUrl = buildRobokassaSuccessUrl("/pricing", locale, {
       payment: "success",
       type: "subscription",
-      plan: plan.id,
+      plan: metrikaPlanSlug(plan.id),
     });
     const url = generateRobokassaPaymentUrl(
       session.user.id,
