@@ -296,8 +296,18 @@ function throwIfFailed(result: CreateyaRunResult) {
 function buildCreateyaInput(model: string, prompt: string, uploadedUrl?: string): Record<string, unknown> {
   const isGpt = model.startsWith("gpt-image");
   const isFluxKontext = model.startsWith("flux-kontext");
+  const isFlux2 = model.startsWith("flux-2");
   const isNanoBanana = model.startsWith("nano-banana");
   const input: Record<string, unknown> = { prompt };
+
+  if (isFlux2) {
+    input.image_size = "portrait_4_3";
+    input.output_format = "png";
+    if (uploadedUrl) {
+      input.image_urls = [uploadedUrl];
+    }
+    return input;
+  }
 
   if (isGpt || isNanoBanana) {
     input.aspect_ratio = "3:4";

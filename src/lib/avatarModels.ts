@@ -10,6 +10,14 @@ export const AVATAR_MODELS = [
     costMultiplier: 1,
   },
   {
+    id: "flux-2-pro",
+    name: "FLUX 2 Pro",
+    description: "Новое поколение FLUX: детализация и точное следование промпту",
+    apiModel: "flux-2-pro-t2i",
+    apiModelI2i: "flux-2-pro-i2i",
+    costMultiplier: 1,
+  },
+  {
     id: "grok-imagine",
     name: "Grok Imagine",
     description: "Быстрая генерация в любом стиле (аниме, реализм, арт)",
