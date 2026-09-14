@@ -24,6 +24,12 @@ function toViewData(raw: Record<string, unknown>): CharacterPublicViewData | nul
       : raw.createdAt instanceof Date
         ? raw.createdAt.toISOString()
         : new Date().toISOString();
+  const updatedAt =
+    typeof raw.updatedAt === "string"
+      ? raw.updatedAt
+      : raw.updatedAt instanceof Date
+        ? raw.updatedAt.toISOString()
+        : null;
 
   return {
     id: raw.id,
@@ -34,17 +40,12 @@ function toViewData(raw: Record<string, unknown>): CharacterPublicViewData | nul
     description_en: typeof raw.description_en === "string" ? raw.description_en : null,
     descriptionCard: typeof raw.descriptionCard === "string" ? raw.descriptionCard : null,
     descriptionCard_en: typeof raw.descriptionCard_en === "string" ? raw.descriptionCard_en : null,
-    imageUrl:
-      typeof raw.id === "string"
-        ? characterAvatarPath(
-            raw.id,
-            typeof raw.updatedAt === "string" || raw.updatedAt instanceof Date ? raw.updatedAt : null
-          )
-        : null,
+    imageUrl: characterAvatarPath(raw.id, updatedAt),
     publicMemory: raw.publicMemory ?? null,
     publicMemory_en: raw.publicMemory_en ?? null,
     totalMessages: typeof raw.totalMessages === "number" ? raw.totalMessages : 0,
     createdAt,
+    updatedAt,
     user: {
       name: typeof user.name === "string" ? user.name : null,
       image: typeof user.image === "string" ? user.image : null,
@@ -60,7 +61,10 @@ export default function CharacterPublicViewLoader({ slug }: { slug: string }) {
     const controller = new AbortController();
     setState({ status: "loading" });
 
-    fetch(`/api/characters/slug/${encodeURIComponent(slug)}`, { signal: controller.signal })
+    fetch(`/api/characters/slug/${encodeURIComponent(slug)}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("not-found");
         const payload = (await response.json()) as Record<string, unknown>;

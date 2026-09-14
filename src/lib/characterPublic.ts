@@ -140,6 +140,7 @@ export function toPublicCharacterPayload(character: PublicCharacterRecord) {
     publicMemory_en: character.publicMemory_en,
     totalMessages: character.totalMessages,
     createdAt: character.createdAt,
+    updatedAt: character.updatedAt,
     user: character.user,
   };
 }

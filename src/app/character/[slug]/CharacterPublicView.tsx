@@ -26,6 +26,7 @@ export type CharacterPublicViewData = {
   publicMemory_en: unknown;
   totalMessages: number;
   createdAt: string;
+  updatedAt?: string | null;
   user: {
     name: string | null;
     image: string | null;
@@ -84,7 +85,7 @@ export default function CharacterPublicView({ character }: { character: Characte
   };
 
   const chatHref = `/chat/${character.id}`;
-  const avatarUrl = characterAvatarPath(character.id);
+  const avatarUrl = characterAvatarPath(character.id, character.updatedAt);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
