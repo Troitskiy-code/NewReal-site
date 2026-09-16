@@ -10,12 +10,14 @@ export function stripModerationFields<T extends object>(character: T) {
     moderationReason: _reason,
     moderationWarnedAt: _warnedAt,
     violationCount: _count,
+    publishLocked: _locked,
     ...rest
   } = character as T & {
     moderationStatus?: unknown;
     moderationReason?: unknown;
     moderationWarnedAt?: unknown;
     violationCount?: unknown;
+    publishLocked?: unknown;
   };
   return rest;
 }

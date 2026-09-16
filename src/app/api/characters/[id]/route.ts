@@ -112,10 +112,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.scenario !== undefined) data.scenario = parsed.scenario ?? null;
     if (body.exampleDialogs !== undefined) data.exampleDialogs = parsed.exampleDialogs ?? null;
     if (body.avatarPrompt !== undefined) data.avatarPrompt = parsed.avatarPrompt ?? null;
-    if (body.isPublic !== undefined) {
-      data.isPublic =
-        authResult.character.moderationStatus === "warning" ? false : parsed.isPublic;
-    }
+    if (body.isPublic !== undefined) data.isPublic = parsed.isPublic;
     if (body.publicMemory !== undefined) data.publicMemory = parsed.publicMemory ?? Prisma.DbNull;
     if (body.privateMemory !== undefined) data.privateMemory = parsed.privateMemory ?? Prisma.DbNull;
     if (body.memoryPermissions !== undefined) {

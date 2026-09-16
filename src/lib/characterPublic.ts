@@ -26,6 +26,7 @@ export const publicCharacterSelect = {
   moderationStatus: true,
   moderationReason: true,
   moderationWarnedAt: true,
+  violationCount: true,
   user: {
     select: {
       name: true,
@@ -53,6 +54,7 @@ export type PublicCharacterRecord = {
   moderationStatus: string | null;
   moderationReason: string | null;
   moderationWarnedAt: Date | null;
+  violationCount: number;
   user: {
     name: string | null;
     image: string | null;
@@ -122,6 +124,7 @@ export async function findCharacterBySlugForViewer(
     moderationStatus: character.moderationStatus,
     moderationReason: character.moderationReason,
     moderationWarnedAt: character.moderationWarnedAt,
+    violationCount: character.violationCount,
     user: {
       name: character.user?.name ?? null,
       image: null,

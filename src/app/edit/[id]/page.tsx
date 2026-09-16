@@ -66,7 +66,6 @@ export default function EditCharacterPage() {
 
       try {
         const { data } = await axios.get<Character>(`/api/characters/${id}`);
-        const warned = data.moderationStatus === "warning";
         setModerationStatus(data.moderationStatus ?? null);
         setModerationReason(data.moderationReason ?? null);
         setForm({
@@ -80,7 +79,7 @@ export default function EditCharacterPage() {
           avatarPrompt: data.avatarPrompt || "",
           systemPrompt: data.systemPrompt || "",
           tags: data.tags || "",
-          isPublic: warned ? false : data.isPublic,
+          isPublic: data.isPublic,
           publicMemory: memoryToText(data.publicMemory),
           privateMemory: memoryToText(data.privateMemory),
         });
@@ -194,7 +193,7 @@ export default function EditCharacterPage() {
         tags: form.tags.trim() || null,
         imageUrl: finalImageUrl,
         imageLora: finalImageLora,
-        isPublic: moderationStatus === "warning" ? false : form.isPublic,
+        isPublic: form.isPublic,
         publicMemory: form.publicMemory,
         privateMemory: form.privateMemory,
       });

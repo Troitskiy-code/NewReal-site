@@ -142,10 +142,9 @@ function ImageUploadField({ preview, onChange, onRemove, footerHint, error }: Im
 type VisibilityToggleProps = {
   isPublic: boolean;
   onChange: (isPublic: boolean) => void;
-  locked?: boolean;
 };
 
-function VisibilityToggle({ isPublic, onChange, locked = false }: VisibilityToggleProps) {
+function VisibilityToggle({ isPublic, onChange }: VisibilityToggleProps) {
   const base = "flex-1 rounded-lg border px-6 py-3 text-base font-bold transition-colors";
   const active = "border-[#6C63FF] bg-[#6C63FF] text-white";
   const inactive = "border-gray-500 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-300";
@@ -154,9 +153,8 @@ function VisibilityToggle({ isPublic, onChange, locked = false }: VisibilityTogg
     <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
       <button
         type="button"
-        disabled={locked}
         onClick={() => onChange(true)}
-        className={`${base} w-full sm:flex-1 ${isPublic ? active : inactive} disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${base} w-full sm:flex-1 ${isPublic ? active : inactive}`}
       >
         Публичный
       </button>
@@ -824,11 +822,7 @@ export default function CharacterForm({
       </FormBlock>
 
       <section className="space-y-3">
-        <VisibilityToggle
-          isPublic={isWarned ? false : values.isPublic}
-          locked={isWarned}
-          onChange={(v) => onChange("isPublic", v)}
-        />
+        <VisibilityToggle isPublic={values.isPublic} onChange={(v) => onChange("isPublic", v)} />
         <p className="text-sm leading-relaxed text-gray-400">
           <Trans
             i18nKey="characterForm.rulesHint"

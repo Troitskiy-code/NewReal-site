@@ -253,6 +253,7 @@ export async function GET(req: NextRequest) {
       moderationStatus: true,
       moderationReason: true,
       moderationWarnedAt: true,
+      violationCount: true,
       user: {
         select: {
           name: true,
