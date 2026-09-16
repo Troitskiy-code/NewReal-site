@@ -24,6 +24,9 @@ export default function Footer() {
         <LocaleLink href="/refund" className="text-wd-text-secondary transition-colors hover:text-white">
           {t("footer.refund")}
         </LocaleLink>
+        <LocaleLink href="/rules" className="text-wd-text-secondary transition-colors hover:text-white">
+          {t("footer.rules")}
+        </LocaleLink>
         <LocaleLink href="/support" className="text-wd-text-secondary transition-colors hover:text-white">
           {t("footer.support")}
         </LocaleLink>

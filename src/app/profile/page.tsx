@@ -45,6 +45,9 @@ type Character = {
   createdAt: string;
   updatedAt?: string | null;
   isFavorited?: boolean;
+  moderationStatus?: string | null;
+  moderationReason?: string | null;
+  moderationWarnedAt?: string | null;
 };
 
 type CharactersResponse = {
@@ -423,14 +426,23 @@ export default function ProfilePage() {
                         iconSize={14}
                       />
                       {!character.isPublic && (
-                        <span className="absolute top-2 left-2 text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-[#0A0A0A]/90 text-wd-text-secondary border border-wd-border">
-                          {t("profile.private")}
+                        <span className={`absolute top-2 left-2 text-[9px] uppercase font-bold px-2 py-0.5 rounded border ${
+                          character.moderationStatus === "warning"
+                            ? "bg-orange-500/20 text-orange-200 border-orange-500/40"
+                            : "bg-[#0A0A0A]/90 text-wd-text-secondary border-wd-border"
+                        }`}>
+                          {character.moderationStatus === "warning"
+                            ? `⚠️ ${t("profile.hiddenForViolation")}`
+                            : t("profile.private")}
                         </span>
                       )}
                     </div>
 
                     <div className="p-4 flex flex-col gap-2 flex-1">
-                      <h3 className="text-sm font-extrabold text-white truncate">{name}</h3>
+                      <h3 className="text-sm font-extrabold text-white truncate">
+                        {character.moderationStatus === "warning" ? "⚠️ " : ""}
+                        {name}
+                      </h3>
                       <p className="text-xs text-wd-text-secondary line-clamp-3 leading-relaxed flex-1">
                         {getLocalizedCardDescription(character, i18n.language) || t("profile.noDescription")}
                       </p>

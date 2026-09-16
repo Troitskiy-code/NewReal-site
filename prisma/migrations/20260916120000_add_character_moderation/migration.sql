@@ -1,0 +1,4 @@
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "moderationStatus" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "moderationReason" TEXT;
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "moderationWarnedAt" TIMESTAMP(3);
+ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "violationCount" INTEGER NOT NULL DEFAULT 0;

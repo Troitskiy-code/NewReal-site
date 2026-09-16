@@ -7,6 +7,8 @@ import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/tr
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
+import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
+import { ownerModerationFields, stripModerationFields } from "@/lib/characterModeration";
 import { Prisma } from "@prisma/client";
 
 export const maxDuration = 60;
@@ -32,6 +34,7 @@ async function getAuthorizedCharacter(id: string, userId: string) {
 export async function GET(_req: NextRequest, context: RouteContext) {
   try {
     await ensureCharacterSlugColumn();
+    await ensureCharacterModerationColumns();
     const { id } = await context.params;
     const session = await getServerSession(authOptions);
 
@@ -47,7 +50,14 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
-    return NextResponse.json(sanitizeCharacterMemory(character, session?.user?.id ?? null));
+    const sanitized = stripModerationFields(
+      sanitizeCharacterMemory(character, session?.user?.id ?? null)
+    );
+    const payload = isOwner
+      ? { ...sanitized, ...ownerModerationFields(character, session?.user?.id) }
+      : sanitized;
+
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Character fetch error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
@@ -62,6 +72,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     }
 
     await ensureCharacterSlugColumn();
+    await ensureCharacterModerationColumns();
 
     const { id } = await context.params;
     const authResult = await getAuthorizedCharacter(id, session.user.id);
@@ -76,6 +87,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       const message = err instanceof Error ? err.message : "Некорректные данные";
       return NextResponse.json({ error: message }, { status: 400 });
     }
+
+    // TODO: auto-moderate edited characters via a KodikRouter moderator model. Manual admin API for now.
 
     const data: Prisma.CharacterUpdateInput = {};
 
@@ -99,7 +112,10 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.scenario !== undefined) data.scenario = parsed.scenario ?? null;
     if (body.exampleDialogs !== undefined) data.exampleDialogs = parsed.exampleDialogs ?? null;
     if (body.avatarPrompt !== undefined) data.avatarPrompt = parsed.avatarPrompt ?? null;
-    if (body.isPublic !== undefined) data.isPublic = parsed.isPublic;
+    if (body.isPublic !== undefined) {
+      data.isPublic =
+        authResult.character.moderationStatus === "warning" ? false : parsed.isPublic;
+    }
     if (body.publicMemory !== undefined) data.publicMemory = parsed.publicMemory ?? Prisma.DbNull;
     if (body.privateMemory !== undefined) data.privateMemory = parsed.privateMemory ?? Prisma.DbNull;
     if (body.memoryPermissions !== undefined) {
@@ -163,7 +179,10 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       console.log(`[Memory] Updated via character PUT character=${id} user=${session.user.id}`);
     }
 
-    return NextResponse.json(sanitizeCharacterMemory(character, session.user.id));
+    return NextResponse.json({
+      ...stripModerationFields(sanitizeCharacterMemory(character, session.user.id)),
+      ...ownerModerationFields(character, session.user.id),
+    });
   } catch (error) {
     console.error("Character update error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });

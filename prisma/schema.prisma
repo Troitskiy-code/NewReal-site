@@ -75,6 +75,10 @@ model Character {
   publicMemory_en   Json?
   privateMemory_en  Json?
   systemPrompt      String?   @db.Text
+  moderationStatus    String?
+  moderationReason    String?   @db.Text
+  moderationWarnedAt  DateTime?
+  violationCount      Int       @default(0)
 
   @@index([isPublic])
   @@index([totalMessages])

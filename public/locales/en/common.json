@@ -22,6 +22,7 @@
     "terms": "Terms of use",
     "privacy": "Privacy policy",
     "refund": "Refund policy",
+    "rules": "Platform rules",
     "support": "Support",
     "copyright": "© {{year}} NewVerse — Your universe of characters"
   },
@@ -78,7 +79,8 @@
     "loading": "Loading...",
     "consentTerms": "I accept the <terms>Terms of Use</terms> and consent to personal data processing under the <privacy>Privacy Policy</privacy>.",
     "consentOffer": "I have read the <offer>Public Offer</offer> and accept its terms.",
-    "consentRequired": "Please accept both required consents to sign up.",
+    "consentRules": "I have read the <rules>platform rules</rules>.",
+    "consentRequired": "Please accept all required consents to sign up.",
     "verifyTitle": "Confirm email",
     "verifying": "Confirming your email...",
     "verifySuccess": "Email confirmed! You now have full access to all features.",
@@ -177,6 +179,7 @@
     "empty": "You have not created any characters yet",
     "createFirst": "Create your first character",
     "private": "Private",
+    "hiddenForViolation": "Hidden for a rule violation",
     "noDescription": "No description",
     "chat": "Chat",
     "deleteConfirm": "Are you sure you want to delete {{name}}? This cannot be undone.",
@@ -396,7 +399,42 @@
       "description": "{{name}} on NewVerse. Start a roleplay and learn their story.",
       "fallbackTitle": "Character — NewVerse",
       "fallbackDescription": "Public character page on NewVerse."
+    },
+    "rules": {
+      "title": "Platform rules — NewVerse",
+      "description": "Character publishing rules and consequences of violations on NewVerse."
     }
+  },
+  "moderation": {
+    "warningTitle": "Your character was hidden for a rule violation",
+    "warningBody": "Your character was hidden from public access for violating the platform rules. Reason: {{reason}}. Please read the <rules>rules</rules>. A repeat violation will result in the character being deleted.",
+    "unknownReason": "a platform rules violation",
+    "hiddenBadge": "Hidden for a rule violation"
+  },
+  "characterForm": {
+    "rulesHint": "By creating a character, you agree to the <rules>platform rules</rules>."
+  },
+  "rules": {
+    "title": "Platform rules",
+    "intro": "By publishing characters on NewVerse, you agree to follow these rules. Violations are reviewed by moderators.",
+    "prohibitedTitle": "Prohibited content",
+    "prohibitedItems": [
+      "Sexualized content involving minors (under Federal Law 149-FZ and Article 242 of the Criminal Code of the Russian Federation).",
+      "Promotion of drugs, extremism, or terrorism.",
+      "Detailed cruelty or violence against people or animals.",
+      "Incitement of hatred based on race, nationality, or religion.",
+      "Spam or advertising of third-party services.",
+      "Fraud and financial pyramids.",
+      "Copyright infringement (copying characters from protected works without permission)."
+    ],
+    "consequencesTitle": "Consequences of violations",
+    "consequenceItems": [
+      "1st violation — the character is hidden from public access and a warning is issued.",
+      "2nd violation — the character is deleted.",
+      "3rd violation — the account is blocked."
+    ],
+    "appealTitle": "How to appeal",
+    "appeal": "Write to"
   },
   "email": {
     "resetSubject": "Password reset — NewVerse",
@@ -420,7 +458,7 @@
     "userNotFound": "User not found",
     "wrongPassword": "Incorrect password",
     "missingCredentials": "Email or password is missing",
-    "consentRequired": "You must accept the terms of use, privacy policy, and public offer",
+    "consentRequired": "You must accept the terms of use, privacy policy, public offer, and platform rules",
     "tokenRequired": "Token is required",
     "invalidVerificationLink": "This link is invalid or has expired",
     "emailAlreadyVerified": "Email is already confirmed",

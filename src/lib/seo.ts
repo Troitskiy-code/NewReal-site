@@ -30,7 +30,8 @@ export type MetaPageKey =
   | "resetPassword"
   | "login"
   | "register"
-  | "verifyEmail";
+  | "verifyEmail"
+  | "rules";
 
 export function createPageMetadata(title: string, description: string, image: string = OG_IMAGE): Metadata {
   return {

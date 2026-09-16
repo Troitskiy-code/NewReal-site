@@ -3,7 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildCharacterSlug } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
+import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { characterAvatarPath } from "@/lib/characterCardImage";
+import { ownerModerationFields } from "@/lib/characterModeration";
 
 export const publicCharacterSelect = {
   id: true,
@@ -21,6 +23,9 @@ export const publicCharacterSelect = {
   updatedAt: true,
   isPublic: true,
   userId: true,
+  moderationStatus: true,
+  moderationReason: true,
+  moderationWarnedAt: true,
   user: {
     select: {
       name: true,
@@ -44,6 +49,10 @@ export type PublicCharacterRecord = {
   createdAt: Date;
   updatedAt: Date;
   isPublic: boolean;
+  userId: string;
+  moderationStatus: string | null;
+  moderationReason: string | null;
+  moderationWarnedAt: Date | null;
   user: {
     name: string | null;
     image: string | null;
@@ -75,6 +84,7 @@ export async function findCharacterBySlugForViewer(
   viewerId: string | null
 ): Promise<PublicCharacterRecord | null> {
   await ensureCharacterSlugColumn();
+  await ensureCharacterModerationColumns();
   let normalizedSlug = slug.trim();
   try {
     normalizedSlug = decodeURIComponent(slug).trim();
@@ -108,6 +118,10 @@ export async function findCharacterBySlugForViewer(
     createdAt: character.createdAt,
     updatedAt: character.updatedAt,
     isPublic: character.isPublic,
+    userId: character.userId,
+    moderationStatus: character.moderationStatus,
+    moderationReason: character.moderationReason,
+    moderationWarnedAt: character.moderationWarnedAt,
     user: {
       name: character.user?.name ?? null,
       image: null,
@@ -125,7 +139,7 @@ export async function getViewerId(): Promise<string | null> {
   }
 }
 
-export function toPublicCharacterPayload(character: PublicCharacterRecord) {
+export function toPublicCharacterPayload(character: PublicCharacterRecord, viewerId?: string | null) {
   return {
     id: character.id,
     slug: character.slug,
@@ -142,5 +156,6 @@ export function toPublicCharacterPayload(character: PublicCharacterRecord) {
     createdAt: character.createdAt,
     updatedAt: character.updatedAt,
     user: character.user,
+    ...ownerModerationFields(character, viewerId),
   };
 }

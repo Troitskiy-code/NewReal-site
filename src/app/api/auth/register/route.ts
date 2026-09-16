@@ -21,7 +21,7 @@ async function generateUniqueReferralCode(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, ref, acceptedTerms, acceptedOffer } = await req.json();
+    const { name, email, password, ref, acceptedTerms, acceptedOffer, acceptedRules } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isAcceptedFlag(acceptedTerms) || !isAcceptedFlag(acceptedOffer)) {
+    if (!isAcceptedFlag(acceptedTerms) || !isAcceptedFlag(acceptedOffer) || !isAcceptedFlag(acceptedRules)) {
       return NextResponse.json({ error: apiT(req, "api.consentRequired") }, { status: 400 });
     }
 

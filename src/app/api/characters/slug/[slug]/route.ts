@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Персонаж не найден" }, { status: 404 });
     }
 
-    return NextResponse.json(toPublicCharacterPayload(character));
+    return NextResponse.json(toPublicCharacterPayload(character, viewerId));
   } catch (error) {
     console.error("Character slug fetch error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });

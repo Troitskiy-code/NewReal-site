@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import axios from "axios";
+import { Trans } from "react-i18next";
 import { showError, showSuccess } from "@/lib/toast";
+import LocaleLink from "@/components/LocaleLink";
+import ModerationWarning from "@/components/ModerationWarning";
 import {
   FaChevronDown,
   FaCog,
@@ -139,9 +142,10 @@ function ImageUploadField({ preview, onChange, onRemove, footerHint, error }: Im
 type VisibilityToggleProps = {
   isPublic: boolean;
   onChange: (isPublic: boolean) => void;
+  locked?: boolean;
 };
 
-function VisibilityToggle({ isPublic, onChange }: VisibilityToggleProps) {
+function VisibilityToggle({ isPublic, onChange, locked = false }: VisibilityToggleProps) {
   const base = "flex-1 rounded-lg border px-6 py-3 text-base font-bold transition-colors";
   const active = "border-[#6C63FF] bg-[#6C63FF] text-white";
   const inactive = "border-gray-500 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-300";
@@ -150,8 +154,9 @@ function VisibilityToggle({ isPublic, onChange }: VisibilityToggleProps) {
     <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
       <button
         type="button"
+        disabled={locked}
         onClick={() => onChange(true)}
-        className={`${base} w-full sm:flex-1 ${isPublic ? active : inactive}`}
+        className={`${base} w-full sm:flex-1 ${isPublic ? active : inactive} disabled:cursor-not-allowed disabled:opacity-50`}
       >
         Публичный
       </button>
@@ -216,6 +221,8 @@ type CharacterFormProps = {
     lora?: string;
   };
   onClearError?: (field: "name" | "avatar" | "lora") => void;
+  moderationStatus?: string | null;
+  moderationReason?: string | null;
 };
 
 async function fileToDataUrl(file: File): Promise<string> {
@@ -255,8 +262,11 @@ export default function CharacterForm({
   onLoraRemove,
   errors,
   onClearError,
+  moderationStatus,
+  moderationReason,
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const isWarned = moderationStatus === "warning";
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
   const [avatarModelId, setAvatarModelId] = useState<AvatarModelId>(() => readStoredAvatarModelId(characterId));
@@ -411,6 +421,7 @@ export default function CharacterForm({
 
   return (
     <div className="space-y-4 text-base md:space-y-8">
+      {isWarned && <ModerationWarning reason={moderationReason} />}
       <FormBlock title="Имя персонажа" icon={FaUser}>
         <input
           id="name"
@@ -812,8 +823,20 @@ export default function CharacterForm({
         {localErrors.prompt && <p className="text-xs text-red-400">{localErrors.prompt}</p>}
       </FormBlock>
 
-      <section>
-        <VisibilityToggle isPublic={values.isPublic} onChange={(v) => onChange("isPublic", v)} />
+      <section className="space-y-3">
+        <VisibilityToggle
+          isPublic={isWarned ? false : values.isPublic}
+          locked={isWarned}
+          onChange={(v) => onChange("isPublic", v)}
+        />
+        <p className="text-sm leading-relaxed text-gray-400">
+          <Trans
+            i18nKey="characterForm.rulesHint"
+            components={{
+              rules: <LocaleLink href="/rules" className="font-semibold underline hover:text-white" />,
+            }}
+          />
+        </p>
       </section>
     </div>
   );

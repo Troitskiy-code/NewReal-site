@@ -44,6 +44,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedOffer, setAcceptedOffer] = useState(false);
+  const [acceptedRules, setAcceptedRules] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -52,7 +53,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   };
 
   const ensureConsent = () => {
-    if (acceptedTerms && acceptedOffer) return true;
+    if (acceptedTerms && acceptedOffer && acceptedRules) return true;
     setError(t("auth.consentRequired"));
     return false;
   };
@@ -92,6 +93,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
           password,
           acceptedTerms: true,
           acceptedOffer: true,
+          acceptedRules: true,
           ...(ref ? { ref } : {}),
         }),
       });
@@ -148,6 +150,25 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
               i18nKey="auth.consentOffer"
               components={{
                 offer: <ConsentLink href="/offer" />,
+              }}
+            />
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-wd-text-secondary">
+          <input
+            type="checkbox"
+            checked={acceptedRules}
+            onChange={(e) => {
+              setAcceptedRules(e.target.checked);
+              setError("");
+            }}
+            className="mt-0.5 accent-[#6C63FF]"
+          />
+          <span>
+            <Trans
+              i18nKey="auth.consentRules"
+              components={{
+                rules: <ConsentLink href="/rules" />,
               }}
             />
           </span>

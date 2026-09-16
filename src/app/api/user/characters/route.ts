@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
+import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 
 const profileCharacterSelectNoSlug = {
   id: true,
@@ -19,6 +20,9 @@ const profileCharacterSelectNoSlug = {
   totalMessages: true,
   createdAt: true,
   updatedAt: true,
+  moderationStatus: true,
+  moderationReason: true,
+  moderationWarnedAt: true,
 } as const;
 
 const profileCharacterSelect = {
@@ -56,6 +60,12 @@ export async function GET(req: NextRequest) {
       await ensureCharacterSlugColumn();
     } catch (error) {
       console.error("[profile] Could not ensure slug column", error);
+    }
+
+    try {
+      await ensureCharacterModerationColumns();
+    } catch (error) {
+      console.error("[profile] Could not ensure moderation columns", error);
     }
 
     try {

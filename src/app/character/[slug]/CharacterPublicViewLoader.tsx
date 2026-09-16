@@ -50,6 +50,8 @@ function toViewData(raw: Record<string, unknown>): CharacterPublicViewData | nul
       name: typeof user.name === "string" ? user.name : null,
       image: typeof user.image === "string" ? user.image : null,
     },
+    moderationStatus: typeof raw.moderationStatus === "string" ? raw.moderationStatus : null,
+    moderationReason: typeof raw.moderationReason === "string" ? raw.moderationReason : null,
   };
 }
 

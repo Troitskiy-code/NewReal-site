@@ -11,6 +11,7 @@ import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { closeCharacterPage } from "@/lib/characterReturn";
 import { characterAvatarPath } from "@/lib/characterCardImage";
+import ModerationWarning from "@/components/ModerationWarning";
 
 export type CharacterPublicViewData = {
   id: string;
@@ -31,6 +32,8 @@ export type CharacterPublicViewData = {
     name: string | null;
     image: string | null;
   };
+  moderationStatus?: string | null;
+  moderationReason?: string | null;
 };
 
 export default function CharacterPublicView({ character }: { character: CharacterPublicViewData }) {
@@ -117,6 +120,9 @@ export default function CharacterPublicView({ character }: { character: Characte
         </div>
 
         <div className="space-y-4 p-5 sm:p-6">
+          {character.moderationStatus === "warning" && (
+            <ModerationWarning reason={character.moderationReason} />
+          )}
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{name}</h1>

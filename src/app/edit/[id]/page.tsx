@@ -22,6 +22,8 @@ type Character = CharacterFormValues & {
   userId: string;
   publicMemory?: unknown;
   privateMemory?: unknown;
+  moderationStatus?: string | null;
+  moderationReason?: string | null;
 };
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -52,6 +54,8 @@ export default function EditCharacterPage() {
   const [loraPreview, setLoraPreview] = useState<string | null>(null);
   const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; avatar?: string; lora?: string }>({});
+  const [moderationStatus, setModerationStatus] = useState<string | null>(null);
+  const [moderationReason, setModerationReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -62,6 +66,9 @@ export default function EditCharacterPage() {
 
       try {
         const { data } = await axios.get<Character>(`/api/characters/${id}`);
+        const warned = data.moderationStatus === "warning";
+        setModerationStatus(data.moderationStatus ?? null);
+        setModerationReason(data.moderationReason ?? null);
         setForm({
           name: data.name,
           appearance: data.appearance || "",
@@ -73,7 +80,7 @@ export default function EditCharacterPage() {
           avatarPrompt: data.avatarPrompt || "",
           systemPrompt: data.systemPrompt || "",
           tags: data.tags || "",
-          isPublic: data.isPublic,
+          isPublic: warned ? false : data.isPublic,
           publicMemory: memoryToText(data.publicMemory),
           privateMemory: memoryToText(data.privateMemory),
         });
@@ -187,7 +194,7 @@ export default function EditCharacterPage() {
         tags: form.tags.trim() || null,
         imageUrl: finalImageUrl,
         imageLora: finalImageLora,
-        isPublic: form.isPublic,
+        isPublic: moderationStatus === "warning" ? false : form.isPublic,
         publicMemory: form.publicMemory,
         privateMemory: form.privateMemory,
       });
@@ -266,6 +273,8 @@ export default function EditCharacterPage() {
               characterId={id}
               values={form}
               onChange={updateField}
+              moderationStatus={moderationStatus}
+              moderationReason={moderationReason}
               errors={fieldErrors}
               onClearError={(field) =>
                 setFieldErrors((current) => ({ ...current, [field]: undefined }))
