@@ -13,7 +13,6 @@ import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureChar
 import { clampCharactersPageLimit } from "@/lib/charactersList";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
-import { ownerModerationFields, stripModerationFields } from "@/lib/characterModeration";
 
 export const maxDuration = 60;
 
@@ -167,7 +166,6 @@ export async function GET(req: NextRequest) {
     try {
       const tEnsure = performance.now();
       await ensureCharacterSlugColumn();
-      await ensureCharacterModerationColumns();
       console.log("[Characters] ensure slug", (performance.now() - tEnsure).toFixed(0), "ms");
     } catch (error) {
       console.error("[characters] Could not ensure slug column", error);
@@ -250,10 +248,6 @@ export async function GET(req: NextRequest) {
       totalMessages: true,
       createdAt: true,
       updatedAt: true,
-      moderationStatus: true,
-      moderationReason: true,
-      moderationWarnedAt: true,
-      violationCount: true,
       user: {
         select: {
           name: true,
@@ -336,23 +330,17 @@ export async function GET(req: NextRequest) {
     console.log("[Characters] favorites", (performance.now() - tFavorites).toFixed(0), "ms");
 
     const t4 = performance.now();
-    const data = characters.map((character) => {
-      const mapped = {
-        ...character,
-        imageUrl: characterAvatarPath(character.id, character.updatedAt),
-        user: character.user
-          ? {
-              name: character.user.name,
-              image: null,
-            }
-          : character.user,
-        isFavorited: favoriteIds.has(character.id),
-      };
-      if (session?.user?.id === character.userId) {
-        return { ...mapped, ...ownerModerationFields(character, session.user.id) };
-      }
-      return stripModerationFields(mapped);
-    });
+    const data = characters.map((character) => ({
+      ...character,
+      imageUrl: characterAvatarPath(character.id, character.updatedAt),
+      user: character.user
+        ? {
+            name: character.user.name,
+            image: null,
+          }
+        : character.user,
+      isFavorited: favoriteIds.has(character.id),
+    }));
     const mapMs = (performance.now() - t4).toFixed(0);
     console.log("[Characters] map", mapMs, "ms");
 

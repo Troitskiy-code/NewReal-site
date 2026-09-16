@@ -440,7 +440,7 @@ export default function ProfilePage() {
 
                     <div className="p-4 flex flex-col gap-2 flex-1">
                       <h3 className="text-sm font-extrabold text-white truncate">
-                        {character.moderationStatus === "warning" ? "⚠️ " : ""}
+                        {character.moderationStatus === "warning" && !character.isPublic ? "⚠️ " : ""}
                         {name}
                       </h3>
                       <p className="text-xs text-wd-text-secondary line-clamp-3 leading-relaxed flex-1">

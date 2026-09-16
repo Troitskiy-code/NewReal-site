@@ -159,6 +159,6 @@ export function toPublicCharacterPayload(character: PublicCharacterRecord, viewe
     createdAt: character.createdAt,
     updatedAt: character.updatedAt,
     user: character.user,
-    ...ownerModerationFields(character, viewerId),
+    ...(!character.isPublic ? ownerModerationFields(character, viewerId) : {}),
   };
 }

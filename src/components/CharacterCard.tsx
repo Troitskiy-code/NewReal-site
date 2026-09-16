@@ -75,7 +75,7 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
             className="absolute right-1.5 top-1.5 z-10 h-7 w-7 max-[400px]:right-1 max-[400px]:top-1 md:right-3 md:top-3 md:h-9 md:w-9"
             iconSize={12}
           />
-          {character.moderationStatus === "warning" && (
+          {character.moderationStatus === "warning" && character.isPublic === false && (
             <span className="absolute left-1.5 top-8 z-10 max-w-[calc(100%-1rem)] rounded-full border border-orange-500/50 bg-black/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-200 backdrop-blur-sm max-[400px]:left-1 md:left-3 md:top-12 md:px-2.5 md:py-1 md:text-[11px]">
               ⚠️ {t("moderation.hiddenBadge")}
             </span>
