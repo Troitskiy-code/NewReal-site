@@ -1,4 +1,5 @@
 import Footer from "@/components/Footer";
+import LocaleLink from "@/components/LocaleLink";
 import { getLocalizedPageMetadata } from "@/lib/seo";
 import { getDictionary, translate } from "@/lib/getDictionary";
 import { getRequestLocale } from "@/lib/getRequestLocale";
@@ -55,9 +56,10 @@ export default async function RulesPage() {
             <h2 className="text-lg font-bold text-white">{translate(locale, "rules.appealTitle")}</h2>
             <p>
               {translate(locale, "rules.appeal")}{" "}
-              <a href="mailto:support@newvers.ai" className="text-wd-secondary underline hover:text-white">
-                support@newvers.ai
-              </a>
+              <LocaleLink href="/support?topic=moderation" className="text-wd-secondary underline hover:text-white">
+                {translate(locale, "rules.appealLink")}
+              </LocaleLink>
+              .
             </p>
           </section>
         </div>

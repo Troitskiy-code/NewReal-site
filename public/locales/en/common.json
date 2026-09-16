@@ -142,7 +142,7 @@
   },
   "support": {
     "title": "Support",
-    "intro": "For billing, technical issues, and refunds, use the form below. We will reply to the email you provide within 10 business days.",
+    "intro": "For billing, technical issues, refunds, and moderation appeals, use the form below. We will reply to the email you provide within 10 business days.",
     "formTitle": "Submit a request",
     "topic": "Topic",
     "email": "Your email",
@@ -155,6 +155,7 @@
       "payment": "Billing question",
       "technical": "Technical issue",
       "refund": "Refund",
+      "moderation": "Appeal a moderation decision",
       "other": "Other"
     }
   },
@@ -434,7 +435,8 @@
       "3rd violation — the account is blocked."
     ],
     "appealTitle": "How to appeal",
-    "appeal": "Write to"
+    "appeal": "Submit a request via the",
+    "appealLink": "support page"
   },
   "email": {
     "resetSubject": "Password reset — NewVerse",

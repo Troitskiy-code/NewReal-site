@@ -1,15 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import Footer from "@/components/Footer";
 
 const SUPPORT_EMAIL = "mrcheleng87@gmail.com";
-const TOPIC_KEYS = ["payment", "technical", "refund", "other"];
+const TOPIC_KEYS = ["payment", "technical", "refund", "moderation", "other"];
+
+function isTopicKey(value) {
+  return TOPIC_KEYS.includes(value);
+}
 
 export default function SupportPage() {
   const { t } = useTranslation();
-  const [topic, setTopic] = useState("payment");
+  const searchParams = useSearchParams();
+  const requestedTopic = searchParams.get("topic");
+  const [topic, setTopic] = useState(isTopicKey(requestedTopic) ? requestedTopic : "payment");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 

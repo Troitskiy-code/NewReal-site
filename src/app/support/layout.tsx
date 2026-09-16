@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getLocalizedPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
@@ -5,5 +6,5 @@ export async function generateMetadata() {
 }
 
 export default function SupportLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <Suspense fallback={null}>{children}</Suspense>;
 }
