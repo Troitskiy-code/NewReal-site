@@ -132,13 +132,15 @@ model MessageEmbedding {
 }
 
 model Memory {
-  id          String    @id @default(cuid())
-  characterId String
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  summary     String    @db.Text
-  createdAt   DateTime  @default(now())
+  id                     String    @id @default(cuid())
+  characterId            String
+  character              Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary                String    @db.Text
+  createdAt              DateTime  @default(now())
+  lastSummarizedAt       DateTime?
+  summarizedMessageCount Int       @default(0)
 
   @@unique([userId, characterId])
   @@index([characterId])

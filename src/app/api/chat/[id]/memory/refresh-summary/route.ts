@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
 import { forceRefreshMemorySummary } from "@/lib/chatMemory";
 
@@ -30,7 +31,17 @@ export async function POST(
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    const summary = await forceRefreshMemorySummary(session.user.id, characterId, KODIKROUTER_KEY);
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { subscriptionType: true, subscriptionEnd: true },
+    });
+
+    const summary = await forceRefreshMemorySummary(
+      session.user.id,
+      characterId,
+      KODIKROUTER_KEY,
+      user ?? undefined
+    );
     if (!summary) {
       return NextResponse.json(
         { error: "Недостаточно сообщений для суммаризации" },
