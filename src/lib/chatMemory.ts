@@ -71,59 +71,88 @@ function getSummaryConfigForUser(user: {
   return { config: getSummaryConfig(plan), plan: plan === "history" ? "story" : plan || "start" };
 }
 
-const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Твоя задача — сделать структурированную выжимку пары пользователь+персонаж.
+const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Сделай структурированную выжимку пары пользователь+персонаж.
+
+Формат ответа (строго соблюдай, без вступлений):
+
+## Тема и контекст
+1–2 предложения: где, когда, кто участвует, что происходит в сцене.
+
+## Ключевые события
+Список из 2–6 событий СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ (от раннего к позднему).
+Каждое событие — одно предложение, начинается с глагола в прошедшем времени.
+
+ВАЖНО: включай только события, которые ИЗМЕНИЛИ состояние мира или отношения:
+- персонаж узнал важную информацию,
+- заключён договор или дано обещание,
+- найден или потерян предмет,
+- совершено действие с последствиями (спасение, предательство, признание),
+- принято важное решение.
+
+НЕ включай:
+- эмоциональные реакции («он удивился», «она улыбнулась»),
+- оценочные суждения («он оценил её красоту»),
+- описания внешности, погоды, обстановки,
+- мелкие действия без последствий («подошёл», «сел», «взял чашку»).
+
+## Отношения
+Текущее СОСТОЯНИЕ отношений (не список реакций):
+- Персонаж → Пользователь: [отношение: дружелюбное / настороженное / романтическое / враждебное], доверие: [низкое / среднее / высокое]. Что изменилось недавно (одно предложение).
+- Пользователь → Персонаж: [отношение].
+
+## Договорённости и обещания
+Список активных договорённостей (кто что обещал сделать). Если нет — не выводи раздел.
+
+## Незакрытые линии
+Что осталось без ответа или требует развития: вопросы, тайны, угрозы, планы. Если нет — не выводи раздел.
+
+## Эмоциональный фон
+Общее настроение сцены одним предложением: тёплое / напряжённое / игривое / романтичное / тревожное.
+
+Требования:
+- Максимум {{maxTokens}} токенов.
+- Имена использовать точно, как в диалоге.
+- Если раздел пустой — не выводи его.
+- Никаких «в данном диалоге», «итак», «стоит отметить».`;
+
+const CHAPTER_PROMPT = `Ты — суммаризатор части ролевого диалога. Сделай выжимку следующих реплик СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ.
+
+Формат (без вступлений):
+
+## События
+2–4 события с последствиями, в хронологии. Каждое — одно предложение.
+
+## Отношения
+Текущее состояние отношений (не реакции).
+
+Максимум {{maxTokens}} токенов. Имена — точно как в диалоге.`;
+
+const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Тебе даны старая выжимка и новая часть. Объедини их в одну структурированную выжимку.
 
 Формат ответа (строго соблюдай):
 
 ## Тема и контекст
-Кратко: где, когда, кто участвует, что происходит.
-
 ## Ключевые события
-Список из 3–7 важных событий в хронологии. Каждое — одно предложение.
-
+Строго в хронологическом порядке. Из старой выжимки + новой части. Только события с последствиями.
 ## Отношения
-Как изменилось отношение персонажа к пользователю и наоборот. Что было раньше, что стало сейчас.
-
+Актуальное состояние (берётся из новой части, если там указано; иначе из старой).
 ## Договорённости и обещания
-Что обещали друг другу, что должны сделать, о чём договорились.
-
+Активные на текущий момент.
 ## Незакрытые линии
-Что осталось без ответа или требует развития в будущем.
-
-## Эмоциональный фон
-Общее настроение: тёплое, напряжённое, игривое, романтичное, тревожное и т.д.
-
-Требования:
-- Максимум {{maxTokens}} токенов.
-- Без вступлений, без «в данном диалоге», без «итак».
-- Имена использовать точно, как в диалоге.
-- Если раздел пустой — не выводи его.
-- Сохраняй важные детали: артефакты, места, клятвы, угрозы, чувства.`;
-
-const CHAPTER_PROMPT = `Ты — суммаризатор части диалога. Сделай краткую выжимку следующих реплик (максимум {{maxTokens}} токенов).
-Указывай: кто что сказал, какие события произошли, какие эмоции. Без вступлений.`;
-
-const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Тебе дана старая выжимка диалога и новая часть.
-Объедини их в одну структурированную выжимку по формату:
-
-## Тема и контекст
-## Ключевые события (хронология)
-## Отношения
-## Договорённости и обещания
-## Незакрытые линии
+Что ещё не закрыто.
 ## Эмоциональный фон
 
 Требования:
 - Максимум {{maxTokens}} токенов.
-- Сохрани важные детали из старой выжимки.
-- Добавь информацию из новой части.
+- Хронология строго соблюдается (от старых событий к новым).
 - Не дублируй факты.
+- Устаревшие договорённости и закрытые линии УБИРАЙ.
 - Без вступлений.`;
 
 type DialogMessage = {
   role: string;
   content: string;
-  createdAt?: Date;
+  createdAt?: Date | string;
 };
 
 function applyMaxTokens(prompt: string, maxTokens: number): string {
@@ -145,7 +174,10 @@ function formatDialogForSummary(messages: DialogMessage[]): string {
   return messages
     .map((message) => {
       const speaker = message.role === "user" ? "Пользователь" : "Персонаж";
-      return `${speaker}: ${message.content}`;
+      const time = message.createdAt
+        ? new Date(message.createdAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+        : "";
+      return time ? `[${time}] ${speaker}: ${message.content}` : `${speaker}: ${message.content}`;
     })
     .join("\n\n");
 }
@@ -160,7 +192,8 @@ function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
 
 function lastSummarizedTimestamp(messages: DialogMessage[]): Date {
   const last = messages[messages.length - 1];
-  return last?.createdAt ?? new Date();
+  if (!last?.createdAt) return new Date();
+  return last.createdAt instanceof Date ? last.createdAt : new Date(last.createdAt);
 }
 
 async function requestKodikText(
@@ -270,6 +303,10 @@ async function createArcSummary(
     "Memory",
     `Created arc summary (${messagesToSummarize.length} messages, ${tokens} tokens, subscription: ${plan})`
   );
+  infoLog(
+    "Memory",
+    `Summary generated (subscription: ${plan}, maxTokens: ${config.maxTokens}, messageCount: ${messagesToSummarize.length}, summaryTokens: ${countTokens(summary)})`
+  );
   return summary;
 }
 
@@ -280,7 +317,8 @@ async function updateArcWithChapter(
   existingSummary: string,
   existingCount: number,
   chapterMessages: DialogMessage[],
-  config: SummaryConfig
+  config: SummaryConfig,
+  plan: string
 ): Promise<string> {
   const chapterText = formatDialogForSummary(chapterMessages);
   const chapterTokens = countTokens(chapterText);
@@ -296,6 +334,10 @@ async function updateArcWithChapter(
   infoLog(
     "Memory",
     `Created chapter (${chapterMessages.length} messages, ${chapterTokens} tokens) → merged into arc`
+  );
+  infoLog(
+    "Memory",
+    `Summary generated (subscription: ${plan}, maxTokens: ${config.maxTokens}, messageCount: ${chapterMessages.length}, summaryTokens: ${countTokens(mergedSummary)})`
   );
   return mergedSummary;
 }
@@ -363,7 +405,8 @@ export async function resolveChatMemorySummary(
       existingMemory.summary,
       existingMemory.summarizedMessageCount ?? 0,
       historyToChapter,
-      config
+      config,
+      plan
     );
   }
 
@@ -475,6 +518,7 @@ export async function forceRefreshMemorySummary(
     existingMemory.summary,
     existingMemory.summarizedMessageCount ?? 0,
     chapterMessages,
-    config
+    config,
+    plan
   );
 }
