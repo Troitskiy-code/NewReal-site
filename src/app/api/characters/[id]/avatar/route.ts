@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -73,6 +74,8 @@ export async function GET(req: NextRequest, context: RouteContext) {
       },
     });
   } catch (error) {
+    const overload = prismaPoolOverloadResponse(error);
+    if (overload) return overload;
     console.error("[characters] avatar GET failed", error);
     return new NextResponse(null, { status: 500 });
   }

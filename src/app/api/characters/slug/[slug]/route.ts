@@ -4,6 +4,7 @@ import {
   getViewerId,
   toPublicCharacterPayload,
 } from "@/lib/characterPublic";
+import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
 
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -21,6 +22,8 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
     return NextResponse.json(toPublicCharacterPayload(character, viewerId));
   } catch (error) {
+    const overload = prismaPoolOverloadResponse(error);
+    if (overload) return overload;
     console.error("Character slug fetch error:", error);
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }

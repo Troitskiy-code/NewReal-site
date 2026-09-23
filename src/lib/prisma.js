@@ -4,10 +4,13 @@ const FALLBACK_URL = "postgresql://postgres:Timofey18012005%21@localhost:5432/ai
 
 const globalForPrisma = globalThis;
 
+const createdNewClient = !globalForPrisma.prismaBase;
+
 const basePrisma =
   globalForPrisma.prismaBase ||
   new PrismaClient({
     datasourceUrl: process.env.DATABASE_URL || FALLBACK_URL,
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
 let slugColumnPromise = null;
@@ -180,9 +183,20 @@ const prisma =
   },
 });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prismaBase = basePrisma;
-  globalForPrisma.prisma = prisma;
+// Always keep the singleton on globalThis, including production.
+// Next.js / Turbopack can evaluate this module in more than one chunk.
+globalForPrisma.prismaBase = basePrisma;
+globalForPrisma.prisma = prisma;
+
+if (
+  createdNewClient &&
+  (!process.env.NEXT_PHASE || process.env.NEXT_PHASE !== "phase-production-build")
+) {
+  console.log("[prisma] singleton initialized (pid:", process.pid, ")");
+  console.log(
+    "[prisma] config: connection_limit =",
+    process.env.DATABASE_URL?.match(/connection_limit=(\d+)/)?.[1] ?? "default"
+  );
 }
 
 export { prisma };

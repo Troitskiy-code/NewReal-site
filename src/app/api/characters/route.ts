@@ -13,6 +13,7 @@ import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureChar
 import { clampCharactersPageLimit } from "@/lib/charactersList";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
+import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
 
 export const maxDuration = 60;
 
@@ -371,6 +372,8 @@ export async function GET(req: NextRequest) {
 
     return response;
   } catch (error) {
+    const overload = prismaPoolOverloadResponse(error);
+    if (overload) return overload;
     console.error("Error fetching characters:", error);
     console.log("[Characters] total", (performance.now() - t0).toFixed(0), "ms");
     return NextResponse.json({ error: "Ошибка получения списка персонажей" }, { status: 500 });
