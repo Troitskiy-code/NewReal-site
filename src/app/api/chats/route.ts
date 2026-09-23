@@ -22,6 +22,17 @@ const characterSelect = {
   slug: true,
 } as const;
 
+type ChatCharacterRow = {
+  id: string;
+  name: string;
+  name_en: string | null;
+  slug?: string | null;
+  description: string | null;
+  description_en: string | null;
+  descriptionCard: string | null;
+  updatedAt: Date;
+};
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -52,21 +63,19 @@ export async function GET() {
         createdAt: group._max.createdAt as Date,
       }));
 
-    const loadCharacters = (
-      select: typeof characterSelect | typeof characterSelectNoSlug
-    ) =>
-      prisma.character.findMany({
-        where: { id: { in: characterIds } },
-        select,
-      });
-
-    let characters;
+    let characters: ChatCharacterRow[];
     try {
-      characters = await loadCharacters(characterSelect);
+      characters = await prisma.character.findMany({
+        where: { id: { in: characterIds } },
+        select: characterSelect,
+      });
     } catch (error) {
       if (!isMissingSlugColumn(error)) throw error;
       console.error("[Chats] Listing without slug column");
-      characters = await loadCharacters(characterSelectNoSlug);
+      characters = await prisma.character.findMany({
+        where: { id: { in: characterIds } },
+        select: characterSelectNoSlug,
+      });
     }
 
     const lastMessages =
@@ -109,8 +118,8 @@ export async function GET() {
           character: {
             id: character.id,
             name: character.name,
-            name_en: "name_en" in character ? character.name_en : null,
-            slug: "slug" in character ? character.slug : null,
+            name_en: character.name_en,
+            slug: character.slug ?? null,
             description: character.description,
             description_en: character.description_en,
             descriptionCard: character.descriptionCard,
