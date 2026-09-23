@@ -9,6 +9,7 @@ import {
   type ChatCompletionMessage,
 } from "@/lib/chatHelpers";
 import { consumeOpenAIChatStream, createChatNdjsonResponse } from "@/lib/chatStream";
+import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 import {
   ANONYMOUS_LIMIT_CODE,
   ANONYMOUS_LIMIT_MESSAGE,
@@ -242,14 +243,39 @@ export async function handleAnonymousChatPost(
     createdAt: now,
   };
 
+  let upstream: ReadableStream<Uint8Array>;
+  try {
+    console.log(
+      `[Anonymous] Generating reply sessionId=${sessionId.slice(0, 8)}... model=${model.name} remaining=${consumed.remaining}`
+    );
+    upstream = await streamChatCompletion(
+      model.name,
+      trimmedMessages,
+      process.env.KODIKROUTER_API_KEY ?? ""
+    );
+  } catch (error) {
+    await refundAnonymousMessage(sessionId);
+    if (defaultShouldRetry(error)) {
+      return withCookie(
+        NextResponse.json(
+          { error: KODIK_RETRY_ERROR_MESSAGE },
+          { status: 503, headers: { "Retry-After": "10" } }
+        ),
+        sessionId,
+        isNew
+      );
+    }
+    return withCookie(
+      NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 }),
+      sessionId,
+      isNew
+    );
+  }
+
   const streamResponse = createChatNdjsonResponse(async (emit) => {
     try {
       emit({ type: "meta", userMessage });
-      console.log(
-        `[Anonymous] Generating reply sessionId=${sessionId.slice(0, 8)}... model=${model.name} remaining=${consumed.remaining}`
-      );
 
-      const upstream = await streamChatCompletion(model.name, trimmedMessages, process.env.KODIKROUTER_API_KEY ?? "");
       const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
         emit({ type: "delta", text });
       });

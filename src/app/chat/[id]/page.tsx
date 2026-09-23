@@ -27,6 +27,7 @@ import { captureCharacterReturn } from "@/lib/characterReturn";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT } from "@/lib/anonymousCookie";
 import ConfirmModal from "@/components/ConfirmModal";
+import { KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
@@ -124,6 +125,16 @@ function isAnonymousLimitError(error: unknown): boolean {
   }
   if (axios.isAxiosError(error)) {
     return error.response?.data?.code === ANONYMOUS_LIMIT_CODE;
+  }
+  return false;
+}
+
+function isKodikUnavailableError(error: unknown): boolean {
+  if (error instanceof ChatStreamRequestError) {
+    return error.status === 503;
+  }
+  if (axios.isAxiosError(error)) {
+    return error.response?.status === 503;
   }
   return false;
 }
@@ -788,6 +799,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [kodikUnavailable, setKodikUnavailable] = useState(false);
   const [models, setModels] = useState<ChatModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [baseModelId, setBaseModelId] = useState<string | null>(null);
@@ -809,6 +821,10 @@ export default function ChatPage() {
   const [confirmClearChat, setConfirmClearChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const lastSendRef = useRef<{
+    message: string;
+    history?: Array<{ role: "user" | "assistant"; content: string }>;
+  } | null>(null);
 
   const isAnonymous = status === "unauthenticated";
 
@@ -1008,6 +1024,11 @@ export default function ChatPage() {
       const statusCode = error.status;
       const message = error.payload.error || error.message;
 
+      if (statusCode === 503) {
+        showError(KODIK_RETRY_ERROR_MESSAGE, 12000);
+        return;
+      }
+
       if (statusCode === 402) {
         showError(message || "Недостаточно VerseCoins");
       } else {
@@ -1024,6 +1045,11 @@ export default function ChatPage() {
       }
       const statusCode = error.response?.status;
       const message = error.response?.data?.error;
+
+      if (statusCode === 503) {
+        showError(KODIK_RETRY_ERROR_MESSAGE, 12000);
+        return;
+      }
 
       if (statusCode === 402) {
         showError(message || "Недостаточно VerseCoins");
@@ -1299,6 +1325,8 @@ export default function ChatPage() {
 
     const userMessage = input.trim();
     const history = isAnonymous ? toAnonymousHistory(messages) : undefined;
+    lastSendRef.current = { message: userMessage, history };
+    setKodikUnavailable(false);
     setInput("");
     setSending(true);
 
@@ -1383,20 +1411,108 @@ export default function ChatPage() {
         showError("Поток ответа прервался");
       }
     } catch (error) {
+      const unavailable = isKodikUnavailableError(error);
       setMessages((prev) => {
         const withoutAssistant = prev.filter((msg) => msg.id !== streamingAssistant.id);
-        if (persistedUser) {
-          return withoutAssistant.map((msg) =>
-            msg.id === optimisticUser.id ? persistedUser! : msg
-          );
+        if (unavailable || persistedUser) {
+          if (persistedUser) {
+            return withoutAssistant.map((msg) =>
+              msg.id === optimisticUser.id ? persistedUser! : msg
+            );
+          }
+          return withoutAssistant;
         }
         return withoutAssistant.filter((msg) => msg.id !== optimisticUser.id);
       });
 
-      if (!persistedUser) {
-        setInput(userMessage);
+      if (unavailable) {
+        setKodikUnavailable(true);
+        showError(KODIK_RETRY_ERROR_MESSAGE, 12000);
+      } else {
+        if (!persistedUser) {
+          setInput(userMessage);
+        }
+        handleApiError(error, "Не удалось отправить сообщение");
       }
-      handleApiError(error, "Не удалось отправить сообщение");
+    } finally {
+      setStreamingMessageId(null);
+      setSending(false);
+    }
+  };
+
+  const handleKodikRetry = async () => {
+    if (sending || actionLoading || clearingChat) return;
+
+    if (isAnonymous) {
+      if ((anonymousRemaining ?? 0) <= 0) {
+        setShowAnonymousLimitModal(true);
+        return;
+      }
+    } else if (!ensureCanPerformPaidAction()) {
+      return;
+    }
+
+    const lastSend = lastSendRef.current;
+    if (isAnonymous && !lastSend) return;
+
+    setKodikUnavailable(false);
+    setSending(true);
+
+    const streamingAssistant: Message = {
+      id: `temp-assistant-${Date.now()}`,
+      role: "assistant",
+      content: "",
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, streamingAssistant]);
+    setStreamingMessageId(streamingAssistant.id);
+
+    try {
+      const endEvent = await fetchAndReadChatStream(
+        `/api/chat/${characterId}`,
+        isAnonymous && lastSend
+          ? { message: lastSend.message, history: lastSend.history }
+          : { retryLast: true },
+        {
+          onDelta: (text) => {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === streamingAssistant.id
+                  ? { ...msg, content: msg.content + text }
+                  : msg
+              )
+            );
+          },
+          onEnd: (event) => {
+            updateBalanceFromResponse(event);
+            if (typeof event.remainingMessages === "number") {
+              setAnonymousRemaining(event.remainingMessages);
+              if (event.anonymous && event.remainingMessages <= 0) {
+                setShowAnonymousLimitModal(true);
+              }
+            }
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === streamingAssistant.id ? asChatMessage(event.assistantMessage) : msg
+              )
+            );
+          },
+        }
+      );
+
+      if (!endEvent) {
+        setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
+        setKodikUnavailable(true);
+        showError("Поток ответа прервался");
+      }
+    } catch (error) {
+      setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
+      if (isKodikUnavailableError(error)) {
+        setKodikUnavailable(true);
+        showError(KODIK_RETRY_ERROR_MESSAGE, 12000);
+      } else {
+        handleApiError(error, "Не удалось отправить сообщение");
+      }
     } finally {
       setStreamingMessageId(null);
       setSending(false);
@@ -1566,6 +1682,19 @@ export default function ChatPage() {
                 />
               ))
             )}
+            {kodikUnavailable ? (
+              <div className="rounded-xl border border-red-500/30 bg-black/50 p-3 text-sm text-red-100">
+                <p>{KODIK_RETRY_ERROR_MESSAGE}</p>
+                <button
+                  type="button"
+                  onClick={() => void handleKodikRetry()}
+                  disabled={sending || actionLoading || clearingChat}
+                  className="mt-3 min-h-[40px] rounded-full bg-primary px-5 py-2 text-xs font-bold text-white transition-all hover:bg-primary-hover disabled:bg-primary/50"
+                >
+                  Повторить
+                </button>
+              </div>
+            ) : null}
             <div ref={messagesEndRef} />
             </div>
           </div>

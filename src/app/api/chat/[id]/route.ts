@@ -30,6 +30,7 @@ import {
 } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
 import { getAnonymousChatPayload, handleAnonymousChatPost } from "@/lib/anonymousChat";
+import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 
 export const maxDuration = 120;
 
@@ -105,9 +106,10 @@ export async function POST(
 
     const body = await req.json();
     const continueChat = body?.continue === true;
+    const retryLast = body?.retryLast === true;
     const message = body?.message;
 
-    if (!continueChat && (!message || typeof message !== "string")) {
+    if (!continueChat && !retryLast && (!message || typeof message !== "string")) {
       return NextResponse.json({ error: "Сообщение обязательно" }, { status: 400 });
     }
 
@@ -176,6 +178,22 @@ export async function POST(
         console.log(`📌 Продолжение текста: ${lastAssistant.content.slice(-100)}...`);
       }
       ragQueryText = lastAssistant.content;
+    } else if (retryLast) {
+      const lastUser = await prisma.message.findFirst({
+        where: {
+          characterId: id,
+          userId: session.user.id,
+          role: "user",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (!lastUser) {
+        return NextResponse.json({ error: "Нет сообщения для повтора" }, { status: 400 });
+      }
+
+      ragQueryText = lastUser.content;
+      excludeMessageId = lastUser.id;
     } else {
       const existingMessagesCount = await prisma.message.count({
         where: { characterId: id, userId: session.user.id },
@@ -241,7 +259,7 @@ export async function POST(
         }
       })(),
       (async () => {
-        if (continueChat || typeof message !== "string") {
+        if (continueChat || retryLast || typeof message !== "string") {
           console.log("[ChatTTFT] Intent analysis: general, 0ms");
           return { intent: "general" as const, confidence: 0 };
         }
@@ -286,7 +304,7 @@ export async function POST(
       ragContextText
     );
 
-    if (!continueChat && typeof message === "string") {
+    if (!continueChat && !retryLast && typeof message === "string") {
       void ingestUserMessageMemory({
         userId: session.user.id,
         characterId: id,
@@ -301,6 +319,8 @@ export async function POST(
       });
     }
 
+    const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+
     return createChatNdjsonResponse(async (emit) => {
       emit({
         type: "meta",
@@ -310,7 +330,6 @@ export async function POST(
           continueChat && continueCutOff && lastAssistant ? lastAssistant.id : undefined,
       });
 
-      const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
       let loggedTtft = false;
       const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
         if (!loggedTtft) {
@@ -369,6 +388,12 @@ export async function POST(
     });
   } catch (error) {
     console.error("Chat error:", error);
+    if (defaultShouldRetry(error)) {
+      return NextResponse.json(
+        { error: KODIK_RETRY_ERROR_MESSAGE },
+        { status: 503, headers: { "Retry-After": "10" } }
+      );
+    }
     return NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 });
   }
 }

@@ -17,6 +17,7 @@ import {
 } from "@/lib/chatStream";
 import { calculateRequestCost } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
+import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 
 export const maxDuration = 120;
 
@@ -155,13 +156,14 @@ export async function POST(
       locale: getApiLocale(req),
     });
 
+    const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+
     return createChatNdjsonResponse(async (emit) => {
       emit({
         type: "meta",
         appendToId: assistantMessage.id,
       });
 
-      const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
       const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
         emit({ type: "delta", text });
       });
@@ -195,6 +197,12 @@ export async function POST(
     });
   } catch (error) {
     console.error("Regenerate error:", error);
+    if (defaultShouldRetry(error)) {
+      return NextResponse.json(
+        { error: KODIK_RETRY_ERROR_MESSAGE },
+        { status: 503, headers: { "Retry-After": "10" } }
+      );
+    }
     return NextResponse.json({ error: "Ошибка при перегенерации ответа" }, { status: 500 });
   }
 }

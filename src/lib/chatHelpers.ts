@@ -27,6 +27,7 @@ import {
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { spendCoins } from "@/lib/verseCoins";
 import { debugLog, errorLog } from "@/lib/logger";
+import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -674,33 +675,48 @@ export async function prepareChatMessages(options: PrepareChatMessagesOptions): 
   return assemblePreparedChatMessages(fastContext, intent, ragContextText);
 }
 
+function logKodikRetry(attempt: number, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`[Chat] KodikRouter retry #${attempt}`, message);
+  console.warn(`[Chat] Attempt ${attempt}/3 failed, retrying...`);
+}
+
 export async function callChatCompletion(
   modelName: string,
   messages: ChatCompletionMessage[],
   apiKey: string
 ): Promise<string> {
-  const response = await axios.post(
-    `${KODIKROUTER_URL}/chat/completions`,
-    {
-      model: modelName,
-      messages,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      temperature: 0.7,
+  return retryWithBackoff(
+    async () => {
+      const response = await axios.post(
+        `${KODIKROUTER_URL}/chat/completions`,
+        {
+          model: modelName,
+          messages,
+          max_tokens: MAX_OUTPUT_TOKENS,
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 30_000,
+        }
+      );
+
+      const reply = response.data.choices[0]?.message?.content?.trim() ?? "";
+      if (!reply) {
+        throw new Error("Пустой ответ от ИИ");
+      }
+
+      return reply;
     },
     {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      maxAttempts: 3,
+      onRetry: logKodikRetry,
     }
   );
-
-  const reply = response.data.choices[0]?.message?.content?.trim() ?? "";
-  if (!reply) {
-    throw new Error("Пустой ответ от ИИ");
-  }
-
-  return reply;
 }
 
 export async function streamChatCompletion(
@@ -708,33 +724,55 @@ export async function streamChatCompletion(
   messages: ChatCompletionMessage[],
   apiKey: string
 ): Promise<ReadableStream<Uint8Array>> {
-  const response = await fetch(`${KODIKROUTER_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  return retryWithBackoff(
+    async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30_000);
+      let response: Response;
+      try {
+        response = await fetch(`${KODIKROUTER_URL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages,
+            max_tokens: MAX_OUTPUT_TOKENS,
+            temperature: 0.7,
+            stream: true,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+
+      if (!response.ok) {
+        const details = await response.text().catch(() => "");
+        const error = new Error(
+          `Ошибка стриминга ИИ: ${response.status}${details ? ` ${details.slice(0, 300)}` : ""}`
+        ) as Error & { status: number };
+        error.status = response.status;
+        throw error;
+      }
+
+      if (!response.body) {
+        throw new Error("Пустой поток ответа от ИИ");
+      }
+
+      return response.body;
     },
-    body: JSON.stringify({
-      model: modelName,
-      messages,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      temperature: 0.7,
-      stream: true,
-    }),
-  });
-
-  if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(
-      `Ошибка стриминга ИИ: ${response.status}${details ? ` ${details.slice(0, 300)}` : ""}`
-    );
-  }
-
-  if (!response.body) {
-    throw new Error("Пустой поток ответа от ИИ");
-  }
-
-  return response.body;
+    {
+      maxAttempts: 3,
+      shouldRetry: (error) => {
+        if ((error as { __noRetry?: boolean }).__noRetry) return false;
+        return defaultShouldRetry(error);
+      },
+      onRetry: logKodikRetry,
+    }
+  );
 }
 
 export async function chargeForChatRequest({
