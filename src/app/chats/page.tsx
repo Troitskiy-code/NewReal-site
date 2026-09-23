@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
 import { FaComments, FaUser } from "react-icons/fa";
 import axios from "axios";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 
 type ChatItem = {
   character: {
@@ -14,6 +15,7 @@ type ChatItem = {
     imageUrl: string | null;
     description: string | null;
     descriptionCard: string | null;
+    updatedAt?: string;
   };
   lastMessage: {
     id: string;
@@ -141,18 +143,18 @@ function ChatsPageContent() {
               href={`/chat/${chat.character.id}`}
               className="flex items-center gap-3 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 transition-colors hover:border-[#6C63FF]/40 md:gap-4 md:p-4"
             >
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A] md:h-16 md:w-16">
-                {chat.character.imageUrl ? (
-                  <img
-                    src={chat.character.imageUrl}
-                    alt={chat.character.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <FaUser className="text-xl text-wd-text-secondary/40" />
-                  </div>
-                )}
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A] md:h-16 md:w-16">
+                <div className="flex h-full w-full items-center justify-center">
+                  <FaUser className="text-xl text-wd-text-secondary/40" />
+                </div>
+                <img
+                  src={characterAvatarPath(chat.character.id, chat.character.updatedAt)}
+                  alt={chat.character.name}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
               </div>
 
               <div className="min-w-0 flex-1">

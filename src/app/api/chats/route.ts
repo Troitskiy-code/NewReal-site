@@ -2,24 +2,25 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { characterAvatarPath } from "@/lib/characterCardImage";
+import { isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 
-type ChatSummary = {
-  character: {
-    id: string;
-    name: string;
-    imageUrl: string | null;
-    description: string | null;
-    descriptionCard: string | null;
-  };
-  lastMessage: {
-    id: string;
-    role: string;
-    content: string;
-    createdAt: Date;
-  };
-  count: number;
-  lastActivity: Date;
-};
+const LAST_MESSAGE_PREVIEW = 150;
+
+const characterSelectNoSlug = {
+  id: true,
+  name: true,
+  name_en: true,
+  description: true,
+  description_en: true,
+  descriptionCard: true,
+  updatedAt: true,
+} as const;
+
+const characterSelect = {
+  ...characterSelectNoSlug,
+  slug: true,
+} as const;
 
 export async function GET() {
   try {
@@ -28,46 +29,108 @@ export async function GET() {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const messages = await prisma.message.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      include: {
-        character: {
-          select: {
-            id: true,
-            name: true,
-            imageUrl: true,
-            description: true,
-            descriptionCard: true,
-          },
-        },
-      },
+    const userId = session.user.id;
+    const t0 = performance.now();
+
+    const groups = await prisma.message.groupBy({
+      by: ["characterId"],
+      where: { userId },
+      _count: { id: true },
+      _max: { createdAt: true },
     });
 
-    const chatsMap = new Map<string, ChatSummary>();
+    if (groups.length === 0) {
+      console.log("[Chats] query", (performance.now() - t0).toFixed(0), "ms, count: 0");
+      return NextResponse.json({ data: [] });
+    }
 
-    for (const message of messages) {
-      const existing = chatsMap.get(message.characterId);
-      if (!existing) {
-        chatsMap.set(message.characterId, {
-          character: message.character,
-          lastMessage: {
-            id: message.id,
-            role: message.role,
-            content: message.content,
-            createdAt: message.createdAt,
-          },
-          count: 1,
-          lastActivity: message.createdAt,
-        });
-      } else {
-        existing.count += 1;
+    const characterIds = groups.map((group) => group.characterId);
+    const lastMessageOr = groups
+      .filter((group) => group._max.createdAt)
+      .map((group) => ({
+        characterId: group.characterId,
+        createdAt: group._max.createdAt as Date,
+      }));
+
+    const loadCharacters = (
+      select: typeof characterSelect | typeof characterSelectNoSlug
+    ) =>
+      prisma.character.findMany({
+        where: { id: { in: characterIds } },
+        select,
+      });
+
+    let characters;
+    try {
+      characters = await loadCharacters(characterSelect);
+    } catch (error) {
+      if (!isMissingSlugColumn(error)) throw error;
+      console.error("[Chats] Listing without slug column");
+      characters = await loadCharacters(characterSelectNoSlug);
+    }
+
+    const lastMessages =
+      lastMessageOr.length === 0
+        ? []
+        : await prisma.message.findMany({
+            where: { userId, OR: lastMessageOr },
+            select: {
+              id: true,
+              characterId: true,
+              role: true,
+              content: true,
+              createdAt: true,
+            },
+          });
+
+    console.log(
+      "[Chats] query",
+      (performance.now() - t0).toFixed(0),
+      "ms, count:",
+      groups.length
+    );
+
+    const characterById = new Map(characters.map((character) => [character.id, character]));
+    const lastByCharacter = new Map<string, (typeof lastMessages)[number]>();
+    for (const message of lastMessages) {
+      const existing = lastByCharacter.get(message.characterId);
+      if (!existing || message.createdAt > existing.createdAt) {
+        lastByCharacter.set(message.characterId, message);
       }
     }
 
-    const data = Array.from(chatsMap.values()).sort(
-      (a, b) => b.lastActivity.getTime() - a.lastActivity.getTime()
-    );
+    const data = groups
+      .map((group) => {
+        const character = characterById.get(group.characterId);
+        const lastMessage = lastByCharacter.get(group.characterId);
+        if (!character || !lastMessage) return null;
+
+        return {
+          character: {
+            id: character.id,
+            name: character.name,
+            name_en: "name_en" in character ? character.name_en : null,
+            slug: "slug" in character ? character.slug : null,
+            description: character.description,
+            description_en: character.description_en,
+            descriptionCard: character.descriptionCard,
+            updatedAt: character.updatedAt,
+            imageUrl: characterAvatarPath(character.id, character.updatedAt),
+          },
+          lastMessage: {
+            id: lastMessage.id,
+            role: lastMessage.role,
+            content: lastMessage.content.slice(0, LAST_MESSAGE_PREVIEW),
+            createdAt: lastMessage.createdAt,
+          },
+          count: group._count.id,
+          lastActivity: group._max.createdAt ?? lastMessage.createdAt,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null)
+      .sort(
+        (a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
+      );
 
     return NextResponse.json({ data });
   } catch (error) {
