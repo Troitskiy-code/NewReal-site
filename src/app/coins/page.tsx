@@ -9,7 +9,6 @@ import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaCoins, FaCrown, FaGift } from "react-icons/fa";
 import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
-import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { PaymentGoalTracker } from "@/lib/goalTracking";
 import { useTranslation } from "react-i18next";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
@@ -92,7 +91,6 @@ export default function CoinsPage() {
   }, [status, fetchBalance]);
 
   const openCheckout = (pkg: VcPackage) => {
-    reachGoal(METRIKA_GOALS.buyVc);
     setPendingPackage(pkg);
   };
 
@@ -338,11 +336,8 @@ export default function CoinsPage() {
                     <td className="px-4 py-4 text-right">
                       <button
                         type="button"
-                        id={`buy-vc-${pkg.vc}`}
-                        data-metrika="buy-vc"
-                        data-metrika-package={String(pkg.vc)}
                         onClick={() => openCheckout(pkg)}
-                        className="buy-vc-btn rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
+                        className="rounded-wd-pill border border-wd-secondary/40 bg-wd-secondary/15 px-4 py-2 text-xs font-bold text-white transition-all hover:border-wd-secondary hover:bg-wd-secondary"
                       >
                         {t("coins.buy")}
                       </button>

@@ -13,7 +13,6 @@ export const METRIKA_GOALS = {
   subscriptionHistory: "subscription_history",
   subscriptionUniverse: "subscription_universe",
   subscriptionSuccess: "subscription_success",
-  buyVc: "buy_vc",
   vcPurchaseSuccess: "vc_purchase_success",
   generateAvatar: "generate_avatar",
   createCharacter: "create_character",
