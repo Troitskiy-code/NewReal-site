@@ -262,6 +262,7 @@
     "applyLaterHint": "The new subscription will start automatically when the current one expires.",
     "offerConsent": "I agree to automatic charges when the subscription renews under the terms of the",
     "offerLink": "offer",
+    "offerConsentNote": "(you can turn this off in profile settings)",
     "consentRequired": "You must agree to auto-renewal to subscribe",
     "goToPayment": "Continue to payment",
     "creatingPayment": "Creating payment...",

@@ -393,6 +393,8 @@ export default function PricingPage() {
                   >
                     {t("pricing.offerLink")}
                   </LocaleLink>
+                  {" "}
+                  {t("pricing.offerConsentNote")}
                 </span>
               </label>
               {!recurringConsent && (

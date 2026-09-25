@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { FaRegStar, FaStar } from "react-icons/fa";
+import { FaHeart, FaRegHeart } from "react-icons/fa";
 import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 
@@ -61,7 +61,7 @@ export default function FavoriteButton({
     }
   };
 
-  const Icon = isFavorited ? FaStar : FaRegStar;
+  const Icon = isFavorited ? FaHeart : FaRegHeart;
 
   return (
     <button
