@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import LoadErrorBlock from "@/components/LoadErrorBlock";
@@ -25,12 +25,21 @@ type EpisodicItem = {
   importance: number;
 };
 
+type EpisodicCounts = {
+  1: number;
+  2: number;
+  3: number;
+};
+
 type MemoryPayload = {
   summary: SummaryMemory | null;
   core: CoreMemory | null;
   coreMemory?: CoreMemory | null;
   episodic: EpisodicItem[];
   episodicMemories?: EpisodicItem[];
+  episodicCounts?: EpisodicCounts;
+  isOwner?: boolean;
+  includeLowImportance?: boolean;
 };
 
 const TABS: Array<{ id: TabId; label: string }> = [
@@ -74,12 +83,23 @@ export default function MemoryEditor({
   const [eventError, setEventError] = useState<string | null>(null);
   const [newImportance, setNewImportance] = useState(3);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [showAllEvents, setShowAllEvents] = useState(false);
+  const [episodicCounts, setEpisodicCounts] = useState<EpisodicCounts>({ 1: 0, 2: 0, 3: 0 });
+  const showAllEventsRef = useRef(false);
+  showAllEventsRef.current = showAllEvents;
 
-  const loadMemory = useCallback(async () => {
-    const { data } = await axios.get<MemoryPayload>(`/api/chat/${characterId}/memory`);
+  const loadMemory = useCallback(async (includeAll = showAllEventsRef.current) => {
+    const query = includeAll ? "?all=1" : "";
+    const { data } = await axios.get<MemoryPayload>(`/api/chat/${characterId}/memory${query}`);
     setSummaryDraft(data.summary?.summary ?? "");
     setCoreDraft(data.core?.content ?? data.coreMemory?.content ?? "");
     setEvents(data.episodic ?? data.episodicMemories ?? []);
+    setIsOwner(Boolean(data.isOwner));
+    setEpisodicCounts(data.episodicCounts ?? { 1: 0, 2: 0, 3: 0 });
+    if (!data.isOwner) {
+      setShowAllEvents(false);
+    }
   }, [characterId]);
 
   const fetchMemory = useCallback(async () => {
@@ -146,6 +166,10 @@ export default function MemoryEditor({
         { event: newEvent, importance: newImportance }
       );
       setEvents((prev) => [data.episodic, ...prev]);
+      setEpisodicCounts((prev) => {
+        const bucket = data.episodic.importance >= 3 ? 3 : data.episodic.importance === 2 ? 2 : 1;
+        return { ...prev, [bucket]: prev[bucket] + 1 };
+      });
       setNewEvent("");
       setAddingEvent(false);
       console.log("[MemoryEditor] episodic added");
@@ -160,8 +184,15 @@ export default function MemoryEditor({
   const handleDeleteEvent = async (episodicId: string) => {
     setDeletingId(episodicId);
     try {
+      const removed = events.find((item) => item.id === episodicId);
       await axios.delete(`/api/chat/${characterId}/memory/episodic/${episodicId}`);
       setEvents((prev) => prev.filter((item) => item.id !== episodicId));
+      if (removed) {
+        setEpisodicCounts((prev) => {
+          const bucket = removed.importance >= 3 ? 3 : removed.importance === 2 ? 2 : 1;
+          return { ...prev, [bucket]: Math.max(0, prev[bucket] - 1) };
+        });
+      }
       console.log("[MemoryEditor] episodic deleted");
       showSuccess("Событие удалено");
     } catch (error) {
@@ -273,6 +304,26 @@ export default function MemoryEditor({
 
       {tab === "episodic" ? (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-gray-400">
+              Событий: importance 3 — {episodicCounts[3]}, importance 2 — {episodicCounts[2]}
+              {showAllEvents ? `, importance 1 — ${episodicCounts[1]}` : ""}
+            </p>
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !showAllEvents;
+                  showAllEventsRef.current = next;
+                  setShowAllEvents(next);
+                  void loadMemory(next);
+                }}
+                className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs font-semibold text-gray-300 transition-colors hover:border-[#6C63FF] hover:text-white"
+              >
+                {showAllEvents ? "Скрыть importance 1" : "Показать все events"}
+              </button>
+            ) : null}
+          </div>
           {addingEvent ? (
             <div className="space-y-2 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3">
               <textarea
@@ -339,7 +390,7 @@ export default function MemoryEditor({
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
             {events.length === 0 ? (
               <p className="py-8 text-center text-sm text-gray-500">
-                Важных событий пока нет.
+                {showAllEvents ? "Событий пока нет." : "Важных событий пока нет."}
               </p>
             ) : (
               events.map((item) => (

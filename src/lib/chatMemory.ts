@@ -71,31 +71,28 @@ function getSummaryConfigForUser(user: {
   return { config: getSummaryConfig(plan), plan: plan === "history" ? "story" : plan || "start" };
 }
 
-const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Твоя задача — сделать структурированную выжимку пары пользователь+персонаж.
+const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Сделай структурированную выжимку пары пользователь+персонаж.
+
+ВАЖНО: Ниже тебе будет передан блок "Ключевая память" (Core). Эти факты НЕ нужно повторять в выжимке. Твоя задача — только сюжет, хронология и активные линии.
 
 Формат ответа (строго соблюдай):
 
-## Постоянное
-2–4 факта, которые НЕ меняются: кто персонаж, кто пользователь, где происходит действие, ключевые отношения. Если факт неизвестен — не выводи.
-
 ## Активные линии
 Список из 2–7 незакрытых сюжетных линий: обещания, тайны, проверки, конфликты, цели. Каждая — одно предложение в настоящем времени.
-Включай ТОЛЬКО то, что ещё не разрешено.
-Пример: «Рокс проверяет, есть ли в пользователе искра».
 
 ## Недавние события
 Список из 3–8 событий СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ (от раннего к позднему). Только те, что ИЗМЕНИЛИ состояние мира или отношения:
 - узнал важное, дал обещание, заключил договор, нашёл/потерял предмет, совершил действие с последствиями.
-НЕ включай: эмоциональные реакции («улыбнулась», «удивился»), описания, рутинные действия («подошёл», «спросил»).
+НЕ включай: эмоциональные реакции, описания, рутинные действия, факты о персонаже/пользователе (они в Core).
 
 ## Эмоциональный фон
 Одно предложение: тёплое / напряжённое / игривое / романтичное / тревожное.
 
 Требования:
 - Максимум {{maxTokens}} токенов.
-- Имена использовать точно, как в диалоге.
 - Пустые разделы НЕ выводить.
-- Без «в данном диалоге», «итак», «стоит отметить».`;
+- Без «в данном диалоге», «итак», «стоит отметить».
+- НЕ дублируй факты из Core.`;
 
 const CHAPTER_PROMPT = `Ты — суммаризатор части ролевого диалога. Сделай краткую выжимку СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ.
 
@@ -107,27 +104,28 @@ const CHAPTER_PROMPT = `Ты — суммаризатор части ролев�
 ## Активные линии
 Если появились новые обещания, тайны или цели — добавь 1–3 строки.
 
+НЕ включай факты о характере персонажа или пользователя (они в Core).
 Максимум {{maxTokens}} токенов. Имена — точно как в диалоге.`;
 
 const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Объедини старую выжимку и новую часть в одну структурированную выжимку.
 
-Формат:
+ВАЖНО: блок "Ключевая память" (Core) ниже — справочный. Эти факты НЕ дублируй в выжимке. Только сюжет, хронология и активные линии.
 
-## Постоянное
-Взять из старой выжимки, обновить, если что-то изменилось.
+Формат:
 
 ## Активные линии
 Объединить старые и новые линии. Если линия ЗАКРЫТА (обещание выполнено, тайна раскрыта, проверка завершена) — УБРАТЬ её. Оставить только незакрытые.
 
 ## Недавние события
 Взять последние {{eventsLimit}} значимых событий из старой выжимки + новые события. Старые события вытесняются новыми, если их больше {{eventsLimit}}. Хронология строго от раннего к позднему.
+НЕ включай факты о персонаже/пользователе (они в Core).
 
 ## Эмоциональный фон
 
 Требования:
 - Максимум {{maxTokens}} токенов.
 - Активные линии — только незакрытые.
-- Не дублируй факты.
+- Не дублируй факты и не копируй Core.
 - Без вступлений.`;
 
 type DialogMessage = {
@@ -191,6 +189,20 @@ function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
   return messages.slice(0, messages.length - KEEP_RECENT_MESSAGES);
 }
 
+function formatCoreContext(core: string | null | undefined): string {
+  const text = core?.trim();
+  if (!text) return "";
+  return `\n\n=== Ключевая память (НЕ дублируй в выжимке) ===\n${text}`;
+}
+
+async function loadCoreMemoryText(userId: string, characterId: string): Promise<string | null> {
+  const row = await prisma.coreMemory.findUnique({
+    where: { userId_characterId: { userId, characterId } },
+    select: { content: true },
+  });
+  return row?.content?.trim() || null;
+}
+
 function lastSummarizedTimestamp(messages: DialogMessage[]): Date {
   const last = messages[messages.length - 1];
   if (!last?.createdAt) return new Date();
@@ -234,16 +246,32 @@ async function requestKodikText(
   return text;
 }
 
-async function requestSummary(apiKey: string, dialogText: string, maxTokens: number): Promise<string> {
-  return requestKodikText(apiKey, SUMMARY_PROMPT, dialogText, maxTokens);
+async function requestSummary(
+  apiKey: string,
+  dialogText: string,
+  maxTokens: number,
+  coreText: string | null
+): Promise<string> {
+  return requestKodikText(
+    apiKey,
+    SUMMARY_PROMPT,
+    `${dialogText}${formatCoreContext(coreText)}`,
+    maxTokens
+  );
 }
 
 async function requestChapterSummary(
   apiKey: string,
   chapterText: string,
-  maxTokens: number
+  maxTokens: number,
+  coreText: string | null
 ): Promise<string> {
-  return requestKodikText(apiKey, CHAPTER_PROMPT, chapterText, maxTokens);
+  return requestKodikText(
+    apiKey,
+    CHAPTER_PROMPT,
+    `${chapterText}${formatCoreContext(coreText)}`,
+    maxTokens
+  );
 }
 
 async function mergeSummaries(
@@ -251,9 +279,11 @@ async function mergeSummaries(
   oldSummary: string,
   newChapter: string,
   maxTokens: number,
-  eventsLimit: number
+  eventsLimit: number,
+  coreText: string | null
 ): Promise<string> {
-  const userContent = `## Старая выжимка:\n${oldSummary}\n\n## Новая часть:\n${newChapter}`;
+  infoLog("Memory", "Summary merge: skipped Core duplication check");
+  const userContent = `## Старая выжимка:\n${oldSummary}\n\n## Новая часть:\n${newChapter}${formatCoreContext(coreText)}`;
   return requestKodikText(apiKey, MERGE_PROMPT, userContent, maxTokens, { eventsLimit });
 }
 
@@ -297,7 +327,8 @@ async function createArcSummary(
 
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
-  const summary = await requestSummary(apiKey, dialogText, config.maxTokens);
+  const coreText = await loadCoreMemoryText(userId, characterId);
+  const summary = await requestSummary(apiKey, dialogText, config.maxTokens, coreText);
   await persistMemorySummary(
     userId,
     characterId,
@@ -336,13 +367,15 @@ async function updateArcWithChapter(
     "Memory",
     `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}) → eventsLimit: ${eventsLimit}`
   );
-  const chapterSummary = await requestChapterSummary(apiKey, chapterText, config.maxTokens);
+  const coreText = await loadCoreMemoryText(userId, characterId);
+  const chapterSummary = await requestChapterSummary(apiKey, chapterText, config.maxTokens, coreText);
   const mergedSummary = await mergeSummaries(
     apiKey,
     existingSummary,
     chapterSummary,
     config.maxTokens,
-    eventsLimit
+    eventsLimit,
+    coreText
   );
   await persistMemorySummary(
     userId,

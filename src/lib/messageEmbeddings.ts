@@ -160,7 +160,9 @@ export function appendRagToSystemPrompt(
   }
 
   const heading =
-    locale === "en" ? "Based on past conversations:" : "На основе прошлых разговоров:";
+    locale === "en"
+      ? "Exact quotes from past messages (for fact questions only, not plot recap):"
+      : "Точные цитаты из прошлых сообщений (для факт-вопросов, без сюжетного пересказа):";
   return `${systemPrompt}\n\n${heading}\n${ragContext.text}`;
 }
 

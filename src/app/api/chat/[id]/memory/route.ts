@@ -5,7 +5,7 @@ import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
 import { getChatMemoryPayload } from "@/lib/advancedMemory";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -24,11 +24,15 @@ export async function GET(
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    const payload = await getChatMemoryPayload(session.user.id, characterId);
+    const isOwner = access.character.userId === session.user.id;
+    const includeLowImportance = isOwner && req.nextUrl.searchParams.get("all") === "1";
+    const payload = await getChatMemoryPayload(session.user.id, characterId, {
+      includeLowImportance,
+    });
     console.log(
-      `[MemoryEditor] loaded character=${characterId} summary=${payload.summary ? "yes" : "no"} core=${payload.core ? "yes" : "no"} episodic=${payload.episodic.length}`
+      `[MemoryEditor] loaded character=${characterId} summary=${payload.summary ? "yes" : "no"} core=${payload.core ? "yes" : "no"} episodic=${payload.episodic.length} all=${includeLowImportance}`
     );
-    return NextResponse.json(payload);
+    return NextResponse.json({ ...payload, isOwner });
   } catch (error) {
     console.error("[MemoryEditor] Get chat memory error:", error);
     return NextResponse.json({ error: "Не удалось загрузить память" }, { status: 500 });
