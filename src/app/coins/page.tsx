@@ -18,6 +18,7 @@ import { useCurrency } from "@/components/CurrencyContext";
 import ConvertedPrice from "@/components/ConvertedPrice";
 import { getCurrencySymbol } from "@/lib/currency";
 import { VC_PACKAGES, type VcPackage } from "@/lib/vcPackages";
+import SubscriptionPlans from "@/components/SubscriptionPlans";
 
 type BalanceData = {
   verseCoins: number;
@@ -299,6 +300,11 @@ export default function CoinsPage() {
             </section>
           </>
         )}
+
+        <section className="flex flex-col gap-6">
+          <h2 className="text-xl font-black text-white">{t("coins.subscriptions")}</h2>
+          <SubscriptionPlans showHero={false} showStatus={false} showCurrencySelector={false} />
+        </section>
 
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

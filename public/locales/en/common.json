@@ -287,6 +287,7 @@
     "claiming": "Claiming...",
     "claim": "Claim (+{{amount}} VC)",
     "unavailable": "Bonus unavailable",
+    "subscriptions": "Subscriptions",
     "packages": "VC packs",
     "price": "Price ({{symbol}})",
     "bonus": "Bonus",
