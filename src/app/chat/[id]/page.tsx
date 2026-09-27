@@ -7,6 +7,7 @@ import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy, FaInfoCircle } from "react-icons/fa";
 import MemoryEditor from "@/components/MemoryEditor";
+import ChatComposer from "@/components/ChatComposer";
 import PersonaSelector from "@/components/PersonaSelector";
 import type { ChatPersona } from "@/lib/persona";
 import {
@@ -500,12 +501,6 @@ function ChatMessageItem({
   );
 }
 
-function resizeComposer(el: HTMLTextAreaElement | null) {
-  if (!el) return;
-  el.style.height = "auto";
-  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-}
-
 function formatMessageContent(content: string): string {
   const escaped = content
     .replace(/&/g, "&amp;")
@@ -820,7 +815,6 @@ export default function ChatPage() {
   const [showAnonymousLimitModal, setShowAnonymousLimitModal] = useState(false);
   const [confirmClearChat, setConfirmClearChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastSendRef = useRef<{
     message: string;
     history?: Array<{ role: "user" | "assistant"; content: string }>;
@@ -948,10 +942,6 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  useEffect(() => {
-    resizeComposer(inputRef.current);
-  }, [input]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -1705,39 +1695,13 @@ export default function ChatPage() {
                 Осталось {anonymousRemaining}/{ANONYMOUS_MESSAGE_LIMIT}
               </p>
             )}
-            <form
+            <ChatComposer
+              value={input}
+              onChange={setInput}
               onSubmit={sendMessage}
-              className="chat-form mx-auto flex w-full max-w-3xl flex-col gap-2 sm:flex-row sm:items-end"
-              data-metrika="chat-form"
-            >
-              <textarea
-                ref={inputRef}
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onInput={(e) => resizeComposer(e.currentTarget)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (canSend) {
-                      e.currentTarget.form?.requestSubmit();
-                    }
-                  }
-                }}
-                placeholder="Напишите сообщение..."
-                className="max-h-[200px] min-h-[44px] w-full min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl border border-divider bg-bg-card px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary/60"
-                disabled={sending || actionLoading || clearingChat}
-              />
-              <button
-                type="submit"
-                id="chat-send-btn"
-                data-metrika="chat-send"
-                disabled={!canSend}
-                className="min-h-[44px] w-full shrink-0 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50 sm:w-auto"
-              >
-                Отправить
-              </button>
-            </form>
+              disabled={sending || actionLoading || clearingChat}
+              canSend={canSend}
+            />
           </div>
         </main>
       </div>
