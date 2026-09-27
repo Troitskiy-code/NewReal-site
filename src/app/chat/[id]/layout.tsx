@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { prisma } from "@/lib/prisma";
 import { chatPageMetadata, createPageMetadata } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
@@ -7,6 +7,10 @@ import { translate } from "@/lib/getDictionary";
 type ChatLayoutProps = {
   children: React.ReactNode;
   params: Promise<{ id: string }>;
+};
+
+export const viewport: Viewport = {
+  interactiveWidget: "resizes-visual",
 };
 
 export async function generateMetadata({ params }: ChatLayoutProps): Promise<Metadata> {

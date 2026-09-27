@@ -7,6 +7,7 @@ import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy, FaInfoCircle } from "react-icons/fa";
 import MemoryEditor from "@/components/MemoryEditor";
+import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
 import PersonaSelector from "@/components/PersonaSelector";
 import type { ChatPersona } from "@/lib/persona";
@@ -1521,13 +1522,7 @@ export default function ChatPage() {
 
   return (
     <>
-    {character?.imageUrl ? (
-      <div
-        className="nv-chat-portrait"
-        style={{ backgroundImage: `url(${character.imageUrl})` }}
-        aria-hidden
-      />
-    ) : null}
+    {character?.imageUrl ? <ChatPortraitBackground imageUrl={character.imageUrl} /> : null}
     <div
       className={`relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
         character?.imageUrl ? "" : "bg-bg-page"
