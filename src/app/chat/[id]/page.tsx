@@ -1520,19 +1520,19 @@ export default function ChatPage() {
   }
 
   return (
+    <>
+    {character?.imageUrl ? (
+      <div
+        className="nv-chat-portrait"
+        style={{ backgroundImage: `url(${character.imageUrl})` }}
+        aria-hidden
+      />
+    ) : null}
     <div
-      className={`relative flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
+      className={`relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
         character?.imageUrl ? "" : "bg-bg-page"
       }`}
-      style={{
-        backgroundImage: character?.imageUrl ? `url(${character.imageUrl})` : "none",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
     >
-      {character?.imageUrl && (
-        <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden />
-      )}
       <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden">
 
         <Modal
@@ -1689,7 +1689,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-[#2A2A2A] bg-[#121212] px-3 py-3 md:p-4">
+          <div className="shrink-0 px-3 py-3 md:p-4">
             {isAnonymous && anonymousRemaining !== null && (
               <p className="mx-auto mb-2 w-full max-w-3xl text-center text-xs text-secondary-text">
                 Осталось {anonymousRemaining}/{ANONYMOUS_MESSAGE_LIMIT}
@@ -1716,5 +1716,6 @@ export default function ChatPage() {
         onClose={() => setConfirmClearChat(false)}
       />
     </div>
+    </>
   );
 }

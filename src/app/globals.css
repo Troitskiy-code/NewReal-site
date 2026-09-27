@@ -272,9 +272,39 @@
   pointer-events: auto;
 }
 
+/*
+  Portrait stays on the large viewport so the mobile keyboard (dvh) does not
+  recrop background-size: cover. Chat UI still uses 100dvh.
+*/
+.nv-chat-portrait {
+  position: fixed;
+  inset-inline: 0;
+  top: 3.5rem;
+  z-index: 0;
+  height: calc(100vh - 3.5rem);
+  height: calc(100lvh - 3.5rem);
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.nv-chat-portrait::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.6);
+}
+
 @media (min-width: 768px) {
   .nv-mobile-drawer,
   .nv-mobile-nav-overlay {
     display: none !important;
+  }
+
+  .nv-chat-portrait {
+    top: 5rem;
+    height: calc(100vh - 5rem);
+    height: calc(100lvh - 5rem);
   }
 }
