@@ -94,7 +94,7 @@ export default function ChatComposer({
                 marginTop: -16,
               }}
             >
-              <FaPaperPlane className="relative left-px text-[13px]" />
+              <FaPaperPlane className="block text-[13px]" />
             </button>
           )}
         </div>
