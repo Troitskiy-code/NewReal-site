@@ -56,39 +56,48 @@ export default function ChatComposer({
       className="chat-form mx-auto flex w-full max-w-3xl items-end gap-2"
       data-metrika="chat-form"
     >
-      <div className="relative min-w-0 flex-1">
-        <textarea
-          ref={inputRef}
-          rows={1}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onInput={(event) => resizeComposer(event.currentTarget)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              if (canSend) {
-                event.currentTarget.form?.requestSubmit();
+      <div className="min-w-0 flex-1">
+        <div style={{ position: "relative", lineHeight: 0 }}>
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onInput={(event) => resizeComposer(event.currentTarget)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                if (canSend) {
+                  event.currentTarget.form?.requestSubmit();
+                }
               }
-            }
-          }}
-          placeholder="Напишите сообщение..."
-          className={`max-h-[7.625rem] min-h-[44px] w-full resize-none overflow-hidden rounded-2xl border border-divider bg-bg-card py-2.5 pl-4 text-sm leading-5 outline-none transition-colors focus:border-primary/60 ${
-            isDesktop ? "pr-4" : "pr-12"
-          }`}
-          disabled={disabled}
-        />
-        {isDesktop ? null : (
-          <button
-            type="submit"
-            data-metrika="chat-send"
-            disabled={!canSend}
-            aria-label="Отправить"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50"
-            style={{ position: "absolute", right: 6, bottom: 6 }}
-          >
-            <FaPaperPlane className="relative left-px text-[13px]" />
-          </button>
-        )}
+            }}
+            placeholder="Напишите сообщение..."
+            className={`block max-h-[7.625rem] min-h-[44px] w-full resize-none overflow-hidden rounded-2xl border border-divider bg-bg-card py-2.5 pl-4 text-sm leading-5 outline-none transition-colors focus:border-primary/60 ${
+              isDesktop ? "pr-4" : "pr-12"
+            }`}
+            disabled={disabled}
+          />
+          {isDesktop ? null : (
+            <button
+              type="submit"
+              data-metrika="chat-send"
+              disabled={!canSend}
+              aria-label="Отправить"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50"
+              style={{
+                position: "absolute",
+                right: 6,
+                top: "50%",
+                height: 32,
+                width: 32,
+                marginTop: -16,
+              }}
+            >
+              <FaPaperPlane className="relative left-px text-[13px]" />
+            </button>
+          )}
+        </div>
       </div>
       {isDesktop ? (
         <button
