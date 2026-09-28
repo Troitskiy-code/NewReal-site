@@ -10,6 +10,7 @@ import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
 import {
   fetchEmbeddings,
   keepUniqueByCosine,
+  logSimilarityMatrix,
   SEMANTIC_DEDUP_THRESHOLD,
 } from "@/lib/memoryEmbeddings";
 
@@ -285,6 +286,7 @@ export async function deduplicateLinesSemantic(
 
   try {
     const embeddings = await fetchEmbeddings(lines, apiKey);
+    logSimilarityMatrix(embeddings, SEMANTIC_DEDUP_THRESHOLD);
     const result = keepUniqueByCosine(lines, embeddings, SEMANTIC_DEDUP_THRESHOLD);
 
     infoLog(

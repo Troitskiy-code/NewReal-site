@@ -1,10 +1,23 @@
 import axios from "axios";
-import { errorLog } from "./logger";
+import { debugLog, errorLog } from "./logger";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+const DEFAULT_DEDUP_THRESHOLD = 0.8;
 
-export const SEMANTIC_DEDUP_THRESHOLD = 0.85;
+function parseDedupThreshold(): number {
+  const parsed = Number.parseFloat(process.env.MEMORY_DEDUP_THRESHOLD || "0.80");
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed >= 1) {
+    return DEFAULT_DEDUP_THRESHOLD;
+  }
+  return parsed;
+}
+
+export const SEMANTIC_DEDUP_THRESHOLD = parseDedupThreshold();
+
+export function isMemoryDedupDebugEnabled(): boolean {
+  return process.env.DEBUG === "true";
+}
 
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length === 0 || a.length !== b.length) return 0;
@@ -43,6 +56,36 @@ export function keepUniqueByCosine(
   }
 
   return result;
+}
+
+export function formatSimilarityMatrix(
+  embeddings: number[][],
+  threshold = SEMANTIC_DEDUP_THRESHOLD
+): string[] {
+  const rows: string[] = [];
+  for (let i = 0; i < embeddings.length; i++) {
+    const left = embeddings[i];
+    if (!left) continue;
+    for (let j = i + 1; j < embeddings.length; j++) {
+      const right = embeddings[j];
+      if (!right) continue;
+      const score = cosineSimilarity(left, right);
+      const mark = score > threshold ? " ← если > threshold, дедуплицируем" : "";
+      rows.push(`  [${i}-${j}]: ${score.toFixed(2)}${mark}`);
+    }
+  }
+  return rows;
+}
+
+export function logSimilarityMatrix(
+  embeddings: number[][],
+  threshold = SEMANTIC_DEDUP_THRESHOLD
+) {
+  if (!isMemoryDedupDebugEnabled()) return;
+
+  const rows = formatSimilarityMatrix(embeddings, threshold);
+  if (rows.length === 0) return;
+  debugLog("Memory:Dedup", `Similarity matrix:\n${rows.join("\n")}`);
 }
 
 export async function fetchEmbeddings(texts: string[], apiKey: string): Promise<number[][]> {

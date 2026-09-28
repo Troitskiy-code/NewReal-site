@@ -9,7 +9,7 @@ const { config } = require("dotenv");
 
 config();
 
-const SEMANTIC_DEDUP_THRESHOLD = 0.85;
+const SEMANTIC_DEDUP_THRESHOLD = Number.parseFloat(process.env.MEMORY_DEDUP_THRESHOLD || "0.80") || 0.8;
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 
 let passed = 0;
@@ -235,7 +235,7 @@ console.log("Cosine similarity");
 assert(cosineSimilarity([1, 0, 0, 0], [1, 0, 0, 0]) > 0.99, "identical vectors ~ 1");
 assert(cosineSimilarity([1, 0, 0, 0], [0.97, 0.2, 0, 0]) > 0.85, "near-paraphrase vectors above threshold");
 assert(cosineSimilarity([1, 0, 0, 0], [0, 1, 0, 0]) < 0.2, "orthogonal vectors stay low");
-assert(SEMANTIC_DEDUP_THRESHOLD === 0.85, "threshold is 0.85");
+assert(SEMANTIC_DEDUP_THRESHOLD === 0.8, "threshold is 0.80");
 
 console.log("\nSynthetic semantic dedup (50+ paraphrase lines)");
 assert(DIALOGUE_LINES.length >= 50, `dialogue has ${DIALOGUE_LINES.length} lines`);
@@ -305,6 +305,8 @@ assert(
 assert(advanced.includes("isEventAlreadyInSummary"), "still checks Memory.summary");
 assert(advanced.includes("maxSimilarityAgainst"), "episodic uses embedding compare");
 assert(embeddingsSrc.includes("openai/text-embedding-3-small"), "uses text-embedding-3-small");
+assert(embeddingsSrc.includes("MEMORY_DEDUP_THRESHOLD"), "threshold is env-configurable");
+assert(chatMemory.includes("logSimilarityMatrix"), "debug similarity matrix is wired");
 assert(chatMemory.includes("deduplicateLinesSemantic"), "summary uses semantic line dedup");
 assert(chatMemory.includes("falling back to word overlap"), "summary falls back to word overlap");
 assert(sanitizeSrc.includes('Skipped section "${name}" (no data)'), "core skip log is present");
