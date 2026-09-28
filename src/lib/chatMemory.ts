@@ -300,14 +300,27 @@ export async function deduplicateLinesSemantic(
   }
 }
 
-const CONSOLIDATION_PROMPT = `Ты — редактор ролевых диалогов. Тебе дан список активных сюжетных линий. Твоя задача — объединить близкие по смыслу линии так, чтобы осталось МАКСИМУМ {{max}}.
+const CONSOLIDATION_PROMPT = `Ты — редактор ролевых диалогов. Тебе дан список активных сюжетных линий. Объедини близкие по смыслу в МАКСИМУМ 5.
 
-ПРАВИЛА:
-- Если 2+ линии описывают одну суть с разных сторон — объедини в одну.
-- Пример: «Рокс рассматривает Лукаса как объект интереса» + «Лукас пытается понять интерес Рокс» → «Рокс и Лукас взаимно изучают друг друга».
-- НЕ объединяй разные линии, только похожие.
-- Каждая итоговая линия — одно предложение в настоящем времени.
-- Сохрани все важные смыслы.
+ЖЁСТКИЕ ТРЕБОВАНИЯ:
+- Каждая итоговая линия — МАКСИМУМ 15 слов.
+- НЕ используй союзы «в то время как», «при этом», «рассматривая», «демонстрируя» для склейки. Это не консолидация, а соединение.
+- Если две линии описывают одну суть — сформулируй ОДНУ ОБЩУЮ фразу.
+- Убирай повторы слов: если «вызов» встречается в 3 линиях — оставь один раз.
+
+ПРИМЕРЫ:
+
+Плохо (склейка):
+- «Лукас пытается понять, интересна ли Рокс, в то время как Рокс выясняет готовность Лукаса открыться»
+
+Хорошо (обобщение):
+- «Лукас и Рокс взаимно изучают друг друга»
+
+Плохо (соединение):
+- «Оба испытывают влечение и продолжают игру вызова, рассматривая друг друга как объекты интереса и вызов»
+
+Хорошо (обобщение):
+- «Рокс и Лукас флиртуют, играя в игру вызова»
 
 Формат ответа — только список, без вступлений:
 - Линия 1
@@ -317,25 +330,18 @@ const CONSOLIDATION_PROMPT = `Ты — редактор ролевых диал�
 Входные линии:
 {{lines}}`;
 
-const EVENTS_CONSOLIDATION_PROMPT = `Ты — редактор ролевых диалогов. Тебе дан список недавних событий. Твоя задача — объединить близкие по смыслу формулировки так, чтобы осталось МАКСИМУМ {{max}}.
+function countLineWords(line: string): number {
+  return line
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
 
-ПРАВИЛА:
-- Если 2+ записи описывают одно событие разными словами — объедини в одну.
-- НЕ объединяй разные события, только похожие.
-- Каждая итоговая запись — одно предложение.
-- Сохрани все важные последствия.
-
-Формат ответа — только список, без вступлений:
-- Событие 1
-- Событие 2
-...
-
-Входные события:
-{{lines}}`;
-
-const GPT_4O_MINI_INPUT_PER_MILLION = 0.15;
-const GPT_4O_MINI_OUTPUT_PER_MILLION = 0.6;
-const CONSOLIDATION_FALLBACK_COST = 0.0003;
+function averageLineWords(lines: string[]): number {
+  if (lines.length === 0) return 0;
+  const total = lines.reduce((sum, line) => sum + countLineWords(line), 0);
+  return Math.round(total / lines.length);
+}
 
 function parseConsolidatedItems(text: string, maxLines: number): string[] {
   return text
@@ -345,34 +351,18 @@ function parseConsolidatedItems(text: string, maxLines: number): string[] {
     .slice(0, maxLines);
 }
 
-function estimateConsolidationCost(promptTokens?: number, completionTokens?: number): string {
-  if (
-    typeof promptTokens === "number" &&
-    typeof completionTokens === "number" &&
-    promptTokens >= 0 &&
-    completionTokens >= 0
-  ) {
-    const cost =
-      (promptTokens * GPT_4O_MINI_INPUT_PER_MILLION +
-        completionTokens * GPT_4O_MINI_OUTPUT_PER_MILLION) /
-      1_000_000;
-    return `~$${cost.toFixed(4)}`;
-  }
-  return `~$${CONSOLIDATION_FALLBACK_COST.toFixed(4)}`;
-}
-
 export async function consolidateActiveLines(
   lines: string[],
   apiKey: string,
-  maxLines = 5,
-  promptTemplate = CONSOLIDATION_PROMPT
+  maxLines = 5
 ): Promise<string[]> {
   if (lines.length <= maxLines) return lines;
 
   try {
-    const userContent = promptTemplate
-      .replaceAll("{{max}}", String(maxLines))
-      .replace("{{lines}}", lines.map((line) => `- ${line}`).join("\n"));
+    const userContent = CONSOLIDATION_PROMPT.replace(
+      "{{lines}}",
+      lines.map((line) => `- ${line}`).join("\n")
+    );
 
     const response = await axios.post(
       `${KODIKROUTER_URL}/chat/completions`,
@@ -382,7 +372,7 @@ export async function consolidateActiveLines(
           { role: "system", content: "Ты — редактор." },
           { role: "user", content: userContent },
         ],
-        max_tokens: 500,
+        max_tokens: 300,
         temperature: 0.3,
       },
       {
@@ -394,14 +384,18 @@ export async function consolidateActiveLines(
     );
 
     const text = response.data?.choices?.[0]?.message?.content?.trim() || "";
-    const result = parseConsolidatedItems(text, maxLines);
-    const usage = response.data?.usage as
-      | { prompt_tokens?: number; completion_tokens?: number }
-      | undefined;
-    const cost = estimateConsolidationCost(usage?.prompt_tokens, usage?.completion_tokens);
+    const parsed = parseConsolidatedItems(text, maxLines);
+    const result = parsed.length > 0 ? parsed : lines.slice(0, maxLines);
+    const avgLength = averageLineWords(result);
 
-    infoLog("Memory:Consolidate", `${lines.length} lines → ${result.length} (cost: ${cost})`);
-    return result.length > 0 ? result : lines.slice(0, maxLines);
+    infoLog(
+      "Memory:Consolidate",
+      `${lines.length} → ${result.length} lines (avg length: ${avgLength} words)`
+    );
+    if (avgLength > 18) {
+      infoLog("Memory:Consolidate", "WARNING: lines too long");
+    }
+    return result;
   } catch (error) {
     errorLog("Memory:Consolidate", "Failed:", error);
     return lines.slice(0, maxLines);
@@ -440,14 +434,10 @@ export async function postProcessSummary(
     const before = events.length;
     const dedupedEvents = await deduplicateLinesSemantic(events, apiKey);
     const limit = eventsLimitForTokens(maxTokens);
-    const consolidatedEvents =
-      dedupedEvents.length > limit
-        ? await consolidateActiveLines(dedupedEvents, apiKey, limit, EVENTS_CONSOLIDATION_PROMPT)
-        : dedupedEvents;
-    const limited = consolidatedEvents.slice(0, limit);
+    const limited = dedupedEvents.slice(-limit);
     infoLog(
       "Memory:PostProcess",
-      `Events: ${before} → ${limited.length} (dedupe: ${before - dedupedEvents.length}, consolidate: ${dedupedEvents.length - limited.length})`
+      `Events: ${before} → ${limited.length} (dedupe: ${before - dedupedEvents.length}, limit: ${dedupedEvents.length - limited.length})`
     );
     sections.events =
       limited.length > 0 ? limited.map((event, index) => `${index + 1}. ${event}`).join("\n") : undefined;

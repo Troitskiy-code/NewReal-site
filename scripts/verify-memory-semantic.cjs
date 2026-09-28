@@ -309,6 +309,9 @@ assert(embeddingsSrc.includes("MEMORY_DEDUP_THRESHOLD"), "threshold is env-confi
 assert(chatMemory.includes("logSimilarityMatrix"), "debug similarity matrix is wired");
 assert(chatMemory.includes("deduplicateLinesSemantic"), "summary uses semantic line dedup");
 assert(chatMemory.includes("consolidateActiveLines"), "summary consolidates leftover lines via LLM");
+assert(chatMemory.includes("МАКСИМУМ 15 слов"), "consolidation prompt requires short lines");
+assert(chatMemory.includes("max_tokens: 300"), "consolidation uses 300 max tokens");
+assert(!chatMemory.includes("EVENTS_CONSOLIDATION_PROMPT"), "events skip LLM consolidation");
 assert(chatMemory.includes("falling back to word overlap"), "summary falls back to word overlap");
 assert(sanitizeSrc.includes('Skipped section "${name}" (no data)'), "core skip log is present");
 
