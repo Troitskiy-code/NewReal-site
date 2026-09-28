@@ -6,6 +6,12 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
 import { infoLog } from "@/lib/logger";
+import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
+import {
+  fetchEmbeddings,
+  keepUniqueByCosine,
+  SEMANTIC_DEDUP_THRESHOLD,
+} from "@/lib/memoryEmbeddings";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
@@ -271,19 +277,44 @@ export function deduplicateLines(lines: string[]): string[] {
   return result;
 }
 
+export async function deduplicateLinesSemantic(
+  lines: string[],
+  apiKey: string
+): Promise<string[]> {
+  if (lines.length < 2) return lines;
+
+  try {
+    const embeddings = await fetchEmbeddings(lines, apiKey);
+    const result = keepUniqueByCosine(lines, embeddings, SEMANTIC_DEDUP_THRESHOLD);
+
+    infoLog(
+      "Memory:Dedup",
+      `Semantic dedup: ${lines.length} → ${result.length} lines (similarity threshold ${SEMANTIC_DEDUP_THRESHOLD})`
+    );
+    return result;
+  } catch {
+    infoLog("Memory:Dedup", "Semantic embeddings unavailable, falling back to word overlap");
+    return deduplicateLines(lines);
+  }
+}
+
 function eventsLimitForTokens(maxTokens: number): number {
   if (maxTokens < 600) return 4;
   if (maxTokens < 1000) return 6;
   return 8;
 }
 
-export function postProcessSummary(rawSummary: string, maxTokens: number): string {
+export async function postProcessSummary(
+  rawSummary: string,
+  maxTokens: number,
+  apiKey: string
+): Promise<string> {
   const sections = parseSummarySections(rawSummary);
 
   if (sections.activeLines) {
     const lines = extractListItems(sections.activeLines);
     const before = lines.length;
-    const deduped = deduplicateLines(lines);
+    const deduped = await deduplicateLinesSemantic(lines, apiKey);
     const limited = deduped.slice(0, 5);
     const dedupeDropped = before - deduped.length;
     const limitDropped = deduped.length - limited.length;
@@ -297,7 +328,7 @@ export function postProcessSummary(rawSummary: string, maxTokens: number): strin
   if (sections.events) {
     const events = extractListItems(sections.events);
     const before = events.length;
-    const dedupedEvents = deduplicateLines(events);
+    const dedupedEvents = await deduplicateLinesSemantic(events, apiKey);
     const limit = eventsLimitForTokens(maxTokens);
     const limited = dedupedEvents.slice(-limit);
     const dedupeDropped = before - dedupedEvents.length;
@@ -313,13 +344,18 @@ export function postProcessSummary(rawSummary: string, maxTokens: number): strin
   return rebuildSummary(sections);
 }
 
-function finalizeSummary(raw: string, maxTokens: number, fallback?: string): string {
-  const processed = postProcessSummary(raw, maxTokens);
+async function finalizeSummary(
+  raw: string,
+  maxTokens: number,
+  apiKey: string,
+  fallback?: string
+): Promise<string> {
+  const processed = await postProcessSummary(raw, maxTokens, apiKey);
   if (processed.length >= 50) return processed;
 
   const previous = fallback?.trim();
   if (previous) {
-    const processedFallback = postProcessSummary(previous, maxTokens);
+    const processedFallback = await postProcessSummary(previous, maxTokens, apiKey);
     if (processedFallback.length >= 50) return processedFallback;
     if (previous.length >= 50) return previous;
   }
@@ -386,7 +422,8 @@ async function loadCoreMemoryText(userId: string, characterId: string): Promise<
     where: { userId_characterId: { userId, characterId } },
     select: { content: true },
   });
-  return row?.content?.trim() || null;
+  if (!row?.content?.trim()) return null;
+  return sanitizeCoreMemory(row.content, { log: false }) || null;
 }
 
 function lastSummarizedTimestamp(messages: DialogMessage[]): Date {
@@ -444,7 +481,7 @@ async function requestSummary(
     `${dialogText}${formatCoreContext(coreText)}`,
     maxTokens
   );
-  return finalizeSummary(result, maxTokens);
+  return finalizeSummary(result, maxTokens, apiKey);
 }
 
 async function requestChapterSummary(
@@ -459,7 +496,7 @@ async function requestChapterSummary(
     `${chapterText}${formatCoreContext(coreText)}`,
     maxTokens
   );
-  return finalizeSummary(result, maxTokens);
+  return finalizeSummary(result, maxTokens, apiKey);
 }
 
 async function mergeSummaries(
@@ -473,7 +510,7 @@ async function mergeSummaries(
   infoLog("Memory", "Summary merge: skipped Core duplication check");
   const userContent = `## Старая выжимка:\n${oldSummary}\n\n## Новая часть:\n${newChapter}${formatCoreContext(coreText)}`;
   const result = await requestKodikText(apiKey, MERGE_PROMPT, userContent, maxTokens, { eventsLimit });
-  return finalizeSummary(result, maxTokens, oldSummary);
+  return finalizeSummary(result, maxTokens, apiKey, oldSummary);
 }
 
 async function persistMemorySummary(

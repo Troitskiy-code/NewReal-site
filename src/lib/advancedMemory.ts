@@ -2,6 +2,11 @@ import axios from "axios";
 import { prisma } from "@/lib/prisma";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import { debugLog, errorLog, infoLog } from "@/lib/logger";
+import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
+import {
+  maxSimilarityAgainst,
+  SEMANTIC_DEDUP_THRESHOLD,
+} from "@/lib/memoryEmbeddings";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const CORE_MEMORY_MODEL = "google/gemma-4-31b-it";
@@ -12,25 +17,40 @@ export const MANUAL_EPISODIC_IMPORTANCE = 3;
 
 const CORE_PROMPT = `Ты — анализатор устойчивых фактов о персонаже и пользователе в ролевой игре.
 
-Извлеки ТОЛЬКО устойчивые характеристики:
+Извлеки ТОЛЬКО устойчивые характеристики. Пустые разделы и строки «данных недостаточно» не выводи.
 
 ## Персонаж
 - Черты характера (3–5 прилагательных/фраз).
 - Стиль общения.
 - Привычки и предпочтения.
 
+Если данных о персонаже нет — не выводи раздел «## Персонаж» вообще.
+Вместо «Стиль общения: (данных недостаточно)» — просто пропусти строку и раздел.
+
 ## Пользователь
 - Стиль общения.
 - Интересы и предпочтения.
 
 ## Отношения (общее состояние)
-- Тип отношений (дружеские, романтические, враждебные).
+- Тип отношений (дружеские / романтические / враждебные).
 - Уровень близости.
-- Ключевые изменения за последнее время (1–2 предложения).
+- Общий тон взаимодействия.
+
+ЗАПРЕЩЕНО в этом разделе:
+- «Ключевые изменения за последнее время: ...» — это события, они не в Core.
+- «Пользователь предложил начать встречаться» — это событие.
+- «Уровень близости: высокий, физическая близость» — допустимо, но без деталей сцен.
+
+Пример правильного вывода:
+## Отношения
+- Тип: романтические, формирующиеся.
+- Близость: нарастающая, есть физический контакт.
+- Тон: игривый флирт с взаимным вызовом.
+
+Если раздел «Отношения» пуст или содержит только события — не выводи раздел.
 
 НЕ включай:
 - События (даже значимые) — они идут в Episodic и Summary.
-- Сексуальное напряжение, флирт — это состояние отношений, но кратко, одной строкой.
 - Конкретные фразы, детали сцен.
 
 Если новых устойчивых фактов нет — ответь ровно: UNCHANGED.`;
@@ -47,6 +67,16 @@ const EVENT_CLASSIFIER_PROMPT = `Определи, содержит ли сле�
 - Приветствия, болтовня, эмоции.
 - Рутинные действия без последствий («подошёл», «посмотрел»).
 - Вопросы общего характера («как дела?»).
+- «Бросил деньги и повёл к выходу» — это бытовое действие в сцене.
+- «Заказал напиток».
+- «Улыбнулся».
+- «Подошёл ближе».
+
+Событие — только если есть ПОСЛЕДСТВИЯ:
+- «Заключили договор о чём-то».
+- «Узнал тайну».
+- «Признался в чувствах».
+- «Принял важное решение».
 
 Ответь СТРОГО в формате JSON:
 { "isEvent": true/false, "importance": 1-3, "text": "краткая формулировка события (макс 15 слов) или пусто" }
@@ -224,14 +254,30 @@ export async function isEventAlreadyInSummary(
 async function isDuplicateEvent(
   userId: string,
   characterId: string,
-  eventText: string
+  eventText: string,
+  apiKey: string
 ): Promise<boolean> {
   const recent = await prisma.episodicMemory.findMany({
     where: { userId, characterId },
     orderBy: { timestamp: "desc" },
-    take: 10,
+    take: 20,
     select: { event: true },
   });
+
+  if (recent.length === 0) return false;
+
+  const existing = recent.map((entry) => entry.event);
+  const similarity = await maxSimilarityAgainst(eventText, existing, apiKey);
+  if (similarity !== null) {
+    if (similarity > SEMANTIC_DEDUP_THRESHOLD) {
+      infoLog(
+        "Episodic",
+        `Semantic dedup: event already exists (similarity ${similarity.toFixed(2)})`
+      );
+      return true;
+    }
+    return false;
+  }
 
   const newWords = eventText
     .toLowerCase()
@@ -239,8 +285,8 @@ async function isDuplicateEvent(
     .filter((word) => word.length > 4);
   if (newWords.length === 0) return false;
 
-  return recent.some((entry) => {
-    const existingWords = entry.event
+  return existing.some((event) => {
+    const existingWords = event
       .toLowerCase()
       .split(/\s+/)
       .filter((word) => word.length > 4);
@@ -401,13 +447,23 @@ export async function updateCoreMemory(
       return existing;
     }
 
-    const content = await summarizeCoreMemory(apiKey, existing.content, info);
+    const rawContent = await summarizeCoreMemory(apiKey, existing.content, info);
 
-    if (isUnchangedDelta(content) || content.trim() === existing.content.trim()) {
+    if (isUnchangedDelta(rawContent) || rawContent.trim() === existing.content.trim()) {
       infoLog("Memory", "Core updated: 0 new facts, 1 unchanged");
       debugLog(
         "CoreUpdate",
         `skipped unchanged user=${userId} character=${characterId}`
+      );
+      return existing;
+    }
+
+    const content = sanitizeCoreMemory(rawContent);
+    if (!content || content === existing.content.trim()) {
+      infoLog("Memory", "Core updated: 0 new facts, 1 unchanged");
+      debugLog(
+        "CoreUpdate",
+        `skipped empty-after-sanitize user=${userId} character=${characterId}`
       );
       return existing;
     }
@@ -561,7 +617,7 @@ export async function getRelevantMemories(
   ]);
 
   const memories: RelevantMemories = {
-    core: core?.content?.trim() || null,
+    core: core?.content ? sanitizeCoreMemory(core.content, { log: false }) || null : null,
     episodic,
     text: null,
   };
@@ -706,7 +762,7 @@ export async function ingestUserMessageMemory({
       );
     } else if (await isEventAlreadyInSummary(userId, characterId, classification.text)) {
       infoLog("Memory", "Episodic skipped: already in summary");
-    } else if (await isDuplicateEvent(userId, characterId, classification.text)) {
+    } else if (await isDuplicateEvent(userId, characterId, classification.text, apiKey)) {
       infoLog("Episodic", `Duplicate detected, skipped: ${classification.text.slice(0, 120)}`);
     } else {
       await addEpisodicMemory(userId, characterId, classification.text, classification.importance);
