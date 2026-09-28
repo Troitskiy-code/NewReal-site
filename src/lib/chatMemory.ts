@@ -78,12 +78,24 @@ const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диа�
 Формат ответа (строго соблюдай):
 
 ## Активные линии
-Список из 2–7 незакрытых сюжетных линий: обещания, тайны, проверки, конфликты, цели. Каждая — одно предложение в настоящем времени.
+МАКСИМУМ 5 строк. Если получилось больше — объедини похожие. Не дублируй одну и ту же идею разными словами.
+Список незакрытых сюжетных линий: обещания, тайны, проверки, конфликты, цели. Каждая — одно предложение в настоящем времени.
+Пример плохого вывода (не делай так):
+- Рокс проверяет Лукаса.
+- Рокс хочет понять, готов ли Лукас.
+- Лукас пытается понять Рокс.
+Пример хорошего вывода:
+- Рокс проверяет, проявит ли Лукас инициативу.
 
 ## Недавние события
-Список из 3–8 событий СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ (от раннего к позднему). Только те, что ИЗМЕНИЛИ состояние мира или отношения:
+МАКСИМУМ 6 строк. Только события с последствиями. Если событий больше — выбери 6 самых значимых, остальные отбрось.
+СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ (от раннего к позднему). Только те, что ИЗМЕНИЛИ состояние мира или отношения:
 - узнал важное, дал обещание, заключил договор, нашёл/потерял предмет, совершил действие с последствиями.
-НЕ включай: эмоциональные реакции, описания, рутинные действия, факты о персонаже/пользователе (они в Core).
+ЗАПРЕЩЕНО включать:
+- Бытовые действия в сцене (заказал напиток, выпил шот, улыбнулся, подошёл).
+- Реакции и эмоции (смеётся, удивлён, раздражён).
+- Описания физических действий без последствий (провёл пальцем, протянул руку).
+- Факты о персонаже/пользователе (они в Core).
 
 ## Эмоциональный фон
 Одно предложение: тёплое / напряжённое / игривое / романтичное / тревожное.
@@ -114,11 +126,23 @@ const MERGE_PROMPT = `Ты — суммаризатор ролевых диал�
 Формат:
 
 ## Активные линии
+МАКСИМУМ 5 строк. Если получилось больше — объедини похожие. Не дублируй одну и ту же идею разными словами.
 Объединить старые и новые линии. Если линия ЗАКРЫТА (обещание выполнено, тайна раскрыта, проверка завершена) — УБРАТЬ её. Оставить только незакрытые.
+Пример плохого вывода (не делай так):
+- Рокс проверяет Лукаса.
+- Рокс хочет понять, готов ли Лукас.
+- Лукас пытается понять Рокс.
+Пример хорошего вывода:
+- Рокс проверяет, проявит ли Лукас инициативу.
 
 ## Недавние события
+МАКСИМУМ 6 строк. Только события с последствиями. Если событий больше — выбери 6 самых значимых, остальные отбрось.
 Взять последние {{eventsLimit}} значимых событий из старой выжимки + новые события. Старые события вытесняются новыми, если их больше {{eventsLimit}}. Хронология строго от раннего к позднему.
-НЕ включай факты о персонаже/пользователе (они в Core).
+ЗАПРЕЩЕНО включать:
+- Бытовые действия в сцене (заказал напиток, выпил шот, улыбнулся, подошёл).
+- Реакции и эмоции (смеётся, удивлён, раздражён).
+- Описания физических действий без последствий (провёл пальцем, протянул руку).
+- Факты о персонаже/пользователе (они в Core).
 
 ## Эмоциональный фон
 
@@ -139,6 +163,168 @@ function applyPromptVars(prompt: string, vars: Record<string, string | number>):
     (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
     prompt
   );
+}
+
+type SummarySections = {
+  permanent?: string;
+  activeLines?: string;
+  events?: string;
+  emotion?: string;
+};
+
+const HEADING_MAP: Array<{ key: keyof SummarySections; test: RegExp }> = [
+  { key: "permanent", test: /^#{1,3}\s*(постоянн|permanent)/i },
+  { key: "activeLines", test: /^#{1,3}\s*(активн|active\s+lines?)/i },
+  { key: "events", test: /^#{1,3}\s*(недавн|recent\s+events?|событи|events)/i },
+  { key: "emotion", test: /^#{1,3}\s*(эмоциональн|emotional)/i },
+];
+
+function headingKey(line: string): keyof SummarySections | null {
+  const trimmed = line.trim();
+  for (const entry of HEADING_MAP) {
+    if (entry.test.test(trimmed)) return entry.key;
+  }
+  return null;
+}
+
+function extractListItems(block: string): string[] {
+  return block
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^[-*•]/.test(line) || /^\d+[.)]/.test(line))
+    .map((line) => line.replace(/^[-*•\d.)\s]+/, "").trim())
+    .filter(Boolean);
+}
+
+export function parseSummarySections(text: string): SummarySections {
+  const sections: SummarySections = {};
+  const lines = text.split(/\r?\n/);
+  let current: keyof SummarySections | null = null;
+  const buckets: Record<keyof SummarySections, string[]> = {
+    permanent: [],
+    activeLines: [],
+    events: [],
+    emotion: [],
+  };
+
+  for (const line of lines) {
+    const key = headingKey(line);
+    if (key) {
+      current = key;
+      continue;
+    }
+    if (current) {
+      buckets[current].push(line);
+    }
+  }
+
+  for (const key of Object.keys(buckets) as Array<keyof SummarySections>) {
+    const body = buckets[key].join("\n").trim();
+    if (body) sections[key] = body;
+  }
+
+  if (!sections.activeLines && !sections.events && !sections.permanent && !sections.emotion) {
+    const items = extractListItems(text);
+    if (items.length > 0) {
+      sections.events = items.map((item, index) => `${index + 1}. ${item}`).join("\n");
+    }
+  }
+
+  return sections;
+}
+
+export function rebuildSummary(sections: SummarySections): string {
+  const parts: string[] = [];
+  if (sections.permanent?.trim()) {
+    parts.push(`## Постоянное\n${sections.permanent.trim()}`);
+  }
+  if (sections.activeLines?.trim()) {
+    parts.push(`## Активные линии\n${sections.activeLines.trim()}`);
+  }
+  if (sections.events?.trim()) {
+    parts.push(`## Недавние события\n${sections.events.trim()}`);
+  }
+  if (sections.emotion?.trim()) {
+    parts.push(`## Эмоциональный фон\n${sections.emotion.trim()}`);
+  }
+  return parts.join("\n\n").trim();
+}
+
+export function deduplicateLines(lines: string[]): string[] {
+  const result: string[] = [];
+  const significantWords = (line: string) =>
+    line
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 4);
+
+  for (const line of lines) {
+    const words = significantWords(line);
+    const isDuplicate = result.some((existing) => {
+      const existingWords = significantWords(existing);
+      const overlap = words.filter((word) => existingWords.includes(word)).length;
+      return words.length > 0 && overlap / words.length > 0.6;
+    });
+    if (!isDuplicate) result.push(line);
+  }
+
+  return result;
+}
+
+function eventsLimitForTokens(maxTokens: number): number {
+  if (maxTokens < 600) return 4;
+  if (maxTokens < 1000) return 6;
+  return 8;
+}
+
+export function postProcessSummary(rawSummary: string, maxTokens: number): string {
+  const sections = parseSummarySections(rawSummary);
+
+  if (sections.activeLines) {
+    const lines = extractListItems(sections.activeLines);
+    const before = lines.length;
+    const deduped = deduplicateLines(lines);
+    const limited = deduped.slice(0, 5);
+    const dedupeDropped = before - deduped.length;
+    const limitDropped = deduped.length - limited.length;
+    infoLog(
+      "Memory:PostProcess",
+      `Active lines: ${before} → ${limited.length} (dedupe: ${dedupeDropped}, limit: ${limitDropped})`
+    );
+    sections.activeLines = limited.length > 0 ? limited.map((line) => `- ${line}`).join("\n") : undefined;
+  }
+
+  if (sections.events) {
+    const events = extractListItems(sections.events);
+    const before = events.length;
+    const dedupedEvents = deduplicateLines(events);
+    const limit = eventsLimitForTokens(maxTokens);
+    const limited = dedupedEvents.slice(-limit);
+    const dedupeDropped = before - dedupedEvents.length;
+    const limitDropped = dedupedEvents.length - limited.length;
+    infoLog(
+      "Memory:PostProcess",
+      `Events: ${before} → ${limited.length} (dedupe: ${dedupeDropped}, limit: ${limitDropped})`
+    );
+    sections.events =
+      limited.length > 0 ? limited.map((event, index) => `${index + 1}. ${event}`).join("\n") : undefined;
+  }
+
+  return rebuildSummary(sections);
+}
+
+function finalizeSummary(raw: string, maxTokens: number, fallback?: string): string {
+  const processed = postProcessSummary(raw, maxTokens);
+  if (processed.length >= 50) return processed;
+
+  const previous = fallback?.trim();
+  if (previous) {
+    const processedFallback = postProcessSummary(previous, maxTokens);
+    if (processedFallback.length >= 50) return processedFallback;
+    if (previous.length >= 50) return previous;
+  }
+
+  return processed || raw.trim();
 }
 
 function getRecentEventsLimit(arcTokens: number, maxTokens: number): number {
@@ -252,12 +438,13 @@ async function requestSummary(
   maxTokens: number,
   coreText: string | null
 ): Promise<string> {
-  return requestKodikText(
+  const result = await requestKodikText(
     apiKey,
     SUMMARY_PROMPT,
     `${dialogText}${formatCoreContext(coreText)}`,
     maxTokens
   );
+  return finalizeSummary(result, maxTokens);
 }
 
 async function requestChapterSummary(
@@ -266,12 +453,13 @@ async function requestChapterSummary(
   maxTokens: number,
   coreText: string | null
 ): Promise<string> {
-  return requestKodikText(
+  const result = await requestKodikText(
     apiKey,
     CHAPTER_PROMPT,
     `${chapterText}${formatCoreContext(coreText)}`,
     maxTokens
   );
+  return finalizeSummary(result, maxTokens);
 }
 
 async function mergeSummaries(
@@ -284,7 +472,8 @@ async function mergeSummaries(
 ): Promise<string> {
   infoLog("Memory", "Summary merge: skipped Core duplication check");
   const userContent = `## Старая выжимка:\n${oldSummary}\n\n## Новая часть:\n${newChapter}${formatCoreContext(coreText)}`;
-  return requestKodikText(apiKey, MERGE_PROMPT, userContent, maxTokens, { eventsLimit });
+  const result = await requestKodikText(apiKey, MERGE_PROMPT, userContent, maxTokens, { eventsLimit });
+  return finalizeSummary(result, maxTokens, oldSummary);
 }
 
 async function persistMemorySummary(

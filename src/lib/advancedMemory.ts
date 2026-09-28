@@ -12,23 +12,28 @@ export const MANUAL_EPISODIC_IMPORTANCE = 3;
 
 const CORE_PROMPT = `Ты — анализатор устойчивых фактов о персонаже и пользователе в ролевой игре.
 
-Извлеки ТОЛЬКО стабильные факты, которые не меняются от события к событию:
-- Характер и привычки персонажа.
-- Характер и привычки пользователя.
-- Устойчивые отношения между ними (не события, а общее состояние).
-- Долгосрочные цели и мотивы.
+Извлеки ТОЛЬКО устойчивые характеристики:
+
+## Персонаж
+- Черты характера (3–5 прилагательных/фраз).
+- Стиль общения.
+- Привычки и предпочтения.
+
+## Пользователь
+- Стиль общения.
+- Интересы и предпочтения.
+
+## Отношения (общее состояние)
+- Тип отношений (дружеские, романтические, враждебные).
+- Уровень близости.
+- Ключевые изменения за последнее время (1–2 предложения).
 
 НЕ включай:
-- События и действия («персонаж пошёл в бар», «пользователь спросил о парне»).
-- Эмоциональные реакции.
-- Разовые фразы и реплики.
+- События (даже значимые) — они идут в Episodic и Summary.
+- Сексуальное напряжение, флирт — это состояние отношений, но кратко, одной строкой.
+- Конкретные фразы, детали сцен.
 
-Формат ответа:
-## Персонаж
-## Пользователь
-## Отношения (общее состояние)
-
-Если новых устойчивых фактов нет — ответь ровно словом: UNCHANGED`;
+Если новых устойчивых фактов нет — ответь ровно: UNCHANGED.`;
 
 const EVENT_CLASSIFIER_PROMPT = `Определи, содержит ли следующее сообщение пользователя событие с последствиями в ролевой игре.
 
@@ -62,6 +67,26 @@ const SHORT_CONTEXT_IMPORTANCE_THRESHOLD = 2;
 const FILLER_TOKEN_RE =
   /^(привет|здравствуйте|здравствуй|хай|hello|hi|ok|ок|спасибо|thanks|thank|you|лол|хаха|ахах+|ммм+|ага|угу|да|нет|хорошо|ладно|как|дела|что|делаешь|чем|занимаешься|ты|нового)$/iu;
 
+const EMOTION_ONLY_RE =
+  /^(я\s+)?(смеюсь|смеется|смеётся|улыбнул(?:ась|ся)|плачу|злюсь|грущу|рад(?:а)?|счастлив(?:а)?|удивлен(?:а)?|раздражен(?:а)?)[\s!.?]*$/iu;
+
+function isContextlessQuestion(message: string): boolean {
+  const trimmed = message.trim();
+  const looksLikeQuestion =
+    /[?]/.test(trimmed) ||
+    /^(что|кто|где|когда|почему|зачем|как|what|why|who|where|when|how)\b/i.test(trimmed);
+  if (!looksLikeQuestion) return false;
+
+  const tokens = trimmed
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !FILLER_TOKEN_RE.test(token));
+
+  return tokens.length < 4;
+}
+
 export type EventClassification = {
   isEvent: boolean;
   importance: number;
@@ -82,7 +107,7 @@ export function importanceScoreForIntent(intent: UserIntent): number {
 
 export function isTrivialMessage(message: string): boolean {
   const trimmed = message.trim();
-  if (trimmed.length < 15) return true;
+  if (trimmed.length < 20) return true;
 
   const normalized = trimmed
     .toLowerCase()
@@ -94,6 +119,8 @@ export function isTrivialMessage(message: string): boolean {
   if (!normalized) return true;
   if (TRIVIAL_MESSAGE_RE.test(normalized)) return true;
   if (SMALLTALK_QUESTION_RE.test(normalized)) return true;
+  if (EMOTION_ONLY_RE.test(normalized)) return true;
+  if (isContextlessQuestion(trimmed)) return true;
 
   const tokens = normalized.split(" ").filter(Boolean);
   const meaningful = tokens.filter((token) => !FILLER_TOKEN_RE.test(token) && token.length > 2);
@@ -121,6 +148,10 @@ function parseClassifierJson(raw: string): EventClassification | null {
 
 export async function classifyEvent(message: string, apiKey: string): Promise<EventClassification> {
   const fallback: EventClassification = { isEvent: false, importance: 1, text: "" };
+
+  if (isTrivialMessage(message)) {
+    return { isEvent: false, importance: 0, text: "" };
+  }
 
   try {
     const response = await axios.post(
@@ -188,6 +219,34 @@ export async function isEventAlreadyInSummary(
   const matches = eventWords.filter((word) => summaryLower.includes(word)).length;
 
   return eventWords.length > 0 && matches / eventWords.length > 0.5;
+}
+
+async function isDuplicateEvent(
+  userId: string,
+  characterId: string,
+  eventText: string
+): Promise<boolean> {
+  const recent = await prisma.episodicMemory.findMany({
+    where: { userId, characterId },
+    orderBy: { timestamp: "desc" },
+    take: 10,
+    select: { event: true },
+  });
+
+  const newWords = eventText
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((word) => word.length > 4);
+  if (newWords.length === 0) return false;
+
+  return recent.some((entry) => {
+    const existingWords = entry.event
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 4);
+    const overlap = newWords.filter((word) => existingWords.includes(word)).length;
+    return overlap / newWords.length > 0.7;
+  });
 }
 
 function emptyEpisodicCounts(): EpisodicCounts {
@@ -647,6 +706,8 @@ export async function ingestUserMessageMemory({
       );
     } else if (await isEventAlreadyInSummary(userId, characterId, classification.text)) {
       infoLog("Memory", "Episodic skipped: already in summary");
+    } else if (await isDuplicateEvent(userId, characterId, classification.text)) {
+      infoLog("Episodic", `Duplicate detected, skipped: ${classification.text.slice(0, 120)}`);
     } else {
       await addEpisodicMemory(userId, characterId, classification.text, classification.importance);
       infoLog("Memory", `Episodic saved: importance ${classification.importance}`);
