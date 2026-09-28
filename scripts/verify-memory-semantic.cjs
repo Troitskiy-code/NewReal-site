@@ -308,6 +308,7 @@ assert(embeddingsSrc.includes("openai/text-embedding-3-small"), "uses text-embed
 assert(embeddingsSrc.includes("MEMORY_DEDUP_THRESHOLD"), "threshold is env-configurable");
 assert(chatMemory.includes("logSimilarityMatrix"), "debug similarity matrix is wired");
 assert(chatMemory.includes("deduplicateLinesSemantic"), "summary uses semantic line dedup");
+assert(chatMemory.includes("consolidateActiveLines"), "summary consolidates leftover lines via LLM");
 assert(chatMemory.includes("falling back to word overlap"), "summary falls back to word overlap");
 assert(sanitizeSrc.includes('Skipped section "${name}" (no data)'), "core skip log is present");
 

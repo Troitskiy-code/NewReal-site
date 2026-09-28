@@ -5,7 +5,7 @@ import { getContextTokenLimit } from "@/lib/chatEconomy";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
-import { infoLog } from "@/lib/logger";
+import { errorLog, infoLog } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
 import {
   fetchEmbeddings,
@@ -300,6 +300,114 @@ export async function deduplicateLinesSemantic(
   }
 }
 
+const CONSOLIDATION_PROMPT = `Ты — редактор ролевых диалогов. Тебе дан список активных сюжетных линий. Твоя задача — объединить близкие по смыслу линии так, чтобы осталось МАКСИМУМ {{max}}.
+
+ПРАВИЛА:
+- Если 2+ линии описывают одну суть с разных сторон — объедини в одну.
+- Пример: «Рокс рассматривает Лукаса как объект интереса» + «Лукас пытается понять интерес Рокс» → «Рокс и Лукас взаимно изучают друг друга».
+- НЕ объединяй разные линии, только похожие.
+- Каждая итоговая линия — одно предложение в настоящем времени.
+- Сохрани все важные смыслы.
+
+Формат ответа — только список, без вступлений:
+- Линия 1
+- Линия 2
+...
+
+Входные линии:
+{{lines}}`;
+
+const EVENTS_CONSOLIDATION_PROMPT = `Ты — редактор ролевых диалогов. Тебе дан список недавних событий. Твоя задача — объединить близкие по смыслу формулировки так, чтобы осталось МАКСИМУМ {{max}}.
+
+ПРАВИЛА:
+- Если 2+ записи описывают одно событие разными словами — объедини в одну.
+- НЕ объединяй разные события, только похожие.
+- Каждая итоговая запись — одно предложение.
+- Сохрани все важные последствия.
+
+Формат ответа — только список, без вступлений:
+- Событие 1
+- Событие 2
+...
+
+Входные события:
+{{lines}}`;
+
+const GPT_4O_MINI_INPUT_PER_MILLION = 0.15;
+const GPT_4O_MINI_OUTPUT_PER_MILLION = 0.6;
+const CONSOLIDATION_FALLBACK_COST = 0.0003;
+
+function parseConsolidatedItems(text: string, maxLines: number): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-*•\d.)\s]+/, "").trim())
+    .filter(Boolean)
+    .slice(0, maxLines);
+}
+
+function estimateConsolidationCost(promptTokens?: number, completionTokens?: number): string {
+  if (
+    typeof promptTokens === "number" &&
+    typeof completionTokens === "number" &&
+    promptTokens >= 0 &&
+    completionTokens >= 0
+  ) {
+    const cost =
+      (promptTokens * GPT_4O_MINI_INPUT_PER_MILLION +
+        completionTokens * GPT_4O_MINI_OUTPUT_PER_MILLION) /
+      1_000_000;
+    return `~$${cost.toFixed(4)}`;
+  }
+  return `~$${CONSOLIDATION_FALLBACK_COST.toFixed(4)}`;
+}
+
+export async function consolidateActiveLines(
+  lines: string[],
+  apiKey: string,
+  maxLines = 5,
+  promptTemplate = CONSOLIDATION_PROMPT
+): Promise<string[]> {
+  if (lines.length <= maxLines) return lines;
+
+  try {
+    const userContent = promptTemplate
+      .replaceAll("{{max}}", String(maxLines))
+      .replace("{{lines}}", lines.map((line) => `- ${line}`).join("\n"));
+
+    const response = await axios.post(
+      `${KODIKROUTER_URL}/chat/completions`,
+      {
+        model: SUMMARY_MODEL,
+        messages: [
+          { role: "system", content: "Ты — редактор." },
+          { role: "user", content: userContent },
+        ],
+        max_tokens: 500,
+        temperature: 0.3,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const text = response.data?.choices?.[0]?.message?.content?.trim() || "";
+    const result = parseConsolidatedItems(text, maxLines);
+    const usage = response.data?.usage as
+      | { prompt_tokens?: number; completion_tokens?: number }
+      | undefined;
+    const cost = estimateConsolidationCost(usage?.prompt_tokens, usage?.completion_tokens);
+
+    infoLog("Memory:Consolidate", `${lines.length} lines → ${result.length} (cost: ${cost})`);
+    return result.length > 0 ? result : lines.slice(0, maxLines);
+  } catch (error) {
+    errorLog("Memory:Consolidate", "Failed:", error);
+    return lines.slice(0, maxLines);
+  }
+}
+
 function eventsLimitForTokens(maxTokens: number): number {
   if (maxTokens < 600) return 4;
   if (maxTokens < 1000) return 6;
@@ -317,12 +425,12 @@ export async function postProcessSummary(
     const lines = extractListItems(sections.activeLines);
     const before = lines.length;
     const deduped = await deduplicateLinesSemantic(lines, apiKey);
-    const limited = deduped.slice(0, 5);
-    const dedupeDropped = before - deduped.length;
-    const limitDropped = deduped.length - limited.length;
+    const consolidated =
+      deduped.length > 5 ? await consolidateActiveLines(deduped, apiKey, 5) : deduped;
+    const limited = consolidated.slice(0, 5);
     infoLog(
       "Memory:PostProcess",
-      `Active lines: ${before} → ${limited.length} (dedupe: ${dedupeDropped}, limit: ${limitDropped})`
+      `Active lines: ${before} → ${limited.length} (dedupe: ${before - deduped.length}, consolidate: ${deduped.length - limited.length})`
     );
     sections.activeLines = limited.length > 0 ? limited.map((line) => `- ${line}`).join("\n") : undefined;
   }
@@ -332,12 +440,14 @@ export async function postProcessSummary(
     const before = events.length;
     const dedupedEvents = await deduplicateLinesSemantic(events, apiKey);
     const limit = eventsLimitForTokens(maxTokens);
-    const limited = dedupedEvents.slice(-limit);
-    const dedupeDropped = before - dedupedEvents.length;
-    const limitDropped = dedupedEvents.length - limited.length;
+    const consolidatedEvents =
+      dedupedEvents.length > limit
+        ? await consolidateActiveLines(dedupedEvents, apiKey, limit, EVENTS_CONSOLIDATION_PROMPT)
+        : dedupedEvents;
+    const limited = consolidatedEvents.slice(0, limit);
     infoLog(
       "Memory:PostProcess",
-      `Events: ${before} → ${limited.length} (dedupe: ${dedupeDropped}, limit: ${limitDropped})`
+      `Events: ${before} → ${limited.length} (dedupe: ${before - dedupedEvents.length}, consolidate: ${dedupedEvents.length - limited.length})`
     );
     sections.events =
       limited.length > 0 ? limited.map((event, index) => `${index + 1}. ${event}`).join("\n") : undefined;
