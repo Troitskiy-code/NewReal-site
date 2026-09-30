@@ -44,9 +44,39 @@ export function subscriptionGoal(planId: string): MetrikaGoal | null {
   return null;
 }
 
-export function reachGoal(goal: string, params?: Record<string, unknown>) {
-  if (typeof window === "undefined") return;
-  if (typeof window.ym !== "function") return;
+export type PaymentGoalHit =
+  | { kind: "subscription"; plan: string; planGoal: MetrikaGoal | null }
+  | { kind: "vc" };
+
+export function resolvePaymentGoalFromSearchParams(
+  searchParams: Pick<URLSearchParams, "get">
+): PaymentGoalHit | null {
+  const read = (key: string) =>
+    (searchParams.get(key) || searchParams.get(key.toLowerCase()) || "").trim();
+
+  const payment = searchParams.get("payment");
+  const type = searchParams.get("type") || read("Shp_type");
+  const rawPlan = searchParams.get("plan") || read("Shp_plan") || "unknown";
+  const plan = metrikaPlanSlug(rawPlan);
+  const isSubscription =
+    type === "subscription" || read("Shp_subscription").toLowerCase() === "true";
+  const isVc = type === "vc" || Boolean(read("Shp_vc") && !isSubscription);
+  const invId = searchParams.get("InvId") || searchParams.get("invid");
+  const isSuccess = payment === "success" || Boolean(invId && (isSubscription || isVc));
+
+  if (!isSuccess || (!isSubscription && !isVc)) return null;
+  if (isSubscription) {
+    return { kind: "subscription", plan, planGoal: subscriptionGoal(plan) };
+  }
+  return { kind: "vc" };
+}
+
+export function reachGoal(goal: string, params?: Record<string, unknown>): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.ym !== "function") {
+    console.log("[Goal] skipped, ym not ready", goal, params ?? "");
+    return false;
+  }
 
   if (params) {
     window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal, params);
@@ -54,4 +84,25 @@ export function reachGoal(goal: string, params?: Record<string, unknown>) {
     window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal);
   }
   console.log("[Goal]", goal, params ?? "");
+  return true;
+}
+
+export function waitForMetrika(timeoutMs = 8000): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  if (typeof window.ym === "function") return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      if (typeof window.ym === "function") {
+        window.clearInterval(timer);
+        resolve(true);
+        return;
+      }
+      if (Date.now() - started >= timeoutMs) {
+        window.clearInterval(timer);
+        resolve(false);
+      }
+    }, 200);
+  });
 }

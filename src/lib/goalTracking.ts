@@ -2,50 +2,96 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { METRIKA_GOALS, metrikaPlanSlug, reachGoal, subscriptionGoal } from "@/lib/metrika";
-
-function shp(searchParams: URLSearchParams, key: string): string {
-  return (searchParams.get(key) || searchParams.get(key.toLowerCase()) || "").trim();
-}
+import {
+  METRIKA_GOALS,
+  reachGoal,
+  resolvePaymentGoalFromSearchParams,
+  waitForMetrika,
+  type PaymentGoalHit,
+} from "@/lib/metrika";
 
 function clearPaymentQuery() {
   if (typeof window === "undefined") return;
   window.history.replaceState({}, "", window.location.pathname);
 }
 
+function goalStorageKey(hit: PaymentGoalHit, invId: string): string {
+  if (hit.kind === "subscription") {
+    return `nv-metrika-goal:subscription:${hit.plan}:${invId || "ok"}`;
+  }
+  return `nv-metrika-goal:vc:${invId || "ok"}`;
+}
+
+function alreadyFired(key: string): boolean {
+  try {
+    return window.sessionStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markFired(key: string) {
+  try {
+    window.sessionStorage.setItem(key, "1");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function firePaymentGoal(hit: PaymentGoalHit): boolean {
+  if (hit.kind === "subscription") {
+    const success = reachGoal(METRIKA_GOALS.subscriptionSuccess, { plan: hit.plan });
+    const planOk = hit.planGoal ? reachGoal(hit.planGoal) : true;
+    console.log("[Goal] subscription events fired", {
+      type: "subscription",
+      plan: hit.plan,
+      planGoal: hit.planGoal,
+      sent: success && planOk,
+    });
+    return success && planOk;
+  }
+
+  const sent = reachGoal(METRIKA_GOALS.vcPurchaseSuccess);
+  console.log("[Goal] vc_purchase_success fired", { type: "vc", sent });
+  return sent;
+}
+
 export function usePaymentGoal() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const payment = searchParams.get("payment");
-    const type = searchParams.get("type") || shp(searchParams, "Shp_type");
-    const rawPlan = searchParams.get("plan") || shp(searchParams, "Shp_plan") || "unknown";
-    const plan = metrikaPlanSlug(rawPlan);
-    const isSubscription =
-      type === "subscription" || shp(searchParams, "Shp_subscription").toLowerCase() === "true";
-    const isVc = type === "vc" || Boolean(shp(searchParams, "Shp_vc") && !isSubscription);
-    const isSuccess = payment === "success" || Boolean(searchParams.get("InvId") && (isSubscription || isVc));
+    const hit = resolvePaymentGoalFromSearchParams(searchParams);
+    if (!hit) return;
 
-    if (!isSuccess || (!isSubscription && !isVc)) return;
-
-    const timer = window.setTimeout(() => {
-      if (isSubscription) {
-        const planGoal = subscriptionGoal(plan);
-        reachGoal(METRIKA_GOALS.subscriptionSuccess, { plan });
-        if (planGoal) reachGoal(planGoal);
-        console.log("[Goal] subscription events fired", {
-          type: "subscription",
-          plan,
-          planGoal: planGoal ?? null,
-        });
-      } else {
-        reachGoal(METRIKA_GOALS.vcPurchaseSuccess);
-        console.log("[Goal] vc_purchase_success fired", { type: "vc" });
-      }
+    const invId = searchParams.get("InvId") || searchParams.get("invid") || "";
+    const storageKey = goalStorageKey(hit, invId);
+    if (alreadyFired(storageKey)) {
       clearPaymentQuery();
-    }, 1000);
+      return;
+    }
 
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+
+    const run = async () => {
+      const ready = await waitForMetrika();
+      if (cancelled) return;
+
+      if (!ready) {
+        console.log("[Goal] skipped, ym not ready after wait", hit);
+        return;
+      }
+
+      const sent = firePaymentGoal(hit);
+      if (!sent) return;
+
+      markFired(storageKey);
+      clearPaymentQuery();
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 }
 
