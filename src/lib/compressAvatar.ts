@@ -99,16 +99,24 @@ async function loadWebpDecode() {
   return webpDecodeReady;
 }
 
+type JimpImage = {
+  bitmap?: { width: number; height: number };
+  width: number;
+  height: number;
+  scaleToFit: (options: { w: number; h: number }) => unknown;
+  getBuffer: (mime: "image/jpeg", options: { quality: number }) => Promise<Buffer>;
+};
+
 function jimpFromBitmap(width: number, height: number, data: Buffer | Uint8Array | Uint8ClampedArray) {
   return new Jimp({
     width,
     height,
     data: Buffer.isBuffer(data) ? data : Buffer.from(data),
-  });
+  }) as JimpImage;
 }
 
 async function finishJimp(
-  image: InstanceType<typeof Jimp>,
+  image: JimpImage,
   beforeWidth: number,
   beforeHeight: number
 ): Promise<EncodedImage> {
@@ -143,12 +151,12 @@ async function encodeWithJimp(body: Buffer): Promise<EncodedImage> {
   if (!beforeWidth || !beforeHeight) {
     throw new Error("invalid image metadata");
   }
-  return finishJimp(image, beforeWidth, beforeHeight);
+  return finishJimp(image as JimpImage, beforeWidth, beforeHeight);
 }
 
 async function encodeWithWebp(body: Buffer): Promise<EncodedImage> {
   const decode = await loadWebpDecode();
-  const arrayBuffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
+  const arrayBuffer = Uint8Array.from(body).buffer;
   const imageData = await decode(arrayBuffer);
   const image = jimpFromBitmap(imageData.width, imageData.height, imageData.data);
   return finishJimp(image, imageData.width, imageData.height);
