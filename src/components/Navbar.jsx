@@ -41,6 +41,7 @@ const NAV_ITEMS = [
     iconInactive: FaRegComments,
     iconActive: FaComments,
     matchPaths: ["/chats", "/chat"],
+    prefetch: true,
   },
   {
     nameKey: "header.menu.pricing",
@@ -48,6 +49,7 @@ const NAV_ITEMS = [
     iconInactive: FaRegStar,
     iconActive: FaStar,
     matchPaths: ["/pricing", "/subscription"],
+    prefetch: true,
   },
   {
     nameKey: "header.menu.coins",
@@ -55,6 +57,7 @@ const NAV_ITEMS = [
     iconActive: FaCoins,
     iconInactive: FaCoins,
     inactiveMuted: true,
+    prefetch: true,
   },
   {
     nameKey: "header.menu.create",
@@ -148,7 +151,12 @@ function NavMenuList({ pathname, showLabels, iconSize, onItemClick }) {
 
         return (
           <li key={item.nameKey}>
-            <LocaleLink href={item.path} onClick={() => onItemClick(item)} className={linkClass}>
+            <LocaleLink
+              href={item.path}
+              prefetch={item.prefetch === true ? true : undefined}
+              onClick={() => onItemClick(item)}
+              className={linkClass}
+            >
               {content}
             </LocaleLink>
           </li>
