@@ -3,11 +3,23 @@ import sharp from "sharp";
 const MAX_SIDE = 512;
 const WEBP_QUALITY = 82;
 
+export type CompressAvatarSkipReason =
+  | "not-data-url"
+  | "invalid"
+  | "already-small"
+  | "not-smaller"
+  | "error";
+
 export type CompressAvatarResult = {
   imageUrl: string;
   changed: boolean;
+  skipReason: CompressAvatarSkipReason | null;
   beforeBytes: number;
   afterBytes: number;
+  beforeWidth: number | null;
+  beforeHeight: number | null;
+  afterWidth: number | null;
+  afterHeight: number | null;
 };
 
 function parseDataUrl(value: string): { mime: string; body: Buffer } | null {
@@ -27,35 +39,94 @@ export function isAvatarDataUrl(value: string | null | undefined): value is stri
   return typeof value === "string" && value.startsWith("data:image/");
 }
 
+function formatKb(bytes: number): string {
+  return (bytes / 1024).toFixed(1);
+}
+
+function result(partial: CompressAvatarResult): CompressAvatarResult {
+  return partial;
+}
+
+export function formatCompressAvatarLine(id: string, entry: CompressAvatarResult): string {
+  const before = `${entry.beforeWidth ?? "?"}x${entry.beforeHeight ?? "?"}/${formatKb(entry.beforeBytes)} KB`;
+  const after = `${entry.afterWidth ?? "?"}x${entry.afterHeight ?? "?"}/${formatKb(entry.afterBytes)} KB`;
+  const savings =
+    entry.beforeBytes > 0
+      ? ((1 - entry.afterBytes / entry.beforeBytes) * 100).toFixed(1)
+      : "0.0";
+  const suffix = entry.changed
+    ? `-${savings}%`
+    : `0.0%${entry.skipReason ? ` skip (${entry.skipReason})` : ""}`;
+  return `${id}  ${before} -> ${after}  ${suffix}`;
+}
+
 export async function tryCompressAvatarDataUrl(imageUrl: string): Promise<CompressAvatarResult> {
   const beforeBytes = Buffer.byteLength(imageUrl, "utf8");
-  const unchanged = {
-    imageUrl,
-    changed: false,
-    beforeBytes,
-    afterBytes: beforeBytes,
-  };
+  const unchanged = (
+    skipReason: CompressAvatarSkipReason,
+    extra?: Partial<CompressAvatarResult>
+  ): CompressAvatarResult =>
+    result({
+      imageUrl,
+      changed: false,
+      skipReason,
+      beforeBytes,
+      afterBytes: beforeBytes,
+      beforeWidth: extra?.beforeWidth ?? null,
+      beforeHeight: extra?.beforeHeight ?? null,
+      afterWidth: extra?.afterWidth ?? extra?.beforeWidth ?? null,
+      afterHeight: extra?.afterHeight ?? extra?.beforeHeight ?? null,
+    });
 
-  if (!isAvatarDataUrl(imageUrl)) return unchanged;
+  if (!isAvatarDataUrl(imageUrl)) return unchanged("not-data-url");
 
   const parsed = parseDataUrl(imageUrl);
-  if (!parsed?.body.length) return unchanged;
+  if (!parsed?.body.length) return unchanged("invalid");
 
   try {
-    const buffer = await sharp(parsed.body)
-      .rotate()
+    const image = sharp(parsed.body).rotate();
+    const meta = await image.metadata();
+    const beforeWidth = meta.width ?? null;
+    const beforeHeight = meta.height ?? null;
+
+    if (!beforeWidth || !beforeHeight) {
+      return unchanged("invalid", { beforeWidth, beforeHeight });
+    }
+
+    if (Math.max(beforeWidth, beforeHeight) <= MAX_SIDE) {
+      return unchanged("already-small", { beforeWidth, beforeHeight });
+    }
+
+    const buffer = await image
+      .clone()
       .resize(MAX_SIDE, MAX_SIDE, { fit: "inside", withoutEnlargement: true })
       .webp({ quality: WEBP_QUALITY })
       .toBuffer();
 
+    const afterMeta = await sharp(buffer).metadata();
     const next = `data:image/webp;base64,${buffer.toString("base64")}`;
     const afterBytes = Buffer.byteLength(next, "utf8");
-    if (afterBytes >= beforeBytes) return unchanged;
+    const afterWidth = afterMeta.width ?? null;
+    const afterHeight = afterMeta.height ?? null;
 
-    return { imageUrl: next, changed: true, beforeBytes, afterBytes };
+    if (afterBytes >= beforeBytes) {
+      return unchanged("not-smaller", { beforeWidth, beforeHeight });
+    }
+
+    return {
+      imageUrl: next,
+      changed: true,
+      skipReason: null,
+      beforeBytes,
+      afterBytes,
+      beforeWidth,
+      beforeHeight,
+      afterWidth,
+      afterHeight,
+    };
   } catch (error) {
     console.error("[compressAvatar] failed to compress data URL", error);
-    return unchanged;
+    return unchanged("error");
   }
 }
 
@@ -63,6 +134,6 @@ export async function compressAvatarDataUrl(
   imageUrl: string | null | undefined
 ): Promise<string | null | undefined> {
   if (!isAvatarDataUrl(imageUrl)) return imageUrl;
-  const result = await tryCompressAvatarDataUrl(imageUrl);
-  return result.imageUrl;
+  const compressed = await tryCompressAvatarDataUrl(imageUrl);
+  return compressed.imageUrl;
 }

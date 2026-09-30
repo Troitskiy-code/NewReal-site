@@ -1,10 +1,14 @@
 /**
  * Compress Character.imageUrl data URLs to WebP 512 (longest side).
+ * Skip images whose longest side is already <= 512 (no convert, no write).
  * Run: node --experimental-strip-types scripts/compress-avatars.ts [--dry-run] [--limit=N]
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { tryCompressAvatarDataUrl } from "../src/lib/compressAvatar.ts";
+import {
+  formatCompressAvatarLine,
+  tryCompressAvatarDataUrl,
+} from "../src/lib/compressAvatar.ts";
 
 const dbUrl = process.env.DIRECT_URL?.trim() || process.env.DATABASE_URL?.trim();
 if (!dbUrl) {
@@ -64,24 +68,15 @@ async function main() {
       continue;
     }
 
-    const result = await tryCompressAvatarDataUrl(imageUrl);
-    const savings =
-      result.beforeBytes > 0
-        ? ((1 - result.afterBytes / result.beforeBytes) * 100).toFixed(1)
-        : "0.0";
+    const entry = await tryCompressAvatarDataUrl(imageUrl);
+    console.log(`[compress-avatars] ${formatCompressAvatarLine(character.id, entry)}`);
 
-    console.log(
-      `[compress-avatars] ${character.id}  ${formatKb(result.beforeBytes)} KB -> ${formatKb(
-        result.afterBytes
-      )} KB  (${result.changed ? `-${savings}%` : "skip"})`
-    );
-
-    if (!result.changed) {
+    if (!entry.changed) {
       skipped += 1;
       continue;
     }
 
-    savedBytes += result.beforeBytes - result.afterBytes;
+    savedBytes += entry.beforeBytes - entry.afterBytes;
     if (dryRun) {
       updated += 1;
       continue;
@@ -90,7 +85,7 @@ async function main() {
     try {
       await prisma.character.update({
         where: { id: character.id },
-        data: { imageUrl: result.imageUrl },
+        data: { imageUrl: entry.imageUrl },
       });
       updated += 1;
     } catch (error) {
