@@ -1,5 +1,9 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { Jimp } from "jimp";
+
 const MAX_SIDE = 512;
-const WEBP_QUALITY = 82;
+const JPEG_QUALITY = 82;
 
 export type CompressAvatarSkipReason =
   | "not-data-url"
@@ -20,6 +24,17 @@ export type CompressAvatarResult = {
   afterHeight: number | null;
 };
 
+type EncodedImage = {
+  mime: string;
+  buffer: Buffer;
+  beforeWidth: number;
+  beforeHeight: number;
+  afterWidth: number;
+  afterHeight: number;
+};
+
+let webpDecodeReady: Promise<typeof import("@jsquash/webp/decode.js").default> | null = null;
+
 function parseDataUrl(value: string): { mime: string; body: Buffer } | null {
   if (!value.startsWith("data:")) return null;
   const comma = value.indexOf(",");
@@ -37,28 +52,106 @@ export function isAvatarDataUrl(value: string | null | undefined): value is stri
   return typeof value === "string" && value.startsWith("data:image/");
 }
 
-type SharpCtor = typeof import("sharp").default;
-
-let sharpLoader: Promise<SharpCtor> | null = null;
-
-async function loadSharp(): Promise<SharpCtor> {
-  if (!sharpLoader) {
-    sharpLoader = import("sharp")
-      .then((mod) => mod.default)
-      .catch((error) => {
-        sharpLoader = null;
-        throw error;
-      });
-  }
-  return sharpLoader;
-}
-
 function formatKb(bytes: number): string {
   return (bytes / 1024).toFixed(1);
 }
 
 function result(partial: CompressAvatarResult): CompressAvatarResult {
   return partial;
+}
+
+function isJimpFriendlyMime(mime: string): boolean {
+  const lower = mime.toLowerCase();
+  return (
+    lower.includes("jpeg") ||
+    lower.includes("jpg") ||
+    lower.includes("png") ||
+    lower.includes("gif") ||
+    lower.includes("bmp") ||
+    lower.includes("tiff")
+  );
+}
+
+function isWebpBuffer(mime: string, body: Buffer): boolean {
+  if (mime.toLowerCase().includes("webp")) return true;
+  return (
+    body.length >= 12 &&
+    body.toString("ascii", 0, 4) === "RIFF" &&
+    body.toString("ascii", 8, 12) === "WEBP"
+  );
+}
+
+async function loadWebpDecode() {
+  if (!webpDecodeReady) {
+    webpDecodeReady = (async () => {
+      const mod = await import("@jsquash/webp/decode.js");
+      const wasmPath = join(process.cwd(), "node_modules/@jsquash/webp/codec/dec/webp_dec.wasm");
+      const wasmBinary = await readFile(wasmPath);
+      await mod.init({
+        wasmBinary: wasmBinary.buffer.slice(
+          wasmBinary.byteOffset,
+          wasmBinary.byteOffset + wasmBinary.byteLength
+        ),
+      });
+      return mod.default;
+    })();
+  }
+  return webpDecodeReady;
+}
+
+function jimpFromBitmap(width: number, height: number, data: Buffer | Uint8Array | Uint8ClampedArray) {
+  return new Jimp({
+    width,
+    height,
+    data: Buffer.isBuffer(data) ? data : Buffer.from(data),
+  });
+}
+
+async function finishJimp(
+  image: InstanceType<typeof Jimp>,
+  beforeWidth: number,
+  beforeHeight: number
+): Promise<EncodedImage> {
+  if (Math.max(beforeWidth, beforeHeight) <= MAX_SIDE) {
+    return {
+      mime: "skip",
+      buffer: Buffer.alloc(0),
+      beforeWidth,
+      beforeHeight,
+      afterWidth: beforeWidth,
+      afterHeight: beforeHeight,
+    };
+  }
+
+  image.scaleToFit({ w: MAX_SIDE, h: MAX_SIDE });
+  const buffer = Buffer.from(await image.getBuffer("image/jpeg", { quality: JPEG_QUALITY }));
+
+  return {
+    mime: "image/jpeg",
+    buffer,
+    beforeWidth,
+    beforeHeight,
+    afterWidth: image.bitmap?.width ?? image.width,
+    afterHeight: image.bitmap?.height ?? image.height,
+  };
+}
+
+async function encodeWithJimp(body: Buffer): Promise<EncodedImage> {
+  const image = await Jimp.read(Buffer.from(body));
+  const beforeWidth = image.bitmap?.width ?? image.width;
+  const beforeHeight = image.bitmap?.height ?? image.height;
+  if (!beforeWidth || !beforeHeight) {
+    throw new Error("invalid image metadata");
+  }
+  return finishJimp(image, beforeWidth, beforeHeight);
+}
+
+async function encodeWithWebp(body: Buffer): Promise<EncodedImage> {
+  const decode = await loadWebpDecode();
+  const arrayBuffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
+  const imageData = await decode(arrayBuffer);
+  const image = jimpFromBitmap(imageData.width, imageData.height, imageData.data);
+  return finishJimp(image, imageData.width, imageData.height);
 }
 
 export function formatCompressAvatarLine(id: string, entry: CompressAvatarResult): string {
@@ -97,52 +190,50 @@ export async function tryCompressAvatarDataUrl(imageUrl: string): Promise<Compre
   const parsed = parseDataUrl(imageUrl);
   if (!parsed?.body.length) return unchanged("invalid");
 
-  try {
-    const sharp = await loadSharp();
-    const image = sharp(parsed.body).rotate();
-    const meta = await image.metadata();
-    const beforeWidth = meta.width ?? null;
-    const beforeHeight = meta.height ?? null;
+  const encoders = isWebpBuffer(parsed.mime, parsed.body)
+    ? [encodeWithWebp, encodeWithJimp]
+    : isJimpFriendlyMime(parsed.mime)
+      ? [encodeWithJimp, encodeWithWebp]
+      : [encodeWithJimp, encodeWithWebp];
 
-    if (!beforeWidth || !beforeHeight) {
-      return unchanged("invalid", { beforeWidth, beforeHeight });
+  let lastError: unknown;
+  for (const encode of encoders) {
+    try {
+      const encoded = await encode(parsed.body);
+      if (encoded.mime === "skip") {
+        return unchanged("already-small", {
+          beforeWidth: encoded.beforeWidth,
+          beforeHeight: encoded.beforeHeight,
+        });
+      }
+
+      const next = `data:${encoded.mime};base64,${encoded.buffer.toString("base64")}`;
+      const afterBytes = Buffer.byteLength(next, "utf8");
+      if (afterBytes >= beforeBytes) {
+        return unchanged("not-smaller", {
+          beforeWidth: encoded.beforeWidth,
+          beforeHeight: encoded.beforeHeight,
+        });
+      }
+
+      return {
+        imageUrl: next,
+        changed: true,
+        skipReason: null,
+        beforeBytes,
+        afterBytes,
+        beforeWidth: encoded.beforeWidth,
+        beforeHeight: encoded.beforeHeight,
+        afterWidth: encoded.afterWidth,
+        afterHeight: encoded.afterHeight,
+      };
+    } catch (error) {
+      lastError = error;
     }
-
-    if (Math.max(beforeWidth, beforeHeight) <= MAX_SIDE) {
-      return unchanged("already-small", { beforeWidth, beforeHeight });
-    }
-
-    const buffer = await image
-      .clone()
-      .resize(MAX_SIDE, MAX_SIDE, { fit: "inside", withoutEnlargement: true })
-      .webp({ quality: WEBP_QUALITY })
-      .toBuffer();
-
-    const afterMeta = await sharp(buffer).metadata();
-    const next = `data:image/webp;base64,${buffer.toString("base64")}`;
-    const afterBytes = Buffer.byteLength(next, "utf8");
-    const afterWidth = afterMeta.width ?? null;
-    const afterHeight = afterMeta.height ?? null;
-
-    if (afterBytes >= beforeBytes) {
-      return unchanged("not-smaller", { beforeWidth, beforeHeight });
-    }
-
-    return {
-      imageUrl: next,
-      changed: true,
-      skipReason: null,
-      beforeBytes,
-      afterBytes,
-      beforeWidth,
-      beforeHeight,
-      afterWidth,
-      afterHeight,
-    };
-  } catch (error) {
-    console.error("[compressAvatar] failed to compress data URL", error);
-    return unchanged("error");
   }
+
+  console.error("[compressAvatar] failed to compress data URL", lastError);
+  return unchanged("error");
 }
 
 export async function compressAvatarDataUrl(
