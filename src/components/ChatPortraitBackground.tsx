@@ -83,7 +83,7 @@ export default function ChatPortraitBackground({ imageUrl }: { imageUrl: string 
     <div
       ref={nodeRef}
       className="nv-chat-portrait"
-      style={{ backgroundImage: `url(${imageUrl})` }}
+      style={{ backgroundImage: `url("${imageUrl}")` }}
       aria-hidden
     />
   );

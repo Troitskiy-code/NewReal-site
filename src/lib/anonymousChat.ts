@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 import { getApiLocale } from "@/lib/apiI18n";
 import {
   resolveChatSystemPrompt,
@@ -74,10 +75,11 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
   const remainingMessages = await getAnonymousRemaining(sessionId);
 
   const characterSelectNoSlug = {
+    id: true,
     isPublic: true,
     name: true,
     greeting: true,
-    imageUrl: true,
+    updatedAt: true,
     description: true,
     descriptionCard: true,
     descriptionCard_en: true,
@@ -120,10 +122,11 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
     NextResponse.json({
       messages: [],
       character: {
+        id: character.id,
         name: character.name,
         slug: "slug" in character ? character.slug : null,
         greeting: character.greeting,
-        imageUrl: character.imageUrl,
+        avatarUrl: characterAvatarPath(character.id, character.updatedAt),
         description: character.description,
         descriptionCard: character.descriptionCard,
         descriptionCard_en: character.descriptionCard_en,

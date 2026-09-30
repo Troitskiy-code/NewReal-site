@@ -31,6 +31,7 @@ import {
 import { getApiLocale } from "@/lib/apiI18n";
 import { getAnonymousChatPayload, handleAnonymousChatPost } from "@/lib/anonymousChat";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
+import { characterAvatarPath } from "@/lib/characterCardImage";
 
 export const maxDuration = 120;
 
@@ -420,11 +421,12 @@ export async function GET(
     }
 
     const characterSelectNoSlug = {
+      id: true,
       isPublic: true,
       userId: true,
       name: true,
       greeting: true,
-      imageUrl: true,
+      updatedAt: true,
       description: true,
       descriptionCard: true,
       descriptionCard_en: true,
@@ -463,10 +465,11 @@ export async function GET(
     return NextResponse.json({
       messages,
       character: {
+        id: character.id,
         name: character.name,
         slug: "slug" in character ? character.slug : null,
         greeting: character.greeting,
-        imageUrl: character.imageUrl,
+        avatarUrl: characterAvatarPath(character.id, character.updatedAt),
         description: character.description,
         descriptionCard: character.descriptionCard,
         descriptionCard_en: character.descriptionCard_en,

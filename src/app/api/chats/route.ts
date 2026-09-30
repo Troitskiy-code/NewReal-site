@@ -124,7 +124,7 @@ export async function GET() {
             description_en: character.description_en,
             descriptionCard: character.descriptionCard,
             updatedAt: character.updatedAt,
-            imageUrl: characterAvatarPath(character.id, character.updatedAt),
+            avatarUrl: characterAvatarPath(character.id, character.updatedAt),
           },
           lastMessage: {
             id: lastMessage.id,
