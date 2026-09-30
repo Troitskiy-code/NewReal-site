@@ -10,7 +10,6 @@ import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { ownerModerationFields, stripModerationFields } from "@/lib/characterModeration";
 import { Prisma } from "@prisma/client";
-import { compressAvatarDataUrl } from "@/lib/compressAvatar";
 
 export const maxDuration = 60;
 
@@ -108,6 +107,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (body.appearance !== undefined) data.appearance = parsed.appearance ?? null;
     if (body.tags !== undefined) data.tags = parsed.tags ?? null;
     if (body.imageUrl !== undefined) {
+      const { compressAvatarDataUrl } = await import("@/lib/compressAvatar");
       data.imageUrl = (await compressAvatarDataUrl(parsed.imageUrl ?? null)) ?? null;
     }
     if (body.imageLora !== undefined) data.imageLora = parsed.imageLora ?? null;

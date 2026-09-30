@@ -1,5 +1,3 @@
-import sharp from "sharp";
-
 const MAX_SIDE = 512;
 const WEBP_QUALITY = 82;
 
@@ -37,6 +35,22 @@ function parseDataUrl(value: string): { mime: string; body: Buffer } | null {
 
 export function isAvatarDataUrl(value: string | null | undefined): value is string {
   return typeof value === "string" && value.startsWith("data:image/");
+}
+
+type SharpCtor = typeof import("sharp").default;
+
+let sharpLoader: Promise<SharpCtor> | null = null;
+
+async function loadSharp(): Promise<SharpCtor> {
+  if (!sharpLoader) {
+    sharpLoader = import("sharp")
+      .then((mod) => mod.default)
+      .catch((error) => {
+        sharpLoader = null;
+        throw error;
+      });
+  }
+  return sharpLoader;
 }
 
 function formatKb(bytes: number): string {
@@ -84,6 +98,7 @@ export async function tryCompressAvatarDataUrl(imageUrl: string): Promise<Compre
   if (!parsed?.body.length) return unchanged("invalid");
 
   try {
+    const sharp = await loadSharp();
     const image = sharp(parsed.body).rotate();
     const meta = await image.metadata();
     const beforeWidth = meta.width ?? null;
