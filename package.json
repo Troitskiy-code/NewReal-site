@@ -10,7 +10,8 @@
     "lint": "eslint",
     "verify:economy": "node --experimental-strip-types scripts/verify-economy.ts",
     "verify:intent": "node --experimental-strip-types scripts/verify-intent.ts",
-    "translate:characters": "node --experimental-strip-types scripts/translate-characters.ts"
+    "translate:characters": "node --experimental-strip-types scripts/translate-characters.ts",
+    "compress:avatars": "node --experimental-strip-types scripts/compress-avatars.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -39,6 +40,7 @@
     "react-i18next": "^17.0.13",
     "react-icons": "^5.6.0",
     "resend": "^6.26.0",
+    "sharp": "^0.35.5",
     "stripe": "^22.1.1",
     "tailwind-merge": "^3.6.0",
     "tiktoken": "^1.0.22",

@@ -12,6 +12,7 @@ import { temporaryCharacterSlug } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { clampCharactersPageLimit } from "@/lib/charactersList";
 import { characterAvatarPath } from "@/lib/characterCardImage";
+import { compressAvatarDataUrl } from "@/lib/compressAvatar";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
 
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
 
     const seededPublicMemory = publicMemory ?? buildInitialPublicMemory(name, description);
     const initialPermissions = memoryPermissions ?? { privateAccessUserIds: [] };
+    const storedImageUrl = (await compressAvatarDataUrl(imageUrl ?? null)) ?? null;
 
     let character = await prisma.character.create({
       data: {
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
         descriptionCard: descriptionCard ?? null,
         appearance: appearance ?? null,
         tags: tags ?? null,
-        imageUrl: imageUrl ?? null,
+        imageUrl: storedImageUrl,
         imageLora: imageLora ?? null,
         greeting: greeting ?? null,
         scenario: scenario ?? null,
