@@ -58,9 +58,13 @@ mustNotContain(coins, "window.location.href = data.url", "coins/page.tsx");
 mustContain(plans, "redirectToRobokassa", "SubscriptionPlans.tsx");
 mustNotContain(plans, "window.location.href = data.url", "SubscriptionPlans.tsx");
 
-mustContain(metrika, "https://mc.yandex.ru/metrika/tag.js", "YandexMetrika");
-mustContain(metrika, "https://mc.yandex.com/metrika/tag.js", "YandexMetrika");
+mustContain(metrika, 'METRIKA_TAG_PRIMARY = "https://mc.yandex.com/metrika/tag.js"', "YandexMetrika");
+mustContain(metrika, '"${METRIKA_TAG_PRIMARY}", "ym"', "YandexMetrika");
 mustContain(metrika, "k.onerror", "YandexMetrika");
+mustContain(metrika, 'k.src="${METRIKA_TAG_FALLBACK}"', "YandexMetrika");
+if (metrika.includes('script", "https://mc.yandex.ru/metrika/tag.js"')) {
+  fail("YandexMetrika must not request mc.yandex.ru as the primary tag.js host");
+}
 
 const merchant = "demo_shop";
 const password = "password1";

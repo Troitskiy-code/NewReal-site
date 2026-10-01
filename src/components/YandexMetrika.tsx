@@ -1,6 +1,9 @@
 import Script from "next/script";
 import { METRIKA_COUNTER_ID } from "@/lib/metrika";
 
+const METRIKA_TAG_PRIMARY = "https://mc.yandex.com/metrika/tag.js";
+const METRIKA_TAG_FALLBACK = "https://mc.yandex.ru/metrika/tag.js";
+
 export default function YandexMetrika() {
   if (!METRIKA_COUNTER_ID) return null;
 
@@ -16,10 +19,10 @@ export default function YandexMetrika() {
               m[i].l=1*new Date();
               for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
               k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r;
-              k.onerror=function(){k.onerror=null;k.src="https://mc.yandex.com/metrika/tag.js";};
+              k.onerror=function(){k.onerror=null;k.src="${METRIKA_TAG_FALLBACK}";};
               a.parentNode.insertBefore(k,a)
             })
-            (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+            (window, document, "script", "${METRIKA_TAG_PRIMARY}", "ym");
             ym(${METRIKA_COUNTER_ID}, "init", {});
           `,
         }}
@@ -27,7 +30,7 @@ export default function YandexMetrika() {
       <noscript>
         <div>
           <img
-            src={`https://mc.yandex.ru/watch/${METRIKA_COUNTER_ID}`}
+            src={`https://mc.yandex.com/watch/${METRIKA_COUNTER_ID}`}
             style={{ position: "absolute", left: "-9999px" }}
             alt=""
           />
