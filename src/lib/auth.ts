@@ -16,6 +16,7 @@ import { grantReferralBonusIfEligible } from "./referralBonus";
 import { infoLog } from "./logger";
 import { getRequiredEnv } from "./requireEnv";
 import { emailDomain } from "./redactSensitive";
+import { reportAuthFailure, withAuthErrorReport } from "./safeDiagnostics";
 import { transferAnonymousChatToUser } from "./anonymousTransfer";
 import {
   ANONYMOUS_SESSION_COOKIE,
@@ -72,7 +73,7 @@ async function activatePendingForUserId(userId?: string | null) {
       await activatePendingSubscriptionIfNeeded(dbUser);
     }
   } catch (error) {
-    console.error("[Auth] Pending subscription activation failed:", error);
+    reportAuthFailure("pendingSubscription", error);
   }
 }
 
@@ -82,23 +83,23 @@ export const authOptions: AuthOptions = {
   adapter: {
     ...prismaAdapter,
     async createUser(data) {
-      console.log("[Auth] Adapter createUser:", {
+      infoLog("Auth", "Adapter createUser", {
         hasEmail: Boolean(data?.email),
         emailDomain: emailDomain(data?.email),
         hasName: Boolean(data?.name),
       });
-      try {
+      return withAuthErrorReport("Adapter.createUser", async () => {
         try {
           await ensureUserConsentColumns();
         } catch (error) {
-          console.error("[Consent] Could not ensure User consent columns", error);
+          reportAuthFailure("Consent.columns", error);
         }
         const created = await prismaAdapter.createUser!(data);
-        console.log("[Auth] Adapter createUser success:", { id: created.id });
+        infoLog("Auth", "Adapter createUser success", { id: created.id });
         try {
           await applySignupBenefits(created.id);
         } catch (error) {
-          console.error("[Signup] Google user start grant failed", error);
+          reportAuthFailure("Signup.googleStartGrant", error);
         }
         try {
           if (!created.emailVerified) {
@@ -111,7 +112,7 @@ export const authOptions: AuthOptions = {
           infoLog("EmailVerification", "Google user marked verified", { userId: created.id });
           await grantReferralBonusIfEligible(created.id);
         } catch (error) {
-          console.error("[EmailVerification] Google verify stamp failed", error);
+          reportAuthFailure("EmailVerification.googleStamp", error);
         }
         try {
           const { cookies } = await import("next/headers");
@@ -122,24 +123,21 @@ export const authOptions: AuthOptions = {
               where: { id: created.id },
               data: { acceptedTermsAt: acceptedAt, acceptedPrivacyAt: acceptedAt },
             });
-            console.log("[Consent] google register", {
+            infoLog("Consent", "google register", {
               userId: created.id,
               acceptedTermsAt: acceptedAt.toISOString(),
               acceptedPrivacyAt: acceptedAt.toISOString(),
             });
           }
         } catch (error) {
-          console.error("[Consent] google stamp failed", error);
+          reportAuthFailure("Consent.googleStamp", error);
         }
         return created;
-      } catch (error) {
-        console.error("[Auth] Adapter createUser failed:", error);
-        throw error;
-      }
+      });
     },
     async getUserByEmail(email) {
       const existing = await prismaAdapter.getUserByEmail!(email);
-      console.log("[Auth] Adapter getUserByEmail:", {
+      infoLog("Auth", "Adapter getUserByEmail", {
         emailDomain: emailDomain(email),
         found: Boolean(existing),
         id: existing?.id,
@@ -147,17 +145,12 @@ export const authOptions: AuthOptions = {
       return existing;
     },
     async linkAccount(account) {
-      console.log("[Auth] Adapter linkAccount:", {
+      infoLog("Auth", "Adapter linkAccount", {
         userId: account.userId,
         provider: account.provider,
         providerAccountId: account.providerAccountId,
       });
-      try {
-        return await prismaAdapter.linkAccount!(account);
-      } catch (error) {
-        console.error("[Auth] Adapter linkAccount failed:", error);
-        throw error;
-      }
+      return withAuthErrorReport("Adapter.linkAccount", async () => prismaAdapter.linkAccount!(account));
     },
   },
   providers: [
@@ -208,17 +201,29 @@ export const authOptions: AuthOptions = {
     signIn: "/login",
   },
   secret: getRequiredEnv("NEXTAUTH_SECRET"),
+  debug: false,
+  logger: {
+    error(code, metadata) {
+      reportAuthFailure(`NextAuth.${String(code)}`, metadata);
+    },
+    warn(code) {
+      infoLog("NextAuth", String(code));
+    },
+    debug() {
+      /* library debug disabled so provider errors cannot bypass redaction */
+    },
+  },
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
-        console.log("[Auth] Google signIn attempt:", {
+        infoLog("Auth", "Google signIn attempt", {
           id: user?.id,
           emailDomain: emailDomain(user?.email),
           provider: account?.provider,
         });
         return true;
       } catch (error) {
-        console.error("[Auth] Error during signIn:", error);
+        reportAuthFailure("signIn", error);
         return false;
       }
     },
@@ -240,7 +245,7 @@ export const authOptions: AuthOptions = {
     },
     async jwt({ token, user, account, trigger }) {
       if (user) {
-        console.log("[Auth] JWT created for user:", {
+        infoLog("Auth", "JWT created for user", {
           id: user.id,
           emailDomain: emailDomain(user.email),
           provider: account?.provider,
@@ -262,8 +267,8 @@ export const authOptions: AuthOptions = {
           if (isValidAnonymousSessionId(guestSessionId)) {
             await transferAnonymousChatToUser({ sessionId: guestSessionId, userId: user.id });
           }
-        } catch {
-          console.error("[Auth] Guest chat transfer on JWT failed");
+        } catch (error) {
+          reportAuthFailure("guestChatTransfer", error);
         }
       }
 
@@ -272,7 +277,7 @@ export const authOptions: AuthOptions = {
         try {
           await refreshEmailVerifiedToken(token, userId);
         } catch (error) {
-          console.error("[EmailVerification] Failed to refresh emailVerified from DB", error);
+          reportAuthFailure("EmailVerification.refresh", error);
         }
       }
 
@@ -281,7 +286,7 @@ export const authOptions: AuthOptions = {
   },
   events: {
     async signIn({ user, account, isNewUser }) {
-      console.log("[Auth] signIn event:", {
+      infoLog("Auth", "signIn event", {
         id: user.id,
         emailDomain: emailDomain(user.email),
         provider: account?.provider,
@@ -297,18 +302,18 @@ export const authOptions: AuthOptions = {
             infoLog("EmailVerification", "Google sign-in marked verified", { userId: user.id });
           }
         } catch (error) {
-          console.error("[EmailVerification] Google sign-in verify failed", error);
+          reportAuthFailure("EmailVerification.googleSignIn", error);
         }
       }
     },
     async createUser({ user }) {
-      console.log("[Auth] createUser event:", {
+      infoLog("Auth", "createUser event", {
         id: user.id,
         emailDomain: emailDomain(user.email),
       });
     },
     async linkAccount({ user, account }) {
-      console.log("[Auth] linkAccount event:", {
+      infoLog("Auth", "linkAccount event", {
         userId: user.id,
         emailDomain: emailDomain(user.email),
         provider: account.provider,

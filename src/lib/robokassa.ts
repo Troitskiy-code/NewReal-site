@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { str as crc32str } from "crc-32";
-import { debugLog, errorLog, infoLog } from "@/lib/logger";
+import { debugLog, errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { withLocale, type Locale } from "@/lib/i18nConfig";
 
 const SITE_URL = "https://newvers.ai";
@@ -349,9 +349,9 @@ export async function chargeRobokassaRecurring(options: {
     body,
   });
 
-  const responseText = (await response.text()).trim();
+  await response.text();
   if (!response.ok) {
-    errorLog("Robokassa", `Recurring charge failed: InvId=${invId}, status=${response.status}, body=${responseText}`);
+    errorLog("Robokassa", "Recurring charge failed", { invId, status: response.status });
     throw new Error("Robokassa recurring charge failed");
   }
 
@@ -390,20 +390,17 @@ export async function cancelRobokassaRecurring(recurringId: string): Promise<boo
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
     });
-    const responseText = (await response.text()).trim();
+    await response.text();
 
     if (!response.ok) {
-      errorLog(
-        "Robokassa",
-        `Recurring cancel failed: RecurringID=${id}, status=${response.status}, body=${responseText}`
-      );
+      errorLog("Robokassa", "Recurring cancel failed", { recurringId: id, status: response.status });
       return false;
     }
 
-    infoLog("Robokassa", `Recurring cancel succeeded: RecurringID=${id}, body=${responseText}`);
+    infoLog("Robokassa", "Recurring cancel succeeded", { recurringId: id });
     return true;
   } catch (error) {
-    errorLog("Robokassa", `Recurring cancel error: RecurringID=${id}`, error);
+    errorLog("Robokassa", `Recurring cancel error: RecurringID=${id}`, toSafeDiagnostic(error));
     return false;
   }
 }

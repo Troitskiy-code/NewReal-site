@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiT, getApiLocale } from "@/lib/apiI18n";
 import { createAndSendVerificationEmail, isEmailVerified } from "@/lib/emailVerification";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,14 +40,14 @@ export async function POST(req: NextRequest) {
         "EmailVerification:Resend"
       );
     } catch (error) {
-      errorLog("EmailVerification:Resend", "Failed to send email", { userId: user.id, error });
+      errorLog("EmailVerification:Resend", "Failed to send email", { userId: user.id }, toSafeDiagnostic(error));
       return NextResponse.json({ error: apiT(req, "api.internalError") }, { status: 500 });
     }
 
     infoLog("EmailVerification:Resend", "Verification email resent", { userId: user.id });
     return NextResponse.json({ success: true });
   } catch (error) {
-    errorLog("EmailVerification:Resend", "POST failed", error);
+    errorLog("EmailVerification:Resend", "POST failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: apiT(req, "api.internalError") }, { status: 500 });
   }
 }

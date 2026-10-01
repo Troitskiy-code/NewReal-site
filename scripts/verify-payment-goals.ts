@@ -1,13 +1,9 @@
 /**
- * Проверка разбора Success URL / Shp_* для целей Метрики при подписке.
- * Запуск: node --experimental-strip-types scripts/verify-payment-goals.ts
+ * Проверка серверного разбора покупки для целей Метрики.
+ * Запуск: node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-payment-goals.ts
  */
-import {
-  METRIKA_GOALS,
-  metrikaPlanSlug,
-  resolvePaymentGoalFromSearchParams,
-  subscriptionGoal,
-} from "../src/lib/metrika.ts";
+import { METRIKA_GOALS, metrikaPlanSlug, subscriptionGoal } from "@/lib/metrika";
+import { purchaseGoalsFromStatus } from "@/lib/purchaseGoalRuntime";
 
 let passed = 0;
 let failed = 0;
@@ -22,73 +18,26 @@ function assert(condition: boolean, label: string) {
   }
 }
 
-function params(query: string) {
-  return new URLSearchParams(query);
-}
-
 console.log("Plan slug mapping");
 assert(metrikaPlanSlug("story") === "history", "story → history");
-assert(metrikaPlanSlug("dialog") === "dialog", "dialog stays dialog");
 assert(subscriptionGoal("story") === METRIKA_GOALS.subscriptionHistory, "story fires subscription_history");
-assert(subscriptionGoal("history") === METRIKA_GOALS.subscriptionHistory, "history fires subscription_history");
 assert(subscriptionGoal("universe") === METRIKA_GOALS.subscriptionUniverse, "universe fires subscription_universe");
 assert(subscriptionGoal("start") === null, "start has no plan goal");
 
-console.log("\nSuccess URL from /api/subscription/create");
-{
-  const hit = resolvePaymentGoalFromSearchParams(
-    params("payment=success&type=subscription&plan=history")
-  );
-  assert(hit?.kind === "subscription", "detects subscription success");
-  assert(hit?.kind === "subscription" && hit.plan === "history", "plan is history");
-  assert(
-    hit?.kind === "subscription" && hit.planGoal === METRIKA_GOALS.subscriptionHistory,
-    "plan goal is subscription_history"
-  );
-}
-
-console.log("\nRobokassa Shp_* fallback (no payment=success)");
-{
-  const hit = resolvePaymentGoalFromSearchParams(
-    params("InvId=42&Shp_type=subscription&Shp_plan=story&Shp_subscription=true")
-  );
-  assert(hit?.kind === "subscription", "InvId + Shp_subscription counts as success");
-  assert(hit?.kind === "subscription" && hit.plan === "history", "Shp_plan=story maps to history");
-}
-
-console.log("\nMixed query: public plan=history and Shp_plan=story");
-{
-  const hit = resolvePaymentGoalFromSearchParams(
-    params("payment=success&type=subscription&plan=history&Shp_plan=story")
-  );
-  assert(hit?.kind === "subscription" && hit.plan === "history", "prefers public plan=history");
-}
-
-console.log("\nDialog and universe");
-{
-  const dialog = resolvePaymentGoalFromSearchParams(
-    params("payment=success&type=subscription&plan=dialog")
-  );
-  const universe = resolvePaymentGoalFromSearchParams(
-    params("payment=success&Shp_subscription=true&Shp_plan=universe&InvId=9")
-  );
-  assert(
-    dialog?.kind === "subscription" && dialog.planGoal === METRIKA_GOALS.subscriptionDialog,
-    "dialog → subscription_dialog"
-  );
-  assert(
-    universe?.kind === "subscription" && universe.planGoal === METRIKA_GOALS.subscriptionUniverse,
-    "universe → subscription_universe"
-  );
-}
-
-console.log("\nNon-success and VC");
-assert(resolvePaymentGoalFromSearchParams(params("type=subscription&plan=dialog")) === null, "no InvId/payment → skip");
-assert(resolvePaymentGoalFromSearchParams(params("payment=success&type=vc"))?.kind === "vc", "VC success");
+console.log("Confirmed purchase specs (query is not the source of truth)");
+assert(purchaseGoalsFromStatus({ kind: "purchase", status: "confirmed" })[0]?.goal === METRIKA_GOALS.vcPurchaseSuccess, "VC");
 assert(
-  resolvePaymentGoalFromSearchParams(params("InvId=1&Shp_vc=100&Shp_type=vc"))?.kind === "vc",
-  "VC via Shp_vc"
+  purchaseGoalsFromStatus({ kind: "subscription", planId: "dialog", status: "confirmed" }).map((item) => item.goal).join(",") ===
+    `${METRIKA_GOALS.subscriptionSuccess},${METRIKA_GOALS.subscriptionDialog}`,
+  "dialog two goals"
 );
+assert(
+  purchaseGoalsFromStatus({ kind: "subscription", planId: "story", status: "confirmed" })[1]?.goal ===
+    METRIKA_GOALS.subscriptionHistory,
+  "story → history"
+);
+assert(purchaseGoalsFromStatus({ kind: "subscription_renewal", planId: "dialog", status: "confirmed" }).length === 0, "renewal skipped");
+assert(purchaseGoalsFromStatus({ kind: "subscription", planId: null, status: "confirmed" }).length === 1, "unknown plan does not invent");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

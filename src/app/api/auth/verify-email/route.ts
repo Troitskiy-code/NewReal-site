@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { apiT } from "@/lib/apiI18n";
 import { ensureEmailVerificationTable } from "@/lib/ensureEmailVerification";
 import { grantReferralBonusIfEligible } from "@/lib/referralBonus";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,14 +47,13 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       errorLog("EmailVerification", "Referral bonus failed after verify", {
         userId: verificationToken.userId,
-        error,
-      });
+      }, toSafeDiagnostic(error));
     }
 
     infoLog("EmailVerification", "Email verified", { userId: verificationToken.userId });
     return NextResponse.json({ success: true });
   } catch (error) {
-    errorLog("EmailVerification", "Verify failed", error);
+    errorLog("EmailVerification", "Verify failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: apiT(req, "api.internalError") }, { status: 500 });
   }
 }

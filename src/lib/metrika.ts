@@ -1,3 +1,5 @@
+import { isMetrikaCounterReady, waitForMetrika } from "./metrikaLoader";
+
 const DEFAULT_COUNTER_ID = "112171267";
 
 function resolveCounterId() {
@@ -28,11 +30,14 @@ export const METRIKA_GOALS = {
 
 export type MetrikaGoal = (typeof METRIKA_GOALS)[keyof typeof METRIKA_GOALS];
 
-declare global {
-  interface Window {
-    ym?: (counterId: number, method: string, ...args: unknown[]) => void;
-  }
-}
+export type ReachGoalDispatchStatus =
+  | "not_ready"
+  | "queued"
+  | "dispatched"
+  | "callback_completed"
+  | "timeout"
+  | "unknown";
+
 
 /** Metrika / public plan slug. DB id stays `story`; goals and Success URL use `history`. */
 export function metrikaPlanSlug(planId: string): string {
@@ -47,33 +52,12 @@ export function subscriptionGoal(planId: string): MetrikaGoal | null {
   return null;
 }
 
-export type PaymentGoalHit =
-  | { kind: "subscription"; plan: string; planGoal: MetrikaGoal | null }
-  | { kind: "vc" };
+export { waitForMetrika, isMetrikaCounterReady };
 
-export function resolvePaymentGoalFromSearchParams(
-  searchParams: Pick<URLSearchParams, "get">
-): PaymentGoalHit | null {
-  const read = (key: string) =>
-    (searchParams.get(key) || searchParams.get(key.toLowerCase()) || "").trim();
-
-  const payment = searchParams.get("payment");
-  const type = searchParams.get("type") || read("Shp_type");
-  const rawPlan = searchParams.get("plan") || read("Shp_plan") || "unknown";
-  const plan = metrikaPlanSlug(rawPlan);
-  const isSubscription =
-    type === "subscription" || read("Shp_subscription").toLowerCase() === "true";
-  const isVc = type === "vc" || Boolean(read("Shp_vc") && !isSubscription);
-  const invId = searchParams.get("InvId") || searchParams.get("invid");
-  const isSuccess = payment === "success" || Boolean(invId && (isSubscription || isVc));
-
-  if (!isSuccess || (!isSubscription && !isVc)) return null;
-  if (isSubscription) {
-    return { kind: "subscription", plan, planGoal: subscriptionGoal(plan) };
-  }
-  return { kind: "vc" };
-}
-
+/**
+ * Fire-and-forget for non-purchase goals. Queue push is allowed so events can flush
+ * after late tag.js, but a true return only means the counter is already inited.
+ */
 export function reachGoal(goal: string, params?: Record<string, unknown>): boolean {
   if (typeof window === "undefined") return false;
   if (typeof window.ym !== "function") {
@@ -86,26 +70,34 @@ export function reachGoal(goal: string, params?: Record<string, unknown>): boole
   } else {
     window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal);
   }
-  console.log("[Goal]", goal, params ?? "");
-  return true;
+  const ready = isMetrikaCounterReady();
+  console.log("[Goal]", goal, params ?? "", ready ? "dispatched" : "queued");
+  return ready;
 }
 
-export function waitForMetrika(timeoutMs = 8000): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if (typeof window.ym === "function") return Promise.resolve(true);
+export async function dispatchGoal(
+  goal: string,
+  params?: Record<string, unknown>,
+  timeoutMs = 8000
+): Promise<{ status: ReachGoalDispatchStatus; goal: string }> {
+  if (typeof window === "undefined" || typeof window.ym !== "function" || !isMetrikaCounterReady()) {
+    return { status: "not_ready", goal };
+  }
 
   return new Promise((resolve) => {
-    const started = Date.now();
-    const timer = window.setInterval(() => {
-      if (typeof window.ym === "function") {
-        window.clearInterval(timer);
-        resolve(true);
-        return;
-      }
-      if (Date.now() - started >= timeoutMs) {
-        window.clearInterval(timer);
-        resolve(false);
-      }
-    }, 200);
+    let settled = false;
+    const finish = (status: ReachGoalDispatchStatus) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve({ status, goal });
+    };
+    const timer = window.setTimeout(() => finish("timeout"), timeoutMs);
+    try {
+      const payload = params ?? {};
+      window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal, payload, () => finish("callback_completed"));
+    } catch {
+      finish("unknown");
+    }
   });
 }

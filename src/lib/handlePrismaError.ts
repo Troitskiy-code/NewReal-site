@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { errorLog } from "./logger";
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -41,7 +42,7 @@ export function isPrismaPoolExhausted(error: unknown): boolean {
 export function prismaPoolOverloadResponse(error: unknown): NextResponse | null {
   if (!isPrismaPoolExhausted(error)) return null;
 
-  console.error("[pool] connection pool timeout:", errorMessage(error));
+  errorLog("Prisma", "connection pool timeout", { category: "prisma", code: prismaErrorCode(error) ?? "pool" });
   return new NextResponse("Сервис временно перегружен", {
     status: 503,
     headers: {

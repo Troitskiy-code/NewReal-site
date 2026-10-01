@@ -1,0 +1,625 @@
+{
+  "asOf": "2026-10-01",
+  "livePricesUnchanged": [
+    {
+      "id": "dialog",
+      "monthlyPrice": 499,
+      "yearlyPrice": 4990,
+      "vcPerMonth": 2500
+    },
+    {
+      "id": "story",
+      "monthlyPrice": 1299,
+      "yearlyPrice": 12990,
+      "vcPerMonth": 10000
+    },
+    {
+      "id": "universe",
+      "monthlyPrice": 3499,
+      "yearlyPrice": 37990,
+      "vcPerMonth": 30000
+    }
+  ],
+  "parameters": {
+    "livePlans": {
+      "value": [
+        {
+          "id": "dialog",
+          "monthlyPrice": 499,
+          "yearlyPrice": 4990,
+          "vcPerMonth": 2500
+        },
+        {
+          "id": "story",
+          "monthlyPrice": 1299,
+          "yearlyPrice": 12990,
+          "vcPerMonth": 10000
+        },
+        {
+          "id": "universe",
+          "monthlyPrice": 3499,
+          "yearlyPrice": 37990,
+          "vcPerMonth": 30000
+        }
+      ],
+      "source": "src/lib/chatEconomy.ts",
+      "date": "2026-10-01",
+      "status": "contract"
+    },
+    "acquiringPct": {
+      "value": 0.039,
+      "source": "docs/universe-subscription-economy-report.md (not a live merchant statement)",
+      "date": "2026-09-30",
+      "status": "assumption"
+    },
+    "taxPct": {
+      "value": 0.06,
+      "source": "placeholder USN 6%; replace with actual tax regime before a live experiment",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "infraMonthlyRub": {
+      "value": 25000,
+      "source": "unmeasured hosting/support floor; not telemetry",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "usdRub": {
+      "value": 90,
+      "source": "round FX placeholder, not a CBR snapshot",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "cheapUsdPer1M": {
+      "value": 0.4,
+      "source": "economical-model placeholder, not p95",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "dearUsdPer1M": {
+      "value": 8,
+      "source": "expensive-model placeholder, not p95",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "tokensInPerRequest": {
+      "value": {
+        "low": 1200,
+        "medium": 2400,
+        "high": 6000,
+        "stress": 12000
+      },
+      "source": "unmeasured; do not treat as product p50/p95",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "tokensOutPerRequest": {
+      "value": {
+        "low": 400,
+        "medium": 900,
+        "high": 2000,
+        "stress": 4000
+      },
+      "source": "unmeasured",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "cheapVc": {
+      "value": 5,
+      "source": "catalog placeholder used only when DB is unavailable",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "dearVc": {
+      "value": 50,
+      "source": "catalog placeholder",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "imageRub": {
+      "value": {
+        "low": 0,
+        "medium": 12,
+        "high": 40,
+        "stress": 120
+      },
+      "source": "unmeasured image COGS",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "retryFactor": {
+      "value": {
+        "low": 1.02,
+        "medium": 1.08,
+        "high": 1.2,
+        "stress": 1.45
+      },
+      "source": "unmeasured provider retry load",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "ragExtraFactor": {
+      "value": {
+        "low": 1.05,
+        "medium": 1.15,
+        "high": 1.3,
+        "stress": 1.6
+      },
+      "source": "RAG embeddings persist for eligible paid plans even if ENABLE_RAG_EMBEDDINGS=false",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "supportTicketsPerPayer": {
+      "value": {
+        "low": 0.03,
+        "medium": 0.08,
+        "high": 0.18,
+        "stress": 0.4
+      },
+      "source": "unmeasured",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "supportRubPerTicket": {
+      "value": 90,
+      "source": "unmeasured ops cost",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "refundPct": {
+      "value": {
+        "low": 0.01,
+        "medium": 0.03,
+        "high": 0.06,
+        "stress": 0.12
+      },
+      "source": "unmeasured",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "visitors": {
+      "value": {
+        "low": 2000,
+        "medium": 8000,
+        "high": 20000,
+        "stress": 50000
+      },
+      "source": "unmeasured monthly visitors",
+      "date": "2026-10-01",
+      "status": "assumption"
+    },
+    "cacRub": {
+      "value": {
+        "low": 70,
+        "medium": 160,
+        "high": 320,
+        "stress": 650
+      },
+      "source": "unmeasured paid CAC",
+      "date": "2026-10-01",
+      "status": "assumption"
+    }
+  },
+  "formula": {
+    "netRevenue": "grossRevenue - refunds (promo VC burn is an AI cost, not a second revenue haircut)",
+    "contribution": "netRevenue - variableCost(AI including retry/RAG/images/support/acquiring/tax)",
+    "profit": "contribution - infraMonthly - CAC_on_payers",
+    "rag": "shouldPersistEmbeddings = isRagEligible(paid active plan) OR ENABLE_RAG_EMBEDDINGS"
+  },
+  "rows": [
+    {
+      "variant": "control",
+      "scenario": "low",
+      "visitors": 2000,
+      "accounts": 80,
+      "payers": 24,
+      "grossRevenue": 83976,
+      "discountsAndRefunds": 839.76,
+      "netRevenue": 83136.24,
+      "variableCost": 26234.62,
+      "contribution": 56901.62,
+      "infraAndAcquisition": 26680,
+      "profit": 30221.62,
+      "contributionPerVisitor": 28.45,
+      "contributionPerPayer": 2370.9,
+      "costPerActivatedUser": 28.71,
+      "costPerPayer": 1163.11,
+      "carryoverLiabilityRub": 4330.61
+    },
+    {
+      "variant": "control",
+      "scenario": "medium",
+      "visitors": 8000,
+      "accounts": 560,
+      "payers": 200,
+      "grossRevenue": 699800,
+      "discountsAndRefunds": 20994,
+      "netRevenue": 678806,
+      "variableCost": 765342.93,
+      "contribution": -86536.93,
+      "infraAndAcquisition": 57000,
+      "profit": -143536.93,
+      "contributionPerVisitor": -10.82,
+      "contributionPerPayer": -432.68,
+      "costPerActivatedUser": 67.68,
+      "costPerPayer": 3986.71,
+      "carryoverLiabilityRub": 170419.79
+    },
+    {
+      "variant": "control",
+      "scenario": "high",
+      "visitors": 20000,
+      "accounts": 2200,
+      "payers": 800,
+      "grossRevenue": 2799200,
+      "discountsAndRefunds": 167952,
+      "netRevenue": 2631248,
+      "variableCost": 14887226.35,
+      "contribution": -12255978.35,
+      "infraAndAcquisition": 281000,
+      "profit": -12536978.35,
+      "contributionPerVisitor": -612.8,
+      "contributionPerPayer": -15319.97,
+      "costPerActivatedUser": 136.79,
+      "costPerPayer": 18929.03,
+      "carryoverLiabilityRub": 3612211.2
+    },
+    {
+      "variant": "control",
+      "scenario": "stress",
+      "visitors": 50000,
+      "accounts": 8000,
+      "payers": 2750,
+      "grossRevenue": 9622250,
+      "discountsAndRefunds": 1154670,
+      "netRevenue": 8467580,
+      "variableCost": 27807796.02,
+      "contribution": -19340216.02,
+      "infraAndAcquisition": 1812500,
+      "profit": -21152716.02,
+      "contributionPerVisitor": -386.8,
+      "contributionPerPayer": -7032.81,
+      "costPerActivatedUser": 265.2,
+      "costPerPayer": 10761.93,
+      "carryoverLiabilityRub": 63116064
+    },
+    {
+      "variant": "guest10",
+      "scenario": "low",
+      "visitors": 2000,
+      "accounts": 100,
+      "payers": 26,
+      "grossRevenue": 90974,
+      "discountsAndRefunds": 909.74,
+      "netRevenue": 90064.26,
+      "variableCost": 27157.85,
+      "contribution": 62906.41,
+      "infraAndAcquisition": 26820,
+      "profit": 36086.41,
+      "contributionPerVisitor": 31.45,
+      "contributionPerPayer": 2419.48,
+      "costPerActivatedUser": 30.54,
+      "costPerPayer": 1114.53,
+      "carryoverLiabilityRub": 4234.37
+    },
+    {
+      "variant": "guest10",
+      "scenario": "medium",
+      "visitors": 8000,
+      "accounts": 720,
+      "payers": 224,
+      "grossRevenue": 783776,
+      "discountsAndRefunds": 23513.28,
+      "netRevenue": 760262.72,
+      "variableCost": 750456.63,
+      "contribution": 9806.09,
+      "infraAndAcquisition": 60840,
+      "profit": -51033.91,
+      "contributionPerVisitor": 1.23,
+      "contributionPerPayer": 43.78,
+      "costPerActivatedUser": 66.17,
+      "costPerPayer": 3510.25,
+      "carryoverLiabilityRub": 162611.46
+    },
+    {
+      "variant": "guest10",
+      "scenario": "high",
+      "visitors": 20000,
+      "accounts": 2800,
+      "payers": 920,
+      "grossRevenue": 3219080,
+      "discountsAndRefunds": 193144.8,
+      "netRevenue": 3025935.2,
+      "variableCost": 16226889.38,
+      "contribution": -13200954.18,
+      "infraAndAcquisition": 319400,
+      "profit": -13520354.18,
+      "contributionPerVisitor": -660.05,
+      "contributionPerPayer": -14348.86,
+      "costPerActivatedUser": 137.23,
+      "costPerPayer": 17957.92,
+      "carryoverLiabilityRub": 3918440.45
+    },
+    {
+      "variant": "guest10",
+      "scenario": "stress",
+      "visitors": 50000,
+      "accounts": 10000,
+      "payers": 3000,
+      "grossRevenue": 10497000,
+      "discountsAndRefunds": 1259640,
+      "netRevenue": 9237360,
+      "variableCost": 28507106.64,
+      "contribution": -19269746.64,
+      "infraAndAcquisition": 1975000,
+      "profit": -21244746.64,
+      "contributionPerVisitor": -385.39,
+      "contributionPerPayer": -6423.25,
+      "costPerActivatedUser": 261.82,
+      "costPerPayer": 10152.37,
+      "carryoverLiabilityRub": 63141120
+    },
+    {
+      "variant": "daily20",
+      "scenario": "low",
+      "visitors": 2000,
+      "accounts": 100,
+      "payers": 20,
+      "grossRevenue": 25980,
+      "discountsAndRefunds": 259.8,
+      "netRevenue": 25720.2,
+      "variableCost": 11261.52,
+      "contribution": 14458.68,
+      "infraAndAcquisition": 26400,
+      "profit": -11941.32,
+      "contributionPerVisitor": 7.23,
+      "contributionPerPayer": 722.93,
+      "costPerActivatedUser": 57.18,
+      "costPerPayer": 633.08,
+      "carryoverLiabilityRub": 1085.74
+    },
+    {
+      "variant": "daily20",
+      "scenario": "medium",
+      "visitors": 8000,
+      "accounts": 800,
+      "payers": 176,
+      "grossRevenue": 228624,
+      "discountsAndRefunds": 6858.72,
+      "netRevenue": 221765.28,
+      "variableCost": 282014.62,
+      "contribution": -60249.34,
+      "infraAndAcquisition": 53160,
+      "profit": -113409.34,
+      "contributionPerVisitor": -7.53,
+      "contributionPerPayer": -342.33,
+      "costPerActivatedUser": 131.11,
+      "costPerPayer": 1762.36,
+      "carryoverLiabilityRub": 42588.72
+    },
+    {
+      "variant": "daily20",
+      "scenario": "high",
+      "visitors": 20000,
+      "accounts": 3200,
+      "payers": 760,
+      "grossRevenue": 987240,
+      "discountsAndRefunds": 59234.4,
+      "netRevenue": 928005.6,
+      "variableCost": 5096837.35,
+      "contribution": -4168831.75,
+      "infraAndAcquisition": 268200,
+      "profit": -4437031.75,
+      "contributionPerVisitor": -208.44,
+      "contributionPerPayer": -5485.3,
+      "costPerActivatedUser": 359.61,
+      "costPerPayer": 7026.36,
+      "carryoverLiabilityRub": 981676.8
+    },
+    {
+      "variant": "daily20",
+      "scenario": "stress",
+      "visitors": 50000,
+      "accounts": 11000,
+      "payers": 2500,
+      "grossRevenue": 3247500,
+      "discountsAndRefunds": 389700,
+      "netRevenue": 2857800,
+      "variableCost": 17908493.4,
+      "contribution": -15050693.4,
+      "infraAndAcquisition": 1650000,
+      "profit": -16700693.4,
+      "contributionPerVisitor": -301.01,
+      "contributionPerPayer": -6020.28,
+      "costPerActivatedUser": 979.89,
+      "costPerPayer": 7813.4,
+      "carryoverLiabilityRub": 16904448
+    },
+    {
+      "variant": "premiumTrial",
+      "scenario": "low",
+      "visitors": 2000,
+      "accounts": 90,
+      "payers": 28,
+      "grossRevenue": 97972,
+      "discountsAndRefunds": 979.72,
+      "netRevenue": 96992.28,
+      "variableCost": 44621.29,
+      "contribution": 52370.99,
+      "infraAndAcquisition": 26960,
+      "profit": 25410.99,
+      "contributionPerVisitor": 26.19,
+      "contributionPerPayer": 1870.39,
+      "costPerActivatedUser": 32.33,
+      "costPerPayer": 1663.62,
+      "carryoverLiabilityRub": 8498.36
+    },
+    {
+      "variant": "premiumTrial",
+      "scenario": "medium",
+      "visitors": 8000,
+      "accounts": 640,
+      "payers": 240,
+      "grossRevenue": 839760,
+      "discountsAndRefunds": 25192.8,
+      "netRevenue": 814567.2,
+      "variableCost": 1205100.02,
+      "contribution": -390532.82,
+      "infraAndAcquisition": 63400,
+      "profit": -453932.82,
+      "contributionPerVisitor": -48.82,
+      "contributionPerPayer": -1627.22,
+      "costPerActivatedUser": 78.07,
+      "costPerPayer": 5181.25,
+      "carryoverLiabilityRub": 275150.49
+    },
+    {
+      "variant": "premiumTrial",
+      "scenario": "high",
+      "visitors": 20000,
+      "accounts": 2600,
+      "payers": 1000,
+      "grossRevenue": 3499000,
+      "discountsAndRefunds": 209940,
+      "netRevenue": 3289060,
+      "variableCost": 2919117.42,
+      "contribution": 369942.58,
+      "infraAndAcquisition": 345000,
+      "profit": 24942.58,
+      "contributionPerVisitor": 18.5,
+      "contributionPerPayer": 369.94,
+      "costPerActivatedUser": 167.31,
+      "costPerPayer": 3239.12,
+      "carryoverLiabilityRub": 5795712
+    },
+    {
+      "variant": "premiumTrial",
+      "scenario": "stress",
+      "visitors": 50000,
+      "accounts": 9000,
+      "payers": 3250,
+      "grossRevenue": 11371750,
+      "discountsAndRefunds": 1364610,
+      "netRevenue": 10007140,
+      "variableCost": 38421150.06,
+      "contribution": -28414010.06,
+      "infraAndAcquisition": 2137500,
+      "profit": -30551510.06,
+      "contributionPerVisitor": -568.28,
+      "contributionPerPayer": -8742.77,
+      "costPerActivatedUser": 352.02,
+      "costPerPayer": 12471.89,
+      "carryoverLiabilityRub": 86969376
+    },
+    {
+      "variant": "firstPack129",
+      "scenario": "low",
+      "visitors": 2000,
+      "accounts": 90,
+      "payers": 40,
+      "grossRevenue": 8752.8,
+      "discountsAndRefunds": 87.53,
+      "netRevenue": 8665.27,
+      "variableCost": 2045.43,
+      "contribution": 6619.84,
+      "infraAndAcquisition": 27800,
+      "profit": -21180.16,
+      "contributionPerVisitor": 3.31,
+      "contributionPerPayer": 165.5,
+      "costPerActivatedUser": 37.97,
+      "costPerPayer": 121.14,
+      "carryoverLiabilityRub": 108.27
+    },
+    {
+      "variant": "firstPack129",
+      "scenario": "medium",
+      "visitors": 8000,
+      "accounts": 640,
+      "payers": 320,
+      "grossRevenue": 85990.4,
+      "discountsAndRefunds": 2579.71,
+      "netRevenue": 83410.69,
+      "variableCost": 53026.94,
+      "contribution": 30383.75,
+      "infraAndAcquisition": 76200,
+      "profit": -45816.25,
+      "contributionPerVisitor": 3.8,
+      "contributionPerPayer": 94.95,
+      "costPerActivatedUser": 89.22,
+      "costPerPayer": 325.71,
+      "carryoverLiabilityRub": 6048.35
+    },
+    {
+      "variant": "firstPack129",
+      "scenario": "high",
+      "visitors": 20000,
+      "accounts": 2400,
+      "payers": 1300,
+      "grossRevenue": 427180,
+      "discountsAndRefunds": 25630.8,
+      "netRevenue": 401549.2,
+      "variableCost": 1006015.8,
+      "contribution": -604466.6,
+      "infraAndAcquisition": 441000,
+      "profit": -1045466.6,
+      "contributionPerVisitor": -30.22,
+      "contributionPerPayer": -464.97,
+      "costPerActivatedUser": 192.05,
+      "costPerPayer": 1093.86,
+      "carryoverLiabilityRub": 184564.22
+    },
+    {
+      "variant": "firstPack129",
+      "scenario": "stress",
+      "visitors": 50000,
+      "accounts": 8500,
+      "payers": 4500,
+      "grossRevenue": 917325,
+      "discountsAndRefunds": 110079,
+      "netRevenue": 807246,
+      "variableCost": 2789958.95,
+      "contribution": -1982712.95,
+      "infraAndAcquisition": 2950000,
+      "profit": -4932712.95,
+      "contributionPerVisitor": -39.65,
+      "contributionPerPayer": -440.6,
+      "costPerActivatedUser": 383.42,
+      "costPerPayer": 1269.99,
+      "carryoverLiabilityRub": 1183896
+    }
+  ],
+  "extras": {
+    "vcCarryover25pctLiabilityMediumUniverse": 170419.79,
+    "imagePack": "Sell expensive images as a separate SKU so subscription VC is not silently drained. Do not cut already paid image quotas.",
+    "referral": "Pay referral VC only after PaymentEvent confirmation; reverse on refund of the referred invoice.",
+    "authors": "Creator payouts stay on current contract. Acquisition experiments must not rewrite existing character revenue share."
+  },
+  "recommendation": {
+    "experiment": "firstPack129",
+    "hypothesis": "A 129 ₽ one-time pack sized from economical-model COGS, without autorenew, increases confirmed first payments versus the repaired control funnel without changing Dialog/Story/Universe prices.",
+    "audience": "New registered users who finished at least one guest reply, RU, desktop+mobile, 28 days plus one billing cycle watch.",
+    "budgetRub": 40000,
+    "stop": "If confirmed first-pay conversion is below control by 20% relative, or support tickets/payer rise 2x, or contribution/visitor stays negative after 28 days AND the following monthly renewal window.",
+    "rollback": "Disable the SKU; keep already purchased packs; do not alter live subscription prices or paid entitlements.",
+    "sample": "Need at least 400 first-pay events per arm or 28 days plus renewal observation, whichever is later. 14 days is not enough for monthly renewals.",
+    "mediumProjection": {
+      "variant": "firstPack129",
+      "scenario": "medium",
+      "visitors": 8000,
+      "accounts": 640,
+      "payers": 320,
+      "grossRevenue": 85990.4,
+      "discountsAndRefunds": 2579.71,
+      "netRevenue": 83410.69,
+      "variableCost": 53026.94,
+      "contribution": 30383.75,
+      "infraAndAcquisition": 76200,
+      "profit": -45816.25,
+      "contributionPerVisitor": 3.8,
+      "contributionPerPayer": 94.95,
+      "costPerActivatedUser": 89.22,
+      "costPerPayer": 325.71,
+      "carryoverLiabilityRub": 6048.35
+    }
+  }
+}

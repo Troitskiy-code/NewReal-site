@@ -1,0 +1,20 @@
+{
+  "branch": "main",
+  "upstream": "origin/main",
+  "remote": {
+    "host": "github.com",
+    "repository": "/Troitskiy-code/NewReal-site.git"
+  },
+  "identityConfigured": true,
+  "commitSigning": "unset",
+  "customHooksPathConfigured": false,
+  "fileCount": 423,
+  "totalBytes": 21521780,
+  "knownCredentialPatterns": 2,
+  "secretFindings": [],
+  "largeFiles": [],
+  "pushDryRun": {
+    "passed": true,
+    "note": "Only HEAD dry-run to a proposed WIP branch; no commit or push performed"
+  }
+}

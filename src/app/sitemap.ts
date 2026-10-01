@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { SITE_URL } from "@/lib/seo";
 import { LOCALES, withLocale } from "@/lib/i18nConfig";
 
@@ -45,7 +46,7 @@ async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
       }));
     });
   } catch (error) {
-    console.error("Failed to load public characters for sitemap:", error);
+    errorLog("Sitemap", "public characters", toSafeDiagnostic(error));
     return [];
   }
 }

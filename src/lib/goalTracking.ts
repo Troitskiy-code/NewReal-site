@@ -1,125 +1,64 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
-  METRIKA_GOALS,
-  reachGoal,
-  resolvePaymentGoalFromSearchParams,
-  waitForMetrika,
-  type PaymentGoalHit,
-} from "@/lib/metrika";
-
-function clearPaymentQuery() {
-  if (typeof window === "undefined") return;
-  window.history.replaceState({}, "", window.location.pathname);
-}
-
-function goalStorageKey(hit: PaymentGoalHit, invId: string): string {
-  if (hit.kind === "subscription") {
-    return `nv-metrika-goal:subscription:${hit.plan}:${invId || "ok"}`;
-  }
-  return `nv-metrika-goal:vc:${invId || "ok"}`;
-}
-
-function alreadyFired(key: string): boolean {
-  try {
-    return window.sessionStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markFired(key: string) {
-  try {
-    window.sessionStorage.setItem(key, "1");
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
-
-function firePaymentGoal(hit: PaymentGoalHit): boolean {
-  if (hit.kind === "subscription") {
-    const success = reachGoal(METRIKA_GOALS.subscriptionSuccess, { plan: hit.plan });
-    const planOk = hit.planGoal ? reachGoal(hit.planGoal) : true;
-    console.log("[Goal] subscription events fired", {
-      type: "subscription",
-      plan: hit.plan,
-      planGoal: hit.planGoal,
-      sent: success && planOk,
-    });
-    return success && planOk;
-  }
-
-  const sent = reachGoal(METRIKA_GOALS.vcPurchaseSuccess);
-  console.log("[Goal] vc_purchase_success fired", { type: "vc", sent });
-  return sent;
-}
+  captureInvoiceFromUrl,
+  extractInvoiceIdFromLocation,
+  listPendingPurchases,
+  pollAndDispatchInvoice,
+  setPurchaseTrackerUser,
+  shouldContinuePolling,
+} from "@/lib/purchaseGoalRuntime";
 
 export function usePaymentGoal() {
-  const searchParams = useSearchParams();
+  const { data, status } = useSession();
+  const userId = data?.user?.id ?? null;
 
   useEffect(() => {
-    const hit = resolvePaymentGoalFromSearchParams(searchParams);
-    if (!hit) return;
+    if (status === "loading") return;
+    setPurchaseTrackerUser(status === "authenticated" ? userId : null);
+  }, [status, userId]);
 
-    const invId = searchParams.get("InvId") || searchParams.get("invid") || "";
-    const storageKey = goalStorageKey(hit, invId);
-    if (alreadyFired(storageKey)) {
-      clearPaymentQuery();
-      return;
-    }
+  useEffect(() => {
+    if (status === "loading") return;
+    captureInvoiceFromUrl();
 
     let cancelled = false;
+    let timer: number | undefined;
 
-    const run = async () => {
-      if (invId) {
-        let confirmed = false;
-        for (let i = 0; i < 12; i += 1) {
-          try {
-            const res = await fetch(`/api/payment/status?invId=${encodeURIComponent(invId)}`);
-            if (res.ok) {
-              const data = (await res.json()) as { status?: string };
-              if (data.status === "confirmed") {
-                confirmed = true;
-                break;
-              }
-            }
-          } catch {
-            /* keep polling */
-          }
-          await new Promise((resolve) => window.setTimeout(resolve, 2000));
-          if (cancelled) return;
-        }
-        if (!confirmed) {
-          console.log("[Goal] skipped, payment not confirmed yet", hit, invId);
-          return;
-        }
-      } else {
-        console.log("[Goal] skipped, no InvId to confirm", hit);
-        return;
+    const tick = async () => {
+      const ids = new Set(listPendingPurchases().map((item) => item.invoiceId));
+      const fromUrl = extractInvoiceIdFromLocation();
+      if (fromUrl) ids.add(fromUrl);
+      for (const id of ids) {
+        if (cancelled) return;
+        await pollAndDispatchInvoice(id);
       }
-
-      const ready = await waitForMetrika();
       if (cancelled) return;
-
-      if (!ready) {
-        console.log("[Goal] skipped, ym not ready after wait", hit);
-        return;
+      if (listPendingPurchases().some(shouldContinuePolling)) {
+        timer = window.setTimeout(() => {
+          void tick();
+        }, 2000);
       }
-
-      const sent = firePaymentGoal(hit);
-      if (!sent) return;
-
-      markFired(storageKey);
-      clearPaymentQuery();
     };
 
-    void run();
+    void tick();
+    const resume = () => {
+      if (timer) window.clearTimeout(timer);
+      void tick();
+    };
+    window.addEventListener("focus", resume);
+    window.addEventListener("online", resume);
+    window.addEventListener("pageshow", resume);
     return () => {
       cancelled = true;
+      if (timer) window.clearTimeout(timer);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("online", resume);
+      window.removeEventListener("pageshow", resume);
     };
-  }, [searchParams]);
+  }, [status, userId]);
 }
 
 export function PaymentGoalTracker() {

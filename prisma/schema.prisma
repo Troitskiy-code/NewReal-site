@@ -330,6 +330,8 @@ model PaymentEvent {
   invoiceId String
   userId    String
   kind      String
+  planId    String?
+  amountRub Int?
   createdAt DateTime @default(now())
 
   @@unique([provider, invoiceId])

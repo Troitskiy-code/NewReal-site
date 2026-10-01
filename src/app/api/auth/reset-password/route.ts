@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { apiT } from "@/lib/apiI18n";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 
-const LOG = "[ResetPassword]";
 const MIN_PASSWORD_LENGTH = 8;
 
 async function findValidResetToken(token: string) {
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     const resetToken = await findValidResetToken(token);
     return NextResponse.json({ valid: Boolean(resetToken) });
   } catch (error) {
-    console.error(`${LOG} Token validation error:`, error);
+    errorLog("Auth", "reset-password.token", toSafeDiagnostic(error));
     return NextResponse.json({ valid: false }, { status: 500 });
   }
 }
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     const resetToken = await findValidResetToken(token);
     if (!resetToken) {
-      console.log(`${LOG} Invalid, expired, or OAuth token`);
+      infoLog("Auth", "reset-password token rejected");
       return NextResponse.json(
         { error: apiT(req, "api.invalidLink"), code: "invalidLink" },
         { status: 400 }
@@ -83,10 +83,10 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    console.log(`${LOG} Password reset successful`, { userId: resetToken.userId });
+    infoLog("Auth", "Password reset successful", { userId: resetToken.userId });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`${LOG} Error:`, error);
+    errorLog("Auth", "reset-password", toSafeDiagnostic(error));
     return NextResponse.json({ error: apiT(req, "api.internalError") }, { status: 500 });
   }
 }

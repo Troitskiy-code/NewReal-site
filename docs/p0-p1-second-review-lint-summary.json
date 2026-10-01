@@ -1,0 +1,296 @@
+{
+  "currentErrors": 27,
+  "warnings": 25,
+  "files": [
+    {
+      "file": "src/app/character/[slug]/CharacterPublicViewLoader.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 64,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/chat/[id]/ChatPageClient.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 902,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/chats/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 71,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/coins/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 91,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/favorites/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 53,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/notifications/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 91,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/profile/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 164,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/referral/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 45,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/reset-password/[token]/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 32,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/subscription/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 83,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/support/page.js",
+      "current": 1,
+      "baseline": 0,
+      "rules": [
+        {
+          "line": 38,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/app/verify-email/[token]/page.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 55,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/CharacterForm.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 299,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/CurrencyContext.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 35,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/FavoriteButton.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 31,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/MemoryEditor.tsx",
+      "current": 2,
+      "baseline": 2,
+      "rules": [
+        {
+          "line": 90,
+          "rule": "react-hooks/refs"
+        },
+        {
+          "line": 118,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/Navbar.jsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 180,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/NotificationBell.jsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 71,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/PersonaForm.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 57,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/PersonaManager.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 38,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/PersonaSelector.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 46,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/PurchaseStatusBanner.tsx",
+      "current": 1,
+      "baseline": null,
+      "rules": [
+        {
+          "line": 23,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/SidebarContext.jsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 30,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/SubscriptionPlans.tsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 106,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/components/VerseCoinsBalance.jsx",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 26,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    },
+    {
+      "file": "src/hooks/usePaginatedCharacters.js",
+      "current": 1,
+      "baseline": 1,
+      "rules": [
+        {
+          "line": 36,
+          "rule": "react-hooks/set-state-in-effect"
+        }
+      ]
+    }
+  ]
+}

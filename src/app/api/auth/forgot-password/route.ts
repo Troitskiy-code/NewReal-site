@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { sendResetPasswordEmail } from "@/lib/email";
 import { apiT, getApiLocale } from "@/lib/apiI18n";
 import { isLocale } from "@/lib/i18nConfig";
-
-const LOG = "[ForgotPassword]";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { emailDomain } from "@/lib/redactSensitive";
 
 function success() {
   return NextResponse.json({ success: true });
@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user || !user.password) {
-      console.log(`${LOG} Skipping reset email`, {
-        email,
+      infoLog("Auth", "Skipping reset email", {
+        domain: emailDomain(email),
         found: Boolean(user),
         hasPassword: Boolean(user?.password),
       });
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    console.log(`${LOG} Token created`, {
+    infoLog("Auth", "Reset token created", {
       userId: user.id,
       expiresAt: expiresAt.toISOString(),
     });
@@ -59,14 +59,14 @@ export async function POST(req: NextRequest) {
         token,
         isLocale(body?.locale) ? body.locale : getApiLocale(req)
       );
-      console.log(`${LOG} Email sent`, { userId: user.id });
+      infoLog("Auth", "Reset email sent", { userId: user.id });
     } catch (error) {
-      console.error(`${LOG} Failed to send email`, { userId: user.id, error });
+      errorLog("Auth", "forgot-password.send", { userId: user.id }, toSafeDiagnostic(error));
     }
 
     return success();
   } catch (error) {
-    console.error(`${LOG} Error:`, error);
+    errorLog("Auth", "forgot-password", toSafeDiagnostic(error));
     return NextResponse.json({ error: apiT(req, "api.internalError") }, { status: 500 });
   }
 }

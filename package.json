@@ -14,6 +14,10 @@
     "verify:p0-p1:repro": "node docs/p0-p1-review-repro.cjs",
     "verify:p0-p1:int": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/integration-p0-p1.ts",
     "verify:p0-p1:browser": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/browser-p0-p1.ts",
+    "verify:p0-security": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-p0-security.ts",
+    "verify:metrika": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-metrika.ts",
+    "verify:metrika:browser": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/browser-metrika.ts",
+    "verify:metrika:db": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-metrika-db.ts",
     "economy:acquisition": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/economy-acquisition.ts",
     "translate:characters": "node --experimental-strip-types scripts/translate-characters.ts",
     "compress:avatars": "node --experimental-strip-types scripts/compress-avatars.ts"
@@ -53,11 +57,13 @@
     "typescript": "5.9.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/react": "19.2.18",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "playwright": "^1.63.0",
     "prisma": "^5.22.0",
     "tailwindcss": "^4"
   },

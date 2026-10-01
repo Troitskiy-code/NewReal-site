@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorLog, infoLog } from "@/lib/logger";
+import { getCronProvidedSecret, logCronSecretCheck } from "@/lib/cronAuth";
 // import { runCharacterLifecycleTick } from "@/lib/characterLifecycle";
 
 // RelaxDev / cron-job.org: GET or POST /api/cron/update-characters
@@ -7,66 +9,23 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 60;
 
-function maskSecret(value: string | undefined | null): string {
-  if (value == null || value === "") {
-    return "(undefined)";
-  }
-  if (value.length <= 4) {
-    return `*** (len=${value.length})`;
-  }
-  return `${value.slice(0, 2)}***${value.slice(-2)} (len=${value.length})`;
-}
-
-function getProvidedSecret(req: NextRequest): string {
-  const querySecret = req.nextUrl.searchParams.get("secret");
-  if (querySecret) {
-    return querySecret;
-  }
-
-  const cronHeader = req.headers.get("x-cron-secret");
-  if (cronHeader) {
-    return cronHeader;
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    return authHeader.slice("Bearer ".length).trim();
-  }
-
-  return "";
-}
-
 export async function GET(req: NextRequest) {
   const expected = process.env.CRON_SECRET;
-  const provided = getProvidedSecret(req);
+  const provided = getCronProvidedSecret(req);
+  const check = logCronSecretCheck("Cron:UpdateCharacters", expected, provided);
 
-  console.log(`[Cron] CRON_SECRET=${maskSecret(expected)}`);
-  console.log(`[Cron] provided secret=${maskSecret(provided)}`);
-
-  if (!expected) {
-    console.error("[Cron] CRON_SECRET not configured");
+  if (!check.configured) {
+    errorLog("Cron:UpdateCharacters", "CRON_SECRET not configured");
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
   }
 
-  if (provided !== expected) {
-    console.error(
-      `Cron secret mismatch: expected ${maskSecret(expected)}, got ${maskSecret(provided)}`
-    );
+  if (!check.matched) {
+    errorLog("Cron:UpdateCharacters", "secret check mismatch");
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
   }
 
-  console.log("[Lifecycle] RelaxDev cron-job.org update-characters disabled");
+  infoLog("Cron:UpdateCharacters", "update-characters disabled");
   return NextResponse.json({ ok: true, message: "Disabled for now" });
-
-  // try {
-  //   console.log("[Lifecycle] RelaxDev cron-job.org update-characters started");
-  //   const summary = await runCharacterLifecycleTick();
-  //   console.log("[Lifecycle] RelaxDev cron summary:", summary);
-  //   return NextResponse.json({ ok: true, ...summary });
-  // } catch (error) {
-  //   console.error("[Lifecycle] Cron update-characters failed", error);
-  //   return NextResponse.json({ error: "Не удалось обновить персонажей" }, { status: 500 });
-  // }
 }
 
 export async function POST(req: NextRequest) {

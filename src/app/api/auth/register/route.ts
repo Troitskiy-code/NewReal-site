@@ -5,7 +5,7 @@ import { apiT, getApiLocale } from "@/lib/apiI18n";
 import { ensureUserConsentColumns, isAcceptedFlag } from "@/lib/ensureUserConsent";
 import { applySignupBenefits } from "@/lib/provisionNewUser";
 import { createAndSendVerificationEmail } from "@/lib/emailVerification";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 
 async function generateUniqueReferralCode(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     try {
       await ensureUserConsentColumns();
     } catch (error) {
-      console.error("[Consent] Could not ensure User consent columns", error);
+      errorLog("Auth", "register.consent", toSafeDiagnostic(error));
     }
 
     const user = await prisma.user.create({
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     try {
       await applySignupBenefits(user.id);
     } catch (error) {
-      console.error("[Signup] Failed to grant start plan / VC", error);
+      errorLog("Auth", "register.signup", toSafeDiagnostic(error));
     }
 
     console.log("[Consent] register", {
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     try {
       await createAndSendVerificationEmail(user.id, email, getApiLocale(req));
     } catch (error) {
-      errorLog("EmailVerification", "Register email failed", { userId: user.id, error });
+      errorLog("EmailVerification", "Register email failed", { userId: user.id }, toSafeDiagnostic(error));
     }
 
     infoLog("EmailVerification", "Credentials user registered", { userId: user.id });
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Ошибка регистрации:", error);
+    errorLog("Auth", "register", toSafeDiagnostic(error));
     return NextResponse.json(
       { error: apiT(req, "api.internalError") },
       { status: 500 }

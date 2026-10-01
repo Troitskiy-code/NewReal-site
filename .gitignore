@@ -24,6 +24,10 @@ yarn-error.log*
 # negative ignore exception to ensure .env.example is tracked
 !.env.example
 
+# runtime logs that may contain secrets
+/logs/
+*.local.log
+
 # CBR daily FX cache
 .currency-cache.json
 

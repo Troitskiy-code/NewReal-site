@@ -1,64 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslation } from "react-i18next";
-import { normalizeInvId, type PaymentConfirmationStatus } from "@/lib/paymentStatus";
+import type { PaymentConfirmationStatus } from "@/lib/paymentStatus";
+import {
+  captureInvoiceFromUrl,
+  clonePurchaseRecord,
+  confirmationStatusOf,
+  resolveBannerRecord,
+  setPurchaseTrackerUser,
+  subscribePurchaseRecord,
+  type PendingPurchaseRecord,
+} from "@/lib/purchaseGoalRuntime";
 
 export function usePurchaseConfirmation(): {
   status: PaymentConfirmationStatus;
   invId: string | null;
 } {
-  const { status: sessionStatus } = useSession();
-  const searchParams = useSearchParams();
-  const invId = normalizeInvId(searchParams.get("InvId") || searchParams.get("invid"));
-  const paymentHint = searchParams.get("payment") === "success" || Boolean(invId);
-  const [status, setStatus] = useState<PaymentConfirmationStatus>(
-    paymentHint && invId ? "pending" : "idle"
-  );
+  const { data, status: sessionStatus } = useSession();
+  const userId = data?.user?.id ?? null;
+  const [record, setRecord] = useState<PendingPurchaseRecord | null>(null);
 
   useEffect(() => {
-    if (!invId || sessionStatus !== "authenticated") {
-      if (!paymentHint) setStatus("idle");
-      return;
-    }
+    if (sessionStatus === "loading") return;
+    setPurchaseTrackerUser(sessionStatus === "authenticated" ? userId : null);
+    const unsubscribe = subscribePurchaseRecord((next) => {
+      setRecord(next ? clonePurchaseRecord(next) : null);
+    });
+    captureInvoiceFromUrl();
+    return unsubscribe;
+  }, [sessionStatus, userId]);
 
-    let cancelled = false;
-    let attempts = 0;
-
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/payment/status?invId=${encodeURIComponent(invId)}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as { status?: PaymentConfirmationStatus };
-        if (cancelled) return;
-        if (data.status === "confirmed" || data.status === "pending" || data.status === "idle") {
-          setStatus(data.status === "idle" ? "pending" : data.status);
-        }
-      } catch {
-        /* keep pending */
-      }
-    };
-
-    void poll();
-    const timer = window.setInterval(() => {
-      attempts += 1;
-      if (attempts > 15) {
-        window.clearInterval(timer);
-        setStatus((current) => (current === "confirmed" ? current : "waiting"));
-        return;
-      }
-      void poll();
-    }, 2000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [invId, paymentHint, sessionStatus]);
-
-  return { status, invId };
+  const displayed = record ?? resolveBannerRecord();
+  return {
+    status: confirmationStatusOf(displayed),
+    invId: displayed?.invoiceId ?? null,
+  };
 }
 
 export function PurchaseStatusBanner({ ns = "payment" }: { ns?: "payment" | "coins" | "pricing" }) {

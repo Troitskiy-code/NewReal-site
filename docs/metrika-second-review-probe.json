@@ -1,0 +1,44 @@
+{
+  "productionUsed": false,
+  "networkUsed": false,
+  "previousFixesVerified": {
+    "completedGoalAfterPartialStorageFailure": {
+      "calls": 1,
+      "state": "callback_completed"
+    },
+    "newInvoiceAndAccountScope": {
+      "invoice": "204",
+      "confirmed": false,
+      "otherUserRecords": 0
+    },
+    "leaseBeyondOriginalExpiry": {
+      "calls": 1,
+      "elapsedMs": 16000
+    }
+  },
+  "remainingGaps": {
+    "completeLocalStorageFailure": {
+      "sessionPersisted": true,
+      "urlSearch": "",
+      "statusRequests": 0,
+      "goalCalls": 0,
+      "result": null
+    },
+    "retryBudgetLost": {
+      "additionalCalls": 5,
+      "readAttempts": 1,
+      "sessionAttempts": 2,
+      "maxAttempts": 3
+    },
+    "staleRequestWritesNewAccount": {
+      "currentAccount": "user-B",
+      "storedOwner": "user-A",
+      "storedInNewAccount": true
+    },
+    "bannerResurrectsWithoutReturn": {
+      "urlSearch": "",
+      "invoice": "304",
+      "status": "confirmed"
+    }
+  }
+}

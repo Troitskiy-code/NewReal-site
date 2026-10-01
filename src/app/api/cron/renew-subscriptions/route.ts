@@ -1,68 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renewDueSubscriptions } from "@/lib/subscriptionRenewal";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { getCronProvidedSecret, logCronSecretCheck } from "@/lib/cronAuth";
 
 // RelaxDev / cron-job.org: GET or POST /api/cron/renew-subscriptions
 // Auth: Authorization: Bearer CRON_SECRET, x-cron-secret, or ?secret=
 
-function maskSecret(value: string | undefined | null): string {
-  if (value == null || value === "") {
-    return "(undefined)";
-  }
-  if (value.length <= 4) {
-    return `*** (len=${value.length})`;
-  }
-  return `${value.slice(0, 2)}***${value.slice(-2)} (len=${value.length})`;
-}
-
-function getProvidedSecret(req: NextRequest): string {
-  const querySecret = req.nextUrl.searchParams.get("secret");
-  if (querySecret) {
-    return querySecret;
-  }
-
-  const cronHeader = req.headers.get("x-cron-secret");
-  if (cronHeader) {
-    return cronHeader;
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    return authHeader.slice("Bearer ".length).trim();
-  }
-
-  return "";
-}
-
 export async function GET(req: NextRequest) {
   const expected = process.env.CRON_SECRET;
-  const provided = getProvidedSecret(req);
+  const provided = getCronProvidedSecret(req);
+  const check = logCronSecretCheck("Cron:RenewSubscriptions", expected, provided);
 
-  console.log(`[Cron] CRON_SECRET=${maskSecret(expected)}`);
-  console.log(`[Cron] provided secret=${maskSecret(provided)}`);
-
-  if (!expected) {
-    console.error("[Cron] CRON_SECRET not configured");
+  if (!check.configured) {
+    errorLog("Cron:RenewSubscriptions", "CRON_SECRET not configured");
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
   }
 
-  if (provided !== expected) {
-    console.error(
-      `Cron secret mismatch: expected ${maskSecret(expected)}, got ${maskSecret(provided)}`
-    );
+  if (!check.matched) {
+    errorLog("Cron:RenewSubscriptions", "secret check mismatch");
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
   }
 
   try {
-    console.log("[Cron] Looking for users with expired subscriptions...");
-    console.log("[Cron] Current time (UTC):", new Date().toISOString());
+    infoLog("Cron:RenewSubscriptions", "Looking for users with expired subscriptions");
     const summary = await renewDueSubscriptions();
-    console.log("[Cron] Renewal summary:", {
+    infoLog("Cron:RenewSubscriptions", "Renewal summary", {
       checked: summary.checked,
-      results: summary.results,
+      renewed: summary.results.filter((item) => !item.skipped && !item.error).length,
+      failed: summary.results.filter((item) => Boolean(item.error)).length,
+      skipped: summary.results.filter((item) => Boolean(item.skipped)).length,
+      expiredCoins: summary.expiredCoins,
     });
     return NextResponse.json({ ok: true, ...summary });
   } catch (error) {
-    console.error("[Robokassa] Subscription renew cron error:", error);
+    errorLog("Cron:RenewSubscriptions", "renew failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось продлить подписки" }, { status: 500 });
   }
 }

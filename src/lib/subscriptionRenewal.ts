@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSubscriptionActivationBenefits, getSubscriptionPlan } from "@/lib/chatEconomy";
 import { buildReceipt, chargeRobokassaRecurring } from "@/lib/robokassa";
 import { applySubscriptionCoinGrant, getExpiringCoins } from "@/lib/verseCoins";
+import { errorLog } from "@/lib/logger";
 
 export type RenewFailureReason =
   | "user_not_found"
@@ -254,7 +255,7 @@ export async function renewSubscriptionIfDue(
     return { renewed: true, userId: user.id, invId, newEnd, period };
   } catch (error) {
     const message = error instanceof Error ? error.message : "charge_failed";
-    console.error(`[Subscription] Renew failed: user=${user.id}`, error);
+    errorLog("Subscription", "Renew failed", { userId: user.id }, error);
     try {
       await prisma.transaction.create({
         data: {
@@ -265,7 +266,7 @@ export async function renewSubscriptionIfDue(
         },
       });
     } catch (writeError) {
-      console.error(`[Subscription] Failed to store initiatedAt for user=${user.id}`, writeError);
+      errorLog("Subscription", "Failed to store initiatedAt", { userId: user.id }, writeError);
     }
     return { renewed: false, userId, reason: "charge_failed", error: message };
   }
@@ -319,7 +320,7 @@ export async function renewDueSubscriptions(now = new Date()) {
     }
 
     if (result.reason === "charge_failed") {
-      console.error(`[Cron] Charge failed user=${result.userId} reason=${result.reason} error=${result.error ?? "none"}`);
+      errorLog("Cron:RenewSubscriptions", "Charge failed", { userId: result.userId, reason: result.reason });
       results.push({ userId: result.userId, error: result.error ?? result.reason });
       continue;
     }

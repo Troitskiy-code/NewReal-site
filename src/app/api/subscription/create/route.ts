@@ -8,6 +8,7 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { metrikaPlanSlug } from "@/lib/metrika";
+import { reportPaymentFailure } from "@/lib/safeDiagnostics";
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(checkout);
   } catch (error) {
-    console.error("Subscription payment creation error:", error);
+    reportPaymentFailure("subscription.create", error);
     return NextResponse.json({ error: "Ошибка создания платежа" }, { status: 500 });
   }
 }

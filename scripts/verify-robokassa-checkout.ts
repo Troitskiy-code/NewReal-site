@@ -58,13 +58,18 @@ mustNotContain(coins, "window.location.href = data.url", "coins/page.tsx");
 mustContain(plans, "redirectToRobokassa", "SubscriptionPlans.tsx");
 mustNotContain(plans, "window.location.href = data.url", "SubscriptionPlans.tsx");
 
-mustContain(metrika, 'METRIKA_TAG_PRIMARY = "https://mc.yandex.com/metrika/tag.js"', "YandexMetrika");
-mustContain(metrika, '"${METRIKA_TAG_PRIMARY}", "ym"', "YandexMetrika");
-mustContain(metrika, "k.onerror", "YandexMetrika");
-mustContain(metrika, 'k.src="${METRIKA_TAG_FALLBACK}"', "YandexMetrika");
+mustContain(metrika, "startMetrikaLoader", "YandexMetrika");
+mustContain(metrika, "METRIKA_TAG_PRIMARY", "YandexMetrika");
+mustNotContain(metrika, 'k.src="${METRIKA_TAG_FALLBACK}"', "YandexMetrika");
 if (metrika.includes('script", "https://mc.yandex.ru/metrika/tag.js"')) {
   fail("YandexMetrika must not request mc.yandex.ru as the primary tag.js host");
 }
+
+const loader = read("src/lib/metrikaLoader.ts");
+mustContain(loader, 'METRIKA_TAG_PRIMARY = "https://mc.yandex.com/metrika/tag.js"', "metrikaLoader");
+mustContain(loader, "createElement(\"script\")", "metrikaLoader");
+mustContain(loader, "triggerEvent: true", "metrikaLoader");
+mustNotContain(loader, "k.src = ", "metrikaLoader");
 
 const merchant = "demo_shop";
 const password = "password1";

@@ -1,0 +1,52 @@
+{
+  "productionUsed": false,
+  "realNetworkCalls": 0,
+  "results": [
+    {
+      "label": "safeDiagnostics correctly drops message-only object",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "errorLog treats message-only error as context",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "errorLog treats name+message error without stack as context",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "errorLog preserves nested non-Error thrown string",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "register.POST actual catch with message-only thrown object",
+      "leakedToConsole": false,
+      "leakedToSink": false,
+      "status": 500,
+      "responseSafe": true
+    },
+    {
+      "label": "reset-password.GET actual catch with message-only thrown object",
+      "leakedToConsole": false,
+      "leakedToSink": false,
+      "status": 500,
+      "responseSafe": true
+    },
+    {
+      "label": "resend-verification actual inner catch with thrown string in context",
+      "leakedToConsole": false,
+      "leakedToSink": false,
+      "status": 500,
+      "responseSafe": true
+    },
+    {
+      "label": "ordinary Error remains safe",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    }
+  ]
+}

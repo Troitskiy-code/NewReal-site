@@ -1,23 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processSupportOutbox } from "@/lib/supportOutbox";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { getCronProvidedSecret } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-function getProvidedSecret(req: NextRequest): string {
-  return (
-    req.nextUrl.searchParams.get("secret") ||
-    req.headers.get("x-cron-secret") ||
-    (req.headers.get("Authorization")?.startsWith("Bearer ")
-      ? req.headers.get("Authorization")!.slice("Bearer ".length).trim()
-      : "")
-  );
-}
-
 async function handle(req: NextRequest) {
   const expected = process.env.CRON_SECRET;
-  if (!expected || getProvidedSecret(req) !== expected) {
+  const provided = getCronProvidedSecret(req);
+  if (!expected || provided !== expected) {
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
   }
   try {
@@ -25,7 +17,7 @@ async function handle(req: NextRequest) {
     infoLog("Cron:SupportOutbox", "processed", result);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    errorLog("Cron:SupportOutbox", "failed", error);
+    errorLog("Cron:SupportOutbox", "failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Delivery failed" }, { status: 500 });
   }
 }

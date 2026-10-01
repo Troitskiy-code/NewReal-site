@@ -1,0 +1,21 @@
+{
+  "privateIndexUsed": true,
+  "realIndexModified": false,
+  "productionUsed": false,
+  "results": [
+    {
+      "label": "synthetic key only in staged blob; working tree clean",
+      "scannerExit": 1,
+      "findings": [
+        "  scan p0-security-staged-probe-fixture.json:1 rule=live-stripe-key status=fail"
+      ],
+      "passedChecks": false
+    },
+    {
+      "label": "staged deletion of tracked file, real source retained",
+      "scannerExit": 0,
+      "findings": [],
+      "passedChecks": true
+    }
+  ]
+}

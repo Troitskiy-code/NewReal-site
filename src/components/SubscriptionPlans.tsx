@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/chatEconomy";
 import { estimatePlanRequestsFromModels, type PricedModel } from "@/lib/requestEstimate";
-import { usePaymentGoal } from "@/lib/goalTracking";
 import { redirectToRobokassa } from "@/lib/robokassaRedirect";
 import { PurchaseStatusBanner } from "@/components/PurchaseStatusBanner";
 import { metrikaPlanSlug } from "@/lib/metrika";
@@ -76,7 +75,6 @@ export default function SubscriptionPlans({
   const { t, i18n } = useTranslation();
   const locale = useCurrentLocale();
   const { currency, setCurrency } = useCurrency();
-  usePaymentGoal();
   const [isYearly, setIsYearly] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null);
   const [balance, setBalance] = useState<SubscriptionBalance | null>(null);

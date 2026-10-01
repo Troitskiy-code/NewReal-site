@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { getRequiredEnv } from './requireEnv';
+import { reportPrismaFailure } from './safeDiagnostics';
 
 const globalForPrisma = globalThis;
 
@@ -9,7 +10,7 @@ const basePrisma =
   globalForPrisma.prismaBase ||
   new PrismaClient({
     datasourceUrl: getRequiredEnv("DATABASE_URL"),
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: [],
   });
 
 let slugColumnPromise = null;
@@ -27,7 +28,7 @@ function ensureSlugColumnSql() {
       console.log("[Prisma] Character.slug column is ready");
     })().catch((error) => {
       slugColumnPromise = null;
-      console.error("[Prisma] Failed to ensure Character.slug", error);
+      reportPrismaFailure("ensureCharacter.slug", error);
       throw error;
     });
   }
@@ -64,7 +65,7 @@ function ensureEmailVerificationTableSql() {
       console.log("[Prisma] EmailVerificationToken table is ready");
     })().catch((error) => {
       emailVerificationTablePromise = null;
-      console.error("[Prisma] Failed to ensure EmailVerificationToken table", error);
+      reportPrismaFailure("ensureEmailVerificationToken", error);
       throw error;
     });
   }
@@ -104,7 +105,7 @@ function ensureNotificationTableSql() {
       console.log("[Prisma] Notification table is ready");
     })().catch((error) => {
       notificationTablePromise = null;
-      console.error("[Prisma] Failed to ensure Notification table", error);
+      reportPrismaFailure("ensureNotification", error);
       throw error;
     });
   }
@@ -120,7 +121,7 @@ const prisma =
         try {
           await ensureNotificationTableSql();
         } catch (error) {
-          console.error("[Prisma] Notification table ensure skipped", error);
+          reportPrismaFailure("Notification.ensureSkipped", error);
         }
         return query(args);
       },
@@ -130,7 +131,7 @@ const prisma =
         try {
           await ensureEmailVerificationTableSql();
         } catch (error) {
-          console.error("[Prisma] EmailVerificationToken table ensure skipped", error);
+          reportPrismaFailure("EmailVerificationToken.ensureSkipped", error);
         }
         return query(args);
       },
@@ -140,7 +141,7 @@ const prisma =
         try {
           await ensureSlugColumnSql();
         } catch (error) {
-          console.error("[Prisma] Character.slug ensure skipped", error);
+          reportPrismaFailure("Character.slug.ensureSkipped", error);
         }
         return query(args);
       },
@@ -153,7 +154,7 @@ const prisma =
           console.log('[Prisma] User created successfully:', { id: result?.id });
           return result;
         } catch (error) {
-          console.error('[Prisma] User create failed');
+          reportPrismaFailure("User.create", error);
           throw error;
         }
       },
@@ -174,7 +175,7 @@ const prisma =
           });
           return result;
         } catch (error) {
-          console.error('[Prisma] Account create failed');
+          reportPrismaFailure("Account.create", error);
           throw error;
         }
       },

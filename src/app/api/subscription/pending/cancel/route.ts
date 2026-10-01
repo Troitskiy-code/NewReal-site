@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { serializeSubscriptionState } from "@/lib/subscriptionState";
 
 export async function POST() {
@@ -29,7 +30,7 @@ export async function POST() {
 
     return NextResponse.json(serializeSubscriptionState(updated));
   } catch (error) {
-    console.error("Cancel pending subscription error:", error);
+    errorLog("Subscription", "pending.cancel", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось отменить ожидающую подписку" }, { status: 500 });
   }
 }

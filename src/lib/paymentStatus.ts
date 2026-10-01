@@ -1,5 +1,45 @@
 export type PaymentConfirmationStatus = "idle" | "pending" | "confirmed" | "waiting";
 
+export type PaymentStatusKind =
+  | "subscription"
+  | "subscription_pending"
+  | "subscription_renewal"
+  | "purchase";
+
+export type PaymentStatusResponse = {
+  status: "idle" | "pending" | "confirmed";
+  invId?: string;
+  kind?: PaymentStatusKind | null;
+  planId?: string | null;
+  amountRub?: number | null;
+};
+
+function isStatusKind(value: string): value is PaymentStatusKind {
+  return (
+    value === "subscription" ||
+    value === "subscription_pending" ||
+    value === "subscription_renewal" ||
+    value === "purchase"
+  );
+}
+
+export function visiblePaymentStatus(
+  event: { userId: string; kind: string; planId: string | null; amountRub: number | null } | null,
+  sessionUserId: string,
+  invId: string
+): PaymentStatusResponse {
+  if (!event || event.userId !== sessionUserId) {
+    return { status: "pending", invId };
+  }
+  return {
+    status: "confirmed",
+    invId,
+    kind: isStatusKind(event.kind) ? event.kind : null,
+    planId: event.planId,
+    amountRub: event.amountRub,
+  };
+}
+
 export function robokassaPaymentMarker(invId: string): string {
   return `Robokassa InvId=${invId}`;
 }

@@ -1,46 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ensureAnonymousChatTables } from "@/lib/ensureAnonymousChatTables";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { getCronProvidedSecret, logCronSecretCheck } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-function maskSecret(value: string | undefined | null): string {
-  if (value == null || value === "") {
-    return "(undefined)";
-  }
-  if (value.length <= 4) {
-    return `*** (len=${value.length})`;
-  }
-  return `${value.slice(0, 2)}***${value.slice(-2)} (len=${value.length})`;
-}
-
-function getProvidedSecret(req: NextRequest): string {
-  const querySecret = req.nextUrl.searchParams.get("secret");
-  if (querySecret) return querySecret;
-  const cronHeader = req.headers.get("x-cron-secret");
-  if (cronHeader) return cronHeader;
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    return authHeader.slice("Bearer ".length).trim();
-  }
-  return "";
-}
-
 async function handle(req: NextRequest) {
   const expected = process.env.CRON_SECRET;
-  const provided = getProvidedSecret(req);
+  const provided = getCronProvidedSecret(req);
+  const check = logCronSecretCheck("Cron:CleanupAnonymous", expected, provided);
 
-  infoLog("Cron:CleanupAnonymous", `CRON_SECRET=${maskSecret(expected)}`);
-  infoLog("Cron:CleanupAnonymous", `provided secret=${maskSecret(provided)}`);
-
-  if (!expected) {
+  if (!check.configured) {
     errorLog("Cron:CleanupAnonymous", "CRON_SECRET not configured");
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
   }
 
-  if (provided !== expected) {
+  if (!check.matched) {
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
   }
 
@@ -70,7 +47,7 @@ async function handle(req: NextRequest) {
       requests: requests.count,
     });
   } catch (error) {
-    errorLog("Cron:CleanupAnonymous", "cleanup failed", error);
+    errorLog("Cron:CleanupAnonymous", "cleanup failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Cleanup failed" }, { status: 500 });
   }
 }

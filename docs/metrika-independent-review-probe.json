@@ -1,0 +1,30 @@
+{
+  "productionUsed": false,
+  "networkUsed": false,
+  "reproducedRegressions": {
+    "partialStorageFailure": {
+      "goalDeliveries": 2,
+      "persistedSessionState": "callback_completed",
+      "readState": "missing"
+    },
+    "accountSwitch": {
+      "serverStatus": "pending",
+      "clientStatus": "confirmed",
+      "recordOwner": "user-B"
+    },
+    "newInvoiceBanner": {
+      "newInvoice": "204",
+      "newInvoiceStatus": "pending",
+      "displayed": {
+        "status": "confirmed",
+        "invId": "203"
+      }
+    },
+    "storageLease": {
+      "goalDeliveries": 2,
+      "firstCallbackWaitMs": 4500,
+      "callbackTimeoutMs": 8000,
+      "timeoutOccurred": false
+    }
+  }
+}

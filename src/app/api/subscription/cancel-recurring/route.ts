@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cancelRobokassaRecurring } from "@/lib/robokassa";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { serializeSubscriptionState } from "@/lib/subscriptionState";
 
 export async function POST() {
@@ -79,7 +80,7 @@ export async function POST() {
       ...serializeSubscriptionState(updated),
     });
   } catch (error) {
-    console.error("Cancel recurring subscription error:", error);
+    errorLog("Subscription", "cancel-recurring", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось отключить автопродление" }, { status: 500 });
   }
 }

@@ -12,15 +12,15 @@ export async function claimPaymentEvent(params: {
   invoiceId: string;
   userId: string;
   kind: string;
+  planId?: string | null;
+  amountRub?: number | null;
 }): Promise<"claimed" | "duplicate"> {
   try {
     await prisma.paymentEvent.create({
-      data: {
-        provider: PAYMENT_PROVIDER,
-        invoiceId: params.invoiceId,
-        userId: params.userId,
-        kind: params.kind,
-      },
+      data: paymentEventCreateData(params.invoiceId, params.userId, params.kind, {
+        planId: params.planId,
+        amountRub: params.amountRub,
+      }),
     });
     return "claimed";
   } catch (error) {
@@ -65,12 +65,26 @@ export async function backfillPaymentEventsFromTransactions(): Promise<{ inserte
   return { inserted, skipped };
 }
 
-export function paymentEventCreateData(invoiceId: string, userId: string, kind: string) {
+export function parseConfirmedAmountRub(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const n = Number(String(raw).replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0 || n > 10_000_000) return null;
+  return Math.round(n);
+}
+
+export function paymentEventCreateData(
+  invoiceId: string,
+  userId: string,
+  kind: string,
+  analytics?: { planId?: string | null; amountRub?: number | null }
+) {
   return {
     provider: PAYMENT_PROVIDER,
     invoiceId,
     userId,
     kind,
+    planId: analytics?.planId ?? null,
+    amountRub: analytics?.amountRub ?? null,
   };
 }
 

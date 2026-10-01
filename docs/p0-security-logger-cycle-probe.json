@@ -1,0 +1,23 @@
+{
+  "productionUsed": false,
+  "externalSinkDisabled": true,
+  "timeoutMs": 3000,
+  "results": [
+    {
+      "label": "finite-array control",
+      "enteredFormatter": true,
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "elapsedMs": 342
+    },
+    {
+      "label": "branching cyclic array",
+      "enteredFormatter": true,
+      "completed": true,
+      "exit": 0,
+      "timedOut": false,
+      "elapsedMs": 270
+    }
+  ]
+}

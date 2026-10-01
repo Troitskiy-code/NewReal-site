@@ -16,6 +16,7 @@ import {
   subscriptionPeriodDays,
 } from "@/lib/subscriptionState";
 import { applySubscriptionCoinGrant } from "@/lib/verseCoins";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(serializeSubscriptionState(updated, now));
   } catch (error) {
-    console.error("Subscription change error:", error);
+    errorLog("Subscription", "change", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось изменить подписку" }, { status: 500 });
   }
 }

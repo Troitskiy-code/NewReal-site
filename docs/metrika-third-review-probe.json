@@ -1,0 +1,30 @@
+{
+  "productionUsed": false,
+  "networkUsed": false,
+  "allSecondReviewFixesVerified": true,
+  "results": {
+    "totalLocalWriteFailure": {
+      "statusRequested": true,
+      "goalCalls": 1,
+      "reloadRetainsCompletedGoal": true
+    },
+    "staleDispatchedRetryCap": {
+      "additionalCalls": 1,
+      "attempts": 3,
+      "reloadDoesNotRetry": true
+    },
+    "accountSwitch": {
+      "lateFetchWrites": false,
+      "lateJsonWrites": false,
+      "lateFailureWrites": false
+    },
+    "bannerSession": {
+      "sameTabReloadRestores": true,
+      "newTabBanner": false,
+      "logoutLoginBanner": false
+    },
+    "inTabLock": {
+      "concurrentStatusRequests": 1
+    }
+  }
+}

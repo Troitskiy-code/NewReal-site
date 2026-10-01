@@ -75,6 +75,11 @@ export default async function proxy(request) {
     return attachAnonymousCookie(request, response);
   }
 
+  // Rewritten locale requests keep x-locale; do not bounce them back to the prefixed URL.
+  if (isLocale(request.headers.get(LOCALE_HEADER))) {
+    return attachAnonymousCookie(request, NextResponse.next());
+  }
+
   const locale = resolveLocale(request);
   const url = request.nextUrl.clone();
   url.pathname = withLocale(pathname, locale);

@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { apiT } from "@/lib/apiI18n";
 import { sendVerificationEmail } from "@/lib/email";
 import { ensureEmailVerificationTable } from "@/lib/ensureEmailVerification";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18nConfig";
+import { emailDomain } from "@/lib/redactSensitive";
 
 export const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -70,9 +71,9 @@ export async function createAndSendVerificationEmail(
 
   try {
     await sendVerificationEmail(email, token, locale);
-    infoLog(logPrefix, "Email sent", { userId, to: email });
+    infoLog(logPrefix, "Email sent", { userId, domain: emailDomain(email) });
   } catch (error) {
-    errorLog(logPrefix, "Failed to send email", { userId, to: email, error });
+    errorLog(logPrefix, "Failed to send email", { userId }, toSafeDiagnostic(error));
     throw error;
   }
 }

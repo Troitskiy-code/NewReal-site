@@ -1,0 +1,77 @@
+[
+  {
+    "test": "primary fails, fallback is available, VC",
+    "primaryUrl": "https://mc.yandex.com/metrika/tag.js",
+    "fallbackUrl": "https://mc.yandex.ru/metrika/tag.js",
+    "ready": true,
+    "tagLoaded": false,
+    "markedFired": "1",
+    "queryCleared": true,
+    "actualLibraryCalls": 0,
+    "queuedCalls": 2,
+    "requests": [
+      "https://mc.yandex.com/metrika/tag.js"
+    ],
+    "failures": [
+      {
+        "url": "https://mc.yandex.com/metrika/tag.js",
+        "error": "net::ERR_CONNECTION_CLOSED"
+      }
+    ],
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_CONNECTION_CLOSED"
+    ],
+    "freshElementControl": {
+      "loaded": true,
+      "newRequestIssued": true
+    }
+  },
+  {
+    "test": "both fail, VC",
+    "primaryUrl": "https://mc.yandex.com/metrika/tag.js",
+    "fallbackUrl": "https://mc.yandex.ru/metrika/tag.js",
+    "ready": true,
+    "tagLoaded": false,
+    "markedFired": "1",
+    "queryCleared": true,
+    "actualLibraryCalls": 0,
+    "queuedCalls": 2,
+    "requests": [
+      "https://mc.yandex.com/metrika/tag.js"
+    ],
+    "failures": [
+      {
+        "url": "https://mc.yandex.com/metrika/tag.js",
+        "error": "net::ERR_CONNECTION_CLOSED"
+      }
+    ],
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_CONNECTION_CLOSED"
+    ],
+    "freshElementControl": null
+  },
+  {
+    "test": "both fail, subscription",
+    "primaryUrl": "https://mc.yandex.com/metrika/tag.js",
+    "fallbackUrl": "https://mc.yandex.ru/metrika/tag.js",
+    "ready": true,
+    "tagLoaded": false,
+    "markedFired": "1",
+    "queryCleared": true,
+    "actualLibraryCalls": 0,
+    "queuedCalls": 3,
+    "requests": [
+      "https://mc.yandex.com/metrika/tag.js"
+    ],
+    "failures": [
+      {
+        "url": "https://mc.yandex.com/metrika/tag.js",
+        "error": "net::ERR_CONNECTION_CLOSED"
+      }
+    ],
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_CONNECTION_CLOSED"
+    ],
+    "freshElementControl": null
+  }
+]

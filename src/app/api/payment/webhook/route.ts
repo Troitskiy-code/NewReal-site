@@ -6,8 +6,8 @@ import { addSubscriptionDays } from "@/lib/subscriptionState";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { applySubscriptionCoinGrant, grantPermanentUpdate } from "@/lib/verseCoins";
 import { createNotification } from "@/lib/notifications";
-import { isUniqueConstraintError, paymentEventCreateData, PAYMENT_PROVIDER } from "@/lib/paymentEvent";
-import { errorLog } from "@/lib/logger";
+import { isUniqueConstraintError, paymentEventCreateData, parseConfirmedAmountRub, PAYMENT_PROVIDER } from "@/lib/paymentEvent";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 function firstParam(
   source: { get(name: string): string | File | null },
@@ -105,7 +105,7 @@ async function collectWebhookParams(req: NextRequest): Promise<Map<string, strin
       mergeParam(merged, key, value);
     }
   } catch (error) {
-    console.error("[Robokassa] Webhook body parse error:", error instanceof Error ? error.message : error);
+    errorLog("Robokassa", "Webhook body parse error", toSafeDiagnostic(error));
   }
 
   return merged;
@@ -220,6 +220,7 @@ async function handleWebhook(req: NextRequest) {
   });
 
   const isSubscription = shpValue(shp, "Shp_subscription").toLowerCase() === "true";
+  const amountRub = parseConfirmedAmountRub(outSum);
 
   if (existingPayment) {
     if (isSubscription) {
@@ -259,10 +260,12 @@ async function handleWebhook(req: NextRequest) {
   }
 
   if (isSubscription) {
-    const planId = shpValue(shp, "Shp_plan").trim().toLowerCase() || (currentUser.subscriptionType ?? "");
+    const shpPlanRaw = shpValue(shp, "Shp_plan").trim().toLowerCase();
+    const planId = shpPlanRaw || (currentUser.subscriptionType ?? "");
     const period = shpValue(shp, "Shp_period").trim().toLowerCase() === "year" ? "year" : "month";
     const normalizedPlanId = planId === "history" ? "story" : planId;
     const plan = SUBSCRIPTION_PLANS.find((item) => item.id === normalizedPlanId);
+    const analyticsPlanId = shpPlanRaw ? plan?.id ?? null : null;
 
     if (!plan || plan.monthlyPrice <= 0) {
       console.error(`[Robokassa] Webhook error: Unknown subscription plan "${planId}"`);
@@ -304,7 +307,10 @@ async function handleWebhook(req: NextRequest) {
 
       const renewalCommit = await commitPaymentGrant(invId, [
         prisma.paymentEvent.create({
-          data: paymentEventCreateData(invId, userId, "subscription_renewal"),
+          data: paymentEventCreateData(invId, userId, "subscription_renewal", {
+            planId: analyticsPlanId,
+            amountRub,
+          }),
         }),
         prisma.user.update({
           where: { id: userId },
@@ -354,7 +360,10 @@ async function handleWebhook(req: NextRequest) {
 
         const pendingCommit = await commitPaymentGrant(invId, [
           prisma.paymentEvent.create({
-            data: paymentEventCreateData(invId, userId, "subscription_pending"),
+            data: paymentEventCreateData(invId, userId, "subscription_pending", {
+              planId: analyticsPlanId,
+              amountRub,
+            }),
           }),
           prisma.user.update({
             where: { id: userId },
@@ -393,7 +402,10 @@ async function handleWebhook(req: NextRequest) {
 
     const subCommit = await commitPaymentGrant(invId, [
       prisma.paymentEvent.create({
-        data: paymentEventCreateData(invId, userId, "subscription"),
+        data: paymentEventCreateData(invId, userId, "subscription", {
+          planId: analyticsPlanId,
+          amountRub,
+        }),
       }),
       prisma.user.update({
         where: { id: userId },
@@ -443,7 +455,7 @@ async function handleWebhook(req: NextRequest) {
 
   const purchaseCommit = await commitPaymentGrant(invId, [
     prisma.paymentEvent.create({
-      data: paymentEventCreateData(invId, userId, "purchase"),
+      data: paymentEventCreateData(invId, userId, "purchase", { amountRub }),
     }),
     prisma.user.update({
       where: { id: userId },

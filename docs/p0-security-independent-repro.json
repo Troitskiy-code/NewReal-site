@@ -1,0 +1,62 @@
+{
+  "productionUsed": false,
+  "realNetworkCalls": 0,
+  "results": [
+    {
+      "label": "register.POST actual catch, synthetic Prisma error",
+      "leakedToConsole": false,
+      "leakedToSink": false,
+      "status": 500,
+      "responseSafe": true
+    },
+    {
+      "label": "reset-password.GET actual catch, synthetic Prisma error",
+      "leakedToConsole": false,
+      "leakedToSink": false,
+      "status": 500,
+      "responseSafe": true
+    },
+    {
+      "label": "reportAuthFailure plain error envelope retains message/stack/meta",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "reportPrismaFailure non-Error thrown string is retained",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "formatSafeLog JSON-stringified password",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "Error.name syntactic identifier is not a semantic allowlist",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "actual Robokassa recurring failure with mocked JSON response",
+      "leakedToConsole": false,
+      "leakedToSink": false,
+      "rejected": true,
+      "realNetworkCalls": 0
+    },
+    {
+      "label": "original Bearer and mixed DSN cases remain fixed",
+      "leakedToConsole": false,
+      "leakedToSink": false
+    },
+    {
+      "label": "cyclic array remains fixed",
+      "value": "[circular]"
+    },
+    {
+      "label": "candidate root JSON with synthetic live-key-shaped marker is missed",
+      "candidateIncluded": true,
+      "scannerExit": 1,
+      "scannerClaimedPassed": false
+    }
+  ]
+}
