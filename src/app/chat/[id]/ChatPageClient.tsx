@@ -26,7 +26,7 @@ import { useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
 import { captureCharacterReturn } from "@/lib/characterReturn";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
-import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT } from "@/lib/anonymousCookie";
+import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT, ANONYMOUS_TTL_DAYS, createAnonymousRequestId } from "@/lib/anonymousCookie";
 import ConfirmModal from "@/components/ConfirmModal";
 import { KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 
@@ -90,6 +90,8 @@ type ChatHistoryResponse = {
   character: ChatCharacter;
   anonymous?: boolean;
   remainingMessages?: number;
+  retentionDays?: number;
+  expiresAt?: string | null;
 };
 
 type ModelsResponse = {
@@ -793,7 +795,7 @@ function ModelSettingsList({
 export default function ChatPageClient({ initialShell }: { initialShell: ChatShell }) {
   const characterId = initialShell.id;
   const { data: session, status } = useSession();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale = i18n.language;
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -834,7 +836,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const lastSendRef = useRef<{
     message: string;
     history?: Array<{ role: "user" | "assistant"; content: string }>;
+    requestId?: string;
   } | null>(null);
+  const authReturnPath = `/chat/${characterId}`;
+  const authQuery = `callbackUrl=${encodeURIComponent(authReturnPath)}`;
 
   const isAnonymous = status === "unauthenticated";
 
@@ -912,6 +917,28 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
     const fetchData = async () => {
       try {
+        if (!guest) {
+          try {
+            try {
+              const transferRes = await axios.post<{ copied?: number; error?: string }>("/api/anonymous/transfer");
+              if ((transferRes.data.copied ?? 0) > 0) {
+                reachGoal(METRIKA_GOALS.guestChatTransferred);
+              }
+            } catch (error) {
+              const code = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
+              if (code === "in_progress") {
+                await new Promise((resolve) => setTimeout(resolve, 1500));
+                const retryRes = await axios.post<{ copied?: number }>("/api/anonymous/transfer");
+                if ((retryRes.data.copied ?? 0) > 0) {
+                  reachGoal(METRIKA_GOALS.guestChatTransferred);
+                }
+              }
+            }
+          } catch {
+            /* transfer is retried on next load */
+          }
+        }
+
         if (guest) {
           const chatRes = await axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`);
           applyChatPayload(chatRes.data);
@@ -941,7 +968,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         setSelectedModelId(initialModelId);
       } catch (error) {
         const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined;
-        if (guest || statusCode === 401) {
+        if (guest && statusCode === 410) {
+          setAnonymousRemaining(0);
+          showError(t("guestChat.expired"));
+        } else if (guest || statusCode === 401) {
           console.warn("[Chat] Failed to load history", statusCode ?? error);
         } else {
           showError("Ошибка загрузки чата");
@@ -1329,8 +1359,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     }
 
     const userMessage = input.trim();
+    const requestId = createAnonymousRequestId();
     const history = isAnonymous ? toAnonymousHistory(messages) : undefined;
-    lastSendRef.current = { message: userMessage, history };
+    lastSendRef.current = { message: userMessage, history, requestId };
     setKodikUnavailable(false);
     setInput("");
     setSending(true);
@@ -1355,7 +1386,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     try {
       const endEvent = await fetchAndReadChatStream(
         `/api/chat/${characterId}`,
-        isAnonymous ? { message: userMessage, history } : { message: userMessage },
+        isAnonymous
+          ? { message: userMessage, history, requestId }
+          : { message: userMessage },
         {
           onMeta: (event) => {
             if (event.userMessage) {
@@ -1476,7 +1509,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       const endEvent = await fetchAndReadChatStream(
         `/api/chat/${characterId}`,
         isAnonymous && lastSend
-          ? { message: lastSend.message, history: lastSend.history }
+          ? { message: lastSend.message, history: lastSend.history, requestId: lastSend.requestId }
           : { retryLast: true },
         {
           onDelta: (text) => {
@@ -1537,25 +1570,25 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         <Modal
           open={showAnonymousLimitModal}
           onClose={() => undefined}
-          title="Лимит бесплатных сообщений"
+          title={t("guestChat.limitTitle")}
           dismissible={false}
         >
           <div className="flex flex-col gap-4 text-center">
             <p className="text-sm leading-relaxed text-secondary-text">
-              Вы использовали все 5 бесплатных сообщений. Зарегистрируйтесь, чтобы продолжить общение с персонажами!
+              {t("guestChat.limitBody")}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <LocaleLink
-                href="/register"
+                href={`/register?${authQuery}`}
                 className="flex-1 rounded-full bg-primary px-6 py-2.5 text-center text-sm font-bold text-white transition-all hover:bg-primary-hover"
               >
-                Зарегистрироваться
+                {t("guestChat.register")}
               </LocaleLink>
               <LocaleLink
-                href="/login"
+                href={`/login?${authQuery}`}
                 className="flex-1 rounded-full border border-[#2A2A2A] px-6 py-2.5 text-center text-sm font-bold text-white transition-all hover:bg-[#2A2A2A]"
               >
-                Войти
+                {t("guestChat.login")}
               </LocaleLink>
             </div>
           </div>
@@ -1710,9 +1743,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
           <div className="shrink-0 px-3 py-3 md:p-4">
             {isAnonymous && anonymousRemaining !== null && (
-              <p className="mx-auto mb-2 w-full max-w-3xl text-center text-xs text-secondary-text">
-                Осталось {anonymousRemaining}/{ANONYMOUS_MESSAGE_LIMIT}
-              </p>
+              <div className="mx-auto mb-2 w-full max-w-3xl space-y-1 text-center text-xs text-secondary-text">
+                <p>{t("guestChat.remaining", { remaining: anonymousRemaining, limit: ANONYMOUS_MESSAGE_LIMIT })}</p>
+                <p>{t("guestChat.retention", { days: ANONYMOUS_TTL_DAYS })}</p>
+              </div>
             )}
             <ChatComposer
               value={input}

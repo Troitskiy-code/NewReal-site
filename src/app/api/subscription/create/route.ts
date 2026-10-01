@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
-import { buildReceipt, buildRobokassaSuccessUrl, generateRobokassaPaymentUrl } from "@/lib/robokassa";
+import { buildReceipt, buildRobokassaSuccessUrl, createRobokassaCheckout } from "@/lib/robokassa";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 import { getRequestLocale } from "@/lib/getRequestLocale";
@@ -72,16 +72,16 @@ export async function POST(req: NextRequest) {
       amountRUB: sumRUB,
     });
     const locale = await getRequestLocale();
-    const successUrl = buildRobokassaSuccessUrl("/pricing", locale, {
+    const successUrl2 = buildRobokassaSuccessUrl("/pricing", locale, {
       payment: "success",
       type: "subscription",
       plan: metrikaPlanSlug(plan.id),
     });
-    const url = generateRobokassaPaymentUrl(
-      session.user.id,
-      sumRUB,
+    const checkout = createRobokassaCheckout({
+      userId: session.user.id,
+      sum: sumRUB,
       desc,
-      {
+      extraShp: {
         Shp_subscription: "true",
         Shp_type: "subscription",
         Shp_plan: plan.id,
@@ -89,11 +89,13 @@ export async function POST(req: NextRequest) {
         Shp_applyMode: applyMode,
       },
       receipt,
-      { period, amount: sumRUB },
-      successUrl
-    );
+      recurring: { period, amount: sumRUB },
+      successUrl2,
+      email: session.user.email,
+      locale,
+    });
 
-    return NextResponse.json({ url });
+    return NextResponse.json(checkout);
   } catch (error) {
     console.error("Subscription payment creation error:", error);
     return NextResponse.json({ error: "Ошибка создания платежа" }, { status: 500 });

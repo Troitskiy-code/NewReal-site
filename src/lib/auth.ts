@@ -14,6 +14,13 @@ import { isGoogleAuthEnabled } from "./googleAuth";
 import { isEmailVerified } from "./emailVerification";
 import { grantReferralBonusIfEligible } from "./referralBonus";
 import { infoLog } from "./logger";
+import { getRequiredEnv } from "./requireEnv";
+import { emailDomain } from "./redactSensitive";
+import { transferAnonymousChatToUser } from "./anonymousTransfer";
+import {
+  ANONYMOUS_SESSION_COOKIE,
+  isValidAnonymousSessionId,
+} from "./anonymousCookie";
 import type { JWT } from "next-auth/jwt";
 
 export { isGoogleAuthEnabled };
@@ -75,7 +82,11 @@ export const authOptions: AuthOptions = {
   adapter: {
     ...prismaAdapter,
     async createUser(data) {
-      console.log("[Auth] Adapter createUser:", data);
+      console.log("[Auth] Adapter createUser:", {
+        hasEmail: Boolean(data?.email),
+        emailDomain: emailDomain(data?.email),
+        hasName: Boolean(data?.name),
+      });
       try {
         try {
           await ensureUserConsentColumns();
@@ -83,7 +94,7 @@ export const authOptions: AuthOptions = {
           console.error("[Consent] Could not ensure User consent columns", error);
         }
         const created = await prismaAdapter.createUser!(data);
-        console.log("[Auth] Adapter createUser success:", created);
+        console.log("[Auth] Adapter createUser success:", { id: created.id });
         try {
           await applySignupBenefits(created.id);
         } catch (error) {
@@ -128,7 +139,11 @@ export const authOptions: AuthOptions = {
     },
     async getUserByEmail(email) {
       const existing = await prismaAdapter.getUserByEmail!(email);
-      console.log("[Auth] Adapter getUserByEmail:", { email, found: Boolean(existing), id: existing?.id });
+      console.log("[Auth] Adapter getUserByEmail:", {
+        emailDomain: emailDomain(email),
+        found: Boolean(existing),
+        id: existing?.id,
+      });
       return existing;
     },
     async linkAccount(account) {
@@ -192,21 +207,14 @@ export const authOptions: AuthOptions = {
   pages: {
     signIn: "/login",
   },
-  secret: "a7f9e2c1b5d8e4f6a9c2d3e1f5b8a7c9d4e2f6a3b8c9d1e5f7a2b6c4d8e9f0a1",
+  secret: getRequiredEnv("NEXTAUTH_SECRET"),
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
         console.log("[Auth] Google signIn attempt:", {
-          user,
-          account: account
-            ? {
-                ...account,
-                access_token: account.access_token ? "[redacted]" : undefined,
-                refresh_token: account.refresh_token ? "[redacted]" : undefined,
-                id_token: account.id_token ? "[redacted]" : undefined,
-              }
-            : account,
-          profile,
+          id: user?.id,
+          emailDomain: emailDomain(user?.email),
+          provider: account?.provider,
         });
         return true;
       } catch (error) {
@@ -234,7 +242,7 @@ export const authOptions: AuthOptions = {
       if (user) {
         console.log("[Auth] JWT created for user:", {
           id: user.id,
-          email: user.email,
+          emailDomain: emailDomain(user.email),
           provider: account?.provider,
         });
         token.id = user.id;
@@ -247,6 +255,16 @@ export const authOptions: AuthOptions = {
             ? toEmailVerifiedTokenValue(user.emailVerified) ?? new Date().toISOString()
             : toEmailVerifiedTokenValue(user.emailVerified);
         await activatePendingForUserId(user.id);
+        try {
+          const { cookies } = await import("next/headers");
+          const jar = await cookies();
+          const guestSessionId = jar.get(ANONYMOUS_SESSION_COOKIE)?.value;
+          if (isValidAnonymousSessionId(guestSessionId)) {
+            await transferAnonymousChatToUser({ sessionId: guestSessionId, userId: user.id });
+          }
+        } catch {
+          console.error("[Auth] Guest chat transfer on JWT failed");
+        }
       }
 
       const userId = String(token.id || token.sub || "");
@@ -265,7 +283,7 @@ export const authOptions: AuthOptions = {
     async signIn({ user, account, isNewUser }) {
       console.log("[Auth] signIn event:", {
         id: user.id,
-        email: user.email,
+        emailDomain: emailDomain(user.email),
         provider: account?.provider,
         isNewUser,
       });
@@ -286,16 +304,14 @@ export const authOptions: AuthOptions = {
     async createUser({ user }) {
       console.log("[Auth] createUser event:", {
         id: user.id,
-        email: user.email,
-        name: user.name,
+        emailDomain: emailDomain(user.email),
       });
     },
     async linkAccount({ user, account }) {
       console.log("[Auth] linkAccount event:", {
         userId: user.id,
-        email: user.email,
+        emailDomain: emailDomain(user.email),
         provider: account.provider,
-        providerAccountId: account.providerAccountId,
       });
     },
   },

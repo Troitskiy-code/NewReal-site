@@ -311,6 +311,7 @@ model User {
   notifications      Notification[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  supportTickets     SupportTicket[]
 }
 
 model Transaction {
@@ -321,6 +322,18 @@ model Transaction {
   type        String
   description String
   createdAt   DateTime @default(now())
+}
+
+model PaymentEvent {
+  id        String   @id @default(cuid())
+  provider  String
+  invoiceId String
+  userId    String
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@unique([provider, invoiceId])
+  @@index([userId])
 }
 
 model Notification {
@@ -406,9 +419,77 @@ model EmailVerificationToken {
 }
 
 model AnonymousSession {
-  id            String   @id @default(cuid())
-  sessionId     String   @unique
-  messagesCount Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String                  @id @default(cuid())
+  sessionId           String                  @unique
+  messagesCount       Int                     @default(0)
+  expiresAt           DateTime?
+  transferredToUserId String?
+  transferredAt       DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  messages            AnonymousMessage[]
+  requests            AnonymousChatRequest[]
+}
+
+model AnonymousMessage {
+  id            String            @id @default(cuid())
+  sessionId     String
+  session       AnonymousSession  @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  characterId   String
+  role          String
+  content       String            @db.Text
+  requestId     String?
+  createdAt     DateTime          @default(now())
+  transferredAt DateTime?
+
+  @@index([sessionId, characterId, createdAt])
+  @@index([sessionId, requestId])
+}
+
+model AnonymousChatRequest {
+  id                 String           @id @default(cuid())
+  requestId          String
+  sessionId          String
+  session            AnonymousSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  characterId        String
+  payloadHash        String           @default("")
+  status             String
+  attempt            Int              @default(1)
+  leaseUntil         DateTime?
+  reservedQuota      Boolean          @default(false)
+  refundedAt         DateTime?
+  userContent        String           @db.Text
+  assistantContent   String?          @db.Text
+  userMessageId      String?
+  assistantMessageId String?
+  remainingMessages  Int?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([sessionId, requestId])
+  @@index([sessionId, createdAt])
+  @@index([status, leaseUntil])
+}
+
+model SupportTicket {
+  id                String    @id @default(cuid())
+  topic             String
+  email             String
+  message           String    @db.Text
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status            String    @default("open")
+  clientKey         String?   @unique
+  payloadHash       String    @default("")
+  deliveryStatus    String    @default("pending")
+  deliveryAttempts  Int       @default(0)
+  nextAttemptAt     DateTime?
+  claimedAt         DateTime?
+  claimToken        String?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([email, createdAt])
+  @@index([deliveryStatus, nextAttemptAt])
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import Footer from "@/components/Footer";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
-const SUPPORT_EMAIL = "mrcheleng87@gmail.com";
 const TOPIC_KEYS = ["payment", "technical", "refund", "moderation", "other"];
 
 function isTopicKey(value) {
@@ -13,22 +13,73 @@ function isTopicKey(value) {
 }
 
 export default function SupportPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const searchParams = useSearchParams();
   const requestedTopic = searchParams.get("topic");
   const [topic, setTopic] = useState(isTopicKey(requestedTopic) ? requestedTopic : "payment");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [ticketId, setTicketId] = useState("");
+  const [error, setError] = useState("");
+  const [clientKey, setClientKey] = useState(() => {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID().replace(/-/g, "");
+    }
+    return `sup${Date.now().toString(16)}`;
+  });
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("nv-support-draft");
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (typeof draft.email === "string") setEmail(draft.email);
+      if (typeof draft.message === "string") setMessage(draft.message);
+      if (isTopicKey(draft.topic)) setTopic(draft.topic);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const persistDraft = (next) => {
+    try {
+      sessionStorage.setItem("nv-support-draft", JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    setSuccess("");
+    setSending(true);
+    persistDraft({ topic, email, message });
 
-    const topicLabel = t(`support.topics.${topic}`);
-    const subject = `NewVerse: ${topicLabel}`;
-    const body = `${t("support.userEmailPrefix")}${email}\n\n${message}`;
-    const mailtoUrl = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-    window.location.href = mailtoUrl;
+    try {
+      const res = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-locale": i18n.language },
+        body: JSON.stringify({ topic, email, message, clientKey }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || t("support.error"));
+        return;
+      }
+      reachGoal(METRIKA_GOALS.supportSubmit);
+      setSuccess(t("support.success"));
+      setTicketId(data.ticketId || "");
+      setMessage("");
+      setClientKey(crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : `sup${Date.now().toString(16)}`);
+      persistDraft({ topic, email, message: "" });
+    } catch {
+      setError(t("support.error"));
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -81,6 +132,8 @@ export default function SupportPage() {
               <textarea
                 id="support-message"
                 required
+                minLength={10}
+                maxLength={4000}
                 rows={6}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
@@ -91,12 +144,20 @@ export default function SupportPage() {
 
             <button
               type="submit"
-              className="wd-button w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98]"
+              disabled={sending}
+              className="wd-button w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              {t("support.submit")}
+              {sending ? t("support.sending") : t("support.submit")}
             </button>
           </form>
 
+          {success ? (
+            <p className="mt-4 text-sm text-wd-secondary">
+              {success}
+              {ticketId ? ` ${t("support.ticketId", { id: ticketId })}` : ""}
+            </p>
+          ) : null}
+          {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
           <p className="mt-4 text-xs text-wd-text-secondary">{t("support.mailtoHint")}</p>
         </section>
       </main>

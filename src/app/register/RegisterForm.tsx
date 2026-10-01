@@ -14,6 +14,7 @@ import {
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
 import { REGISTER_CONSENT_COOKIE } from "@/lib/consentCookie";
+import { callbackUrlFromSearchParam } from "@/lib/safeCallbackUrl";
 
 type RegisterFormProps = {
   googleAuthEnabled: boolean;
@@ -38,6 +39,10 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   const { t, i18n } = useTranslation();
   const locale = useCurrentLocale();
   const ref = searchParams.get("ref");
+  const callbackPath = callbackUrlFromSearchParam(searchParams.get("callbackUrl"));
+  const localizedCallback = withLocale(callbackPath, locale);
+  const loginHref =
+    callbackPath === "/" ? "/login" : `/login?callbackUrl=${encodeURIComponent(callbackPath)}`;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -65,7 +70,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
       return;
     }
     markConsentCookie();
-    void signIn("google", { callbackUrl: withLocale("/", locale) });
+    void signIn("google", { callbackUrl: localizedCallback });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,7 +109,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
         setError(data.error || t("auth.registerError"));
       } else {
         setSuccess(t("auth.registerSuccess"));
-        setTimeout(() => router.push(withLocale("/login", locale)), 2000);
+        setTimeout(() => router.push(withLocale(loginHref, locale)), 2000);
       }
     } catch (err) {
       console.error("Register request failed:", err);
@@ -229,7 +234,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
       {success && <p className="mt-4 text-sm text-wd-secondary">{success}</p>}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
         {t("auth.hasAccount")}{" "}
-        <LocaleLink href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
+        <LocaleLink href={loginHref} className="font-semibold text-primary transition hover:text-primary-hover">
           {t("auth.login")}
         </LocaleLink>
       </p>

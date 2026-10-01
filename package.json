@@ -10,6 +10,11 @@
     "lint": "eslint",
     "verify:economy": "node --experimental-strip-types scripts/verify-economy.ts",
     "verify:intent": "node --experimental-strip-types scripts/verify-intent.ts",
+    "verify:p0-p1": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-p0-p1.ts",
+    "verify:p0-p1:repro": "node docs/p0-p1-review-repro.cjs",
+    "verify:p0-p1:int": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/integration-p0-p1.ts",
+    "verify:p0-p1:browser": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/browser-p0-p1.ts",
+    "economy:acquisition": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/economy-acquisition.ts",
     "translate:characters": "node --experimental-strip-types scripts/translate-characters.ts",
     "compress:avatars": "node --experimental-strip-types scripts/compress-avatars.ts"
   },

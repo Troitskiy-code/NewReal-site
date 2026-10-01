@@ -6,6 +6,8 @@ import { addSubscriptionDays } from "@/lib/subscriptionState";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { applySubscriptionCoinGrant, grantPermanentUpdate } from "@/lib/verseCoins";
 import { createNotification } from "@/lib/notifications";
+import { isUniqueConstraintError, paymentEventCreateData, PAYMENT_PROVIDER } from "@/lib/paymentEvent";
+import { errorLog } from "@/lib/logger";
 
 function firstParam(
   source: { get(name: string): string | File | null },
@@ -141,6 +143,18 @@ function okResponse(invId: string) {
   });
 }
 
+async function commitPaymentGrant(invId: string, operations: Parameters<typeof prisma.$transaction>[0]) {
+  try {
+    await prisma.$transaction(operations);
+    return { duplicate: false as const };
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      return { duplicate: true as const };
+    }
+    throw error;
+  }
+}
+
 function formatSubscriptionEnd(date: Date): string {
   return date.toLocaleDateString("ru-RU", {
     day: "numeric",
@@ -200,11 +214,8 @@ async function handleWebhook(req: NextRequest) {
   }
 
   const paymentMarker = `Robokassa InvId=${invId}`;
-  const existingPayment = await prisma.transaction.findFirst({
-    where: {
-      userId,
-      description: paymentMarker,
-    },
+  const existingPayment = await prisma.paymentEvent.findUnique({
+    where: { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: invId } },
     select: { id: true },
   });
 
@@ -291,7 +302,10 @@ async function handleWebhook(req: NextRequest) {
         benefits.vcGrant
       );
 
-      await prisma.$transaction([
+      const renewalCommit = await commitPaymentGrant(invId, [
+        prisma.paymentEvent.create({
+          data: paymentEventCreateData(invId, userId, "subscription_renewal"),
+        }),
         prisma.user.update({
           where: { id: userId },
           data: {
@@ -320,6 +334,9 @@ async function handleWebhook(req: NextRequest) {
           },
         }),
       ]);
+      if (renewalCommit.duplicate) {
+        return okResponse(invId);
+      }
 
       console.log(
         `[Robokassa] Webhook processed successfully: InvId=${invId}, renewal=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
@@ -335,7 +352,10 @@ async function handleWebhook(req: NextRequest) {
           period === "year" ? 365 : 30
         );
 
-        await prisma.$transaction([
+        const pendingCommit = await commitPaymentGrant(invId, [
+          prisma.paymentEvent.create({
+            data: paymentEventCreateData(invId, userId, "subscription_pending"),
+          }),
           prisma.user.update({
             where: { id: userId },
             data: {
@@ -353,6 +373,9 @@ async function handleWebhook(req: NextRequest) {
             },
           }),
         ]);
+        if (pendingCommit.duplicate) {
+          return okResponse(invId);
+        }
 
         console.log(
           `[Robokassa] Webhook processed successfully: InvId=${invId}, pending=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
@@ -368,7 +391,10 @@ async function handleWebhook(req: NextRequest) {
       benefits.vcGrant
     );
 
-    await prisma.$transaction([
+    const subCommit = await commitPaymentGrant(invId, [
+      prisma.paymentEvent.create({
+        data: paymentEventCreateData(invId, userId, "subscription"),
+      }),
       prisma.user.update({
         where: { id: userId },
         data: {
@@ -399,6 +425,9 @@ async function handleWebhook(req: NextRequest) {
         },
       }),
     ]);
+    if (subCommit.duplicate) {
+      return okResponse(invId);
+    }
 
     console.log(
       `[Robokassa] Webhook processed successfully: InvId=${invId}, subscription=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
@@ -412,7 +441,10 @@ async function handleWebhook(req: NextRequest) {
     ? vcFromShp
     : Math.round(Number(outSum) / 0.3);
 
-  await prisma.$transaction([
+  const purchaseCommit = await commitPaymentGrant(invId, [
+    prisma.paymentEvent.create({
+      data: paymentEventCreateData(invId, userId, "purchase"),
+    }),
     prisma.user.update({
       where: { id: userId },
       data: grantPermanentUpdate(vcAmount),
@@ -426,6 +458,9 @@ async function handleWebhook(req: NextRequest) {
       },
     }),
   ]);
+  if (purchaseCommit.duplicate) {
+    return okResponse(invId);
+  }
 
   console.log(`[Robokassa] Webhook processed successfully: InvId=${invId}, vcAmount=${vcAmount}`);
   await createNotification(
@@ -442,16 +477,17 @@ export async function POST(req: NextRequest) {
   try {
     return await handleWebhook(req);
   } catch (error) {
-    console.error("[Robokassa] Webhook error:", error instanceof Error ? error.message : error);
+    if (isUniqueConstraintError(error)) {
+      return new NextResponse("OK", {
+        status: 200,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+    errorLog("Robokassa", "Webhook error");
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
-  try {
-    return await handleWebhook(req);
-  } catch (error) {
-    console.error("[Robokassa] Webhook error:", error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
-  }
+  return POST(req);
 }

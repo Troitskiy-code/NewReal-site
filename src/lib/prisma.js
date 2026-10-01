@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-
-const FALLBACK_URL = "postgresql://postgres:Timofey18012005%21@localhost:5432/ai_characters";
+import { getRequiredEnv } from './requireEnv';
 
 const globalForPrisma = globalThis;
 
@@ -9,7 +8,7 @@ const createdNewClient = !globalForPrisma.prismaBase;
 const basePrisma =
   globalForPrisma.prismaBase ||
   new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL || FALLBACK_URL,
+    datasourceUrl: getRequiredEnv("DATABASE_URL"),
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
@@ -148,13 +147,13 @@ const prisma =
     },
     user: {
       async create({ args, query }) {
-        console.log('[Prisma] User create attempt:', args);
+        console.log('[Prisma] User create attempt');
         try {
           const result = await query(args);
-          console.log('[Prisma] User created successfully:', result);
+          console.log('[Prisma] User created successfully:', { id: result?.id });
           return result;
         } catch (error) {
-          console.error('[Prisma] User create failed:', error);
+          console.error('[Prisma] User create failed');
           throw error;
         }
       },
@@ -175,7 +174,7 @@ const prisma =
           });
           return result;
         } catch (error) {
-          console.error('[Prisma] Account create failed:', error);
+          console.error('[Prisma] Account create failed');
           throw error;
         }
       },

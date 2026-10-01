@@ -9,6 +9,7 @@ import {
 } from "@/lib/i18nConfig";
 import {
   ANONYMOUS_SESSION_COOKIE,
+  anonymousCookieOptions,
   createAnonymousSessionId,
   isAuthCookiePresent,
   isValidAnonymousSessionId,
@@ -35,12 +36,7 @@ function attachAnonymousCookie(request, response) {
     return response;
   }
 
-  response.cookies.set(ANONYMOUS_SESSION_COOKIE, createAnonymousSessionId(), {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  response.cookies.set(ANONYMOUS_SESSION_COOKIE, createAnonymousSessionId(), anonymousCookieOptions());
   console.log("[Anonymous] Issued session cookie");
   return response;
 }

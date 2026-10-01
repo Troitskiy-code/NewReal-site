@@ -18,6 +18,8 @@ import ConvertedPrice from "@/components/ConvertedPrice";
 import { getCurrencySymbol } from "@/lib/currency";
 import { VC_PACKAGES, type VcPackage } from "@/lib/vcPackages";
 import SubscriptionPlans from "@/components/SubscriptionPlans";
+import { PurchaseStatusBanner } from "@/components/PurchaseStatusBanner";
+import { redirectToRobokassa } from "@/lib/robokassaRedirect";
 
 type BalanceData = {
   verseCoins: number;
@@ -116,12 +118,11 @@ export default function CoinsPage() {
         }),
       });
       const data = await res.json();
-      if (data.url) {
+      if (redirectToRobokassa(data)) {
         console.log("[Payment] Redirecting to Robokassa", {
           packageId: pendingPackage.id,
           amountRUB: pendingPackage.price,
         });
-        window.location.href = data.url;
         return;
       }
       showError(data.error || t("coins.paymentError"));
@@ -211,6 +212,7 @@ export default function CoinsPage() {
 
         {status === "authenticated" && !loadingBalance && !error && balance && (
           <>
+            <PurchaseStatusBanner ns="coins" />
             <section className="wd-card p-8 text-center">
               <p className="text-xs font-bold uppercase tracking-widest text-wd-text-secondary">
                 {t("coins.balance")}

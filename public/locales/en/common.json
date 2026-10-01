@@ -142,14 +142,21 @@
   },
   "support": {
     "title": "Support",
-    "intro": "For billing, technical issues, refunds, and moderation appeals, use the form below. We will reply to the email you provide within 10 business days.",
+    "intro": "For billing, technical issues, refunds, and moderation appeals, use the form. We will contact you at the email you provide.",
     "formTitle": "Submit a request",
     "topic": "Topic",
     "email": "Your email",
     "message": "Message",
     "messagePlaceholder": "Describe the issue or question...",
     "submit": "Send",
-    "mailtoHint": "Clicking “Send” opens your email app with a prefilled message.",
+    "sending": "Sending...",
+    "success": "Your request was accepted and stored.",
+    "ticketId": "Request number: {{id}}.",
+    "error": "Could not send the request. Please try again.",
+    "invalidTopic": "Choose a topic",
+    "invalidEmail": "Enter a valid email",
+    "invalidMessage": "The message must be between 10 and 4000 characters",
+    "mailtoHint": "The request is stored on the server and copied to support email.",
     "userEmailPrefix": "User email: ",
     "topics": {
       "payment": "Billing question",
@@ -216,7 +223,7 @@
   "pricing": {
     "badge": "Subscriptions",
     "title": "NewVerse plans",
-    "subtitle": "Monthly and yearly plans with bonus VerseCoins, a larger context window, and generation priority. Pick the level that fits your stories and chats.",
+    "subtitle": "Monthly and yearly plans with bonus VerseCoins and a larger context window. Pick the level that fits your stories and chats.",
     "activeUntil": "Your subscription: {{label}}, active until {{date}}",
     "noActive": "You have no active subscription",
     "pending": "The new {{label}} subscription will start after the current one ends ({{date}})",
@@ -232,7 +239,7 @@
     "perYear": "per year",
     "perMonth": "per month",
     "vcPerMonth": "{{count}} VC / mo",
-    "context": "Context {{tokens}} · multiplier ×{{multiplier}}",
+    "context": "Context {{tokens}} · daily bonus ×{{multiplier}}",
     "planFeatures": {
       "dialog": [
         "2,500 VC per month",
@@ -242,19 +249,17 @@
       "history": [
         "10,000 VC per month",
         "For long roleplay and story development",
-        "Daily bonus multiplier ×2",
-        "Priority queue"
+        "Daily bonus multiplier ×2"
       ],
       "universe": [
         "30,000 VC per month",
         "For deep worlds and complex story arcs",
-        "Daily bonus multiplier ×2.5",
-        "Priority queue"
+        "Daily bonus multiplier ×2.5"
       ]
     },
     "redirecting": "Payment...",
     "subscribe": "Subscribe",
-    "footnote": "Activating a plan credits bonus VC to your balance. Context and memory multipliers apply automatically. Payments are processed by Robokassa.",
+    "footnote": "Activating a plan credits bonus VC to your balance. The multiplier applies to the daily bonus. Request counts depend on the model you choose. Payments go through Robokassa and are credited after confirmation.",
     "checkoutTitle": "Subscribe to {{name}}",
     "applyNow": "Apply now",
     "applyNowHint": "Your current subscription, if any, will be replaced. Remaining time is not refunded.",
@@ -270,7 +275,12 @@
     "cancelPendingSuccess": "Pending subscription cancelled",
     "cancelPendingError": "Could not cancel the pending subscription",
     "cancelPendingConfirmTitle": "Cancel the pending subscription?",
-    "cancelPendingConfirm": "The new plan will not start when the current subscription ends."
+    "cancelPendingConfirm": "The new plan will not start when the current subscription ends.",
+    "estimateTitle": "Request estimate",
+    "estimate": "About {{base}} requests on {{baseName}} ({{baseCost}} VC) or {{premium}} on {{premiumName}} ({{premiumCost}} VC) from the monthly pack. This is an estimate for a new send; actual count depends on conversation length. A technical retry after a failure is not billed as a new turn.",
+    "estimateUnavailable": "The request estimate appears after the model catalog loads.",
+    "paymentPending": "Payment is not confirmed yet. Balance and subscription will update after Robokassa notifies us.",
+    "paymentConfirmed": "Payment confirmed."
   },
   "coins": {
     "title": "VerseCoins (VC)",
@@ -305,12 +315,17 @@
     "buyDesc": "Purchase of {{coins}} VC",
     "min": "0 min",
     "hoursMinutes": "{{hours}} h {{minutes}} min",
-    "minutes": "{{minutes}} min"
+    "minutes": "{{minutes}} min",
+    "paymentPending": "Payment is processing. Purchased VC will appear on your balance after confirmation.",
+    "paymentConfirmed": "The VC purchase is confirmed and credited."
   },
   "payment": {
     "chargeLabel": "Amount due",
     "cbrEquivalent": "~ {{amount}} (CBR exchange rate)",
-    "ratesLoading": "Loading CBR exchange rate..."
+    "ratesLoading": "Loading CBR exchange rate...",
+    "pending": "Payment is processing",
+    "confirmed": "Payment confirmed",
+    "unknown": "We could not confirm the payment from the return page. If you were charged, wait a few minutes or contact support."
   },
   "meta": {
     "home": {
@@ -440,6 +455,15 @@
     "appeal": "Submit a request via the",
     "appealLink": "support page"
   },
+  "guestChat": {
+    "remaining": "{{remaining}}/{{limit}} left",
+    "retention": "Guest chats are kept for {{days}} days. After you sign in, they move to your account.",
+    "limitTitle": "Free message limit",
+    "limitBody": "You have used all free messages. Sign up to keep chatting and save this history.",
+    "register": "Sign up",
+    "login": "Log in",
+    "expired": "The guest chat retention period has expired."
+  },
   "email": {
     "resetSubject": "Password reset — NewVerse",
     "resetText": "Follow this link to reset your password: {{url}}",
@@ -448,7 +472,9 @@
     "verifySubject": "Confirm your email — NewVerse",
     "verifyText": "Hello! Confirm your email in NewVerse by following this link: {{url}}. The link is valid for 24 hours.",
     "verifyHtmlIntro": "Hello! Confirm your email in NewVerse by following this link:",
-    "verifyHtmlFooter": "The link is valid for 24 hours. If you did not create a NewVerse account, you can ignore this email."
+    "verifyHtmlFooter": "The link is valid for 24 hours. If you did not create a NewVerse account, you can ignore this email.",
+    "supportSubject": "NewVerse support request — {{topic}}",
+    "supportText": "Topic: {{topic}}\nEmail: {{email}}\n\n{{message}}"
   },
   "api": {
     "emailRequired": "Email is required",
@@ -467,6 +493,7 @@
     "invalidVerificationLink": "This link is invalid or has expired",
     "emailAlreadyVerified": "Email is already confirmed",
     "confirmEmailToPurchase": "Confirm your email to make a purchase",
-    "confirmEmailToClaimBonus": "Confirm your email to claim bonuses"
+    "confirmEmailToClaimBonus": "Confirm your email to claim bonuses",
+    "rateLimited": "Too many requests. Please wait a moment."
   }
 }

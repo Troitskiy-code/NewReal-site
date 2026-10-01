@@ -73,6 +73,33 @@ export function usePaymentGoal() {
     let cancelled = false;
 
     const run = async () => {
+      if (invId) {
+        let confirmed = false;
+        for (let i = 0; i < 12; i += 1) {
+          try {
+            const res = await fetch(`/api/payment/status?invId=${encodeURIComponent(invId)}`);
+            if (res.ok) {
+              const data = (await res.json()) as { status?: string };
+              if (data.status === "confirmed") {
+                confirmed = true;
+                break;
+              }
+            }
+          } catch {
+            /* keep polling */
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 2000));
+          if (cancelled) return;
+        }
+        if (!confirmed) {
+          console.log("[Goal] skipped, payment not confirmed yet", hit, invId);
+          return;
+        }
+      } else {
+        console.log("[Goal] skipped, no InvId to confirm", hit);
+        return;
+      }
+
       const ready = await waitForMetrika();
       if (cancelled) return;
 

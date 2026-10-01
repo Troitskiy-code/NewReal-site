@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { SITE_URL } from "@/lib/seo";
 import { DEFAULT_LOCALE, type Locale, withLocale } from "@/lib/i18nConfig";
 import { translate } from "@/lib/getDictionary";
+import { emailDomain } from "@/lib/redactSensitive";
 
 const LOG = "[Email]";
 
@@ -15,6 +16,20 @@ function getVerifyEmailUrl(token: string, locale: Locale): string {
   return `${baseUrl}${withLocale(`/verify-email/${token}`, locale)}`;
 }
 
+function mailMeta(to: string, extra?: Record<string, unknown>) {
+  return { domain: emailDomain(to), ...extra };
+}
+
+function resolveFrom(): string {
+  const fromEnv = process.env.RESEND_FROM_EMAIL?.trim();
+  if (!fromEnv) {
+    console.warn(
+      `${LOG} RESEND_FROM_EMAIL is not set; using default sender NewVerse <noreply@newvers.ai>`
+    );
+  }
+  return fromEnv || "NewVerse <noreply@newvers.ai>";
+}
+
 export async function sendResetPasswordEmail(
   to: string,
   token: string,
@@ -25,23 +40,15 @@ export async function sendResetPasswordEmail(
   const apiKey = process.env.RESEND_API_KEY?.trim();
 
   if (!apiKey) {
-    console.error(`${LOG} RESEND_API_KEY is not set; cannot send reset email`, { to });
+    console.error(`${LOG} RESEND_API_KEY is not set; cannot send reset email`, mailMeta(to));
     throw new Error("Email is not configured");
   }
 
-  const fromEnv = process.env.RESEND_FROM_EMAIL?.trim();
-  if (!fromEnv) {
-    console.warn(
-      `${LOG} RESEND_FROM_EMAIL is not set; using default sender NewVerse <noreply@newvers.ai>`
-    );
-  }
-  const from = fromEnv || "NewVerse <noreply@newvers.ai>";
   const resend = new Resend(apiKey);
-
-  console.log(`${LOG} Sending password reset email`, { to, locale });
+  console.log(`${LOG} Sending password reset email`, mailMeta(to, { locale }));
 
   const { error } = await resend.emails.send({
-    from,
+    from: resolveFrom(),
     to,
     subject: translate(locale, "email.resetSubject"),
     text,
@@ -49,11 +56,11 @@ export async function sendResetPasswordEmail(
   });
 
   if (error) {
-    console.error(`${LOG} Resend API error`, { to, error });
+    console.error(`${LOG} Resend API error`, mailMeta(to, { status: "error" }));
     throw new Error("Failed to send reset email");
   }
 
-  console.log(`${LOG} Password reset email sent`, { to });
+  console.log(`${LOG} Password reset email sent`, mailMeta(to, { status: "sent" }));
 }
 
 export async function sendVerificationEmail(
@@ -66,23 +73,15 @@ export async function sendVerificationEmail(
   const apiKey = process.env.RESEND_API_KEY?.trim();
 
   if (!apiKey) {
-    console.error(`${LOG} RESEND_API_KEY is not set; cannot send verification email`, { to });
+    console.error(`${LOG} RESEND_API_KEY is not set; cannot send verification email`, mailMeta(to));
     throw new Error("Email is not configured");
   }
 
-  const fromEnv = process.env.RESEND_FROM_EMAIL?.trim();
-  if (!fromEnv) {
-    console.warn(
-      `${LOG} RESEND_FROM_EMAIL is not set; using default sender NewVerse <noreply@newvers.ai>`
-    );
-  }
-  const from = fromEnv || "NewVerse <noreply@newvers.ai>";
   const resend = new Resend(apiKey);
-
-  console.log(`${LOG} Sending verification email`, { to, locale });
+  console.log(`${LOG} Sending verification email`, mailMeta(to, { locale }));
 
   const { error } = await resend.emails.send({
-    from,
+    from: resolveFrom(),
     to,
     subject: translate(locale, "email.verifySubject"),
     text,
@@ -90,9 +89,55 @@ export async function sendVerificationEmail(
   });
 
   if (error) {
-    console.error(`${LOG} Resend API error`, { to, error });
+    console.error(`${LOG} Resend API error`, mailMeta(to, { status: "error" }));
     throw new Error("Failed to send verification email");
   }
 
-  console.log(`${LOG} Verification email sent`, { to });
+  console.log(`${LOG} Verification email sent`, mailMeta(to, { status: "sent" }));
+}
+
+export async function sendSupportTicketEmail(params: {
+  inbox: string;
+  topicLabel: string;
+  replyTo: string;
+  message: string;
+  ticketId: string;
+  locale?: Locale;
+}): Promise<void> {
+  const locale = params.locale ?? DEFAULT_LOCALE;
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    console.error(`${LOG} RESEND_API_KEY is not set; cannot send support email`, {
+      domain: emailDomain(params.replyTo),
+      ticketId: params.ticketId,
+    });
+    throw new Error("Email is not configured");
+  }
+
+  const text = translate(locale, "email.supportText", {
+    topic: params.topicLabel,
+    email: params.replyTo,
+    message: params.message,
+  });
+
+  const resend = new Resend(apiKey);
+  console.log(
+    `${LOG} Sending support ticket email`,
+    mailMeta(params.inbox, { ticketId: params.ticketId, status: "sending" })
+  );
+
+  const { error } = await resend.emails.send({
+    from: resolveFrom(),
+    to: params.inbox,
+    replyTo: params.replyTo,
+    subject: translate(locale, "email.supportSubject", { topic: params.topicLabel }),
+    text: `${text}\n\nTicket: ${params.ticketId}`,
+  });
+
+  if (error) {
+    console.error(`${LOG} Resend API error`, mailMeta(params.inbox, { ticketId: params.ticketId, status: "error" }));
+    throw new Error("Failed to send support email");
+  }
+
+  console.log(`${LOG} Support ticket email sent`, mailMeta(params.inbox, { ticketId: params.ticketId, status: "sent" }));
 }

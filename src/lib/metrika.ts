@@ -20,7 +20,10 @@ export const METRIKA_GOALS = {
   sendMessage: "send_message",
   register: "register",
   login: "login",
+  loginAttempt: "login_attempt",
   characterPageView: "character_page_view",
+  guestChatTransferred: "guest_chat_transferred",
+  supportSubmit: "support_submit",
 } as const;
 
 export type MetrikaGoal = (typeof METRIKA_GOALS)[keyof typeof METRIKA_GOALS];

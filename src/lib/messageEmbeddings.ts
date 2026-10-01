@@ -1,6 +1,13 @@
 import axios from "axios";
 import { prisma } from "@/lib/prisma";
 import { debugLog, errorLog } from "@/lib/logger";
+import {
+  isMessageEmbeddingsFlagEnabled,
+  isRagEligible,
+  shouldPersistEmbeddings,
+} from "@/lib/ragEligibility";
+
+export { isMessageEmbeddingsFlagEnabled, isRagEligible, shouldPersistEmbeddings };
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
@@ -52,8 +59,7 @@ export function shouldUseRag({
   return { use: false, reason: "not-needed" };
 }
 
-export const MESSAGE_EMBEDDINGS_ENABLED =
-  process.env.ENABLE_RAG_EMBEDDINGS === "true";
+export const MESSAGE_EMBEDDINGS_ENABLED = isMessageEmbeddingsFlagEnabled();
 
 export type RagMessage = {
   id: string;
@@ -115,24 +121,6 @@ async function getQueryEmbedding(
 
 function toVectorString(embedding: Float32Array): string {
   return `[${Array.from(embedding).join(",")}]`;
-}
-
-const RAG_SUBSCRIPTION_TYPES = new Set(["dialog", "history", "story", "universe"]);
-
-export function isRagEligible(
-  subscriptionType: string | null | undefined,
-  subscriptionActive: boolean
-): boolean {
-  if (!subscriptionActive) return false;
-  const normalized = (subscriptionType ?? "").trim().toLowerCase();
-  return RAG_SUBSCRIPTION_TYPES.has(normalized);
-}
-
-export function shouldPersistEmbeddings(
-  subscriptionType: string | null | undefined,
-  subscriptionActive: boolean
-): boolean {
-  return isRagEligible(subscriptionType, subscriptionActive) || MESSAGE_EMBEDDINGS_ENABLED;
 }
 
 export function formatRagContext(messages: RagMessage[]): RagContext | null {

@@ -141,6 +141,7 @@ export async function renewSubscriptionIfDue(
     where: { id: userId },
     select: {
       id: true,
+      email: true,
       subscriptionType: true,
       subscriptionEnd: true,
       robokassaRecurringId: true,
@@ -235,6 +236,7 @@ export async function renewSubscriptionIfDue(
         Shp_applyMode: "immediate",
       },
       receipt: buildReceipt([{ name: desc, price: amount, quantity: 1 }]),
+      email: user.email,
     });
 
     const newEnd = await applySuccessfulRenewal({

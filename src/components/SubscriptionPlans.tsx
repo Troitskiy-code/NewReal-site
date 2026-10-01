@@ -5,6 +5,10 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/chatEconomy";
+import { estimatePlanRequestsFromModels, type PricedModel } from "@/lib/requestEstimate";
+import { usePaymentGoal } from "@/lib/goalTracking";
+import { redirectToRobokassa } from "@/lib/robokassaRedirect";
+import { PurchaseStatusBanner } from "@/components/PurchaseStatusBanner";
 import { metrikaPlanSlug } from "@/lib/metrika";
 import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -72,6 +76,7 @@ export default function SubscriptionPlans({
   const { t, i18n } = useTranslation();
   const locale = useCurrentLocale();
   const { currency, setCurrency } = useCurrency();
+  usePaymentGoal();
   const [isYearly, setIsYearly] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null);
   const [balance, setBalance] = useState<SubscriptionBalance | null>(null);
@@ -80,6 +85,7 @@ export default function SubscriptionPlans({
   const [recurringConsent, setRecurringConsent] = useState(false);
   const [cancellingPending, setCancellingPending] = useState(false);
   const [confirmCancelPending, setConfirmCancelPending] = useState(false);
+  const [pricedModels, setPricedModels] = useState<PricedModel[]>([]);
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -100,6 +106,27 @@ export default function SubscriptionPlans({
       fetchBalance();
     }
   }, [status, fetchBalance]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/models")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.models) return;
+        setPricedModels(
+          data.models.map((model: { id: string; displayName: string; priceVC: number; isActive?: boolean }) => ({
+            id: model.id,
+            displayName: model.displayName,
+            priceVC: model.priceVC,
+            isActive: model.isActive !== false,
+          }))
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const hasActiveSubscription = Boolean(
     balance?.subscriptionType &&
@@ -125,11 +152,9 @@ export default function SubscriptionPlans({
       });
       const data = await res.json();
 
-      if (!res.ok || !data.url) {
+      if (!res.ok || !redirectToRobokassa(data)) {
         throw new Error(data.error || t("pricing.paymentError"));
       }
-
-      window.location.href = data.url;
     } catch (error) {
       showError(error instanceof Error ? error.message : t("pricing.paymentError"));
       setSubscribingPlanId(null);
@@ -198,6 +223,7 @@ export default function SubscriptionPlans({
 
       {status === "authenticated" && (showStatus || balance?.pendingSubscriptionType || balance?.recurringSetupRequired) ? (
         <div className="flex w-full max-w-3xl flex-col gap-3 self-center">
+          <PurchaseStatusBanner ns="pricing" />
           {showStatus ? (
             <div className="rounded-wd border border-wd-secondary/30 bg-wd-card px-4 py-3 text-center text-sm text-white">
               {hasActiveSubscription
@@ -324,6 +350,32 @@ export default function SubscriptionPlans({
                     <span>{feature}</span>
                   </li>
                 ))}
+                {(() => {
+                  const estimate = estimatePlanRequestsFromModels(plan.vcPerMonth, pricedModels);
+                  if (!estimate.available) {
+                    return (
+                      <li className="flex items-start gap-2">
+                        <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
+                        <span>{t("pricing.estimateUnavailable")}</span>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li className="flex items-start gap-2">
+                      <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
+                      <span>
+                        {t("pricing.estimate", {
+                          base: formatNumber(estimate.baseModel, i18n.language),
+                          premium: formatNumber(estimate.premiumModel, i18n.language),
+                          baseCost: estimate.baseCostVC,
+                          premiumCost: estimate.premiumCostVC,
+                          baseName: estimate.baseName,
+                          premiumName: estimate.premiumName,
+                        })}
+                      </span>
+                    </li>
+                  );
+                })()}
               </ul>
 
               <button

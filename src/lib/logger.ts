@@ -1,4 +1,5 @@
 import { Logtail } from "@logtail/node";
+import { redactSensitive } from "./redactSensitive";
 
 function createLogtail(): Logtail | null {
   const token = process.env.LOGTAIL_SOURCE_TOKEN?.trim();
@@ -11,17 +12,18 @@ function createLogtail(): Logtail | null {
 const logtail = createLogtail();
 
 function formatArg(value: unknown): string {
-  if (value instanceof Error) {
-    return value.stack ?? value.message;
+  const safe = redactSensitive(value);
+  if (safe instanceof Error) {
+    return safe.stack ?? safe.message;
   }
-  if (typeof value === "object" && value !== null) {
+  if (typeof safe === "object" && safe !== null) {
     try {
-      return JSON.stringify(value);
+      return JSON.stringify(safe);
     } catch {
-      return String(value);
+      return String(safe);
     }
   }
-  return String(value);
+  return String(safe);
 }
 
 function formatMessage(prefix: string, args: unknown[]): string {
@@ -45,19 +47,22 @@ function ship(level: "debug" | "info" | "error", prefix: string, message: string
 }
 
 export function debugLog(prefix: string, ...args: unknown[]) {
-  const message = formatMessage(prefix, args);
-  console.log(`[${prefix}]`, ...args);
+  const safeArgs = args.map((arg) => redactSensitive(arg));
+  const message = formatMessage(prefix, safeArgs);
+  console.log(`[${prefix}]`, ...safeArgs);
   ship("debug", prefix, message);
 }
 
 export function infoLog(prefix: string, ...args: unknown[]) {
-  const message = formatMessage(prefix, args);
-  console.info(`[${prefix}]`, ...args);
+  const safeArgs = args.map((arg) => redactSensitive(arg));
+  const message = formatMessage(prefix, safeArgs);
+  console.info(`[${prefix}]`, ...safeArgs);
   ship("info", prefix, message);
 }
 
 export function errorLog(prefix: string, ...args: unknown[]) {
-  const message = formatMessage(prefix, args);
-  console.error(`[${prefix}]`, ...args);
+  const safeArgs = args.map((arg) => redactSensitive(arg));
+  const message = formatMessage(prefix, safeArgs);
+  console.error(`[${prefix}]`, ...safeArgs);
   ship("error", prefix, message);
 }

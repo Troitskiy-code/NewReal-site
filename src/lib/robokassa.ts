@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import { str as crc32str } from "crc-32";
 import { debugLog, errorLog, infoLog } from "@/lib/logger";
-import { SITE_URL } from "@/lib/seo";
 import { withLocale, type Locale } from "@/lib/i18nConfig";
+
+const SITE_URL = "https://newvers.ai";
 
 const MERCHANT_ID = process.env.ROBOKASSA_MERCHANT_ID ?? "";
 const PASSWORD = process.env.ROBOKASSA_PASSWORD ?? "";
@@ -91,12 +92,23 @@ export type RobokassaReceiptItem = {
   quantity: number;
   sum: number;
   tax: string;
+  cost: number;
+  payment_method: "full_payment";
+  payment_object: "service";
 };
 
 export type RobokassaReceipt = {
   sno: string;
   items: RobokassaReceiptItem[];
 };
+
+export type RobokassaCheckout = {
+  action: string;
+  method: "POST";
+  fields: Record<string, string>;
+};
+
+const ROBOKASSA_INDEX_URL = "https://auth.robokassa.ru/Merchant/Index.aspx";
 
 /**
  * Фискальный чек (54-ФЗ). Обязательные поля позиции: name, quantity, sum, tax.
@@ -116,9 +128,20 @@ export function buildReceipt(
         quantity,
         sum,
         tax: "none",
+        cost: unitPrice,
+        payment_method: "full_payment",
+        payment_object: "service",
       };
     }),
   };
+}
+
+export function encodeRobokassaReceipt(receipt: RobokassaReceipt): string {
+  return encodeURIComponent(JSON.stringify(receipt));
+}
+
+function isUsableEmail(value: string | null | undefined): value is string {
+  return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
 }
 
 export type RobokassaRecurringOptions = {
@@ -136,36 +159,25 @@ function buildPaymentSignature(
   outSum: string,
   invId: string,
   shpSuffix: string,
-  receiptEncoded: string
+  receiptEncoded: string,
+  extras: { successUrl2?: string; successUrl2Method?: string } = {}
 ): string {
-  // Docs: MerchantLogin:OutSum:InvId[:Receipt]:Password#1[:Shp_*]
-  // OutSum is always RUB. Do not include OutSumCurrency in the URL or signature.
-  const receiptPart = receiptEncoded ? `:${receiptEncoded}` : "";
-  const signatureString = `${MERCHANT_ID}:${outSum}:${invId}${receiptPart}:${PASSWORD}${shpSuffix}`;
-  return md5(signatureString);
-}
-
-function buildShpQuery(shp: ShpParams): string {
-  return Object.entries(shp)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([key, value]) => `&${key}=${encodeURIComponent(value)}`)
-    .join("");
-}
-
-function buildRecurringQuery(recurring?: RobokassaRecurringOptions): string {
-  if (!recurring) {
-    return "";
+  // Docs additional params (only present ones, in this order):
+  // Receipt, StepByStep, ResultUrl2, SuccessUrl2, SuccessUrl2Method, FailUrl2, FailUrl2Method, Token
+  // MerchantLogin:OutSum:InvId[:modifiers]:Password#1[:Shp_*]
+  const parts = [MERCHANT_ID, outSum, invId];
+  if (receiptEncoded) parts.push(receiptEncoded);
+  if (extras.successUrl2) {
+    parts.push(extras.successUrl2);
+    parts.push(extras.successUrl2Method || "GET");
   }
-
-  const period = recurring.period === "year" ? "Yearly" : "Monthly";
-  const amount = Number(recurring.amount).toFixed(2);
-  // Recurring* is not part of SignatureValue.
-  return `&Recurring=true&RecurringPeriod=${period}&RecurringAmount=${amount}`;
+  parts.push(PASSWORD);
+  return md5(parts.join(":") + shpSuffix);
 }
 
 /**
- * Builds a Robokassa payment URL.
- * `sum` is always RUB. OutSumCurrency is never included in the URL or signature.
+ * Locale-aware extra Success URL. Official parameter is SuccessUrl2 (not SuccessUrl)
+ * and it must be included in SignatureValue after Receipt.
  */
 export function buildRobokassaSuccessUrl(
   path: "/pricing" | "/coins",
@@ -176,71 +188,109 @@ export function buildRobokassaSuccessUrl(
   return `${SITE_URL}${withLocale(path, locale)}?${params.toString()}`;
 }
 
-export function generateRobokassaPaymentUrl(
-  userId: string,
-  sum: number,
-  desc: string,
-  extraShp: ShpParams = {},
-  receipt?: RobokassaReceipt,
-  recurring?: RobokassaRecurringOptions,
-  successUrl?: string
-): string {
+export function createRobokassaCheckout(options: {
+  userId: string;
+  sum: number;
+  desc: string;
+  extraShp?: ShpParams;
+  receipt?: RobokassaReceipt;
+  recurring?: RobokassaRecurringOptions;
+  successUrl2?: string;
+  email?: string | null;
+  locale?: Locale;
+}): RobokassaCheckout {
   if (!MERCHANT_ID || !PASSWORD) {
     errorLog("Robokassa", "Payment error: merchant or password is not configured");
     throw new Error("Robokassa is not configured");
   }
 
-  // InvId must fit Robokassa Int32 range (1..2147483647).
+  const extraShp = options.extraShp ?? {};
   const invId = nextInvId();
-  const outSum = Number(sum).toFixed(2);
+  const outSum = Number(options.sum).toFixed(2);
   const isSubscription = extraShp.Shp_subscription === "true";
   const shp: ShpParams = {
-    Shp_userId: userId,
-    ...(isSubscription ? {} : { Shp_vc: String(parseVcFromDesc(desc, sum)) }),
+    Shp_userId: options.userId,
+    ...(isSubscription ? {} : { Shp_vc: String(parseVcFromDesc(options.desc, options.sum)) }),
     ...extraShp,
   };
   const shpSuffix = buildShpSuffix(shp);
+  const receiptEncoded = options.receipt ? encodeRobokassaReceipt(options.receipt) : "";
+  const successUrl2 = options.successUrl2?.trim() || "";
+  const successUrl2Method = successUrl2 ? "GET" : "";
+  const signature = buildPaymentSignature(outSum, invId, shpSuffix, receiptEncoded, {
+    successUrl2: successUrl2 || undefined,
+    successUrl2Method: successUrl2Method || undefined,
+  });
 
-  // Receipt: JSON → encodeURIComponent (подпись) → encodeURIComponent ещё раз (GET URL).
-  const receiptEncoded = receipt ? encodeURIComponent(JSON.stringify(receipt)) : "";
-  const signature = buildPaymentSignature(outSum, invId, shpSuffix, receiptEncoded);
+  const fields: Record<string, string> = {
+    MerchantLogin: MERCHANT_ID,
+    OutSum: outSum,
+    InvId: invId,
+    InvoiceID: invId,
+    Description: options.desc,
+    SignatureValue: signature,
+    Encoding: "utf-8",
+    Culture: options.locale === "en" ? "en" : "ru",
+  };
 
-  const shpQuery = buildShpQuery(shp);
-  const receiptQuery = receiptEncoded ? `&Receipt=${encodeURIComponent(receiptEncoded)}` : "";
-  // IsTest must be omitted in production. Only ROBOKASSA_TEST_MODE=1 adds it.
-  const testParam = ROBOKASSA_TEST_MODE ? "&IsTest=1" : "";
-  const recurringQuery = buildRecurringQuery(recurring);
-  const successQuery = successUrl ? `&SuccessUrl=${encodeURIComponent(successUrl)}` : "";
-  const url = `https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=${MERCHANT_ID}&OutSum=${outSum}&InvId=${invId}&InvoiceID=${invId}&Description=${encodeURIComponent(desc)}${receiptQuery}&SignatureValue=${signature}${shpQuery}${recurringQuery}${testParam}${successQuery}`;
+  for (const [key, value] of Object.entries(shp)) {
+    fields[key] = value;
+  }
+
+  if (receiptEncoded) {
+    fields.Receipt = receiptEncoded;
+  }
+
+  if (successUrl2) {
+    fields.SuccessUrl2 = successUrl2;
+    fields.SuccessUrl2Method = successUrl2Method;
+  }
+
+  if (isUsableEmail(options.email)) {
+    fields.Email = options.email.trim();
+  }
+
+  if (options.recurring) {
+    fields.Recurring = "true";
+    fields.RecurringPeriod = options.recurring.period === "year" ? "Yearly" : "Monthly";
+    fields.RecurringAmount = Number(options.recurring.amount).toFixed(2);
+  }
+
+  if (ROBOKASSA_TEST_MODE) {
+    fields.IsTest = "1";
+  }
 
   console.log("[Robokassa] Payment params:", {
     merchantLogin: MERCHANT_ID,
     outSum,
     invId,
-    description: desc,
-    shp: shpQuery,
-    hasReceipt: Boolean(receipt),
-    hasRecurring: Boolean(recurring),
+    description: options.desc,
+    shp: Object.keys(shp).sort().join(","),
+    hasReceipt: Boolean(options.receipt),
+    hasRecurring: Boolean(options.recurring),
+    hasEmail: Boolean(fields.Email),
     isTest: ROBOKASSA_TEST_MODE,
-    successUrl: successUrl || null,
-    outSumCurrencyPresent: url.includes("OutSumCurrency"),
-    isTestParamPresent: /(?:^|[?&])IsTest=/.test(url),
+    successUrl2: successUrl2 || null,
+    method: "POST",
   });
 
-  if (recurring) {
-    const period = recurring.period === "year" ? "Yearly" : "Monthly";
-    const amount = Number(recurring.amount).toFixed(2);
+  if (options.recurring) {
     debugLog(
       "Robokassa",
-      `Recurring params: Recurring=true RecurringPeriod=${period} RecurringAmount=${amount} InvId=${invId}`
+      `Recurring params: Recurring=true RecurringPeriod=${fields.RecurringPeriod} RecurringAmount=${fields.RecurringAmount} InvId=${invId}`
     );
   }
 
   infoLog(
     "Robokassa",
-    `Payment created: InvId=${invId}, OutSum=${outSum} RUB${receiptEncoded ? ", Receipt included" : ""}${recurringQuery ? ", Recurring=true" : ""}`
+    `Payment created: InvId=${invId}, OutSum=${outSum} RUB${receiptEncoded ? ", Receipt included" : ""}${options.recurring ? ", Recurring=true" : ""}, method=POST`
   );
-  return url;
+
+  return {
+    action: ROBOKASSA_INDEX_URL,
+    method: "POST",
+    fields,
+  };
 }
 
 export async function chargeRobokassaRecurring(options: {
@@ -249,6 +299,7 @@ export async function chargeRobokassaRecurring(options: {
   desc: string;
   extraShp?: ShpParams;
   receipt?: RobokassaReceipt;
+  email?: string | null;
 }): Promise<{ invId: string }> {
   if (!MERCHANT_ID || !PASSWORD) {
     throw new Error("Robokassa is not configured");
@@ -263,7 +314,7 @@ export async function chargeRobokassaRecurring(options: {
   const outSum = Number(options.sum).toFixed(2);
   const shp = options.extraShp ?? {};
   const shpSuffix = buildShpSuffix(shp);
-  const receiptEncoded = options.receipt ? encodeURIComponent(JSON.stringify(options.receipt)) : "";
+  const receiptEncoded = options.receipt ? encodeRobokassaReceipt(options.receipt) : "";
   const signature = buildPaymentSignature(outSum, invId, shpSuffix, receiptEncoded);
 
   const body = new URLSearchParams({
@@ -282,6 +333,10 @@ export async function chargeRobokassaRecurring(options: {
 
   if (receiptEncoded) {
     body.set("Receipt", receiptEncoded);
+  }
+
+  if (isUsableEmail(options.email)) {
+    body.set("Email", options.email.trim());
   }
 
   if (ROBOKASSA_TEST_MODE) {

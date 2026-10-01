@@ -13,6 +13,7 @@ import {
 } from "@/components/AuthCard";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
+import { callbackUrlFromSearchParam } from "@/lib/safeCallbackUrl";
 
 type LoginFormProps = {
   googleAuthEnabled: boolean;
@@ -27,10 +28,16 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const passwordResetSuccess = searchParams.get("reset") === "success";
+  const callbackPath = callbackUrlFromSearchParam(searchParams.get("callbackUrl"));
+  const localizedCallback = withLocale(callbackPath, locale);
+  const registerHref =
+    callbackPath === "/"
+      ? "/register"
+      : `/register?callbackUrl=${encodeURIComponent(callbackPath)}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    reachGoal(METRIKA_GOALS.login);
+    reachGoal(METRIKA_GOALS.loginAttempt);
     setError("");
 
     const result = await signIn("credentials", {
@@ -42,13 +49,14 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
     if (result?.error) {
       setError(t("auth.invalidCredentials"));
     } else {
-      router.push(withLocale("/", locale));
+      reachGoal(METRIKA_GOALS.login);
+      router.push(localizedCallback);
     }
   };
 
   const handleGoogleSignIn = () => {
-    reachGoal(METRIKA_GOALS.login);
-    void signIn("google", { callbackUrl: withLocale("/", locale) });
+    reachGoal(METRIKA_GOALS.loginAttempt);
+    void signIn("google", { callbackUrl: localizedCallback });
   };
 
   return (
@@ -92,7 +100,7 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
       )}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
         {t("auth.noAccount")}{" "}
-        <LocaleLink href="/register" className="font-semibold text-primary transition hover:text-primary-hover">
+        <LocaleLink href={registerHref} className="font-semibold text-primary transition hover:text-primary-hover">
           {t("auth.register")}
         </LocaleLink>
       </p>
