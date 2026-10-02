@@ -42,6 +42,9 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
     browser = await chromium.launch({ headless: true, channel: process.env.GUEST_TEST_BROWSER_CHANNEL });
     const context = await browser.newContext();
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
+    const guestPurchase = await context.request.post(`${base}/api/coins/purchase`, { data: { packageId: 6, paid: true } });
+    check(guestPurchase.status() === 410 && (await guestPurchase.json()).code === 'DIRECT_VC_PURCHASE_DISABLED',
+      'HTTP retired purchase is closed for guest requests');
     const page = await context.newPage(); page.setDefaultTimeout(45000);
     const pageErrors = [];
     page.on('pageerror', error => { pageErrors.push(error.message); console.error('Private browser page error:', error.message); });
@@ -76,6 +79,12 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
     check((await context.cookies()).every(cookie => cookie.name !== 'anonymousSessionId'), 'browser transfer clears guest cookie');
     await page.reload(); await page.getByText('Delayed guest reply', { exact: true }).waitFor();
     check(await db.message.count({ where: { userId: user.id, content: 'Delayed guest reply' } }) === 1, 'browser account reload does not duplicate transfer');
+    const accountBalance = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { verseCoins: true, permanentCoins: true } });
+    const accountPurchase = await context.request.post(`${base}/api/coins/purchase`, { data: { packageId: 6, paid: true } });
+    const unchangedBalance = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { verseCoins: true, permanentCoins: true } });
+    check(accountPurchase.status() === 410 && unchangedBalance.verseCoins === accountBalance.verseCoins
+      && unchangedBalance.permanentCoins === accountBalance.permanentCoins,
+      'HTTP retired purchase cannot grant VC to an authenticated browser session');
     if (process.env.P1_CLOSURE === '1') {
       const { verifyP1Browser } = await import('./browser-closure-p1.mjs');
       await verifyP1Browser({ db, context, page, base, user, check });

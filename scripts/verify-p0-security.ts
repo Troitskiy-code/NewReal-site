@@ -400,6 +400,48 @@ function loadIsolated(
   return isolated.exports;
 }
 
+console.log("P0 unpaid VC grant regressions");
+{
+  const nextServer = require("next/server") as typeof import("next/server");
+  // No auth, Prisma or payment imports are allowed in this retired handler.
+  const retired = loadIsolated("src/app/api/coins/purchase/route.ts", { "next/server": nextServer }) as {
+    POST: (req: Request) => Promise<Response>;
+  };
+  const responses = await Promise.all(Array.from({ length: 20 }, (_, index) => retired.POST(
+    new Request("http://localhost/api/coins/purchase", {
+      method: "POST", headers: { "Content-Type": "application/json", cookie: "synthetic_session=fixture" },
+      body: JSON.stringify({ packageId: index % 6 + 1, paid: true, invoiceId: "synthetic", amount: 0 }),
+    })
+  )));
+  assert(responses.every(response => response.status === 410), "retired VC route rejects every package and concurrent replay");
+  const bodies = await Promise.all(responses.map(response => response.json()));
+  assert(bodies.every(body => body.code === "DIRECT_VC_PURCHASE_DISABLED" && body.addedVC === undefined), "retired route never reports a successful VC grant");
+  assert((await retired.POST(new Request("http://localhost/api/coins/purchase", { method: "POST", body: "{" }))).status === 410,
+    "retired route rejects malformed input without parsing or database access");
+  assert(responses.every(response => response.headers.get("Cache-Control") === "no-store"), "retired payment response is not cached");
+
+  let unitpayDbAccesses = 0;
+  const blockedPrisma = new Proxy({}, { get() { unitpayDbAccesses++; throw new Error("Unitpay DB access forbidden"); } });
+  const isolatedEnv: Record<string, string | undefined> = {};
+  const unitpay = loadIsolated("src/app/api/unitpay/webhook/route.ts", {
+    "next/server": nextServer, "crypto": require("crypto"), "@/lib/prisma": { prisma: blockedPrisma },
+    "@/lib/verseCoins": { grantPermanentUpdate() { unitpayDbAccesses++; throw new Error("Unpaid grant forbidden"); } },
+  }, { process: { env: isolatedEnv } as unknown as NodeJS.Process }) as {
+    GET: (req: InstanceType<typeof nextServer.NextRequest>) => Promise<Response>;
+  };
+  const signature = require("crypto").createHash("sha256").update("synthetic_user{up}RUB{up}300{up}undefined").digest("hex");
+  const unitpayRequest = () => new nextServer.NextRequest("http://localhost/api/unitpay/webhook?" + new URLSearchParams({
+    method: "PAY", account: "synthetic_user", currency: "RUB", sum: "300", signature,
+  }));
+  for (const [label, key] of [["missing", undefined], ["empty", ""], ["whitespace", "   "]] as const) {
+    isolatedEnv.UNITPAY_SECRET_KEY = key;
+    assert((await unitpay.GET(unitpayRequest())).status === 503, `Unitpay ${label} secret rejects predictable undefined signature`);
+  }
+  isolatedEnv.UNITPAY_SECRET_KEY = "synthetic_unitpay_secret";
+  assert((await unitpay.GET(unitpayRequest())).status === 403, "configured Unitpay rejects a forged signature");
+  assert(unitpayDbAccesses === 0, "unconfigured or forged Unitpay request never reaches database or VC grant");
+}
+
 const handlerLines: string[] = [];
 const handlerSink: string[] = [];
 console.error = (...args: unknown[]) => {

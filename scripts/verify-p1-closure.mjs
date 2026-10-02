@@ -97,6 +97,23 @@ export async function verifyP1Closure({ db, load, check, cache, databaseUrl, sch
   const webhook = load('src/app/api/payment/webhook/route.ts', { '@/lib/logger': { errorLog() {}, infoLog() {}, toSafeDiagnostic: () => ({ category: 'error' }) } });
   const { NextRequest } = require('next/server');
   const customer = await db.user.create({ data: { email: 'payment@example.test', verseCoins: 20, permanentCoins: 20 } });
+  const retiredPurchase = load('src/app/api/coins/purchase/route.ts');
+  const beforeRetired = {
+    user: await db.user.findUniqueOrThrow({ where: { id: customer.id } }),
+    transactions: await db.transaction.count(), events: await db.paymentEvent.count(),
+  };
+  const directReplies = await Promise.all(Array.from({ length: 20 }, (_, index) => retiredPurchase.POST(
+    new NextRequest('http://localhost/api/coins/purchase', {
+      method: 'POST', headers: { 'content-type': 'application/json', cookie: 'synthetic_session=fixture' },
+      body: JSON.stringify({ packageId: index % 6 + 1, userId: customer.id, paid: true, amount: 0 }),
+    })
+  )));
+  check(directReplies.every(response => response.status === 410), 'retired direct purchase rejects concurrent requests for every VC package');
+  const afterRetired = await db.user.findUniqueOrThrow({ where: { id: customer.id } });
+  check(afterRetired.verseCoins === beforeRetired.user.verseCoins && afterRetired.permanentCoins === beforeRetired.user.permanentCoins,
+    'retired direct purchase cannot increase VC balances');
+  check(await db.transaction.count() === beforeRetired.transactions && await db.paymentEvent.count() === beforeRetired.events,
+    'retired direct purchase creates no transaction or payment confirmation');
   function signed(invId, shp, extra = {}, password = process.env.ROBOKASSA_PASSWORD2) {
     const fields = { OutSum: '129.00', InvId: invId, ...shp, ...extra };
     const suffix = Object.keys(fields).filter(k => /^shp_/i.test(k)).sort().map(k => `${k}=${fields[k]}`).join(':');

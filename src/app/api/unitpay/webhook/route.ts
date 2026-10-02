@@ -3,9 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { grantPermanentUpdate } from "@/lib/verseCoins";
 import crypto from "crypto";
 
-const SECRET_KEY = process.env.UNITPAY_SECRET_KEY!;
-
 export async function GET(req: NextRequest) {
+  const secretKey = process.env.UNITPAY_SECRET_KEY?.trim();
+  if (!secretKey) {
+    return NextResponse.json({ error: "Unitpay is not configured" }, { status: 503 });
+  }
   try {
     const searchParams = req.nextUrl.searchParams;
     const method = searchParams.get("method");
@@ -19,7 +21,7 @@ export async function GET(req: NextRequest) {
     let signatureString = sortedKeys
       .map((key) => paramsForSignature[key as keyof typeof paramsForSignature])
       .join("{up}");
-    signatureString += `{up}${SECRET_KEY}`;
+    signatureString += `{up}${secretKey}`;
     const hash = crypto.createHash("sha256").update(signatureString).digest("hex");
 
     if (hash !== signature) {
