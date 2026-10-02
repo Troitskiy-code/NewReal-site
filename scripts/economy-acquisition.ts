@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { SUBSCRIPTION_PLANS } from "../src/lib/chatEconomy.ts";
 import { weightedRequestEconomy } from "../src/lib/aiCostMath.ts";
 import { shouldPersistEmbeddings } from "../src/lib/ragEligibility.ts";
+import { FIRST_VC_PACKAGE } from "../src/lib/vcPackages.ts";
 
 type Status = "measurement" | "contract" | "assumption";
 type Scenario = "low" | "medium" | "high" | "stress";
@@ -200,7 +201,7 @@ const variants: Variant[] = [
     guestMessages: 5,
     dailyFreeRequests: 0,
     premiumTrials: 0,
-    firstPackRub: 129,
+    firstPackRub: FIRST_VC_PACKAGE.price,
     firstPackVc: 0,
     conversionToAccount: { low: 0.045, medium: 0.08, high: 0.12, stress: 0.17 },
     conversionToPayer: { low: 0.02, medium: 0.04, high: 0.065, stress: 0.09 },
@@ -215,12 +216,13 @@ function planById(id: string) {
   return SUBSCRIPTION_PLANS.find((plan) => plan.id === id)!;
 }
 
-// One fixed SKU for every scenario, sized by the worst modeled RUB/VC.
-// Leaves 50% gross revenue for non-AI expenses/contribution; still a hypothesis.
-const FIRST_PACK_AI_BUDGET_RUB = 129 * 0.5;
-const FIRST_PACK_VC = Math.floor(FIRST_PACK_AI_BUDGET_RUB / Math.max(...SCENARIOS.map(s =>
+// Model the actual catalog SKU. An updated cost report must expose its risk,
+// never silently change the quantity shown to customers.
+const FIRST_PACK_AI_BUDGET_RUB = FIRST_VC_PACKAGE.price * 0.5;
+const MODELED_AFFORDABLE_FIRST_PACK_VC = Math.floor(FIRST_PACK_AI_BUDGET_RUB / Math.max(...SCENARIOS.map(s =>
   Math.max(...[0, 0.5, 1].map(share => aiRubPerRequest(s, share) / requestEconomy(s, share).averageVc))
 )));
+const FIRST_PACK_VC = FIRST_VC_PACKAGE.vc;
 if (!Number.isSafeInteger(FIRST_PACK_VC) || FIRST_PACK_VC <= 0) throw new Error("Pack has no affordable VC allowance");
 
 type Row = {
@@ -357,7 +359,7 @@ const payload = {
   recommendation: {
     experiment: "firstPack129",
     hypothesis:
-      "Hypothesis only: a 129 ₽ one-time pack with one fixed VC allowance sized against worst modeled cost/VC, without autorenew, may improve first payments. Not enabled; validate invoices and margins first.",
+      "A 129 ₽ / 500 VC one-time introductory pack is implemented in the working copy, without autorenew. Conversion uplift and profitability remain hypotheses; production rollout and invoice validation are pending.",
     audience: "New registered users who finished at least one guest reply, RU, desktop+mobile, 28 days plus one billing cycle watch.",
     budgetRub: 40_000,
     stop: "If confirmed first-pay conversion is below control by 20% relative, or support tickets/payer rise 2x, or contribution/visitor stays negative after 28 days AND the following monthly renewal window.",
@@ -393,7 +395,7 @@ const lines = [
       `- ${row.variant}/${row.scenario}: contribution ${row.contribution} RUB; profit ${row.profit} RUB; promo AI ${row.promoAiRub} RUB; avatars ${row.avatarCostRub} RUB; unspent purchased VC liability ${row.carryoverLiabilityRub} RUB.`
   ),
   "",
-  `Fixed proposed 129 RUB pack: ${FIRST_PACK_VC} VC. Assumptions: 35% guest activation, 12 active days, 80% subscription VC usage, 75% pack usage, 50% avatar quota usage. Model prices are historical RUB/1M quotes, not live invoices.`,
+  `Catalog first pack: ${FIRST_PACK_VC} VC / ${FIRST_VC_PACKAGE.price} RUB. Modeled 50% AI-budget ceiling: ${MODELED_AFFORDABLE_FIRST_PACK_VC} VC; not a confirmed margin. Assumptions: 35% guest activation, 12 active days, 80% subscription VC usage, 75% pack usage, 50% avatar quota usage. Model prices are historical RUB/1M quotes, not live invoices.`,
   "",
   "## Recommended first experiment",
   "",

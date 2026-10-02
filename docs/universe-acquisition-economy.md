@@ -30,12 +30,12 @@ Hypothetical projections; these amounts are not measured profit.
 - premiumTrial/medium: contribution 604034.94 RUB; profit 540634.94 RUB; promo AI 5874.32 RUB; avatars 41400 RUB; unspent purchased VC liability 0 RUB.
 - premiumTrial/high: contribution 1864224.26 RUB; profit 1519224.26 RUB; promo AI 62019.36 RUB; avatars 172500 RUB; unspent purchased VC liability 0 RUB.
 - premiumTrial/stress: contribution -1857531.67 RUB; profit -3995031.67 RUB; promo AI 697554.83 RUB; avatars 560625 RUB; unspent purchased VC liability 0 RUB.
-- firstPack129/low: contribution 7337.05 RUB; profit -20462.95 RUB; promo AI 2.5 RUB; avatars 162 RUB; unspent purchased VC liability 24.52 RUB.
-- firstPack129/medium: contribution 66175.07 RUB; profit -10024.93 RUB; promo AI 86.56 RUB; avatars 2016 RUB; unspent purchased VC liability 545.11 RUB.
-- firstPack129/high: contribution 271695.7 RUB; profit -169304.3 RUB; promo AI 1300.68 RUB; avatars 11700 RUB; unspent purchased VC liability 5733.82 RUB.
-- firstPack129/stress: contribution 146017.03 RUB; profit -2803982.97 RUB; promo AI 5934.04 RUB; avatars 15187.5 RUB; unspent purchased VC liability 69757.98 RUB.
+- firstPack129/low: contribution 7341.08 RUB; profit -20458.92 RUB; promo AI 2.5 RUB; avatars 162 RUB; unspent purchased VC liability 23.18 RUB.
+- firstPack129/medium: contribution 66264.72 RUB; profit -9935.28 RUB; promo AI 86.56 RUB; avatars 2016 RUB; unspent purchased VC liability 515.22 RUB.
+- firstPack129/high: contribution 272638.69 RUB; profit -168361.31 RUB; promo AI 1300.68 RUB; avatars 11700 RUB; unspent purchased VC liability 5419.49 RUB.
+- firstPack129/stress: contribution 157489.51 RUB; profit -2792510.49 RUB; promo AI 5934.04 RUB; avatars 15187.5 RUB; unspent purchased VC liability 65933.82 RUB.
 
-Fixed proposed 129 RUB pack: 529 VC. Assumptions: 35% guest activation, 12 active days, 80% subscription VC usage, 75% pack usage, 50% avatar quota usage. Model prices are historical RUB/1M quotes, not live invoices.
+Catalog first pack: 500 VC / 129 RUB. Modeled 50% AI-budget ceiling: 529 VC; not a confirmed margin. Assumptions: 35% guest activation, 12 active days, 80% subscription VC usage, 75% pack usage, 50% avatar quota usage. Model prices are historical RUB/1M quotes, not live invoices.
 
 ## Recommended first experiment
 

@@ -8,6 +8,7 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { applySubscriptionCoinGrant, grantPermanentUpdate } from "@/lib/verseCoins";
 import { paymentEventCreateData, parseConfirmedAmountRub, PAYMENT_PROVIDER } from "@/lib/paymentEvent";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { FIRST_VC_PACKAGE, getVcPackage } from "@/lib/vcPackages";
 
 function firstParam(
   source: { get(name: string): string | File | null },
@@ -432,6 +433,21 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
   }
 
   const vcFromShp = Number(shpValue(shp, "Shp_vc"));
+  const packageIdRaw = shpValue(shp, "Shp_packageId");
+  const packageId = Number(packageIdRaw);
+  const firstClaim = await tx.firstVcPurchase.findUnique({ where: { invoiceId: invId } });
+  const firstOffer = shpValue(shp, "Shp_offer") === "first" || packageId === FIRST_VC_PACKAGE.id || Boolean(firstClaim);
+  if (firstOffer && (!firstClaim || firstClaim.userId !== userId || firstClaim.status !== "pending"
+      || packageId !== FIRST_VC_PACKAGE.id || shpValue(shp, "Shp_offer") !== "first"
+      || Number(outSum) !== FIRST_VC_PACKAGE.price || vcFromShp !== FIRST_VC_PACKAGE.vc)) {
+    return NextResponse.json({ error: "Invalid first purchase reservation" }, { status: 409 });
+  }
+  if (packageIdRaw) {
+    const pkg = getVcPackage(packageId);
+    if (!pkg || Number(outSum) !== pkg.price || vcFromShp !== pkg.vc) {
+      return NextResponse.json({ error: "Invalid VC package" }, { status: 400 });
+    }
+  }
   const vcAmount = Number.isFinite(vcFromShp) && vcFromShp > 0
     ? vcFromShp
     : Math.round(Number(outSum) / 0.3);
@@ -459,6 +475,7 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
   if (purchaseCommit.duplicate) {
     return okResponse(invId);
   }
+  if (firstOffer) await tx.firstVcPurchase.update({ where: { userId }, data: { status: "completed" } });
 
   console.log(`[Robokassa] Webhook processed successfully: InvId=${invId}, vcAmount=${vcAmount}`);
   await tx.notification.create({ data: { userId, type: "purchase_vc", title: "VerseCoins зачислены",

@@ -92,11 +92,14 @@ export async function verifyP1Closure({ db, load, check, cache, databaseUrl, sch
   check(await db.supportTicket.count({ where: { deliveryStatus: 'manual_review' } }) === 1, 'legacy support delivery requires review instead of duplicate mail');
 
   process.env.ROBOKASSA_PASSWORD = 'synthetic_checkout_password';
+  process.env.ROBOKASSA_MERCHANT_ID = 'synthetic_merchant';
   process.env.ROBOKASSA_PASSWORD2 = 'synthetic_result_password';
   process.env.ROBOKASSA_PASSWORD3 = 'synthetic_unrelated_password';
   const webhook = load('src/app/api/payment/webhook/route.ts', { '@/lib/logger': { errorLog() {}, infoLog() {}, toSafeDiagnostic: () => ({ category: 'error' }) } });
   const { NextRequest } = require('next/server');
   const customer = await db.user.create({ data: { email: 'payment@example.test', verseCoins: 20, permanentCoins: 20 } });
+  const { verifyFirstVc } = await import('./verify-first-vc.mjs');
+  await verifyFirstVc({ db, load, check, webhook });
   const retiredPurchase = load('src/app/api/coins/purchase/route.ts');
   const beforeRetired = {
     user: await db.user.findUniqueOrThrow({ where: { id: customer.id } }),

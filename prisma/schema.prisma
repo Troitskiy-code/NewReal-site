@@ -313,6 +313,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   supportTickets     SupportTicket[]
   avatarQuotaReservations AvatarQuotaReservation[]
+  firstVcPurchase FirstVcPurchase?
 }
 
 model Transaction {
@@ -480,6 +481,15 @@ model RateLimitBucket {
   resetAt DateTime
 
   @@index([resetAt])
+}
+
+model FirstVcPurchase {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoiceId String   @unique
+  checkout  Json
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
 }
 
 model AiCostEvent {

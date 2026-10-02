@@ -147,6 +147,7 @@ export function createRobokassaCheckout(options: {
   successUrl2?: string;
   email?: string | null;
   locale?: Locale;
+  invoiceId?: string;
 }): RobokassaCheckout {
   if (!MERCHANT_ID || !PASSWORD) {
     errorLog("Robokassa", "Payment error: merchant or password is not configured");
@@ -154,7 +155,7 @@ export function createRobokassaCheckout(options: {
   }
 
   const extraShp = options.extraShp ?? {};
-  const invId = nextInvId();
+  const invId = options.invoiceId ?? nextInvId();
   const outSum = Number(options.sum).toFixed(2);
   const isSubscription = extraShp.Shp_subscription === "true";
   const shp: ShpParams = {

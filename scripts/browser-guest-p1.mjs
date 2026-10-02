@@ -22,6 +22,7 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
   if (process.env.P1_CLOSURE === '1') Object.assign(env, {
     CRON_SECRET: 'synthetic_cron_only', SUPPORT_INBOX_EMAIL: 'inbox@example.test',
     ROBOKASSA_PASSWORD2: 'synthetic_result_password', TRUST_PROXY: '1',
+    ROBOKASSA_MERCHANT_ID: 'synthetic_merchant', ROBOKASSA_PASSWORD: 'synthetic_checkout_password',
   });
   env.KODIKROUTER_API_KEY = 'synthetic_guest_stub_only';
   await db.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash('GuestTest123!', 10), emailVerified: new Date(), verseCoins: 500 } });
@@ -86,6 +87,8 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
       && unchangedBalance.permanentCoins === accountBalance.permanentCoins,
       'HTTP retired purchase cannot grant VC to an authenticated browser session');
     if (process.env.P1_CLOSURE === '1') {
+      const { verifyCoinsBrowser } = await import('./browser-coins-shop.mjs');
+      await verifyCoinsBrowser({ db, context, page, base, user, character, check });
       const { verifyP1Browser } = await import('./browser-closure-p1.mjs');
       await verifyP1Browser({ db, context, page, base, user, check });
     }

@@ -16,6 +16,8 @@ export const VC_PACKAGES: VcPackage[] = [
   { id: 6, vc: 100000, price: 15000, bonus: "+100%", label: "100000 VC" },
 ];
 
+export const FIRST_VC_PACKAGE: VcPackage = { id: 7, vc: 500, price: 129, label: "500 VC" };
+
 export function getVcPackage(id: number): VcPackage | undefined {
-  return VC_PACKAGES.find((pkg) => pkg.id === id);
+  return id === FIRST_VC_PACKAGE.id ? FIRST_VC_PACKAGE : VC_PACKAGES.find((pkg) => pkg.id === id);
 }
