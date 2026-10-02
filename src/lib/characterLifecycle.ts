@@ -1,4 +1,4 @@
-import axios from "axios";
+import { meteredPost } from "@/lib/aiCostTelemetry";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const LIFECYCLE_MODEL = "google/gemma-4-31b-it";
@@ -21,7 +21,7 @@ function firstSentence(text: string): string {
 }
 
 export async function generateCharacterEvent(prompt: string): Promise<string> {
-  const response = await axios.post(
+  const response = await meteredPost("character_event",
     `${KODIKROUTER_URL}/chat/completions`,
     {
       model: LIFECYCLE_MODEL,
@@ -93,7 +93,7 @@ export async function generateCharacterEvent(prompt: string): Promise<string> {
  * }
  *
  * async function completeLifecyclePrompt(prompt: string, maxTokens: number): Promise<string> {
- *   const response = await axios.post(
+ *   const response = await meteredPost("character_event",
  *     `${KODIKROUTER_URL}/chat/completions`,
  *     {
  *       model: LIFECYCLE_MODEL,

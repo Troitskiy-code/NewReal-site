@@ -1,3 +1,4 @@
+import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -18,7 +19,9 @@ import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
 export const maxDuration = 60;
 
 // ------------------ POST (создание персонажа) ------------------
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest) { return withAiCostContext(() => handlePost(req)); }
+
+async function handlePost(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -28,6 +31,7 @@ export async function POST(req: NextRequest) {
     await ensureCharacterSlugColumn();
     await ensureCharacterModerationColumns();
 
+    setAiCostActor(session.user.id);
     const body = await req.json();
 
     let parsed;

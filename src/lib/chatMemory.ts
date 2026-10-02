@@ -1,4 +1,4 @@
-import axios from "axios";
+import { meteredPost } from "@/lib/aiCostTelemetry";
 import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
 import { getContextTokenLimit } from "@/lib/chatEconomy";
@@ -364,7 +364,7 @@ export async function consolidateActiveLines(
       lines.map((line) => `- ${line}`).join("\n")
     );
 
-    const response = await axios.post(
+    const response = await meteredPost("summary",
       `${KODIKROUTER_URL}/chat/completions`,
       {
         model: SUMMARY_MODEL,
@@ -541,7 +541,7 @@ async function requestKodikText(
   maxTokens: number,
   extraVars: Record<string, string | number> = {}
 ): Promise<string> {
-  const response = await axios.post(
+  const response = await meteredPost("summary",
     `${KODIKROUTER_URL}/chat/completions`,
     {
       model: SUMMARY_MODEL,

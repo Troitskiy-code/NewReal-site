@@ -356,7 +356,7 @@ async function pollRun(
       validateStatus: () => true,
     });
 
-    console.info("[Createya] poll", { runId, httpStatus: status, body: data });
+    console.info("[Createya] poll", { runId, httpStatus: status, status: data.status });
 
     if (status >= 400) {
       throw new Error(formatCreateyaError(status, data));
@@ -379,7 +379,8 @@ async function pollRun(
 export async function generateWithCreateya(
   prompt: string,
   referenceImage?: string,
-  modelName?: string
+  modelName?: string,
+  onRun?: (runId: string) => Promise<void>
 ): Promise<string> {
   const { apiKey, apiUrl } = getConfig();
   if (!apiKey) {
@@ -421,16 +422,20 @@ export async function generateWithCreateya(
       { headers: authHeaders(apiKey), timeout: 60_000, validateStatus: () => true }
     );
 
-    console.info("[Createya] response", { httpStatus: status, body: data });
+    console.info("[Createya] response", { httpStatus: status, status: data.status });
 
     if (status >= 400) {
-      throw new Error(formatCreateyaError(status, data));
+      const rejected = new Error(formatCreateyaError(status, data)) as Error & { avatarQuotaRefundable?: boolean };
+      // Explicit rejection of the initial run, not a timeout/failed poll after acceptance.
+      rejected.avatarQuotaRefundable = [400, 401, 402, 403, 404, 422, 429].includes(status);
+      throw rejected;
     }
 
+    const runId = extractRunId(data);
+    if (runId && onRun) await onRun(runId);
     throwIfFailed(data);
 
     const outputUrl = extractOutputUrl(data);
-    const runId = extractRunId(data);
     const isPending =
       status === 202 ||
       PENDING_STATUSES.has(data.status || "") ||
@@ -442,13 +447,13 @@ export async function generateWithCreateya(
 
     if (isPending) {
       if (!runId) {
-        console.error("[Createya] missing run id", JSON.stringify(data));
+        console.error("[Createya] missing run id");
         throw new Error(MISSING_RUN_ID_MESSAGE);
       }
       const completed = await pollRun(apiUrl, apiKey, runId, pollTimeoutMs);
       const completedUrl = extractOutputUrl(completed);
       if (!completedUrl) {
-        console.error("[Createya] completed without image url", JSON.stringify(completed));
+        console.error("[Createya] completed without image url");
         throw new Error("Createya не вернула URL изображения");
       }
       return completedUrl;
@@ -456,10 +461,12 @@ export async function generateWithCreateya(
 
     if (outputUrl) return outputUrl;
 
-    console.error("[Createya] unexpected run payload", JSON.stringify(data));
+    console.error("[Createya] unexpected run payload");
     throw new Error(MISSING_RUN_ID_MESSAGE);
   } catch (error) {
-    throw new Error(createyaErrorMessage(error));
+    const normalized = new Error(createyaErrorMessage(error)) as Error & { avatarQuotaRefundable?: boolean };
+    normalized.avatarQuotaRefundable = Boolean(error && typeof error === "object" && "avatarQuotaRefundable" in error && error.avatarQuotaRefundable === true);
+    throw normalized;
   }
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { avatarMonthlyAllowance } from "@/lib/avatarEconomy";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -353,6 +354,10 @@ export default function SubscriptionPlans({
               </div>
 
               <ul className="mb-6 flex-1 space-y-2.5 border-t border-wd-border pt-5 text-xs text-wd-text-secondary">
+                <li className="flex items-start gap-3 text-sm text-wd-text">
+                  <FaCheck className="mt-1 shrink-0 text-wd-primary" />
+                  <span>{i18n.language.startsWith("en") ? `Up to ${avatarMonthlyAllowance(plan.id)} avatars per calendar month; every model uses one generation` : `До ${avatarMonthlyAllowance(plan.id)} аватаров в календарный месяц; любая модель расходует одну генерацию`}</span>
+                </li>
                 {features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
                     <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />

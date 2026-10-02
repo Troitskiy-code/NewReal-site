@@ -1,5 +1,5 @@
-import axios from "axios";
-import { debugLog, errorLog } from "./logger";
+import { meteredPost } from "@/lib/aiCostTelemetry";
+import { debugLog, errorLog, toSafeDiagnostic } from "./logger";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
@@ -91,7 +91,7 @@ export function logSimilarityMatrix(
 export async function fetchEmbeddings(texts: string[], apiKey: string): Promise<number[][]> {
   if (texts.length === 0) return [];
 
-  const response = await axios.post(
+  const response = await meteredPost("embedding",
     `${KODIKROUTER_URL}/embeddings`,
     {
       model: EMBEDDING_MODEL,
@@ -139,7 +139,7 @@ export async function maxSimilarityAgainst(
     }
     return best;
   } catch (error) {
-    errorLog("Memory:Dedup", "embedding compare failed", error);
+    errorLog("Memory:Dedup", "embedding compare failed", toSafeDiagnostic(error));
     return null;
   }
 }

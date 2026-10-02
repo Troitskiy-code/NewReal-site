@@ -1,3 +1,4 @@
+import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -55,7 +56,11 @@ async function createMessageAndBumpTotal(data: {
   return message;
 }
 
-export async function POST(
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  return withAiCostContext(() => handlePost(req, context));
+}
+
+async function handlePost(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -120,6 +125,7 @@ export async function POST(
     }
 
     const { user, model, baseModel } = resolved;
+    setAiCostActor(session.user.id, user.subscriptionType);
     const subscriptionActive = isSubscriptionActive(user);
     const persistEmbeddings = shouldPersistEmbeddings(user.subscriptionType, subscriptionActive);
 
@@ -351,6 +357,8 @@ export async function POST(
         characterName: character.name,
         modelDisplayName: model.displayName,
       });
+
+      await recordChatCostCharge(upstream, costVC);
 
       const assistantMessage =
         continueChat && continueCutOff && lastAssistant

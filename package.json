@@ -8,7 +8,7 @@
     "build": "node scripts/prisma-generate.cjs && next build",
     "start": "next start",
     "lint": "eslint",
-    "verify:economy": "node --experimental-strip-types scripts/verify-economy.ts",
+    "verify:economy": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-economy.ts",
     "verify:intent": "node --experimental-strip-types scripts/verify-intent.ts",
     "verify:p0-p1": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-p0-p1.ts",
     "verify:p0-p1:repro": "node docs/p0-p1-review-repro.cjs",
@@ -24,7 +24,9 @@
     "verify:metrika:db": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-metrika-db.ts",
     "economy:acquisition": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/economy-acquisition.ts",
     "translate:characters": "node --experimental-strip-types scripts/translate-characters.ts",
-    "compress:avatars": "node --experimental-strip-types scripts/compress-avatars.ts"
+    "compress:avatars": "node --experimental-strip-types scripts/compress-avatars.ts",
+    "economy:costs": "node scripts/report-ai-costs.mjs",
+    "verify:economy:costs": "node scripts/verify-economy-costs.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

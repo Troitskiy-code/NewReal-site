@@ -1,3 +1,4 @@
+import { meteredPost } from "@/lib/aiCostTelemetry";
 import axios from "axios";
 import { debugLog, errorLog } from "@/lib/logger";
 
@@ -161,7 +162,7 @@ export async function analyzeIntent(userMessage: string, apiKey: string): Promis
   }
 
   try {
-    const response = await axios.post(
+    const response = await meteredPost("intent",
       `${KODIKROUTER_URL}/chat/completions`,
       {
         model: INTENT_MODEL,

@@ -1,6 +1,7 @@
 import { prisma } from "../prisma";
 import { UserService } from "./user";
 import config from "../config";
+import { meteredLegacySubmission } from "@/lib/aiCostTelemetry";
 
 export const AIService = {
   /**
@@ -96,7 +97,8 @@ export const AIService = {
       ? `${finalEndpoint}?webhook=${encodeURIComponent(webhookUrl)}`
       : `https://api.muapi.ai/api/v1/${finalEndpoint}?webhook=${encodeURIComponent(webhookUrl)}`;
 
-    const response = await fetch(targetUrl, {
+    const submit = isUsingCustomKey ? fetch : (url, init) => meteredLegacySubmission(url, init, model || finalEndpoint);
+    const response = await submit(targetUrl, {
       method: "POST",
       headers: {
         "x-api-key": apiKey,

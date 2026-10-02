@@ -132,11 +132,11 @@ console.log("\n4. Суточный счётчик не ограничивает 
 console.log("\n5. Активность подписки");
 {
   assert(
-    isSubscriptionActive({ subscriptionType: "dialog", subscriptionEnd: new Date("2026-09-01") }),
+    isSubscriptionActive({ subscriptionType: "dialog", subscriptionEnd: new Date(Date.now() + 86_400_000) }),
     "активная подписка"
   );
   assert(
-    !isSubscriptionActive({ subscriptionType: "dialog", subscriptionEnd: new Date("2026-01-01") }),
+    !isSubscriptionActive({ subscriptionType: "dialog", subscriptionEnd: new Date(Date.now() - 86_400_000) }),
     "истёкшая подписка"
   );
   assert(!isSubscriptionActive({ subscriptionType: "none", subscriptionEnd: null }), "без подписки");

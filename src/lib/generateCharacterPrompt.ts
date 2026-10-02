@@ -1,3 +1,4 @@
+import { meteredPost } from "@/lib/aiCostTelemetry";
 import axios from "axios";
 import { memoryToText } from "@/lib/persistentMemory";
 
@@ -83,7 +84,7 @@ export async function generateCharacterPrompt(
   for (const model of promptModels()) {
     try {
       console.log(`[CharacterPrompt] Requesting model=${model}`);
-      const response = await axios.post(
+      const response = await meteredPost("character_prompt",
         `${KODIKROUTER_URL}/chat/completions`,
         {
           model,

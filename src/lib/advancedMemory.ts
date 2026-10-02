@@ -1,4 +1,4 @@
-import axios from "axios";
+import { meteredPost } from "@/lib/aiCostTelemetry";
 import { prisma } from "@/lib/prisma";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import { debugLog, errorLog, infoLog } from "@/lib/logger";
@@ -184,7 +184,7 @@ export async function classifyEvent(message: string, apiKey: string): Promise<Ev
   }
 
   try {
-    const response = await axios.post(
+    const response = await meteredPost("memory",
       `${KODIKROUTER_URL}/chat/completions`,
       {
         model: EVENT_CLASSIFIER_MODEL,
@@ -373,7 +373,7 @@ async function upsertMemoryEntry(
 }
 
 async function summarizeCoreMemory(apiKey: string, previous: string, newInfo: string): Promise<string> {
-  const response = await axios.post(
+  const response = await meteredPost("memory",
     `${KODIKROUTER_URL}/chat/completions`,
     {
       model: CORE_MEMORY_MODEL,

@@ -1,3 +1,4 @@
+import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -64,12 +65,17 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   }
 }
 
-export async function PUT(req: NextRequest, context: RouteContext) {
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  return withAiCostContext(() => handleCostedRequest(req, context));
+}
+
+async function handleCostedRequest(req: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+    setAiCostActor(session.user.id);
 
     await ensureCharacterSlugColumn();
     await ensureCharacterModerationColumns();

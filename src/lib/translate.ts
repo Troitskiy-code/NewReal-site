@@ -1,4 +1,6 @@
 import { memoryToText } from "@/lib/persistentMemory";
+import { meteredTranslationFetch } from "@/lib/aiCostTelemetry";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 const YANDEX_TRANSLATE_URL = "https://translate.api.cloud.yandex.net/translate/v2/translate";
 
@@ -77,7 +79,6 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
   console.log("[Translate] Request:", {
     textLength: text.length,
     targetLang,
-    textPreview: text.slice(0, 80),
     url: YANDEX_TRANSLATE_URL,
     body: {
       targetLanguageCode: requestBody.targetLanguageCode,
@@ -92,14 +93,14 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
   });
 
   try {
-    const response = await fetch(YANDEX_TRANSLATE_URL, {
+    const response = await meteredTranslationFetch(YANDEX_TRANSLATE_URL, {
       method: "POST",
       headers: {
         Authorization: `Api-Key ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(requestBody),
-    });
+    }, Array.from(text).length);
 
     const rawBody = await response.text().catch(() => "");
     console.log("[Translate] Response status:", response.status);
@@ -108,22 +109,20 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
     if (rawBody) {
       try {
         data = JSON.parse(rawBody) as YandexTranslateResponse;
-        console.log("[Translate] Response data:", data);
+        console.log("[Translate] Response translations:", data?.translations?.length ?? 0);
       } catch {
-        console.log("[Translate] Response body (non-JSON):", rawBody.slice(0, 500));
+        console.log("[Translate] Response body is non-JSON");
       }
     }
 
     if (!response.ok) {
-      console.error("[Translate] API error:", response.status, data ?? rawBody.slice(0, 500));
-      throw new Error(
-        `Yandex Translate API error ${response.status}${rawBody ? `: ${rawBody.slice(0, 300)}` : ""}`
-      );
+      console.error("[Translate] API error:", response.status);
+      throw new Error(`Yandex Translate API error ${response.status}`);
     }
 
     const translated = data?.translations?.[0]?.text;
     if (typeof translated !== "string" || !translated) {
-      console.error("[Translate] Unexpected response shape", data ?? rawBody.slice(0, 500));
+      console.error("[Translate] Unexpected response shape");
       throw new Error("Yandex Translate returned unexpected response shape");
     }
 
@@ -131,7 +130,6 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
       targetLang,
       originalLength: text.length,
       translatedLength: translated.length,
-      translatedPreview: translated.slice(0, 80),
     });
 
     return translated;
@@ -142,7 +140,7 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
     if (error instanceof Error && error.message === "Missing YANDEX_API_KEY or YANDEX_FOLDER_ID") {
       throw error;
     }
-    console.error("[Translate] Request failed", error);
+    errorLog("Translate", "Request failed", toSafeDiagnostic(error));
     throw error instanceof Error ? error : new Error("Yandex Translate request failed");
   }
 }

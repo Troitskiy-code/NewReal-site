@@ -2,18 +2,20 @@
  * Parameterized acquisition/retention calculator. Does not change live prices.
  * node --experimental-strip-types scripts/economy-acquisition.ts
  */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SUBSCRIPTION_PLANS } from "../src/lib/chatEconomy.ts";
+import { weightedRequestEconomy } from "../src/lib/aiCostMath.ts";
 import { shouldPersistEmbeddings } from "../src/lib/ragEligibility.ts";
 
 type Status = "measurement" | "contract" | "assumption";
 type Scenario = "low" | "medium" | "high" | "stress";
 
-type Param<T> = { value: T; source: string; date: string; status: Status; note?: string };
-
-const AS_OF = "2026-10-01";
+const AS_OF = "2026-10-02";
+const avatarAllowance = (price: number) => Math.floor(price * 0.1 / 5);
+const observed = process.env.ECONOMY_COST_REPORT ? JSON.parse(readFileSync(process.env.ECONOMY_COST_REPORT, "utf8")) : null;
+if (observed && (!Array.isArray(observed.models) || !observed.models.length)) throw new Error("Cost report contains no models");
 
 const params = {
   livePlans: {
@@ -45,24 +47,22 @@ const params = {
     date: AS_OF,
     status: "assumption" as Status,
   },
-  usdRub: { value: 90, source: "round FX placeholder, not a CBR snapshot", date: AS_OF, status: "assumption" as Status },
-  cheapUsdPer1M: { value: 0.4, source: "economical-model placeholder, not p95", date: AS_OF, status: "assumption" as Status },
-  dearUsdPer1M: { value: 8, source: "expensive-model placeholder, not p95", date: AS_OF, status: "assumption" as Status },
+  cheapInputRubPer1M: { value: 7.22, source: "RUB/1M input, historical quote 2026-09-24; not a current invoice", date: AS_OF, status: "assumption" as Status },
+  dearInputRubPer1M: { value: 105, source: "RUB/1M input, historical quote 2026-09-24; not a current invoice", date: AS_OF, status: "assumption" as Status },
   tokensInPerRequest: {
-    value: { low: 1_200, medium: 2_400, high: 6_000, stress: 12_000 },
+    value: { low: 1_200, medium: 2_400, high: 6_000, stress: 16_000 },
     source: "unmeasured; do not treat as product p50/p95",
     date: AS_OF,
     status: "assumption" as Status,
   },
   tokensOutPerRequest: {
-    value: { low: 400, medium: 900, high: 2_000, stress: 4_000 },
+    value: { low: 400, medium: 900, high: 1_000, stress: 1_000 },
     source: "unmeasured",
     date: AS_OF,
     status: "assumption" as Status,
   },
-  cheapVc: { value: 5, source: "catalog placeholder used only when DB is unavailable", date: AS_OF, status: "assumption" as Status },
-  dearVc: { value: 50, source: "catalog placeholder", date: AS_OF, status: "assumption" as Status },
-  imageRub: { value: { low: 0, medium: 12, high: 40, stress: 120 }, source: "unmeasured image COGS", date: AS_OF, status: "assumption" as Status },
+  cheapVc: { value: 4, source: "historical catalog snapshot in universe-subscription-economy-report.md", date: "2026-09-24", status: "assumption" as Status },
+  dearVc: { value: 36, source: "historical catalog snapshot in universe-subscription-economy-report.md", date: "2026-09-24", status: "assumption" as Status },
   retryFactor: { value: { low: 1.02, medium: 1.08, high: 1.2, stress: 1.45 }, source: "unmeasured provider retry load", date: AS_OF, status: "assumption" as Status },
   ragExtraFactor: {
     value: { low: 1.05, medium: 1.15, high: 1.3, stress: 1.6 },
@@ -88,13 +88,31 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function requestEconomy(scenario: Scenario, dearShare: number) {
+  const inputTokens = params.tokensInPerRequest.value[scenario];
+  const outputTokens = params.tokensOutPerRequest.value[scenario];
+  if (observed) {
+    const models = observed.models.filter((m: { purpose: string; completed: number }) => m.purpose === "chat" && m.completed > 0);
+    const total = models.reduce((sum: number, m: { completed: number }) => sum + m.completed, 0);
+    if (!total) throw new Error("No completed chat attempts in cost report");
+    return weightedRequestEconomy(models.map((m: { completed: number; providerCompletedUsageCount: number; priceVC: number; inputRubPerMillion: number; outputRubPerMillion: number; averageInputTokens: number; averageOutputTokens: number; p50InputTokens: number; p50OutputTokens: number; p95InputTokens: number; p95OutputTokens: number }) => {
+      if (m.priceVC == null || m.inputRubPerMillion == null || m.outputRubPerMillion == null) throw new Error("Missing catalog prices in cost report; supply verified rates first");
+      if (m.providerCompletedUsageCount / m.completed < 0.9 || m.averageInputTokens == null || m.averageOutputTokens == null) throw new Error("Insufficient provider usage coverage; do not label estimated tokens as measurements");
+      const measuredInput = scenario === "low" ? m.p50InputTokens : scenario === "medium" ? m.averageInputTokens : scenario === "high" ? m.p95InputTokens : Math.max(m.p95InputTokens, 16000);
+      const measuredOutput = scenario === "low" ? m.p50OutputTokens : scenario === "medium" ? m.averageOutputTokens : scenario === "high" ? m.p95OutputTokens : Math.max(m.p95OutputTokens, 1000);
+      return { requestShare: m.completed / total, vc: m.priceVC, inputRubPerMillion: m.inputRubPerMillion,
+        outputRubPerMillion: m.outputRubPerMillion, inputTokens: measuredInput, outputTokens: measuredOutput };
+    }));
+  }
+  return weightedRequestEconomy([
+    { requestShare: 1 - dearShare, vc: params.cheapVc.value, inputRubPerMillion: params.cheapInputRubPer1M.value,
+      outputRubPerMillion: 14.44, inputTokens, outputTokens },
+    { requestShare: dearShare, vc: params.dearVc.value, inputRubPerMillion: params.dearInputRubPer1M.value,
+      outputRubPerMillion: 211, inputTokens, outputTokens },
+  ]);
+}
 function aiRubPerRequest(scenario: Scenario, dearShare: number): number {
-  const tokensIn = params.tokensInPerRequest.value[scenario];
-  const tokensOut = params.tokensOutPerRequest.value[scenario];
-  const cheap = ((tokensIn + tokensOut) / 1_000_000) * params.cheapUsdPer1M.value * params.usdRub.value;
-  const dear = ((tokensIn + tokensOut) / 1_000_000) * params.dearUsdPer1M.value * params.usdRub.value;
-  const mix = cheap * (1 - dearShare) + dear * dearShare;
-  return mix * params.retryFactor.value[scenario] * params.ragExtraFactor.value[scenario];
+  return requestEconomy(scenario, dearShare).averageRub * params.retryFactor.value[scenario] * params.ragExtraFactor.value[scenario];
 }
 
 type VariantId = "control" | "guest10" | "daily20" | "premiumTrial" | "firstPack129";
@@ -197,12 +215,13 @@ function planById(id: string) {
   return SUBSCRIPTION_PLANS.find((plan) => plan.id === id)!;
 }
 
-function firstPackVcFor(scenario: Scenario): number {
-  const cost = aiRubPerRequest(scenario, 0);
-  if (cost <= 0) return 0;
-  const targetRequests = scenario === "low" ? 12 : scenario === "medium" ? 18 : scenario === "high" ? 24 : 30;
-  return Math.max(40, Math.round(targetRequests * params.cheapVc.value));
-}
+// One fixed SKU for every scenario, sized by the worst modeled RUB/VC.
+// Leaves 50% gross revenue for non-AI expenses/contribution; still a hypothesis.
+const FIRST_PACK_AI_BUDGET_RUB = 129 * 0.5;
+const FIRST_PACK_VC = Math.floor(FIRST_PACK_AI_BUDGET_RUB / Math.max(...SCENARIOS.map(s =>
+  Math.max(...[0, 0.5, 1].map(share => aiRubPerRequest(s, share) / requestEconomy(s, share).averageVc))
+)));
+if (!Number.isSafeInteger(FIRST_PACK_VC) || FIRST_PACK_VC <= 0) throw new Error("Pack has no affordable VC allowance");
 
 type Row = {
   variant: VariantId;
@@ -214,6 +233,11 @@ type Row = {
   discountsAndRefunds: number;
   netRevenue: number;
   variableCost: number;
+  promoAiRub: number;
+  paidRequests: number;
+  fullBurnAiRub: number;
+  avatarCostRub: number;
+  firstPackVc: number;
   contribution: number;
   infraAndAcquisition: number;
   profit: number;
@@ -229,34 +253,37 @@ function evaluate(variant: Variant, scenario: Scenario): Row {
   const accounts = visitors * variant.conversionToAccount[scenario];
   const payers = visitors * variant.conversionToPayer[scenario];
   const plan = planById(variant.paidPlanId);
-  const packVc = variant.firstPackRub > 0 ? firstPackVcFor(scenario) : 0;
+  const packVc = variant.firstPackRub > 0 ? FIRST_PACK_VC : 0;
   const packPayers = variant.firstPackRub > 0 ? payers : 0;
   const subPayers = variant.firstPackRub > 0 ? payers * variant.repeatPayerShare[scenario] : payers;
   const grossRevenue = packPayers * variant.firstPackRub + subPayers * plan.monthlyPrice;
   const refunds = grossRevenue * params.refundPct.value[scenario];
   const netRevenue = grossRevenue - refunds;
-  const acquiring = netRevenue * params.acquiringPct.value;
+  // Acquiring charged on gross; refunded fees are conservatively not recovered.
+  const acquiring = grossRevenue * params.acquiringPct.value;
   const tax = netRevenue * params.taxPct.value;
 
   const cheapCost = aiRubPerRequest(scenario, 0);
   const mixedCost = aiRubPerRequest(scenario, variant.dearShare[scenario]);
-  const guestCost = visitors * variant.guestMessages * cheapCost;
-  const dailyCost = accounts * variant.dailyFreeRequests * 30 * cheapCost;
+  const guestCost = visitors * 0.35 * variant.guestMessages * cheapCost; // assumed 35% actually start a chat
+  const dailyCost = accounts * variant.dailyFreeRequests * 12 * cheapCost; // assumed 12 active days
   const trialCost = accounts * variant.premiumTrials * aiRubPerRequest(scenario, 1);
-  const packAi = packPayers * Math.floor(packVc / Math.max(params.cheapVc.value, 1)) * cheapCost;
-  const paidRequests = subPayers * Math.floor(plan.vcPerMonth / (variant.dearShare[scenario] > 0.3 ? params.dearVc.value : params.cheapVc.value));
+  const packUsage = 0.75; // assumed fraction of purchased VC spent this observation period
+  const subscriptionUsage = 0.8; // expiring VC consumed this month; full-burn risk also exported
+  const mix = requestEconomy(scenario, variant.dearShare[scenario]);
+  const rubPerVc = mixedCost / mix.averageVc;
+  const packAi = packPayers * packVc * packUsage * rubPerVc;
+  const paidRequests = subPayers * plan.vcPerMonth * subscriptionUsage / mix.averageVc;
   const paidAi = paidRequests * mixedCost;
-  const promoAi = paidAi * variant.promoVcBurnShare;
-  const images = (accounts + payers) * params.imageRub.value[scenario];
+  const promoAi = subPayers * plan.vcPerMonth * variant.promoVcBurnShare * rubPerVc;
+  const images = subPayers * avatarAllowance(plan.monthlyPrice) * 5 * 0.5; // assumed 50% avatar utilization
   const support = payers * params.supportTicketsPerPayer.value[scenario] * params.supportRubPerTicket.value;
-  const variableCost = guestCost + dailyCost + trialCost + packAi + paidAi + images + support + acquiring + tax;
+  const variableCost = guestCost + dailyCost + trialCost + packAi + paidAi + promoAi + images + support + acquiring + tax;
   const contribution = netRevenue - variableCost;
-  const acquisition = visitors * (params.cacRub.value[scenario] / Math.max(visitors, 1)) * visitors;
   const infraShare = params.infraMonthlyRub.value;
-  const infraAndAcquisition = infraShare + params.cacRub.value[scenario] * visitors * 0;
   const paidCac = params.cacRub.value[scenario] * payers;
   const profit = contribution - infraShare - paidCac;
-  const carryoverLiabilityRub = subPayers * plan.vcPerMonth * 0.25 * (mixedCost / Math.max(params.cheapVc.value, 1));
+  const carryoverLiabilityRub = packPayers * packVc * (1 - packUsage) * rubPerVc; // purchased VC only; subscription VC expires
 
   return {
     variant: variant.id,
@@ -267,7 +294,12 @@ function evaluate(variant: Variant, scenario: Scenario): Row {
     grossRevenue: round2(grossRevenue),
     discountsAndRefunds: round2(refunds),
     netRevenue: round2(netRevenue),
-    variableCost: round2(variableCost + promoAi - promoAi),
+    variableCost: round2(variableCost),
+    promoAiRub: round2(promoAi),
+    paidRequests: round2(paidRequests),
+    fullBurnAiRub: round2(subPayers * plan.vcPerMonth * rubPerVc + promoAi + packPayers * packVc * rubPerVc),
+    avatarCostRub: round2(images),
+    firstPackVc: packVc,
     contribution: round2(contribution),
     infraAndAcquisition: round2(infraShare + paidCac),
     profit: round2(profit),
@@ -287,7 +319,7 @@ const previousRag = process.env.ENABLE_RAG_EMBEDDINGS;
 process.env.ENABLE_RAG_EMBEDDINGS = "false";
 assert(shouldPersistEmbeddings("universe", true) === true, "RAG OR-flag for paid plans");
 assert(shouldPersistEmbeddings("dialog", true) === true, "dialog RAG independent of global flag");
-process.env.ENABLE_RAG_EMBEDDINGS = previousRag;
+if (previousRag === undefined) delete process.env.ENABLE_RAG_EMBEDDINGS; else process.env.ENABLE_RAG_EMBEDDINGS = previousRag;
 
 const rows = variants.flatMap((variant) => SCENARIOS.map((scenario) => evaluate(variant, scenario)));
 for (const row of rows) {
@@ -306,6 +338,9 @@ const payload = {
   asOf: AS_OF,
   livePricesUnchanged: params.livePlans.value,
   parameters: params,
+  measurementSource: observed ? { generatedAt: observed.generatedAt, from: observed.from, to: observed.to, coverage: observed.coverage } : null,
+  assumptions: { guestActivationShare: 0.35, activeDays: 12, packUsage: 0.75, subscriptionUsage: 0.8, avatarUsage: 0.5, fixedFirstPackVc: FIRST_PACK_VC, firstPackAiBudgetRub: FIRST_PACK_AI_BUDGET_RUB },
+  limitations: ["Conversion, CAC, tax, refunds, retry and auxiliary multipliers remain assumptions", "Cost report replaces mix/rates and low=p50, medium=mean, high=p95 token profiles; stress retains 16000 input/1000 output floor. >=90% completed provider usage required. Retry/RAG and conversion/CAC remain assumptions", "Avatar 5 RUB is a budget assumption; actual bill must be reconciled", "No forecast is guaranteed profit; unknown telemetry costs are not zero"],
   formula: {
     netRevenue: "grossRevenue - refunds (promo VC burn is an AI cost, not a second revenue haircut)",
     contribution: "netRevenue - variableCost(AI including retry/RAG/images/support/acquiring/tax)",
@@ -314,20 +349,20 @@ const payload = {
   },
   rows,
   extras: {
-    vcCarryover25pctLiabilityMediumUniverse: evaluate(variants[0], "medium").carryoverLiabilityRub,
-    imagePack: "Sell expensive images as a separate SKU so subscription VC is not silently drained. Do not cut already paid image quotas.",
+    unspentPurchasedVcLiabilityControl: evaluate(variants[0], "medium").carryoverLiabilityRub,
+    imagePack: "Avatar quota uses 10% of nominal monthly plan price at an assumed 5 RUB per generation; every model consumes one generation. Existing usage is not reset.",
     referral: "Pay referral VC only after PaymentEvent confirmation; reverse on refund of the referred invoice.",
     authors: "Creator payouts stay on current contract. Acquisition experiments must not rewrite existing character revenue share.",
   },
   recommendation: {
     experiment: "firstPack129",
     hypothesis:
-      "A 129 ₽ one-time pack sized from economical-model COGS, without autorenew, increases confirmed first payments versus the repaired control funnel without changing Dialog/Story/Universe prices.",
+      "Hypothesis only: a 129 ₽ one-time pack with one fixed VC allowance sized against worst modeled cost/VC, without autorenew, may improve first payments. Not enabled; validate invoices and margins first.",
     audience: "New registered users who finished at least one guest reply, RU, desktop+mobile, 28 days plus one billing cycle watch.",
     budgetRub: 40_000,
     stop: "If confirmed first-pay conversion is below control by 20% relative, or support tickets/payer rise 2x, or contribution/visitor stays negative after 28 days AND the following monthly renewal window.",
     rollback: "Disable the SKU; keep already purchased packs; do not alter live subscription prices or paid entitlements.",
-    sample: "Need at least 400 first-pay events per arm or 28 days plus renewal observation, whichever is later. 14 days is not enough for monthly renewals.",
+    sample: "Calculate sample size from observed baseline conversion, minimum detectable effect and chosen power before launch; observe at least one renewal window. No unmeasured fixed event count guarantees significance.",
     mediumProjection: recommendedMedium,
   },
 };
@@ -339,7 +374,9 @@ const lines = [
   "",
   `Date: ${AS_OF}. Live public prices stay Dialog 499 ₽ / 2 500 VC, Story 1 299 ₽ / 10 000 VC, Universe 3 499 ₽ / 30 000 VC.`,
   "",
-  "This file is generated by `npm run economy:acquisition`. Inputs are labeled measurement / contract / assumption. There is no product telemetry for p50/p95 tokens, so request costs are parameterized assumptions, not observed averages.",
+  observed
+    ? `Source: ${observed.from} to ${observed.to}. Model mix and token profiles come from completed provider usage; quoted RUB rates are estimates. Conversion/CAC/tax/retry/auxiliary load remain assumptions.`
+    : "Generated by npm run economy:acquisition without a production cost report. Model/token inputs are historical quotes and assumptions, not observed costs. Feed an economy:costs JSON with ECONOMY_COST_REPORT when sufficient data exists.",
   "",
   "## Formulas",
   "",
@@ -350,20 +387,21 @@ const lines = [
   "",
   "## Results",
   "",
-  "| Variant | Scenario | Visitors | Payers | Net revenue ₽ | Contribution ₽ | Profit ₽ | Contrib/visitor | Carryover liability ₽ |",
-  "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+  "Hypothetical projections; these amounts are not measured profit.",
   ...rows.map(
     (row) =>
-      `| ${row.variant} | ${row.scenario} | ${row.visitors} | ${row.payers} | ${row.netRevenue} | ${row.contribution} | ${row.profit} | ${row.contributionPerVisitor} | ${row.carryoverLiabilityRub} |`
+      `- ${row.variant}/${row.scenario}: contribution ${row.contribution} RUB; profit ${row.profit} RUB; promo AI ${row.promoAiRub} RUB; avatars ${row.avatarCostRub} RUB; unspent purchased VC liability ${row.carryoverLiabilityRub} RUB.`
   ),
+  "",
+  `Fixed proposed 129 RUB pack: ${FIRST_PACK_VC} VC. Assumptions: 35% guest activation, 12 active days, 80% subscription VC usage, 75% pack usage, 50% avatar quota usage. Model prices are historical RUB/1M quotes, not live invoices.`,
   "",
   "## Recommended first experiment",
   "",
-  "One-time 129 ₽ pack without autorenew, VC sized from economical-model COGS in this calculator (`firstPackVc` derived per scenario). Do not auto-enable. Watch first completed chat, registration, D1/D7, confirmed first and repeat payment, cost per activated/paying user, contribution per visitor, support tickets.",
+  "One-time 129 ₽ pack without autorenew, fixed VC allowance sized against the worst modeled cost per VC, identical in every scenario. Do not auto-enable. Watch first completed chat, registration, D1/D7, confirmed first and repeat payment, cost per activated/paying user, contribution per visitor, support tickets.",
   "",
   "Previous 25.1%/17.6% figures from the older Universe note are **not** guaranteed profit.",
   "",
 ];
-writeFileSync(mdPath, `${lines.join("\n")}\n`);
+writeFileSync(mdPath, `${lines.join("\n").trimEnd()}\n`);
 console.log(`Wrote ${rows.length} rows to docs/universe-acquisition-economy.md`);
 console.log(`Recommended experiment: ${payload.recommendation.experiment}`);

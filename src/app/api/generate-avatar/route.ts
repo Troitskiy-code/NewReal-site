@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import {
-  canGenerateThisMonth,
-  getAvatarUsageUser,
-  recordMonthlyGeneration,
+  reserveAvatarGeneration,
+  settleAvatarGeneration,
+  getAvatarTokenStatus,
 } from "@/lib/avatarTokens";
 import {
   buildAvatarPrompt,
@@ -14,6 +14,9 @@ import {
 } from "@/lib/avatarPrompt";
 import { convertImageToPNG, generateWithCreateya, imageUrlToDataUrl } from "@/lib/createya";
 import { getAvatarModel, resolveCreateyaAvatarModel } from "@/lib/avatarModels";
+import { AVATAR_BASE_COST_RUB } from "@/lib/avatarEconomy";
+import { withAiCostContext, setAiCostActor, withAvatarCost } from "@/lib/aiCostTelemetry";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 export const maxDuration = 120;
 
@@ -34,6 +37,13 @@ function asText(value: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  return withAiCostContext(() => generateAvatar(req));
+}
+
+async function generateAvatar(req: NextRequest) {
+  let reservationId: string | undefined;
+  let providerCompleted = false;
+  let providerAttempted = false;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -59,9 +69,6 @@ export async function POST(req: NextRequest) {
       customPrompt: asText(body.avatarPrompt) || undefined,
     });
     let referenceImage = asText(body.referenceImage);
-    if (referenceImage) {
-      referenceImage = await convertImageToPNG(referenceImage);
-    }
     const avatarModel = getAvatarModel(body.modelId);
     const apiModel = resolveCreateyaAvatarModel(avatarModel.id, Boolean(referenceImage));
     console.log("[AvatarModel] Selected model:", avatarModel.id);
@@ -72,22 +79,36 @@ export async function POST(req: NextRequest) {
       costMultiplier: avatarModel.costMultiplier,
     });
 
-    const user = await getAvatarUsageUser(session.user.id);
-    const canGenerate = canGenerateThisMonth(user);
-    if (!canGenerate.ok) {
+    const reservation = await reserveAvatarGeneration(session.user.id);
+    if (!reservation) {
       return NextResponse.json(
-        { error: canGenerate.reason || "Достигнут месячный лимит бесплатных генераций" },
+        { error: "Достигнут месячный лимит генераций аватара" },
         { status: 402 }
       );
     }
 
-    const createdUrl = await generateWithCreateya(prompt, referenceImage || undefined, apiModel);
+    reservationId = reservation.id;
+    setAiCostActor(session.user.id, reservation.user.subscriptionType);
+    if (referenceImage) {
+      referenceImage = await convertImageToPNG(referenceImage);
+    }
+    const createdUrl = await withAvatarCost(apiModel, AVATAR_BASE_COST_RUB * avatarModel.costMultiplier,
+      onRun => {
+        providerAttempted = true;
+        return generateWithCreateya(prompt, referenceImage || undefined, apiModel, onRun);
+      }, reservation.id);
+    providerCompleted = true;
+    await settleAvatarGeneration(reservation.id, true);
     const imageUrl = await imageUrlToDataUrl(createdUrl);
-    await recordMonthlyGeneration(user);
 
-    return NextResponse.json({ imageUrl });
+    return NextResponse.json({ imageUrl, tokenStatus: getAvatarTokenStatus(reservation.user) });
   } catch (error) {
-    console.error("Avatar generation error:", error);
+    if (reservationId && !providerCompleted) {
+      const refundable = !providerAttempted || Boolean(error && typeof error === "object" && "avatarQuotaRefundable" in error && error.avatarQuotaRefundable === true);
+      // A timeout can hide a completed, billed run. Do not allow retries to bypass the budget.
+      await settleAvatarGeneration(reservationId, refundable ? false : "review").catch(err => errorLog("Avatar", "Quota settlement failed", toSafeDiagnostic(err)));
+    }
+    errorLog("Avatar", "Generation failed", toSafeDiagnostic(error));
     const details = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
 
     if (isSensitiveGenerationError(error, details)) {
@@ -95,16 +116,14 @@ export async function POST(req: NextRequest) {
     }
 
     const message = error instanceof Error ? error.message : "Не удалось сгенерировать аватар";
-    const isUserFacing =
-      message.includes("кредитов") ||
-      message.includes("CREATEYA_API_KEY") ||
-      message.includes("время ожидания") ||
-      message.includes("референс") ||
-      message.includes("запустить генерацию") ||
-      message.includes("PNG");
+    const clientError = message.includes("время ожидания")
+      ? "Истекло время ожидания. Лимит зарезервирован до проверки результата; обратитесь в поддержку."
+      : message.includes("кредитов") || message.includes("CREATEYA_API_KEY")
+        ? "Сервис генерации временно недоступен"
+        : "Не удалось сгенерировать аватар";
 
     return NextResponse.json(
-      { error: isUserFacing ? message : "Не удалось сгенерировать аватар" },
+      { error: clientError },
       { status: 500 }
     );
   }

@@ -312,6 +312,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   supportTickets     SupportTicket[]
+  avatarQuotaReservations AvatarQuotaReservation[]
 }
 
 model Transaction {
@@ -479,6 +480,57 @@ model RateLimitBucket {
   resetAt DateTime
 
   @@index([resetAt])
+}
+
+model AiCostEvent {
+  id                  String   @id
+  operationId         String
+  actorHash           String?
+  subscriptionType    String?
+  provider            String
+  providerRequestId   String?
+  quotaReservationId  String?
+  model               String
+  actualModel         String?
+  purpose             String
+  attempt             Int
+  outcome             String
+  httpStatus          Int?
+  durationMs          Int?
+  inputTokens         Int?
+  inputCharacters     Int?
+  characterRubPerMillion Float?
+  outputTokens        Int?
+  cachedInputTokens   Int?
+  chargedVC           Int      @default(0)
+  quotedVC            Int?
+  audience            String   @default("system")
+  usageSource         String   @default("missing")
+  costSource          String
+  inputRubPerMillion  Float?
+  outputRubPerMillion Float?
+  reportedCostRub     Float?
+  providerCostNative  Float?
+  providerCostCurrency String?
+  usdRub              Float?
+  estimatedCostRub    Float?
+  createdAt           DateTime @default(now())
+
+  @@index([createdAt, purpose])
+  @@index([operationId])
+  @@index([actorHash, createdAt])
+}
+
+model AvatarQuotaReservation {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  units     Int
+  month     DateTime
+  status    String   @default("reserved")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model SupportTicket {

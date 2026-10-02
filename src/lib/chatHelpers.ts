@@ -1,4 +1,4 @@
-import axios from "axios";
+import { meteredPost, meteredChatFetch } from "@/lib/aiCostTelemetry";
 import { encoding_for_model } from "tiktoken";
 import { prisma } from "@/lib/prisma";
 import { getRelevantMemories } from "@/lib/advancedMemory";
@@ -688,7 +688,7 @@ export async function callChatCompletion(
 ): Promise<string> {
   return retryWithBackoff(
     async () => {
-      const response = await axios.post(
+      const response = await meteredPost("chat",
         `${KODIKROUTER_URL}/chat/completions`,
         {
           model: modelName,
@@ -730,7 +730,7 @@ export async function streamChatCompletion(
       const timer = setTimeout(() => controller.abort(), 30_000);
       let response: Response;
       try {
-        response = await fetch(`${KODIKROUTER_URL}/chat/completions`, {
+        response = await meteredChatFetch(`${KODIKROUTER_URL}/chat/completions`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -742,9 +742,10 @@ export async function streamChatCompletion(
             max_tokens: MAX_OUTPUT_TOKENS,
             temperature: 0.7,
             stream: true,
+            stream_options: { include_usage: true },
           }),
           signal: controller.signal,
-        });
+        }, modelName, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4));
       } finally {
         clearTimeout(timer);
       }

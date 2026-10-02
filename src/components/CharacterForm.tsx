@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import axios from "axios";
@@ -274,7 +275,7 @@ export default function CharacterForm({
 
   const usesSd = Boolean(loraFile || loraPreview);
   const selectedAvatarModel = getAvatarModel(avatarModelId);
-  const canGenerate = Boolean(tokenStatus && tokenStatus.monthlyRemaining > 0);
+  const canGenerate = Boolean(tokenStatus && tokenStatus.monthlyRemaining >= 1);
 
   const handleLoraInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -372,7 +373,7 @@ export default function CharacterForm({
     });
     try {
       const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
-      const { data } = await axios.post<{ imageUrl: string }>("/api/generate-avatar", {
+      const { data } = await axios.post<{ imageUrl: string; tokenStatus?: AvatarLimitStatus }>("/api/generate-avatar", {
         name: values.name.trim(),
         appearance: values.appearance.trim() || undefined,
         description: values.description.trim() || undefined,
@@ -389,14 +390,14 @@ export default function CharacterForm({
       }
 
       onAvatarGenerated(data.imageUrl);
-      setTokenStatus((prev) =>
+      setTokenStatus((prev) => data.tokenStatus ?? (
         prev
           ? {
               ...prev,
               tokensUsedThisMonth: prev.tokensUsedThisMonth + 1,
               monthlyRemaining: Math.max(0, prev.monthlyRemaining - 1),
             }
-          : prev
+          : prev)
       );
       showSuccess("Аватар сгенерирован");
     } catch (err: unknown) {
@@ -413,6 +414,9 @@ export default function CharacterForm({
             (err instanceof Error ? err.message : "Не удалось сгенерировать аватар");
       showError(message);
     } finally {
+      // Includes uncertain provider failures which retain a reserved budget unit.
+      await axios.get<AvatarLimitStatus>("/api/avatar-tokens")
+        .then(({ data }) => setTokenStatus(data)).catch(() => {});
       setGeneratingAvatar(false);
     }
   };
@@ -658,6 +662,7 @@ export default function CharacterForm({
             )}
           </div>
         )}
+        <p className="text-xs text-wd-muted">Любая модель расходует одну генерацию аватара.</p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label="Модель генерации аватара">
           {AVATAR_MODELS.map((model) => {
             const active = avatarModelId === model.id;

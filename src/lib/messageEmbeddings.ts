@@ -1,4 +1,4 @@
-import axios from "axios";
+import { meteredPost } from "@/lib/aiCostTelemetry";
 import { prisma } from "@/lib/prisma";
 import { debugLog, errorLog } from "@/lib/logger";
 import {
@@ -81,7 +81,7 @@ type RagSearchRow = {
 };
 
 async function fetchEmbedding(text: string, apiKey: string): Promise<Float32Array> {
-  const response = await axios.post(
+  const response = await meteredPost("embedding",
     `${KODIKROUTER_URL}/embeddings`,
     {
       model: EMBEDDING_MODEL,

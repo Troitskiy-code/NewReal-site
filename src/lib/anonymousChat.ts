@@ -1,3 +1,4 @@
+import { setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
@@ -234,6 +235,7 @@ export async function handleAnonymousChatPost(
   body: { message?: unknown; history?: unknown; continue?: unknown; requestId?: unknown }
 ) {
   const { sessionId } = resolveAnonymousSessionId(req);
+  setAiCostActor(`guest:${sessionId}`, "start");
   try {
     await assertGuestSchemaReady();
   } catch (error) {

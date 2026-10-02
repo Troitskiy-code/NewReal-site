@@ -1,3 +1,4 @@
+import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -16,13 +17,16 @@ function textOrStored(value: unknown, stored: unknown): string {
   return memoryToText(stored);
 }
 
-export async function POST(req: NextRequest, context: RouteContext) {
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) { return withAiCostContext(() => handlePost(req, context)); }
+
+async function handlePost(req: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
+    setAiCostActor(session.user.id);
     const { id } = await context.params;
     const character = await prisma.character.findUnique({
       where: { id },

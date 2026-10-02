@@ -1,3 +1,4 @@
+import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -7,7 +8,11 @@ import { forceRefreshMemorySummary } from "@/lib/chatMemory";
 
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 
-export async function POST(
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  return withAiCostContext(() => handleCostedRequest(req, context));
+}
+
+async function handleCostedRequest(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -16,6 +21,7 @@ export async function POST(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
+    setAiCostActor(session.user.id);
 
     if (!KODIKROUTER_KEY) {
       return NextResponse.json({ error: "KODIKROUTER_API_KEY не настроен" }, { status: 500 });

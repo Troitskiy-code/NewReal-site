@@ -7,7 +7,7 @@ if (!url) throw new Error('Set MIGRATION_DATABASE_URL explicitly for the intende
 const mode = process.argv.includes('--ready') ? 'ready' : 'baseline';
 const historical = readdirSync('prisma/migrations').filter(n => /^\d+_/.test(n) && n !== '20260801000000_baseline')
   .map(n => readFileSync(`prisma/migrations/${n}/migration.sql`, 'utf8')).join('\n');
-const addedTables = new Set([...historical.matchAll(/CREATE TABLE IF NOT EXISTS "([^"]+)"/g)].map(m => m[1]));
+const addedTables = new Set([...historical.matchAll(/CREATE TABLE(?: IF NOT EXISTS)? "([^"]+)"/g)].map(m => m[1]));
 const addedColumns = new Set([...historical.matchAll(/ALTER TABLE\s+"([^"]+)"\s+ADD COLUMN\s+(?:IF NOT EXISTS\s+)?"([^"]+)"/g)].map(m => `${m[1]}.${m[2]}`));
 const client = new Client({ connectionString: url });
 try {
