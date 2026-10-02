@@ -15,6 +15,7 @@ import SubscriptionPlans from "@/components/SubscriptionPlans";
 import { PurchaseStatusBanner, usePurchaseConfirmation } from "@/components/PurchaseStatusBanner";
 import { useCurrency } from "@/components/CurrencyContext";
 import { FIRST_VC_PACKAGE, VC_PACKAGES, type VcPackage } from "@/lib/vcPackages";
+import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 import { coinsCharacterId, coinsChatHref } from "@/lib/coinsReturn";
 import { redirectToRobokassa } from "@/lib/robokassaRedirect";
 import { withLocale } from "@/lib/i18nConfig";
@@ -24,6 +25,7 @@ type Balance = {
   verseCoins: number; permanentCoins: number; canClaimBonus: boolean;
   currentBonusAmount: number; nextBonus: number; subscriptionActive: boolean;
   subscriptionLabel: string | null;
+  bonusStreak: number; subscriptionType: string | null;
 };
 type Offer = { available: boolean; reserved: boolean };
 type Character = { id: string; name: string; name_en?: string | null; imageUrl?: string | null };
@@ -159,6 +161,14 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
   };
   const estimate = (pkg: VcPackage) => quote ? `${text("Ориентир", "Estimate")}: ~${number(Math.floor(pkg.vc / quote.cost))} ${text("ответов на модели", "replies with")} ${quote.name}` : null;
   const offerLoading = status === "loading" || (status === "authenticated" && !offer && !offerError);
+  const bonusScale = DAILY_BONUS_AMOUNTS.map(amount => Math.round(amount * getBonusMultiplier(
+    balance?.subscriptionActive ? balance.subscriptionType : null
+  )));
+  // The server's preview accounts for missed days and the seven-day rollover.
+  const bonusDay = balance?.canClaimBonus
+    ? Math.max(1, bonusScale.indexOf(balance.currentBonusAmount) + 1)
+    : Math.min(Math.max(balance?.bonusStreak ?? 1, 1), 7);
+  const completedBonusDays = balance?.canClaimBonus ? bonusDay - 1 : bonusDay;
 
   return <div className="min-h-dvh bg-wd-bg text-wd-text">
     <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 sm:space-y-10 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
@@ -202,8 +212,22 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
       </section>
       {status === "authenticated" && <section aria-label={t("coins.balance")} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-wd-border bg-wd-card px-5 py-4">
         <div><p className="text-xs text-wd-text-secondary">{t("coins.balance")}</p><p className="mt-1 text-xl font-bold text-white">{balance ? `${number(balance.verseCoins)} VC` : balanceError ? t("coins.loadError") : text("Загрузка…", "Loading…")}</p>{balance?.subscriptionActive && <p className="mt-1 text-xs text-wd-text-secondary">{balance.subscriptionLabel}</p>}</div>
-        {balance && <button type="button" onClick={claimBonus} disabled={claiming || !balance.canClaimBonus} className="inline-flex items-center gap-2 rounded-full border border-wd-border px-4 py-2.5 text-sm hover:border-wd-secondary disabled:opacity-50"><FaGift className="text-wd-secondary" />{claiming ? t("coins.claiming") : balance.canClaimBonus ? t("coins.claim", { amount: balance.currentBonusAmount }) : text(`Завтра +${balance.nextBonus} VC`, `Tomorrow +${balance.nextBonus} VC`)}</button>}
         {balanceError && <button type="button" onClick={() => { void refreshAccount(); }} className="text-sm text-wd-secondary underline">{t("common.retry")}</button>}
+      </section>}
+      {status === "authenticated" && balance && <section aria-labelledby="coins-daily-bonus-title" className="space-y-5 rounded-2xl border border-wd-border bg-wd-card p-5 sm:p-6">
+        <div className="flex items-center gap-2"><FaGift className="text-wd-primary" /><h2 id="coins-daily-bonus-title" className="text-base font-bold text-white">{t("coins.dailyBonus")}</h2></div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-wd-text-secondary">
+            <span>{t("coins.streakDay", { day: bonusDay })}</span>
+            <span>{balance.canClaimBonus ? text("Сегодня", "Today") : text("Завтра", "Tomorrow")} <strong className="text-white">+{balance.canClaimBonus ? balance.currentBonusAmount : balance.nextBonus} VC</strong></span>
+          </div>
+          <div role="progressbar" aria-labelledby="coins-daily-bonus-title" aria-valuemin={0} aria-valuemax={7} aria-valuenow={completedBonusDays} className="h-3 overflow-hidden rounded-full bg-[#0A0A0A]">
+            <div className="h-full rounded-full bg-gradient-to-r from-wd-primary to-wd-secondary transition-all motion-reduce:transition-none" style={{ width: `${completedBonusDays / 7 * 100}%` }} />
+          </div>
+          <div className="flex justify-between text-[10px] text-wd-text-secondary sm:text-xs">{bonusScale.map((amount, index) => <span key={index} className={index < completedBonusDays ? "font-semibold text-wd-primary" : ""}>{amount}</span>)}</div>
+        </div>
+        {!balance.canClaimBonus && <p className="text-xs text-wd-text-secondary">{t("coins.alreadyClaimed")}</p>}
+        <button type="button" onClick={claimBonus} disabled={claiming || !balance.canClaimBonus} className="wd-button flex w-full items-center justify-center gap-2 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"><FaGift />{claiming ? t("coins.claiming") : balance.canClaimBonus ? t("coins.claim", { amount: balance.currentBonusAmount }) : text(`Завтра +${balance.nextBonus} VC`, `Tomorrow +${balance.nextBonus} VC`)}</button>
       </section>}
       <section aria-labelledby="coins-packs-title" className="space-y-5">
         <div><h2 id="coins-packs-title" className="text-2xl font-bold text-white">{text("Больше пространства для вашей истории", "More room for your story")}</h2><p className="mt-2 text-sm text-wd-text-secondary">{text("Разовые пакеты для любого аккаунта. Пополняйте баланс, когда захотите.", "One-time packs for every account. Top up whenever you like.")}</p></div>
