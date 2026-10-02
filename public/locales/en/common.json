@@ -462,7 +462,10 @@
     "limitBody": "You have used all free messages. Sign up to keep chatting and save this history.",
     "register": "Sign up",
     "login": "Log in",
-    "expired": "The guest chat retention period has expired."
+    "expired": "The guest chat retention period has expired.",
+    "transferWaiting": "Finishing the guest reply and transferring your chat…",
+    "transferPending": "Transfer is still pending. Retry to continue this conversation.",
+    "transferRetry": "Retry transfer"
   },
   "email": {
     "resetSubject": "Password reset — NewVerse",

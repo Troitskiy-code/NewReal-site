@@ -1,3 +1,5 @@
+import { stripLocalePrefix } from "./i18nConfig";
+
 const ALLOWED_PREFIXES = [
   "/",
   "/chat/",
@@ -53,7 +55,7 @@ export function sanitizeCallbackUrl(raw: unknown, fallback = DEFAULT_CALLBACK): 
   if (!pathAndQuery || !pathAndQuery.startsWith("/") || pathAndQuery.startsWith("//")) return fallback;
 
   const pathname = pathAndQuery.split("?")[0] ?? "";
-  if (!isAllowedPath(pathname)) return fallback;
+  if (!isAllowedPath(stripLocalePrefix(pathname))) return fallback;
   return pathAndQuery;
 }
 

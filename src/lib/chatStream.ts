@@ -133,9 +133,12 @@ export function createChatNdjsonResponse(
 
 export async function consumeOpenAIChatStream(
   stream: ReadableStream<Uint8Array>,
-  onDelta: (text: string) => void
+  onDelta: (text: string) => void,
+  signal?: AbortSignal
 ): Promise<string> {
   const reader = stream.getReader();
+  const onAbort = () => { void reader.cancel().catch(() => {}); };
+  signal?.addEventListener("abort", onAbort, { once: true });
   const decoder = new TextDecoder();
   let buffer = "";
   let fullText = "";
@@ -163,8 +166,10 @@ export async function consumeOpenAIChatStream(
   };
 
   try {
+    signal?.throwIfAborted();
     while (true) {
       const { done, value } = await reader.read();
+      signal?.throwIfAborted();
       if (done) {
         break;
       }
@@ -181,6 +186,7 @@ export async function consumeOpenAIChatStream(
       consumeLine(buffer);
     }
   } finally {
+    signal?.removeEventListener("abort", onAbort);
     reader.releaseLock();
   }
 

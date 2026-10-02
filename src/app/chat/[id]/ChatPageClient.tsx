@@ -29,6 +29,7 @@ import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterF
 import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT, ANONYMOUS_TTL_DAYS, createAnonymousRequestId } from "@/lib/anonymousCookie";
 import ConfirmModal from "@/components/ConfirmModal";
 import { KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
+import { GuestTransferPendingError, waitForGuestTransfer } from "@/lib/guestTransferRetry";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
   "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
@@ -811,6 +812,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   });
   const [input, setInput] = useState("");
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [transferState, setTransferState] = useState<"idle" | "waiting" | "retry">("idle");
+  const [historyReload, setHistoryReload] = useState(0);
   const [sending, setSending] = useState(false);
   const [kodikUnavailable, setKodikUnavailable] = useState(false);
   const [models, setModels] = useState<ChatModel[]>([]);
@@ -899,11 +902,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     }
 
     const guest = status === "unauthenticated";
-    setMessages([]);
-    setSelectedPersona(null);
-    setAnonymousRemaining(null);
-    setShowAnonymousLimitModal(false);
-    setHistoryLoading(true);
+    const controller = new AbortController();
+    const { signal } = controller;
 
     const applyChatPayload = (data: ChatHistoryResponse) => {
       setCharacter(data.character);
@@ -916,31 +916,35 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     };
 
     const fetchData = async () => {
+      // Defer until the effect is subscribed; a superseded account/page must not publish state.
+      await Promise.resolve();
+      if (signal.aborted) return;
+      setMessages([]);
+      setSelectedPersona(null);
+      setAnonymousRemaining(null);
+      setShowAnonymousLimitModal(false);
+      setHistoryLoading(true);
+      setTransferState("idle");
       try {
         if (!guest) {
-          try {
-            try {
-              const transferRes = await axios.post<{ copied?: number; error?: string }>("/api/anonymous/transfer");
-              if ((transferRes.data.copied ?? 0) > 0) {
-                reachGoal(METRIKA_GOALS.guestChatTransferred);
-              }
-            } catch (error) {
-              const code = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
-              if (code === "in_progress") {
-                await new Promise((resolve) => setTimeout(resolve, 1500));
-                const retryRes = await axios.post<{ copied?: number }>("/api/anonymous/transfer");
-                if ((retryRes.data.copied ?? 0) > 0) {
-                  reachGoal(METRIKA_GOALS.guestChatTransferred);
-                }
-              }
-            }
-          } catch {
-            /* transfer is retried on next load */
-          }
+          const copied = await waitForGuestTransfer({
+            signal,
+            onWaiting: () => setTransferState("waiting"),
+            request: async () => {
+              const response = await axios.post<{ copied?: number; error?: string }>(
+                "/api/anonymous/transfer", undefined, { signal, validateStatus: () => true }
+              );
+              return { status: response.status, copied: response.data.copied, code: response.data.error };
+            },
+          });
+          signal.throwIfAborted();
+          setTransferState("idle");
+          if (copied > 0) reachGoal(METRIKA_GOALS.guestChatTransferred);
         }
 
         if (guest) {
-          const chatRes = await axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`);
+          const chatRes = await axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`, { signal });
+          signal.throwIfAborted();
           applyChatPayload(chatRes.data);
           const remaining = chatRes.data.remainingMessages ?? 0;
           setAnonymousRemaining(remaining);
@@ -951,11 +955,12 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         }
 
         const [chatRes, modelsRes, balanceRes, personaRes] = await Promise.all([
-          axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`),
-          axios.get<ModelsResponse>("/api/models"),
-          axios.get<BalanceData>("/api/user/balance"),
-          axios.get<{ persona: ChatPersona | null }>(`/api/chat/${characterId}/persona`),
+          axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`, { signal }),
+          axios.get<ModelsResponse>("/api/models", { signal }),
+          axios.get<BalanceData>("/api/user/balance", { signal }),
+          axios.get<{ persona: ChatPersona | null }>(`/api/chat/${characterId}/persona`, { signal }),
         ]);
+        signal.throwIfAborted();
 
         applyChatPayload(chatRes.data);
         setModels(modelsRes.data.models);
@@ -967,6 +972,11 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           modelsRes.data.selectedModelId ?? modelsRes.data.models[0]?.id ?? "";
         setSelectedModelId(initialModelId);
       } catch (error) {
+        if (signal.aborted) return;
+        if (error instanceof GuestTransferPendingError) {
+          setTransferState("retry");
+          return;
+        }
         const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined;
         if (guest && statusCode === 410) {
           setAnonymousRemaining(0);
@@ -977,12 +987,13 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           showError("Ошибка загрузки чата");
         }
       } finally {
-        setHistoryLoading(false);
+        if (!signal.aborted) setHistoryLoading(false);
       }
     };
 
     fetchData();
-  }, [characterId, status]);
+    return () => controller.abort();
+  }, [characterId, status, session?.user?.id, historyReload, locale, t]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1688,7 +1699,15 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             {characterCardDescription ? (
               <CharacterDescriptionCard description={characterCardDescription} />
             ) : null}
-            {historyLoading ? (
+            {transferState !== "idle" ? (
+              <div role="status" className="py-6 text-center text-sm text-secondary-text">
+                <p>{t(transferState === "waiting" ? "guestChat.transferWaiting" : "guestChat.transferPending")}</p>
+                {transferState === "retry" ? (
+                  <button type="button" className="mt-3 rounded-lg bg-white/10 px-4 py-2 text-white"
+                    onClick={() => setHistoryReload((value) => value + 1)}>{t("guestChat.transferRetry")}</button>
+                ) : null}
+              </div>
+            ) : historyLoading ? (
               <div className="space-y-3 py-4" aria-hidden>
                 <div className="h-16 w-3/4 animate-pulse rounded-2xl bg-white/10" />
                 <div className="ml-auto h-16 w-2/3 animate-pulse rounded-2xl bg-white/10" />
@@ -1752,8 +1771,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               value={input}
               onChange={setInput}
               onSubmit={sendMessage}
-              disabled={sending || actionLoading || clearingChat}
-              canSend={canSend}
+              disabled={sending || actionLoading || clearingChat || historyLoading || transferState !== "idle"}
+              canSend={canSend && !historyLoading && transferState === "idle"}
             />
           </div>
         </main>

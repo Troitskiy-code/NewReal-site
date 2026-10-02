@@ -14,6 +14,7 @@
     "verify:p0-p1:repro": "node docs/p0-p1-review-repro.cjs",
     "verify:p0-p1:int": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/integration-p0-p1.ts",
     "verify:p0-p1:browser": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/browser-p0-p1.ts",
+    "verify:guest-p1": "node scripts/verify-guest-p1.mjs",
     "verify:p0-security": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-p0-security.ts",
     "verify:metrika": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-metrika.ts",
     "verify:metrika:browser": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/browser-metrika.ts",

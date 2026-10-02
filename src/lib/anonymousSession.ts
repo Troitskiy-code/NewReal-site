@@ -60,11 +60,11 @@ export async function ensureAnonymousSession(sessionId: string) {
     return { ...existing, expired: false as const };
   }
 
-  const created = await prisma.anonymousSession.create({
-    data: { sessionId, expiresAt: anonymousExpiryFrom() },
+  await prisma.anonymousSession.createMany({
+    data: [{ sessionId, expiresAt: anonymousExpiryFrom() }], skipDuplicates: true,
   });
-  console.log(`[Anonymous] Created session sessionId=${sessionId.slice(0, 8)}...`);
-  return { ...created, expired: false as const };
+  const created = await prisma.anonymousSession.findUniqueOrThrow({ where: { sessionId } });
+  return { ...created, expired: isAnonymousExpired(created.expiresAt, created.createdAt) };
 }
 
 export async function getAnonymousRemaining(sessionId: string): Promise<number> {

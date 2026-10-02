@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isAnonymousExpired } from "@/lib/anonymousCookie";
 import { mapGuestMessagesToUserMessages } from "@/lib/anonymousChatMap";
-import { assertGuestSchemaReady, GuestSchemaMissingError } from "@/lib/guestRequestStore";
+import { assertGuestSchemaReady, GuestSchemaMissingError, lockGuestSession, recoverExpiredGuestGenerations } from "@/lib/guestRequestStore";
 import { isLeaseActive } from "@/lib/guestRequestPolicy";
 
 export type TransferResult =
@@ -21,6 +21,7 @@ export async function transferAnonymousChatToUser(params: {
 
   return prisma.$transaction(
     async (tx) => {
+      if (!(await lockGuestSession(tx, params.sessionId))) return { ok: false, code: "not_found" as const };
       const session = await tx.anonymousSession.findUnique({
         where: { sessionId: params.sessionId },
       });
@@ -40,18 +41,7 @@ export async function transferAnonymousChatToUser(params: {
         return { ok: false, code: "in_progress" as const };
       }
 
-      for (const row of livePending) {
-        await tx.anonymousChatRequest.updateMany({
-          where: { id: row.id, status: "pending", refundedAt: null },
-          data: { status: "failed", refundedAt: now },
-        });
-        if (row.reservedQuota && !row.refundedAt) {
-          await tx.anonymousSession.updateMany({
-            where: { sessionId: params.sessionId, messagesCount: { gt: 0 } },
-            data: { messagesCount: { decrement: 1 } },
-          });
-        }
-      }
+      await recoverExpiredGuestGenerations(tx, params.sessionId, now);
 
       if (session.transferredToUserId === params.userId) {
         const existing = await tx.anonymousMessage.findMany({
@@ -133,6 +123,6 @@ export async function transferAnonymousChatToUser(params: {
         characterIds: [...new Set(copies.map((item) => item.characterId))],
       };
     },
-    { isolationLevel: "Serializable" }
+    { isolationLevel: "ReadCommitted" }
   ) as Promise<TransferResult>;
 }

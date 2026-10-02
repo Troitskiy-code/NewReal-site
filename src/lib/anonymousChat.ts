@@ -33,11 +33,28 @@ import {
   claimGuestGeneration,
   failGuestGeneration,
   finalizeGuestGeneration,
+  persistGuestUserMessage,
+  recoverGuestSession,
+  renewGuestGeneration,
 } from "@/lib/guestRequestStore";
-import { errorLog } from "@/lib/logger";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 const ANON_POST_LIMIT = 30;
 const ANON_POST_WINDOW_MS = 60_000;
+
+function startGuestHeartbeat(params: { sessionId: string; requestId: string; attempt: number }) {
+  let renewing = false;
+  const timer = setInterval(() => {
+    if (renewing) return;
+    renewing = true;
+    void renewGuestGeneration(params)
+      .then((active) => { if (!active) clearInterval(timer); })
+      .catch((error) => errorLog("Anonymous", "lease renewal failed", toSafeDiagnostic(error)))
+      .finally(() => { renewing = false; });
+  }, 20_000);
+  timer.unref();
+  return () => clearInterval(timer);
+}
 
 async function resolveAnonymousModel() {
   const preferred = await prisma.model.findFirst({
@@ -109,6 +126,7 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
     );
   }
 
+  await recoverGuestSession(sessionId);
   const remainingMessages = await getAnonymousRemaining(sessionId);
   const characterSelectNoSlug = {
     id: true,
@@ -298,153 +316,158 @@ export async function handleAnonymousChatPost(
     return replayResponse(claimed.request, sessionId);
   }
 
-  let userMessageId = claimed.userMessageId;
-  if (!userMessageId) {
-    try {
-      const userRow = await prisma.anonymousMessage.create({
-        data: {
-          sessionId,
-          characterId,
-          role: "user",
-          content: message,
-          requestId,
-        },
-      });
-      userMessageId = userRow.id;
-      await prisma.anonymousChatRequest.updateMany({
-        where: { sessionId, requestId, attempt: claimed.attempt },
-        data: { userMessageId },
-      });
-    } catch (error) {
-      errorLog("Anonymous", "user message persist failed", error);
+  const generation = { sessionId, requestId, attempt: claimed.attempt };
+  const stopHeartbeat = startGuestHeartbeat(generation);
+  try {
+    const userRow = await persistGuestUserMessage({ ...generation, characterId, message });
+    if (!userRow) {
+      stopHeartbeat();
+      return withCookie(NextResponse.json({ error: "Попытка уже завершена", code: "REQUEST_IN_PROGRESS" }, { status: 409 }), sessionId);
+    }
+    const userMessageId = userRow.id;
+    const userMessage = {
+      id: userMessageId,
+      role: "user" as const,
+      content: message,
+      createdAt: (userRow?.createdAt ?? new Date()).toISOString(),
+    };
+
+    const model = await resolveAnonymousModel();
+    if (!model) {
+      stopHeartbeat();
       await failGuestGeneration({ sessionId, requestId, attempt: claimed.attempt });
+      return withCookie(NextResponse.json({ error: "Модель недоступна" }, { status: 500 }), sessionId);
+    }
+
+    const locale = getApiLocale(req);
+    const systemPrompt = resolveChatSystemPrompt(character, locale);
+    const stored = await loadStoredMessages(sessionId, characterId);
+    const history = stored
+      .filter((item) => item.id !== userMessageId)
+      .slice(-MAX_ANONYMOUS_HISTORY);
+    const promptMessages: ChatCompletionMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...history.map((item) => ({ role: item.role as "user" | "assistant", content: item.content })),
+      { role: "user", content: message },
+    ];
+    const { messages: trimmedMessages } = trimMessagesToTokenLimit(
+      promptMessages,
+      Math.max(2000, (model.maxContextTokens ?? 4000) - 400)
+    );
+
+    const stubReply =
+      process.env.NODE_ENV === "production" ? "" : (process.env.GUEST_AI_STUB_REPLY ?? "").trim();
+    let upstream: ReadableStream<Uint8Array>;
+    if (stubReply) {
+      const attempt = claimed.attempt;
+      const remaining = claimed.remaining;
+      const streamResponse = createChatNdjsonResponse(async (emit) => {
+        try {
+          emit({ type: "meta", userMessage });
+          emit({ type: "delta", text: stubReply });
+          const finalized = await finalizeGuestGeneration({
+            sessionId,
+            requestId,
+            attempt,
+            characterId,
+            assistantContent: stubReply,
+            userMessageId,
+            remainingMessages: remaining,
+          });
+          if (!finalized) return;
+          emit({
+            type: "end",
+            userMessage,
+            assistantMessage: {
+              id: finalized.assistantMessageId,
+              role: "assistant",
+              content: stubReply,
+              createdAt: new Date().toISOString(),
+            },
+            model: { id: model.id, displayName: model.displayName },
+            anonymous: true,
+            remainingMessages: remaining,
+          });
+        } catch (error) {
+          await failGuestGeneration(generation);
+          throw error;
+        } finally {
+          stopHeartbeat();
+        }
+      });
+      return withCookie(
+        new NextResponse(streamResponse.body, { status: streamResponse.status, headers: streamResponse.headers }),
+        sessionId
+      );
+    }
+
+    try {
+      upstream = await streamChatCompletion(model.name, trimmedMessages, process.env.KODIKROUTER_API_KEY ?? "");
+    } catch (error) {
+      stopHeartbeat();
+      await failGuestGeneration({ sessionId, requestId, attempt: claimed.attempt });
+      if (defaultShouldRetry(error)) {
+        return withCookie(
+          NextResponse.json({ error: KODIK_RETRY_ERROR_MESSAGE }, { status: 503, headers: { "Retry-After": "10" } }),
+          sessionId
+        );
+      }
       return withCookie(NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 }), sessionId);
     }
-  }
 
-  const userRow = await prisma.anonymousMessage.findUnique({ where: { id: userMessageId } });
-  const userMessage = {
-    id: userMessageId,
-    role: "user" as const,
-    content: message,
-    createdAt: (userRow?.createdAt ?? new Date()).toISOString(),
-  };
-
-  const model = await resolveAnonymousModel();
-  if (!model) {
-    await failGuestGeneration({ sessionId, requestId, attempt: claimed.attempt });
-    return withCookie(NextResponse.json({ error: "Модель недоступна" }, { status: 500 }), sessionId);
-  }
-
-  const locale = getApiLocale(req);
-  const systemPrompt = resolveChatSystemPrompt(character, locale);
-  const stored = await loadStoredMessages(sessionId, characterId);
-  const history = stored
-    .filter((item) => item.id !== userMessageId)
-    .slice(-MAX_ANONYMOUS_HISTORY);
-  const promptMessages: ChatCompletionMessage[] = [
-    { role: "system", content: systemPrompt },
-    ...history.map((item) => ({ role: item.role as "user" | "assistant", content: item.content })),
-    { role: "user", content: message },
-  ];
-  const { messages: trimmedMessages } = trimMessagesToTokenLimit(
-    promptMessages,
-    Math.max(2000, (model.maxContextTokens ?? 4000) - 400)
-  );
-
-  const stubReply =
-    process.env.NODE_ENV === "production" ? "" : (process.env.GUEST_AI_STUB_REPLY ?? "").trim();
-  let upstream: ReadableStream<Uint8Array>;
-  if (stubReply) {
     const attempt = claimed.attempt;
     const remaining = claimed.remaining;
     const streamResponse = createChatNdjsonResponse(async (emit) => {
-      emit({ type: "meta", userMessage });
-      emit({ type: "delta", text: stubReply });
-      const finalized = await finalizeGuestGeneration({
-        sessionId,
-        requestId,
-        attempt,
-        characterId,
-        assistantContent: stubReply,
-        userMessageId,
-        remainingMessages: remaining,
-      });
-      if (!finalized) return;
-      emit({
-        type: "end",
-        userMessage,
-        assistantMessage: {
-          id: finalized.assistantMessageId,
-          role: "assistant",
-          content: stubReply,
-          createdAt: new Date().toISOString(),
-        },
-        model: { id: model.id, displayName: model.displayName },
-        anonymous: true,
-        remainingMessages: remaining,
-      });
+      try {
+        emit({ type: "meta", userMessage });
+        const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
+          emit({ type: "delta", text });
+        }, AbortSignal.timeout(120_000));
+        const finalized = await finalizeGuestGeneration({
+          sessionId,
+          requestId,
+          attempt,
+          characterId,
+          assistantContent: assistantReply,
+          userMessageId,
+          remainingMessages: remaining,
+        });
+        if (!finalized) {
+          return;
+        }
+        emit({
+          type: "end",
+          userMessage,
+          assistantMessage: {
+            id: finalized.assistantMessageId,
+            role: "assistant",
+            content: assistantReply,
+            createdAt: new Date().toISOString(),
+          },
+          model: { id: model.id, displayName: model.displayName },
+          anonymous: true,
+          remainingMessages: remaining,
+        });
+      } catch (error) {
+        await failGuestGeneration({ sessionId, requestId, attempt });
+        throw error;
+      } finally {
+        stopHeartbeat();
+      }
     });
+
     return withCookie(
       new NextResponse(streamResponse.body, { status: streamResponse.status, headers: streamResponse.headers }),
       sessionId
     );
-  }
-
-  try {
-    upstream = await streamChatCompletion(model.name, trimmedMessages, process.env.KODIKROUTER_API_KEY ?? "");
   } catch (error) {
-    await failGuestGeneration({ sessionId, requestId, attempt: claimed.attempt });
-    if (defaultShouldRetry(error)) {
-      return withCookie(
-        NextResponse.json({ error: KODIK_RETRY_ERROR_MESSAGE }, { status: 503, headers: { "Retry-After": "10" } }),
-        sessionId
-      );
+    stopHeartbeat();
+    errorLog("Anonymous", "generation preparation failed", toSafeDiagnostic(error));
+    try {
+      await failGuestGeneration(generation);
+    } catch (cleanupError) {
+      errorLog("Anonymous", "generation recovery deferred", toSafeDiagnostic(cleanupError));
     }
     return withCookie(NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 }), sessionId);
   }
-
-  const attempt = claimed.attempt;
-  const remaining = claimed.remaining;
-  const streamResponse = createChatNdjsonResponse(async (emit) => {
-    try {
-      emit({ type: "meta", userMessage });
-      const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
-        emit({ type: "delta", text });
-      });
-      const finalized = await finalizeGuestGeneration({
-        sessionId,
-        requestId,
-        attempt,
-        characterId,
-        assistantContent: assistantReply,
-        userMessageId,
-        remainingMessages: remaining,
-      });
-      if (!finalized) {
-        return;
-      }
-      emit({
-        type: "end",
-        userMessage,
-        assistantMessage: {
-          id: finalized.assistantMessageId,
-          role: "assistant",
-          content: assistantReply,
-          createdAt: new Date().toISOString(),
-        },
-        model: { id: model.id, displayName: model.displayName },
-        anonymous: true,
-        remainingMessages: remaining,
-      });
-    } catch (error) {
-      await failGuestGeneration({ sessionId, requestId, attempt });
-      throw error;
-    }
-  });
-
-  return withCookie(
-    new NextResponse(streamResponse.body, { status: streamResponse.status, headers: streamResponse.headers }),
-    sessionId
-  );
 }
