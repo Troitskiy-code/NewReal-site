@@ -5,13 +5,13 @@
  */
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { PrismaClient } from "@prisma/client";
-import { resolveIsolatedTestDatabaseUrl, SYNTHETIC_LOCAL_TEST_URL } from "./testDatabaseUrl.ts";
+import { resolveIsolatedTestDatabaseUrl } from "./testDatabaseUrl.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 let passed = 0;
@@ -61,59 +61,6 @@ async function waitForPostgres(url: string) {
   throw new Error("test postgres did not become ready");
 }
 
-function dockerAvailable(): boolean {
-  const inspect = spawnSync("docker", ["info"], { encoding: "utf8", shell: true, timeout: 8000 });
-  return inspect.status === 0;
-}
-
-function ensureDockerPostgres() {
-  const inspect = spawnSync("docker inspect -f {{.State.Running}} nv-p0p1-pg", {
-    encoding: "utf8",
-    shell: true,
-  });
-  if (inspect.stdout?.trim() === "true") return;
-  if (inspect.stdout?.trim() === "false") {
-    run("docker start nv-p0p1-pg");
-    return;
-  }
-  run(
-    "docker run -d --name nv-p0p1-pg -e POSTGRES_PASSWORD=p0p1_test_only -e POSTGRES_DB=nv_p0p1_test -p 55432:5432 postgres:16"
-  );
-}
-
-async function startEmbeddedPostgres(): Promise<{ url: string; stop: () => Promise<void> }> {
-  run("npm install --no-save embedded-postgres");
-  spawnSync(
-    `powershell -Command "Get-NetTCPConnection -LocalPort 55432 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"`,
-    { encoding: "utf8", shell: true }
-  );
-  const dataDir = join(tmpdir(), "nv-p0p1-pg");
-  rmSync(dataDir, { recursive: true, force: true });
-  const mod = (await import("embedded-postgres")) as {
-    default: new (opts: Record<string, unknown>) => {
-      initialise(): Promise<void>;
-      start(): Promise<void>;
-      createDatabase(name: string): Promise<void>;
-      stop(): Promise<void>;
-    };
-  };
-  const EmbeddedPostgres = mod.default;
-  const pg = new EmbeddedPostgres({
-    databaseDir: join(tmpdir(), "nv-p0p1-pg"),
-    user: "postgres",
-    password: "p0p1_test_only",
-    port: 55432,
-    persistent: false,
-  });
-  await pg.initialise();
-  await pg.start();
-  try {
-    await pg.createDatabase("nv_p0p1_test");
-  } catch {
-    /* already exists */
-  }
-  return { url: SYNTHETIC_LOCAL_TEST_URL, stop: () => pg.stop() };
-}
 
 async function ensureDatabase(adminUrl: string, name: string) {
   const client = new Client({ connectionString: adminUrl });
@@ -154,16 +101,8 @@ async function applySqlFiles(url: string, files: string[]) {
   await client.end();
 }
 
-let stopEmbedded: (() => Promise<void>) | null = null;
 if (!process.env.TEST_DATABASE_URL) {
-  if (dockerAvailable()) {
-    process.env.TEST_DATABASE_URL = SYNTHETIC_LOCAL_TEST_URL;
-    ensureDockerPostgres();
-  } else {
-    const embedded = await startEmbeddedPostgres();
-    process.env.TEST_DATABASE_URL = embedded.url;
-    stopEmbedded = embedded.stop;
-  }
+  throw new Error("Set an explicitly isolated TEST_DATABASE_URL; automatic shared-port startup is disabled");
 }
 
 const testUrl = resolveIsolatedTestDatabaseUrl();
@@ -225,8 +164,13 @@ try {
     ["upg1", "req-upg", "sess-upg", "char-upg"]
   );
   await upgradeClient.query(
+    `INSERT INTO "User" ("id", "email") VALUES ('upg-user', 'upgrade@example.test')
+     ON CONFLICT DO NOTHING`
+  );
+  await upgradeClient.query(
     `INSERT INTO "Transaction" ("id","userId","amount","type","description","createdAt")
-     SELECT 'tx-upg', u.id, 100, 'purchase', 'Robokassa InvId=4242', NOW() FROM "User" u LIMIT 0`
+     VALUES ('tx-upg', 'upg-user', 100, 'purchase', 'Robokassa InvId=4242', NOW())
+     ON CONFLICT DO NOTHING`
   );
   await upgradeClient.end();
   await applySqlFiles(upgradeUrl, rework);
@@ -236,8 +180,10 @@ try {
     `SELECT column_name FROM information_schema.columns WHERE table_name = 'AnonymousChatRequest' AND column_name = 'payloadHash'`
   );
   const events = await after.query(`SELECT to_regclass('public."PaymentEvent"') AS rel`);
+  const historicalEvent = await after.query(`SELECT "userId" FROM "PaymentEvent" WHERE "provider" = 'robokassa' AND "invoiceId" = '4242'`);
   await after.end();
   assert(cols.rowCount === 1, "upgrade adds payloadHash");
+  assert(historicalEvent.rows[0]?.userId === 'upg-user', "upgrade backfills a real historical payment");
   assert(Boolean(events.rows[0]?.rel), "upgrade creates PaymentEvent");
 } catch (error) {
   console.error("upgrade migration note:", error instanceof Error ? error.message : error);
@@ -563,7 +509,6 @@ try {
 }
 
 await db.$disconnect();
-if (stopEmbedded) await stopEmbedded();
 
 console.log("");
 if (failed > 0) {

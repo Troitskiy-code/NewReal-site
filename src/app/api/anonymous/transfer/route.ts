@@ -15,9 +15,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: apiT(req, "api.unauthorized") }, { status: 401 });
   }
 
-  const limited = consumeRateLimit(`anon-transfer:${session.user.id}:${clientKeyFromRequest(req)}`, 10, 60_000);
-  if (!limited.ok) {
-    return NextResponse.json({ error: apiT(req, "api.rateLimited") }, { status: 429 });
+  const limited = await consumeRateLimit(`anon-transfer:${session.user.id}:${clientKeyFromRequest(req)}`, 10, 60_000);
+  if (limited.ok === false) {
+    return NextResponse.json({ error: apiT(req, "api.rateLimited") }, { status: 429, headers: { "Retry-After": String(Math.ceil(limited.retryAfterMs / 1000)) } });
   }
 
   const guestSessionId = readAnonymousSessionId(req);

@@ -99,6 +99,7 @@ export async function sendSupportTicketEmail(params: {
   replyTo: string;
   message: string;
   ticketId: string;
+  idempotencyKey?: string;
   locale?: Locale;
 }): Promise<void> {
   const locale = params.locale ?? DEFAULT_LOCALE;
@@ -124,13 +125,19 @@ export async function sendSupportTicketEmail(params: {
     mailMeta(params.inbox, { ticketId: params.ticketId, status: "sending" })
   );
 
-  const { error } = await resend.emails.send({
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  const { error } = await Promise.race([
+    resend.emails.send({
     from: resolveFrom(),
     to: params.inbox,
     replyTo: params.replyTo,
     subject: translate(locale, "email.supportSubject", { topic: params.topicLabel }),
     text: `${text}\n\nTicket: ${params.ticketId}`,
-  });
+    }, { idempotencyKey: params.idempotencyKey ?? `support/${params.ticketId}` }),
+    new Promise<never>((_, reject) => {
+      deadline = setTimeout(() => reject(new Error("Support delivery timed out")), 10_000);
+    }),
+  ]).finally(() => { if (deadline) clearTimeout(deadline); });
 
   if (error) {
     errorLog("Email", "Resend API error", mailMeta(params.inbox, { ticketId: params.ticketId, status: "error" }));

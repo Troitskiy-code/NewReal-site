@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-10-02T09:01:49.346Z",
+  "initializedCounter": false,
+  "sentGoals": false,
+  "results": [
+    {
+      "transport": "control",
+      "url": "https://example.com",
+      "status": 200
+    },
+    {
+      "transport": "control",
+      "url": "https://yandex.ru",
+      "status": 200
+    },
+    {
+      "transport": "node",
+      "url": "https://mc.yandex.com/metrika/tag.js",
+      "error": "ECONNRESET"
+    },
+    {
+      "transport": "node",
+      "url": "https://mc.yandex.ru/metrika/tag.js",
+      "error": "ECONNRESET"
+    },
+    {
+      "transport": "browser",
+      "url": "https://mc.yandex.com/metrika/tag.js",
+      "error": "page.goto: net::ERR_CONNECTION_CLOSED at https://mc.yandex.com/metrika/tag.js"
+    },
+    {
+      "transport": "browser",
+      "url": "https://mc.yandex.ru/metrika/tag.js",
+      "error": "page.goto: net::ERR_CONNECTION_CLOSED at https://mc.yandex.ru/metrika/tag.js"
+    }
+  ]
+}

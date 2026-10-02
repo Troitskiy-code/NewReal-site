@@ -241,7 +241,7 @@ export async function handleAnonymousChatPost(
     throw error;
   }
 
-  const limited = consumeRateLimit(`anon-post:${clientKeyFromRequest(req)}`, ANON_POST_LIMIT, ANON_POST_WINDOW_MS);
+  const limited = await consumeRateLimit(`anon-post:${clientKeyFromRequest(req)}`, ANON_POST_LIMIT, ANON_POST_WINDOW_MS);
   if (!limited.ok) {
     return withCookie(NextResponse.json({ error: "Слишком много запросов. Подождите немного." }, { status: 429 }), sessionId);
   }

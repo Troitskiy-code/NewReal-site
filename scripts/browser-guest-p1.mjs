@@ -19,6 +19,10 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
   Object.assign(env, { DATABASE_URL: databaseUrl, NEXTAUTH_SECRET: 'synthetic_guest_browser_secret',
     NEXTAUTH_URL: base, NEXT_PUBLIC_APP_URL: base, NEXT_PUBLIC_YANDEX_METRIKA_ID: '999001',
     GUEST_AI_STUB_REPLY: 'Guest browser reply', NODE_ENV: 'development', NEXT_TELEMETRY_DISABLED: '1' });
+  if (process.env.P1_CLOSURE === '1') Object.assign(env, {
+    CRON_SECRET: 'synthetic_cron_only', SUPPORT_INBOX_EMAIL: 'inbox@example.test',
+    ROBOKASSA_PASSWORD2: 'synthetic_result_password', TRUST_PROXY: '1',
+  });
   env.KODIKROUTER_API_KEY = 'synthetic_guest_stub_only';
   await db.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash('GuestTest123!', 10), emailVerified: new Date(), verseCoins: 500 } });
   await db.model.create({ data: { name: 'google/gemma-4-31b-it', displayName: 'Guest test', priceVC: 1, isActive: true } });
@@ -39,7 +43,8 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
     const context = await browser.newContext();
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
     const page = await context.newPage(); page.setDefaultTimeout(45000);
-    page.on('pageerror', error => console.error('Private browser page error:', error.message));
+    const pageErrors = [];
+    page.on('pageerror', error => { pageErrors.push(error.message); console.error('Private browser page error:', error.message); });
     page.on('requestfailed', request => console.error('Private browser request failed:', request.url(), request.failure()?.errorText));
     const chatUrl = `${base}/ru/chat/${character.id}`;
     await page.goto(chatUrl, { timeout: 120000 });
@@ -71,10 +76,15 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
     check((await context.cookies()).every(cookie => cookie.name !== 'anonymousSessionId'), 'browser transfer clears guest cookie');
     await page.reload(); await page.getByText('Delayed guest reply', { exact: true }).waitFor();
     check(await db.message.count({ where: { userId: user.id, content: 'Delayed guest reply' } }) === 1, 'browser account reload does not duplicate transfer');
+    if (process.env.P1_CLOSURE === '1') {
+      const { verifyP1Browser } = await import('./browser-closure-p1.mjs');
+      await verifyP1Browser({ db, context, page, base, user, check });
+    }
     const csrf = await (await context.request.get(`${base}/api/auth/csrf`)).json();
     await context.request.post(`${base}/api/auth/signout`, { form: { csrfToken: csrf.csrfToken, json: 'true' } });
     await page.goto(chatUrl); await page.locator('textarea').first().waitFor();
     check(await page.getByText('Delayed guest reply', { exact: true }).count() === 0, 'browser logout does not expose account history to guest');
+    check(pageErrors.length === 0, 'browser flows produce no uncaught application error');
   } catch (error) {
     console.error('Private browser server diagnostic:', log);
     throw error;

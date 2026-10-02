@@ -70,7 +70,7 @@ export default function SubscriptionPlans({
   showStatus?: boolean;
   showCurrencySelector?: boolean;
 }) {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const locale = useCurrentLocale();
@@ -100,10 +100,14 @@ export default function SubscriptionPlans({
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      fetchBalance();
-    }
-  }, [status, fetchBalance]);
+    if (status !== "authenticated") return;
+    let active = true;
+    void fetch("/api/user/balance")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (active) setBalance(data); })
+      .catch(() => { if (active) setBalance(null); });
+    return () => { active = false; };
+  }, [status, session?.user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,6 +222,13 @@ export default function SubscriptionPlans({
           </p>
         </div>
       ) : null}
+
+      <section className="w-full max-w-3xl self-center rounded-wd border border-wd-border p-4 text-sm text-wd-text-secondary">
+        <h2 className="mb-2 font-bold text-white">{t("pricing.coinRulesTitle")}</h2>
+        <p>{t("pricing.coinRulesSubscription")}</p>
+        <p className="mt-2">{t("pricing.coinRulesPermanent")}</p>
+        <p className="mt-2">{t("pricing.coinRulesActions")}</p>
+      </section>
 
       {status === "authenticated" && (showStatus || balance?.pendingSubscriptionType || balance?.recurringSetupRequired) ? (
         <div className="flex w-full max-w-3xl flex-col gap-3 self-center">

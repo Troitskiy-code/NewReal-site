@@ -221,6 +221,10 @@
     "markedRead": "All notifications marked as read"
   },
   "pricing": {
+    "coinRulesTitle": "How VC are spent",
+    "coinRulesSubscription": "Subscription VC do not accumulate: activating or renewing a plan replaces the previous pack balance. Unused subscription VC expire when the subscription ends.",
+    "coinRulesPermanent": "VC purchased separately do not expire. Subscription VC are spent first, followed by purchased VC.",
+    "coinRulesActions": "A new reply, retry and continuation are separate requests, each charged for the selected model. The cost is shown before sending. VC are charged after the model response is received.",
     "badge": "Subscriptions",
     "title": "NewVerse plans",
     "subtitle": "Monthly and yearly plans with bonus VerseCoins and a larger context window. Pick the level that fits your stories and chats.",

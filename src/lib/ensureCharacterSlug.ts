@@ -17,7 +17,7 @@ function isPlaceholderSlug(slug: string | null, id: string): boolean {
   return !slug || slug === `c-${id}`;
 }
 
-async function backfillMissingSlugs(): Promise<void> {
+export async function backfillMissingSlugs(): Promise<void> {
   const rows = await prisma.character.findMany({
     select: { id: true, name: true, slug: true },
   });
@@ -49,13 +49,8 @@ async function backfillMissingSlugs(): Promise<void> {
 }
 
 async function runEnsure(): Promise<void> {
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Character" ADD COLUMN IF NOT EXISTS "slug" TEXT`);
-  await backfillMissingSlugs();
-  await prisma.$executeRawUnsafe(
-    `CREATE UNIQUE INDEX IF NOT EXISTS "Character_slug_key" ON "Character"("slug")`
-  );
+  await prisma.$queryRaw`SELECT "slug" FROM "Character" LIMIT 0`;
   await ensureCharacterLocaleColumns();
-  console.log("[Character] Slug column is ready");
 }
 
 export function ensureCharacterSlugColumn(): Promise<void> {

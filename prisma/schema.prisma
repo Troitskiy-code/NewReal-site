@@ -473,6 +473,14 @@ model AnonymousChatRequest {
   @@index([status, leaseUntil])
 }
 
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
 model SupportTicket {
   id                String    @id @default(cuid())
   topic             String

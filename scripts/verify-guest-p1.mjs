@@ -3,7 +3,7 @@
 // Run: GUEST_TEST_RUNTIME=<temporary-directory> node scripts/verify-guest-p1.mjs
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, readdirSync, mkdirSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
@@ -30,27 +30,51 @@ function load(file, mocks = {}) {
   if (cache.has(file)) return cache.get(file);
   const loaded = { exports: {} }; cache.set(file, loaded.exports);
   const code = ts.transpileModule(readFileSync(file, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true }
   }).outputText;
   const dependency = (name) => {
     if (name === '@/lib/prisma') return { prisma: db };
     if (name in mocks) return mocks[name];
     if (name.startsWith('@/')) return load(join('src', name.slice(2) + '.ts'), mocks);
-    if (name.startsWith('.')) return load(join(dirname(file), name + '.ts'), mocks);
+    if (name.startsWith('.')) {
+      const target = resolve(dirname(file), name);
+      if (target === resolve('src/lib/prisma') || target === resolve('src/lib/prisma.js')) return { prisma: db };
+      if (target.endsWith('.json')) return require(target);
+      return load(existsSync(target + '.ts') ? target + '.ts' : target + '.js', mocks);
+    }
     return require(name);
   };
   new Function('require', 'module', 'exports', code)(dependency, loaded, loaded.exports);
   cache.set(file, loaded.exports); return loaded.exports;
 }
 let checks = 0;
+let browserDatabaseUrl = url;
 function check(value, label) { assert.ok(value, label); checks++; console.log(`PASS ${label}`); }
 try {
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_guest_p1_test');
   const schema = join(directory, 'schema.prisma');
   writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace('Unsupported("vector(1536)")', 'Bytes'));
-  const push = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'db', 'push',
-    '--skip-generate', '--schema', schema], { env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8', timeout: 90000 });
-  if (push.status !== 0) throw new Error(`Isolated schema setup failed: ${push.stderr}`);
+  if (process.env.P1_CLOSURE === '1') {
+    for (const name of readdirSync('prisma/migrations').filter(name => /^\d+_/.test(name))) {
+      const target = join(directory, 'migrations', name); mkdirSync(target, { recursive: true });
+      // pgvector/RAG is separately scoped P2. Keep all P1 SQL intact on native PG.
+      const sql = readFileSync(join('prisma/migrations', name, 'migration.sql'), 'utf8')
+        .replace('CREATE EXTENSION IF NOT EXISTS vector;', '-- pgvector omitted only in this disposable test')
+        .replace(/vector\(1536\)/g, 'BYTEA');
+      writeFileSync(join(target, 'migration.sql'), sql);
+    }
+    writeFileSync(join(directory, 'migrations/migration_lock.toml'), 'provider = "postgresql"\n');
+  }
+  const arguments_ = process.env.P1_CLOSURE === '1' ? ['migrate', 'deploy', '--schema', schema]
+    : ['db', 'push', '--skip-generate', '--schema', schema];
+  const push = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', ...arguments_],
+    { env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8', timeout: 90000 });
+  if (push.status !== 0) throw new Error(`Isolated schema setup failed: ${push.stdout}\n${push.stderr}`);
+  if (process.env.P1_CLOSURE === '1') {
+    const { verifyP1Closure } = await import('./verify-p1-closure.mjs');
+    const closure = await verifyP1Closure({ db, load, check, cache, databaseUrl: url, schemaPath: schema });
+    browserDatabaseUrl = closure.limitedDatabaseUrl;
+  }
   const store = load('src/lib/guestRequestStore.ts');
   const transfer = load('src/lib/anonymousTransfer.ts');
   const retry = load('src/lib/guestTransferRetry.ts');
@@ -148,9 +172,9 @@ try {
   await db.model.delete({ where: { id: model.id } });
   if (process.env.GUEST_TEST_BROWSER === '1') {
     const { verifyGuestBrowser } = await import('./browser-guest-p1.mjs');
-    await verifyGuestBrowser({ db, databaseUrl: url, store, character, user, check });
+    await verifyGuestBrowser({ db, databaseUrl: browserDatabaseUrl, store, character, user, check });
   }
-  console.log(`Guest P1: ${checks} checks passed on private PostgreSQL`);
+  console.log(`${process.env.P1_CLOSURE === '1' ? 'P1 closure' : 'Guest P1'}: ${checks} checks passed on private PostgreSQL`);
 } finally {
   await db.$disconnect();
   // Native pg_ctl shuts down this exact private cluster; never kills by shared port.

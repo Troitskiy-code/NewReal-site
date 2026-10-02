@@ -3,12 +3,7 @@ import { prisma } from "@/lib/prisma";
 let ensurePromise: Promise<void> | null = null;
 
 async function runEnsure(): Promise<void> {
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "acceptedTermsAt" TIMESTAMP(3)`
-  );
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "acceptedPrivacyAt" TIMESTAMP(3)`
-  );
+  await prisma.$queryRawUnsafe(`SELECT "acceptedTermsAt", "acceptedPrivacyAt" FROM "User" LIMIT 0`);
 }
 
 export function ensureUserConsentColumns(): Promise<void> {

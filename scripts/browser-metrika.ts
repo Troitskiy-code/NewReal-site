@@ -7,6 +7,7 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { createRequire } from "node:module";
+import { existsSync, readFileSync } from "node:fs";
 
 const require = createRequire(import.meta.url);
 
@@ -53,8 +54,12 @@ function assert(condition: boolean, label: string) {
 }
 
 function syntheticEnv(base: Record<string, string | undefined> = process.env) {
+  const isolated = { ...base };
+  for (const file of [".env", ".env.local", ".env.development", ".env.development.local"]) {
+    if (existsSync(file)) for (const match of readFileSync(file, "utf8").matchAll(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/gm)) isolated[match[1]] = "";
+  }
   return {
-    ...base,
+    ...isolated,
     PORT: String(PORT),
     NEXTAUTH_SECRET: "synthetic_metrika_browser_secret_not_prod",
     NEXTAUTH_URL: `http://127.0.0.1:${PORT}`,
@@ -105,11 +110,10 @@ async function maybeStartNext(): Promise<{ base: string; child?: ChildProcess }>
     }
     return { base: existing };
   }
-  const child = spawn("npx", ["next", "dev", "-p", String(PORT), "-H", "127.0.0.1"], {
+  const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--webpack", "-p", String(PORT), "-H", "127.0.0.1"], {
     cwd: process.cwd(),
     env: syntheticEnv(),
     stdio: "pipe",
-    shell: true,
     windowsHide: true,
   });
   child.stdout?.on("data", () => undefined);
@@ -206,7 +210,7 @@ async function main() {
   }
 
   const { base, child } = await maybeStartNext();
-  const browser = await pw.chromium.launch({ headless: true });
+  const browser = await pw.chromium.launch({ headless: true, channel: process.env.METRIKA_TEST_BROWSER_CHANNEL });
   const requests: string[] = [];
   try {
     const context = await browser.newContext({

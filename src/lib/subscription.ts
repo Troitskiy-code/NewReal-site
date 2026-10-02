@@ -26,50 +26,23 @@ export async function activatePendingSubscriptionIfNeeded(
   user: PendingActivationUser | null | undefined,
   now = new Date()
 ): Promise<boolean> {
-  if (!user?.id || !user.pendingSubscriptionType || !user.pendingSubscriptionEnd) {
-    return false;
-  }
-
-  const currentEnd = asDate(user.subscriptionEnd);
-  const pendingEnd = asDate(user.pendingSubscriptionEnd);
-  if (!pendingEnd) {
-    return false;
-  }
-
-  const currentExpired = !currentEnd || currentEnd.getTime() <= now.getTime();
-  if (!currentExpired) {
-    return false;
-  }
-
-  const plan = getSubscriptionPlan(user.pendingSubscriptionType);
-  const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
-  const benefits = getSubscriptionActivationBenefits(plan, now);
-
-  const stored = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { robokassaRecurringId: true, verseCoins: true, permanentCoins: true },
-  });
-  const previousRecurringId = stored?.robokassaRecurringId ?? user.robokassaRecurringId ?? null;
-
-  console.log(
-    `[Subscription] Activating pending plan=${plan.id} user=${user.id} previousRecurringId=${previousRecurringId || "none"}`
-  );
-
-  const coinData = applySubscriptionCoinGrant(
-    {
-      id: user.id,
-      verseCoins: stored?.verseCoins,
-      permanentCoins: stored?.permanentCoins,
-    },
-    benefits.vcGrant,
-    isStart
-  );
-
-  const activated = await prisma.$transaction(async (tx) => {
+  if (!user?.id) return false;
+  const activation = await prisma.$transaction(async (tx) => {
+    // Same row lock as the payment webhook: balances are read after obtaining it.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
+    const stored = await tx.user.findUnique({ where: { id: user.id } });
+    if (!stored?.pendingSubscriptionType || !stored.pendingSubscriptionEnd) return null;
+    const currentEnd = asDate(stored.subscriptionEnd);
+    const pendingEnd = asDate(stored.pendingSubscriptionEnd);
+    if (!pendingEnd || (currentEnd && currentEnd.getTime() > now.getTime())) return null;
+    const plan = getSubscriptionPlan(stored.pendingSubscriptionType);
+    const isStart = plan.id === DEFAULT_SUBSCRIPTION_TYPE || plan.monthlyPrice <= 0;
+    const benefits = getSubscriptionActivationBenefits(plan, now);
+    const coinData = applySubscriptionCoinGrant(stored, benefits.vcGrant, isStart);
     const updated = await tx.user.updateMany({
       where: {
         id: user.id,
-        pendingSubscriptionType: user.pendingSubscriptionType,
+        pendingSubscriptionType: stored.pendingSubscriptionType,
         OR: [{ subscriptionEnd: null }, { subscriptionEnd: { lte: now } }],
       },
       data: {
@@ -85,7 +58,7 @@ export async function activatePendingSubscriptionIfNeeded(
     });
 
     if (updated.count === 0) {
-      return false;
+      return null;
     }
 
     await tx.transaction.create({
@@ -109,18 +82,11 @@ export async function activatePendingSubscriptionIfNeeded(
       });
     }
 
-    return true;
+    return { previousRecurringId: stored.robokassaRecurringId, plan };
   });
 
-  if (!activated) {
-    console.log(`[Subscription] Pending activation skipped (already applied or race) user=${user.id}`);
-    return false;
-  }
-
-  console.log(
-    `[Subscription] Pending plan activated: user=${user.id}, plan=${plan.id}, robokassaRecurringId=null`
-  );
-
+  if (!activation) return false;
+  const { previousRecurringId } = activation;
   if (previousRecurringId) {
     const cancelled = await cancelRobokassaRecurring(previousRecurringId);
     console.log(
@@ -130,11 +96,7 @@ export async function activatePendingSubscriptionIfNeeded(
     console.log(`[Subscription] No previous RecurringID to cancel user=${user.id}`);
   }
 
-  // A new Robokassa parent payment requires checkout, so auto-renewal is not recreated here.
-  console.log(
-    `[Subscription] New recurring for «${plan.name}» was not created automatically; user must set up auto-renewal via /pricing`
-  );
-
+  // A new Robokassa parent payment still requires checkout by the user.
   return true;
 }
 

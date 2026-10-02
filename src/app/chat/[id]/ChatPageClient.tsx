@@ -1774,6 +1774,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               disabled={sending || actionLoading || clearingChat || historyLoading || transferState !== "idle"}
               canSend={canSend && !historyLoading && transferState === "idle"}
             />
+            {!isAnonymous ? <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-secondary-text">{t("pricing.coinRulesActions")}</p> : null}
           </div>
         </main>
       </div>

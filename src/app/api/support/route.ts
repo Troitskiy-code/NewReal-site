@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { clientKeyFromRequest } from "@/lib/rateLimit";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -8,13 +10,18 @@ import { createOrReplaySupportTicket, processSupportOutbox, SUPPORT_CLIENT_KEY_R
 import { GuestSchemaMissingError, assertGuestSchemaReady } from "@/lib/guestRequestStore";
 
 function clientIp(req: NextRequest): string {
-  if (process.env.TRUST_PROXY === "1") {
-    return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  }
-  return req.headers.get("x-real-ip")?.trim() || "unknown";
+  return clientKeyFromRequest(req);
 }
 
 export async function POST(req: NextRequest) {
+  try { return await submitSupport(req); }
+  catch (error) {
+    errorLog("Support", "submission failed", toSafeDiagnostic(error));
+    return NextResponse.json({ error: apiT(req, "api.internalError") }, { status: 503 });
+  }
+}
+
+async function submitSupport(req: NextRequest) {
   try {
     await assertGuestSchemaReady();
   } catch (error) {
@@ -57,17 +64,12 @@ export async function POST(req: NextRequest) {
   });
   if (!existing) {
     const { consumeRateLimit } = await import("@/lib/rateLimit");
-    const limited = consumeRateLimit(`support:${clientIp(req)}`, 5, 60 * 60 * 1000);
+    const limited = await consumeRateLimit(`support:${clientIp(req)}`, 5, 60 * 60 * 1000);
     if (!limited.ok) {
       return NextResponse.json({ error: apiT(req, "api.rateLimited") }, { status: 429 });
     }
-    const recent = await prisma.supportTicket.count({
-      where: {
-        email: parsed.email,
-        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
-      },
-    });
-    if (recent >= 5) {
+    const emailLimit = await consumeRateLimit(`support-email:${parsed.email.toLowerCase()}`, 5, 60 * 60 * 1000);
+    if (!emailLimit.ok) {
       return NextResponse.json({ error: apiT(req, "api.rateLimited") }, { status: 429 });
     }
   }
@@ -84,7 +86,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (!result.replayed) {
-    void processSupportOutbox(1).catch(() => undefined);
+    after(async () => { try { await processSupportOutbox(1); }
+      catch (error) { errorLog("Support", "outbox deferred to cron", toSafeDiagnostic(error)); } });
   }
 
   return NextResponse.json(

@@ -232,6 +232,7 @@ export const authOptions: AuthOptions = {
         session.user.id = user?.id ?? token?.sub ?? token?.id ?? "";
         session.user.email = session.user.email ?? token.email ?? undefined;
         session.user.name = session.user.name ?? token.name ?? undefined;
+        session.user.oauthLoginEventId = token.oauthLoginEventId;
         session.user.createdAt = token.createdAt ?? null;
         if (token.emailVerified === true) {
           session.user.emailVerified = new Date().toISOString();
@@ -251,6 +252,7 @@ export const authOptions: AuthOptions = {
           provider: account?.provider,
         });
         token.id = user.id;
+        token.oauthLoginEventId = account?.provider === "google" ? crypto.randomUUID() : undefined;
         token.email = user.email;
         token.name = user.name;
         token.createdAt =

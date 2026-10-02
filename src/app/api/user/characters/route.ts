@@ -6,6 +6,7 @@ import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 const profileCharacterSelectNoSlug = {
   id: true,
@@ -35,12 +36,7 @@ let userIdIndexPromise: Promise<void> | null = null;
 function ensureUserIdIndexes() {
   if (!userIdIndexPromise) {
     userIdIndexPromise = (async () => {
-      await prisma.$executeRawUnsafe(
-        `CREATE INDEX IF NOT EXISTS "Character_userId_idx" ON "Character"("userId")`
-      );
-      await prisma.$executeRawUnsafe(
-        `CREATE INDEX IF NOT EXISTS "Character_userId_createdAt_idx" ON "Character"("userId", "createdAt")`
-      );
+      await prisma.$queryRawUnsafe(`SELECT "userId", "createdAt" FROM "Character" LIMIT 0`);
     })().catch((error) => {
       userIdIndexPromise = null;
       throw error;
@@ -59,19 +55,19 @@ export async function GET(req: NextRequest) {
     try {
       await ensureCharacterSlugColumn();
     } catch (error) {
-      console.error("[profile] Could not ensure slug column", error);
+      errorLog("profile", "Could not validate slug column", toSafeDiagnostic(error));
     }
 
     try {
       await ensureCharacterModerationColumns();
     } catch (error) {
-      console.error("[profile] Could not ensure moderation columns", error);
+      errorLog("profile", "Could not validate moderation columns", toSafeDiagnostic(error));
     }
 
     try {
       await ensureUserIdIndexes();
     } catch (error) {
-      console.error("[profile] Could not ensure userId indexes", error);
+      errorLog("profile", "Could not validate userId columns", toSafeDiagnostic(error));
     }
 
     const { searchParams } = new URL(req.url);
@@ -142,7 +138,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[profile] Error fetching characters:", error);
+    errorLog("profile", "Error fetching characters", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка получения списка персонажей" }, { status: 500 });
   }
 }

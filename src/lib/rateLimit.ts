@@ -1,45 +1,32 @@
-type Bucket = { count: number; resetAt: number };
+import { createHash } from "node:crypto";
+import { prisma } from "@/lib/prisma";
 
-const buckets = new Map<string, Bucket>();
+export type RateLimitResult = { ok: true; remaining: number } | { ok: false; remaining: 0; retryAfterMs: number };
 
-function prune(now: number) {
-  if (buckets.size < 500) return;
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) buckets.delete(key);
-  }
-}
-
-export function consumeRateLimit(
-  key: string,
-  limit: number,
-  windowMs: number,
-  now = Date.now()
-): { ok: true; remaining: number } | { ok: false; remaining: 0; retryAfterMs: number } {
-  prune(now);
-  const existing = buckets.get(key);
-  if (!existing || existing.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, remaining: Math.max(0, limit - 1) };
-  }
-
-  if (existing.count >= limit) {
-    return { ok: false, remaining: 0, retryAfterMs: Math.max(0, existing.resetAt - now) };
-  }
-
-  existing.count += 1;
-  return { ok: true, remaining: Math.max(0, limit - existing.count) };
+// One atomic counter in PostgreSQL, shared by every application instance.
+export async function consumeRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+  if (!Number.isInteger(limit) || limit < 1 || !Number.isInteger(windowMs) || windowMs < 1) throw new Error("Invalid rate limit");
+  const hash = createHash("sha256").update(key).digest("hex");
+  const [row] = await prisma.$queryRaw<Array<{ count: number; retryAfterMs: number }>>`
+    INSERT INTO "RateLimitBucket" ("key", "count", "resetAt")
+    VALUES (${hash}, 1, clock_timestamp() + ${windowMs} * interval '1 millisecond')
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE WHEN "RateLimitBucket"."resetAt" <= clock_timestamp() THEN 1
+        ELSE LEAST("RateLimitBucket"."count" + 1, ${limit + 1}) END,
+      "resetAt" = CASE WHEN "RateLimitBucket"."resetAt" <= clock_timestamp()
+        THEN clock_timestamp() + ${windowMs} * interval '1 millisecond' ELSE "RateLimitBucket"."resetAt" END
+    RETURNING "count", GREATEST(0, EXTRACT(EPOCH FROM ("resetAt" - clock_timestamp())) * 1000)::float8 AS "retryAfterMs"
+  `;
+  if (row.count > limit) return { ok: false, remaining: 0, retryAfterMs: row.retryAfterMs };
+  return { ok: true, remaining: Math.max(0, limit - row.count) };
 }
 
 export function clientKeyFromRequest(req: { headers: { get(name: string): string | null } }): string {
   if (process.env.TRUST_PROXY === "1") {
     const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     if (forwarded) return forwarded;
+    const realIp = req.headers.get("x-real-ip")?.trim();
+    if (realIp) return realIp;
   }
-  const realIp = req.headers.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
   return "unknown";
-}
-
-export function resetRateLimitForTests() {
-  buckets.clear();
 }

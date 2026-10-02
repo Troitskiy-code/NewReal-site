@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { trackOAuthLogin } from "@/lib/oauthLoginGoal";
 import {
   captureInvoiceFromUrl,
   extractInvoiceIdFromLocation,
@@ -14,6 +15,11 @@ import {
 export function usePaymentGoal() {
   const { data, status } = useSession();
   const userId = data?.user?.id ?? null;
+  const oauthLoginEventId = data?.user?.oauthLoginEventId;
+  useEffect(() => {
+    if (status !== "authenticated" || !oauthLoginEventId) return;
+    return trackOAuthLogin(oauthLoginEventId);
+  }, [status, oauthLoginEventId]);
 
   useEffect(() => {
     if (status === "loading") return;

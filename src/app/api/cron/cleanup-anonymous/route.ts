@@ -24,6 +24,7 @@ async function handle(req: NextRequest) {
   try {
     await ensureAnonymousChatTables();
     const cutoff = new Date();
+    const rateBuckets = await prisma.$executeRaw`DELETE FROM "RateLimitBucket" WHERE "resetAt" < ${cutoff}`;
     const expiredSessions = await prisma.anonymousSession.findMany({
       where: { OR: [{ expiresAt: { lt: cutoff } }, { expiresAt: null, createdAt: { lt: new Date(cutoff.getTime() - 7 * 24 * 60 * 60 * 1000) } }] },
       select: { sessionId: true },
@@ -45,6 +46,7 @@ async function handle(req: NextRequest) {
       sessions: sessions.count,
       messages: messages.count,
       requests: requests.count,
+      rateBuckets,
     });
   } catch (error) {
     errorLog("Cron:CleanupAnonymous", "cleanup failed", toSafeDiagnostic(error));

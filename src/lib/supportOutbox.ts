@@ -5,6 +5,8 @@ import type { Locale } from "@/lib/i18nConfig";
 import { errorLog, infoLog } from "@/lib/logger";
 
 export const SUPPORT_CLIENT_KEY_RE = /^[a-zA-Z0-9_-]{8,128}$/;
+export const SUPPORT_MAX_DELIVERY_ATTEMPTS = 6;
+export const SUPPORT_DELIVERY_WINDOW_MS = 23 * 60 * 60 * 1000;
 
 export function supportPayloadHash(topic: string, email: string, message: string): string {
   return createHash("sha256").update(`${topic}\n${email}\n${message}`).digest("hex");
@@ -45,18 +47,26 @@ export async function createOrReplaySupportTicket(params: {
       },
     });
     return { ticketId: created.id, replayed: false };
-  } catch {
+  } catch (error) {
     const raced = await prisma.supportTicket.findUnique({
       where: { clientKey: params.clientKey },
     });
     if (raced && raced.payloadHash === payloadHash) {
       return { ticketId: raced.id, replayed: true };
     }
-    return { conflict: true };
+    if (raced) return { conflict: true };
+    throw error;
   }
 }
 
 export async function claimSupportDeliveries(limit = 10, now = new Date()) {
+  // Provider idempotency expires after 24h. Stop automatic retries before that window.
+  await prisma.supportTicket.updateMany({
+    where: { deliveryStatus: { in: ["pending", "failed"] },
+      OR: [{ deliveryAttempts: { gte: SUPPORT_MAX_DELIVERY_ATTEMPTS } },
+        { createdAt: { lt: new Date(now.getTime() - SUPPORT_DELIVERY_WINDOW_MS) } }] },
+    data: { deliveryStatus: "dead", lastError: "retry_budget_exhausted", nextAttemptAt: null, claimedAt: null, claimToken: null },
+  });
   await prisma.supportTicket.updateMany({
     where: {
       deliveryStatus: "sending",
@@ -74,6 +84,8 @@ export async function claimSupportDeliveries(limit = 10, now = new Date()) {
   const due = await prisma.supportTicket.findMany({
     where: {
       deliveryStatus: { in: ["pending", "failed"] },
+      deliveryAttempts: { lt: SUPPORT_MAX_DELIVERY_ATTEMPTS },
+      createdAt: { gte: new Date(now.getTime() - SUPPORT_DELIVERY_WINDOW_MS) },
       OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
     },
     orderBy: { createdAt: "asc" },
@@ -111,6 +123,7 @@ export async function deliverSupportTicket(
     message: string;
     claimToken: string | null;
     deliveryAttempts: number;
+    createdAt?: Date;
   },
   send?: (payload: {
     inbox: string;
@@ -119,9 +132,11 @@ export async function deliverSupportTicket(
     message: string;
     ticketId: string;
     locale: Locale;
+    idempotencyKey: string;
   }) => Promise<unknown>,
   locale: Locale = "ru"
-): Promise<"sent" | "retry"> {
+): Promise<"sent" | "retry" | "dead" | "superseded"> {
+  if (!ticket.claimToken) return "superseded";
   try {
     const inbox = getSupportInbox();
     const deliver =
@@ -133,40 +148,50 @@ export async function deliverSupportTicket(
       message: ticket.message,
       ticketId: ticket.id,
       locale,
+      idempotencyKey: `support/${ticket.id}`,
     });
-    await prisma.supportTicket.updateMany({
+    const saved = await prisma.supportTicket.updateMany({
       where: { id: ticket.id, claimToken: ticket.claimToken ?? undefined, deliveryStatus: "sending" },
       data: { deliveryStatus: "sent", lastError: null, claimedAt: null, claimToken: null },
     });
-    return "sent";
-  } catch (error) {
+    return saved.count === 1 ? "sent" : "superseded";
+  } catch {
+    const exhausted = ticket.deliveryAttempts >= SUPPORT_MAX_DELIVERY_ATTEMPTS
+      || (ticket.createdAt != null && Date.now() - ticket.createdAt.getTime() >= SUPPORT_DELIVERY_WINDOW_MS);
     const backoffMs = Math.min(30 * 60 * 1000, 15_000 * 2 ** Math.min(ticket.deliveryAttempts, 6));
-    await prisma.supportTicket.updateMany({
+    const saved = await prisma.supportTicket.updateMany({
       where: { id: ticket.id, claimToken: ticket.claimToken ?? undefined, deliveryStatus: "sending" },
       data: {
-        deliveryStatus: "failed",
+        deliveryStatus: exhausted ? "dead" : "failed",
         lastError: "delivery_failed",
-        nextAttemptAt: new Date(Date.now() + backoffMs),
+        nextAttemptAt: exhausted ? null : new Date(Date.now() + backoffMs),
         claimedAt: null,
         claimToken: null,
       },
     });
-    errorLog("Support", "delivery failed", { ticketId: ticket.id });
-    return "retry";
+    if (!saved.count) return "superseded";
+    errorLog("Support", exhausted ? "delivery needs operator review" : "delivery failed", { ticketId: ticket.id });
+    return exhausted ? "dead" : "retry";
   }
 }
 
-export async function processSupportOutbox(limit = 10): Promise<{ claimed: number; sent: number; retry: number }> {
+export async function processSupportOutbox(limit = 2) {
   const claimedRows = await claimSupportDeliveries(limit);
   let sent = 0;
   let retry = 0;
+  let dead = 0;
+  let superseded = 0;
   for (const row of claimedRows) {
     const result = await deliverSupportTicket(row);
     if (result === "sent") sent += 1;
-    else retry += 1;
+    else if (result === "retry") retry += 1;
+    else if (result === "dead") dead += 1;
+    else superseded += 1;
   }
   if (claimedRows.length) {
     infoLog("Support", "outbox processed", { claimed: claimedRows.length, sent, retry });
   }
-  return { claimed: claimedRows.length, sent, retry };
+  const needsReview = await prisma.supportTicket.findMany({ where: { deliveryStatus: { in: ["dead", "manual_review"] } }, select: { id: true }, take: 20 });
+  return { claimed: claimedRows.length, sent, retry, dead, superseded, requiresAttention: needsReview.length > 0,
+    reviewTicketIds: needsReview.map(row => row.id) };
 }

@@ -13,9 +13,9 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
   }
   try {
-    const result = await processSupportOutbox(20);
+    const result = await processSupportOutbox(2);
     infoLog("Cron:SupportOutbox", "processed", result);
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: !result.requiresAttention, ...result }, { status: result.requiresAttention ? 503 : 200 });
   } catch (error) {
     errorLog("Cron:SupportOutbox", "failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Delivery failed" }, { status: 500 });

@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import { str as crc32str } from "crc-32";
 import { debugLog, errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { withLocale, type Locale } from "@/lib/i18nConfig";
 
@@ -7,8 +6,7 @@ const SITE_URL = "https://newvers.ai";
 
 const MERCHANT_ID = process.env.ROBOKASSA_MERCHANT_ID ?? "";
 const PASSWORD = process.env.ROBOKASSA_PASSWORD ?? "";
-const PASSWORD2 = process.env.ROBOKASSA_PASSWORD2 ?? PASSWORD;
-const PASSWORD3 = process.env.ROBOKASSA_PASSWORD3 ?? "";
+const PASSWORD2 = process.env.ROBOKASSA_PASSWORD2 ?? "";
 export const ROBOKASSA_TEST_MODE = process.env.ROBOKASSA_TEST_MODE === "1";
 
 type ShpParams = Record<string, string>;
@@ -25,57 +23,8 @@ function buildShpSuffix(params: ShpParams): string {
   return `:${entries.map(([key, value]) => `${key}=${value}`).join(":")}`;
 }
 
-function buildShpSuffixUnsorted(params: ShpParams): string {
-  const entries = Object.entries(params).filter(
-    ([, value]) => value !== undefined && value !== null && value !== ""
-  );
-
-  if (entries.length === 0) {
-    return "";
-  }
-
-  return `:${entries.map(([key, value]) => `${key}=${value}`).join(":")}`;
-}
-
 function md5(value: string): string {
   return crypto.createHash("md5").update(value).digest("hex");
-}
-
-function crc32Hex(value: string): string {
-  return (crc32str(value) >>> 0).toString(16).padStart(8, "0");
-}
-
-function crc32Dec(value: string): string {
-  return String(crc32str(value) >>> 0);
-}
-
-function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
-}
-
-function outSumFormats(outSum: string): string[] {
-  const normalized = outSum.replace(",", ".");
-  const amount = Number(normalized);
-  const formats = [outSum, normalized, "10", "10.0", "10.00", "10.000000"];
-
-  if (Number.isFinite(amount)) {
-    formats.push(String(amount), amount.toFixed(0), amount.toFixed(1), amount.toFixed(2), amount.toFixed(6));
-  }
-
-  return uniqueStrings(formats);
-}
-
-function passwordCandidates() {
-  const passwords = [
-    { name: "Password1", value: PASSWORD },
-    { name: "Password2", value: PASSWORD2 },
-  ];
-
-  if (PASSWORD3) {
-    passwords.push({ name: "Password3", value: PASSWORD3 });
-  }
-
-  return passwords.filter((item) => item.value);
 }
 
 export function parseVcFromDesc(desc: string, sum: number): number {
@@ -411,35 +360,14 @@ export function verifyRobokassaResultSignature(
   signature: string,
   shp: ShpParams
 ): boolean {
-  const incoming = signature.trim();
-  const incomingLower = incoming.toLowerCase();
-  const passwords = passwordCandidates();
-
-  if (!passwords.length) {
-    errorLog("Robokassa", "Webhook error: passwords are not configured");
+  const incoming = signature.trim().toLowerCase();
+  if (!PASSWORD2) {
+    errorLog("Robokassa", "Webhook error: Password2 is not configured");
     return false;
   }
-
-  const shpSuffixes = [...new Set(["", buildShpSuffix(shp), buildShpSuffixUnsorted(shp)])];
-  const hashFns = [md5, crc32Hex, crc32Dec];
-
-  const matches = (value: string) =>
-    hashFns.some((hash) => {
-      const calculated = hash(value);
-      return incoming === calculated || incomingLower === calculated.toLowerCase();
-    });
-
-  for (const sum of outSumFormats(outSum)) {
-    for (const password of passwords) {
-      for (const suffix of shpSuffixes) {
-        if (matches(`${sum}:${invId}:${password.value}${suffix}`)) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
+  if (!/^[a-f0-9]{32}$/.test(incoming)) return false;
+  const expected = md5(`${outSum}:${invId}:${PASSWORD2}${buildShpSuffix(shp)}`);
+  return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(incoming, "hex"));
 }
 
 export function extractShpParams(

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import Footer from "@/components/Footer";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { SUPPORT_DRAFT_KEY, SUPPORT_KEY_RE, newSupportClientKey, supportSubmissionPayload, supportSubmissionKey } from "@/lib/supportDraft";
 
 const TOPIC_KEYS = ["payment", "technical", "refund", "moderation", "other"];
 
@@ -23,46 +24,59 @@ export default function SupportPage() {
   const [success, setSuccess] = useState("");
   const [ticketId, setTicketId] = useState("");
   const [error, setError] = useState("");
-  const [clientKey, setClientKey] = useState(() => {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      return crypto.randomUUID().replace(/-/g, "");
-    }
-    return `sup${Date.now().toString(16)}`;
-  });
+  const [clientKey, setClientKey] = useState(newSupportClientKey);
+  const [draftReady, setDraftReady] = useState(false);
+  const submittedPayload = useRef(null);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("nv-support-draft");
+    let active = true;
+    Promise.resolve().then(() => { if (!active) return; try {
+      const raw = sessionStorage.getItem(SUPPORT_DRAFT_KEY);
       if (!raw) return;
       const draft = JSON.parse(raw);
       if (typeof draft.email === "string") setEmail(draft.email);
       if (typeof draft.message === "string") setMessage(draft.message);
       if (isTopicKey(draft.topic)) setTopic(draft.topic);
+      if (SUPPORT_KEY_RE.test(draft.clientKey ?? "")) setClientKey(draft.clientKey);
+      if (typeof draft.submittedPayload === "string") submittedPayload.current = draft.submittedPayload;
     } catch {
       /* ignore */
-    }
+    } finally { setDraftReady(true); } });
+    return () => { active = false; };
   }, []);
 
   const persistDraft = (next) => {
     try {
-      sessionStorage.setItem("nv-support-draft", JSON.stringify(next));
+      sessionStorage.setItem(SUPPORT_DRAFT_KEY, JSON.stringify(next));
     } catch {
       /* ignore */
     }
   };
+
+  useEffect(() => {
+    if (!draftReady) return;
+    const timer = setTimeout(() => {
+      try { sessionStorage.setItem(SUPPORT_DRAFT_KEY, JSON.stringify({ topic, email, message, clientKey, submittedPayload: submittedPayload.current })); } catch { /* storage unavailable */ }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [draftReady, topic, email, message, clientKey]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
     setSuccess("");
     setSending(true);
-    persistDraft({ topic, email, message });
+    const payload = supportSubmissionPayload(topic, email, message);
+    const submissionKey = supportSubmissionKey(clientKey, submittedPayload.current, payload);
+    submittedPayload.current = payload;
+    setClientKey(submissionKey);
+    persistDraft({ topic, email, message, clientKey: submissionKey, submittedPayload: payload });
 
     try {
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-locale": i18n.language },
-        body: JSON.stringify({ topic, email, message, clientKey }),
+        body: JSON.stringify({ topic, email, message, clientKey: submissionKey }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -73,8 +87,10 @@ export default function SupportPage() {
       setSuccess(t("support.success"));
       setTicketId(data.ticketId || "");
       setMessage("");
-      setClientKey(crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : `sup${Date.now().toString(16)}`);
-      persistDraft({ topic, email, message: "" });
+      const nextKey = newSupportClientKey();
+      setClientKey(nextKey);
+      submittedPayload.current = null;
+      persistDraft({ topic, email, message: "", clientKey: nextKey, submittedPayload: null });
     } catch {
       setError(t("support.error"));
     } finally {
@@ -144,7 +160,7 @@ export default function SupportPage() {
 
             <button
               type="submit"
-              disabled={sending}
+              disabled={sending || !draftReady}
               className="wd-button w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50"
             >
               {sending ? t("support.sending") : t("support.submit")}
