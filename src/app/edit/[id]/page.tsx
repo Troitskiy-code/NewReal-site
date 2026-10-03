@@ -164,7 +164,6 @@ export default function EditCharacterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    reachGoal(METRIKA_GOALS.saveCharacter);
 
     if (!form.name.trim()) {
       setFieldErrors((current) => ({ ...current, name: "Введите имя персонажа" }));
@@ -199,6 +198,7 @@ export default function EditCharacterPage() {
       });
 
       showSuccess("Персонаж обновлён!");
+      reachGoal(METRIKA_GOALS.saveCharacter);
       router.push("/profile");
     } catch (err: unknown) {
       const message =

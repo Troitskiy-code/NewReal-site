@@ -354,7 +354,6 @@ export default function CharacterForm({
   };
 
   const handleGenerateAvatar = async () => {
-    reachGoal(METRIKA_GOALS.generateAvatar);
     if (!values.name.trim()) {
       setLocalErrors((current) => ({ ...current, name: "Сначала укажите имя персонажа" }));
       return;
@@ -389,6 +388,7 @@ export default function CharacterForm({
         throw new Error("Сервер не вернул изображение");
       }
 
+      reachGoal(METRIKA_GOALS.generateAvatar);
       onAvatarGenerated(data.imageUrl);
       setTokenStatus((prev) => data.tokenStatus ?? (
         prev

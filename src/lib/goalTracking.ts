@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { trackOAuthLogin } from "@/lib/oauthLoginGoal";
+import { startAcquisitionGoals, trackSuccessfulRegistration } from "@/lib/acquisitionGoals";
 import {
   captureInvoiceFromUrl,
   extractInvoiceIdFromLocation,
@@ -16,6 +17,14 @@ export function usePaymentGoal() {
   const { data, status } = useSession();
   const userId = data?.user?.id ?? null;
   const oauthLoginEventId = data?.user?.oauthLoginEventId;
+  const oauthRegistrationUserId = data?.user?.oauthRegistrationUserId;
+  useEffect(() => {
+    if (status === "loading") return;
+    return startAcquisitionGoals(status === "authenticated" ? userId : "guest");
+  }, [status, userId]);
+  useEffect(() => {
+    if (status === "authenticated" && oauthRegistrationUserId === userId) trackSuccessfulRegistration(oauthRegistrationUserId);
+  }, [status, userId, oauthRegistrationUserId]);
   useEffect(() => {
     if (status !== "authenticated" || !oauthLoginEventId) return;
     return trackOAuthLogin(oauthLoginEventId);

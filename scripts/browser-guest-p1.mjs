@@ -41,6 +41,10 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
     }
     assert.ok(ready, 'Private Next server started');
     browser = await chromium.launch({ headless: true, channel: process.env.GUEST_TEST_BROWSER_CHANNEL });
+    if (process.env.P1_CLOSURE === '1') {
+      const { verifyAcquisitionBrowser } = await import('./browser-acquisition-goals.mjs');
+      await verifyAcquisitionBrowser({ browser, base, character, check });
+    }
     const context = await browser.newContext();
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
     const guestPurchase = await context.request.post(`${base}/api/coins/purchase`, { data: { packageId: 6, paid: true } });

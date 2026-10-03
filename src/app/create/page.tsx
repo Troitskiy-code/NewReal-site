@@ -86,7 +86,6 @@ export default function CreateCharacterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    reachGoal(METRIKA_GOALS.createCharacter);
 
     if (!form.name.trim()) {
       setFieldErrors((current) => ({ ...current, name: "Введите имя персонажа" }));
@@ -121,6 +120,7 @@ export default function CreateCharacterPage() {
       });
 
       showSuccess("Персонаж создан!");
+      reachGoal(METRIKA_GOALS.createCharacter);
       if (data.promptError) {
         showError(data.promptError);
       }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trans, useTranslation } from "react-i18next";
-import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { trackSuccessfulRegistration } from "@/lib/acquisitionGoals";
 import {
   AUTH_BUTTON_CLASS,
   AUTH_INPUT_CLASS,
@@ -64,7 +64,6 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
   };
 
   const handleGoogleRegister = () => {
-    reachGoal(METRIKA_GOALS.register);
     setError("");
     if (!ensureConsent()) {
       return;
@@ -75,7 +74,6 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    reachGoal(METRIKA_GOALS.register);
     setError("");
     setSuccess("");
 
@@ -108,6 +106,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
       if (!res.ok) {
         setError(data.error || t("auth.registerError"));
       } else {
+        if (res.status === 201) trackSuccessfulRegistration(data.userId);
         setSuccess(t("auth.registerSuccess"));
         setTimeout(() => router.push(withLocale(loginHref, locale)), 2000);
       }

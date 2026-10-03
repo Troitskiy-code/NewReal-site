@@ -21,6 +21,8 @@ export const METRIKA_GOALS = {
   saveCharacter: "save_character",
   sendMessage: "send_message",
   register: "register",
+  registerSuccess: "register_success",
+  chatEngaged: "chat_engaged",
   login: "login",
   loginAttempt: "login_attempt",
   characterPageView: "character_page_view",

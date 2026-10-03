@@ -284,7 +284,7 @@ export async function fetchChatNdjsonStream(url: string, body: unknown): Promise
   const contentType = response.headers.get("content-type") ?? "";
   const isStream = contentType.includes("ndjson") || contentType.includes("event-stream");
 
-  if (!isStream) {
+  if (!response.ok || !isStream) {
     const payload = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
     throw new ChatStreamRequestError(
       payload.error || "Не удалось отправить сообщение",

@@ -185,6 +185,11 @@ export async function verifyP1Closure({ db, load, check, cache, databaseUrl, sch
   const auth = load('src/lib/auth.ts', { 'next/headers': { cookies: async () => ({ get: () => undefined }) } });
   const loginToken = await auth.authOptions.callbacks.jwt({ token: {}, user: legacyUser, account: { provider: 'google' } });
   check(typeof loginToken.oauthLoginEventId === 'string', 'real JWT callback stamps successful Google login event');
+  check(loginToken.oauthRegistrationUserId === undefined, 'existing Google account is not a new registration');
+  const signupToken = await auth.authOptions.callbacks.jwt({ token: {}, user: other, account: { provider: 'google' }, isNewUser: true });
+  check(signupToken.oauthRegistrationUserId === other.id && typeof signupToken.oauthRegistrationAt === 'number', 'real new Google JWT stamps server-confirmed signup');
+  const expiredSignup = await auth.authOptions.callbacks.jwt({ token: { ...signupToken, oauthRegistrationAt: Date.now() - 31 * 60 * 1000 } });
+  check(expiredSignup.oauthRegistrationUserId === undefined, 'old Google signup marker expires instead of repeating in future visits');
   const resumedToken = await auth.authOptions.callbacks.jwt({ token: loginToken });
   check(resumedToken.oauthLoginEventId === loginToken.oauthLoginEventId, 'JWT session refresh retains OAuth event without creating another');
   const credentialsToken = await auth.authOptions.callbacks.jwt({ token: { ...loginToken }, user: other, account: { provider: 'credentials' } });

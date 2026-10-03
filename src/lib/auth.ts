@@ -233,6 +233,7 @@ export const authOptions: AuthOptions = {
         session.user.email = session.user.email ?? token.email ?? undefined;
         session.user.name = session.user.name ?? token.name ?? undefined;
         session.user.oauthLoginEventId = token.oauthLoginEventId;
+        session.user.oauthRegistrationUserId = token.oauthRegistrationUserId;
         session.user.createdAt = token.createdAt ?? null;
         if (token.emailVerified === true) {
           session.user.emailVerified = new Date().toISOString();
@@ -244,7 +245,7 @@ export const authOptions: AuthOptions = {
       }
       return session;
     },
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user, account, trigger, isNewUser }) {
       if (user) {
         infoLog("Auth", "JWT created for user", {
           id: user.id,
@@ -253,6 +254,8 @@ export const authOptions: AuthOptions = {
         });
         token.id = user.id;
         token.oauthLoginEventId = account?.provider === "google" ? crypto.randomUUID() : undefined;
+        token.oauthRegistrationUserId = account?.provider === "google" && isNewUser === true ? user.id : undefined;
+        token.oauthRegistrationAt = token.oauthRegistrationUserId ? Date.now() : undefined;
         token.email = user.email;
         token.name = user.name;
         token.createdAt =
@@ -275,6 +278,10 @@ export const authOptions: AuthOptions = {
       }
 
       const userId = String(token.id || token.sub || "");
+      if (token.oauthRegistrationUserId && (!token.oauthRegistrationAt || Date.now() - token.oauthRegistrationAt >= 30 * 60 * 1000)) {
+        token.oauthRegistrationUserId = undefined;
+        token.oauthRegistrationAt = undefined;
+      }
       if (userId && trigger === "update") {
         try {
           await refreshEmailVerifiedToken(token, userId);

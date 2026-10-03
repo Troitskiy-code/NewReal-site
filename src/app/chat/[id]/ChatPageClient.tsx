@@ -22,6 +22,7 @@ import {
   type ChatStreamMessage,
 } from "@/lib/chatStream";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { trackSuccessfulChatTurn } from "@/lib/acquisitionGoals";
 import { useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
 import { captureCharacterReturn } from "@/lib/characterReturn";
@@ -840,6 +841,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     message: string;
     history?: Array<{ role: "user" | "assistant"; content: string }>;
     requestId?: string;
+    userMessageId?: string;
   } | null>(null);
   const authReturnPath = `/chat/${characterId}`;
   const authQuery = `callbackUrl=${encodeURIComponent(authReturnPath)}`;
@@ -1355,8 +1357,6 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     e.preventDefault();
     if (!input.trim() || sending) return;
 
-    reachGoal(METRIKA_GOALS.sendMessage);
-
     if (isAnonymous) {
       if ((anonymousRemaining ?? 0) <= 0) {
         setShowAnonymousLimitModal(true);
@@ -1404,6 +1404,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           onMeta: (event) => {
             if (event.userMessage) {
               persistedUser = asChatMessage(event.userMessage);
+              if (lastSendRef.current?.requestId === requestId) lastSendRef.current.userMessageId = event.userMessage.id;
             }
             setMessages((prev) =>
               prev.map((msg) => {
@@ -1458,6 +1459,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       if (!endEvent) {
         setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
         showError("Поток ответа прервался");
+      } else {
+        trackSuccessfulChatTurn(endEvent, { actor: isAnonymous ? "guest" : session?.user?.id ?? "", characterId });
       }
     } catch (error) {
       const unavailable = isKodikUnavailableError(error);
@@ -1553,6 +1556,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
         setKodikUnavailable(true);
         showError("Поток ответа прервался");
+      } else {
+        trackSuccessfulChatTurn(endEvent, { actor: isAnonymous ? "guest" : session?.user?.id ?? "", characterId, userMessageId: lastSend?.userMessageId });
       }
     } catch (error) {
       setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));

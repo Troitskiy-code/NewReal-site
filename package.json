@@ -20,6 +20,7 @@
     "diagnose:metrika": "node scripts/diagnose-metrika-network.mjs",
     "verify:p0-security": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-p0-security.ts",
     "verify:metrika": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-metrika.ts",
+    "verify:acquisition": "node scripts/verify-acquisition-goals.mjs",
     "verify:metrika:browser": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/browser-metrika.ts",
     "verify:metrika:db": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-metrika-db.ts",
     "economy:acquisition": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/economy-acquisition.ts",
