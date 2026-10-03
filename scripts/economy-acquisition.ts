@@ -15,7 +15,7 @@ type Scenario = "low" | "medium" | "high" | "stress";
 
 const AS_OF = "2026-10-02";
 const avatarAllowance = (price: number) => Math.floor(price * 0.1 / 5);
-const observed = process.env.ECONOMY_COST_REPORT ? JSON.parse(readFileSync(process.env.ECONOMY_COST_REPORT, "utf8")) : null;
+const observed = process.env['ECONOMY_COST_REPORT'] ? JSON.parse(readFileSync(process.env['ECONOMY_COST_REPORT'], "utf8")) : null;
 if (observed && (!Array.isArray(observed.models) || !observed.models.length)) throw new Error("Cost report contains no models");
 
 const params = {
@@ -317,11 +317,11 @@ function assert(condition: boolean, label: string) {
   if (!condition) throw new Error(`formula check failed: ${label}`);
 }
 
-const previousRag = process.env.ENABLE_RAG_EMBEDDINGS;
-process.env.ENABLE_RAG_EMBEDDINGS = "false";
+const previousRag = process.env['ENABLE_RAG_EMBEDDINGS'];
+process.env['ENABLE_RAG_EMBEDDINGS'] = "false";
 assert(shouldPersistEmbeddings("universe", true) === true, "RAG OR-flag for paid plans");
 assert(shouldPersistEmbeddings("dialog", true) === true, "dialog RAG independent of global flag");
-if (previousRag === undefined) delete process.env.ENABLE_RAG_EMBEDDINGS; else process.env.ENABLE_RAG_EMBEDDINGS = previousRag;
+if (previousRag === undefined) delete process.env['ENABLE_RAG_EMBEDDINGS']; else process.env['ENABLE_RAG_EMBEDDINGS'] = previousRag;
 
 const rows = variants.flatMap((variant) => SCENARIOS.map((scenario) => evaluate(variant, scenario)));
 for (const row of rows) {

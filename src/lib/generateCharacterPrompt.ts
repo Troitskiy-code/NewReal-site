@@ -21,7 +21,7 @@ function memoryOrFallback(value: unknown, emptyLabel: string): string {
 }
 
 function promptModels(): string[] {
-  const preferred = process.env.CHARACTER_PROMPT_MODEL?.trim() || DEFAULT_PROMPT_MODEL;
+  const preferred = process.env['CHARACTER_PROMPT_MODEL']?.trim() || DEFAULT_PROMPT_MODEL;
   return [...new Set([DEFAULT_PROMPT_MODEL, preferred, ...FALLBACK_PROMPT_MODELS])];
 }
 

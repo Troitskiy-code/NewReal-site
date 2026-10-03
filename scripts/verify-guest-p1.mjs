@@ -12,7 +12,7 @@ import ts from 'typescript';
 import { PrismaClient } from '@prisma/client';
 
 const require = createRequire(import.meta.url);
-const runtime = process.env.GUEST_TEST_RUNTIME;
+const runtime = process.env['GUEST_TEST_RUNTIME'];
 if (!runtime) throw new Error('GUEST_TEST_RUNTIME must name an isolated embedded-postgres installation');
 const EmbeddedPostgres = require(join(resolve(runtime), 'node_modules/embedded-postgres/dist/index.js')).default;
 const port = await new Promise((resolvePort, reject) => {
@@ -54,7 +54,7 @@ try {
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_guest_p1_test');
   const schema = join(directory, 'schema.prisma');
   writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace('Unsupported("vector(1536)")', 'Bytes'));
-  if (process.env.P1_CLOSURE === '1') {
+  if (process.env['P1_CLOSURE'] === '1') {
     for (const name of readdirSync('prisma/migrations').filter(name => /^\d+_/.test(name))) {
       const target = join(directory, 'migrations', name); mkdirSync(target, { recursive: true });
       // pgvector/RAG is separately scoped P2. Keep all P1 SQL intact on native PG.
@@ -65,12 +65,12 @@ try {
     }
     writeFileSync(join(directory, 'migrations/migration_lock.toml'), 'provider = "postgresql"\n');
   }
-  const arguments_ = process.env.P1_CLOSURE === '1' ? ['migrate', 'deploy', '--schema', schema]
+  const arguments_ = process.env['P1_CLOSURE'] === '1' ? ['migrate', 'deploy', '--schema', schema]
     : ['db', 'push', '--skip-generate', '--schema', schema];
   const push = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', ...arguments_],
     { env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8', timeout: 90000 });
   if (push.status !== 0) throw new Error(`Isolated schema setup failed: ${push.stdout}\n${push.stderr}`);
-  if (process.env.P1_CLOSURE === '1') {
+  if (process.env['P1_CLOSURE'] === '1') {
     const { verifyP1Closure } = await import('./verify-p1-closure.mjs');
     const closure = await verifyP1Closure({ db, load, check, cache, databaseUrl: url, schemaPath: schema });
     browserDatabaseUrl = closure.limitedDatabaseUrl;
@@ -170,11 +170,11 @@ try {
   finally { db.anonymousMessage.findMany = originalHistory; }
   check(response.status === 500 && await quota('guest-handler-history') === 0, 'real handler history failure refunds quota');
   await db.model.delete({ where: { id: model.id } });
-  if (process.env.GUEST_TEST_BROWSER === '1') {
+  if (process.env['GUEST_TEST_BROWSER'] === '1') {
     const { verifyGuestBrowser } = await import('./browser-guest-p1.mjs');
     await verifyGuestBrowser({ db, databaseUrl: browserDatabaseUrl, store, character, user, check });
   }
-  console.log(`${process.env.P1_CLOSURE === '1' ? 'P1 closure' : 'Guest P1'}: ${checks} checks passed on private PostgreSQL`);
+  console.log(`${process.env['P1_CLOSURE'] === '1' ? 'P1 closure' : 'Guest P1'}: ${checks} checks passed on private PostgreSQL`);
 } finally {
   await db.$disconnect();
   // Native pg_ctl shuts down this exact private cluster; never kills by shared port.

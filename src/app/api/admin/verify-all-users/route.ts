@@ -5,7 +5,7 @@ import { errorLog, infoLog } from "@/lib/logger";
 const LOG = "Admin:VerifyAll";
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }
@@ -16,7 +16,7 @@ function isAuthorized(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   console.log("[Admin:VerifyAll] Start");
-  console.log("[Admin:VerifyAll] ADMIN_SECRET set:", Boolean(process.env.ADMIN_SECRET));
+  console.log("[Admin:VerifyAll] ADMIN_SECRET set:", Boolean(process.env['ADMIN_SECRET']));
 
   try {
     if (!isAuthorized(req)) {

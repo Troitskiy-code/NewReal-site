@@ -3,9 +3,9 @@ import { Client } from 'pg';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const url = process.env.COST_REPORT_DATABASE_URL;
+const url = process.env['COST_REPORT_DATABASE_URL'];
 if (!url) throw new Error('Set COST_REPORT_DATABASE_URL explicitly for the intended database');
-const days = Number(process.env.COST_REPORT_DAYS ?? 14);
+const days = Number(process.env['COST_REPORT_DAYS'] ?? 14);
 if (!Number.isSafeInteger(days) || days < 1 || days > 366) throw new Error('COST_REPORT_DAYS must be 1..366');
 const to = new Date(), from = new Date(to.getTime() - days * 86400000);
 const client = new Client({ connectionString: url });
@@ -59,8 +59,8 @@ try {
       'Legacy MuAPI submissions are recorded as unknown cost, not priced from user credits. Async provider invoices/completion require separate reconciliation.',
     ], models,
   };
-  if (process.env.COST_REPORT_OUTPUT) {
-    writeFileSync(resolve(process.env.COST_REPORT_OUTPUT), JSON.stringify(result, null, 2) + '\n');
+  if (process.env['COST_REPORT_OUTPUT']) {
+    writeFileSync(resolve(process.env['COST_REPORT_OUTPUT']), JSON.stringify(result, null, 2) + '\n');
     console.log(JSON.stringify({ written: true, coverage: result.coverage }));
   } else console.log(JSON.stringify(result, null, 2));
 } catch (error) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { translateText, type TranslateTargetLang } from "@/lib/translate";
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }

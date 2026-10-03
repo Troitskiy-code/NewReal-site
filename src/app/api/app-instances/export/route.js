@@ -319,11 +319,11 @@ export default function StandaloneWorkspace() {
       })
       .join(",\n");
 
-    const githubToken = process.env.GITHUB_TOKEN;
-    const vercelToken = process.env.VERCEL_TOKEN;
+    const githubToken = process.env['GITHUB_TOKEN'];
+    const vercelToken = process.env['VERCEL_TOKEN'];
 
     if (!githubToken) {
-      if (process.env.VERCEL === "1") {
+      if (process.env['VERCEL'] === "1") {
         return NextResponse.json(
           {
             error: "Cloud export is not configured. Please ensure GITHUB_TOKEN is set in your Vercel Project Environment Variables.",

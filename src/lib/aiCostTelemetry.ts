@@ -33,7 +33,7 @@ function requestId(value: unknown): string | null {
 function pricingOverride(model: string): { input: number | null; output: number | null } | null {
   // Explicit RUB/1M overrides for auxiliary models absent from the DB catalog.
   try {
-    const item = JSON.parse(process.env.AI_COST_RATES_RUB_JSON || "{}")[model];
+    const item = JSON.parse(process.env['AI_COST_RATES_RUB_JSON'] || "{}")[model];
     return item ? { input: finiteNonnegative(item.input), output: finiteNonnegative(item.output) } : null;
   } catch { return null; }
 }
@@ -64,8 +64,8 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
   const measured = usage.inputTokens !== null && usage.outputTokens !== null;
   const input = usage.inputTokens ?? estimatedInput ?? null;
   const output = usage.outputTokens ?? estimatedOutput ?? null;
-  const currency = process.env.KODIKROUTER_USAGE_COST_CURRENCY;
-  const fx = finiteNonnegative(Number(process.env.AI_COST_USD_RUB));
+  const currency = process.env['KODIKROUTER_USAGE_COST_CURRENCY'];
+  const fx = finiteNonnegative(Number(process.env['AI_COST_USD_RUB']));
   // A provider can return usage.cost=0 while still billing from its catalog.
   // Preserve native zero for reconciliation; do not treat it as proven free usage.
   const bill = usage.reportedCost !== null && usage.reportedCost > 0 ? usage.reportedCost : null;
@@ -176,7 +176,7 @@ export async function recordChatCostCharge(stream: ReadableStream<Uint8Array>, c
 
 export async function meteredTranslationFetch(url: string, init: RequestInit, characters: number): Promise<Response> {
   const ticket = await begin("translate-v2", "translation", "yandextranslate");
-  const rate = finiteNonnegative(Number(process.env.YANDEX_TRANSLATE_COST_RUB_PER_MILLION_CHARS));
+  const rate = finiteNonnegative(Number(process.env['YANDEX_TRANSLATE_COST_RUB_PER_MILLION_CHARS']));
   let status: number | undefined;
   try {
     const response = await fetch(url, init); status = response.status;

@@ -1,7 +1,7 @@
 const { spawnSync } = require("child_process");
 
 const mirrors = [
-  process.env.PRISMA_ENGINES_MIRROR,
+  process.env['PRISMA_ENGINES_MIRROR'],
   "https://registry.npmmirror.com/-/binary/prisma",
   "https://cdn.npmmirror.com/binaries/prisma",
   "https://binaries.prisma.sh",

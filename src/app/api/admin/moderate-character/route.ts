@@ -5,7 +5,7 @@ import { ensureNotificationTable } from "@/lib/ensureNotificationTable";
 import { errorLog, infoLog } from "@/lib/logger";
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) return false;
   const authHeader = req.headers.get("Authorization");
   return authHeader === `Bearer ${adminSecret}`;

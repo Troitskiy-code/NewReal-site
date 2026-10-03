@@ -22,7 +22,7 @@ export async function consumeRateLimit(key: string, limit: number, windowMs: num
 }
 
 export function clientKeyFromRequest(req: { headers: { get(name: string): string | null } }): string {
-  if (process.env.TRUST_PROXY === "1") {
+  if (process.env['TRUST_PROXY'] === "1") {
     const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     if (forwarded) return forwarded;
     const realIp = req.headers.get("x-real-ip")?.trim();

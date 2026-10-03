@@ -6,7 +6,7 @@ const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 const DEFAULT_DEDUP_THRESHOLD = 0.8;
 
 function parseDedupThreshold(): number {
-  const parsed = Number.parseFloat(process.env.MEMORY_DEDUP_THRESHOLD || "0.80");
+  const parsed = Number.parseFloat(process.env['MEMORY_DEDUP_THRESHOLD'] || "0.80");
   if (!Number.isFinite(parsed) || parsed <= 0 || parsed >= 1) {
     return DEFAULT_DEDUP_THRESHOLD;
   }
@@ -16,7 +16,7 @@ function parseDedupThreshold(): number {
 export const SEMANTIC_DEDUP_THRESHOLD = parseDedupThreshold();
 
 export function isMemoryDedupDebugEnabled(): boolean {
-  return process.env.DEBUG === "true";
+  return process.env['DEBUG'] === "true";
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {

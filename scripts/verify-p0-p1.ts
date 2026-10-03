@@ -174,14 +174,14 @@ console.log("P1 support parse");
 assert(parseSupportTicket({ topic: "payment", email: "a@b.com", message: "Need help with a charge" }).ok, "valid ticket");
 assert(!parseSupportTicket({ topic: "payment", email: "bad", message: "Need help with a charge" }).ok, "invalid email");
 
-const previousRag = process.env.ENABLE_RAG_EMBEDDINGS;
-process.env.ENABLE_RAG_EMBEDDINGS = "false";
+const previousRag = process.env['ENABLE_RAG_EMBEDDINGS'];
+process.env['ENABLE_RAG_EMBEDDINGS'] = "false";
 assert(shouldPersistEmbeddings("universe", true) === true, "paid eligible plan persists RAG even when global flag is off");
 assert(shouldPersistEmbeddings("start", true) === false, "free plan does not persist RAG when flag is off");
-process.env.ENABLE_RAG_EMBEDDINGS = "true";
+process.env['ENABLE_RAG_EMBEDDINGS'] = "true";
 assert(shouldPersistEmbeddings("start", false) === true, "global RAG flag enables embeddings independently");
-if (previousRag === undefined) delete process.env.ENABLE_RAG_EMBEDDINGS;
-else process.env.ENABLE_RAG_EMBEDDINGS = previousRag;
+if (previousRag === undefined) delete process.env['ENABLE_RAG_EMBEDDINGS'];
+else process.env['ENABLE_RAG_EMBEDDINGS'] = previousRag;
 
 console.log("");
 if (failed > 0) {

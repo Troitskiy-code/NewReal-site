@@ -6,7 +6,7 @@ const MIRROR = "https://registry.npmmirror.com/-/binary/prisma";
 
 function isDockerBuild() {
   if (process.platform === "win32") return false;
-  if (process.env.CI === "true") return true;
+  if (process.env['CI'] === "true") return true;
   try {
     return fs.existsSync("/.dockerenv");
   } catch {

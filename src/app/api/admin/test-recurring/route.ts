@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { renewSubscriptionIfDue } from "@/lib/subscription";
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 const ALLOWED_SUBSCRIPTION_TYPES = new Set(["start", "dialog", "story", "history", "universe"]);
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }

@@ -11,7 +11,7 @@ const DEFAULT_RETENTION_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function getRetentionDays(): number {
-  const parsed = Number.parseInt(process.env.NOTIFICATION_RETENTION_DAYS ?? "", 10);
+  const parsed = Number.parseInt(process.env['NOTIFICATION_RETENTION_DAYS'] ?? "", 10);
   if (Number.isInteger(parsed) && parsed > 0) {
     return parsed;
   }

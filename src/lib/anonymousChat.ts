@@ -358,7 +358,7 @@ export async function handleAnonymousChatPost(
     );
 
     const stubReply =
-      process.env.NODE_ENV === "production" ? "" : (process.env.GUEST_AI_STUB_REPLY ?? "").trim();
+      process.env.NODE_ENV === "production" ? "" : (process.env['GUEST_AI_STUB_REPLY'] ?? "").trim();
     let upstream: ReadableStream<Uint8Array>;
     if (stubReply) {
       const attempt = claimed.attempt;

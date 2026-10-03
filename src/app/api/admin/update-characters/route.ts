@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 60;
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }

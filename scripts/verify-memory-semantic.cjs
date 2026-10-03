@@ -9,7 +9,7 @@ const { config } = require("dotenv");
 
 config();
 
-const SEMANTIC_DEDUP_THRESHOLD = Number.parseFloat(process.env.MEMORY_DEDUP_THRESHOLD || "0.80") || 0.8;
+const SEMANTIC_DEDUP_THRESHOLD = Number.parseFloat(process.env['MEMORY_DEDUP_THRESHOLD'] || "0.80") || 0.8;
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 
 let passed = 0;

@@ -98,7 +98,7 @@ const FIELD_PAIRS: Array<{
 const CONCURRENCY = 5;
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }

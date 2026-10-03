@@ -75,7 +75,7 @@ function stopPrivatePostgres(name: string) {
 }
 
 function resolveTarget(): { url: string; dedicatedHistDb: boolean; stop?: () => void } | null {
-  if (process.env.TEST_DATABASE_URL?.trim()) {
+  if (process.env['TEST_DATABASE_URL']?.trim()) {
     return { url: resolveIsolatedTestDatabaseUrl(), dedicatedHistDb: false };
   }
   if (dockerRunning("nv-p0p1-pg")) return { url: SYNTHETIC_LOCAL_TEST_URL, dedicatedHistDb: false };

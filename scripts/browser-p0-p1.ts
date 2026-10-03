@@ -3,7 +3,7 @@
  * Uses GUEST_AI_STUB_REPLY on the server under test; never points at production DATABASE_URL.
  * node --experimental-strip-types scripts/browser-p0-p1.ts
  */
-const base = (process.env.TEST_BASE_URL ?? "").replace(/\/$/, "");
+const base = (process.env['TEST_BASE_URL'] ?? "").replace(/\/$/, "");
 if (!base) {
   console.log("SKIP: TEST_BASE_URL is not set; browser/HTTP chain was not executed.");
   process.exit(2);

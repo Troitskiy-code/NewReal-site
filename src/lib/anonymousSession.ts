@@ -14,7 +14,7 @@ import {
 import { assertGuestSchemaReady } from "@/lib/guestRequestStore";
 
 const ANONYMOUS_LIMIT = (() => {
-  const parsed = parseInt(process.env.ANONYMOUS_MESSAGE_LIMIT || "5", 10);
+  const parsed = parseInt(process.env['ANONYMOUS_MESSAGE_LIMIT'] || "5", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 5;
 })();
 

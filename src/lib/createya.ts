@@ -42,7 +42,7 @@ type CreateyaUploadResult = {
 
 function getConfig() {
   const apiKey = process.env.CREATEYA_API_KEY ?? "";
-  const apiUrl = (process.env.CREATEYA_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
+  const apiUrl = (process.env['CREATEYA_API_URL'] || DEFAULT_API_URL).replace(/\/$/, "");
   return { apiKey, apiUrl };
 }
 

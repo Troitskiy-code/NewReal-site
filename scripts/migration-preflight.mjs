@@ -2,7 +2,7 @@
 import { Client } from 'pg';
 import { Prisma } from '@prisma/client';
 import { readdirSync, readFileSync } from 'node:fs';
-const url = process.env.MIGRATION_DATABASE_URL;
+const url = process.env['MIGRATION_DATABASE_URL'];
 if (!url) throw new Error('Set MIGRATION_DATABASE_URL explicitly for the intended database');
 const mode = process.argv.includes('--ready') ? 'ready' : 'baseline';
 const historical = readdirSync('prisma/migrations').filter(n => /^\d+_/.test(n) && n !== '20260801000000_baseline')

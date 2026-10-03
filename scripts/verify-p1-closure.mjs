@@ -20,9 +20,9 @@ export async function verifyP1Closure({ db, load, check, cache, databaseUrl, sch
   check((await db.rateLimitBucket.findUniqueOrThrow({ where: { key: hash } })).count === 6, 'rate-limit storage is hashed and bounded');
   await db.rateLimitBucket.update({ where: { key: hash }, data: { resetAt: new Date(0) } });
   check((await rate.consumeRateLimit('closure-shared', 5, 60000)).ok, 'expired database bucket resets');
-  process.env.TRUST_PROXY = '';
+  process.env['TRUST_PROXY'] = '';
   check(rate.clientKeyFromRequest({ headers: new Headers({ 'x-forwarded-for': 'attacker' }) }) === 'unknown', 'untrusted forwarded header cannot evade limits');
-  process.env.TRUST_PROXY = '1';
+  process.env['TRUST_PROXY'] = '1';
   check(rate.clientKeyFromRequest({ headers: new Headers({ 'x-forwarded-for': '192.0.2.1, 192.0.2.2' }) }) === '192.0.2.1', 'explicitly trusted proxy supplies client key');
 
   process.env.SUPPORT_INBOX_EMAIL = 'inbox@example.test';

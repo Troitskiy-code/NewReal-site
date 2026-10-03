@@ -15,7 +15,7 @@ for (const url of urls) {
     results.push({ transport: 'node', url, status: response.status, bytes: (await response.arrayBuffer()).byteLength });
   } catch (error) { results.push({ transport: 'node', url, error: error.cause?.code ?? error.name }); }
 }
-const browser = await chromium.launch({ headless: true, channel: process.env.METRIKA_TEST_BROWSER_CHANNEL });
+const browser = await chromium.launch({ headless: true, channel: process.env['METRIKA_TEST_BROWSER_CHANNEL'] });
 try {
   const context = await browser.newContext();
   for (const url of urls) {

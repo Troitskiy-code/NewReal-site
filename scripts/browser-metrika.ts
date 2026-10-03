@@ -12,7 +12,7 @@ import { existsSync, readFileSync } from "node:fs";
 const require = createRequire(import.meta.url);
 
 const TEST_COUNTER = "999001";
-const PORT = Number(process.env.METRIKA_TEST_PORT || 4027);
+const PORT = Number(process.env['METRIKA_TEST_PORT'] || 4027);
 const SYNTHETIC_USER = "synthetic-metrika-user";
 
 const MOCK_TAG = `
@@ -103,7 +103,7 @@ async function waitForServer(url: string, timeoutMs = 90000) {
 }
 
 async function maybeStartNext(): Promise<{ base: string; child?: ChildProcess }> {
-  const existing = (process.env.TEST_BASE_URL ?? "").replace(/\/$/, "");
+  const existing = (process.env['TEST_BASE_URL'] ?? "").replace(/\/$/, "");
   if (existing) {
     if (/newvers\.ai|112171267/i.test(existing)) {
       throw new Error("Refusing TEST_BASE_URL that looks like production");
@@ -210,7 +210,7 @@ async function main() {
   }
 
   const { base, child } = await maybeStartNext();
-  const browser = await pw.chromium.launch({ headless: true, channel: process.env.METRIKA_TEST_BROWSER_CHANNEL });
+  const browser = await pw.chromium.launch({ headless: true, channel: process.env['METRIKA_TEST_BROWSER_CHANNEL'] });
   const requests: string[] = [];
   try {
     const context = await browser.newContext({

@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import { Client } from 'pg';
 
 const require = createRequire(import.meta.url);
-const runtime = process.env.GUEST_TEST_RUNTIME;
+const runtime = process.env['GUEST_TEST_RUNTIME'];
 if (!runtime) throw new Error('Set GUEST_TEST_RUNTIME to the isolated embedded-postgres installation');
 const EmbeddedPostgres = require(join(resolve(runtime), 'node_modules/embedded-postgres/dist/index.js')).default;
 let createyaReject = true, embeddingFails = false;
@@ -92,7 +92,7 @@ function load(file) {
 }
 try {
   process.env.NEXTAUTH_SECRET = 'synthetic_cost_actor_hash'; process.env.CREATEYA_API_KEY = 'synthetic_not_used';
-  delete process.env.AI_COST_RATES_RUB_JSON; delete process.env.KODIKROUTER_USAGE_COST_CURRENCY; delete process.env.AI_COST_USD_RUB;
+  delete process.env['AI_COST_RATES_RUB_JSON']; delete process.env['KODIKROUTER_USAGE_COST_CURRENCY']; delete process.env['AI_COST_USD_RUB'];
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_economy_test'); await ddl.connect();
   for (const name of readdirSync('prisma/migrations').filter(n => /^\d+_/.test(n)).sort()) {
     const sql = readFileSync(join('prisma/migrations', name, 'migration.sql'), 'utf8')
@@ -130,7 +130,7 @@ try {
   const concurrentActors = await db.aiCostEvent.findMany({ where: { purpose: 'intent', subscriptionType: 'story' } });
   check(new Set(concurrentActors.map(r => r.actorHash)).size === 2 && new Set(concurrentActors.map(r => r.operationId)).size === 2, 'concurrent operation contexts do not mix accounts');
   check(!JSON.stringify(await db.aiCostEvent.findMany()).includes('secret_'), 'no prompts keys or raw responses persisted');
-  process.env.KODIKROUTER_USAGE_COST_CURRENCY = 'RUB';
+  process.env['KODIKROUTER_USAGE_COST_CURRENCY'] = 'RUB';
   const reported = await telemetry.meteredChatFetch(providerUrl + '/stream', {}, 'test/model', 10); await reported.text();
   check((await db.aiCostEvent.findFirst({ where: { reportedCostRub: 0.3 } }))?.costSource === 'provider', 'reported amount only with explicit currency');
   const fallback = await telemetry.meteredChatFetch(providerUrl + '/no-usage', {}, 'test/model', 20); await fallback.text();
@@ -139,7 +139,7 @@ try {
   check(failed.status === 503 && !!await db.aiCostEvent.findFirst({ where: { outcome: 'failed', estimatedCostRub: null } }), 'failed attempt recorded as unknown not free');
   const zero = await telemetry.meteredChatFetch(providerUrl + '/zero', {}, 'test/model', 20); await zero.text();
   check(!!await db.aiCostEvent.findFirst({ where: { providerCostNative: 0, reportedCostRub: null, estimatedCostRub: 0.014 } }), 'provider zero does not claim bill-free usage');
-  delete process.env.KODIKROUTER_USAGE_COST_CURRENCY;
+  delete process.env['KODIKROUTER_USAGE_COST_CURRENCY'];
   const changedModel = await telemetry.meteredChatFetch(providerUrl + '/fallback', {}, 'test/model', 20); await changedModel.text();
   check(!!await db.aiCostEvent.findFirst({ where: { actualModel: 'unpriced/fallback', estimatedCostRub: null, costSource: 'unknown' } }), 'unpriced provider fallback not billed at requested model quote');
   const beforeRetry = await db.aiCostEvent.count();
@@ -174,12 +174,12 @@ try {
   await rag.searchRelevantMessages('fixture_user', 'fixture_character', 'secret_rag_query', 'synthetic_embedding_key');
   check(await db.aiCostEvent.count({ where: { purpose: 'embedding' } }) === beforeRagEmbeddings + 1,
     'real RAG query also records one embedding cost event');
-  process.env.YANDEX_TRANSLATE_COST_RUB_PER_MILLION_CHARS = '50';
+  process.env['YANDEX_TRANSLATE_COST_RUB_PER_MILLION_CHARS'] = '50';
   await telemetry.meteredTranslationFetch(providerUrl + '/ok', {}, 4);
   check(!!await db.aiCostEvent.findFirst({ where: { purpose: 'translation', inputCharacters: 4, inputTokens: null, estimatedCostRub: 0.0002 } }), 'translation counts characters separately from tokens');
   await telemetry.meteredLegacySubmission(providerUrl + '/ok', {}, 'test/image');
   check(!!await db.aiCostEvent.findFirst({ where: { purpose: 'legacy_generation', outcome: 'submitted', costSource: 'unknown' } }), 'async submission not mistaken for measured provider bill');
-  process.env.CREATEYA_API_URL = providerUrl;
+  process.env['CREATEYA_API_URL'] = providerUrl;
   const createya = load('src/lib/createya.ts');
   let rejected;
   try { await createya.generateWithCreateya('fixture', undefined, 'test/image'); } catch (error) { rejected = error; }

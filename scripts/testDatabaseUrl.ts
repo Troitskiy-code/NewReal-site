@@ -9,7 +9,7 @@ export function databaseIdentity(url: string): string {
 }
 
 export function resolveIsolatedTestDatabaseUrl(): string {
-  const testUrl = process.env.TEST_DATABASE_URL?.trim();
+  const testUrl = process.env['TEST_DATABASE_URL']?.trim();
   if (!testUrl) {
     throw new Error("TEST_DATABASE_URL is required and must point at an isolated p0p1 test database");
   }

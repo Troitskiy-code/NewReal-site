@@ -31,12 +31,12 @@ export async function verifyCoinsBrowser({ db, context, page, base, user, charac
       'coins hero restores authorized character and internal return link');
     check(await page.locator('[data-testid^="vc-pack-"]').count() === 6, 'coins renders six ordinary packages as cards');
     await page.setViewportSize({ width: 1440, height: 1000 });
-    if (process.env.COINS_PREVIEW_DIRECTORY) await page.screenshot({ path: join(process.env.COINS_PREVIEW_DIRECTORY, 'coins-desktop.png'), fullPage: true });
+    if (process.env['COINS_PREVIEW_DIRECTORY']) await page.screenshot({ path: join(process.env['COINS_PREVIEW_DIRECTORY'], 'coins-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'mobile coins page has no horizontal overflow');
     const mobileButton = await page.getByTestId('coins-hero-buy').boundingBox();
     check(mobileButton.y >= 0 && mobileButton.y + mobileButton.height <= 844, 'first purchase button is visible on initial mobile viewport');
-    if (process.env.COINS_PREVIEW_DIRECTORY) await page.screenshot({ path: join(process.env.COINS_PREVIEW_DIRECTORY, 'coins-mobile.png'), fullPage: false });
+    if (process.env['COINS_PREVIEW_DIRECTORY']) await page.screenshot({ path: join(process.env['COINS_PREVIEW_DIRECTORY'], 'coins-mobile.png'), fullPage: false });
     await page.getByTestId('coins-hero-buy').click();
     await page.getByRole('dialog').waitFor();
     check((await page.getByRole('dialog').textContent()).includes('Без подписки и автопродления'), 'checkout makes one-time charge explicit');

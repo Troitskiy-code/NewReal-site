@@ -1,7 +1,7 @@
 const RAG_SUBSCRIPTION_TYPES = new Set(["dialog", "history", "story", "universe"]);
 
 export function isMessageEmbeddingsFlagEnabled(): boolean {
-  return process.env.ENABLE_RAG_EMBEDDINGS === "true";
+  return process.env['ENABLE_RAG_EMBEDDINGS'] === "true";
 }
 
 export function isRagEligible(

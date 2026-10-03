@@ -28,7 +28,7 @@ type Detail = {
 };
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) return false;
 
   const header = req.headers.get("x-admin-secret");

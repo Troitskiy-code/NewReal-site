@@ -18,7 +18,7 @@ type EmailVerificationUser = {
 };
 
 function getVerificationCutoffDate(): Date | null {
-  const raw = process.env.EMAIL_VERIFICATION_CUTOFF_DATE?.trim();
+  const raw = process.env['EMAIL_VERIFICATION_CUTOFF_DATE']?.trim();
   if (!raw) return null;
 
   const parsed = new Date(raw);

@@ -66,8 +66,8 @@ export function toSafeDiagnostic(error: unknown): Record<string, SafeLogValue> {
 }
 
 function createLogtail(): DiagnosticSink | null {
-  const token = process.env.LOGTAIL_SOURCE_TOKEN?.trim();
-  const endpoint = process.env.LOGTAIL_INGESTING_HOST?.trim();
+  const token = process.env['LOGTAIL_SOURCE_TOKEN']?.trim();
+  const endpoint = process.env['LOGTAIL_INGESTING_HOST']?.trim();
   if (!token || !endpoint) return null;
   return new Logtail(token, { endpoint });
 }

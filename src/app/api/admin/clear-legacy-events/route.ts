@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 const LEGACY_EVENT_TYPES = ["action", "travel", "discovery"] as const;
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }

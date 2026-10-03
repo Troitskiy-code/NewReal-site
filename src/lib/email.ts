@@ -6,12 +6,12 @@ import { emailDomain } from "@/lib/redactSensitive";
 import { errorLog, infoLog } from "@/lib/logger";
 
 function getResetPasswordUrl(token: string, locale: Locale): string {
-  const baseUrl = (process.env.NEXTAUTH_URL || SITE_URL).replace(/\/$/, "");
+  const baseUrl = (process.env['NEXTAUTH_URL'] || SITE_URL).replace(/\/$/, "");
   return `${baseUrl}${withLocale(`/reset-password/${token}`, locale)}`;
 }
 
 function getVerifyEmailUrl(token: string, locale: Locale): string {
-  const baseUrl = (process.env.NEXTAUTH_URL || SITE_URL).replace(/\/$/, "");
+  const baseUrl = (process.env['NEXTAUTH_URL'] || SITE_URL).replace(/\/$/, "");
   return `${baseUrl}${withLocale(`/verify-email/${token}`, locale)}`;
 }
 

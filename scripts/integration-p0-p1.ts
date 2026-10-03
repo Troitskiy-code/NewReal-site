@@ -101,7 +101,7 @@ async function applySqlFiles(url: string, files: string[]) {
   await client.end();
 }
 
-if (!process.env.TEST_DATABASE_URL) {
+if (!process.env['TEST_DATABASE_URL']) {
   throw new Error("Set an explicitly isolated TEST_DATABASE_URL; automatic shared-port startup is disabled");
 }
 

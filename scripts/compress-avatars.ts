@@ -10,7 +10,7 @@ import {
   tryCompressAvatarDataUrl,
 } from "../src/lib/compressAvatar.ts";
 
-const dbUrl = process.env.DIRECT_URL?.trim() || process.env.DATABASE_URL?.trim();
+const dbUrl = process.env['DIRECT_URL']?.trim() || process.env.DATABASE_URL?.trim();
 if (!dbUrl) {
   console.error("Missing DATABASE_URL (or DIRECT_URL) in env. Aborting.");
   process.exit(1);

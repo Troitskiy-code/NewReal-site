@@ -19,7 +19,7 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
   Object.assign(env, { DATABASE_URL: databaseUrl, NEXTAUTH_SECRET: 'synthetic_guest_browser_secret',
     NEXTAUTH_URL: base, NEXT_PUBLIC_APP_URL: base, NEXT_PUBLIC_YANDEX_METRIKA_ID: '999001',
     GUEST_AI_STUB_REPLY: 'Guest browser reply', NODE_ENV: 'development', NEXT_TELEMETRY_DISABLED: '1' });
-  if (process.env.P1_CLOSURE === '1') Object.assign(env, {
+  if (process.env['P1_CLOSURE'] === '1') Object.assign(env, {
     CRON_SECRET: 'synthetic_cron_only', SUPPORT_INBOX_EMAIL: 'inbox@example.test',
     ROBOKASSA_PASSWORD2: 'synthetic_result_password', TRUST_PROXY: '1',
     ROBOKASSA_MERCHANT_ID: 'synthetic_merchant', ROBOKASSA_PASSWORD: 'synthetic_checkout_password',
@@ -40,8 +40,8 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     assert.ok(ready, 'Private Next server started');
-    browser = await chromium.launch({ headless: true, channel: process.env.GUEST_TEST_BROWSER_CHANNEL });
-    if (process.env.P1_CLOSURE === '1') {
+    browser = await chromium.launch({ headless: true, channel: process.env['GUEST_TEST_BROWSER_CHANNEL'] });
+    if (process.env['P1_CLOSURE'] === '1') {
       const { verifyAcquisitionBrowser } = await import('./browser-acquisition-goals.mjs');
       await verifyAcquisitionBrowser({ browser, base, character, check });
     }
@@ -90,7 +90,7 @@ export async function verifyGuestBrowser({ db, databaseUrl, store, character, us
     check(accountPurchase.status() === 410 && unchangedBalance.verseCoins === accountBalance.verseCoins
       && unchangedBalance.permanentCoins === accountBalance.permanentCoins,
       'HTTP retired purchase cannot grant VC to an authenticated browser session');
-    if (process.env.P1_CLOSURE === '1') {
+    if (process.env['P1_CLOSURE'] === '1') {
       const { verifyCoinsBrowser } = await import('./browser-coins-shop.mjs');
       await verifyCoinsBrowser({ db, context, page, base, user, character, check });
       const { verifyP1Browser } = await import('./browser-closure-p1.mjs');

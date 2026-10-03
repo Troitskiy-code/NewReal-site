@@ -4,7 +4,7 @@ import { grantPermanentUpdate } from "@/lib/verseCoins";
 import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
-  const secretKey = process.env.UNITPAY_SECRET_KEY?.trim();
+  const secretKey = process.env['UNITPAY_SECRET_KEY']?.trim();
   if (!secretKey) {
     return NextResponse.json({ error: "Unitpay is not configured" }, { status: 503 });
   }

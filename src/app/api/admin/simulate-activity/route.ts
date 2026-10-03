@@ -7,7 +7,7 @@ const DEFAULT_MIN = 0;
 const DEFAULT_MAX = 100;
 
 function isAuthorized(req: NextRequest): boolean {
-  const adminSecret = process.env.ADMIN_SECRET;
+  const adminSecret = process.env['ADMIN_SECRET'];
   if (!adminSecret) {
     return false;
   }
@@ -30,7 +30,7 @@ function errorDetails(error: unknown): { message: string; code?: string } {
 
 export async function POST(req: NextRequest) {
   console.log("[Admin:SimulateActivity] Start");
-  console.log("[Admin:SimulateActivity] ADMIN_SECRET set:", Boolean(process.env.ADMIN_SECRET));
+  console.log("[Admin:SimulateActivity] ADMIN_SECRET set:", Boolean(process.env['ADMIN_SECRET']));
 
   try {
     if (!isAuthorized(req)) {
