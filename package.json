@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:seo": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-seo.ts",
     "preinstall": "node prisma/preinstall.cjs",
     "dev": "next dev",
     "build": "node scripts/prisma-generate.cjs && next build",

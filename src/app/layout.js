@@ -20,7 +20,7 @@ export const viewport = {
 };
 
 export async function generateMetadata() {
-  const metadata = await getLocalizedPageMetadata("home");
+  const metadata = await getLocalizedPageMetadata("home", { inheritOnly: true });
   return {
     metadataBase: new URL(SITE_URL),
     ...metadata,

@@ -3,6 +3,11 @@ import JsonLd from "@/components/JsonLd";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { buildWebsiteJsonLd } from "@/lib/jsonLd";
 import HomePageContent from "./HomePageContent";
+import { getLocalizedPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ searchParams }) {
+  return getLocalizedPageMetadata("home", { searchParams: await searchParams });
+}
 
 export default async function HomePage() {
   const locale = await getRequestLocale();

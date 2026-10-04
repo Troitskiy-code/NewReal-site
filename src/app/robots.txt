@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/admin/
+
+# Yandex ignores these advertising parameters without changing browser URLs.
+# Do not add sort, page, q, invoice or authentication parameters here.
+Clean-param: etext&ybaip&yclid /
+
+Sitemap: https://newvers.ai/sitemap.xml

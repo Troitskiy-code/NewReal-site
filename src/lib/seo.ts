@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { translate } from "@/lib/getDictionary";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { DEFAULT_LOCALE } from "@/lib/i18nConfig";
+import { pageIndexingMetadata, type SeoSearchParams } from "@/lib/seoIndexing";
 
 export const SITE_URL = "https://newvers.ai";
 export const OG_IMAGE = "/logo.png";
@@ -101,10 +102,17 @@ export function chatPageMetadata(characterName: string, locale = DEFAULT_LOCALE)
   );
 }
 
-export async function getLocalizedPageMetadata(page: MetaPageKey): Promise<Metadata> {
+export async function getLocalizedPageMetadata(
+  page: MetaPageKey,
+  options: { inheritOnly?: boolean; searchParams?: SeoSearchParams } = {},
+): Promise<Metadata> {
   const locale = await getRequestLocale();
-  return createPageMetadata(
+  const metadata = createPageMetadata(
     translate(locale, `meta.${page}.title`),
     translate(locale, `meta.${page}.description`)
   );
+  // Root defaults must not give every descendant the homepage canonical.
+  return options.inheritOnly ? metadata : {
+    ...metadata, ...pageIndexingMetadata(page, locale, SITE_URL, options.searchParams),
+  };
 }
