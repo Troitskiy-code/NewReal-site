@@ -32,8 +32,9 @@ export function pageIndexingMetadata(
       canonical: url(locale),
       languages: Object.fromEntries(LOCALES.map((language) => [language, url(language)])),
     },
-    // Filtered, random, personalized and paginated client catalogs are not landing
-    // pages yet. Reconsider pagination once server-rendered content is implemented.
+    // Only the main catalog is a search landing page. Filters/random/personalized
+    // views and pagination stay noindex: responsive 24/25-item pages are not stable
+    // search documents. Public profiles are discovered via HTML links and sitemap.
     robots: { index: query.size === 0, follow: true },
   };
 }

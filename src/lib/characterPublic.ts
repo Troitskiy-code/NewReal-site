@@ -6,6 +6,7 @@ import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ownerModerationFields } from "@/lib/characterModeration";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 export const publicCharacterSelect = {
   id: true,
@@ -93,9 +94,14 @@ export async function findCharacterBySlugForViewer(
   } catch {
     normalizedSlug = slug.trim();
   }
-  const character = await prisma.character.findUnique({
+  let character = await prisma.character.findUnique({
     where: { slug: normalizedSlug },
     select: publicCharacterSelect,
+  });
+
+  // Legacy id-based public links may redirect only after visibility is checked.
+  if (!character) character = await prisma.character.findUnique({
+    where: { id: normalizedSlug }, select: publicCharacterSelect,
   });
 
   if (!character) return null;
@@ -137,7 +143,7 @@ export async function getViewerId(): Promise<string | null> {
     const session = await getServerSession(authOptions);
     return session?.user?.id ?? null;
   } catch (error) {
-    console.error("[Character] getViewerId failed", error);
+    errorLog("Character", "viewer session", toSafeDiagnostic(error));
     return null;
   }
 }

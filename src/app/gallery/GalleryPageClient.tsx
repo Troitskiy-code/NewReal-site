@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
-import Link from "next/link";
+import Link from "@/components/LocaleLink";
 import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
@@ -9,11 +8,17 @@ import CharacterPagination from "@/components/CharacterPagination";
 import { FaUser, FaPlus } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
+import { useTranslation } from "react-i18next";
+import type { getPublicCatalog } from "@/lib/publicCatalog";
+import { withLocale } from "@/lib/i18nConfig";
 
-function GalleryPageContent() {
-  const { sort, setSort, page, setPage } = useCharacterSortUrl();
+type CatalogData = Awaited<ReturnType<typeof getPublicCatalog>>;
+
+function GalleryPageContent({ initialData }: { initialData: CatalogData }) {
+  const { t, i18n } = useTranslation();
+  const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
   const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload } =
-    usePaginatedCharacters({ sort, page, setPage, listKey: "gallery" });
+    usePaginatedCharacters({ sort, page, setPage, listKey: "gallery", initialData, onSearchChange: setSearchQuery });
 
   const hasFilters = search.trim().length > 0;
 
@@ -24,11 +29,11 @@ function GalleryPageContent() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0 space-y-1">
             <h1 className="text-xl font-black uppercase tracking-tight text-white md:text-2xl lg:text-3xl">
-              Галерея персонажей
+              {t("meta.gallery.title")}
             </h1>
             <p className="text-xs text-wd-text-secondary">
-              Просматривайте опубликованных персонажей сообщества
-              {!loading && total > 0 && ` · ${total} найдено`}
+              {t("meta.gallery.description")}
+              {!loading && total > 0 && ` · ${t("home.found")}${total}`}
             </p>
           </div>
           <Link
@@ -36,7 +41,7 @@ function GalleryPageContent() {
             className="wd-button inline-flex shrink-0 items-center justify-center gap-2 px-5 py-2.5 text-xs"
           >
             <FaPlus className="text-[10px]" />
-            Создать персонажа
+            {t("header.menu.create")}
           </Link>
         </div>
       </div>
@@ -55,31 +60,31 @@ function GalleryPageContent() {
           </div>
         ) : error ? (
           <div className="flex flex-1 flex-col items-center justify-center rounded border border-red-500/30 bg-bg-card/20 py-20 text-center">
-            <p className="text-sm font-extrabold uppercase text-red-500">Ошибка</p>
+            <p className="text-sm font-extrabold uppercase text-red-500">{t("common.error")}</p>
             <p className="mt-2 max-w-xs text-xs text-secondary-text">{error}</p>
             <button
               type="button"
               onClick={reload}
               className="mt-4 rounded-full bg-primary px-5 py-2 text-xs font-bold text-white transition-all hover:bg-primary-hover"
             >
-              Повторить
+              {t("common.retry")}
             </button>
           </div>
         ) : characters.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center rounded border border-divider/30 bg-bg-card/20 py-20 text-center">
             <FaUser className="mb-4 text-4xl opacity-20" />
-            <h3 className="text-sm font-extrabold uppercase">Нет персонажей</h3>
+            <h3 className="text-sm font-extrabold uppercase">{t("home.noCharacters")}</h3>
             <p className="mt-2 max-w-xs text-xs text-secondary-text">
               {hasFilters
-                ? "По вашему запросу ничего не найдено. Попробуйте изменить фильтры."
-                : "Пока нет опубликованных персонажей. Создайте первого!"}
+                ? t("home.noResults")
+                : t("home.noPublished")}
             </p>
             {!hasFilters && (
               <Link
                 href="/create"
                 className="mt-4 rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-white transition-all hover:bg-primary-hover"
               >
-                Создать персонажа
+                {t("header.menu.create")}
               </Link>
             )}
           </div>
@@ -96,6 +101,7 @@ function GalleryPageContent() {
               totalPages={totalPages}
               onPageChange={goToPage}
               disabled={loading}
+              hrefForPage={(target) => `${withLocale("/gallery", i18n.language === "en" ? "en" : "ru")}?${new URLSearchParams({ sort, page: String(target), ...(search ? { q: search } : {}) })}`}
             />
           </>
         )}
@@ -106,16 +112,6 @@ function GalleryPageContent() {
   );
 }
 
-export default function GalleryPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-dvh items-center justify-center bg-[#121212]">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
-        </div>
-      }
-    >
-      <GalleryPageContent />
-    </Suspense>
-  );
+export default function GalleryPage({ initialData }: { initialData: CatalogData }) {
+  return <GalleryPageContent initialData={initialData} />;
 }

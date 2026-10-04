@@ -17,33 +17,38 @@ function scrollCharacterListToTop() {
   }
 }
 
-export function usePaginatedCharacters({ sort, listKey, page, setPage }) {
-  const limit = useCharactersPageLimit();
-  const [search, setSearch] = useState("");
-  const [characters, setCharacters] = useState([]);
-  const [loading, setLoading] = useState(true);
+export function usePaginatedCharacters({ sort, listKey, page, setPage, initialData, onSearchChange }) {
+  const limit = useCharactersPageLimit(initialData?.meta.limit ?? null);
+  const [search, setSearch] = useState(initialData?.search ?? "");
+  const [characters, setCharacters] = useState(initialData?.data ?? []);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState(null);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(initialData?.meta.total ?? 0);
+  const [totalPages, setTotalPages] = useState(initialData?.meta.totalPages ?? 0);
   const [ready, setReady] = useState(false);
   const skipFetchRef = useRef(false);
-  const lastQueryRef = useRef("");
+  const lastQueryRef = useRef(initialData ? `${sort}\0${initialData.search}\0${page}\0${initialData.meta.limit}` : "");
 
   useLayoutEffect(() => {
-    const snapshot = readCharacterReturn();
-    if (characterReturnMatches(snapshot, listKey, sort) && Array.isArray(snapshot.characters)) {
-      const restoredSearch = snapshot.search ?? "";
-      setSearch(restoredSearch);
-      setCharacters(snapshot.characters);
-      setTotal(snapshot.total ?? snapshot.characters.length);
-      setTotalPages(snapshot.totalPages ?? 0);
-      setLoading(false);
-      skipFetchRef.current = true;
-      if (snapshot.page && snapshot.page !== page) {
-        setPage(snapshot.page);
+    // Browser-only return state is restored after hydration; never replace the
+    // server snapshot during render or synchronously cascade layout updates.
+    const frame = requestAnimationFrame(() => {
+      const snapshot = readCharacterReturn();
+      if (characterReturnMatches(snapshot, listKey, sort) && Array.isArray(snapshot.characters)) {
+        const restoredSearch = snapshot.search ?? "";
+        setSearch(restoredSearch);
+        setCharacters(snapshot.characters);
+        setTotal(snapshot.total ?? snapshot.characters.length);
+        setTotalPages(snapshot.totalPages ?? 0);
+        setLoading(false);
+        skipFetchRef.current = true;
+        if (snapshot.page && snapshot.page !== page) {
+          setPage(snapshot.page);
+        }
       }
-    }
-    setReady(true);
+      setReady(true);
+    });
+    return () => cancelAnimationFrame(frame);
     // Restore against the sort from the first paint (URL).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listKey]);
@@ -133,9 +138,10 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage }) {
   const handleSearchChange = useCallback(
     (value) => {
       setSearch(value);
-      if (page !== 1) setPage(1);
+      if (onSearchChange) onSearchChange(value);
+      else if (page !== 1) setPage(1);
     },
-    [page, setPage]
+    [onSearchChange, page, setPage]
   );
 
   const reload = useCallback(() => {

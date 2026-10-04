@@ -7,6 +7,7 @@ type CharacterPaginationProps = {
   totalPages: number;
   onPageChange: (page: number) => void;
   disabled?: boolean;
+  hrefForPage?: (page: number) => string;
 };
 
 function paginationItems(current: number, total: number): Array<number | "ellipsis"> {
@@ -37,6 +38,7 @@ export default function CharacterPagination({
   totalPages,
   onPageChange,
   disabled = false,
+  hrefForPage,
 }: CharacterPaginationProps) {
   const { t } = useTranslation();
 
@@ -67,7 +69,17 @@ export default function CharacterPagination({
             …
           </span>
         ) : (
-          <button
+          hrefForPage ? <a
+            key={item}
+            href={hrefForPage(item)}
+            className={item === page
+              ? `${buttonClass} border-wd-primary bg-wd-primary text-white`
+              : `${buttonClass} border-wd-border bg-wd-card text-white hover:border-wd-secondary`}
+            aria-disabled={disabled || item === page}
+            aria-current={item === page ? "page" : undefined}
+            aria-label={t("home.page", { page: item, pages: totalPages })}
+            onClick={(event) => { event.preventDefault(); if (!disabled && item !== page) onPageChange(item); }}
+          >{item}</a> : <button
             key={item}
             type="button"
             className={

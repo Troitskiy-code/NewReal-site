@@ -226,6 +226,7 @@ export async function GET(req: NextRequest) {
       andConditions.push({
         OR: [
           { name: { contains: search, mode: "insensitive" } },
+          { name_en: { contains: search, mode: "insensitive" } },
           { tags: { contains: search, mode: "insensitive" } },
         ],
       });

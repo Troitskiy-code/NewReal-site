@@ -5,6 +5,9 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Resolve metadata/visibility before streaming so missing characters return HTTP 404
+  // to browsers as well as crawlers, rather than a streamed 200 with a noindex tag.
+  htmlLimitedBots: /.*/,
   serverExternalPackages: ["tiktoken", "jimp", "sharp", "@jsquash/webp", "@logtail/node", "@logtail/core"],
   async headers() {
     return [

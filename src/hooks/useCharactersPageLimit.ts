@@ -7,8 +7,8 @@ import {
   getCharactersPageLimit,
 } from "@/lib/charactersList";
 
-export function useCharactersPageLimit(): number | null {
-  const [limit, setLimit] = useState<number | null>(null);
+export function useCharactersPageLimit(initialLimit: number | null = null): number | null {
+  const [limit, setLimit] = useState<number | null>(initialLimit);
 
   useLayoutEffect(() => {
     const media = window.matchMedia(CHARACTERS_DESKTOP_MEDIA);

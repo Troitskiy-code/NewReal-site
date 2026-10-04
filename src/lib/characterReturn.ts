@@ -87,7 +87,11 @@ export function captureCharacterReturn() {
 export function characterReturnMatches(snapshot: CharacterReturnSnapshot | null, listKey: string, sort: string) {
   if (!snapshot || snapshot.listKey !== listKey || snapshot.sort !== sort) return false;
   if (typeof window === "undefined") return false;
-  return hrefPathname(snapshot.href) === window.location.pathname;
+  if (hrefPathname(snapshot.href) !== window.location.pathname) return false;
+  const saved = new URL(snapshot.href, window.location.origin).searchParams;
+  const current = new URL(window.location.href).searchParams;
+  const page = (params: URLSearchParams) => Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1);
+  return page(saved) === page(current) && (saved.get("q") || "") === (current.get("q") || "");
 }
 
 export function restoreCharacterScroll(snapshot: CharacterReturnSnapshot | null) {

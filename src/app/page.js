@@ -1,29 +1,23 @@
-import { Suspense } from "react";
 import JsonLd from "@/components/JsonLd";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { buildWebsiteJsonLd } from "@/lib/jsonLd";
 import HomePageContent from "./HomePageContent";
 import { getLocalizedPageMetadata } from "@/lib/seo";
+import { getPublicCatalog, parseCatalogQuery } from "@/lib/publicCatalog";
 
 export async function generateMetadata({ searchParams }) {
   return getLocalizedPageMetadata("home", { searchParams: await searchParams });
 }
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }) {
   const locale = await getRequestLocale();
+  const query = parseCatalogQuery(await searchParams);
+  const initialData = await getPublicCatalog(query.sort, query.page, query.search);
 
   return (
     <>
       <JsonLd data={buildWebsiteJsonLd(locale)} />
-      <Suspense
-        fallback={
-          <div className="flex min-h-dvh items-center justify-center bg-[#121212]">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
-          </div>
-        }
-      >
-        <HomePageContent />
-      </Suspense>
+      <HomePageContent key={`${query.sort}:${query.page}:${query.search}`} initialData={initialData} />
     </>
   );
 }

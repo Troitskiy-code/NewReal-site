@@ -4,7 +4,7 @@ import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { SITE_URL } from "@/lib/seo";
 import { LOCALES, withLocale } from "@/lib/i18nConfig";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 type ChangeFrequency = NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
 
@@ -33,7 +33,7 @@ async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
     });
 
     return characters.flatMap((character) => {
-      if (!character.slug) return [];
+      if (!character.slug?.trim()) return [];
       return LOCALES.map((locale) => ({
         url: `${SITE_URL}${withLocale(`/character/${character.slug}`, locale)}`,
         lastModified: character.updatedAt,
@@ -43,16 +43,15 @@ async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
     });
   } catch (error) {
     errorLog("Sitemap", "public characters", toSafeDiagnostic(error));
-    return [];
+    // Never publish a successful partial sitemap when the character query failed.
+    throw new Error("Sitemap temporarily unavailable");
   }
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
   const staticEntries: MetadataRoute.Sitemap = STATIC_PAGES.flatMap((page) =>
     LOCALES.map((locale) => ({
       url: `${SITE_URL}${withLocale(page.path, locale)}`,
-      lastModified: now,
       changeFrequency: page.changeFrequency,
       priority: page.priority,
     }))

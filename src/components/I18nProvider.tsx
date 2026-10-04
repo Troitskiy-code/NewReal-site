@@ -1,7 +1,7 @@
 "use client";
 
 import { I18nextProvider } from "react-i18next";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import i18n from "@/lib/i18n";
 
 type I18nProviderProps = {
@@ -10,16 +10,13 @@ type I18nProviderProps = {
 };
 
 export default function I18nProvider({ children, locale }: I18nProviderProps) {
-  if (i18n.isInitialized && i18n.language !== locale) {
-    void i18n.changeLanguage(locale);
-  }
+  // The module singleton must never switch language during SSR: simultaneous RU
+  // and EN requests would render each other's translations. Share resources only.
+  const instance = useMemo(() => i18n.cloneInstance({ lng: locale, initAsync: false }), [locale]);
 
   useEffect(() => {
-    if (i18n.language !== locale) {
-      void i18n.changeLanguage(locale);
-    }
     document.documentElement.lang = locale;
   }, [locale]);
 
-  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;
+  return <I18nextProvider i18n={instance}>{children}</I18nextProvider>;
 }

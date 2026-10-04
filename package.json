@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "verify:seo": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-seo.ts",
+    "verify:seo:runtime": "node scripts/verify-seo-runtime.mjs",
+    "seo:audit-urls": "node scripts/audit-seo-urls.mjs",
     "preinstall": "node prisma/preinstall.cjs",
     "dev": "next dev",
     "build": "node scripts/prisma-generate.cjs && next build",

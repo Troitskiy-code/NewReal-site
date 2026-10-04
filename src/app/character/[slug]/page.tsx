@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
-import CharacterPublicViewLoader from "./CharacterPublicViewLoader";
-import { findCharacterBySlugForViewer, getViewerId } from "@/lib/characterPublic";
+import CharacterPublicView from "./CharacterPublicView";
+import { getCharacterPageData } from "@/lib/characterPageData";
 import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL } from "@/lib/seo";
-import { getRequestLocale } from "@/lib/getRequestLocale";
 import { translate } from "@/lib/getDictionary";
 import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
 import { absoluteAssetUrl, absoluteSiteUrl } from "@/lib/jsonLd";
@@ -29,17 +28,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  try {
-    const locale = await getRequestLocale();
-    const viewerId = await getViewerId();
-    const character = await findCharacterBySlugForViewer(slug, viewerId);
-
-    if (!character) {
-      return createPageMetadata(
-        translate(locale, "meta.character.fallbackTitle"),
-        translate(locale, "meta.character.fallbackDescription")
-      );
-    }
+    const { character, locale } = await getCharacterPageData(slug);
 
     const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name ?? "";
     const description =
@@ -85,23 +74,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     return result;
-  } catch (error) {
-    console.error("[Character] generateMetadata failed", { slug, error });
-    const locale = await getRequestLocale().catch(() => "ru" as const);
-    return createPageMetadata(
-      translate(locale, "meta.character.fallbackTitle"),
-      translate(locale, "meta.character.fallbackDescription")
-    );
-  }
 }
 
 export default async function CharacterPage({ params }: PageProps) {
   const { slug } = await params;
+  const { view } = await getCharacterPageData(slug);
 
   return (
     <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
       <main className="flex-1 px-4 py-8 sm:px-6">
-        <CharacterPublicViewLoader slug={slug} />
+        <CharacterPublicView character={view} />
       </main>
       <Footer />
     </div>

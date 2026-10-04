@@ -63,5 +63,15 @@ export function useCharacterSortUrl() {
     [replaceParams]
   );
 
-  return { sort, setSort, page, setPage };
+  const setSearchQuery = useCallback((value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const query = value.trim().slice(0, 200);
+    if (query) params.set("q", query); else params.delete("q");
+    params.delete("page");
+    // Search stays client-driven. Native history updates Next's searchParams;
+    // subsequent sort/page navigation carries q into the server request.
+    window.history.replaceState(null, "", `${pathname}${params.size ? `?${params}` : ""}`);
+  }, [pathname, searchParams]);
+
+  return { sort, setSort, page, setPage, setSearchQuery };
 }

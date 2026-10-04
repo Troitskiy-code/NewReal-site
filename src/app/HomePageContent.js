@@ -9,17 +9,19 @@ import { FaUser } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
 import { useTranslation } from "react-i18next";
+import { withLocale } from "@/lib/i18nConfig";
 
-export default function HomePageContent() {
-  const { t } = useTranslation();
-  const { sort, setSort, page, setPage } = useCharacterSortUrl();
+export default function HomePageContent({ initialData }) {
+  const { t, i18n } = useTranslation();
+  const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
   const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload } =
-    usePaginatedCharacters({ sort, page, setPage, listKey: "home" });
+    usePaginatedCharacters({ sort, page, setPage, listKey: "home", initialData, onSearchChange: setSearchQuery });
 
   const hasFilters = search.trim().length > 0;
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-[#121212] text-wd-text">
+      <h1 className="px-4 pt-4 text-xl font-bold text-white md:px-6">{t("meta.home.title")}</h1>
 
       <CharacterSearchFilters
         search={search}
@@ -73,6 +75,7 @@ export default function HomePageContent() {
               totalPages={totalPages}
               onPageChange={goToPage}
               disabled={loading}
+              hrefForPage={(target) => `${withLocale("/", i18n.language === "en" ? "en" : "ru")}?${new URLSearchParams({ sort, page: String(target), ...(search ? { q: search } : {}) })}`}
             />
           </>
         )}
