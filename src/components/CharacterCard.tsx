@@ -39,62 +39,64 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
   const avatarUrl = characterAvatarPath(character.id, character.updatedAt);
 
   return (
-    <LocaleLink
-      href={href}
-      onClick={captureCharacterReturn}
-      className={`group block min-w-0 w-full max-w-full ${className}`}
-    >
-      <article className="relative flex h-[260px] min-w-0 flex-col overflow-hidden rounded-xl border border-wd-border bg-[#2A2A2A] shadow-wd transition-all duration-300 max-[400px]:h-[240px] md:block md:h-[340px] md:rounded-3xl lg:h-[380px] hover:-translate-y-0.5 hover:border-wd-secondary/50 hover:shadow-[0_12px_32px_rgba(108,99,255,0.18)] md:hover:-translate-y-1 md:hover:scale-[1.02] md:hover:shadow-[0_16px_48px_rgba(108,99,255,0.2)]">
-        <div className="absolute inset-0 overflow-hidden">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={name}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              onError={(event) => {
-                event.currentTarget.style.display = "none";
-              }}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[#2A2A2A]">
-              <FaUser className="text-3xl text-wd-text-secondary/30 max-[400px]:text-2xl md:text-5xl" />
-            </div>
-          )}
+    <div className={`group relative min-w-0 w-full max-w-full ${className}`}>
+      <LocaleLink
+        href={href}
+        onClick={captureCharacterReturn}
+        className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-wd-bg md:rounded-3xl"
+      >
+        <article className="relative flex h-[260px] min-w-0 flex-col overflow-hidden rounded-xl border border-wd-border bg-[#2A2A2A] shadow-wd transition-all duration-300 max-[400px]:h-[240px] md:block md:h-[340px] md:rounded-3xl lg:h-[380px] hover:-translate-y-0.5 hover:border-wd-secondary/50 hover:shadow-[0_12px_32px_rgba(108,99,255,0.18)] md:hover:-translate-y-1 md:hover:scale-[1.02] md:hover:shadow-[0_16px_48px_rgba(108,99,255,0.2)]">
+          <div className="absolute inset-0 overflow-hidden">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={name}
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[#2A2A2A]">
+                <FaUser className="text-3xl text-wd-text-secondary/30 max-[400px]:text-2xl md:text-5xl" />
+              </div>
+            )}
 
-          <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-1.5 py-0.5 backdrop-blur-sm max-[400px]:left-1 max-[400px]:top-1 md:left-3 md:top-3 md:gap-1.5 md:px-2.5 md:py-1.5">
-            <FaComments className="text-wd-text-secondary" size={11} />
-            <span className="text-[11px] font-semibold leading-none text-white">
-              {totalMessages.toLocaleString("ru-RU")}
-            </span>
+            <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-1.5 py-0.5 backdrop-blur-sm max-[400px]:left-1 max-[400px]:top-1 md:left-3 md:top-3 md:gap-1.5 md:px-2.5 md:py-1.5">
+              <FaComments className="text-wd-text-secondary" size={11} />
+              <span className="text-[11px] font-semibold leading-none text-white">
+                {totalMessages.toLocaleString("ru-RU")}
+              </span>
+            </div>
+
+            {character.moderationStatus === "warning" && character.isPublic === false && (
+              <span className="absolute left-1.5 top-8 z-10 max-w-[calc(100%-1rem)] rounded-full border border-orange-500/50 bg-black/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-200 backdrop-blur-sm max-[400px]:left-1 md:left-3 md:top-12 md:px-2.5 md:py-1 md:text-[11px]">
+                ⚠️ {t("moderation.hiddenBadge")}
+              </span>
+            )}
           </div>
 
-          <FavoriteButton
-            characterId={character.id}
-            initialIsFavorited={Boolean(character.isFavorited)}
-            onChange={(isFavorited) => onFavoriteChange?.(character.id, isFavorited)}
-            className="absolute right-1.5 top-1.5 z-10 h-7 w-7 max-[400px]:right-1 max-[400px]:top-1 md:right-3 md:top-3 md:h-9 md:w-9"
-            iconSize={12}
-          />
-          {character.moderationStatus === "warning" && character.isPublic === false && (
-            <span className="absolute left-1.5 top-8 z-10 max-w-[calc(100%-1rem)] rounded-full border border-orange-500/50 bg-black/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-200 backdrop-blur-sm max-[400px]:left-1 md:left-3 md:top-12 md:px-2.5 md:py-1 md:text-[11px]">
-              ⚠️ {t("moderation.hiddenBadge")}
-            </span>
-          )}
-        </div>
+          <div className="relative z-0 min-h-0 flex-[3] md:hidden" aria-hidden />
 
-        <div className="relative z-0 min-h-0 flex-[3] md:hidden" aria-hidden />
+          <div className="relative z-10 flex min-h-0 flex-[2] flex-col justify-center bg-black/80 px-2.5 py-2 backdrop-blur-none max-[400px]:px-2 max-[400px]:py-1.5 md:absolute md:bottom-0 md:left-0 md:right-0 md:flex-none md:bg-black/30 md:p-4 md:backdrop-blur-sm">
+            <h2 className="truncate text-base font-bold leading-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
+              {name}
+            </h2>
+            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-200 [text-shadow:0_1px_2px_rgba(0,0,0,0.85)] md:text-gray-400">
+              {description}
+            </p>
+          </div>
 
-        <div className="relative z-10 flex min-h-0 flex-[2] flex-col justify-center bg-black/20 px-2.5 py-2 backdrop-blur-none max-[400px]:px-2 max-[400px]:py-1.5 sm:bg-black/30 sm:backdrop-blur-sm md:absolute md:bottom-0 md:left-0 md:right-0 md:flex-none md:p-4">
-          <h2 className="truncate text-base font-bold leading-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
-            {name}
-          </h2>
-          <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-200 [text-shadow:0_1px_2px_rgba(0,0,0,0.85)] md:text-gray-400">
-            {description}
-          </p>
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-t from-black/85 via-black/25 to-transparent md:block" />
-      </article>
-    </LocaleLink>
+          <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-t from-black/85 via-black/25 to-transparent md:block" />
+        </article>
+      </LocaleLink>
+      <FavoriteButton
+        characterId={character.id}
+        initialIsFavorited={Boolean(character.isFavorited)}
+        onChange={(isFavorited) => onFavoriteChange?.(character.id, isFavorited)}
+        className="absolute right-1.5 top-1.5 z-20 h-11 w-11 bg-black/80 max-[400px]:right-1 max-[400px]:top-1 md:right-3 md:top-3"
+        iconSize={16}
+      />
+    </div>
   );
 }

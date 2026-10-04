@@ -10,6 +10,7 @@ import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import Footer from "@/components/Footer";
 import CurrencySelector from "@/components/CurrencySelector";
 import PaymentChargeSummary from "@/components/PaymentChargeSummary";
+import PurchaseButton from "@/components/PurchaseButton";
 import ConvertedPrice from "@/components/ConvertedPrice";
 import SubscriptionPlans from "@/components/SubscriptionPlans";
 import { PurchaseStatusBanner, usePurchaseConfirmation } from "@/components/PurchaseStatusBanner";
@@ -49,9 +50,9 @@ function CheckoutModal({ pkg, paying, onBuy, onClose }: {
     <h2 id="vc-checkout-title" className="text-xl font-bold text-white">{t("coins.checkoutTitle", { label: pkg.label })}</h2>
     <p className="mb-5 mt-2 text-sm text-wd-text-secondary">{locale === "en" ? "One payment. No subscription or automatic renewal. VC do not expire." : "Одна оплата. Без подписки и автопродления. VC не сгорают."}</p>
     <PaymentChargeSummary amountRub={pkg.price} context="vc" />
-    <button autoFocus type="button" onClick={onBuy} disabled={paying} className="wd-button mt-5 w-full py-3 disabled:opacity-50">
+    <PurchaseButton autoFocus onClick={onBuy} busy={paying} className="mt-5" data-action="confirm-checkout" data-product-type="vc" data-product-id={pkg.id}>
       {paying ? t("coins.paying") : t("coins.goToPayment")}
-    </button>
+    </PurchaseButton>
     <button type="button" onClick={onClose} disabled={paying} className="mt-3 w-full py-2 text-sm text-wd-text-secondary disabled:opacity-50">{t("common.cancel")}</button>
   </dialog>;
 }
@@ -201,9 +202,9 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
           <p className="mt-2 hidden text-sm text-wd-text-secondary sm:block">{text("Для новых сцен и разговоров", "For new scenes and conversations")}</p>
           <p className="mt-3 text-3xl font-bold text-white sm:mt-6"><ConvertedPrice amountRub={heroPackage.price} /></p>
           <p className="mt-2 text-xs text-wd-text-secondary">{text("Один платёж · без автопродления", "One payment · no auto-renewal")}{currency !== "RUB" ? text(` · Списание ${heroPackage.price} ₽`, ` · Charged ${heroPackage.price} RUB`) : ""}</p>
-          <button type="button" data-testid="coins-hero-buy" disabled={offerLoading || (status === "authenticated" && offerError)} onClick={() => openCheckout(heroPackage)} className="wd-button mt-4 flex w-full items-center justify-center gap-2 py-3.5 disabled:opacity-50 sm:mt-6">
+          <PurchaseButton data-testid="coins-hero-buy" data-action="open-checkout" data-product-type="vc" data-product-id={heroPackage.id} disabled={offerLoading || (status === "authenticated" && offerError)} onClick={() => openCheckout(heroPackage)} className="mt-4 sm:mt-6">
             {offerLoading ? text("Проверяем предложение…", "Checking availability…") : status === "authenticated" && offerError ? text("Предложение временно недоступно", "Offer temporarily unavailable") : text(`Получить ${number(heroPackage.vc)} VC`, `Get ${number(heroPackage.vc)} VC`)} <FaArrowRight />
-          </button>
+          </PurchaseButton>
           {estimate(heroPackage) && <p className="mt-4 text-xs leading-relaxed text-wd-text-secondary">{estimate(heroPackage)}. {text("Количество зависит от выбранной модели.", "The number depends on the model you choose.")}</p>}
           {firstVisible && <p className="mt-4 border-t border-wd-border pt-4 text-xs leading-relaxed text-wd-text-secondary">{text("Один первый пакет на аккаунт до первой покупки. Подписка и генерации аватаров не включены.", "One introductory pack per account before your first purchase. Subscription and avatar generations are not included.")}</p>}
           {firstVisible && offer?.reserved && <p className="mt-2 text-xs text-wd-text-secondary">{text("Первый пакет уже зарезервирован: продолжите оплату того же счёта.", "Your introductory pack is reserved: continue paying the same invoice.")}</p>}
@@ -235,7 +236,7 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
           <p className="text-xs font-medium text-wd-text-secondary">{[text("Для нескольких сцен", "A few scenes"), text("Для развития сюжета", "Build your story"), text("Для долгих разговоров", "Long conversations"), text("Для нескольких историй", "Multiple stories"), text("Для больших миров", "Bigger worlds"), text("Для увлечённых авторов", "Dedicated storytellers")][index]}</p>
           <h3 className="mt-3 text-2xl font-bold text-white">{number(pkg.vc)} VC</h3><p className="mt-3 text-lg font-semibold"><ConvertedPrice amountRub={pkg.price} /></p>
           {estimate(pkg) && <p className="mt-2 text-xs leading-relaxed text-wd-text-secondary">{estimate(pkg)}</p>}
-          <button type="button" onClick={() => openCheckout(pkg)} disabled={status === "loading"} className="mt-5 rounded-full border border-wd-border px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-wd-secondary hover:bg-wd-secondary/10 disabled:opacity-50">{t("coins.buy")}</button>
+          <PurchaseButton onClick={() => openCheckout(pkg)} disabled={status === "loading"} className="mt-5" data-action="open-checkout" data-product-type="vc" data-product-id={pkg.id}>{t("coins.buy")}</PurchaseButton>
         </article>)}</div>
       </section>
       <section className="space-y-5 border-t border-wd-border pt-8"><div><h2 className="text-2xl font-bold text-white">{text("Общаетесь регулярно?", "Chatting regularly?")}</h2><p className="mt-2 text-sm text-wd-text-secondary">{text("Подписка — отдельный формат с месячными VC, памятью диалогов и генерациями аватаров.", "Subscriptions include monthly VC, conversation memory and avatar generations.")}</p></div><SubscriptionPlans showHero={false} showStatus={false} showCurrencySelector={false} /></section>

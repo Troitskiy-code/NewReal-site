@@ -18,6 +18,7 @@ import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import CurrencySelector from "@/components/CurrencySelector";
 import ConvertedPrice from "@/components/ConvertedPrice";
 import PaymentChargeSummary from "@/components/PaymentChargeSummary";
+import PurchaseButton from "@/components/PurchaseButton";
 import { useCurrency } from "@/components/CurrencyContext";
 
 const PLAN_ICONS = {
@@ -30,14 +31,6 @@ const PLAN_ACCENTS: Record<string, string> = {
   dialog: "border-wd-border",
   story: "border-wd-secondary/50",
   universe: "border-wd-primary/50",
-};
-
-const PLAN_BUTTONS: Record<string, string> = {
-  dialog:
-    "border border-wd-border bg-[#121212] hover:border-wd-secondary/50 hover:bg-wd-secondary/10",
-  story: "wd-button",
-  universe:
-    "border border-wd-primary/50 bg-wd-primary/15 hover:bg-wd-primary hover:border-wd-primary text-white",
 };
 
 type SubscriptionBalance = {
@@ -392,16 +385,17 @@ export default function SubscriptionPlans({
                 })()}
               </ul>
 
-              <button
-                type="button"
+              <PurchaseButton
                 id={`subscribe-${metrikaPlanSlug(plan.id)}`}
                 data-metrika={`subscribe-${metrikaPlanSlug(plan.id)}`}
+                data-action="open-checkout"
+                data-product-type="subscription"
+                data-product-id={plan.id}
                 onClick={() => handleSubscribe(plan)}
-                disabled={subscribingPlanId === plan.id}
-                className={`w-full rounded-wd-pill py-3 text-sm font-bold transition-all active:scale-[0.98] ${PLAN_BUTTONS[plan.id]}`}
+                busy={subscribingPlanId === plan.id}
               >
                 {subscribingPlanId === plan.id ? t("pricing.redirecting") : t("pricing.subscribe")}
-              </button>
+              </PurchaseButton>
             </article>
           );
         })}
@@ -480,23 +474,18 @@ export default function SubscriptionPlans({
               ) : null}
             </div>
             <div className="flex flex-col gap-3">
-              <button
-                type="button"
+              <PurchaseButton
                 id={`subscribe-pay-${metrikaPlanSlug(selectedPlan.id)}`}
                 data-metrika={`subscribe-pay-${metrikaPlanSlug(selectedPlan.id)}`}
+                data-action="confirm-checkout"
+                data-product-type="subscription"
+                data-product-id={selectedPlan.id}
                 onClick={handlePay}
                 disabled={Boolean(subscribingPlanId) || !recurringConsent}
-                className="wd-button w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                busy={Boolean(subscribingPlanId)}
               >
-                {subscribingPlanId ? (
-                  <span className="inline-flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    {t("pricing.redirecting")}
-                  </span>
-                ) : (
-                  t("pricing.goToPayment")
-                )}
-              </button>
+                {subscribingPlanId ? t("pricing.redirecting") : t("pricing.goToPayment")}
+              </PurchaseButton>
               <button
                 type="button"
                 onClick={closeCheckout}

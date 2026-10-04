@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
@@ -15,7 +15,11 @@ type FavoriteButtonProps = {
   onChange?: (isFavorited: boolean) => void;
 };
 
-export default function FavoriteButton({
+export default function FavoriteButton(props: FavoriteButtonProps) {
+  return <FavoriteToggle key={props.characterId} {...props} />;
+}
+
+function FavoriteToggle({
   characterId,
   initialIsFavorited = false,
   className = "",
@@ -25,11 +29,21 @@ export default function FavoriteButton({
   const { status } = useSession();
   const router = useRouter();
   const [isFavorited, setIsFavorited] = useState(initialIsFavorited);
+  const [previousInitial, setPreviousInitial] = useState(initialIsFavorited);
   const [loading, setLoading] = useState(false);
+  const mounted = useRef(true);
+  const inFlight = useRef(false);
+
+  // Update changed server data before commit, retaining the focused button.
+  if (previousInitial !== initialIsFavorited) {
+    setPreviousInitial(initialIsFavorited);
+    setIsFavorited(initialIsFavorited);
+  }
 
   useEffect(() => {
-    setIsFavorited(initialIsFavorited);
-  }, [initialIsFavorited, characterId]);
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -41,9 +55,10 @@ export default function FavoriteButton({
       return;
     }
 
-    if (loading) return;
+    if (inFlight.current) return;
 
     const action = isFavorited ? "remove" : "add";
+    inFlight.current = true;
     setLoading(true);
 
     try {
@@ -51,13 +66,15 @@ export default function FavoriteButton({
         characterId,
         action,
       });
+      if (!mounted.current) return;
       setIsFavorited(data.isFavorited);
       onChange?.(data.isFavorited);
       showSuccess(data.isFavorited ? "Добавлено в избранное" : "Удалено из избранного");
     } catch {
-      showError("Не удалось обновить избранное");
+      if (mounted.current) showError("Не удалось обновить избранное");
     } finally {
-      setLoading(false);
+      inFlight.current = false;
+      if (mounted.current) setLoading(false);
     }
   };
 
@@ -68,8 +85,10 @@ export default function FavoriteButton({
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className={`flex items-center justify-center rounded-full border border-white/10 bg-black/55 text-white backdrop-blur-sm transition-colors hover:border-wd-primary/50 disabled:opacity-60 ${isFavorited ? "text-wd-primary hover:text-wd-primary" : "hover:text-wd-primary"} ${className}`}
+      className={`flex items-center justify-center rounded-full border border-white/10 bg-black/55 backdrop-blur-sm transition-colors hover:border-wd-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-wd-bg disabled:opacity-60 ${isFavorited ? "text-wd-primary hover:text-wd-primary" : "text-white hover:text-wd-primary"} ${className}`}
       aria-label={isFavorited ? "Убрать из избранного" : "Добавить в избранное"}
+      aria-pressed={isFavorited}
+      aria-busy={loading}
     >
       <Icon size={iconSize} />
     </button>
