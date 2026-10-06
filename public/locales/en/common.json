@@ -156,6 +156,9 @@
     "invalidTopic": "Choose a topic",
     "invalidEmail": "Enter a valid email",
     "invalidMessage": "The message must be between 10 and 4000 characters",
+    "referenceTicket": "Previous ticket number (optional)",
+    "referenceHint": "To continue a conversation, copy the ticket number from the email and use the same email address. Support will receive the number with your new message.",
+    "invalidReference": "Check the ticket number: copy only the number from the email, without spaces or a link.",
     "mailtoHint": "The request is stored on the server and copied to support email.",
     "userEmailPrefix": "User email: ",
     "topics": {

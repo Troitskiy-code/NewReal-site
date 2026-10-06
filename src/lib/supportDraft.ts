@@ -4,8 +4,10 @@ export function newSupportClientKey(): string {
   return globalThis.crypto?.randomUUID?.().replace(/-/g, "")
     ?? `sup${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
 }
-export function supportSubmissionPayload(topic: string, email: string, message: string): string {
-  return JSON.stringify({ topic, email: email.trim().toLowerCase(), message: message.trim() });
+export function supportSubmissionPayload(topic: string, email: string, message: string, referenceTicketId = ""): string {
+  const reference = referenceTicketId.trim();
+  return JSON.stringify({ topic, email: email.trim().toLowerCase(), message: message.trim(),
+    ...(reference ? { referenceTicketId: reference } : {}) });
 }
 export function supportSubmissionKey(clientKey: string, previousPayload: string | null, payload: string): string {
   return previousPayload === null || previousPayload === payload ? clientKey : newSupportClientKey();

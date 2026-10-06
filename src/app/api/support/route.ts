@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { apiT } from "@/lib/apiI18n";
-import { parseSupportTicket, type SupportTicketInput } from "@/lib/supportTicket";
+import { parseSupportTicket, supportMessageWithReference } from "@/lib/supportTicket";
 import { createOrReplaySupportTicket, processSupportOutbox, SUPPORT_CLIENT_KEY_RE } from "@/lib/supportOutbox";
 import { GuestSchemaMissingError, assertGuestSchemaReady } from "@/lib/guestRequestStore";
 
@@ -37,6 +37,9 @@ async function submitSupport(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: apiT(req, "support.invalidMessage") }, { status: 400 });
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: apiT(req, "support.invalidMessage") }, { status: 400 });
+  }
 
   const clientKey = typeof body.clientKey === "string" ? body.clientKey : "";
   if (!SUPPORT_CLIENT_KEY_RE.test(clientKey)) {
@@ -47,6 +50,7 @@ async function submitSupport(req: NextRequest) {
     topic: body.topic,
     email: body.email,
     message: body.message,
+    referenceTicketId: body.referenceTicketId,
   });
   if (parsed.ok === false) {
     const key =
@@ -54,7 +58,9 @@ async function submitSupport(req: NextRequest) {
         ? "support.invalidTopic"
         : parsed.error === "invalid_email"
           ? "support.invalidEmail"
-          : "support.invalidMessage";
+          : parsed.error === "invalid_reference"
+            ? "support.invalidReference"
+            : "support.invalidMessage";
     return NextResponse.json({ error: apiT(req, key) }, { status: 400 });
   }
 
@@ -78,7 +84,7 @@ async function submitSupport(req: NextRequest) {
     clientKey,
     topic: parsed.topic,
     email: parsed.email,
-    message: parsed.message,
+    message: supportMessageWithReference(parsed),
     userId: (await getServerSession(authOptions))?.user?.id ?? null,
   });
   if ("conflict" in result) {

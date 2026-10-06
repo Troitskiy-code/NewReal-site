@@ -18,6 +18,7 @@ const pg = new EmbeddedPostgres({ databaseDir: join(directory, 'db'), user: 'pos
 const url = `postgresql://postgres:synthetic_support@127.0.0.1:${port}/support_test`;
 const db = new PrismaClient({ datasourceUrl: url, log: [] });
 const cache = new Map();
+const deferredMail = [];
 const mailCalls = [];
 let providerFailure = null;
 class FakeResend {
@@ -38,6 +39,11 @@ function load(file) {
   new Function('require', 'module', 'exports', code)(name => {
     if (name === '@/lib/prisma') return { prisma: db };
     if (name === 'resend') return { Resend: FakeResend };
+    if (name === 'next/server') return { ...require(name), after: action => deferredMail.push(action) };
+    if (name === 'next-auth/next') return { getServerSession: async () => null };
+    if (name === '@/lib/auth') return { authOptions: {} };
+    if (name === '@/lib/apiI18n') return { apiT: (_request, key) => key };
+    if (name === '@/lib/guestRequestStore') return { assertGuestSchemaReady: async () => {}, GuestSchemaMissingError: class extends Error {} };
     if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
     if (name.startsWith('.')) {
       const target = resolve(dirname(file), name);
@@ -297,6 +303,49 @@ try {
   assert.equal(expiredResponse.reply.status, 'dead'); assert.equal(mailCalls.length, beforeExpired, 'manual action never replays expired replies');
   const crossSite = request('POST', { ...payload, clientKey: 'synthetic-other-key' }); crossSite.headers.set('origin', 'https://evil.example');
   assert.equal((await api.POST(crossSite)).status, 403);
+  // Public follow-up form: reference survives validation, persistence, replay and notification.
+  const publicApi = load('src/app/api/support/route.ts');
+  const { NextRequest } = require('next/server');
+  const followUp = { topic: 'technical', email: ticket.email, message: 'Please continue this conversation',
+    referenceTicketId: ` ${ticket.id} `, clientKey: 'synthetic-public-follow-up' };
+  const publicRequest = value => new NextRequest('http://localhost/api/support', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(value),
+  });
+  const firstFollowUp = await publicApi.POST(publicRequest(followUp));
+  assert.equal(firstFollowUp.status, 201);
+  const followUpId = (await firstFollowUp.json()).ticketId;
+  assert.notEqual(followUpId, ticket.id, 'new immutable outbox message does not overwrite previous ticket');
+  const storedFollowUp = await db.supportTicket.findUniqueOrThrow({ where: { id: followUpId } });
+  assert.ok(storedFollowUp.message.startsWith(`Предыдущее обращение (номер указан пользователем): ${ticket.id}\n\n`));
+  assert.ok(storedFollowUp.message.endsWith(followUp.message));
+  assert.equal((await db.supportTicket.findUniqueOrThrow({ where: { id: ticket.id } })).message, ticket.message);
+  const followUpDetail = await (await api.GET(request('GET', null, true, '?ticketId=' + followUpId))).json();
+  assert.equal(followUpDetail.ticket.message, storedFollowUp.message, 'reference visible in admin panel');
+  const duplicate = await publicApi.POST(publicRequest(followUp));
+  assert.equal(duplicate.status, 200); assert.equal((await duplicate.json()).ticketId, followUpId);
+  assert.equal(deferredMail.length, 1, 'replay never schedules another notification');
+  const changedReference = await publicApi.POST(publicRequest({ ...followUp, referenceTicketId: 'tkt_synthetic_other' }));
+  assert.equal(changedReference.status, 409, 'reference is part of the immutable submission hash');
+  for (const referenceTicketId of ['bad\nreference', 'https://newvers.ai/support', 'a'.repeat(129), 123]) {
+    const invalid = await publicApi.POST(publicRequest({ ...followUp, referenceTicketId, clientKey: 'synthetic-invalid-ref' }));
+    assert.equal(invalid.status, 400); assert.equal((await invalid.json()).error, 'support.invalidReference');
+  }
+  assert.equal((await publicApi.POST(publicRequest(null))).status, 400);
+  const support = load('src/lib/supportOutbox.ts');
+  await db.supportTicket.update({ where: { id: followUpId }, data: { nextAttemptAt: new Date(0) } });
+  const followUpClaim = (await support.claimSupportDeliveries(100)).find(row => row.id === followUpId);
+  assert.ok(followUpClaim);
+  process.env['SUPPORT_INBOX_EMAIL'] = 'inbox@example.test';
+  assert.equal(await support.deliverSupportTicket(followUpClaim, async notification => {
+    assert.equal(notification.message, storedFollowUp.message, 'reference is included in support inbox email');
+    assert.equal(notification.replyTo, ticket.email);
+  }), 'sent');
+  const draft = load('src/lib/supportDraft.ts');
+  const plainPayload = draft.supportSubmissionPayload('technical', ticket.email, followUp.message);
+  const referencedPayload = draft.supportSubmissionPayload('technical', ticket.email, followUp.message, ticket.id);
+  assert.equal(draft.supportSubmissionPayload('technical', ticket.email, followUp.message, '  '), plainPayload);
+  assert.equal(draft.supportSubmissionPayload('technical', ticket.email, followUp.message, ` ${ticket.id} `), referencedPayload);
+  assert.notEqual(draft.supportSubmissionKey(followUp.clientKey, referencedPayload, plainPayload), followUp.clientKey, 'editing only the reference renews the client key');
   console.log('PASS support replies: immediate SDK delivery, targeted retry/auth/origin, concurrent/replayed sends, safe provider failures, retry backoff, proxy origins, schema-only/Prisma migration rollback and deploy compatibility');
 } finally {
   await db.$disconnect();

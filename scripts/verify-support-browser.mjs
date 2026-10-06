@@ -122,7 +122,45 @@ try {
     assert.equal(await page.getByLabel('Ключ администратора (ADMIN_SECRET)').inputValue(), '');
     await page.close();
   }
-  console.log('PASS support browser: visible immediate acceptance/provider failure, saved reply retry without duplicates, provider ID, draft preservation, proxy guard/HTML 403, both installation modes on mobile/desktop, storage isolation');
+  for (const { width, locale } of [{ width: 390, locale: 'ru' }, { width: 1280, locale: 'en' }]) {
+    const page = await browser.newPage({ viewport: { width, height: 844 } });
+    const words = JSON.parse(readFileSync(`public/locales/${locale}/common.json`, 'utf8')).support;
+    const reference = 'cmu_synthetic_reference';
+    let requests = 0; let savedPayload;
+    await page.route('**/*', async route => {
+      const request = route.request(); const url = new URL(request.url());
+      if (url.hostname !== 'localhost') return route.abort();
+      if (url.pathname === '/api/support' && request.method() === 'POST') {
+        requests++;
+        const payload = request.postDataJSON();
+        assert.equal(payload.referenceTicketId, reference);
+        assert.equal(payload.email, 'customer@example.test');
+        assert.equal(payload.message, 'Follow-up from browser');
+        if (requests === 1) { savedPayload = payload; return route.abort('failed'); }
+        assert.deepEqual(payload, savedPayload, 'lost response/reload reuses the entire payload and key');
+        return route.fulfill({ status: 200, json: { ok: true, replayed: true, ticketId: 'tkt_synthetic_follow_up' } });
+      }
+      if (url.pathname.startsWith('/api/')) return route.fulfill({ json: url.pathname === '/api/auth/session' ? {} : { models: [], notifications: [], balance: 0 } });
+      return route.continue();
+    });
+    await page.goto(`http://localhost:${port}/${locale}/support`);
+    await page.getByLabel(words.referenceTicket, { exact: true }).waitFor();
+    assert.equal(await page.locator('#support-reference').getAttribute('required'), null, 'reference is optional');
+    await page.locator('#support-email').fill('Customer@example.test');
+    await page.locator('#support-reference').fill(reference);
+    await page.locator('#support-message').fill('Follow-up from browser');
+    await page.getByRole('button', { name: words.submit, exact: true }).click();
+    await page.getByText(words.error, { exact: true }).waitFor();
+    await page.reload();
+    await page.waitForFunction(expected => document.querySelector('#support-reference')?.value === expected, reference);
+    assert.equal(await page.locator('#support-message').inputValue(), 'Follow-up from browser');
+    await page.getByRole('button', { name: words.submit, exact: true }).click();
+    await page.getByText('tkt_synthetic_follow_up', { exact: false }).waitFor();
+    assert.equal(requests, 2); assert.equal(await page.locator('#support-message').inputValue(), '');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'public form fits viewport');
+    await page.close();
+  }
+  console.log('PASS support browser: public reference RU/EN/mobile/desktop, draft/replay after lost response, optional field, admin delivery/retry/status, proxy guard and storage isolation');
 } finally {
   await browser?.close();
   if (child.exitCode === null && child.signalCode === null) { const exited = new Promise(done => child.once('exit', done)); child.kill(); await exited; }

@@ -19,6 +19,7 @@ export default function SupportPage() {
   const requestedTopic = searchParams.get("topic");
   const [topic, setTopic] = useState(isTopicKey(requestedTopic) ? requestedTopic : "payment");
   const [email, setEmail] = useState("");
+  const [referenceTicketId, setReferenceTicketId] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState("");
@@ -36,6 +37,7 @@ export default function SupportPage() {
       const draft = JSON.parse(raw);
       if (typeof draft.email === "string") setEmail(draft.email);
       if (typeof draft.message === "string") setMessage(draft.message);
+      if (typeof draft.referenceTicketId === "string") setReferenceTicketId(draft.referenceTicketId);
       if (isTopicKey(draft.topic)) setTopic(draft.topic);
       if (SUPPORT_KEY_RE.test(draft.clientKey ?? "")) setClientKey(draft.clientKey);
       if (typeof draft.submittedPayload === "string") submittedPayload.current = draft.submittedPayload;
@@ -56,27 +58,27 @@ export default function SupportPage() {
   useEffect(() => {
     if (!draftReady) return;
     const timer = setTimeout(() => {
-      try { sessionStorage.setItem(SUPPORT_DRAFT_KEY, JSON.stringify({ topic, email, message, clientKey, submittedPayload: submittedPayload.current })); } catch { /* storage unavailable */ }
+      try { sessionStorage.setItem(SUPPORT_DRAFT_KEY, JSON.stringify({ topic, email, message, referenceTicketId, clientKey, submittedPayload: submittedPayload.current })); } catch { /* storage unavailable */ }
     }, 200);
     return () => clearTimeout(timer);
-  }, [draftReady, topic, email, message, clientKey]);
+  }, [draftReady, topic, email, message, referenceTicketId, clientKey]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
     setSuccess("");
     setSending(true);
-    const payload = supportSubmissionPayload(topic, email, message);
+    const payload = supportSubmissionPayload(topic, email, message, referenceTicketId);
     const submissionKey = supportSubmissionKey(clientKey, submittedPayload.current, payload);
     submittedPayload.current = payload;
     setClientKey(submissionKey);
-    persistDraft({ topic, email, message, clientKey: submissionKey, submittedPayload: payload });
+    persistDraft({ topic, email, message, referenceTicketId, clientKey: submissionKey, submittedPayload: payload });
 
     try {
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-locale": i18n.language },
-        body: JSON.stringify({ topic, email, message, clientKey: submissionKey }),
+        body: JSON.stringify({ ...JSON.parse(payload), clientKey: submissionKey }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -90,7 +92,7 @@ export default function SupportPage() {
       const nextKey = newSupportClientKey();
       setClientKey(nextKey);
       submittedPayload.current = null;
-      persistDraft({ topic, email, message: "", clientKey: nextKey, submittedPayload: null });
+      persistDraft({ topic, email, message: "", referenceTicketId, clientKey: nextKey, submittedPayload: null });
     } catch {
       setError(t("support.error"));
     } finally {
@@ -139,6 +141,24 @@ export default function SupportPage() {
                 placeholder="example@mail.com"
                 className="w-full rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="support-reference" className="block text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
+                {t("support.referenceTicket")}
+              </label>
+              <input
+                id="support-reference"
+                type="text"
+                maxLength={128}
+                value={referenceTicketId}
+                onChange={(event) => setReferenceTicketId(event.target.value)}
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-describedby="support-reference-hint"
+                className="w-full rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
+              />
+              <p id="support-reference-hint" className="text-xs leading-relaxed text-wd-text-secondary">{t("support.referenceHint")}</p>
             </div>
 
             <div className="space-y-2">
