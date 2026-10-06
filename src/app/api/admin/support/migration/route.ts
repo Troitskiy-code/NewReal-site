@@ -1,4 +1,4 @@
-import { supportAdminAuthorized } from '@/lib/supportAdmin';
+import { supportAdminAuthorized, supportAdminOriginAllowed } from '@/lib/supportAdmin';
 import { SUPPORT_REPLY_MIGRATION } from '@/lib/supportSchema';
 import { applySupportMigration, inspectSupportMigration, SupportMigrationBlocked, SupportMigrationBusy } from '@/lib/supportMigration';
 import { errorLog, toSafeDiagnostic } from '@/lib/logger';
@@ -18,8 +18,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!supportAdminAuthorized(request)) return respond({ error: 'Нет доступа' }, 401);
-  const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) return respond({ error: 'Недопустимый источник' }, 403);
+  if (!supportAdminOriginAllowed(request)) {
+    errorLog('Support:Migration', 'request origin rejected', { reason: 'untrusted_origin' });
+    return respond({ error: 'Адрес страницы не разрешён для этой операции. Откройте панель через https://newvers.ai.', code: 'SUPPORT_ORIGIN_DENIED' }, 403);
+  }
   let body: unknown;
   try {
     const text = await request.text();

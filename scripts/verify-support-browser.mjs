@@ -20,6 +20,17 @@ try {
     await new Promise(done => setTimeout(done, 500));
   }
   assert.ok(ready, 'isolated server ready');
+  // Probe the compiled handlers, not browser mocks: external HTTPS Origin over internal HTTP.
+  for (const path of ['/api/admin/support/migration', '/api/admin/support']) {
+    const response = await fetch(`http://localhost:${port}${path}`, { method: 'POST', headers: {
+      authorization: 'Bearer synthetic_admin', origin: 'https://newvers.ai', 'content-type': 'application/json',
+    }, body: JSON.stringify(path.endsWith('/migration') ? { action: 'apply', migration: 'unsupported' } : {}) });
+    assert.equal(response.status, 400, 'compiled handler accepts public origin and rejects invalid payload before database access');
+    const denied = await fetch(`http://localhost:${port}${path}`, { method: 'POST', headers: {
+      authorization: 'Bearer synthetic_admin', origin: 'https://evil.example', 'content-type': 'application/json',
+    }, body: '{}' });
+    assert.equal(denied.status, 403); assert.equal((await denied.json()).code, 'SUPPORT_ORIGIN_DENIED');
+  }
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   for (const { width, mode } of [{ width: 390, mode: 'schema_only' }, { width: 1280, mode: 'schema_only' }, { width: 390, mode: 'prisma' }, { width: 1280, mode: 'prisma' }]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
@@ -27,14 +38,16 @@ try {
     let posts = 0;
     let migrationPosts = 0;
     let schemaReady = false;
+    let failNextMigration = true;
     await page.route('**/*', async route => {
       const request = route.request(); const url = new URL(request.url());
       if (url.hostname !== 'localhost') return route.abort();
       if (url.pathname === '/api/admin/support/migration') {
         assert.equal(request.headers().authorization, 'Bearer synthetic_admin');
         if (request.method() === 'POST') {
-          migrationPosts++;
           assert.deepEqual(request.postDataJSON(), { action: 'apply', migration: '20261006120000_support_replies' });
+          if (failNextMigration) { failNextMigration = false; return route.fulfill({ status: 403, contentType: 'text/html', body: '<h1>Forbidden</h1>' }); }
+          migrationPosts++;
           schemaReady = true;
         }
         return route.fulfill({ json: { migration: '20261006120000_support_replies', ready: schemaReady, canApply: !schemaReady, mode,
@@ -66,6 +79,9 @@ try {
     assert.ok(await installButton.isDisabled());
     await page.getByLabel(mode === 'schema_only' ? 'Подтверждаю создание таблицы ответов' : 'Подтверждаю применение миграции ответов поддержки').check();
     await installButton.click();
+    await page.getByRole('status').filter({ hasText: 'HTTP 403' }).waitFor();
+    assert.equal(schemaReady, false); assert.equal(migrationPosts, 0, '403 cannot report successful installation');
+    await installButton.click();
     await page.getByText('База готова к ответам пользователям.', { exact: true }).waitFor();
     await page.getByRole('alert').filter({ hasText: '20261006120000_support_replies' }).waitFor({ state: 'hidden' });
     assert.equal(migrationPosts, 1);
@@ -79,7 +95,7 @@ try {
     assert.equal(await page.getByLabel('Ключ администратора (ADMIN_SECRET)').inputValue(), '');
     await page.close();
   }
-  console.log('PASS support browser: schema-only and Prisma modes on mobile/desktop, read-only check, explicit installation, ticket/reply recovery, storage isolation, logout');
+  console.log('PASS support browser: compiled proxy-origin guard, rejected foreign origin, visible HTML 403 error/retry, both installation modes on mobile/desktop, ticket/reply recovery, storage isolation');
 } finally {
   await browser?.close();
   if (child.exitCode === null && child.signalCode === null) { const exited = new Promise(done => child.once('exit', done)); child.kill(); await exited; }

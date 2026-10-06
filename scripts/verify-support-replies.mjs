@@ -49,18 +49,43 @@ try {
   const api = load('src/app/api/admin/support/route.ts');
   const migrationApi = load('src/app/api/admin/support/migration/route.ts');
   const migration = load('src/lib/supportMigration.ts');
+  const admin = load('src/lib/supportAdmin.ts');
+  const originEnv = Object.fromEntries(['NODE_ENV', 'NEXTAUTH_URL', 'NEXT_PUBLIC_APP_URL'].map(key => [key, process.env[key]]));
+  try {
+    process.env.NODE_ENV = 'production'; process.env.NEXTAUTH_URL = ''; process.env.NEXT_PUBLIC_APP_URL = '';
+    const originCheck = (url, origin, extra = {}) => admin.supportAdminOriginAllowed(new Request(url, { headers: { origin, ...extra } }));
+    assert.equal(originCheck('http://app-internal:3000/api/admin/support', 'https://newvers.ai'), true, 'external HTTPS allowed behind internal HTTP proxy');
+    for (const origin of ['https://evil.example', 'https://newvers.ai.evil.example', 'null', 'https://newvers.ai@evil.example', 'https://newvers.ai/path'])
+      assert.equal(originCheck('http://app-internal:3000/api/admin/support', origin), false);
+    assert.equal(originCheck('https://evil.example/api/admin/support', 'https://evil.example', { 'x-forwarded-host': 'newvers.ai', 'x-forwarded-proto': 'https' }), false, 'Host/forwarded headers cannot whitelist attacker');
+    assert.equal(originCheck('http://localhost:3000/api/admin/support', 'http://localhost:3000'), false, 'production requires configured local origin');
+    process.env.NEXTAUTH_URL = 'https://preview.example.test/api/auth';
+    assert.equal(originCheck('http://app-internal:3000/api/admin/support', 'https://preview.example.test'), true, 'server-configured public origin allowed');
+    process.env.NEXTAUTH_URL = ''; process.env.NEXT_PUBLIC_APP_URL = 'https://other-preview.example.test';
+    assert.equal(originCheck('http://app-internal:3000/api/admin/support', 'https://other-preview.example.test'), true);
+    process.env.NEXT_PUBLIC_APP_URL = 'placeholder_not_a_url';
+    assert.equal(originCheck('https://evil.example/api/admin/support', 'https://evil.example'), false);
+    process.env.NODE_ENV = 'development';
+    assert.equal(originCheck('http://localhost:3000/api/admin/support', 'http://localhost:3000'), true, 'local development supported');
+  } finally {
+    for (const [key, value] of Object.entries(originEnv)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+  }
   const migrationName = '20261006120000_support_replies';
   const migrationPayload = { action: 'apply', migration: migrationName };
   const request = (method = 'GET', body, auth = true, query = '') => new Request('http://localhost/api/admin/support' + query, { method, headers: { ...(auth ? { authorization: 'Bearer synthetic_support_admin' } : {}), 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const migrationRequest = (method = 'GET', body, auth = true) => new Request('http://localhost/api/admin/support/migration', {
     method, headers: { ...(auth ? { authorization: 'Bearer synthetic_support_admin' } : {}), 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}),
   });
+  const proxyRequest = (path, body) => new Request('http://app-internal:3000' + path, { method: 'POST',
+    headers: { authorization: 'Bearer synthetic_support_admin', 'content-type': 'application/json', origin: 'https://newvers.ai' }, body: JSON.stringify(body) });
+  assert.equal((await migrationApi.POST(proxyRequest('/api/admin/support/migration', { action: 'apply', migration: 'other' }))).status, 400, 'proxy origin accepted before payload validation');
   assert.equal((await migrationApi.GET(migrationRequest('GET', null, false))).status, 401);
   assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload, false))).status, 401);
   assert.equal((await migrationApi.POST(migrationRequest('POST', { action: 'apply', migration: 'other' }))).status, 400);
   assert.equal((await migrationApi.POST(migrationRequest('POST', { ...migrationPayload, sql: 'DROP TABLE "SupportTicket"' }))).status, 400);
   const crossMigration = migrationRequest('POST', migrationPayload); crossMigration.headers.set('origin', 'https://evil.example');
-  assert.equal((await migrationApi.POST(crossMigration)).status, 403);
+  const deniedMigration = await migrationApi.POST(crossMigration);
+  assert.equal(deniedMigration.status, 403); assert.equal((await deniedMigration.json()).code, 'SUPPORT_ORIGIN_DENIED');
   let inspection = await (await migrationApi.GET(migrationRequest())).json();
   assert.equal(inspection.history, 'missing'); assert.equal(inspection.canApply, true); assert.equal(inspection.mode, 'schema_only');
   assert.equal((await db.$queryRaw`SELECT to_regclass('"SupportReply"') IS NULL AS missing`)[0].missing, true, 'schema-only inspection is read-only');
@@ -85,7 +110,7 @@ try {
   assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 503);
   assert.equal((await db.$queryRaw`SELECT to_regclass('"SupportReply"') IS NULL AS missing`)[0].missing, true, 'schema-only failed installation rolled back');
   await db.$executeRawUnsafe('DROP INDEX "SupportReply_status_nextAttemptAt_idx"');
-  const installed = await Promise.all([migrationApi.POST(migrationRequest('POST', migrationPayload)), migrationApi.POST(migrationRequest('POST', migrationPayload))]);
+  const installed = await Promise.all([migrationApi.POST(proxyRequest('/api/admin/support/migration', migrationPayload)), migrationApi.POST(migrationRequest('POST', migrationPayload))]);
   assert.ok(installed.some(response => response.status === 200));
   assert.ok(installed.every(response => [200, 409].includes(response.status)));
   inspection = await (await migrationApi.GET(migrationRequest())).json();
@@ -93,8 +118,10 @@ try {
   assert.equal(inspection.history, 'missing');
   assert.equal((await db.$queryRaw`SELECT to_regclass('"_prisma_migrations"') IS NULL AS missing`)[0].missing, true, 'installation never fabricates Prisma history');
   assert.equal((await db.supportTicket.findUnique({ where: { id: ticket.id } })).message, ticket.message, 'existing ticket preserved');
-  const noHistoryReply = await api.POST(request('POST', { ...payload, clientKey: 'synthetic_no_history_reply' }));
+  const noHistoryReply = await api.POST(proxyRequest('/api/admin/support', { ...payload, clientKey: 'synthetic_no_history_reply' }));
   assert.equal(noHistoryReply.status, 202, 'reply can be queued without Prisma history');
+  // Explicitly due: PostgreSQL timestamp(3) can round 1ms ahead of JS Date.
+  await db.supportReply.updateMany({ where: { status: 'pending' }, data: { nextAttemptAt: new Date(0) } });
   await replies.processSupportReplies(1, async mail => { assert.equal(mail.to, ticket.email); return 'synthetic_no_history_provider'; });
   const savedWithoutHistory = await db.supportReply.findUnique({ where: { clientKey: 'synthetic_no_history_reply' } });
   assert.equal(savedWithoutHistory.status, 'accepted', 'reply can be sent without Prisma history');
@@ -177,6 +204,7 @@ try {
   assert.equal(await db.supportReply.count(), 1);
   assert.equal((await db.supportReply.findFirst()).recipient, ticket.email);
   assert.equal((await api.POST(request('POST', { ...payload, message: 'Different' }))).status, 409);
+  await db.supportReply.updateMany({ where: { status: 'pending' }, data: { nextAttemptAt: new Date(0) } });
   let sends = 0;
   await Promise.all([replies.processSupportReplies(1, async (mail, key) => { sends++; assert.equal(mail.from, process.env['SUPPORT_FROM_EMAIL']); assert.equal(mail.to, ticket.email); assert.ok(key.startsWith('support-reply/')); return 'synthetic_provider_id'; }), replies.processSupportReplies(1, async () => { sends++; return 'synthetic_provider_id'; })]);
   assert.equal(sends, 1);
@@ -184,6 +212,7 @@ try {
   assert.equal((await db.supportTicket.findUnique({ where: { id: ticket.id } })).status, 'answered');
   await replies.processSupportReplies(1, async () => { throw new Error('Accepted message replayed'); });
   await replies.enqueueSupportReply(ticket.id, 'synthetic-failure-key', 'Retry answer');
+  await db.supportReply.update({ where: { clientKey: 'synthetic-failure-key' }, data: { nextAttemptAt: new Date(0) } });
   await replies.processSupportReplies(1, async () => { throw new Error('secret that must never be logged'); });
   let failed = await db.supportReply.findUnique({ where: { clientKey: 'synthetic-failure-key' } });
   assert.equal(failed.status, 'failed');
@@ -197,7 +226,7 @@ try {
   assert.equal((await db.supportReply.findUnique({ where: { clientKey: 'synthetic-expired-key' } })).status, 'dead');
   const crossSite = request('POST', { ...payload, clientKey: 'synthetic-other-key' }); crossSite.headers.set('origin', 'https://evil.example');
   assert.equal((await api.POST(crossSite)).status, 403);
-  console.log('PASS support replies: schema-only install and reply delivery without Prisma history, data preservation, both-mode rollback, migration auth/locks, checksum/deploy compatibility, schema recovery, reply retry');
+  console.log('PASS support replies: trusted proxy origins, Host spoof rejected, installation/reply through internal HTTP, schema-only and Prisma modes, rollback, auth/locks, checksum/deploy compatibility, reply retry');
 } finally {
   await db.$disconnect();
   // Graceful pg_ctl avoids Windows taskkill leaving PostgreSQL I/O workers alive.

@@ -26,7 +26,9 @@ export default function SupportAdmin() {
     const response = await fetch(`/api/admin/support${path}`, { method: body ? 'POST' : 'GET', cache: 'no-store',
       headers: { Authorization: `Bearer ${secret}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}) });
-    const result = await response.json();
+    let result;
+    try { result = await response.json(); }
+    catch { throw new Error(`Не удалось прочитать ответ сервера (HTTP ${response.status}). Повторите запрос после обновления страницы.`); }
     if (!response.ok) throw new Error(result.error || 'Ошибка запроса');
     return result;
   }
@@ -58,6 +60,7 @@ export default function SupportAdmin() {
   const input = 'w-full rounded-xl border border-white/20 bg-black/20 p-3';
   return <main className="mx-auto max-w-5xl space-y-5 p-5 text-white">
     <h1 className="text-2xl font-semibold">Поддержка NewVerse</h1>
+    {notice && <p role="status" aria-live="polite" className="rounded-xl border border-white/20 p-3">{notice}</p>}
     {!loggedIn ? <form className="max-w-md space-y-3" onSubmit={event => { event.preventDefault(); void run(current => list(current)); }}>
       <label className="block">Ключ администратора (ADMIN_SECRET)<input className={input} type="password" autoComplete="off" value={secret} onChange={event => setSecret(event.target.value)} required /></label>
       <p className="text-sm text-white/60">Ключ действует только в этой вкладке и не сохраняется в браузере.</p>
@@ -116,6 +119,5 @@ export default function SupportAdmin() {
         </section>}
       </div>
     </>}
-    <p role="status" aria-live="polite">{notice}</p>
   </main>;
 }
