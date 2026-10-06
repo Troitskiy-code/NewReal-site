@@ -57,7 +57,21 @@ try {
       }
       if (url.pathname === '/api/admin/support') {
         assert.equal(request.headers().authorization, 'Bearer synthetic_admin');
-        if (request.method() === 'POST') { posts++; const body = request.postDataJSON(); assert.equal(body.ticketId, ticket.id); assert.equal(body.message, 'Browser answer'); ticket.replies.push({ id: 'reply_synthetic', message: body.message, status: 'pending', createdAt: new Date().toISOString() }); return route.fulfill({ json: { reply: ticket.replies[0] }, status: 202 }); }
+        if (request.method() === 'POST') {
+          posts++; const body = request.postDataJSON();
+          if (body.action === 'deliver') {
+            assert.equal(body.replyId, 'reply_synthetic');
+            Object.assign(ticket.replies[0], { status: 'accepted', attempts: 2, providerId: 'synthetic_mail_id', nextAttemptAt: null });
+          } else {
+            assert.equal(body.ticketId, ticket.id); assert.equal(body.message, 'Browser answer');
+            ticket.replies.push({ id: 'reply_synthetic', message: body.message, status: mode === 'prisma' ? 'failed' : 'accepted',
+              attempts: 1, providerId: mode === 'prisma' ? null : 'synthetic_mail_id',
+              nextAttemptAt: mode === 'prisma' ? new Date(0).toISOString() : null, createdAt: new Date().toISOString() });
+          }
+          return route.fulfill({ json: { reply: ticket.replies[0], delivery: { message: ticket.replies[0].status === 'accepted'
+            ? 'Ответ принят Resend. Доставку получателю можно проверить в кабинете Resend.'
+            : 'Ответ сохранён, но Resend отклонил доступ. Проверьте API-ключ и его права на отправку с домена newvers.ai.' } }, status: 202 });
+        }
         return route.fulfill({ json: url.searchParams.has('ticketId') ? { ticket, replyAvailability: { ready: schemaReady,
           ...(schemaReady ? {} : { code: 'SUPPORT_SCHEMA_NOT_READY', message: 'Отправка ответов пока недоступна: примените миграцию 20261006120000_support_replies в базе сервера.' }) } } : { tickets: [ticket], cursor: null } });
       }
@@ -87,15 +101,28 @@ try {
     assert.equal(migrationPosts, 1);
     await page.getByLabel('Ответ пользователю').fill('Browser answer');
     await page.getByRole('button', { name: 'Отправить ответ', exact: true }).click();
-    await page.getByText('Ответ сохранён. Его отправит очередь поддержки.').waitFor();
+    await page.getByRole('status').filter({ hasText: mode === 'prisma' ? 'Resend отклонил доступ' : 'Ответ принят Resend' }).waitFor();
     assert.equal(posts, 1);
+    assert.equal(await page.getByLabel('Ответ пользователю').inputValue(), '', 'saved answer cleared even if delivery is deferred');
+    if (mode === 'prisma') {
+      await page.getByText('Следующая попытка не раньше', { exact: false }).waitFor();
+      await page.getByLabel('Ответ пользователю').fill('Unsent draft');
+      await page.getByRole('button', { name: 'Обновить статус ответа', exact: true }).click();
+      assert.equal(await page.getByLabel('Ответ пользователю').inputValue(), 'Unsent draft', 'status refresh preserves unsent draft');
+      await page.getByRole('button', { name: 'Отправить сохранённый ответ', exact: true }).click();
+      await page.getByRole('status').filter({ hasText: 'Ответ принят Resend' }).waitFor();
+      assert.equal(posts, 2); assert.equal(ticket.replies.length, 1, 'retry does not save another message');
+      assert.equal(await page.getByLabel('Ответ пользователю').inputValue(), 'Unsent draft', 'retry preserves unrelated draft');
+    }
+    await page.getByText('ID письма Resend: synthetic_mail_id').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Отправить сохранённый ответ', exact: true }).count(), 0, 'accepted replies cannot be sent again');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no horizontal overflow');
     assert.equal(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }).includes('synthetic_admin')), false);
     await page.getByRole('button', { name: 'Выйти', exact: true }).click();
     assert.equal(await page.getByLabel('Ключ администратора (ADMIN_SECRET)').inputValue(), '');
     await page.close();
   }
-  console.log('PASS support browser: compiled proxy-origin guard, rejected foreign origin, visible HTML 403 error/retry, both installation modes on mobile/desktop, ticket/reply recovery, storage isolation');
+  console.log('PASS support browser: visible immediate acceptance/provider failure, saved reply retry without duplicates, provider ID, draft preservation, proxy guard/HTML 403, both installation modes on mobile/desktop, storage isolation');
 } finally {
   await browser?.close();
   if (child.exitCode === null && child.signalCode === null) { const exited = new Promise(done => child.once('exit', done)); child.kill(); await exited; }

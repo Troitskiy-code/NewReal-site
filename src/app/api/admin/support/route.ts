@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { supportAdminAuthorized, supportAdminOriginAllowed } from '@/lib/supportAdmin';
-import { enqueueSupportReply } from '@/lib/supportReplies';
+import { deliverSupportReply, enqueueSupportReply } from '@/lib/supportReplies';
 import { errorLog, toSafeDiagnostic } from '@/lib/logger';
 import { isSupportReplySchemaMissing, SUPPORT_SCHEMA_MESSAGE } from '@/lib/supportSchema';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30;
 const respond = (body: unknown, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 export async function GET(request: Request) {
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
       if (!ticket) return respond({ error: 'Тикет не найден' }, 404);
       try {
         const replies = await prisma.supportReply.findMany({ where: { ticketId: id }, orderBy: { createdAt: 'asc' },
-          select: { id: true, message: true, status: true, createdAt: true } });
+          select: { id: true, message: true, status: true, createdAt: true, attempts: true, nextAttemptAt: true, providerId: true } });
         return respond({ ticket: { ...ticket, replies }, replyAvailability: { ready: true } });
       } catch (error) {
         errorLog('Support:Admin', 'reply history unavailable', toSafeDiagnostic(error), { ticketId: id });
@@ -52,7 +53,16 @@ export async function POST(request: Request) {
   try {
     const text = await request.text();
     if (text.length > 25000) return respond({ error: 'Слишком длинный ответ' }, 413);
-    const body = JSON.parse(text);
+    let body;
+    try { body = JSON.parse(text); } catch { return respond({ error: 'Неверный формат запроса' }, 400); }
+    if (!body || typeof body !== 'object') return respond({ error: 'Неверный формат запроса' }, 400);
+    if (body.action === 'deliver') {
+      if (typeof body.replyId !== 'string' || !body.replyId || body.replyId.length > 128)
+        return respond({ error: 'Проверьте номер ответа' }, 400);
+      const existing = await prisma.supportReply.findUnique({ where: { id: body.replyId }, select: { id: true } });
+      if (!existing) return respond({ error: 'Ответ не найден' }, 404);
+      return respond(await deliverSupportReply(existing.id), 202);
+    }
     if (typeof body.ticketId !== 'string' || body.ticketId.length > 128 ||
         typeof body.clientKey !== 'string' || !/^[a-zA-Z0-9_-]{8,128}$/.test(body.clientKey) ||
         typeof body.message !== 'string' || !body.message.trim() || body.message.trim().length > 10000)
@@ -61,7 +71,7 @@ export async function POST(request: Request) {
     if (!ticket) return respond({ error: 'Тикет не найден' }, 404);
     try {
       const reply = await enqueueSupportReply(body.ticketId, body.clientKey, body.message.trim());
-      return reply ? respond({ reply }, 202) : respond({ error: 'Ключ уже использован для другого ответа' }, 409);
+      return reply ? respond(await deliverSupportReply(reply.id), 202) : respond({ error: 'Ключ уже использован для другого ответа' }, 409);
     } catch (error) {
       if (!isSupportReplySchemaMissing(error)) throw error;
       errorLog('Support:Admin', 'reply schema unavailable', toSafeDiagnostic(error));

@@ -18,6 +18,18 @@ const pg = new EmbeddedPostgres({ databaseDir: join(directory, 'db'), user: 'pos
 const url = `postgresql://postgres:synthetic_support@127.0.0.1:${port}/support_test`;
 const db = new PrismaClient({ datasourceUrl: url, log: [] });
 const cache = new Map();
+const mailCalls = [];
+let providerFailure = null;
+class FakeResend {
+  constructor(key) {
+    assert.equal(key, 'synthetic_support_mail');
+    this.emails = { send: async (mail, options) => {
+      mailCalls.push({ mail, options });
+      await new Promise(done => setTimeout(done, 5));
+      return providerFailure ? { data: null, error: providerFailure } : { data: { id: `synthetic_provider_${mailCalls.length}` }, error: null };
+    } };
+  }
+}
 function load(file) {
   file = resolve(file);
   if (cache.has(file)) return cache.get(file);
@@ -25,6 +37,7 @@ function load(file) {
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   new Function('require', 'module', 'exports', code)(name => {
     if (name === '@/lib/prisma') return { prisma: db };
+    if (name === 'resend') return { Resend: FakeResend };
     if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
     if (name.startsWith('.')) {
       const target = resolve(dirname(file), name);
@@ -45,6 +58,8 @@ try {
   assert.equal(setup.status, 0, setup.stderr);
   process.env['ADMIN_SECRET'] = 'synthetic_support_admin';
   process.env['SUPPORT_FROM_EMAIL'] = 'NewVerse Support <support@newvers.ai>';
+  process.env['RESEND_API_KEY'] = 'synthetic_support_mail';
+  delete process.env['LOGTAIL_SOURCE_TOKEN'];
   const replies = load('src/lib/supportReplies.ts');
   const api = load('src/app/api/admin/support/route.ts');
   const migrationApi = load('src/app/api/admin/support/migration/route.ts');
@@ -119,10 +134,10 @@ try {
   assert.equal((await db.$queryRaw`SELECT to_regclass('"_prisma_migrations"') IS NULL AS missing`)[0].missing, true, 'installation never fabricates Prisma history');
   assert.equal((await db.supportTicket.findUnique({ where: { id: ticket.id } })).message, ticket.message, 'existing ticket preserved');
   const noHistoryReply = await api.POST(proxyRequest('/api/admin/support', { ...payload, clientKey: 'synthetic_no_history_reply' }));
-  assert.equal(noHistoryReply.status, 202, 'reply can be queued without Prisma history');
-  // Explicitly due: PostgreSQL timestamp(3) can round 1ms ahead of JS Date.
-  await db.supportReply.updateMany({ where: { status: 'pending' }, data: { nextAttemptAt: new Date(0) } });
-  await replies.processSupportReplies(1, async mail => { assert.equal(mail.to, ticket.email); return 'synthetic_no_history_provider'; });
+  assert.equal(noHistoryReply.status, 202, 'reply is saved and dispatched without Prisma history');
+  assert.equal((await noHistoryReply.json()).reply.status, 'accepted');
+  assert.equal(mailCalls.length, 1, 'POST calls the mail SDK immediately, without cron');
+  assert.equal(mailCalls[0].mail.to, ticket.email);
   const savedWithoutHistory = await db.supportReply.findUnique({ where: { clientKey: 'synthetic_no_history_reply' } });
   assert.equal(savedWithoutHistory.status, 'accepted', 'reply can be sent without Prisma history');
   assert.equal((await (await migrationApi.POST(migrationRequest('POST', migrationPayload))).json()).appliedNow, false);
@@ -202,15 +217,67 @@ try {
   const parallel = await Promise.all([api.POST(request('POST', payload)), api.POST(request('POST', payload))]);
   assert.ok(parallel.every(response => response.status === 202));
   assert.equal(await db.supportReply.count(), 1);
+  assert.equal(mailCalls.length, 2, 'concurrent identical POSTs send only once');
   assert.equal((await db.supportReply.findFirst()).recipient, ticket.email);
   assert.equal((await api.POST(request('POST', { ...payload, message: 'Different' }))).status, 409);
   await db.supportReply.updateMany({ where: { status: 'pending' }, data: { nextAttemptAt: new Date(0) } });
   let sends = 0;
   await Promise.all([replies.processSupportReplies(1, async (mail, key) => { sends++; assert.equal(mail.from, process.env['SUPPORT_FROM_EMAIL']); assert.equal(mail.to, ticket.email); assert.ok(key.startsWith('support-reply/')); return 'synthetic_provider_id'; }), replies.processSupportReplies(1, async () => { sends++; return 'synthetic_provider_id'; })]);
-  assert.equal(sends, 1);
+  assert.equal(sends, 0, 'cron never replays the accepted immediate delivery');
   assert.equal((await db.supportReply.findFirst()).status, 'accepted');
   assert.equal((await db.supportTicket.findUnique({ where: { id: ticket.id } })).status, 'answered');
   await replies.processSupportReplies(1, async () => { throw new Error('Accepted message replayed'); });
+  const replay = await api.POST(request('POST', payload));
+  assert.equal((await replay.json()).reply.status, 'accepted');
+  assert.equal(mailCalls.length, 2, 'network retry never sends an accepted answer twice');
+  const backlog = await replies.enqueueSupportReply(ticket.id, 'synthetic-backlog-key', 'Backlog');
+  const targeted = await replies.enqueueSupportReply(ticket.id, 'synthetic-targeted-key', 'Targeted');
+  const deliverRequest = (id, auth = true) => request('POST', { action: 'deliver', replyId: id }, auth);
+  assert.equal((await api.POST(deliverRequest(targeted.id, false))).status, 401);
+  const crossDelivery = deliverRequest(targeted.id); crossDelivery.headers.set('origin', 'https://evil.example');
+  assert.equal((await api.POST(crossDelivery)).status, 403);
+  assert.equal((await api.POST(deliverRequest('missing_reply'))).status, 404);
+  assert.equal((await api.POST(deliverRequest(''))).status, 400);
+  await Promise.all([api.POST(deliverRequest(targeted.id)), api.POST(deliverRequest(targeted.id))]);
+  assert.equal(mailCalls.length, 3, 'concurrent manual sends claim exactly one specific reply');
+  assert.equal(mailCalls.at(-1).mail.text.startsWith('Targeted'), true);
+  assert.equal((await db.supportReply.findUnique({ where: { id: backlog.id } })).status, 'pending', 'targeted delivery does not consume a different queued message');
+  await replies.processSupportReplies(1, async () => 'synthetic_backlog');
+  const contested = await replies.enqueueSupportReply(ticket.id, 'synthetic-cron-api-key', 'Cron and panel');
+  const beforeContest = mailCalls.length;
+  let cronSends = 0;
+  await Promise.all([api.POST(deliverRequest(contested.id)), replies.processSupportReplies(1, async () => {
+    cronSends++; await new Promise(done => setTimeout(done, 5)); return 'synthetic_cron_api';
+  })]);
+  assert.equal(mailCalls.length - beforeContest + cronSends, 1, 'cron and admin dispatch share the same claim');
+  assert.equal((await db.supportReply.findUnique({ where: { id: contested.id } })).status, 'accepted');
+  const beforeFailures = mailCalls.length;
+
+  // Missing configuration and raw provider errors leave a saved reply and safe feedback.
+  delete process.env['RESEND_API_KEY'];
+  const missingMail = await api.POST(request('POST', { ...payload, clientKey: 'synthetic-missing-mail-key' }));
+  const missingResult = await missingMail.json();
+  assert.equal(missingMail.status, 202); assert.equal(missingResult.reply.status, 'failed');
+  assert.equal(missingResult.delivery.code, 'not_configured'); assert.equal(mailCalls.length, beforeFailures);
+  process.env['RESEND_API_KEY'] = 'synthetic_support_mail';
+  const earlyRetry = await (await api.POST(deliverRequest(missingResult.reply.id))).json();
+  assert.equal(earlyRetry.reply.attempts, 1); assert.equal(mailCalls.length, beforeFailures, 'manual action respects retry backoff');
+  await db.supportReply.update({ where: { id: missingResult.reply.id }, data: { nextAttemptAt: new Date(0) } });
+  providerFailure = { name: 'invalid_api_key', message: 'synthetic_sensitive_provider_text', statusCode: 401 };
+  const logs = []; const originalError = console.error; console.error = (...args) => logs.push(args.join(' '));
+  let rejected;
+  try { rejected = await (await api.POST(deliverRequest(missingResult.reply.id))).json(); }
+  finally { console.error = originalError; }
+  assert.equal(rejected.delivery.code, 'access_denied'); assert.equal(rejected.reply.status, 'failed');
+  assert.equal(JSON.stringify(rejected).includes(providerFailure.message), false);
+  assert.equal(logs.join(' ').includes(providerFailure.message), false);
+  assert.ok(logs.join(' ').includes('access_denied'), 'safe failure category visible in server log');
+  providerFailure = null;
+  await db.supportReply.update({ where: { id: missingResult.reply.id }, data: { nextAttemptAt: new Date(0) } });
+  const recovered = await (await api.POST(deliverRequest(missingResult.reply.id))).json();
+  assert.equal(recovered.reply.status, 'accepted'); assert.equal(recovered.reply.attempts, 3);
+  const retryKeys = mailCalls.slice(-2).map(call => call.options.idempotencyKey);
+  assert.equal(retryKeys[0], retryKeys[1], 'manual retry keeps provider idempotency key');
   await replies.enqueueSupportReply(ticket.id, 'synthetic-failure-key', 'Retry answer');
   await db.supportReply.update({ where: { clientKey: 'synthetic-failure-key' }, data: { nextAttemptAt: new Date(0) } });
   await replies.processSupportReplies(1, async () => { throw new Error('secret that must never be logged'); });
@@ -224,9 +291,13 @@ try {
   await db.supportReply.update({ where: { clientKey: 'synthetic-expired-key' }, data: { createdAt: new Date(0) } });
   await replies.processSupportReplies(1, async () => { throw new Error('Expired message sent'); });
   assert.equal((await db.supportReply.findUnique({ where: { clientKey: 'synthetic-expired-key' } })).status, 'dead');
+  const expired = await db.supportReply.findUnique({ where: { clientKey: 'synthetic-expired-key' } });
+  const beforeExpired = mailCalls.length;
+  const expiredResponse = await (await api.POST(deliverRequest(expired.id))).json();
+  assert.equal(expiredResponse.reply.status, 'dead'); assert.equal(mailCalls.length, beforeExpired, 'manual action never replays expired replies');
   const crossSite = request('POST', { ...payload, clientKey: 'synthetic-other-key' }); crossSite.headers.set('origin', 'https://evil.example');
   assert.equal((await api.POST(crossSite)).status, 403);
-  console.log('PASS support replies: trusted proxy origins, Host spoof rejected, installation/reply through internal HTTP, schema-only and Prisma modes, rollback, auth/locks, checksum/deploy compatibility, reply retry');
+  console.log('PASS support replies: immediate SDK delivery, targeted retry/auth/origin, concurrent/replayed sends, safe provider failures, retry backoff, proxy origins, schema-only/Prisma migration rollback and deploy compatibility');
 } finally {
   await db.$disconnect();
   // Graceful pg_ctl avoids Windows taskkill leaving PostgreSQL I/O workers alive.

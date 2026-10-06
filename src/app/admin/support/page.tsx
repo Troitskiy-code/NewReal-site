@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 
-type Reply = { id: string; message: string; status: string; createdAt: string };
+type Reply = { id: string; message: string; status: string; createdAt: string; attempts?: number; nextAttemptAt?: string | null; providerId?: string | null };
 type Ticket = { id: string; email: string; topic: string; status: string; createdAt: string; message?: string; replies?: Reply[] };
 type ReplyAvailability = { ready: boolean; message?: string };
 type MigrationStatus = { migration: string; ready: boolean; canApply: boolean; mode?: 'prisma' | 'schema_only'; message: string };
@@ -45,10 +45,20 @@ export default function SupportAdmin() {
     if (current !== generation.current) return;
     setTickets(previous => more ? [...previous, ...result.tickets] : result.tickets); setCursor(result.cursor); setLoggedIn(true);
   }
-  async function select(id: string, current: number) {
+  async function select(id: string, current: number, resetDraft = true) {
     const result = await api(`?ticketId=${encodeURIComponent(id)}`);
     if (current !== generation.current) return;
-    setTicket(result.ticket); setReplyAvailability(result.replyAvailability ?? { ready: true }); setMessage(''); draft.current = null;
+    setTicket(result.ticket); setReplyAvailability(result.replyAvailability ?? { ready: true });
+    if (resetDraft) { setMessage(''); draft.current = null; }
+  }
+  function showDelivery(result: { reply: Reply; delivery: { message: string } }, current: number) {
+    if (current !== generation.current) return;
+    setTicket(previous => previous ? { ...previous,
+      status: result.reply.status === 'accepted' ? 'answered' : previous.status,
+      replies: [...(previous.replies ?? []).filter(row => row.id !== result.reply.id), result.reply]
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    } : previous);
+    setNotice(result.delivery.message);
   }
   function logout() {
     generation.current++; setSecret(''); setLoggedIn(false); setTickets([]); setTicket(null);
@@ -102,18 +112,28 @@ export default function SupportAdmin() {
         {ticket && <section className="space-y-4">
           <h2 className="font-semibold">{ticket.id} · {ticket.email}</h2><p className="whitespace-pre-wrap break-words">{ticket.message}</p>
           {!replyAvailability.ready && <p role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-amber-100">{replyAvailability.message}</p>}
-          {ticket.replies?.map(reply => <article key={reply.id} className="rounded-xl border border-white/20 p-3"><p className="whitespace-pre-wrap break-words">{reply.message}</p><p className="mt-2 text-sm text-white/60">{states[reply.status] || reply.status} · {new Date(reply.createdAt).toLocaleString('ru')}</p></article>)}
-          <button className={button} disabled={busy} onClick={() => void run(current => select(ticket.id, current))}>Обновить статус ответа</button>
+          {ticket.replies?.map(reply => <article key={reply.id} className="space-y-2 rounded-xl border border-white/20 p-3">
+            <p className="whitespace-pre-wrap break-words">{reply.message}</p>
+            <p className="text-sm text-white/60">{states[reply.status] || reply.status} · {new Date(reply.createdAt).toLocaleString('ru')} · Попыток: {reply.attempts ?? 0}</p>
+            {reply.providerId && <p className="break-all text-sm text-white/60">ID письма Resend: {reply.providerId}</p>}
+            {reply.status === 'failed' && reply.nextAttemptAt && <p className="text-sm text-amber-100">Следующая попытка не раньше {new Date(reply.nextAttemptAt).toLocaleString('ru')}</p>}
+            {['pending', 'failed'].includes(reply.status) && <button className={button} disabled={busy} onClick={() => void run(async current => {
+              const result = await api('', { action: 'deliver', replyId: reply.id });
+              showDelivery(result, current);
+            })}>Отправить сохранённый ответ</button>}
+          </article>)}
+          <button className={button} disabled={busy} onClick={() => void run(current => select(ticket.id, current, false))}>Обновить статус ответа</button>
           <form className="space-y-3" onSubmit={event => { event.preventDefault(); void run(async current => {
             if (!replyAvailability.ready) return;
             const text = message.trim();
             if (!draft.current || draft.current.ticketId !== ticket.id || draft.current.message !== text) draft.current = { ticketId: ticket.id, message: text, clientKey: crypto.randomUUID() };
-            await api('', draft.current);
-            await select(ticket.id, current);
-            if (current === generation.current) setNotice('Ответ сохранён. Его отправит очередь поддержки.');
+            const result = await api('', draft.current);
+            showDelivery(result, current);
+            if (current === generation.current) { setMessage(''); draft.current = null; }
           }); }}>
             <label className="block">Ответ пользователю<textarea className={input} rows={7} maxLength={10000} value={message} onChange={event => setMessage(event.target.value)} disabled={!replyAvailability.ready} required /></label>
             <p className="text-sm text-white/60">Отправитель — адрес поддержки @newvers.ai. Получатель — email этого тикета. Входящие ответы на письма пока не подключены.</p>
+            <p className="text-sm text-white/60">Отправка начинается сразу и может занять до 10 секунд. При сбое ответ сохраняется для повторной попытки.</p>
             <button className={button} disabled={busy || !replyAvailability.ready || !message.trim()}>Отправить ответ</button>
           </form>
         </section>}
