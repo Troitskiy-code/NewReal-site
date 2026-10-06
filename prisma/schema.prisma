@@ -544,6 +544,7 @@ model AvatarQuotaReservation {
 }
 
 model SupportTicket {
+  replies           SupportReply[]
   id                String    @id @default(cuid())
   topic             String
   email             String
@@ -564,4 +565,25 @@ model SupportTicket {
   @@index([createdAt])
   @@index([email, createdAt])
   @@index([deliveryStatus, nextAttemptAt])
+}
+
+model SupportReply {
+  id String @id @default(cuid())
+  ticketId String
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  clientKey String @unique
+  payloadHash String
+  recipient String
+  sender String
+  message String @db.Text
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime? @default(now())
+  claimedAt DateTime?
+  claimToken String?
+  providerId String?
+  acceptedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([ticketId, createdAt])
+  @@index([status, nextAttemptAt])
 }
