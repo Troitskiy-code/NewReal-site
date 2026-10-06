@@ -1,8 +1,9 @@
 // Private PostgreSQL only; no .env, production database or real mail sender.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readFileSync, writeFileSync, mkdtempSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { spawnSync } from 'node:child_process';
@@ -18,10 +19,19 @@ const url = `postgresql://postgres:synthetic_support@127.0.0.1:${port}/support_t
 const db = new PrismaClient({ datasourceUrl: url, log: [] });
 const cache = new Map();
 function load(file) {
+  file = resolve(file);
   if (cache.has(file)) return cache.get(file);
   const module = { exports: {} };
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-  new Function('require', 'module', 'exports', code)(name => name === '@/lib/prisma' ? { prisma: db } : name.startsWith('@/') ? load(`src/${name.slice(2)}.ts`) : require(name), module, module.exports);
+  new Function('require', 'module', 'exports', code)(name => {
+    if (name === '@/lib/prisma') return { prisma: db };
+    if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
+    if (name.startsWith('.')) {
+      const target = resolve(dirname(file), name);
+      return load(existsSync(target + '.ts') ? target + '.ts' : target + '.js');
+    }
+    return require(name);
+  }, module, module.exports);
   cache.set(file, module.exports); return module.exports;
 }
 try {
@@ -33,16 +43,113 @@ try {
   writeFileSync(schema, source);
   const setup = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'db', 'push', '--skip-generate', '--schema', schema], { env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8' });
   assert.equal(setup.status, 0, setup.stderr);
-  for (const sql of readFileSync('prisma/migrations/20261006120000_support_replies/migration.sql', 'utf8').split(';').filter(part => part.trim())) await db.$executeRawUnsafe(sql);
   process.env['ADMIN_SECRET'] = 'synthetic_support_admin';
   process.env['SUPPORT_FROM_EMAIL'] = 'NewVerse Support <support@newvers.ai>';
   const replies = load('src/lib/supportReplies.ts');
   const api = load('src/app/api/admin/support/route.ts');
-  const request = (method = 'GET', body, auth = true) => new Request('http://localhost/api/admin/support', { method, headers: { ...(auth ? { authorization: 'Bearer synthetic_support_admin' } : {}), 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const migrationApi = load('src/app/api/admin/support/migration/route.ts');
+  const migration = load('src/lib/supportMigration.ts');
+  const migrationName = '20261006120000_support_replies';
+  const migrationPayload = { action: 'apply', migration: migrationName };
+  const request = (method = 'GET', body, auth = true, query = '') => new Request('http://localhost/api/admin/support' + query, { method, headers: { ...(auth ? { authorization: 'Bearer synthetic_support_admin' } : {}), 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const migrationRequest = (method = 'GET', body, auth = true) => new Request('http://localhost/api/admin/support/migration', {
+    method, headers: { ...(auth ? { authorization: 'Bearer synthetic_support_admin' } : {}), 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  assert.equal((await migrationApi.GET(migrationRequest('GET', null, false))).status, 401);
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload, false))).status, 401);
+  assert.equal((await migrationApi.POST(migrationRequest('POST', { action: 'apply', migration: 'other' }))).status, 400);
+  assert.equal((await migrationApi.POST(migrationRequest('POST', { ...migrationPayload, sql: 'DROP TABLE "SupportTicket"' }))).status, 400);
+  const crossMigration = migrationRequest('POST', migrationPayload); crossMigration.headers.set('origin', 'https://evil.example');
+  assert.equal((await migrationApi.POST(crossMigration)).status, 403);
+  let inspection = await (await migrationApi.GET(migrationRequest())).json();
+  assert.equal(inspection.history, 'missing'); assert.equal(inspection.canApply, false);
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 409, 'never fabricate migration history');
   assert.equal((await api.GET(request('GET', null, false))).status, 401);
   assert.equal((await api.POST(request('POST', {}, false))).status, 401);
   const ticket = await db.supportTicket.create({ data: { topic: 'technical', email: 'customer@example.test', message: 'Question' } });
   const payload = { ticketId: ticket.id, clientKey: 'synthetic-reply-key', message: 'Answer', recipient: 'attacker@example.test' };
+  const detailRequest = () => request('GET', null, true, '?ticketId=' + ticket.id);
+  assert.equal((await api.GET(request())).status, 200, 'historical schema still lists tickets');
+  let detail = await api.GET(detailRequest());
+  assert.equal(detail.status, 200, 'missing reply table does not hide ticket');
+  let body = await detail.json();
+  assert.equal(body.ticket.message, ticket.message);
+  assert.equal(body.replyAvailability.code, 'SUPPORT_SCHEMA_NOT_READY');
+  assert.equal(body.replyAvailability.ready, false);
+  assert.ok(body.replyAvailability.message.includes('20261006120000_support_replies'));
+  const missingSchemaPost = await api.POST(request('POST', payload));
+  assert.equal(missingSchemaPost.status, 503);
+  assert.equal((await missingSchemaPost.json()).code, 'SUPPORT_SCHEMA_NOT_READY');
+  await db.$executeRawUnsafe(`CREATE TABLE "_prisma_migrations" (
+    "id" VARCHAR(36) PRIMARY KEY, "checksum" VARCHAR(64) NOT NULL,
+    "finished_at" TIMESTAMPTZ, "migration_name" VARCHAR(255) NOT NULL, "logs" TEXT,
+    "rolled_back_at" TIMESTAMPTZ, "started_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "applied_steps_count" INTEGER NOT NULL DEFAULT 0)`);
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 409, 'uninitialized baseline history blocks writes');
+  for (const name of readdirSync('prisma/migrations').filter(name => /^\d+_/.test(name))) {
+    const text = readFileSync(`prisma/migrations/${name}/migration.sql`, 'utf8');
+    const target = join(directory, 'migrations', name); mkdirSync(target, { recursive: true });
+    writeFileSync(join(target, 'migration.sql'), text);
+    if (name !== migrationName) await db.$executeRaw`INSERT INTO "_prisma_migrations" (id, checksum, migration_name, finished_at, applied_steps_count)
+      VALUES (${randomUUID()}, ${createHash('sha256').update(text).digest('hex')}, ${name}, now(), 1)`;
+  }
+  writeFileSync(join(directory, 'migrations/migration_lock.toml'), 'provider = "postgresql"\n');
+  inspection = await (await migrationApi.GET(migrationRequest())).json();
+  assert.equal(inspection.ready, false); assert.equal(inspection.canApply, true);
+  assert.equal((await db.$queryRaw`SELECT to_regclass('"SupportReply"') IS NULL AS missing`)[0].missing, true, 'GET never creates table');
+  await db.$executeRawUnsafe('CREATE ROLE support_migration_reader LOGIN PASSWORD \'synthetic_test_reader\'');
+  await db.$executeRawUnsafe('GRANT USAGE ON SCHEMA public TO support_migration_reader');
+  await db.$executeRawUnsafe('GRANT SELECT ON ALL TABLES IN SCHEMA public TO support_migration_reader');
+  const readerUrl = new URL(url); readerUrl.username = 'support_migration_reader'; readerUrl.password = 'synthetic_test_reader';
+  const reader = new PrismaClient({ datasourceUrl: readerUrl.toString(), log: [] });
+  try {
+    const limited = await migration.inspectSupportMigration(reader);
+    assert.equal(limited.canApply, false); assert.ok(limited.message.includes('прав'));
+  } finally { await reader.$disconnect(); }
+  await db.$executeRaw`INSERT INTO "_prisma_migrations" (id, checksum, migration_name) VALUES ('synthetic_failed', 'synthetic', 'synthetic_failed')`;
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 409, 'unfinished migration blocks writes');
+  await db.$executeRaw`DELETE FROM "_prisma_migrations" WHERE id = 'synthetic_failed'`;
+  await db.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(20261006, 120000)`;
+    assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 409, 'concurrent migration locked');
+  });
+  // Conflict on the final index forces a real DDL rollback after table creation.
+  await db.$executeRawUnsafe('CREATE INDEX "SupportReply_status_nextAttemptAt_idx" ON "SupportTicket" (status)');
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 503);
+  assert.equal((await db.$queryRaw`SELECT to_regclass('"SupportReply"') IS NULL AS missing`)[0].missing, true, 'failed DDL rolled back');
+  assert.equal((await db.$queryRaw`SELECT count(*)::integer AS count FROM "_prisma_migrations" WHERE migration_name = ${migrationName}`)[0].count, 0);
+  await db.$executeRawUnsafe('DROP INDEX "SupportReply_status_nextAttemptAt_idx"');
+  const applied = await Promise.all([migrationApi.POST(migrationRequest('POST', migrationPayload)), migrationApi.POST(migrationRequest('POST', migrationPayload))]);
+  assert.ok(applied.some(response => response.status === 200));
+  assert.ok(applied.every(response => [200, 409].includes(response.status)));
+  inspection = await (await migrationApi.GET(migrationRequest())).json();
+  assert.equal(inspection.ready, true); assert.equal(inspection.history, 'applied');
+  const history = await db.$queryRaw`SELECT checksum FROM "_prisma_migrations" WHERE migration_name = ${migrationName}`;
+  assert.equal(history.length, 1);
+  assert.equal(history[0].checksum, createHash('sha256').update(readFileSync(`prisma/migrations/${migrationName}/migration.sql`, 'utf8')).digest('hex'));
+  assert.equal((await (await migrationApi.POST(migrationRequest('POST', migrationPayload))).json()).appliedNow, false);
+  await db.$executeRaw`INSERT INTO "_prisma_migrations" (id, checksum, migration_name) VALUES ('synthetic_failed_after', 'synthetic', 'synthetic_failed_after')`;
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 409, 'unfinished history is not bypassed by ready schema');
+  await db.$executeRaw`DELETE FROM "_prisma_migrations" WHERE id = 'synthetic_failed_after'`;
+  const preserved = await db.supportReply.create({ data: { ticketId: ticket.id, clientKey: 'synthetic_preserved_reply', payloadHash: 'synthetic',
+    recipient: ticket.email, sender: 'support@newvers.ai', message: 'Existing answer', status: 'accepted' } });
+  await db.$executeRaw`DELETE FROM "_prisma_migrations" WHERE migration_name = ${migrationName}`;
+  inspection = await (await migrationApi.GET(migrationRequest())).json();
+  assert.equal(inspection.ready, true); assert.equal(inspection.canApply, true); assert.equal(inspection.state, 'untracked');
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 200, 'existing compatible table only records history');
+  assert.equal((await db.supportReply.findUnique({ where: { id: preserved.id } })).message, 'Existing answer');
+  await db.supportReply.delete({ where: { id: preserved.id } });
+  const futureDeploy = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy', '--schema', schema], { env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8', timeout: 60000 });
+  assert.equal(futureDeploy.status, 0, futureDeploy.stderr); assert.ok(futureDeploy.stdout.includes('No pending migrations'));
+  // A partially deployed schema must show the same actionable notice (P2022).
+  await db.$executeRawUnsafe('ALTER TABLE "SupportReply" DROP COLUMN "message"');
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 409, 'partial table not auto-repaired');
+  body = await (await api.GET(detailRequest())).json();
+  assert.equal(body.ticket.message, ticket.message);
+  assert.equal(body.replyAvailability.code, 'SUPPORT_SCHEMA_NOT_READY');
+  await db.$executeRawUnsafe('ALTER TABLE "SupportReply" ADD COLUMN "message" TEXT NOT NULL');
+  body = await (await api.GET(detailRequest())).json();
+  assert.equal(body.replyAvailability.ready, true, 'migration restores replies without changing ticket');
   const parallel = await Promise.all([api.POST(request('POST', payload)), api.POST(request('POST', payload))]);
   assert.ok(parallel.every(response => response.status === 202));
   assert.equal(await db.supportReply.count(), 1);
@@ -68,7 +175,7 @@ try {
   assert.equal((await db.supportReply.findUnique({ where: { clientKey: 'synthetic-expired-key' } })).status, 'dead');
   const crossSite = request('POST', { ...payload, clientKey: 'synthetic-other-key' }); crossSite.headers.set('origin', 'https://evil.example');
   assert.equal((await api.POST(crossSite)).status, 403);
-  console.log('PASS support replies: migration, access, recipient isolation, concurrent enqueue/claim, replay, retry, expiry, cross-site protection');
+  console.log('PASS support replies: migration API auth, read-only check, permissions/history guards, concurrent lock, DDL rollback, checksum, Prisma deploy compatibility, schema recovery, recipient isolation, reply retry');
 } finally {
   await db.$disconnect();
   // Graceful pg_ctl avoids Windows taskkill leaving PostgreSQL I/O workers alive.

@@ -25,13 +25,26 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const ticket = { id: 'tkt_synthetic_browser', email: 'customer@example.test', topic: 'technical', status: 'open', message: 'Browser question', createdAt: new Date().toISOString(), replies: [] };
     let posts = 0;
+    let migrationPosts = 0;
+    let schemaReady = false;
     await page.route('**/*', async route => {
       const request = route.request(); const url = new URL(request.url());
       if (url.hostname !== 'localhost') return route.abort();
+      if (url.pathname === '/api/admin/support/migration') {
+        assert.equal(request.headers().authorization, 'Bearer synthetic_admin');
+        if (request.method() === 'POST') {
+          migrationPosts++;
+          assert.deepEqual(request.postDataJSON(), { action: 'apply', migration: '20261006120000_support_replies' });
+          schemaReady = true;
+        }
+        return route.fulfill({ json: { migration: '20261006120000_support_replies', ready: schemaReady, canApply: !schemaReady,
+          message: schemaReady ? 'Миграция применена. База готова к ответам пользователям.' : 'Миграция не применена. Можно создать таблицу ответов кнопкой ниже.' } });
+      }
       if (url.pathname === '/api/admin/support') {
         assert.equal(request.headers().authorization, 'Bearer synthetic_admin');
         if (request.method() === 'POST') { posts++; const body = request.postDataJSON(); assert.equal(body.ticketId, ticket.id); assert.equal(body.message, 'Browser answer'); ticket.replies.push({ id: 'reply_synthetic', message: body.message, status: 'pending', createdAt: new Date().toISOString() }); return route.fulfill({ json: { reply: ticket.replies[0] }, status: 202 }); }
-        return route.fulfill({ json: url.searchParams.has('ticketId') ? { ticket } : { tickets: [ticket], cursor: null } });
+        return route.fulfill({ json: url.searchParams.has('ticketId') ? { ticket, replyAvailability: { ready: schemaReady,
+          ...(schemaReady ? {} : { code: 'SUPPORT_SCHEMA_NOT_READY', message: 'Отправка ответов пока недоступна: примените миграцию 20261006120000_support_replies в базе сервера.' }) } } : { tickets: [ticket], cursor: null } });
       }
       if (url.pathname.startsWith('/api/')) return route.fulfill({ json: url.pathname === '/api/auth/session' ? {} : { models: [], notifications: [], balance: 0 } });
       return route.continue();
@@ -40,6 +53,19 @@ try {
     await page.getByLabel('Ключ администратора (ADMIN_SECRET)').fill('synthetic_admin');
     await page.getByRole('button', { name: 'Открыть обращения' }).click();
     await page.getByRole('button', { name: /tkt_synthetic_browser/ }).click();
+    await page.getByText('Browser question', { exact: true }).waitFor();
+    await page.getByRole('alert').filter({ hasText: '20261006120000_support_replies' }).waitFor();
+    assert.ok(await page.getByRole('button', { name: 'Отправить ответ', exact: true }).isDisabled());
+    assert.ok(await page.getByLabel('Ответ пользователю').isDisabled());
+    await page.getByRole('button', { name: 'Проверить миграцию', exact: true }).click();
+    await page.getByText('Миграция не применена. Можно создать таблицу ответов кнопкой ниже.', { exact: true }).waitFor();
+    assert.equal(migrationPosts, 0, 'inspection never applies migration');
+    assert.ok(await page.getByRole('button', { name: 'Применить миграцию', exact: true }).isDisabled());
+    await page.getByLabel('Подтверждаю применение миграции ответов поддержки').check();
+    await page.getByRole('button', { name: 'Применить миграцию', exact: true }).click();
+    await page.getByText('Миграция применена. База готова к ответам пользователям.', { exact: true }).waitFor();
+    await page.getByRole('alert').filter({ hasText: '20261006120000_support_replies' }).waitFor({ state: 'hidden' });
+    assert.equal(migrationPosts, 1);
     await page.getByLabel('Ответ пользователю').fill('Browser answer');
     await page.getByRole('button', { name: 'Отправить ответ', exact: true }).click();
     await page.getByText('Ответ сохранён. Его отправит очередь поддержки.').waitFor();
@@ -50,7 +76,7 @@ try {
     assert.equal(await page.getByLabel('Ключ администратора (ADMIN_SECRET)').inputValue(), '');
     await page.close();
   }
-  console.log('PASS support browser: mobile/desktop, login, ticket, reply, storage isolation, logout');
+  console.log('PASS support browser: mobile/desktop, read-only migration check, explicit apply confirmation, ticket/reply recovery, storage isolation, logout');
 } finally {
   await browser?.close();
   if (child.exitCode === null && child.signalCode === null) { const exited = new Promise(done => child.once('exit', done)); child.kill(); await exited; }

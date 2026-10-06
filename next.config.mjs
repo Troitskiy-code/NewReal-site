@@ -8,6 +8,9 @@ const nextConfig = {
   // Resolve metadata/visibility before streaming so missing characters return HTTP 404
   // to browsers as well as crawlers, rather than a streamed 200 with a noindex tag.
   htmlLimitedBots: /.*/,
+  outputFileTracingIncludes: {
+    '/api/admin/support/migration': ['./prisma/migrations/20261006120000_support_replies/migration.sql'],
+  },
   serverExternalPackages: ["tiktoken", "jimp", "sharp", "@jsquash/webp", "@logtail/node", "@logtail/core"],
   async headers() {
     return [
