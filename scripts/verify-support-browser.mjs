@@ -21,7 +21,7 @@ try {
   }
   assert.ok(ready, 'isolated server ready');
   browser = await chromium.launch({ channel: 'msedge', headless: true });
-  for (const width of [390, 1280]) {
+  for (const { width, mode } of [{ width: 390, mode: 'schema_only' }, { width: 1280, mode: 'schema_only' }, { width: 390, mode: 'prisma' }, { width: 1280, mode: 'prisma' }]) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
     const ticket = { id: 'tkt_synthetic_browser', email: 'customer@example.test', topic: 'technical', status: 'open', message: 'Browser question', createdAt: new Date().toISOString(), replies: [] };
     let posts = 0;
@@ -37,8 +37,10 @@ try {
           assert.deepEqual(request.postDataJSON(), { action: 'apply', migration: '20261006120000_support_replies' });
           schemaReady = true;
         }
-        return route.fulfill({ json: { migration: '20261006120000_support_replies', ready: schemaReady, canApply: !schemaReady,
-          message: schemaReady ? 'Миграция применена. База готова к ответам пользователям.' : 'Миграция не применена. Можно создать таблицу ответов кнопкой ниже.' } });
+        return route.fulfill({ json: { migration: '20261006120000_support_replies', ready: schemaReady, canApply: !schemaReady, mode,
+          message: schemaReady ? 'База готова к ответам пользователям.' : mode === 'schema_only'
+            ? 'Таблицы ответов нет. Можно создать её кнопкой ниже. История остальных миграций не изменится.'
+            : 'Миграция не применена. Можно создать таблицу ответов кнопкой ниже.' } });
       }
       if (url.pathname === '/api/admin/support') {
         assert.equal(request.headers().authorization, 'Bearer synthetic_admin');
@@ -58,12 +60,13 @@ try {
     assert.ok(await page.getByRole('button', { name: 'Отправить ответ', exact: true }).isDisabled());
     assert.ok(await page.getByLabel('Ответ пользователю').isDisabled());
     await page.getByRole('button', { name: 'Проверить миграцию', exact: true }).click();
-    await page.getByText('Миграция не применена. Можно создать таблицу ответов кнопкой ниже.', { exact: true }).waitFor();
+    await page.getByText(mode === 'schema_only' ? 'Таблицы ответов нет. Можно создать её кнопкой ниже. История остальных миграций не изменится.' : 'Миграция не применена. Можно создать таблицу ответов кнопкой ниже.', { exact: true }).waitFor();
     assert.equal(migrationPosts, 0, 'inspection never applies migration');
-    assert.ok(await page.getByRole('button', { name: 'Применить миграцию', exact: true }).isDisabled());
-    await page.getByLabel('Подтверждаю применение миграции ответов поддержки').check();
-    await page.getByRole('button', { name: 'Применить миграцию', exact: true }).click();
-    await page.getByText('Миграция применена. База готова к ответам пользователям.', { exact: true }).waitFor();
+    const installButton = page.getByRole('button', { name: mode === 'schema_only' ? 'Создать таблицу ответов' : 'Применить миграцию', exact: true });
+    assert.ok(await installButton.isDisabled());
+    await page.getByLabel(mode === 'schema_only' ? 'Подтверждаю создание таблицы ответов' : 'Подтверждаю применение миграции ответов поддержки').check();
+    await installButton.click();
+    await page.getByText('База готова к ответам пользователям.', { exact: true }).waitFor();
     await page.getByRole('alert').filter({ hasText: '20261006120000_support_replies' }).waitFor({ state: 'hidden' });
     assert.equal(migrationPosts, 1);
     await page.getByLabel('Ответ пользователю').fill('Browser answer');
@@ -76,7 +79,7 @@ try {
     assert.equal(await page.getByLabel('Ключ администратора (ADMIN_SECRET)').inputValue(), '');
     await page.close();
   }
-  console.log('PASS support browser: mobile/desktop, read-only migration check, explicit apply confirmation, ticket/reply recovery, storage isolation, logout');
+  console.log('PASS support browser: schema-only and Prisma modes on mobile/desktop, read-only check, explicit installation, ticket/reply recovery, storage isolation, logout');
 } finally {
   await browser?.close();
   if (child.exitCode === null && child.signalCode === null) { const exited = new Promise(done => child.once('exit', done)); child.kill(); await exited; }

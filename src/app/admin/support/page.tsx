@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 type Reply = { id: string; message: string; status: string; createdAt: string };
 type Ticket = { id: string; email: string; topic: string; status: string; createdAt: string; message?: string; replies?: Reply[] };
 type ReplyAvailability = { ready: boolean; message?: string };
-type MigrationStatus = { migration: string; ready: boolean; canApply: boolean; message: string };
+type MigrationStatus = { migration: string; ready: boolean; canApply: boolean; mode?: 'prisma' | 'schema_only'; message: string };
 const states: Record<string, string> = { pending: 'В очереди', sending: 'Отправляется', failed: 'Ожидает повторной попытки', dead: 'Нужна проверка оператором', accepted: 'Принято Resend', open: 'Новое', answered: 'Ответ отправлен' };
 
 export default function SupportAdmin() {
@@ -73,15 +73,18 @@ export default function SupportAdmin() {
         {migrationStatus && <>
           <p role="status">{migrationStatus.message}</p>
           {migrationStatus.canApply && <>
-            <p className="text-sm text-white/60">Применяется только миграция ответов поддержки. Существующие обращения сохраняются.</p>
-            <label className="flex items-start gap-2"><input type="checkbox" checked={confirmMigration} disabled={busy} onChange={event => setConfirmMigration(event.target.checked)} />Подтверждаю применение миграции ответов поддержки</label>
+            <p className="text-sm text-white/60">{migrationStatus.mode === 'schema_only'
+              ? 'Будет создана только таблица ответов и её индексы. Существующие обращения сохраняются.'
+              : 'Применяется только миграция ответов поддержки. Существующие обращения сохраняются.'}</p>
+            <label className="flex items-start gap-2"><input type="checkbox" checked={confirmMigration} disabled={busy} onChange={event => setConfirmMigration(event.target.checked)} />{migrationStatus.mode === 'schema_only'
+              ? 'Подтверждаю создание таблицы ответов' : 'Подтверждаю применение миграции ответов поддержки'}</label>
             <button className={button} disabled={busy || !confirmMigration} onClick={() => void run(async current => {
               if (!confirmMigration || !migrationStatus.canApply) return;
               const result = await api('/migration', { action: 'apply', migration: migrationStatus.migration });
               if (current !== generation.current) return;
               setMigrationStatus(result); setConfirmMigration(false);
               if (ticket) await select(ticket.id, current);
-            })}>Применить миграцию</button>
+            })}>{migrationStatus.mode === 'schema_only' ? 'Создать таблицу ответов' : 'Применить миграцию'}</button>
           </>}
         </>}
       </section>

@@ -62,8 +62,8 @@ try {
   const crossMigration = migrationRequest('POST', migrationPayload); crossMigration.headers.set('origin', 'https://evil.example');
   assert.equal((await migrationApi.POST(crossMigration)).status, 403);
   let inspection = await (await migrationApi.GET(migrationRequest())).json();
-  assert.equal(inspection.history, 'missing'); assert.equal(inspection.canApply, false);
-  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 409, 'never fabricate migration history');
+  assert.equal(inspection.history, 'missing'); assert.equal(inspection.canApply, true); assert.equal(inspection.mode, 'schema_only');
+  assert.equal((await db.$queryRaw`SELECT to_regclass('"SupportReply"') IS NULL AS missing`)[0].missing, true, 'schema-only inspection is read-only');
   assert.equal((await api.GET(request('GET', null, false))).status, 401);
   assert.equal((await api.POST(request('POST', {}, false))).status, 401);
   const ticket = await db.supportTicket.create({ data: { topic: 'technical', email: 'customer@example.test', message: 'Question' } });
@@ -80,6 +80,28 @@ try {
   const missingSchemaPost = await api.POST(request('POST', payload));
   assert.equal(missingSchemaPost.status, 503);
   assert.equal((await missingSchemaPost.json()).code, 'SUPPORT_SCHEMA_NOT_READY');
+  // Reproduce the deployed site's case: populated SupportTicket, no Prisma history.
+  await db.$executeRawUnsafe('CREATE INDEX "SupportReply_status_nextAttemptAt_idx" ON "SupportTicket" (status)');
+  assert.equal((await migrationApi.POST(migrationRequest('POST', migrationPayload))).status, 503);
+  assert.equal((await db.$queryRaw`SELECT to_regclass('"SupportReply"') IS NULL AS missing`)[0].missing, true, 'schema-only failed installation rolled back');
+  await db.$executeRawUnsafe('DROP INDEX "SupportReply_status_nextAttemptAt_idx"');
+  const installed = await Promise.all([migrationApi.POST(migrationRequest('POST', migrationPayload)), migrationApi.POST(migrationRequest('POST', migrationPayload))]);
+  assert.ok(installed.some(response => response.status === 200));
+  assert.ok(installed.every(response => [200, 409].includes(response.status)));
+  inspection = await (await migrationApi.GET(migrationRequest())).json();
+  assert.equal(inspection.ready, true); assert.equal(inspection.canApply, false); assert.equal(inspection.mode, 'schema_only');
+  assert.equal(inspection.history, 'missing');
+  assert.equal((await db.$queryRaw`SELECT to_regclass('"_prisma_migrations"') IS NULL AS missing`)[0].missing, true, 'installation never fabricates Prisma history');
+  assert.equal((await db.supportTicket.findUnique({ where: { id: ticket.id } })).message, ticket.message, 'existing ticket preserved');
+  const noHistoryReply = await api.POST(request('POST', { ...payload, clientKey: 'synthetic_no_history_reply' }));
+  assert.equal(noHistoryReply.status, 202, 'reply can be queued without Prisma history');
+  await replies.processSupportReplies(1, async mail => { assert.equal(mail.to, ticket.email); return 'synthetic_no_history_provider'; });
+  const savedWithoutHistory = await db.supportReply.findUnique({ where: { clientKey: 'synthetic_no_history_reply' } });
+  assert.equal(savedWithoutHistory.status, 'accepted', 'reply can be sent without Prisma history');
+  assert.equal((await (await migrationApi.POST(migrationRequest('POST', migrationPayload))).json()).appliedNow, false);
+  assert.equal((await db.supportReply.findUnique({ where: { id: savedWithoutHistory.id } })).message, payload.message, 'repeated install preserves replies');
+  // Reset this private fixture to test the conventional Prisma-history mode too.
+  await db.$executeRawUnsafe('DROP TABLE "SupportReply"');
   await db.$executeRawUnsafe(`CREATE TABLE "_prisma_migrations" (
     "id" VARCHAR(36) PRIMARY KEY, "checksum" VARCHAR(64) NOT NULL,
     "finished_at" TIMESTAMPTZ, "migration_name" VARCHAR(255) NOT NULL, "logs" TEXT,
@@ -175,7 +197,7 @@ try {
   assert.equal((await db.supportReply.findUnique({ where: { clientKey: 'synthetic-expired-key' } })).status, 'dead');
   const crossSite = request('POST', { ...payload, clientKey: 'synthetic-other-key' }); crossSite.headers.set('origin', 'https://evil.example');
   assert.equal((await api.POST(crossSite)).status, 403);
-  console.log('PASS support replies: migration API auth, read-only check, permissions/history guards, concurrent lock, DDL rollback, checksum, Prisma deploy compatibility, schema recovery, recipient isolation, reply retry');
+  console.log('PASS support replies: schema-only install and reply delivery without Prisma history, data preservation, both-mode rollback, migration auth/locks, checksum/deploy compatibility, schema recovery, reply retry');
 } finally {
   await db.$disconnect();
   // Graceful pg_ctl avoids Windows taskkill leaving PostgreSQL I/O workers alive.

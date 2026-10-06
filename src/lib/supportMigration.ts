@@ -11,6 +11,7 @@ type Constraint = { kind: string; columns: string[]; foreignColumns: string[]; f
 type Index = { columns: string[]; unique: boolean; valid: boolean; partial: boolean; expression: boolean };
 export type SupportMigrationStatus = {
   migration: string; ready: boolean; canApply: boolean;
+  mode: 'prisma' | 'schema_only';
   state: 'ready' | 'missing' | 'untracked' | 'blocked';
   history: 'applied' | 'pending' | 'missing';
   issues: string[]; message: string;
@@ -79,16 +80,24 @@ export async function inspectSupportMigration(db: Database = prisma): Promise<Su
   }
   const ready = base.table && issues.length === 0;
   const result: SupportMigrationStatus = { migration: SUPPORT_REPLY_MIGRATION, ready, canApply: false,
-    state: ready ? (recorded ? 'ready' : 'untracked') : base.table ? 'blocked' : 'missing',
+    mode: base.history ? 'prisma' : 'schema_only',
+    state: ready ? (recorded || !base.history ? 'ready' : 'untracked') : base.table ? 'blocked' : 'missing',
     history: recorded ? 'applied' : base.history ? 'pending' : 'missing', issues, message: '' };
   if (!base.parent) result.message = 'Таблица обращений отсутствует. Сначала необходимо восстановить основную схему поддержки.';
   else if (issues.length) result.message = 'Таблица ответов имеет другую структуру. Автоматическое исправление отключено, чтобы сохранить данные.';
   else if (unfinished) result.message = 'В истории Prisma есть незавершённая миграция. Нужна проверка со стороны администратора базы.';
   else if (ready && recorded) result.message = 'Миграция применена. База готова к ответам пользователям.';
   else if (!base.table && recorded) result.message = 'Миграция записана как применённая, но таблица отсутствует. Необходимо проверить состояние базы.';
-  else if (!base.history) result.message = ready
-    ? 'Таблица ответов готова, но история миграций Prisma отсутствует. Для настройки истории обратитесь в поддержку Relaxdev.'
-    : 'Таблицы ответов и истории миграций Prisma нет. Сначала нужно настроить историю миграций через поддержку Relaxdev.';
+  else if (!base.history) {
+    // A populated database may be maintained with db push rather than migrate.
+    // Install this additive feature without creating a fictitious Prisma baseline.
+    if (ready) result.message = 'Таблица ответов готова. Можно отвечать пользователям.';
+    else if (!base.canCreate) result.message = 'Подключению приложения не хватает прав для создания таблицы ответов. Обратитесь в поддержку Relaxdev.';
+    else {
+      result.canApply = true;
+      result.message = 'Таблицы ответов нет. Можно создать её кнопкой ниже. История остальных миграций не изменится.';
+    }
+  }
   else if (!baselineRecorded) result.message = 'Базовая миграция не отмечена как применённая. Сначала нужно проверить историю базы через поддержку Relaxdev.';
   else if (!base.canRecord || (!base.table && !base.canCreate)) result.message = 'Подключению приложения не хватает прав для применения миграции. Обратитесь в поддержку Relaxdev.';
   else {
@@ -112,7 +121,7 @@ export async function applySupportMigration() {
     await tx.$queryRaw`SELECT set_config('lock_timeout', '3000', true)`;
     await tx.$queryRaw`SELECT set_config('statement_timeout', '5000', true)`;
     const before = await inspectSupportMigration(tx);
-    if (before.ready && before.history === 'applied' && before.state === 'ready') return { ...before, appliedNow: false };
+    if (before.ready && before.state === 'ready' && (before.history === 'applied' || before.history === 'missing')) return { ...before, appliedNow: false };
     if (!before.canApply) throw new SupportMigrationBlocked(before);
     // Fixed file only: no user-provided SQL, paths, migration names or process invocation.
     const source = await readFile(join(process.cwd(), 'prisma/migrations/20261006120000_support_replies/migration.sql'), 'utf8');
@@ -124,8 +133,10 @@ export async function applySupportMigration() {
     if (!before.ready) for (const sql of statements) await tx.$executeRawUnsafe(sql);
     const after = await inspectSupportMigration(tx);
     if (!after.ready) throw new SupportMigrationBlocked(after);
-    await tx.$executeRaw`INSERT INTO "_prisma_migrations" (id, checksum, migration_name, started_at, finished_at, applied_steps_count)
-      VALUES (${randomUUID()}, ${createHash('sha256').update(source).digest('hex')}, ${SUPPORT_REPLY_MIGRATION}, now(), now(), 1)`;
+    if (before.mode === 'prisma') {
+      await tx.$executeRaw`INSERT INTO "_prisma_migrations" (id, checksum, migration_name, started_at, finished_at, applied_steps_count)
+        VALUES (${randomUUID()}, ${createHash('sha256').update(source).digest('hex')}, ${SUPPORT_REPLY_MIGRATION}, now(), now(), 1)`;
+    }
     return { ...await inspectSupportMigration(tx), appliedNow: true };
   }, { maxWait: 5000, timeout: 15000 });
 }
