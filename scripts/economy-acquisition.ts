@@ -2,8 +2,8 @@
  * Parameterized acquisition/retention calculator. Does not change live prices.
  * node --experimental-strip-types scripts/economy-acquisition.ts
  */
-import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SUBSCRIPTION_PLANS } from "../src/lib/chatEconomy.ts";
 import { weightedRequestEconomy } from "../src/lib/aiCostMath.ts";
@@ -17,6 +17,7 @@ const AS_OF = "2026-10-02";
 const avatarAllowance = (price: number) => Math.floor(price * 0.1 / 5);
 const observed = process.env['ECONOMY_COST_REPORT'] ? JSON.parse(readFileSync(process.env['ECONOMY_COST_REPORT'], "utf8")) : null;
 if (observed && (!Array.isArray(observed.models) || !observed.models.length)) throw new Error("Cost report contains no models");
+if (observed && observed.schemaVersion !== 2) throw new Error("Regenerate cost report with accounting v2; legacy provider totals are unverified");
 
 const params = {
   livePlans: {
@@ -93,15 +94,32 @@ function requestEconomy(scenario: Scenario, dearShare: number) {
   const inputTokens = params.tokensInPerRequest.value[scenario];
   const outputTokens = params.tokensOutPerRequest.value[scenario];
   if (observed) {
-    const models = observed.models.filter((m: { purpose: string; completed: number }) => m.purpose === "chat" && m.completed > 0);
-    const total = models.reduce((sum: number, m: { completed: number }) => sum + m.completed, 0);
-    if (!total) throw new Error("No completed chat attempts in cost report");
-    return weightedRequestEconomy(models.map((m: { completed: number; providerCompletedUsageCount: number; priceVC: number; inputRubPerMillion: number; outputRubPerMillion: number; averageInputTokens: number; averageOutputTokens: number; p50InputTokens: number; p50OutputTokens: number; p95InputTokens: number; p95OutputTokens: number }) => {
-      if (m.priceVC == null || m.inputRubPerMillion == null || m.outputRubPerMillion == null) throw new Error("Missing catalog prices in cost report; supply verified rates first");
-      if (m.providerCompletedUsageCount / m.completed < 0.9 || m.averageInputTokens == null || m.averageOutputTokens == null) throw new Error("Insufficient provider usage coverage; do not label estimated tokens as measurements");
-      const measuredInput = scenario === "low" ? m.p50InputTokens : scenario === "medium" ? m.averageInputTokens : scenario === "high" ? m.p95InputTokens : Math.max(m.p95InputTokens, 16000);
-      const measuredOutput = scenario === "low" ? m.p50OutputTokens : scenario === "medium" ? m.averageOutputTokens : scenario === "high" ? m.p95OutputTokens : Math.max(m.p95OutputTokens, 1000);
-      return { requestShare: m.completed / total, vc: m.priceVC, inputRubPerMillion: m.inputRubPerMillion,
+    type ObservedModel = { purpose: string; chargedCompleted: number; chargedProviderUsageCount: number;
+      chargedCostCount: number; chargedCostRub: number; chargedCostVC: number; averageChargedVC: number;
+      inputRubPerMillion: number; outputRubPerMillion: number; chargedAverageInputTokens: number;
+      chargedAverageOutputTokens: number; chargedP50InputTokens: number; chargedP50OutputTokens: number;
+      chargedP95InputTokens: number; chargedP95OutputTokens: number };
+    const models: ObservedModel[] = observed.models.filter((m: ObservedModel) => m.purpose === "chat" && m.chargedCompleted > 0);
+    const total = models.reduce((sum, m) => sum + m.chargedCompleted, 0);
+    if (!total) throw new Error("No VC-charged completed chats in cost report");
+    for (const m of models) {
+      if (m.inputRubPerMillion == null || m.outputRubPerMillion == null) throw new Error("Missing catalog prices in cost report; supply verified rates first");
+      if (m.chargedProviderUsageCount / m.chargedCompleted < 0.9 || m.chargedCostCount / m.chargedCompleted < 0.9
+        || m.chargedAverageInputTokens == null || m.chargedAverageOutputTokens == null) throw new Error("Insufficient usage/cost coverage; unknown costs are not zero");
+    }
+    // Medium uses event-level costs and actual VC on the SAME covered requests.
+    // Confirmed ledger debits supersede estimates; the report preserves their split.
+    if (scenario === "medium") {
+      const count = models.reduce((sum, m) => sum + m.chargedCostCount, 0);
+      const rub = models.reduce((sum, m) => sum + m.chargedCostRub, 0);
+      const vc = models.reduce((sum, m) => sum + m.chargedCostVC, 0);
+      if (!count || !vc) throw new Error("No covered VC-charged cost observations");
+      return { averageVc: vc / count, averageRub: rub / count, rubPerVc: rub / vc };
+    }
+    return weightedRequestEconomy(models.map(m => {
+      const measuredInput = scenario === "low" ? m.chargedP50InputTokens : scenario === "high" ? m.chargedP95InputTokens : Math.max(m.chargedP95InputTokens, 16000);
+      const measuredOutput = scenario === "low" ? m.chargedP50OutputTokens : scenario === "high" ? m.chargedP95OutputTokens : Math.max(m.chargedP95OutputTokens, 1000);
+      return { requestShare: m.chargedCompleted / total, vc: m.averageChargedVC, inputRubPerMillion: m.inputRubPerMillion,
         outputRubPerMillion: m.outputRubPerMillion, inputTokens: measuredInput, outputTokens: measuredOutput };
     }));
   }
@@ -333,16 +351,20 @@ const recommended = variants.find((item) => item.id === "firstPack129")!;
 const recommendedMedium = evaluate(recommended, "medium");
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const jsonPath = join(root, "docs/universe-acquisition-economy.json");
-const mdPath = join(root, "docs/universe-acquisition-economy.md");
+const outputDir = process.env['ECONOMY_OUTPUT_DIR'] ? resolve(process.env['ECONOMY_OUTPUT_DIR']) : join(root, "docs");
+mkdirSync(outputDir, { recursive: true });
+const jsonPath = join(outputDir, "universe-acquisition-economy.json");
+const mdPath = join(outputDir, "universe-acquisition-economy.md");
 
 const payload = {
   asOf: AS_OF,
   livePricesUnchanged: params.livePlans.value,
   parameters: params,
-  measurementSource: observed ? { generatedAt: observed.generatedAt, from: observed.from, to: observed.to, coverage: observed.coverage } : null,
+  measurementSource: observed ? { generatedAt: observed.generatedAt, from: observed.from, to: observed.to,
+    coverage: observed.coverage, reconciliation: observed.reconciliation,
+    basis: "Medium: ledger-confirmed and estimated event costs divided by actual VC on covered paid chats; other scenarios: RUB catalog estimates" } : null,
   assumptions: { guestActivationShare: 0.35, activeDays: 12, packUsage: 0.75, subscriptionUsage: 0.8, avatarUsage: 0.5, fixedFirstPackVc: FIRST_PACK_VC, firstPackAiBudgetRub: FIRST_PACK_AI_BUDGET_RUB },
-  limitations: ["Conversion, CAC, tax, refunds, retry and auxiliary multipliers remain assumptions", "Cost report replaces mix/rates and low=p50, medium=mean, high=p95 token profiles; stress retains 16000 input/1000 output floor. >=90% completed provider usage required. Retry/RAG and conversion/CAC remain assumptions", "Avatar 5 RUB is a budget assumption; actual bill must be reconciled", "No forecast is guaranteed profit; unknown telemetry costs are not zero"],
+  limitations: ["Conversion, CAC, tax, refunds, retry and auxiliary multipliers remain assumptions", "V2 reports exclude zero-VC guest/free chats from paid unit cost. Medium uses covered event costs/actual VC; low=p50 and high=p95 remain catalog estimates, stress retains 16000 input/1000 output floor. >=90% paid usage and cost coverage required", "Converted USD and RUB catalog costs remain estimates; only export-reconciled RUB debits are confirmed. Medium is not a measured total margin", "Avatar 5 RUB is a budget assumption; actual bill must be reconciled", "No forecast is guaranteed profit; unknown telemetry costs are not zero"],
   formula: {
     netRevenue: "grossRevenue - refunds (promo VC burn is an AI cost, not a second revenue haircut)",
     contribution: "netRevenue - variableCost(AI including retry/RAG/images/support/acquiring/tax)",
@@ -377,7 +399,7 @@ const lines = [
   `Date: ${AS_OF}. Live public prices stay Dialog 499 ₽ / 2 500 VC, Story 1 299 ₽ / 10 000 VC, Universe 3 499 ₽ / 30 000 VC.`,
   "",
   observed
-    ? `Source: ${observed.from} to ${observed.to}. Model mix and token profiles come from completed provider usage; quoted RUB rates are estimates. Conversion/CAC/tax/retry/auxiliary load remain assumptions.`
+    ? `Source: ${observed.from} to ${observed.to}. Paid chats use actual charged VC. Medium uses covered event costs (ledger-confirmed plus estimates); other scenarios use catalog rates and measured token profiles. Confirmed RUB ${observed.totals.confirmedCostRub}; estimated RUB ${observed.totals.estimatedCostRub}; unknown attempts ${observed.coverage.unknownCost}. Conversion/CAC/tax/retry/auxiliary load remain assumptions.`
     : "Generated by npm run economy:acquisition without a production cost report. Model/token inputs are historical quotes and assumptions, not observed costs. Feed an economy:costs JSON with ECONOMY_COST_REPORT when sufficient data exists.",
   "",
   "## Formulas",

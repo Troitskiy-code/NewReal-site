@@ -499,6 +499,10 @@ model AiCostEvent {
   subscriptionType    String?
   provider            String
   providerRequestId   String?
+  providerResponseId  String?
+  apiSurface         String   @default("unknown")
+  accountingVersion  Int      @default(1)
+  providerCostSemantics String @default("unverified")
   quotaReservationId  String?
   model               String
   actualModel         String?
@@ -512,6 +516,7 @@ model AiCostEvent {
   characterRubPerMillion Float?
   outputTokens        Int?
   cachedInputTokens   Int?
+  cacheWriteInputTokens Int?
   chargedVC           Int      @default(0)
   quotedVC            Int?
   audience            String   @default("system")
@@ -528,6 +533,8 @@ model AiCostEvent {
 
   @@index([createdAt, purpose])
   @@index([operationId])
+  @@index([provider, providerRequestId])
+  @@index([provider, providerResponseId])
   @@index([actorHash, createdAt])
 }
 

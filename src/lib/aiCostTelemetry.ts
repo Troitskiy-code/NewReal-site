@@ -5,7 +5,7 @@ import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { finiteNonnegative, readCostUsage, tokenCostRub, type CostUsage } from "./aiCostMath";
+import { finiteNonnegative, readCostUsage, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
 
 type CostContext = { operationId: string; actorHash: string | null; subscriptionType: string | null; sequence: number; audience: string };
 const contexts = new AsyncLocalStorage<CostContext>();
@@ -21,7 +21,7 @@ export function setAiCostActor(actorId: string, subscriptionType?: string | null
   ctx.subscriptionType = ["start", "dialog", "story", "history", "universe"].includes(subscriptionType ?? "") ? subscriptionType! : null;
 }
 
-type Ticket = { id: string; started: number; requestedModel: string; inputRate: number | null; outputRate: number | null };
+type Ticket = { id: string; started: number; requestedModel: string; inputRate: number | null; outputRate: number | null; surface: KodikApiSurface | null };
 function safeModel(model: unknown): string {
   return typeof model === "string" && /^[a-zA-Z0-9._:/-]{1,160}$/.test(model)
     && !/^(https?:|postgres|sk[-_]|crya_|re_|bearer)/i.test(model) ? model : "unknown";
@@ -39,7 +39,8 @@ function pricingOverride(model: string): { input: number | null; output: number 
 }
 async function begin(model: string, purpose: string, provider = "kodikrouter", imageRub?: number): Promise<Ticket> {
   const ctx = contexts.getStore();
-  const ticket: Ticket = { id: randomUUID(), started: Date.now(), requestedModel: model, inputRate: null, outputRate: null };
+  const surface = provider === "kodikrouter" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
+  const ticket: Ticket = { id: randomUUID(), started: Date.now(), requestedModel: model, inputRate: null, outputRate: null, surface };
   try {
     let quotedVC: number | null = null;
     if (provider === "kodikrouter") {
@@ -53,6 +54,7 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
       id: ticket.id, operationId: ctx?.operationId ?? randomUUID(), actorHash: ctx?.actorHash,
       subscriptionType: ctx?.subscriptionType, attempt: ctx ? ++ctx.sequence : 1,
       provider, model, purpose, outcome: "pending", costSource: "unknown",
+      apiSurface: surface ?? "other", accountingVersion: 2,
       quotedVC, audience: ctx?.audience ?? "system",
       inputRubPerMillion: ticket.inputRate, outputRubPerMillion: ticket.outputRate,
       estimatedCostRub: imageRub ?? null,
@@ -60,17 +62,11 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
   } catch (error) { errorLog("AiCost", "Unable to persist cost attempt", toSafeDiagnostic(error)); }
   return ticket;
 }
-async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?: number, estimatedInput?: number, estimatedOutput?: number, actualModel?: string, providerRequestId?: unknown) {
+async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?: number, estimatedInput?: number, estimatedOutput?: number, actualModel?: string, providerRequestId?: unknown, providerResponseId?: unknown) {
   const measured = usage.inputTokens !== null && usage.outputTokens !== null;
   const input = usage.inputTokens ?? estimatedInput ?? null;
   const output = usage.outputTokens ?? estimatedOutput ?? null;
-  const currency = process.env['KODIKROUTER_USAGE_COST_CURRENCY'];
   const fx = finiteNonnegative(Number(process.env['AI_COST_USD_RUB']));
-  // A provider can return usage.cost=0 while still billing from its catalog.
-  // Preserve native zero for reconciliation; do not treat it as proven free usage.
-  const bill = usage.reportedCost !== null && usage.reportedCost > 0 ? usage.reportedCost : null;
-  const reportedRub = currency === "RUB" ? bill :
-    currency === "USD" && fx !== null && fx > 0 && bill !== null ? bill * fx : null;
   try {
     if (actualModel && actualModel !== ticket.requestedModel) {
       const override = pricingOverride(actualModel);
@@ -78,18 +74,26 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
       ticket.inputRate = override?.input ?? finiteNonnegative(catalog?.pricePer1MInput);
       ticket.outputRate = override?.output ?? finiteNonnegative(catalog?.pricePer1MOutput);
     }
-    const estimated = tokenCostRub(input, output, ticket.inputRate, ticket.outputRate);
+    // Cached reads are included in prompt_tokens. Full input pricing ignores
+    // their discount and is an estimate. Cache writes can cost MORE than input;
+    // without a verified write rate, do not invent a catalog estimate for them.
+    const catalog = (usage.cacheWriteInputTokens ?? 0) > 0 ? null : tokenCostRub(input, output, ticket.inputRate, ticket.outputRate);
+    const cost = ticket.surface ? resolveKodikCost(ticket.surface, usage, catalog, fx) : {
+      providerCostCurrency: null, providerCostSemantics: "unverified", usdRub: null,
+      estimatedCostRub: null, costSource: "unknown",
+    };
     await prisma.aiCostEvent.update({ where: { id: ticket.id }, data: {
       outcome, durationMs: Date.now() - ticket.started, httpStatus: status,
       inputTokens: input, outputTokens: output, cachedInputTokens: usage.cachedInputTokens,
+      cacheWriteInputTokens: usage.cacheWriteInputTokens,
       usageSource: measured ? "provider" : input !== null && output !== null ? "estimated" : "missing",
-      reportedCostRub: reportedRub, estimatedCostRub: estimated,
+      // Only the read-only reconciliation report can establish a ledger debit.
+      // Legacy reportedCostRub values are retained historically, not trusted.
+      reportedCostRub: null, ...cost,
       actualModel: actualModel ?? null, providerCostNative: usage.reportedCost,
       providerRequestId: requestId(providerRequestId),
-      providerCostCurrency: usage.reportedCost !== null && (currency === "RUB" || currency === "USD") ? currency : null,
-      usdRub: usage.reportedCost !== null && currency === "USD" && fx !== null && fx > 0 ? fx : null,
+      providerResponseId: requestId(providerResponseId),
       inputRubPerMillion: ticket.inputRate, outputRubPerMillion: ticket.outputRate,
-      costSource: reportedRub !== null ? "provider" : estimated !== null ? "catalog_estimate" : "unknown",
     } });
   } catch (error) { errorLog("AiCost", "Unable to complete cost attempt", toSafeDiagnostic(error)); }
 }
@@ -103,10 +107,13 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
     const response = await axios.post<T>(url, body, config);
     const actualModel = (response.data as { model?: unknown })?.model;
     await finish(ticket, response.status >= 400 ? "failed" : "completed", readCostUsage(response.data, purpose === "embedding"), response.status,
-      undefined, undefined, typeof actualModel === "string" ? safeModel(actualModel) : undefined, response.headers["x-kodikrouter-request-id"]);
+      undefined, undefined, typeof actualModel === "string" ? safeModel(actualModel) : undefined,
+      response.headers["x-kodikrouter-request-id"], (response.data as { id?: unknown })?.id);
     return response;
   } catch (error) {
-    await finish(ticket, "failed", readCostUsage(axios.isAxiosError(error) ? error.response?.data : null, purpose === "embedding"), axios.isAxiosError(error) ? error.response?.status : undefined);
+    const response = axios.isAxiosError(error) ? error.response : null;
+    await finish(ticket, "failed", readCostUsage(response?.data, purpose === "embedding"), response?.status,
+      undefined, undefined, undefined, response?.headers?.["x-kodikrouter-request-id"], response?.data?.id);
     throw error;
   }
 }
@@ -118,16 +125,18 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   try { response = await fetch(url, init); }
   catch (error) { await finish(ticket, "failed", noUsage()); throw error; }
   if (!response.ok || !response.body) {
-    await finish(ticket, "failed", noUsage(), response.status);
+    await finish(ticket, "failed", noUsage(), response.status, undefined, undefined, undefined,
+      response.headers.get("x-kodikrouter-request-id"));
     return response;
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = "", usage = noUsage(), outputChars = 0, ended = false, actualModel: string | undefined;
+  let buffer = "", usage = noUsage(), outputChars = 0, ended = false, actualModel: string | undefined, responseId: string | null = null;
   const consume = (line: string) => {
     if (!line.startsWith("data:")) return;
     try {
       const chunk = JSON.parse(line.slice(5).trim());
+      responseId = requestId(chunk.id) ?? responseId;
       if (typeof chunk.model === "string") actualModel = safeModel(chunk.model);
       const next = readCostUsage(chunk);
       // Providers may emit tokens and cost in different final frames. These are
@@ -136,6 +145,7 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
         inputTokens: next.inputTokens ?? usage.inputTokens,
         outputTokens: next.outputTokens ?? usage.outputTokens,
         cachedInputTokens: next.cachedInputTokens ?? usage.cachedInputTokens,
+        cacheWriteInputTokens: next.cacheWriteInputTokens ?? usage.cacheWriteInputTokens,
         reportedCost: next.reportedCost ?? usage.reportedCost,
       };
       const text = chunk?.choices?.[0]?.delta?.content;
@@ -147,7 +157,7 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
     ended = true;
     if (buffer.trim()) consume(buffer);
     await finish(ticket, outcome, usage, response.status, estimatedInput,
-      outcome === "completed" ? Math.ceil(outputChars / 4) : undefined, actualModel, response.headers.get("x-kodikrouter-request-id"));
+      outcome === "completed" ? Math.ceil(outputChars / 4) : undefined, actualModel, response.headers.get("x-kodikrouter-request-id"), responseId);
   };
   const body = new ReadableStream<Uint8Array>({
     async pull(controller) {

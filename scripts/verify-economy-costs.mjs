@@ -25,7 +25,7 @@ const server = createServer((req, res) => {
       if (embeddingFails) { res.statusCode = 503; res.end('{}'); return; }
       const payload = JSON.parse(body);
       const texts = Array.isArray(payload.input) ? payload.input : [payload.input];
-      res.end(JSON.stringify({ model: payload.model, usage: { total_tokens: 84 },
+      res.end(JSON.stringify({ id: 'gen_emb_fixture', model: payload.model, usage: { total_tokens: 84, cost: 0.8 },
         data: texts.map((_text, index) => ({ index, embedding: [index + 1, ...Array(1535).fill(0)] })).reverse() }));
     });
   } else if (req.url === '/v1/run') {
@@ -36,7 +36,7 @@ const server = createServer((req, res) => {
   } else if (req.url === '/stream' || req.url === '/zero' || req.url === '/fallback') {
     res.setHeader('Content-Type', 'text/event-stream');
     res.end('data: {"choices":[{"delta":{"content":"answer"}}]}\n\n' +
-      `data: ${JSON.stringify({ model: req.url === '/fallback' ? 'unpriced/fallback' : 'test/model', choices: [], usage: { prompt_tokens: 1000, completion_tokens: 200, cost: req.url === '/zero' ? 0 : 0.3 } })}\n\n` +
+      `data: ${JSON.stringify({ id: 'gen_chat_fixture', model: req.url === '/fallback' ? 'unpriced/fallback' : 'test/model', choices: [], usage: { prompt_tokens: 1000, completion_tokens: 200, cost: req.url === '/zero' ? 0 : 0.3 } })}\n\n` +
       (req.url === '/stream' ? 'data: {"usage":{"prompt_tokens":1000,"completion_tokens":200}}\n\ndata: {"usage":{"cost":0.3}}\n\n' : '') +
       'data: [DONE]\n\n');
   } else if (req.url === '/no-usage') {
@@ -92,21 +92,42 @@ function load(file) {
 }
 try {
   process.env.NEXTAUTH_SECRET = 'synthetic_cost_actor_hash'; process.env.CREATEYA_API_KEY = 'synthetic_not_used';
+  process.env['LOGTAIL_SOURCE_TOKEN'] = ''; process.env['LOGTAIL_INGESTING_HOST'] = '';
+  for (const key of Object.keys(process.env)) if (/^(COST_REPORT_|KODIK_COST_|ECONOMY_COST_REPORT$|ECONOMY_OUTPUT_DIR$)/.test(key)) delete process.env[key];
+  process.env['ECONOMY_OUTPUT_DIR'] = directory;
   delete process.env['AI_COST_RATES_RUB_JSON']; delete process.env['KODIKROUTER_USAGE_COST_CURRENCY']; delete process.env['AI_COST_USD_RUB'];
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_economy_test'); await ddl.connect();
   for (const name of readdirSync('prisma/migrations').filter(n => /^\d+_/.test(n)).sort()) {
+    if (name === '20261008160000_ai_cost_accounting_v2') {
+      await ddl.query(`INSERT INTO "AiCostEvent" ("id", "operationId", "provider", "model", "purpose", "attempt", "outcome", "costSource", "reportedCostRub", "estimatedCostRub")
+        VALUES ('legacy_fixture', 'legacy_operation', 'kodikrouter', 'legacy/model', 'legacy_fixture', 1, 'completed', 'provider', 42, 0.01)`);
+    }
     const sql = readFileSync(join('prisma/migrations', name, 'migration.sql'), 'utf8')
       .replace('CREATE EXTENSION IF NOT EXISTS vector;', '-- omitted only for disposable fixture')
       .replace(/vector\(1536\)/g, 'BYTEA');
     await ddl.query(sql);
   }
   check(!!await db.aiCostEvent.count().then(() => true), 'fresh full migration chain includes cost collector');
+  const legacy = await db.aiCostEvent.findUnique({ where: { id: 'legacy_fixture' } });
+  check(legacy.accountingVersion === 1 && legacy.reportedCostRub === 42 && legacy.providerResponseId === null,
+    'v2 upgrade preserves historical amounts without inventing semantics or IDs');
   const math = load('src/lib/aiCostMath.ts'), avatars = load('src/lib/avatarEconomy.ts');
   const low = math.weightedRequestEconomy([{ requestShare: 0.7, vc: 4, inputRubPerMillion: 10, outputRubPerMillion: 20, inputTokens: 1000, outputTokens: 100 },
     { requestShare: 0.3, vc: 36, inputRubPerMillion: 100, outputRubPerMillion: 200, inputTokens: 1000, outputTokens: 100 }]);
   check(Math.abs(low.averageVc - 13.6) < 1e-9, 'model mix uses weighted VC, no 30% step');
   check(math.tokenCostRub(1000, 200, 10, 20) === 0.014, 'input and output prices separate');
   check(math.tokenCostRub(1000, 200, null, 20) === null, 'unknown rates never become zero');
+  const costUsage = math.readCostUsage({ usage: { prompt_tokens: 100, completion_tokens: 10, cost: 0.1,
+    prompt_tokens_details: { cached_tokens: 40, cache_write_tokens: 20 } } });
+  check(costUsage.inputTokens === 100 && costUsage.cachedInputTokens === 40 && costUsage.cacheWriteInputTokens === 20,
+    'cache read/write remain subsets of total input tokens');
+  check(math.resolveKodikCost('chat_completions', costUsage, 0.002, 90).estimatedCostRub === 9,
+    'documented chat USD estimate never adds another ten percent');
+  check(math.resolveKodikCost('embeddings', costUsage, 0.002, 90).estimatedCostRub === 0.002
+    && math.resolveKodikCost('embeddings', costUsage, 0.002, 90).providerCostCurrency === null,
+    'embedding uses RUB catalog and unverified native currency despite chat FX');
+  check(math.resolveKodikCost('chat_completions', costUsage, 0.002, null).costSource === 'catalog_estimate',
+    'no invented FX rate when setting is absent');
   check(avatars.avatarMonthlyAllowance('dialog') === 9 && avatars.avatarMonthlyAllowance('history') === 25 && avatars.avatarMonthlyAllowance('universe') === 69, '10% avatar quotas from actual monthly prices');
   await db.model.create({ data: { name: 'test/model', displayName: 'Test', priceVC: 4, pricePer1MInput: 10, pricePer1MOutput: 20 } });
   const telemetry = load('src/lib/aiCostTelemetry.ts');
@@ -119,9 +140,13 @@ try {
   });
   const main = await db.aiCostEvent.findFirst({ where: { purpose: 'chat' } });
   check(main.inputTokens === 1000 && main.outputTokens === 200 && main.estimatedCostRub === 0.014, 'SSE terminal usage counted once');
-  check(main.reportedCostRub === null, 'unconfigured provider currency not guessed');
+  check(main.reportedCostRub === null && main.providerCostCurrency === 'USD' && main.costSource === 'catalog_estimate',
+    'documented chat currency does not turn unknown FX into a confirmed debit');
   check(main.chargedVC === 4, 'actual successful VC charge recorded');
   check(main.providerRequestId === 'req_cost_fixture', 'provider request reference available for invoice reconciliation');
+  check(main.providerResponseId === 'gen_chat_fixture' && main.apiSurface === 'chat_completions'
+    && main.accountingVersion === 2 && main.providerCostSemantics === 'gateway_total_usd',
+    'SSE records separate gateway and response IDs with endpoint semantics');
   check(main.actorHash !== 'never_store_this_user' && main.actorHash?.length === 64, 'actor pseudonymized');
   await Promise.all(['actor_one', 'actor_two'].map(actor => telemetry.withAiCostContext(async () => {
     telemetry.setAiCostActor(actor, 'story');
@@ -131,8 +156,11 @@ try {
   check(new Set(concurrentActors.map(r => r.actorHash)).size === 2 && new Set(concurrentActors.map(r => r.operationId)).size === 2, 'concurrent operation contexts do not mix accounts');
   check(!JSON.stringify(await db.aiCostEvent.findMany()).includes('secret_'), 'no prompts keys or raw responses persisted');
   process.env['KODIKROUTER_USAGE_COST_CURRENCY'] = 'RUB';
+  process.env['AI_COST_USD_RUB'] = '90';
   const reported = await telemetry.meteredChatFetch(providerUrl + '/stream', {}, 'test/model', 10); await reported.text();
-  check((await db.aiCostEvent.findFirst({ where: { reportedCostRub: 0.3 } }))?.costSource === 'provider', 'reported amount only with explicit currency');
+  const converted = await db.aiCostEvent.findFirst({ where: { estimatedCostRub: 27 } });
+  check(converted?.costSource === 'chat_usd_estimate' && converted.reportedCostRub === null && converted.usdRub === 90,
+    'legacy shared RUB setting ignored; USD conversion is explicitly estimated');
   const fallback = await telemetry.meteredChatFetch(providerUrl + '/no-usage', {}, 'test/model', 20); await fallback.text();
   check(!!await db.aiCostEvent.findFirst({ where: { usageSource: 'estimated', inputTokens: 20, outputTokens: 2 } }), 'missing SSE usage marked estimated');
   const failed = await telemetry.meteredChatFetch(providerUrl + '/fail', {}, 'test/model', 10);
@@ -140,6 +168,7 @@ try {
   const zero = await telemetry.meteredChatFetch(providerUrl + '/zero', {}, 'test/model', 20); await zero.text();
   check(!!await db.aiCostEvent.findFirst({ where: { providerCostNative: 0, reportedCostRub: null, estimatedCostRub: 0.014 } }), 'provider zero does not claim bill-free usage');
   delete process.env['KODIKROUTER_USAGE_COST_CURRENCY'];
+  delete process.env['AI_COST_USD_RUB'];
   const changedModel = await telemetry.meteredChatFetch(providerUrl + '/fallback', {}, 'test/model', 20); await changedModel.text();
   check(!!await db.aiCostEvent.findFirst({ where: { actualModel: 'unpriced/fallback', estimatedCostRub: null, costSource: 'unknown' } }), 'unpriced provider fallback not billed at requested model quote');
   const beforeRetry = await db.aiCostEvent.count();
@@ -149,6 +178,8 @@ try {
   check(await db.aiCostEvent.count() === beforeRetry + 2, 'failed attempt and retry collected separately');
   await db.model.create({ data: { name: 'openai/text-embedding-3-small', displayName: 'Embedding fixture', priceVC: 0, pricePer1MInput: 10, pricePer1MOutput: 0 } });
   const memoryEmbeddings = load('src/lib/memoryEmbeddings.ts');
+  process.env['AI_COST_USD_RUB'] = '90';
+  process.env['KODIKROUTER_USAGE_COST_CURRENCY'] = 'USD';
   const vectors = await telemetry.withAiCostContext(async () => {
     telemetry.setAiCostActor('dedup_actor', 'story');
     return memoryEmbeddings.fetchEmbeddings(['secret_memory_one', 'secret_memory_two'], 'synthetic_embedding_key');
@@ -158,6 +189,11 @@ try {
   check(dedupEvents.length === 1 && dedupEvents[0].inputTokens === 84 && dedupEvents[0].outputTokens === 0
     && dedupEvents[0].usageSource === 'provider' && dedupEvents[0].estimatedCostRub === 0.00084,
     'semantic dedup batch records one cost event and embedding total_tokens');
+  check(dedupEvents[0].providerCostNative === 0.8 && dedupEvents[0].providerCostCurrency === null
+    && dedupEvents[0].usdRub === null && dedupEvents[0].providerResponseId === 'gen_emb_fixture'
+    && dedupEvents[0].apiSurface === 'embeddings' && dedupEvents[0].costSource === 'catalog_estimate',
+    'real dedup embeds preserve native cost but ignore shared USD/FX interpretation');
+  delete process.env['AI_COST_USD_RUB']; delete process.env['KODIKROUTER_USAGE_COST_CURRENCY'];
   check(dedupEvents[0].actorHash?.length === 64 && dedupEvents[0].subscriptionType === 'story'
     && !JSON.stringify(dedupEvents).includes('secret_memory') && !JSON.stringify(dedupEvents).includes('synthetic_embedding_key'),
     'semantic dedup inherits actor context without storing input or API key');
@@ -221,18 +257,47 @@ try {
   const exportResult = spawnSync(process.execPath, ['scripts/report-ai-costs.mjs'], { encoding: 'utf8', env: { ...process.env, COST_REPORT_DATABASE_URL: url } });
   check(exportResult.status === 0, 'read-only cost report against private PostgreSQL');
   const report = JSON.parse(exportResult.stdout);
-  check(report.coverage.unknownCost > 0 && report.coverage.reportedCost > 0 && report.coverage.estimatedCost > 0, 'report exposes all three cost classes');
+  check(report.schemaVersion === 2 && report.coverage.unknownCost > 0 && report.coverage.confirmedCost === 0
+    && report.coverage.estimatedCost > 0 && report.totals.legacyUnverifiedRub === 42,
+    'report separates estimates/unknown/legacy amounts without claiming confirmed costs');
   check(!JSON.stringify(report).includes(user.id) && !JSON.stringify(report).includes('secret_'), 'export excludes individual actor IDs and secrets');
   const calcArgs = ['--experimental-strip-types', '--import', './scripts/alias-register.mjs', 'scripts/economy-acquisition.ts'];
   const calc = spawnSync(process.execPath, calcArgs, { encoding: 'utf8', windowsHide: true });
   check(calc.status === 0, 'economic calculator completes without DB');
-  const economy = JSON.parse(readFileSync('docs/universe-acquisition-economy.json','utf8'));
+  const economy = JSON.parse(readFileSync(join(directory, 'universe-acquisition-economy.json'),'utf8'));
   const packs = economy.rows.filter(r => r.variant === 'firstPack129');
   check(new Set(packs.map(r => r.firstPackVc)).size === 1, 'same first pack VC across all scenarios');
   check(economy.rows.every(r => r.promoAiRub > 0), 'promo cost no longer cancels itself');
   check(economy.rows.every(r => Math.abs(r.profit - (r.netRevenue - r.variableCost - r.infraAndAcquisition)) < 0.03), 'profit identities include all modeled costs');
   check(economy.rows.filter(r => r.variant === 'control').every(r => r.carryoverLiabilityRub === 0), 'no invented carryover of expiring subscription VC');
-  const snapshot = join(directory, 'cost-report.json'); writeFileSync(snapshot, JSON.stringify(report));
+  const preciseEvent = await db.aiCostEvent.create({ data: { id: 'reconcile_fixture', operationId: 'reconcile_operation',
+    provider: 'kodikrouter', model: 'test/model', purpose: 'chat', attempt: 1, outcome: 'completed',
+    usageSource: 'provider', costSource: 'chat_usd_estimate', accountingVersion: 2, apiSurface: 'chat_completions',
+    inputTokens: 100, outputTokens: 10, chargedVC: 4, quotedVC: 36, estimatedCostRub: 5,
+    inputRubPerMillion: 10, outputRubPerMillion: 20, providerRequestId: 'kr_req_exact_fixture', providerResponseId: 'gen_exact_fixture' } });
+  const ledgerPath = join(directory, 'ledger.json');
+  writeFileSync(ledgerPath, JSON.stringify([{ id: 'ledger_fixture', api_key_name: 'fixture_key', status: 'success',
+    request_id: preciseEvent.providerResponseId, model_id: 'test/model', input_tokens: 100, output_tokens: 10, cost_rub: '0.006672' }]));
+  const reconciledExport = spawnSync(process.execPath, ['scripts/report-ai-costs.mjs'], { encoding: 'utf8', windowsHide: true,
+    env: { ...process.env, COST_REPORT_DATABASE_URL: url, KODIK_COST_EXPORT: ledgerPath, KODIK_COST_API_KEY_NAME: 'fixture_key' } });
+  check(reconciledExport.status === 0 && JSON.parse(reconciledExport.stdout).totals.confirmedCostRubExact === '0.006672',
+    'real read-only PostgreSQL report joins existing export by exact response ID');
+  check((await db.aiCostEvent.findUnique({ where: { id: preciseEvent.id } })).estimatedCostRub === 5,
+    'reconciliation never writes into event history');
+  const snapshot = join(directory, 'cost-report.json');
+  writeFileSync(snapshot, reconciledExport.stdout);
+  const measuredCalc = spawnSync(process.execPath, calcArgs, { encoding: 'utf8', windowsHide: true,
+    env: { ...process.env, ECONOMY_COST_REPORT: snapshot } });
+  check(measuredCalc.status === 0, 'calculator accepts verified v2 report with covered paid usage');
+  const measuredEconomy = JSON.parse(readFileSync(join(directory, 'universe-acquisition-economy.json'), 'utf8'));
+  const medium = measuredEconomy.rows.find(row => row.variant === 'control' && row.scenario === 'medium');
+  check(medium.paidRequests === 1_200_000, 'observed calculator uses actual four VC, not mixed catalog quotes');
+  const expectedPromo = Math.round(200 * 30_000 * 0.04 * ((0.014 + 0.006672) / 8) * 1.08 * 1.15 * 100) / 100;
+  check(medium.promoAiRub === expectedPromo && measuredEconomy.measurementSource.coverage.confirmedCost === 1,
+    'medium uses reconciled costs and estimates once and keeps confirmation metadata');
+  const incompleteReport = structuredClone(report);
+  incompleteReport.models.filter(m => m.purpose === 'chat').forEach(m => { m.chargedProviderUsageCount = 0; });
+  writeFileSync(snapshot, JSON.stringify(incompleteReport));
   const incomplete = spawnSync(process.execPath, calcArgs, { encoding: 'utf8', windowsHide: true, env: { ...process.env, ECONOMY_COST_REPORT: snapshot } });
   check(incomplete.status !== 0, 'incomplete/unpriced observed mix rejected instead of inventing margin');
   await ddl.query("CREATE ROLE nv_cost_app LOGIN PASSWORD 'synthetic_role_cost'");
@@ -260,7 +325,19 @@ try {
   console.log('Cost fixture cleanup: Prisma and SQL connection');
   await db.$disconnect(); await ddl.end().catch(() => {});
   console.log('Cost fixture cleanup: private PostgreSQL');
-  await pg.stop().catch(() => {});
+  if (process.platform === 'win32' && pg.process) {
+    const child = pg.process;
+    // Stop only the cluster created by this fixture. Await CLOSE, not just EXIT:
+    // the embedded runtime's taskkill helper can retain stdio handles on Windows.
+    assert.equal(resolve(child.spawnargs[child.spawnargs.indexOf('-D') + 1]), resolve(join(directory, 'db')));
+    const closed = new Promise(done => child.once('close', done));
+    const stopped = spawnSync(join(dirname(child.spawnfile), 'pg_ctl.exe'),
+      ['stop', '-D', join(directory, 'db'), '-m', 'fast', '-w', '-t', '15'],
+      { encoding: 'utf8', windowsHide: true, timeout: 20_000 });
+    if (stopped.status !== 0) throw new Error('Fixture PostgreSQL shutdown failed');
+    await closed;
+    pg.process = undefined;
+  } else await pg.stop();
   console.log('Cost fixture cleanup: local HTTP server');
   server.closeAllConnections();
   await new Promise(r => server.close(r));

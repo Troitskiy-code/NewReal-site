@@ -195,7 +195,8 @@
   },
   "limitations": [
     "Conversion, CAC, tax, refunds, retry and auxiliary multipliers remain assumptions",
-    "Cost report replaces mix/rates and low=p50, medium=mean, high=p95 token profiles; stress retains 16000 input/1000 output floor. >=90% completed provider usage required. Retry/RAG and conversion/CAC remain assumptions",
+    "V2 reports exclude zero-VC guest/free chats from paid unit cost. Medium uses covered event costs/actual VC; low=p50 and high=p95 remain catalog estimates, stress retains 16000 input/1000 output floor. >=90% paid usage and cost coverage required",
+    "Converted USD and RUB catalog costs remain estimates; only export-reconciled RUB debits are confirmed. Medium is not a measured total margin",
     "Avatar 5 RUB is a budget assumption; actual bill must be reconciled",
     "No forecast is guaranteed profit; unknown telemetry costs are not zero"
   ],
