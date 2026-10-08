@@ -6,6 +6,8 @@ import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { finiteNonnegative, readCostUsage, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
+import { canonicalKodikModel, getKodikCostRates } from "./kodikCostRates";
+import { getAccountingUsdRub } from "./currencyRates";
 
 type CostContext = { operationId: string; actorHash: string | null; subscriptionType: string | null; sequence: number; audience: string };
 const contexts = new AsyncLocalStorage<CostContext>();
@@ -30,13 +32,6 @@ function requestId(value: unknown): string | null {
   return typeof value === "string" && /^[a-zA-Z0-9_-]{1,128}$/.test(value)
     && !/^(sk[-_]|crya_|re_|bearer)/i.test(value) ? value : null;
 }
-function pricingOverride(model: string): { input: number | null; output: number | null } | null {
-  // Explicit RUB/1M overrides for auxiliary models absent from the DB catalog.
-  try {
-    const item = JSON.parse(process.env['AI_COST_RATES_RUB_JSON'] || "{}")[model];
-    return item ? { input: finiteNonnegative(item.input), output: finiteNonnegative(item.output) } : null;
-  } catch { return null; }
-}
 async function begin(model: string, purpose: string, provider = "kodikrouter", imageRub?: number): Promise<Ticket> {
   const ctx = contexts.getStore();
   const surface = provider === "kodikrouter" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
@@ -44,11 +39,11 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
   try {
     let quotedVC: number | null = null;
     if (provider === "kodikrouter") {
-      const override = pricingOverride(model);
-      const catalog = await prisma.model.findUnique({ where: { name: model }, select: { pricePer1MInput: true, pricePer1MOutput: true, priceVC: true } });
+      const catalog = await prisma.model.findUnique({ where: { name: canonicalKodikModel(model) }, select: { pricePer1MInput: true, pricePer1MOutput: true, priceVC: true } });
       quotedVC = catalog?.priceVC ?? null;
-      ticket.inputRate = override?.input ?? finiteNonnegative(catalog?.pricePer1MInput);
-      ticket.outputRate = override?.output ?? finiteNonnegative(catalog?.pricePer1MOutput);
+      const rates = getKodikCostRates(model, catalog);
+      ticket.inputRate = rates.input;
+      ticket.outputRate = rates.output;
     }
     await prisma.aiCostEvent.create({ data: {
       id: ticket.id, operationId: ctx?.operationId ?? randomUUID(), actorHash: ctx?.actorHash,
@@ -66,22 +61,27 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
   const measured = usage.inputTokens !== null && usage.outputTokens !== null;
   const input = usage.inputTokens ?? estimatedInput ?? null;
   const output = usage.outputTokens ?? estimatedOutput ?? null;
-  const fx = finiteNonnegative(Number(process.env['AI_COST_USD_RUB']));
   try {
     if (actualModel && actualModel !== ticket.requestedModel) {
-      const override = pricingOverride(actualModel);
-      const catalog = override ? null : await prisma.model.findUnique({ where: { name: actualModel }, select: { pricePer1MInput: true, pricePer1MOutput: true } });
-      ticket.inputRate = override?.input ?? finiteNonnegative(catalog?.pricePer1MInput);
-      ticket.outputRate = override?.output ?? finiteNonnegative(catalog?.pricePer1MOutput);
+      const catalog = await prisma.model.findUnique({ where: { name: canonicalKodikModel(actualModel) }, select: { pricePer1MInput: true, pricePer1MOutput: true } });
+      const rates = getKodikCostRates(actualModel, catalog);
+      ticket.inputRate = rates.input;
+      ticket.outputRate = rates.output;
     }
     // Cached reads are included in prompt_tokens. Full input pricing ignores
     // their discount and is an estimate. Cache writes can cost MORE than input;
     // without a verified write rate, do not invent a catalog estimate for them.
     const catalog = (usage.cacheWriteInputTokens ?? 0) > 0 ? null : tokenCostRub(input, output, ticket.inputRate, ticket.outputRate);
+    const explicitFx = finiteNonnegative(Number(process.env['AI_COST_USD_RUB']));
+    const needsFx = ticket.surface === "chat_completions" && (usage.reportedCost ?? 0) > 0;
+    const fx = needsFx ? explicitFx && explicitFx > 0 ? explicitFx : await getAccountingUsdRub() : null;
     const cost = ticket.surface ? resolveKodikCost(ticket.surface, usage, catalog, fx) : {
       providerCostCurrency: null, providerCostSemantics: "unverified", usdRub: null,
       estimatedCostRub: null, costSource: "unknown",
     };
+    if (cost.costSource === "chat_usd_estimate" && !(explicitFx && explicitFx > 0)) {
+      cost.costSource = "chat_cbr_estimate";
+    }
     await prisma.aiCostEvent.update({ where: { id: ticket.id }, data: {
       outcome, durationMs: Date.now() - ticket.started, httpStatus: status,
       inputTokens: input, outputTokens: output, cachedInputTokens: usage.cachedInputTokens,

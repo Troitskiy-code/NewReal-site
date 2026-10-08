@@ -12,6 +12,8 @@ export type CurrencyRates = {
   USD: number;
   EUR: number;
   updatedAt: string;
+  source?: "cbr" | "fallback";
+  rateDate?: string;
 };
 
 const CACHE_PATHS = [
@@ -20,6 +22,7 @@ const CACHE_PATHS = [
 ];
 
 let memoryCache: CurrencyRates | null = null;
+let refreshInFlight: Promise<CurrencyRates> | null = null;
 
 function isPlausibleRate(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 20 && value < 500;
@@ -41,7 +44,24 @@ function cacheAgeMs(updatedAt: string): number {
 }
 
 function isFresh(rates: CurrencyRates): boolean {
-  return cacheAgeMs(rates.updatedAt) < CACHE_TTL;
+  const age = cacheAgeMs(rates.updatedAt);
+  return age >= 0 && age < CACHE_TTL;
+}
+
+// A display fallback or a legacy cache without provenance is never accounting FX.
+export function isAccountingCurrencyRate(rates: CurrencyRates, now = Date.now()): boolean {
+  const age = now - Date.parse(rates.updatedAt);
+  const rateDay = Date.parse(`${rates.rateDate}T00:00:00Z`);
+  return isValidRates(rates) && rates.source === "cbr" && age >= 0 && age < CACHE_TTL
+    && /^\d{4}-\d{2}-\d{2}$/.test(rates.rateDate ?? "") && Number.isFinite(rateDay)
+    && rateDay <= now + 86400000 && now - rateDay < 10 * 86400000;
+}
+
+export async function getAccountingUsdRub(): Promise<number | null> {
+  // Chat accounting never waits for external FX HTTP. Cron/the display endpoint
+  // refresh the shared cache; missing or pre-provenance caches use catalog estimates.
+  const rates = memoryCache && isAccountingCurrencyRate(memoryCache) ? memoryCache : readFileCache();
+  return rates && isAccountingCurrencyRate(rates) ? rates.USD : null;
 }
 
 function readFileCache(): CurrencyRates | null {
@@ -106,7 +126,13 @@ async function fetchCbrRates(): Promise<CurrencyRates> {
     throw new Error("CBR XML did not contain USD and EUR rates");
   }
 
-  return { USD: usd, EUR: eur, updatedAt: new Date().toISOString() };
+  const date = xml.match(/<ValCurs\b[^>]*\bDate=["'](\d{2})\.(\d{2})\.(\d{4})["']/i);
+  if (!date) throw new Error("CBR XML did not contain a rate date");
+  const rateDate = `${date[3]}-${date[2]}-${date[1]}`;
+  if (new Date(`${rateDate}T00:00:00Z`).toISOString().slice(0, 10) !== rateDate) {
+    throw new Error("Invalid CBR rate date");
+  }
+  return { USD: usd, EUR: eur, updatedAt: new Date().toISOString(), source: "cbr", rateDate };
 }
 
 export async function getCurrencyRates(options?: {
@@ -131,6 +157,13 @@ export async function getCurrencyRates(options?: {
     }
   }
 
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = refreshRates();
+  try { return await refreshInFlight; }
+  finally { refreshInFlight = null; }
+}
+
+async function refreshRates(): Promise<CurrencyRates> {
   try {
     const rates = await fetchCbrRates();
     memoryCache = rates;
@@ -150,6 +183,7 @@ export async function getCurrencyRates(options?: {
       USD: FALLBACK_USD,
       EUR: FALLBACK_EUR,
       updatedAt: new Date().toISOString(),
+      source: "fallback",
     };
     memoryCache = fallback;
     return fallback;

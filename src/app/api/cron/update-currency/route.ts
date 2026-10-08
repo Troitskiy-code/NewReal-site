@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrencyRates } from "@/lib/currencyRates";
+import { getCurrencyRates, isAccountingCurrencyRate } from "@/lib/currencyRates";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { getCronProvidedSecret, logCronSecretCheck } from "@/lib/cronAuth";
 
@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const rates = await getCurrencyRates({ forceRefresh: true });
+    if (!isAccountingCurrencyRate(rates)) {
+      return NextResponse.json({ ok: false, error: "Не удалось получить актуальный курс ЦБ" }, { status: 503 });
+    }
     return NextResponse.json({ ok: true, ...rates });
   } catch (error) {
     errorLog("Cron:UpdateCurrency", "update failed", toSafeDiagnostic(error));

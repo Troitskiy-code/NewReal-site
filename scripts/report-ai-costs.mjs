@@ -1,8 +1,9 @@
 // Explicit read-only connection. Does not load .env, mutate DB or call providers.
 import { Client } from 'pg';
-import { readFileSync, writeFileSync, statSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildAiCostReport } from './lib/ai-cost-report.mjs';
+import { loadKodikCostExport } from './lib/kodik-cost-export.mjs';
 
 const url = process.env['COST_REPORT_DATABASE_URL'];
 if (!url) throw new Error('Set COST_REPORT_DATABASE_URL explicitly for the intended database');
@@ -22,12 +23,12 @@ try {
   let ledgerRows;
   if (process.env['KODIK_COST_EXPORT']) {
     const path = resolve(process.env['KODIK_COST_EXPORT']);
-    if (statSync(path).size > 128 * 1024 * 1024) throw new Error('Export size limit exceeded');
-    ledgerRows = JSON.parse(readFileSync(path, 'utf8'));
+    ledgerRows = loadKodikCostExport(path, { naiveTimezone: process.env['KODIK_COST_EXPORT_TIMEZONE'] });
   }
   await client.connect();
   await client.query('BEGIN READ ONLY');
   await client.query("SET LOCAL statement_timeout = '30s'");
+  await client.query("SET LOCAL TIME ZONE 'UTC'");
   // No actors, prompts, emails, secrets or response bodies are selected.
   const { rows } = await client.query(`
     SELECT "id", "provider", "providerRequestId", "providerResponseId", "apiSurface", "accountingVersion",
@@ -36,7 +37,7 @@ try {
       "inputRubPerMillion", "outputRubPerMillion", "reportedCostRub", "estimatedCostRub"
     FROM "AiCostEvent" WHERE "createdAt" >= $1 AND "createdAt" < $2
     ORDER BY "createdAt", "id" LIMIT 200001
-  `, [from, to]);
+  `, [from.toISOString(), to.toISOString()]);
   if (rows.length > 200000) throw new Error('Choose a shorter report interval');
   await client.query('COMMIT');
   const result = buildAiCostReport(rows, { from: from.toISOString(), to: to.toISOString(),

@@ -1,4 +1,7 @@
 // Read-only accounting. Never return raw export rows, actors or response bodies.
+import { readFileSync } from 'node:fs';
+const aliases = JSON.parse(readFileSync(new URL('../../src/lib/data/kodik-model-aliases.json', import.meta.url), 'utf8'));
+const canonicalModel = model => Object.hasOwn(aliases, model) ? aliases[model] : model;
 const SCALE = 18;
 const UNIT = 10n ** BigInt(SCALE);
 export function rubUnits(value) {
@@ -87,7 +90,7 @@ export function reconcileKodikCosts(events, rows, apiKeyName) {
       summary.ambiguous++; continue;
     }
     const index = [...indices][0], row = ledger[index];
-    if (row.model !== (event.actualModel ?? event.model)
+    if (canonicalModel(row.model) !== canonicalModel(event.actualModel ?? event.model)
       || (event.usageSource === 'provider' && (
         row.input === null || row.output === null || row.input !== event.inputTokens || row.output !== event.outputTokens))) {
       summary.mismatched++; continue;
@@ -115,7 +118,7 @@ const percentile = (values, p) => {
   const sorted = [...values].sort((a, b) => a - b), position = (sorted.length - 1) * p, index = Math.floor(position);
   return sorted[index] + (sorted[Math.ceil(position)] - sorted[index]) * (position - index);
 };
-const estimateSources = new Set(['chat_usd_estimate', 'catalog_estimate', 'configured_estimate']);
+const estimateSources = new Set(['chat_usd_estimate', 'chat_cbr_estimate', 'catalog_estimate', 'configured_estimate']);
 
 export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } = {}) {
   const reconciliation = ledgerRows ? reconcileKodikCosts(events, ledgerRows, apiKeyName)
@@ -204,7 +207,7 @@ export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } =
     reconciliation: reconciliation.summary,
     limitations: [
       'Only unique exact-ID matches to positive RUB debits in the supplied key-scoped export are ledger-confirmed. No time/token-only matches.',
-      'Chat usage.cost is documented as total USD including markup/cache discounts. Configured USD/RUB conversion is an estimate; no additional 10%.',
+      'Chat usage.cost uses explicitly configured or verified current CBR USD/RUB estimates; no additional 10%. CBR estimates are not gateway ledger debits.',
       'Embedding native cost currency/markup are unverified. RUB catalog input prices already include markup and remain estimates.',
       'Legacy reportedCostRub amounts are unverified and excluded from confirmed totals. No historical cost or response ID is invented.',
       'Catalog estimates do not apply cache-read discounts. Cache-write costs without a known tariff stay unknown unless a chat USD estimate is available.',

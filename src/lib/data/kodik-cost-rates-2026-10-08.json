@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "observedOn": "2026-10-08",
+  "source": "https://kodikrouter.ru/pricing",
+  "currency": "RUB",
+  "unit": "per_million_tokens",
+  "semantics": "catalog_estimate_only",
+  "rates": {
+    "x-ai/grok-4.20": {
+      "input": 121.58,
+      "output": 243.15
+    },
+    "google/gemma-4-31b-it": {
+      "input": 8.75,
+      "output": 33.07
+    },
+    "openai/gpt-4-turbo": {
+      "input": 972.6,
+      "output": 2917.8
+    },
+    "openai/gpt-4o-mini": {
+      "input": 14.59,
+      "output": 58.36
+    },
+    "deepseek/deepseek-v4-flash": {
+      "input": 2.22,
+      "output": 124.49
+    },
+    "openai/gpt-5.1": {
+      "input": 121.58,
+      "output": 972.6
+    },
+    "google/gemini-2.5-flash": {
+      "input": 29.18,
+      "output": 243.15
+    },
+    "anthropic/claude-haiku-4.5": {
+      "input": 97.26,
+      "output": 486.3
+    },
+    "mistralai/mistral-large-2407": {
+      "input": 194.52,
+      "output": 583.56
+    },
+    "google/gemini-2.5-pro": {
+      "input": 121.58,
+      "output": 972.6
+    },
+    "openai/text-embedding-3-small": {
+      "input": 1.95,
+      "output": 0.0
+    },
+    "mistralai/mistral-small-2603": {
+      "input": 14.59,
+      "output": 58.36
+    },
+    "mistralai/mistral-small-3.1-24b-instruct": {
+      "input": 34.14,
+      "output": 53.98
+    },
+    "sao10k/l3.3-euryale-70b": {
+      "input": 63.22,
+      "output": 72.95
+    },
+    "z-ai/glm-5.1": {
+      "input": 93.95,
+      "output": 295.28
+    },
+    "z-ai/glm-5": {
+      "input": 58.36,
+      "output": 186.74
+    },
+    "google/gemini-3-flash-preview": {
+      "input": 48.63,
+      "output": 291.78
+    },
+    "mistralai/mistral-medium-3.1": {
+      "input": 38.9,
+      "output": 194.52
+    },
+    "minimax/minimax-m2.7": {
+      "input": 20.42,
+      "output": 81.7
+    }
+  }
+}

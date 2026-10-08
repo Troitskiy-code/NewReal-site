@@ -17,6 +17,13 @@ check(header.coverage.confirmedCost === 1 && header.totals.confirmedCostRubExact
 check(header.totals.estimatedCostRub === 0 && header.models[0].chargedCostVC === 4, 'confirmed debit supersedes estimate; actual charged VC replaces quote');
 const body = report([event('b')], [ledger('b', { request_id: 'gen_b', cost_rub: '0.000541' })]);
 check(body.reconciliation.responseMatches === 1 && body.totals.confirmedCostRub === 0.000541, 'provider response ID also reconciles exactly');
+check(report([event('emb', { model: 'openai/text-embedding-3-small', actualModel: 'text-embedding-3-small',
+  purpose: 'embedding', outputTokens: 0 })], [ledger('emb', { model_id: 'openai/text-embedding-3-small', output_tokens: 0 })]).coverage.confirmedCost === 1,
+  'only verified embedding alias reconciles by exact ID and matching tokens');
+check(report([event('alias', { actualModel: 'gpt-4o-mini' })], [ledger('alias', { model_id: 'openai/gpt-4o-mini' })]).coverage.confirmedCost === 0,
+  'unverified model prefix differences do not invent aliases');
+check(report([event('cbr', { costSource: 'chat_cbr_estimate' })]).coverage.estimatedCost === 1,
+  'CBR conversion stays estimated in report');
 const inferred = report([event('a')], [ledger('a', { request_id: 'different_id' })]);
 check(inferred.coverage.confirmedCost === 0 && inferred.coverage.estimatedCost === 1, 'time/tokens never invent an ID match');
 check(report([event('a')], [ledger('a', { api_key_name: 'other_key' })]).coverage.confirmedCost === 0, 'other API key is excluded');

@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
 const runtime = process.env['GUEST_TEST_RUNTIME'];
 if (!runtime) throw new Error('Set GUEST_TEST_RUNTIME to the isolated embedded-postgres installation');
 const EmbeddedPostgres = require(join(resolve(runtime), 'node_modules/embedded-postgres/dist/index.js')).default;
-let createyaReject = true, embeddingFails = false;
+let createyaReject = true, embeddingFails = false, embeddingAlias = false, cbrRate = null;
 const server = createServer((req, res) => {
   res.setHeader('X-KodikRouter-Request-Id', 'req_cost_fixture');
   if (req.url === '/embeddings') {
@@ -25,7 +25,7 @@ const server = createServer((req, res) => {
       if (embeddingFails) { res.statusCode = 503; res.end('{}'); return; }
       const payload = JSON.parse(body);
       const texts = Array.isArray(payload.input) ? payload.input : [payload.input];
-      res.end(JSON.stringify({ id: 'gen_emb_fixture', model: payload.model, usage: { total_tokens: 84, cost: 0.8 },
+      res.end(JSON.stringify({ id: 'gen_emb_fixture', model: embeddingAlias ? 'text-embedding-3-small' : payload.model, usage: { total_tokens: 84, cost: 0.8 },
         data: texts.map((_text, index) => ({ index, embedding: [index + 1, ...Array(1535).fill(0)] })).reverse() }));
     });
   } else if (req.url === '/v1/run') {
@@ -74,6 +74,7 @@ function load(file) {
   const loaded = { exports: {} }; cache.set(file, loaded.exports);
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   const dependency = name => {
+    if (name === './currencyRates') return { getAccountingUsdRub: async () => cbrRate };
     if (name === '@/lib/prisma') return { prisma: file.endsWith('messageEmbeddings.ts')
       ? { $queryRaw: async () => [] } // Isolate provider accounting from pgvector lookup.
       : db };
@@ -85,7 +86,11 @@ function load(file) {
         if (avatarFail) throw Object.assign(new Error('secret_provider_response'), { avatarQuotaRefundable: avatarFail === true }); return 'https://example.test/image'; },
       imageUrlToDataUrl: async () => { if (imageDownloadFail) throw new Error('download failed'); return 'data:image/png;base64,dGVzdA=='; } };
     if (name.startsWith('@/')) return load(join('src', name.slice(2) + '.ts'));
-    if (name.startsWith('.')) { const target = resolve(dirname(file), name); return load(existsSync(target + '.ts') ? target + '.ts' : target + '.js'); }
+    if (name.startsWith('.')) {
+      const target = resolve(dirname(file), name);
+      if (target.endsWith('.json')) return JSON.parse(readFileSync(target, 'utf8'));
+      return load(existsSync(target + '.ts') ? target + '.ts' : target + '.js');
+    }
     return require(name);
   };
   new Function('require','module','exports',code)(dependency,loaded,loaded.exports); return loaded.exports;
@@ -97,6 +102,7 @@ try {
   process.env['ECONOMY_OUTPUT_DIR'] = directory;
   delete process.env['AI_COST_RATES_RUB_JSON']; delete process.env['KODIKROUTER_USAGE_COST_CURRENCY']; delete process.env['AI_COST_USD_RUB'];
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_economy_test'); await ddl.connect();
+  await ddl.query("SET TIME ZONE 'UTC'");
   for (const name of readdirSync('prisma/migrations').filter(n => /^\d+_/.test(n)).sort()) {
     if (name === '20261008160000_ai_cost_accounting_v2') {
       await ddl.query(`INSERT INTO "AiCostEvent" ("id", "operationId", "provider", "model", "purpose", "attempt", "outcome", "costSource", "reportedCostRub", "estimatedCostRub")
@@ -169,6 +175,12 @@ try {
   check(!!await db.aiCostEvent.findFirst({ where: { providerCostNative: 0, reportedCostRub: null, estimatedCostRub: 0.014 } }), 'provider zero does not claim bill-free usage');
   delete process.env['KODIKROUTER_USAGE_COST_CURRENCY'];
   delete process.env['AI_COST_USD_RUB'];
+  cbrRate = 91;
+  const cbrResponse = await telemetry.meteredChatFetch(providerUrl + '/stream', {}, 'test/model', 20);
+  await cbrResponse.text();
+  check(!!await db.aiCostEvent.findFirst({ where: { costSource: 'chat_cbr_estimate', usdRub: 91, estimatedCostRub: 27.3 } }),
+    'real collector records current CBR estimate separately from explicit FX');
+  cbrRate = null;
   const changedModel = await telemetry.meteredChatFetch(providerUrl + '/fallback', {}, 'test/model', 20); await changedModel.text();
   check(!!await db.aiCostEvent.findFirst({ where: { actualModel: 'unpriced/fallback', estimatedCostRub: null, costSource: 'unknown' } }), 'unpriced provider fallback not billed at requested model quote');
   const beforeRetry = await db.aiCostEvent.count();
@@ -210,6 +222,13 @@ try {
   await rag.searchRelevantMessages('fixture_user', 'fixture_character', 'secret_rag_query', 'synthetic_embedding_key');
   check(await db.aiCostEvent.count({ where: { purpose: 'embedding' } }) === beforeRagEmbeddings + 1,
     'real RAG query also records one embedding cost event');
+  await db.model.update({ where: { name: 'openai/text-embedding-3-small' }, data: { pricePer1MInput: null, pricePer1MOutput: null } });
+  embeddingAlias = true;
+  await memoryEmbeddings.fetchEmbeddings(['fixture_alias'], 'synthetic_embedding_key');
+  check(!!await db.aiCostEvent.findFirst({ where: { actualModel: 'text-embedding-3-small', inputRubPerMillion: 1.95,
+    outputRubPerMillion: 0, estimatedCostRub: 0.0001638, costSource: 'catalog_estimate' } }),
+    'real embedding response alias retains 1.95 RUB snapshot when DB rates are absent');
+  embeddingAlias = false;
   process.env['YANDEX_TRANSLATE_COST_RUB_PER_MILLION_CHARS'] = '50';
   await telemetry.meteredTranslationFetch(providerUrl + '/ok', {}, 4);
   check(!!await db.aiCostEvent.findFirst({ where: { purpose: 'translation', inputCharacters: 4, inputTokens: null, estimatedCostRub: 0.0002 } }), 'translation counts characters separately from tokens');
@@ -277,11 +296,24 @@ try {
     inputRubPerMillion: 10, outputRubPerMillion: 20, providerRequestId: 'kr_req_exact_fixture', providerResponseId: 'gen_exact_fixture' } });
   const ledgerPath = join(directory, 'ledger.json');
   writeFileSync(ledgerPath, JSON.stringify([{ id: 'ledger_fixture', api_key_name: 'fixture_key', status: 'success',
-    request_id: preciseEvent.providerResponseId, model_id: 'test/model', input_tokens: 100, output_tokens: 10, cost_rub: '0.006672' }]));
+    timestamp: new Date().toISOString(), request_id: preciseEvent.providerResponseId, model_id: 'test/model', input_tokens: 100, output_tokens: 10, cost_rub: '0.006672' }]));
   const reconciledExport = spawnSync(process.execPath, ['scripts/report-ai-costs.mjs'], { encoding: 'utf8', windowsHide: true,
     env: { ...process.env, COST_REPORT_DATABASE_URL: url, KODIK_COST_EXPORT: ledgerPath, KODIK_COST_API_KEY_NAME: 'fixture_key' } });
   check(reconciledExport.status === 0 && JSON.parse(reconciledExport.stdout).totals.confirmedCostRubExact === '0.006672',
     'real read-only PostgreSQL report joins existing export by exact response ID');
+  const csvLedgerPath = join(directory, 'ledger.csv');
+  writeFileSync(csvLedgerPath, 'request_id;id;api_key_name;timestamp;model_id;status;input_tokens;output_tokens;cost_rub\r\n'
+    + `${preciseEvent.providerResponseId};ledger_fixture;fixture_key;${new Date().toISOString().slice(0,-1)};test/model;success;100;10;0,006672\r\n`);
+  const csvExport = spawnSync(process.execPath, ['scripts/report-ai-costs.mjs'], { encoding:'utf8',windowsHide:true,
+    env:{...process.env,COST_REPORT_DATABASE_URL:url,KODIK_COST_EXPORT:csvLedgerPath,KODIK_COST_API_KEY_NAME:'fixture_key',KODIK_COST_EXPORT_TIMEZONE:'UTC'} });
+  check(csvExport.status === 0 && JSON.parse(csvExport.stdout).totals.confirmedCostRubExact === '0.006672',
+    'real PostgreSQL report directly reconciles decimal-comma CSV with verified UTC');
+  const otherTimezoneExport = spawnSync(process.execPath, ['scripts/report-ai-costs.mjs'], { encoding: 'utf8', windowsHide: true,
+    env: { ...process.env, TZ: 'Pacific/Honolulu', COST_REPORT_DATABASE_URL: url, KODIK_COST_EXPORT: ledgerPath,
+      KODIK_COST_API_KEY_NAME: 'fixture_key', COST_REPORT_FROM: new Date(Date.now()-3600000).toISOString(),
+      COST_REPORT_TO: new Date(Date.now()+3600000).toISOString() } });
+  check(otherTimezoneExport.status === 0 && JSON.parse(otherTimezoneExport.stdout).totals.confirmedCostRubExact === '0.006672',
+    'report date bounds stay UTC under a different process timezone');
   check((await db.aiCostEvent.findUnique({ where: { id: preciseEvent.id } })).estimatedCostRub === 5,
     'reconciliation never writes into event history');
   const snapshot = join(directory, 'cost-report.json');
