@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -261,7 +262,7 @@ async function handlePost(
           console.log(`[ChatTTFT] Fast context prepared in ${Date.now() - started}ms`);
           return context;
         } catch (error) {
-          console.error("[ChatTTFT] Fast context failed", error);
+          errorLog("Server", "[ChatTTFT] Fast context failed", toSafeDiagnostic(error));
           throw error;
         }
       })(),
@@ -276,7 +277,7 @@ async function handlePost(
           console.log(`[ChatTTFT] Intent analysis: ${result.intent}, ${Date.now() - started}ms`);
           return result;
         } catch (error) {
-          console.error("[ChatTTFT] Intent analysis failed, fallback general", error);
+          errorLog("Server", "[ChatTTFT] Intent analysis failed, fallback general", toSafeDiagnostic(error));
           console.log(`[ChatTTFT] Intent analysis: general, ${Date.now() - started}ms`);
           return { intent: "general" as const, confidence: 0 };
         }
@@ -301,7 +302,7 @@ async function handlePost(
           totalHistoryTokens: fastContext.totalHistoryTokens,
         });
       } catch (error) {
-        console.error("[ChatTTFT] RAG failed, continuing without it", error);
+        errorLog("Server", "[ChatTTFT] RAG failed, continuing without it", toSafeDiagnostic(error));
       }
     }
 
@@ -319,10 +320,10 @@ async function handlePost(
         intent,
         apiKey: KODIKROUTER_KEY,
       }).catch((error) => {
-        console.error("[ChatTTFT] background memory ingest failed", error);
+        errorLog("Server", "[ChatTTFT] background memory ingest failed", toSafeDiagnostic(error));
       });
       void resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY, user).catch((error) => {
-        console.error("[ChatTTFT] background summary refresh failed", error);
+        errorLog("Server", "[ChatTTFT] background summary refresh failed", toSafeDiagnostic(error));
       });
     }
 
@@ -396,7 +397,7 @@ async function handlePost(
       });
     });
   } catch (error) {
-    console.error("Chat error:", error);
+    errorLog("Server", "Chat error:", toSafeDiagnostic(error));
     if (defaultShouldRetry(error)) {
       return NextResponse.json(
         { error: KODIK_RETRY_ERROR_MESSAGE },
@@ -425,7 +426,7 @@ export async function GET(
     try {
       await ensureCharacterSlugColumn();
     } catch (error) {
-      console.error("[chat] Could not ensure slug column", error);
+      errorLog("Server", "[chat] Could not ensure slug column", toSafeDiagnostic(error));
     }
 
     const characterSelectNoSlug = {
@@ -487,7 +488,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Get history error:", error);
+    errorLog("Server", "Get history error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка получения истории" }, { status: 500 });
   }
 }

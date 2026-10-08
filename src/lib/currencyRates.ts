@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -46,7 +47,8 @@ function isFresh(rates: CurrencyRates): boolean {
 function readFileCache(): CurrencyRates | null {
   for (const file of CACHE_PATHS) {
     try {
-      const parsed = JSON.parse(fs.readFileSync(file, "utf-8"));
+      // This cache is generated at runtime. Do not trace the project/tmp directory into deploy artifacts.
+      const parsed = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file, "utf-8"));
       if (isValidRates(parsed)) return parsed;
     } catch {
       // Missing or unreadable cache file.
@@ -68,7 +70,7 @@ function writeFileCache(rates: CurrencyRates): void {
     }
   }
   if (!written) {
-    console.warn("[Currency] Could not persist rates cache to disk");
+    errorLog("Server", "[Currency] Could not persist rates cache to disk");
   }
 }
 
@@ -138,12 +140,12 @@ export async function getCurrencyRates(options?: {
   } catch (error) {
     const stale = memoryCache ?? readFileCache();
     if (stale) {
-      console.error("[Currency] Failed to fetch rates from CBR, using stale cache:", error);
+      errorLog("Server", "[Currency] Failed to fetch rates from CBR, using stale cache:", toSafeDiagnostic(error));
       memoryCache = stale;
       return stale;
     }
 
-    console.error("[Currency] Failed to fetch rates from CBR, using fallback:", error);
+    errorLog("Server", "[Currency] Failed to fetch rates from CBR, using fallback:", toSafeDiagnostic(error));
     const fallback: CurrencyRates = {
       USD: FALLBACK_USD,
       EUR: FALLBACK_EUR,

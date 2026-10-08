@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       verseCoins: updatedUser.verseCoins,
     });
   } catch (error) {
-    console.error("Admin set-subscription error:", error);
+    errorLog("Server", "Admin set-subscription error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка назначения подписки" }, { status: 500 });
   }
 }

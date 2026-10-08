@@ -1,3 +1,4 @@
+import { ClientInputError } from "./publicError";
 export const PERSONA_NAME_MAX = 80;
 export const PERSONA_DESCRIPTION_MAX = 500;
 
@@ -38,17 +39,17 @@ export function appendPersonaToSystemPrompt(
 export function parsePersonaPayload(body: Record<string, unknown>) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) {
-    throw new Error("Имя обязательно");
+    throw new ClientInputError("Имя обязательно");
   }
   if (name.length > PERSONA_NAME_MAX) {
-    throw new Error(`Имя не длиннее ${PERSONA_NAME_MAX} символов`);
+    throw new ClientInputError(`Имя не длиннее ${PERSONA_NAME_MAX} символов`);
   }
 
   let description: string | null = null;
   if (typeof body.description === "string") {
     const trimmed = body.description.trim();
     if (trimmed.length > PERSONA_DESCRIPTION_MAX) {
-      throw new Error(`Описание не длиннее ${PERSONA_DESCRIPTION_MAX} символов`);
+      throw new ClientInputError(`Описание не длиннее ${PERSONA_DESCRIPTION_MAX} символов`);
     }
     description = trimmed || null;
   }

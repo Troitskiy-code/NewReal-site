@@ -63,10 +63,10 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
 
   const { apiKey, folderId } = getTranslateConfig();
   if (!apiKey || !folderId) {
-    console.error("[Translate] Missing YANDEX_API_KEY or YANDEX_FOLDER_ID", {
+    errorLog("Server", "[Translate] Missing YANDEX_API_KEY or YANDEX_FOLDER_ID", toSafeDiagnostic({
       hasApiKey: Boolean(apiKey),
       hasFolderId: Boolean(folderId),
-    });
+    }));
     throw new Error("Missing YANDEX_API_KEY or YANDEX_FOLDER_ID");
   }
 
@@ -116,13 +116,13 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
     }
 
     if (!response.ok) {
-      console.error("[Translate] API error:", response.status);
+      errorLog("Server", "[Translate] API error:", toSafeDiagnostic(response.status));
       throw new Error(`Yandex Translate API error ${response.status}`);
     }
 
     const translated = data?.translations?.[0]?.text;
     if (typeof translated !== "string" || !translated) {
-      console.error("[Translate] Unexpected response shape");
+      errorLog("Server", "[Translate] Unexpected response shape");
       throw new Error("Yandex Translate returned unexpected response shape");
     }
 
@@ -170,7 +170,7 @@ export async function translateCharacterFieldsToEn(
         const translated = await translateText(value, "en");
         return [enField, translated] as const;
       } catch (error) {
-        console.error(`[Translate] Field "${source}" failed, keeping original`, error);
+        errorLog("Server", "src/lib/translate.ts", toSafeDiagnostic(`[Translate] Field "${source}" failed, keeping original`), toSafeDiagnostic(error));
         return [enField, value] as const;
       }
     })
@@ -189,7 +189,7 @@ export async function translateMemoryFieldToEn(
     const translated = await translateText(text, "en");
     return { content: translated };
   } catch (error) {
-    console.error("[Translate] Memory field failed, keeping original", error);
+    errorLog("Server", "[Translate] Memory field failed, keeping original", toSafeDiagnostic(error));
     return { content: text };
   }
 }

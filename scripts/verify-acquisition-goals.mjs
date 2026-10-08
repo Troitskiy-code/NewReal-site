@@ -47,7 +47,15 @@ try {
   const streamCode = ts.transpileModule(readFileSync('src/lib/chatStream.ts', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText;
-  new Function('module', 'exports', streamCode)(streamModule, streamModule.exports);
+  const redactionModule = { exports: {} };
+  const redactionCode = ts.transpileModule(readFileSync('src/lib/redactSensitive.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText;
+  new Function('module', 'exports', redactionCode)(redactionModule, redactionModule.exports);
+  new Function('require', 'module', 'exports', streamCode)(name => {
+    if (name === './redactSensitive') return redactionModule.exports;
+    throw new Error(`Unexpected stream dependency ${name}`);
+  }, streamModule, streamModule.exports);
   const originalFetch = globalThis.fetch;
   try {
     globalThis.fetch = async () => new Response(`${JSON.stringify(turn('forged'))}\n`, {

@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { translateText, type TranslateTargetLang } from "@/lib/translate";
 
@@ -14,7 +15,7 @@ function isAuthorized(req: NextRequest): boolean {
 export async function POST(req: NextRequest) {
   try {
     if (!isAuthorized(req)) {
-      console.error("[Admin:Translate] Unauthorized request");
+      errorLog("Server", "[Admin:Translate] Unauthorized request");
       return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
     }
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     const targetLang: TranslateTargetLang = targetLangRaw === "ru" ? "ru" : "en";
 
     if (text === undefined || !text.trim()) {
-      console.error("[Admin:Translate] Empty text rejected");
+      errorLog("Server", "[Admin:Translate] Empty text rejected");
       return NextResponse.json(
         { error: "text обязателен и не должен быть пустым" },
         { status: 400 }
@@ -51,8 +52,8 @@ export async function POST(req: NextRequest) {
       targetLang,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[Admin:Translate] Failed", message, error);
+    const message = "Операция временно недоступна";
+    errorLog("Server", "[Admin:Translate] Failed", toSafeDiagnostic(message), toSafeDiagnostic(error));
     return NextResponse.json(
       {
         success: false,

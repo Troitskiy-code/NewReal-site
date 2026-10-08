@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
       message: `Бонус +${bonus} VC получен!`,
     });
   } catch (error) {
-    console.error("Daily bonus error:", error);
+    errorLog("Server", "Daily bonus error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

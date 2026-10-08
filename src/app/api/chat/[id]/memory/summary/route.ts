@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -37,7 +38,7 @@ export async function PUT(
         : null,
     });
   } catch (error) {
-    console.error("[MemoryEditor] summary save failed", error);
+    errorLog("Server", "[MemoryEditor] summary save failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось сохранить суммаризацию" }, { status: 500 });
   }
 }

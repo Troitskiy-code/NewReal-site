@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import {
   findCharacterBySlugForViewer,
@@ -24,7 +25,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   } catch (error) {
     const overload = prismaPoolOverloadResponse(error);
     if (overload) return overload;
-    console.error("Character slug fetch error:", error);
+    errorLog("Server", "Character slug fetch error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

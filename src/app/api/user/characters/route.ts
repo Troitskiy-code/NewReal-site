@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
       characters = await loadCharacters(profileCharacterSelect);
     } catch (error) {
       if (!isMissingSlugColumn(error)) throw error;
-      console.error("[profile] Listing without slug column");
+      errorLog("Server", "[profile] Listing without slug column");
       characters = await loadCharacters(profileCharacterSelectNoSlug);
     }
 

@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 // import { runCharacterLifecycleTick } from "@/lib/characterLifecycle";
 
@@ -18,7 +19,7 @@ function isAuthorized(req: NextRequest): boolean {
 export async function POST(req: NextRequest) {
   try {
     if (!isAuthorized(req)) {
-      console.error("[Lifecycle] Admin update-characters unauthorized");
+      errorLog("Server", "[Lifecycle] Admin update-characters unauthorized");
       return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
     }
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     console.log("[Lifecycle] Admin tick disabled");
     return NextResponse.json({ ok: true, message: "Disabled for now" });
   } catch (error) {
-    console.error("[Lifecycle] Admin update-characters failed", error);
+    errorLog("Server", "[Lifecycle] Admin update-characters failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось обновить персонажей" }, { status: 500 });
   }
 }

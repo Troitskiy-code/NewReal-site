@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -16,7 +17,7 @@ export async function POST(req) {
     const url = await BillingService.createCheckoutSession(session.user.id, planId);
     return NextResponse.json({ url });
   } catch (error) {
-    console.error("[BILLING_CHECKOUT_ERROR]", error);
-    return new NextResponse(error.message || "Internal Error", { status: 500 });
+    errorLog("Server", "[BILLING_CHECKOUT_ERROR]", toSafeDiagnostic(error));
+    return new NextResponse("Операция временно недоступна", { status: 500 });
   }
 }

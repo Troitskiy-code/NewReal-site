@@ -1,3 +1,4 @@
+import { ClientInputError } from "./publicError";
 export const MEMORY_CONTENT_LIMIT = 10000;
 
 export const WORLD_EVENT_TYPES = ["conversation", "action", "discovery", "travel"] as const;
@@ -33,7 +34,7 @@ export function textToMemoryJson(text: string): MemoryContent | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
   if (trimmed.length > MEMORY_CONTENT_LIMIT) {
-    throw new Error(`Поле превышает лимит ${MEMORY_CONTENT_LIMIT} символов`);
+    throw new ClientInputError(`Поле превышает лимит ${MEMORY_CONTENT_LIMIT} символов`);
   }
   return { content: trimmed };
 }
@@ -47,20 +48,20 @@ export function parseMemoryInput(value: unknown): MemoryContent | null | undefin
       const content = (value as { content: unknown }).content;
       if (content === null || content === undefined) return null;
       if (typeof content !== "string") {
-        throw new Error("Некорректный формат памяти");
+        throw new ClientInputError("Некорректный формат памяти");
       }
       return textToMemoryJson(content);
     }
-    throw new Error("Некорректный формат памяти");
+    throw new ClientInputError("Некорректный формат памяти");
   }
-  throw new Error("Некорректный формат памяти");
+  throw new ClientInputError("Некорректный формат памяти");
 }
 
 export function parseMemoryPermissionsInput(value: unknown): MemoryPermissions | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
   if (typeof value !== "object") {
-    throw new Error("Некорректные разрешения памяти");
+    throw new ClientInputError("Некорректные разрешения памяти");
   }
 
   const obj = value as Record<string, unknown>;
@@ -68,7 +69,7 @@ export function parseMemoryPermissionsInput(value: unknown): MemoryPermissions |
 
   if (obj.privateAccessUserIds !== undefined) {
     if (!Array.isArray(obj.privateAccessUserIds)) {
-      throw new Error("privateAccessUserIds должен быть массивом");
+      throw new ClientInputError("privateAccessUserIds должен быть массивом");
     }
     for (const id of obj.privateAccessUserIds) {
       if (typeof id === "string" && id.trim()) {
@@ -104,7 +105,7 @@ export function applyPermissionGrant(
   const userId = typeof body.userId === "string" ? body.userId.trim() : "";
 
   if (!hasList && !userId) {
-    throw new Error("Укажите privateAccessUserIds или userId");
+    throw new ClientInputError("Укажите privateAccessUserIds или userId");
   }
 
   const next = normalizeMemoryPermissions(
@@ -119,7 +120,7 @@ export function applyPermissionGrant(
     } else if (canReadPrivate === true || canReadPrivate === undefined) {
       ids.add(userId);
     } else {
-      throw new Error("canReadPrivate должен быть boolean");
+      throw new ClientInputError("canReadPrivate должен быть boolean");
     }
   }
 

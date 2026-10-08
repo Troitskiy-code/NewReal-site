@@ -38,18 +38,18 @@ function load(file, imports = {}, globals = {}) {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true },
     fileName: file,
   }).outputText;
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   const mockRequire = (id) => {
     if (Object.hasOwn(imports, id)) return imports[id];
     throw new Error(`Unmocked import ${id}`);
   };
   // Same-realm evaluation preserves instanceof Error and uses only allowlisted imports.
   new Function('require', 'module', 'exports', 'console', 'process', 'fetch', compiled)(
-    mockRequire, module, module.exports, console,
+    mockRequire, loadedModule, loadedModule.exports, console,
     globals.process ?? { env: {} },
     globals.fetch ?? (() => { throw new Error('Network forbidden in review'); }),
   );
-  return module.exports;
+  return loadedModule.exports;
 }
 function check(label, work) {
   captured = [];

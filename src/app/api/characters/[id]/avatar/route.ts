@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -23,14 +24,10 @@ function parseDataUrl(value: string): { mime: string; body: Buffer } | null {
   return { mime, body };
 }
 
-function contentTypeFor(mime: string): string {
+function contentTypeFor(mime: string): string | null {
   const lower = mime.toLowerCase();
-  if (lower.includes("jpeg") || lower.includes("jpg")) return "image/jpeg";
-  if (lower.includes("png")) return "image/png";
-  if (lower.includes("webp")) return "image/webp";
-  if (lower.includes("gif")) return "image/gif";
-  if (lower.includes("avif")) return "image/avif";
-  return lower.startsWith("image/") ? lower.split(";")[0].trim() : "image/jpeg";
+  if (lower === "image/jpg") return "image/jpeg";
+  return /^image\/(?:jpeg|png|webp|gif|avif|bmp|tiff)$/.test(lower) ? lower : null;
 }
 
 export async function GET(req: NextRequest, context: RouteContext) {
@@ -62,13 +59,15 @@ export async function GET(req: NextRequest, context: RouteContext) {
     }
 
     const parsed = imageUrl.startsWith("data:") ? parseDataUrl(imageUrl) : null;
-    if (!parsed) {
-      return new NextResponse(null, { status: 404 });
+    const contentType = parsed ? contentTypeFor(parsed.mime) : null;
+    if (!parsed || !contentType) {
+      return new NextResponse(null, { status: 404, headers: { "Cache-Control": "no-store" } });
     }
 
     return new NextResponse(new Uint8Array(parsed.body), {
       headers: {
-        "Content-Type": contentTypeFor(parsed.mime),
+        "Content-Type": contentType,
+        "X-Content-Type-Options": "nosniff",
         "Cache-Control": cacheControl,
         "CDN-Cache-Control": cacheControl,
       },
@@ -76,7 +75,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
   } catch (error) {
     const overload = prismaPoolOverloadResponse(error);
     if (overload) return overload;
-    console.error("[characters] avatar GET failed", error);
+    errorLog("Server", "[characters] avatar GET failed", toSafeDiagnostic(error));
     return new NextResponse(null, { status: 500 });
   }
 }

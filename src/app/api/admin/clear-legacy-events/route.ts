@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -16,13 +17,13 @@ function isAuthorized(req: NextRequest): boolean {
 export async function POST(req: NextRequest) {
   try {
     if (!isAuthorized(req)) {
-      console.error("[Admin:ClearLegacy] Unauthorized");
+      errorLog("Server", "[Admin:ClearLegacy] Unauthorized");
       return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
     }
 
     const body = await req.json().catch(() => ({}));
     if (!body || typeof body !== "object" || (body as { confirm?: unknown }).confirm !== true) {
-      console.warn("[Admin:ClearLegacy] Rejected without confirm=true");
+      errorLog("Server", "[Admin:ClearLegacy] Rejected without confirm=true");
       return NextResponse.json(
         { error: 'Подтвердите удаление: передайте { "confirm": true }' },
         { status: 400 }
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, deletedCount: result.count });
   } catch (error) {
-    console.error("[Admin:ClearLegacy] Failed", error);
+    errorLog("Server", "[Admin:ClearLegacy] Failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось удалить события" }, { status: 500 });
   }
 }

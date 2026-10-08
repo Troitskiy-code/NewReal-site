@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -45,7 +46,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     return NextResponse.json(updatedMessage);
   } catch (error) {
-    console.error("Update message error:", error);
+    errorLog("Server", "Update message error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось обновить сообщение" }, { status: 500 });
   }
 }
@@ -86,7 +87,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
       characterId: message.characterId,
     });
   } catch (error) {
-    console.error("Delete message error:", error);
+    errorLog("Server", "Delete message error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось удалить сообщение" }, { status: 500 });
   }
 }

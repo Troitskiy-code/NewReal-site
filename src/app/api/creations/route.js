@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -42,7 +43,7 @@ export async function GET(req) {
 
     return NextResponse.json(syncedCreations);
   } catch (error) {
-    console.error("Creations GET handler error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    errorLog("Server", "Creations GET handler error:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }

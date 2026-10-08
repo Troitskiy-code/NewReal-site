@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
       message: "Модель выбрана",
     });
   } catch (error) {
-    console.error("Select model error:", error);
+    errorLog("Server", "Select model error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

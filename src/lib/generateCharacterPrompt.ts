@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { meteredPost } from "@/lib/aiCostTelemetry";
 import axios from "axios";
 import { memoryToText } from "@/lib/persistentMemory";
@@ -106,11 +107,11 @@ export async function generateCharacterPrompt(
         console.log(`[CharacterPrompt] Success model=${model} length=${promptText.length}`);
         return promptText;
       }
-      console.error(`[CharacterPrompt] Empty response model=${model}`);
+      errorLog("Server", "src/lib/generateCharacterPrompt.ts", toSafeDiagnostic(`[CharacterPrompt] Empty response model=${model}`));
     } catch (error) {
       lastError = error;
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-      console.error(`[CharacterPrompt] model=${model} failed ${formatKodikError(error)}`);
+      errorLog("Server", "src/lib/generateCharacterPrompt.ts", toSafeDiagnostic(`[CharacterPrompt] model=${model} failed ${formatKodikError(error)}`));
       if (status === 404 || status === 400) continue;
       throw error;
     }
@@ -124,14 +125,14 @@ export async function tryGenerateCharacterPrompt(
 ): Promise<string | null> {
   const apiKey = process.env.KODIKROUTER_API_KEY?.trim() ?? "";
   if (!apiKey) {
-    console.error("[CharacterPrompt] KODIKROUTER_API_KEY is not set");
+    errorLog("Server", "[CharacterPrompt] KODIKROUTER_API_KEY is not set");
     return null;
   }
 
   try {
     const prompt = await generateCharacterPrompt(characterData, apiKey);
     if (!prompt) {
-      console.error("[CharacterPrompt] Empty model response");
+      errorLog("Server", "[CharacterPrompt] Empty model response");
       return null;
     }
     console.log(
@@ -139,7 +140,7 @@ export async function tryGenerateCharacterPrompt(
     );
     return prompt;
   } catch (error) {
-    console.error(`[CharacterPrompt] Generation failed ${formatKodikError(error)}`);
+    errorLog("Server", "src/lib/generateCharacterPrompt.ts", toSafeDiagnostic(`[CharacterPrompt] Generation failed ${formatKodikError(error)}`));
     return null;
   }
 }

@@ -1,3 +1,5 @@
+import { safeErrorFields } from "./redactSensitive";
+
 type RetryOptions = {
   maxAttempts?: number;
   baseDelayMs?: number;
@@ -87,9 +89,7 @@ export async function retryWithBackoff<T>(
       if (!shouldRetry(error)) throw error;
 
       const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs);
-      console.warn(
-        `[Retry] Attempt ${attempt} failed: ${errorMessage(error)}, retrying in ${delay}ms`
-      );
+      console.warn("[Retry] " + JSON.stringify({ attempt, delay, ...safeErrorFields(error) }));
       onRetry?.(attempt, error);
 
       await new Promise((resolve) => setTimeout(resolve, delay));

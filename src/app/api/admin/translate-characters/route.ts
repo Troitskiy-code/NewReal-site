@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -225,7 +226,7 @@ async function translateMissingFields(
 export async function POST(req: NextRequest) {
   try {
     if (!isAuthorized(req)) {
-      console.error("[Admin:TranslateAll] Unauthorized request");
+      errorLog("Server", "[Admin:TranslateAll] Unauthorized request");
       return NextResponse.json({ error: "Недостаточно прав" }, { status: 401 });
     }
 
@@ -326,13 +327,13 @@ export async function POST(req: NextRequest) {
           });
         } catch (error) {
           errors += 1;
-          const message = error instanceof Error ? error.message : "Unknown error";
+          const message = "Операция временно недоступна";
           errorDetails.push({ id: character.id, name: character.name, error: message });
-          console.error("[Admin:TranslateAll] Error", {
+          errorLog("Server", "[Admin:TranslateAll] Error", toSafeDiagnostic({
             id: character.id,
             name: character.name,
             error: message,
-          });
+          }));
         }
       }
     );
@@ -351,8 +352,8 @@ export async function POST(req: NextRequest) {
     console.log("[Admin:TranslateAll] Done", result);
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[Admin:TranslateAll] Fatal", message, error);
+    const message = "Операция временно недоступна";
+    errorLog("Server", "[Admin:TranslateAll] Fatal", toSafeDiagnostic(message), toSafeDiagnostic(error));
     return NextResponse.json(
       { success: false, error: "Ошибка массового перевода", details: message },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserService } from "@/lib/services/user";
@@ -56,7 +57,7 @@ export async function POST(req) {
       return NextResponse.json({ success: true, status: "completed" });
     }
   } catch (error) {
-    console.error("MUAPI webhook processing error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    errorLog("Server", "MUAPI webhook processing error:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }

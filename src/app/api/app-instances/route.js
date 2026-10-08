@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -30,8 +31,8 @@ export async function GET(req) {
 
     return NextResponse.json(instances);
   } catch (error) {
-    console.error("AppInstances GET error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    errorLog("Server", "AppInstances GET error:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }
 
@@ -59,8 +60,8 @@ export async function POST(req) {
 
     return NextResponse.json(instance);
   } catch (error) {
-    console.error("AppInstances POST error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    errorLog("Server", "AppInstances POST error:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }
 
@@ -87,7 +88,7 @@ export async function DELETE(req) {
     await prisma.appInstance.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("AppInstances DELETE error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    errorLog("Server", "AppInstances DELETE error:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }

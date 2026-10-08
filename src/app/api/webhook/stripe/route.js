@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { BillingService } from "@/lib/services/billing";
@@ -15,7 +16,7 @@ export async function POST(req) {
     const result = await BillingService.handleWebhook(body, signature);
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Stripe webhook processing error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    errorLog("Server", "Stripe webhook processing error:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }

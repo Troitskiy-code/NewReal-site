@@ -172,12 +172,12 @@ async function handleWebhook(req: NextRequest) {
   const userId = shpValue(shp, "Shp_userId");
 
   if (!outSum || !invId || !signature || !userId) {
-    console.error("[Robokassa] Webhook error: Missing required fields");
+    errorLog("Server", "[Robokassa] Webhook error: Missing required fields");
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   if (!verifyRobokassaResultSignature(outSum, invId, signature, shp)) {
-    console.error("[Robokassa] Webhook error: Invalid signature");
+    errorLog("Server", "[Robokassa] Webhook error: Invalid signature");
     return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }
 
@@ -239,7 +239,7 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
   });
 
   if (!currentUser) {
-    console.error(`[Robokassa] Webhook error: User not found ${userId}`);
+    errorLog("Server", "src/app/api/payment/webhook/route.ts", toSafeDiagnostic(`[Robokassa] Webhook error: User not found ${userId}`));
     return NextResponse.json({ error: "User not found" }, { status: 400 });
   }
 
@@ -252,7 +252,7 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
     const analyticsPlanId = shpPlanRaw ? plan?.id ?? null : null;
 
     if (!plan || plan.monthlyPrice <= 0) {
-      console.error(`[Robokassa] Webhook error: Unknown subscription plan "${planId}"`);
+      errorLog("Server", "src/app/api/payment/webhook/route.ts", toSafeDiagnostic(`[Robokassa] Webhook error: Unknown subscription plan "${planId}"`));
       return NextResponse.json({ error: "Unknown subscription plan" }, { status: 400 });
     }
 

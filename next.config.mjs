@@ -11,6 +11,9 @@ const nextConfig = {
   outputFileTracingIncludes: {
     '/api/admin/support/migration': ['./prisma/migrations/20261006120000_support_replies/migration.sql'],
   },
+  outputFileTracingExcludes: {
+    '/*': ['./.env', './.env.*', './.git/**/*'],
+  },
   serverExternalPackages: ["tiktoken", "jimp", "sharp", "@jsquash/webp", "@logtail/node", "@logtail/core"],
   async headers() {
     return [
@@ -22,12 +25,6 @@ const nextConfig = {
       },
       {
         source: "/:all*(svg|jpg|jpeg|png|gif|ico|webp|avif|woff|woff2)",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        ],
-      },
-      {
-        source: "/api/characters/:id/avatar",
         headers: [
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],

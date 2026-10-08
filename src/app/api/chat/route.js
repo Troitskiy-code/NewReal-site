@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -60,15 +61,15 @@ export async function POST(req) {
         const reply = outputs[0] || json.output || json.result || "I stand ready to converse.";
         return NextResponse.json({ reply });
       } else {
-        console.error("Upstream chat failed with status:", res.status);
+        errorLog("Server", "Upstream chat failed with status:", toSafeDiagnostic(res.status));
       }
     } catch (err) {
-      console.error("Upstream chat call exception:", err.message);
+      errorLog("Server", "Upstream chat call exception:", toSafeDiagnostic(err));
     }
 
     return NextResponse.json({ reply: "I seem to be experiencing a transient neural lag, but I'm listening. Speak again, friend!" });
   } catch (error) {
-    console.error("[CHAT_ROUTE_ERROR]", error);
+    errorLog("Server", "[CHAT_ROUTE_ERROR]", toSafeDiagnostic(error));
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

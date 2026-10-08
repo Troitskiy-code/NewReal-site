@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -119,7 +120,7 @@ export async function POST(req) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Generation handler crash:", error);
-    return NextResponse.json({ error: error.message || "Failed to process generation" }, { status: 500 });
+    errorLog("Server", "Generation handler crash:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }

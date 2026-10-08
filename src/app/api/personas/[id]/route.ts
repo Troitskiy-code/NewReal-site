@@ -1,3 +1,5 @@
+import { publicError } from "@/lib/publicError";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -46,10 +48,9 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ persona: toChatPersona(persona) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось обновить личность";
-    const status = message === "Имя обязательно" || message.includes("не длиннее") ? 400 : 500;
+    const { message, status } = publicError(error, "Не удалось обновить личность");
     if (status === 500) {
-      console.error("[Persona] update failed", error);
+      errorLog("Server", "[Persona] update failed", toSafeDiagnostic(error));
     }
     return NextResponse.json({ error: message }, { status });
   }
@@ -73,7 +74,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[Persona] delete failed", error);
+    errorLog("Server", "[Persona] delete failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось удалить личность" }, { status: 500 });
   }
 }

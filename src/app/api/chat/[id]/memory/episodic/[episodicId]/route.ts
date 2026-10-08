@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -32,7 +33,7 @@ export async function DELETE(
     console.log(`[MemoryEditor] episodic deleted id=${episodicId} character=${characterId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[MemoryEditor] episodic delete failed", error);
+    errorLog("Server", "[MemoryEditor] episodic delete failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось удалить событие" }, { status: 500 });
   }
 }

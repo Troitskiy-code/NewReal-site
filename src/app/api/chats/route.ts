@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -71,7 +72,7 @@ export async function GET() {
       });
     } catch (error) {
       if (!isMissingSlugColumn(error)) throw error;
-      console.error("[Chats] Listing without slug column");
+      errorLog("Server", "[Chats] Listing without slug column");
       characters = await prisma.character.findMany({
         where: { id: { in: characterIds } },
         select: characterSelectNoSlug,
@@ -143,7 +144,7 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Chats GET error:", error);
+    errorLog("Server", "Chats GET error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка получения чатов" }, { status: 500 });
   }
 }

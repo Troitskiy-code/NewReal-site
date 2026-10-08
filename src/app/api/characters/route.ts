@@ -1,3 +1,5 @@
+import { ClientInputError } from "@/lib/publicError";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -38,7 +40,7 @@ async function handlePost(req: NextRequest) {
     try {
       parsed = parseCharacterBody(body);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Некорректные данные";
+      const message = err instanceof ClientInputError ? err.message : "Некорректные данные";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
@@ -130,7 +132,7 @@ async function handlePost(req: NextRequest) {
         },
       });
     } catch (translateError) {
-      console.error("[Translate] Failed to save character translations", translateError);
+      errorLog("Server", "[Translate] Failed to save character translations", toSafeDiagnostic(translateError));
     }
 
     let promptError: string | undefined;
@@ -159,7 +161,7 @@ async function handlePost(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Character creation error:", error);
+    errorLog("Server", "Character creation error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }
@@ -175,7 +177,7 @@ export async function GET(req: NextRequest) {
       await ensureCharacterSlugColumn();
       console.log("[Characters] ensure slug", (performance.now() - tEnsure).toFixed(0), "ms");
     } catch (error) {
-      console.error("[characters] Could not ensure slug column", error);
+      errorLog("Server", "[characters] Could not ensure slug column", toSafeDiagnostic(error));
     }
 
     const tSession = performance.now();
@@ -317,7 +319,7 @@ export async function GET(req: NextRequest) {
       characters = await loadCharacters(characterCardSelect);
     } catch (error) {
       if (!isMissingSlugColumn(error)) throw error;
-      console.error("[characters] Listing without slug column");
+      errorLog("Server", "[characters] Listing without slug column");
       characters = await loadCharacters(characterCardSelectNoSlug);
     }
     const t3 = performance.now();
@@ -381,7 +383,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const overload = prismaPoolOverloadResponse(error);
     if (overload) return overload;
-    console.error("Error fetching characters:", error);
+    errorLog("Server", "Error fetching characters:", toSafeDiagnostic(error));
     console.log("[Characters] total", (performance.now() - t0).toFixed(0), "ms");
     return NextResponse.json({ error: "Ошибка получения списка персонажей" }, { status: 500 });
   }

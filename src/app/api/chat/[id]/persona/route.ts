@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -23,7 +24,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     const persona = await getSelectedChatPersona(session.user.id, characterId);
     return NextResponse.json({ persona });
   } catch (error) {
-    console.error("[Persona] get chat persona failed", error);
+    errorLog("Server", "[Persona] get chat persona failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось загрузить личность" }, { status: 500 });
   }
 }
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[Persona] attach failed", error);
+    errorLog("Server", "[Persona] attach failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось выбрать личность" }, { status: 500 });
   }
 }
@@ -79,7 +80,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     console.log(`[Persona] detached user=${session.user.id} character=${characterId}`);
     return NextResponse.json({ persona: null, success: true });
   } catch (error) {
-    console.error("[Persona] detach failed", error);
+    errorLog("Server", "[Persona] detach failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось сбросить личность" }, { status: 500 });
   }
 }

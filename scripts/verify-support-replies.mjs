@@ -34,7 +34,7 @@ class FakeResend {
 function load(file) {
   file = resolve(file);
   if (cache.has(file)) return cache.get(file);
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   new Function('require', 'module', 'exports', code)(name => {
     if (name === '@/lib/prisma') return { prisma: db };
@@ -50,8 +50,8 @@ function load(file) {
       return load(existsSync(target + '.ts') ? target + '.ts' : target + '.js');
     }
     return require(name);
-  }, module, module.exports);
-  cache.set(file, module.exports); return module.exports;
+  }, loadedModule, loadedModule.exports);
+  cache.set(file, loadedModule.exports); return loadedModule.exports;
 }
 try {
   await pg.initialise(); await pg.start(); await pg.createDatabase('support_test');

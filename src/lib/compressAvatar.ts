@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Jimp } from "jimp";
@@ -240,7 +241,7 @@ export async function tryCompressAvatarDataUrl(imageUrl: string): Promise<Compre
     }
   }
 
-  console.error("[compressAvatar] failed to compress data URL", lastError);
+  errorLog("Server", "[compressAvatar] failed to compress data URL", toSafeDiagnostic(lastError));
   return unchanged("error");
 }
 

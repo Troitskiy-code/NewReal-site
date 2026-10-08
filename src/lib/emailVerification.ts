@@ -23,7 +23,7 @@ function getVerificationCutoffDate(): Date | null {
 
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) {
-    console.error("[EmailVerification] Invalid EMAIL_VERIFICATION_CUTOFF_DATE", raw);
+    errorLog("Server", "[EmailVerification] Invalid EMAIL_VERIFICATION_CUTOFF_DATE", toSafeDiagnostic(raw));
     return null;
   }
 

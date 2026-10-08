@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { renewSubscriptionIfDue } from "@/lib/subscription";
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
       period: result.period,
     });
   } catch (error) {
-    console.error("[Admin] Test recurring error:", error);
+    errorLog("Server", "[Admin] Test recurring error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка тестового продления" }, { status: 500 });
   }
 }

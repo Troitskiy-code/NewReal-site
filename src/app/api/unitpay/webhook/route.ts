@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { grantPermanentUpdate } from "@/lib/verseCoins";
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ status: "ignored" });
   } catch (error) {
-    console.error("Unitpay webhook error:", error);
+    errorLog("Server", "Unitpay webhook error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

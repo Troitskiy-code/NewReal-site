@@ -1,3 +1,5 @@
+import { publicError } from "@/lib/publicError";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -51,14 +53,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ memoryPermissions: updated.memoryPermissions });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось обновить разрешения";
-    const status =
-      message.includes("Укажите") ||
-      message.includes("должен") ||
-      message.includes("Некорректн")
-        ? 400
-        : 500;
-    console.error("[Memory] Permissions update failed", error);
+    const { message, status } = publicError(error, "Не удалось обновить разрешения");
+    errorLog("Server", "[Memory] Permissions update failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: message }, { status });
   }
 }

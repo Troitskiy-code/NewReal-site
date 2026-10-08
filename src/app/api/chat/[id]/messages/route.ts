@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -60,7 +61,7 @@ export async function DELETE(
       deletedCount: result.count,
     });
   } catch (error) {
-    console.error("Clear chat error:", error);
+    errorLog("Server", "Clear chat error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось очистить чат" }, { status: 500 });
   }
 }

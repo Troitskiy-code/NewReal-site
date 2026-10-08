@@ -1,3 +1,5 @@
+import { ClientInputError } from "@/lib/publicError";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -11,10 +13,10 @@ const MAX_PARTICIPANTS = 50;
 function parseParticipants(value: unknown): string[] {
   if (value === undefined || value === null) return [];
   if (!Array.isArray(value)) {
-    throw new Error("participants должен быть массивом ID персонажей");
+    throw new ClientInputError("participants должен быть массивом ID персонажей");
   }
   if (value.length > MAX_PARTICIPANTS) {
-    throw new Error(`Не больше ${MAX_PARTICIPANTS} участников`);
+    throw new ClientInputError(`Не больше ${MAX_PARTICIPANTS} участников`);
   }
   const ids = value
     .filter((id): id is string => typeof id === "string")
@@ -27,7 +29,7 @@ function parseImportance(value: unknown): number {
   if (value === undefined || value === null) return 1;
   const importance = typeof value === "number" ? value : Number(value);
   if (!Number.isInteger(importance) || importance < 1 || importance > 5) {
-    throw new Error("importance должен быть целым числом от 1 до 5");
+    throw new ClientInputError("importance должен быть целым числом от 1 до 5");
   }
   return importance;
 }
@@ -64,7 +66,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ events });
   } catch (error) {
-    console.error("[Memory] Failed to list world events", error);
+    errorLog("Server", "[Memory] Failed to list world events", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось загрузить события" }, { status: 500 });
   }
 }
@@ -115,7 +117,7 @@ export async function POST(req: NextRequest) {
       participants = parseParticipants(body.participants);
       importance = parseImportance(body.importance);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Некорректные данные";
+      const message = err instanceof ClientInputError ? err.message : "Некорректные данные";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
@@ -169,7 +171,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
-    console.error("[Memory] Failed to create world event", error);
+    errorLog("Server", "[Memory] Failed to create world event", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось создать событие" }, { status: 500 });
   }
 }

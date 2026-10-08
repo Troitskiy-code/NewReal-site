@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
@@ -10,7 +11,7 @@ export async function POST(req) {
     const result = await BillingService.handleWebhook(body, signature);
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[BILLING_WEBHOOK_ERROR]", error);
-    return new NextResponse(error.message || "Webhook Error", { status: 400 });
+    errorLog("Server", "[BILLING_WEBHOOK_ERROR]", toSafeDiagnostic(error));
+    return new NextResponse("Операция временно недоступна", { status: 400 });
   }
 }

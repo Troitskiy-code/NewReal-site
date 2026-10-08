@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -62,7 +63,7 @@ async function handleCostedRequest(
       },
     });
   } catch (error) {
-    console.error("Refresh memory summary error:", error);
+    errorLog("Server", "Refresh memory summary error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось обновить суммаризацию" }, { status: 500 });
   }
 }

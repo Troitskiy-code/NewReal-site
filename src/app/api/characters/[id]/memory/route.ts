@@ -1,3 +1,5 @@
+import { publicError } from "@/lib/publicError";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -63,7 +65,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       lastActive: character.lastActive,
     });
   } catch (error) {
-    console.error("[Memory] GET failed", error);
+    errorLog("Server", "[Memory] GET failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось загрузить память" }, { status: 500 });
   }
 }
@@ -121,9 +123,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       lastActive: updated.lastActive,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось сохранить память";
-    const status = message.includes("лимит") || message.includes("Некорректн") ? 400 : 500;
-    console.error("[Memory] PUT failed", error);
+    const { message, status } = publicError(error, "Не удалось сохранить память");
+    errorLog("Server", "[Memory] PUT failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: message }, { status });
   }
 }

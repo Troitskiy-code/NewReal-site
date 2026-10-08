@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -13,7 +14,7 @@ export async function GET() {
     const user = await getAvatarUsageUser(session.user.id);
     return NextResponse.json(getAvatarTokenStatus(user));
   } catch (error) {
-    console.error("Avatar tokens fetch error:", error);
+    errorLog("Server", "Avatar tokens fetch error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

@@ -31,16 +31,16 @@ function load(file, imports) {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true },
     fileName: file,
   }).outputText;
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   const mockRequire = (id) => {
     if (Object.hasOwn(imports, id)) return imports[id];
     throw new Error(`Unmocked import: ${id}`);
   };
   new Function('require', 'module', 'exports', 'console', 'process', 'fetch', compiled)(
-    mockRequire, module, module.exports, console, { env: {} },
+    mockRequire, loadedModule, loadedModule.exports, console, { env: {} },
     () => { throw new Error('Network forbidden'); },
   );
-  return module.exports;
+  return loadedModule.exports;
 }
 async function check(label, run) {
   lines = [];

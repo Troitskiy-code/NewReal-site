@@ -1,3 +1,5 @@
+import { safeErrorFields } from "./redactSensitive";
+
 export type ChatStreamMessage = {
   id: string;
   role: string;
@@ -105,7 +107,7 @@ export function createChatNdjsonResponse(
       try {
         await run(emit);
       } catch (error) {
-        console.error("Chat stream error:", error);
+        console.error("Chat stream error: " + JSON.stringify(safeErrorFields(error)));
         try {
           emit({
             type: "error",

@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -34,7 +35,7 @@ export async function GET(
     );
     return NextResponse.json({ ...payload, isOwner });
   } catch (error) {
-    console.error("[MemoryEditor] Get chat memory error:", error);
+    errorLog("Server", "[MemoryEditor] Get chat memory error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось загрузить память" }, { status: 500 });
   }
 }

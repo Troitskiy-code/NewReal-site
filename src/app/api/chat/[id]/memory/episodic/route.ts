@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -44,7 +45,7 @@ export async function POST(
     );
     return NextResponse.json({ episodic: created }, { status: 201 });
   } catch (error) {
-    console.error("[MemoryEditor] episodic add failed", error);
+    errorLog("Server", "[MemoryEditor] episodic add failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось добавить событие" }, { status: 500 });
   }
 }

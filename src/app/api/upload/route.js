@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
@@ -23,7 +24,7 @@ export async function POST(req) {
 
     return NextResponse.json({ url });
   } catch (error) {
-    console.error("File upload error:", error);
+    errorLog("Server", "File upload error:", toSafeDiagnostic(error));
     return NextResponse.json(
       { error: "Ошибка загрузки файла" },
       { status: 500 }

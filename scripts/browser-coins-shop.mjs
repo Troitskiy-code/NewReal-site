@@ -26,6 +26,8 @@ export async function verifyCoinsBrowser({ db, context, page, base, user, charac
     const hero = page.getByTestId('coins-hero-offer');
     check(await hero.getByText('500', { exact: false }).count() > 0 && await hero.getByText('129 ₽', { exact: false }).count() > 0,
       'coins first screen presents 500 VC for 129 RUB');
+    // Character context loads separately from offer availability. Assert after it arrives.
+    await page.getByRole('link', { name: 'Назад в диалог' }).waitFor();
     check((await page.locator('#coins-hero-title').textContent()).includes(character.name)
       && await page.getByRole('link', { name: 'Назад в диалог' }).getAttribute('href') === `/ru/chat/${character.id}`,
       'coins hero restores authorized character and internal return link');

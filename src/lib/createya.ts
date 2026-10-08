@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import axios from "axios";
 import { Jimp } from "jimp";
 
@@ -112,7 +113,7 @@ function rejectUnsupportedReference(mime: string | undefined, buffer: Buffer) {
   const brand = sniffImageBrand(buffer);
   const haystack = `${mime || ""} ${brand}`.toLowerCase();
   if (haystack.includes("avif") || brand === "avis") {
-    console.error("[convertImageToPNG] AVIF reached server; expected client-side PNG");
+    errorLog("Server", "[convertImageToPNG] AVIF reached server; expected client-side PNG");
     throw new Error("AVIF нужно конвертировать в PNG до отправки");
   }
   if (haystack.includes("heic") || haystack.includes("heif") || brand === "mif1" || brand === "msf1" || brand === "heix") {
@@ -122,7 +123,6 @@ function rejectUnsupportedReference(mime: string | undefined, buffer: Buffer) {
 
 export async function convertImageToPNG(imageData: string): Promise<string> {
   console.log("[convertImageToPNG] input type:", typeof imageData);
-  console.log("[convertImageToPNG] input preview:", typeof imageData === "string" ? imageData.slice(0, 100) : String(imageData));
   console.log("[convertImageToPNG] input length:", typeof imageData === "string" ? imageData.length : 0);
 
   if (!imageData) return imageData;
@@ -138,7 +138,7 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
 
       const commaIndex = imageData.indexOf(",");
       if (commaIndex === -1) {
-        console.error("[convertImageToPNG] invalid data URL: missing comma separator");
+        errorLog("Server", "[convertImageToPNG] invalid data URL: missing comma separator");
         throw new Error("Invalid base64 data: missing comma separator");
       }
 
@@ -146,28 +146,7 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
       console.log("[convertImageToPNG] base64 length:", base64.length);
       buffer = Buffer.from(base64, "base64");
     } else if (imageData.startsWith("http://") || imageData.startsWith("https://")) {
-      console.log("[convertImageToPNG] fetching URL:", imageData);
-      console.log("[convertImageToPNG] Fetching URL...");
-      let response: Response;
-      try {
-        response = await fetch(imageData);
-      } catch (fetchError) {
-        console.error("[convertImageToPNG] fetch threw:", fetchError);
-        if (fetchError instanceof Error) {
-          console.error("[convertImageToPNG] fetch message:", fetchError.message);
-          console.error("[convertImageToPNG] fetch stack:", fetchError.stack);
-        }
-        throw new Error(`Failed to fetch image: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`);
-      }
-
-      mime = response.headers.get("content-type")?.split(";")[0]?.trim();
-      console.log("[convertImageToPNG] Response status:", response.status);
-      console.log("[convertImageToPNG] Content-Type:", response.headers.get("content-type"));
-      if (!response.ok) {
-        console.error("[convertImageToPNG] fetch failed:", response.status, response.statusText);
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-      }
-      buffer = Buffer.from(await response.arrayBuffer());
+      throw new Error("Загрузите изображение файлом; ссылки не поддерживаются");
     } else {
       console.log("[convertImageToPNG] assuming raw base64");
       buffer = Buffer.from(imageData, "base64");
@@ -183,10 +162,10 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
       const height = image.bitmap?.height ?? image.height;
       console.log("[convertImageToPNG] Jimp read successful, image width/height:", `${width}x${height}`);
     } catch (jimpError) {
-      console.error("[convertImageToPNG] Jimp.read failed:", jimpError);
+      errorLog("Server", "[convertImageToPNG] Jimp.read failed:", toSafeDiagnostic(jimpError));
       if (jimpError instanceof Error) {
-        console.error("[convertImageToPNG] Jimp.read message:", jimpError.message);
-        console.error("[convertImageToPNG] Jimp.read stack:", jimpError.stack);
+        errorLog("Server", "[convertImageToPNG] Jimp.read message:", toSafeDiagnostic(jimpError.message));
+        errorLog("Server", "[convertImageToPNG] Jimp.read stack:", toSafeDiagnostic(jimpError.stack));
       }
       throw jimpError;
     }
@@ -198,10 +177,10 @@ export async function convertImageToPNG(imageData: string): Promise<string> {
     console.log("[convertImageToPNG] conversion successful, result length:", result.length);
     return result;
   } catch (error) {
-    console.error("[convertImageToPNG] failed:", error);
+    errorLog("Server", "[convertImageToPNG] failed:", toSafeDiagnostic(error));
     if (error instanceof Error) {
-      console.error("[convertImageToPNG] failed message:", error.message);
-      console.error("[convertImageToPNG] failed stack:", error.stack);
+      errorLog("Server", "[convertImageToPNG] failed message:", toSafeDiagnostic(error.message));
+      errorLog("Server", "[convertImageToPNG] failed stack:", toSafeDiagnostic(error.stack));
       if (
         error.message.includes("AVIF") ||
         error.message.includes("HEIC")
@@ -282,7 +261,7 @@ async function uploadReferenceImage(
 
   const url = data.url || data.urls?.find(Boolean) || data.data?.url;
   if (!url) {
-    console.error("[Createya] upload response without url", { status, data });
+    errorLog("Server", "[Createya] upload response without url", toSafeDiagnostic({ status, data }));
     throw new Error("Createya не вернула URL загруженного изображения");
   }
   return url;
@@ -447,13 +426,13 @@ export async function generateWithCreateya(
 
     if (isPending) {
       if (!runId) {
-        console.error("[Createya] missing run id");
+        errorLog("Server", "[Createya] missing run id");
         throw new Error(MISSING_RUN_ID_MESSAGE);
       }
       const completed = await pollRun(apiUrl, apiKey, runId, pollTimeoutMs);
       const completedUrl = extractOutputUrl(completed);
       if (!completedUrl) {
-        console.error("[Createya] completed without image url");
+        errorLog("Server", "[Createya] completed without image url");
         throw new Error("Createya не вернула URL изображения");
       }
       return completedUrl;
@@ -461,7 +440,7 @@ export async function generateWithCreateya(
 
     if (outputUrl) return outputUrl;
 
-    console.error("[Createya] unexpected run payload");
+    errorLog("Server", "[Createya] unexpected run payload");
     throw new Error(MISSING_RUN_ID_MESSAGE);
   } catch (error) {
     const normalized = new Error(createyaErrorMessage(error)) as Error & { avatarQuotaRefundable?: boolean };

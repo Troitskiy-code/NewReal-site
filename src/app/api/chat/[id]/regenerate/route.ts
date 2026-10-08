@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -203,7 +204,7 @@ async function handlePost(
       });
     });
   } catch (error) {
-    console.error("Regenerate error:", error);
+    errorLog("Server", "Regenerate error:", toSafeDiagnostic(error));
     if (defaultShouldRetry(error)) {
       return NextResponse.json(
         { error: KODIK_RETRY_ERROR_MESSAGE },

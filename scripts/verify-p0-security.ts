@@ -385,6 +385,7 @@ function loadIsolated(
   const isolated = { exports: {} as Record<string, unknown> };
   const mockRequire = (id: string) => {
     if (Object.hasOwn(imports, id)) return imports[id];
+    if (id === "@/lib/logger") return { errorLog, infoLog, toSafeDiagnostic };
     throw new Error(`Unmocked import ${id}`);
   };
   const isolatedProcess = extras.process ?? process;

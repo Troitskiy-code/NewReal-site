@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
       newTotal: updated.totalMessages,
     });
   } catch (error) {
-    console.error("[Admin:AddMessages] error:", error);
+    errorLog("Server", "[Admin:AddMessages] error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка увеличения totalMessages" }, { status: 500 });
   }
 }

@@ -7,6 +7,7 @@ import { FiRefreshCw } from "react-icons/fi";
 import axios from "axios";
 import { dismissToast, showError, showLoading, showSuccess } from "@/lib/toast";
 import config from "@/lib/config";
+import { downloadGeneratedMedia } from "@/lib/downloadGeneratedMedia";
 
 const ASPECT_RATIOS = [
   { id: "1:1", label: "1:1 Квадрат", width: "w-16 h-16" },
@@ -248,14 +249,13 @@ export default function ImageTemplate({ appInstance, userCredits, activeCreation
     }
   };
 
-  const handleDownload = (url) => {
-    const downloadUrl = `/api/download?url=${encodeURIComponent(url)}`;
-    const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = `image_${appInstance.id}_${Date.now()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async (url) => {
+    try {
+      const result = await downloadGeneratedMedia(url, `image_${appInstance.id}_${Date.now()}.png`);
+      if (result === "opened") showSuccess("Файл открыт отдельно. Сохраните его через меню браузера.");
+    } catch {
+      showError("Не удалось скачать изображение");
+    }
   };
 
   return (

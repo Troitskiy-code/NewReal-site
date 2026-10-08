@@ -17,6 +17,7 @@ import { getAvatarModel, resolveCreateyaAvatarModel } from "@/lib/avatarModels";
 import { AVATAR_BASE_COST_RUB } from "@/lib/avatarEconomy";
 import { withAiCostContext, setAiCostActor, withAvatarCost } from "@/lib/aiCostTelemetry";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { isSafeAvatarReference } from "@/lib/avatarReference";
 
 export const maxDuration = 120;
 
@@ -69,6 +70,11 @@ async function generateAvatar(req: NextRequest) {
       customPrompt: asText(body.avatarPrompt) || undefined,
     });
     let referenceImage = asText(body.referenceImage);
+    if (referenceImage && !isSafeAvatarReference(referenceImage)) {
+      return NextResponse.json({ error: "Загрузите PNG, JPEG, WebP или GIF размером до 5 МБ" }, { status: 400 });
+    }
+
+
     const avatarModel = getAvatarModel(body.modelId);
     const apiModel = resolveCreateyaAvatarModel(avatarModel.id, Boolean(referenceImage));
     console.log("[AvatarModel] Selected model:", avatarModel.id);

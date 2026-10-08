@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { grantPermanentUpdate } from "@/lib/verseCoins";
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       verseCoins: updatedUser.verseCoins,
     });
   } catch (error) {
-    console.error("Admin add-coins error:", error);
+    errorLog("Server", "Admin add-coins error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка начисления VC" }, { status: 500 });
   }
 }

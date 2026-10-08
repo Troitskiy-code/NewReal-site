@@ -1,3 +1,5 @@
+import { ClientInputError } from "@/lib/publicError";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -60,7 +62,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
     return NextResponse.json(payload);
   } catch (error) {
-    console.error("Character fetch error:", error);
+    errorLog("Server", "Character fetch error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }
@@ -90,7 +92,7 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
     try {
       parsed = parseCharacterBody(body);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Некорректные данные";
+      const message = err instanceof ClientInputError ? err.message : "Некорректные данные";
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
@@ -162,7 +164,7 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
         data.privateMemory_en = privateMemoryEn ?? Prisma.DbNull;
       }
     } catch (translateError) {
-      console.error("[Translate] Failed to update character translations", translateError);
+      errorLog("Server", "[Translate] Failed to update character translations", toSafeDiagnostic(translateError));
     }
 
     const character = await prisma.character.update({
@@ -190,7 +192,7 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
       ...ownerModerationFields(character, session.user.id),
     });
   } catch (error) {
-    console.error("Character update error:", error);
+    errorLog("Server", "Character update error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }
@@ -210,7 +212,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error("Character delete error:", error);
+    errorLog("Server", "Character delete error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

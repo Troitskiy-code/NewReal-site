@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog , toSafeDiagnostic} from "@/lib/logger";
 
 const LOG = "Admin:VerifyAll";
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       updated: result.count,
     });
   } catch (error) {
-    console.error("[Admin:VerifyAll] Error:", error);
+    errorLog("Server", "[Admin:VerifyAll] Error:", toSafeDiagnostic(error));
     errorLog(LOG, "POST failed", error);
     return NextResponse.json({ error: "Ошибка миграции верификации" }, { status: 500 });
   }

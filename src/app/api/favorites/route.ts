@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -41,7 +42,7 @@ export async function GET() {
     try {
       await ensureCharacterSlugColumn();
     } catch (error) {
-      console.error("[favorites] Could not ensure slug column", error);
+      errorLog("Server", "[favorites] Could not ensure slug column", toSafeDiagnostic(error));
     }
 
     const loadFavorites = (select: typeof characterSelect | typeof characterSelectNoSlug) =>
@@ -60,7 +61,7 @@ export async function GET() {
       favorites = await loadFavorites(characterSelect);
     } catch (error) {
       if (!isMissingSlugColumn(error)) throw error;
-      console.error("[favorites] Listing without slug column");
+      errorLog("Server", "[favorites] Listing without slug column");
       favorites = await loadFavorites(characterSelectNoSlug);
     }
 
@@ -79,7 +80,7 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Favorites GET error:", error);
+    errorLog("Server", "Favorites GET error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка получения избранного" }, { status: 500 });
   }
 }
@@ -143,7 +144,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ isFavorited: false });
   } catch (error) {
-    console.error("Favorites POST error:", error);
+    errorLog("Server", "Favorites POST error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка обновления избранного" }, { status: 500 });
   }
 }

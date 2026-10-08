@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -34,7 +35,7 @@ export async function PUT(
     console.log("[MemoryEditor] core updated");
     return NextResponse.json({ coreMemory, core: coreMemory });
   } catch (error) {
-    console.error("[MemoryEditor] core save failed", error);
+    errorLog("Server", "[MemoryEditor] core save failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось сохранить ключевую память" }, { status: 500 });
   }
 }

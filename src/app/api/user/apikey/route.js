@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -24,8 +25,8 @@ export async function POST(req) {
       customApiKey: updatedUser.customApiKey,
     });
   } catch (error) {
-    console.error("Error updating custom API key:", error);
-    return NextResponse.json({ error: error.message || "Failed to update API key" }, { status: 500 });
+    errorLog("Server", "Error updating custom API key:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }
 
@@ -43,7 +44,7 @@ export async function DELETE(req) {
 
     return NextResponse.json({ success: true, customApiKey: null });
   } catch (error) {
-    console.error("Error clearing custom API key:", error);
-    return NextResponse.json({ error: error.message || "Failed to remove API key" }, { status: 500 });
+    errorLog("Server", "Error clearing custom API key:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }

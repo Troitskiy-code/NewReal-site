@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -108,7 +109,7 @@ export async function GET() {
       dailyRequestsDate: user.dailyRequestsDate,
     });
   } catch (error) {
-    console.error("Balance fetch error:", error);
+    errorLog("Server", "Balance fetch error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

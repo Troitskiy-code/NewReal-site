@@ -1,3 +1,4 @@
+import { ClientInputError } from "./publicError";
 import { normalizeTagsString } from "@/lib/characterTags";
 import { parseMemoryInput, parseMemoryPermissionsInput, memoryToText } from "@/lib/persistentMemory";
 import { isEnglishLocale } from "@/lib/i18nConfig";
@@ -19,7 +20,7 @@ export function trimOptionalText(value: unknown, maxLength: number): string | nu
   const trimmed = value.trim();
   if (!trimmed) return null;
   if (trimmed.length > maxLength) {
-    throw new Error(`Поле превышает лимит ${maxLength} символов`);
+    throw new ClientInputError(`Поле превышает лимит ${maxLength} символов`);
   }
   return trimmed;
 }

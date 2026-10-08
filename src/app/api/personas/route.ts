@@ -1,3 +1,5 @@
+import { publicError } from "@/lib/publicError";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
     const personas = await listUserPersonas(session.user.id, { characterId, isGlobal });
     return NextResponse.json({ personas });
   } catch (error) {
-    console.error("[Persona] list failed", error);
+    errorLog("Server", "[Persona] list failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось загрузить личности" }, { status: 500 });
   }
 }
@@ -76,10 +78,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ persona: toChatPersona(persona), assigned }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось создать личность";
-    const status = message === "Имя обязательно" || message.includes("не длиннее") ? 400 : 500;
+    const { message, status } = publicError(error, "Не удалось создать личность");
     if (status === 500) {
-      console.error("[Persona] create failed", error);
+      errorLog("Server", "[Persona] create failed", toSafeDiagnostic(error));
     }
     return NextResponse.json({ error: message }, { status });
   }

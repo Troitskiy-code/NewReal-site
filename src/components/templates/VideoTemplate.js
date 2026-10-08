@@ -6,6 +6,7 @@ import { FiRefreshCw } from "react-icons/fi";
 import axios from "axios";
 import { dismissToast, showError, showLoading, showSuccess } from "@/lib/toast";
 import config from "@/lib/config";
+import { downloadGeneratedMedia } from "@/lib/downloadGeneratedMedia";
 
 const DURATION_PRESETS = [
   { value: 3, label: "3с Быстро" },
@@ -244,14 +245,13 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
     }
   };
 
-  const handleDownload = (url) => {
-    const downloadUrl = `/api/download?url=${encodeURIComponent(url)}`;
-    const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = `video_${appInstance.id}_${Date.now()}.mp4`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async (url) => {
+    try {
+      const result = await downloadGeneratedMedia(url, `video_${appInstance.id}_${Date.now()}.mp4`);
+      if (result === "opened") showSuccess("Файл открыт отдельно. Сохраните его через меню браузера.");
+    } catch {
+      showError("Не удалось скачать видео");
+    }
   };
 
   const togglePlayback = () => {

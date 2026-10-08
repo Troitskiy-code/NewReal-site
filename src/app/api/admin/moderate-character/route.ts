@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { ensureNotificationTable } from "@/lib/ensureNotificationTable";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog , toSafeDiagnostic} from "@/lib/logger";
 
 function isAuthorized(req: NextRequest): boolean {
   const adminSecret = process.env['ADMIN_SECRET'];
@@ -24,7 +24,7 @@ async function notifyOwner(userId: string, characterId: string, characterName: s
       },
     });
   } catch (error) {
-    console.error("[Admin:Moderation] Failed to notify owner", error);
+    errorLog("Server", "[Admin:Moderation] Failed to notify owner", toSafeDiagnostic(error));
   }
 }
 
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, action: "warned" });
   } catch (error) {
     errorLog("Admin:Moderation", "POST failed", error);
-    console.error("[Admin:Moderation] POST failed", error);
+    errorLog("Server", "[Admin:Moderation] POST failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Ошибка модерации персонажа" }, { status: 500 });
   }
 }

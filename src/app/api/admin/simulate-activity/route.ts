@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog , toSafeDiagnostic} from "@/lib/logger";
 
 const DEFAULT_MIN = 0;
 const DEFAULT_MAX = 100;
@@ -21,7 +21,7 @@ function randomDelta(min: number, max: number): number {
 }
 
 function errorDetails(error: unknown): { message: string; code?: string } {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = "Операция временно недоступна";
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     return { message, code: error.code };
   }
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       totalAdded,
     });
   } catch (error) {
-    console.error("[Admin:SimulateActivity] Error:", error);
+    errorLog("Server", "[Admin:SimulateActivity] Error:", toSafeDiagnostic(error));
     errorLog("Admin:SimulateActivity", "POST failed", error);
     const details = errorDetails(error);
     return NextResponse.json(

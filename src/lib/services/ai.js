@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { prisma } from "../prisma";
 import { UserService } from "./user";
 import config from "../config";
@@ -19,7 +20,7 @@ export const AIService = {
     const apiKey = isUsingCustomKey ? customApiKey.trim() : config.ai.apiKey;
     if (!apiKey) {
       // Return local mock generation in development if API key is missing
-      console.warn("MUAPIAPP_API_KEY is not configured. Running offline simulation.");
+      errorLog("Server", "MUAPIAPP_API_KEY is not configured. Running offline simulation.");
       const mockRequestId = `mock_${Math.random().toString(36).substring(2, 9)}`;
       
       const creation = await prisma.creation.create({
@@ -170,7 +171,7 @@ export const AIService = {
           }
         }
       } catch (pollErr) {
-        console.error("Error polling prediction:", pollErr);
+        errorLog("Server", "Error polling prediction:", toSafeDiagnostic(pollErr));
       }
     }
 
@@ -242,7 +243,7 @@ export const AIService = {
         });
       }
     } catch (e) {
-      console.error(`Error syncing creation state ${creationId}:`, e);
+      errorLog("Server", "src/lib/services/ai.js", toSafeDiagnostic(`Error syncing creation state ${creationId}:`), toSafeDiagnostic(e));
     }
 
     return creation;

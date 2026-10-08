@@ -26,7 +26,7 @@ import {
 } from "@/lib/verseChatEconomy";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { spendCoins } from "@/lib/verseCoins";
-import { debugLog, errorLog } from "@/lib/logger";
+import { debugLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
@@ -677,8 +677,8 @@ export async function prepareChatMessages(options: PrepareChatMessagesOptions): 
 
 function logKodikRetry(attempt: number, error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  console.warn(`[Chat] KodikRouter retry #${attempt}`, message);
-  console.warn(`[Chat] Attempt ${attempt}/3 failed, retrying...`);
+  errorLog("Server", "src/lib/chatHelpers.ts", toSafeDiagnostic(`[Chat] KodikRouter retry #${attempt}`), toSafeDiagnostic(message));
+  errorLog("Server", "src/lib/chatHelpers.ts", toSafeDiagnostic(`[Chat] Attempt ${attempt}/3 failed, retrying...`));
 }
 
 export async function callChatCompletion(

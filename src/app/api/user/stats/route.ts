@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -38,7 +39,7 @@ export async function GET() {
       createdAt: user.createdAt,
     });
   } catch (error) {
-    console.error("User stats error:", error);
+    errorLog("Server", "User stats error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

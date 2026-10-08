@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -92,7 +93,7 @@ async function handlePost(req: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ systemPrompt });
   } catch (error) {
-    console.error("[CharacterPrompt] regenerate-prompt failed", error);
+    errorLog("Server", "[CharacterPrompt] regenerate-prompt failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }
 }

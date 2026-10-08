@@ -1,3 +1,4 @@
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -22,7 +23,7 @@ export async function POST(req) {
     const checkoutUrl = await BillingService.createCheckoutSession(session.user.id, planId);
     return NextResponse.json({ url: checkoutUrl });
   } catch (error) {
-    console.error("Checkout route error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    errorLog("Server", "Checkout route error:", toSafeDiagnostic(error));
+    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
   }
 }

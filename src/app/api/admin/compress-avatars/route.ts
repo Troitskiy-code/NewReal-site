@@ -195,7 +195,7 @@ async function handle(req: NextRequest, forceDryRun: boolean) {
       });
     } catch (error) {
       errors += 1;
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = "Операция временно недоступна";
       const size = Buffer.byteLength(row.imageUrl, "utf8");
       details.push({
         id: row.id,
