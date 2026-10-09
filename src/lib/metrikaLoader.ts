@@ -1,3 +1,5 @@
+import { analyticsReferrer, analyticsUrl } from "./urlPrivacy";
+
 export const METRIKA_TAG_PRIMARY = "https://mc.yandex.com/metrika/tag.js";
 export const METRIKA_TAG_FALLBACK = "https://mc.yandex.ru/metrika/tag.js";
 
@@ -19,6 +21,7 @@ declare global {
       generation: number;
       inited: boolean;
       fallbackStarted: boolean;
+      lastPageUrl?: string;
     };
     [key: `yaCounter${string}`]: unknown;
   }
@@ -127,6 +130,8 @@ export function ensureYmQueue(): void {
 function markCounterReady() {
   const current = state();
   if (!current) return;
+  // Ready subscribers may dispatch synchronously. Seed the safe page URL first.
+  syncMetrikaPage();
   current.counterReady = true;
   current.loadState = "loaded";
   notifyReady();
@@ -157,14 +162,44 @@ function initCounter(counterId: string, generation: number) {
   if (typeof w.ym !== "function") return;
   attachReadyListener(counterId, generation);
   current.inited = true;
+  current.lastPageUrl = undefined;
+  const href = w.location.href;
   w.ym(Number(counterId), "init", {
     triggerEvent: true,
-    clickmap: true,
-    trackLinks: true,
+    // defer alone still sends a technical init request in the upstream SDK.
+    // url/referrer also override that request; hit seeds the URL used by goals.
+    defer: true,
+    url: analyticsUrl(href, href),
+    referrer: analyticsReferrer(w.document.referrer ?? "", href),
+    // These automatic providers read location/link URLs directly, bypassing hit.
+    clickmap: false,
+    trackLinks: false,
+    trackHash: false,
+    disableYtm: true,
     accurateTrackBounce: true,
     webvisor: false,
+    sendTitle: false,
   });
+  syncMetrikaPage();
   if (nativeCounter(counterId)) markCounterReady();
+}
+
+/** Establish safe SDK page/referrer state before page views and reachGoal. */
+export function syncMetrikaPage(): boolean {
+  const w = win();
+  const current = state();
+  if (!w || !current?.inited || typeof w.ym !== "function") return false;
+  const href = w.location.href;
+  const url = analyticsUrl(href, href);
+  if (current.lastPageUrl === url) return true;
+  const referer = current.lastPageUrl ?? analyticsReferrer(w.document.referrer ?? "", href);
+  try {
+    w.ym(Number(current.counterId), "hit", url, { referer });
+    current.lastPageUrl = url;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function existingLoadedScript(src: string): HTMLScriptElement | null {
@@ -206,6 +241,7 @@ function insertScript(counterId: string, src: string, generation: number, source
 
   const script = w.document.createElement("script");
   script.async = true;
+  script.referrerPolicy = "no-referrer";
   script.src = src;
   script.dataset.nvMetrika = source;
   const timer = w.setTimeout(() => {
@@ -281,6 +317,7 @@ export function startMetrikaLoader(counterId: string): void {
   bindOnlineRetry(counterId);
   if (current.counterReady) return;
   if (nativeCounter(counterId)) {
+    current.inited = true;
     markCounterReady();
     return;
   }

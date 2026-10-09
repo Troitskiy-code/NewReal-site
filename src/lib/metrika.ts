@@ -1,4 +1,4 @@
-import { isMetrikaCounterReady, waitForMetrika } from "./metrikaLoader";
+import { isMetrikaCounterReady, syncMetrikaPage, waitForMetrika } from "./metrikaLoader";
 
 const DEFAULT_COUNTER_ID = "112171267";
 
@@ -57,8 +57,8 @@ export function subscriptionGoal(planId: string): MetrikaGoal | null {
 export { waitForMetrika, isMetrikaCounterReady };
 
 /**
- * Fire-and-forget for non-purchase goals. Queue push is allowed so events can flush
- * after late tag.js, but a true return only means the counter is already inited.
+ * Defer non-purchase goals until init and the safe page URL are established.
+ * A true return only means dispatch to an initialized counter, not delivery.
  */
 export function reachGoal(goal: string, params?: Record<string, unknown>): boolean {
   if (typeof window === "undefined") return false;
@@ -66,6 +66,15 @@ export function reachGoal(goal: string, params?: Record<string, unknown>): boole
     console.log("[Goal] skipped, ym not ready", goal, params ?? "");
     return false;
   }
+
+  if (!isMetrikaCounterReady()) {
+    // A raw ym queue can replay a goal before hit has replaced the SDK's page URL.
+    void waitForMetrika(30_000).then((ready) => {
+      if (ready) reachGoal(goal, params);
+    });
+    return false;
+  }
+  if (!syncMetrikaPage()) return false;
 
   if (params) {
     window.ym(Number(METRIKA_COUNTER_ID), "reachGoal", goal, params);
@@ -85,6 +94,7 @@ export async function dispatchGoal(
   if (typeof window === "undefined" || typeof window.ym !== "function" || !isMetrikaCounterReady()) {
     return { status: "not_ready", goal };
   }
+  if (!syncMetrikaPage()) return { status: "not_ready", goal };
 
   return new Promise((resolve) => {
     let settled = false;

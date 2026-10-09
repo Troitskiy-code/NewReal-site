@@ -23,6 +23,7 @@ export async function generateMetadata() {
   const metadata = await getLocalizedPageMetadata("home", { inheritOnly: true });
   return {
     metadataBase: new URL(SITE_URL),
+    referrer: "strict-origin",
     ...metadata,
   };
 }

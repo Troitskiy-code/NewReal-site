@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { PRIVATE_URL_HEADER } from "@/lib/urlPrivacy";
 import { translate } from "@/lib/getDictionary";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { DEFAULT_LOCALE } from "@/lib/i18nConfig";
@@ -111,8 +113,11 @@ export async function getLocalizedPageMetadata(
     translate(locale, `meta.${page}.title`),
     translate(locale, `meta.${page}.description`)
   );
+  const privateUrl = (await headers()).get(PRIVATE_URL_HEADER) === "1";
+  metadata.referrer = privateUrl ? "no-referrer" : "strict-origin";
   // Root defaults must not give every descendant the homepage canonical.
   return options.inheritOnly ? metadata : {
     ...metadata, ...pageIndexingMetadata(page, locale, SITE_URL, options.searchParams),
+    ...(privateUrl ? { robots: { index: false, follow: page !== "verifyEmail" } } : {}),
   };
 }

@@ -12,6 +12,7 @@ import {
   startMetrikaLoader,
   subscribeMetrikaReady,
   waitForMetrika,
+  syncMetrikaPage,
 } from "@/lib/metrikaLoader";
 import {
   captureInvoiceFromUrl,
@@ -54,6 +55,7 @@ function installDom(href = "https://newvers.test/ru/pricing?InvId=42&payment=suc
   const history: { href: string } = { href };
 
   const doc = {
+    referrer: "",
     scripts,
     head: {
       appendChild(node: FakeScript) {
@@ -176,6 +178,32 @@ async function main() {
   assert(extractInvoiceIdFromLocation("?InvId=ok") === null, "invoiceId=ok is rejected");
 
   console.log("Loader fallback creates a new script");
+  {
+    resetMetrikaLoaderForTests();
+    const { scripts, history, windowLike } = installDom("https://newvers.test/ru/coins?InvId=42&Shp_userId=synthetic-owner&SignatureValue=synthetic-signature&utm_source=direct");
+    windowLike.document.referrer = "https://newvers.test/en/reset-password/synthetic-token";
+    const calls: Array<{ method: string; args: unknown[] }> = [];
+    window.ym = ((_id: number, method: string, ...args: unknown[]) => { calls.push({ method, args }); }) as typeof window.ym;
+    await makeReady(scripts);
+    const options = calls.find((call) => call.method === "init")?.args[0] as Record<string, unknown>;
+    assert(options.url === "https://newvers.test/ru/coins?utm_source=direct", "technical init receives a sanitized URL before invoice capture");
+    assert(options.referrer === "https://newvers.test/en/reset-password", "technical init receives a sanitized token referrer");
+    assert(options.defer === true && options.clickmap === false && options.trackLinks === false, "automatic URL-reading providers are disabled");
+    assert(calls.some((call) => call.method === "hit"), "safe hit seeds goal context before ready subscribers");
+    assert(scripts[0].referrerPolicy === "no-referrer", "tag request cannot carry an HTTP referrer");
+    const before = calls.filter((call) => call.method === "hit").length;
+    syncMetrikaPage();
+    assert(calls.filter((call) => call.method === "hit").length === before, "same safe URL does not duplicate the page view");
+    history.href = "https://newvers.test/en/verify-email/synthetic-token?token=synthetic-token";
+    window.ym = ((_id: number, method: string, ...args: unknown[]) => {
+      calls.push({ method, args });
+      if (method === "reachGoal" && typeof args[2] === "function") (args[2] as () => void)();
+    }) as typeof window.ym;
+    await dispatchGoal(METRIKA_GOALS.login, {}, 40);
+    const lastHit = calls.filter((call) => call.method === "hit").at(-1);
+    assert(lastHit?.args[0] === "https://newvers.test/en/verify-email", "goal dispatch refreshes URL after navigation");
+    assert(!JSON.stringify(calls).includes("synthetic-token") && !JSON.stringify(calls).includes("synthetic-signature"), "no sensitive marker in SDK calls");
+  }
   {
     resetMetrikaLoaderForTests();
     const { scripts } = installDom();

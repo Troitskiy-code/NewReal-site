@@ -19,14 +19,29 @@ const MOCK_TAG = `
 (function(){
   var prev = window.ym;
   window.__ymCalls = window.__ymCalls || [];
+  var pageUrls = {};
+  function watch(id, url, ref) {
+    var target = "https://mc.yandex.com/watch/" + id + "?page-url=" + encodeURIComponent(url) + "&page-ref=" + encodeURIComponent(ref || "");
+    fetch(target, { mode: "no-cors" }).catch(function(){});
+  }
   window.ym = function(id, method) {
     var args = Array.prototype.slice.call(arguments, 2);
     window.__ymCalls.push({ id: id, method: method, args: args });
     if (method === "init") {
+      var options = args[0] || {};
+      // Model the upstream technical init: defer does not remove its URL payload.
+      watch(id, options.url || location.href, options.referrer || document.referrer);
       window["yaCounter" + id] = { id: id };
       setTimeout(function(){ window.dispatchEvent(new Event("yacounter" + id + "inited")); }, 20);
     }
+    if (method === "hit") {
+      var previous = pageUrls[id];
+      pageUrls[id] = args[0] || location.href;
+      watch(id, pageUrls[id], (args[1] || {}).referer || previous || document.referrer);
+    }
     if (method === "reachGoal") {
+      var goalPage = pageUrls[id] || location.href;
+      watch(id, "goal://" + new URL(goalPage).hostname + "/" + args[0], goalPage);
       var goal = args[0];
       window.__ymHold = window.__ymHold || {};
       var cb = null;
@@ -210,9 +225,10 @@ async function main() {
   }
 
   const { base, child } = await maybeStartNext();
-  const browser = await pw.chromium.launch({ headless: true, channel: process.env['METRIKA_TEST_BROWSER_CHANNEL'] });
+  let browser: import("playwright").Browser | undefined;
   const requests: string[] = [];
   try {
+    browser = await pw.chromium.launch({ headless: true, channel: process.env['METRIKA_TEST_BROWSER_CHANNEL'] });
     const context = await browser.newContext({
       locale: "ru-RU",
       extraHTTPHeaders: { "Accept-Language": "ru" },
@@ -332,8 +348,75 @@ async function main() {
     const afterLogout = await goalNames(spoofPage);
     assert(!afterLogout.includes("subscription_success"), "logged-out session does not send purchase goals");
     await spoofCtx.close();
+
+    // Real Next response checks: metadata, proxy headers, locale rewrite and spoof resistance.
+    for (const locale of ["ru", "en"]) {
+      for (const path of ["coins", "pricing"]) {
+        const clean = await fetch(`${base}/${locale}/${path}`, { headers: { "x-nv-private-url": "1" } });
+        const cleanHtml = await clean.text();
+        assert(clean.status === 200 && /name="robots" content="index, follow"/.test(cleanHtml), `${locale}/${path}: clean storefront indexable despite forged header`);
+        assert(cleanHtml.includes(`rel="canonical" href="https://newvers.ai/${locale}/${path}"`), `${locale}/${path}: clean canonical retained`);
+        const dirty = await fetch(`${base}/${locale}/${path}?Shp_userId=synthetic-owner&SignatureValue=synthetic-signature`, { headers: { "x-nv-private-url": "0" } });
+        const html = await dirty.text();
+        assert(dirty.headers.get("x-robots-tag") === "noindex, follow" && /name="robots" content="noindex, follow"/.test(html), `${locale}/${path}: initial HTTP and HTML noindex despite forged header`);
+        assert(dirty.headers.get("referrer-policy") === "no-referrer" && /name="referrer" content="no-referrer"/.test(html), `${locale}/${path}: header and metadata suppress referrers`);
+        assert(dirty.headers.get("cache-control")?.includes("no-store") === true, `${locale}/${path}: private return is not cached`);
+      }
+    }
+    const redirect = await fetch(`${base}/coins?InvId=1009`, { redirect: "manual" });
+    assert(redirect.status === 307 && redirect.headers.get("x-robots-tag") === "noindex, follow", "unlocalized payment redirect is already noindex");
+
+    sessionUser = { id: SYNTHETIC_USER, email: "metrika@example.test" };
+    const privacyCtx = await browser.newContext();
+    const analyticsRequests: Array<{ url: string; referer: string }> = [];
+    privacyCtx.on("request", (req) => {
+      if (/mc\.yandex\.(com|ru)\//.test(req.url())) analyticsRequests.push({ url: req.url(), referer: req.headers()["referer"] || "" });
+    });
+    await installRoutes(privacyCtx, {});
+    await privacyCtx.route("**/api/auth/reset-password**", async (route) => {
+      await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "Synthetic invalid token" }) });
+    });
+    await privacyCtx.route("**/api/auth/verify-email", async (route) => {
+      await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "Synthetic invalid token" }) });
+    });
+    await privacyCtx.addInitScript(() => {
+      Storage.prototype.setItem = () => { throw new DOMException("Synthetic blocked storage", "QuotaExceededError"); };
+    });
+    statusStore.set("1009", { remainingPending: 2, payload: { status: "confirmed", invId: "1009", kind: "purchase", amountRub: 129 } });
+    const privacyPage = await privacyCtx.newPage();
+    await privacyPage.goto(`${base}/ru/coins?InvId=1009&payment=success&Shp_userId=synthetic-owner&SignatureValue=synthetic-signature&utm_source=direct&yclid=synthetic-click`, { waitUntil: "domcontentloaded" });
+    await privacyPage.waitForTimeout(500);
+    assert(!(await goalNames(privacyPage)).includes("vc_purchase_success"), "storage blocked: pending does not dispatch a goal");
+    const privateGoals = await waitForGoal(privacyPage, "vc_purchase_success", 12000);
+    assert(privateGoals.filter((goal) => goal === "vc_purchase_success").length === 1, "storage blocked: confirmed purchase still dispatches once in this document");
+    assert(privacyPage.url().includes("InvId=1009"), "storage blocked: URL retained for reload recovery");
+    const privateCalls = await collectCalls(privacyPage);
+    const privateInit = privateCalls.find((call) => call.method === "init")?.args[0] as Record<string, unknown>;
+    assert(privateInit.url === `${base}/ru/coins?utm_source=direct&yclid=synthetic-click`, "storage blocked: init preserves campaign markers without payment data");
+    const privateWire = analyticsRequests.map((request) => decodeURIComponent(request.url) + request.referer).join("\n");
+    assert(!/synthetic-owner|synthetic-signature|InvId=1009/.test(privateWire), "storage blocked: intercepted technical init, hit, goal and HTTP referrers contain no payment markers");
+    await privacyPage.reload({ waitUntil: "domcontentloaded" });
+    assert((await waitForGoal(privacyPage, "vc_purchase_success")).includes("vc_purchase_success"), "storage blocked: reload recovers the invoice from the retained URL");
+
+    for (const locale of ["ru", "en"]) {
+      for (const kind of ["reset-password", "verify-email"]) {
+        const started = analyticsRequests.length;
+        const response = await privacyPage.goto(`${base}/${locale}/${kind}/synthetic-token-marker`, {
+          waitUntil: "domcontentloaded", referer: `${base}/ru/coins?SignatureValue=synthetic-referrer-marker&Shp_userId=synthetic-owner`,
+        });
+        await privacyPage.waitForFunction(() => (window as unknown as { __ymCalls?: Array<{ method: string }> }).__ymCalls?.some((call) => call.method === "hit"));
+        await privacyPage.waitForTimeout(150);
+        assert(response?.headers()["referrer-policy"] === "no-referrer" && response.headers()["x-robots-tag"]?.includes("noindex"), `${locale}/${kind}: initial token response protected`);
+        const calls = JSON.stringify(await collectCalls(privacyPage));
+        const wire = analyticsRequests.slice(started).map((request) => decodeURIComponent(request.url) + request.referer).join("\n");
+        assert(!/synthetic-token-marker|synthetic-referrer-marker|synthetic-owner/.test(calls + wire), `${locale}/${kind}: token and incoming payment referrer removed from SDK calls and intercepted requests`);
+      }
+    }
+    assert(analyticsRequests.some((request) => request.url.includes("/watch/999001")), "privacy tests actually observed watch requests to the synthetic counter");
+    assert(!analyticsRequests.some((request) => request.url.includes("112171267")), "privacy tests never use the production counter");
+    await privacyCtx.close();
   } finally {
-    await browser.close().catch(() => undefined);
+    await browser?.close().catch(() => undefined);
     stopChild(child);
   }
 

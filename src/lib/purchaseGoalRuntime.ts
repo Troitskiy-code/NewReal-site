@@ -1,4 +1,5 @@
 import { normalizeInvId, type PaymentConfirmationStatus } from "./paymentStatus";
+import { isPaymentQueryKey } from "./urlPrivacy";
 import {
   METRIKA_COUNTER_ID,
   METRIKA_GOALS,
@@ -56,15 +57,6 @@ const MAX_DISPATCH_ATTEMPTS = 3;
 const MAX_POLL_ATTEMPTS = 90;
 const GOAL_CALLBACK_TIMEOUT_MS = 8000;
 const DEFAULT_LOCK_TTL_MS = 20_000;
-const PAYMENT_QUERY_KEYS = new Set([
-  "payment",
-  "invid",
-  "outsum",
-  "type",
-  "plan",
-  "culture",
-  "signaturevalue",
-]);
 
 let activeUserId: string | null | undefined;
 let runGeneration = 0;
@@ -329,8 +321,7 @@ export function stripPaymentQuery(): boolean {
   const url = new URL(window.location.href);
   let changed = false;
   for (const key of [...url.searchParams.keys()]) {
-    const lower = key.toLowerCase();
-    if (PAYMENT_QUERY_KEYS.has(lower) || lower.startsWith("shp_")) {
+    if (isPaymentQueryKey(key)) {
       url.searchParams.delete(key);
       changed = true;
     }

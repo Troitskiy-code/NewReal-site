@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isPrivatePageUrl, PRIVATE_URL_HEADER } from "@/lib/urlPrivacy";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -41,6 +42,16 @@ function attachAnonymousCookie(request, response) {
   return response;
 }
 
+function attachPrivacyHeaders(request, response) {
+  // Origin-only referrers also protect same-origin navigation away from a token URL.
+  response.headers.set("Referrer-Policy", isPrivatePageUrl(request.nextUrl) ? "no-referrer" : "strict-origin");
+  if (isPrivatePageUrl(request.nextUrl)) {
+    response.headers.set("X-Robots-Tag", "noindex, follow");
+    response.headers.set("Cache-Control", "private, no-store");
+  }
+  return response;
+}
+
 export default async function proxy(request) {
   const { pathname } = request.nextUrl;
 
@@ -66,18 +77,22 @@ export default async function proxy(request) {
     url.pathname = stripped.startsWith("/") ? stripped : `/${stripped}`;
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set(LOCALE_HEADER, pathnameLocale);
+    // Always overwrite client-supplied values; metadata receives a boolean, never the raw URL.
+    requestHeaders.set(PRIVATE_URL_HEADER, isPrivatePageUrl(request.nextUrl) ? "1" : "0");
     const response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     response.cookies.set(LOCALE_COOKIE, pathnameLocale, {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
       sameSite: "lax",
     });
-    return attachAnonymousCookie(request, response);
+    return attachPrivacyHeaders(request, attachAnonymousCookie(request, response));
   }
 
   // Rewritten locale requests keep x-locale; do not bounce them back to the prefixed URL.
   if (isLocale(request.headers.get(LOCALE_HEADER))) {
-    return attachAnonymousCookie(request, NextResponse.next());
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(PRIVATE_URL_HEADER, isPrivatePageUrl(request.nextUrl) ? "1" : "0");
+    return attachPrivacyHeaders(request, attachAnonymousCookie(request, NextResponse.next({ request: { headers: requestHeaders } })));
   }
 
   const locale = resolveLocale(request);
@@ -89,7 +104,7 @@ export default async function proxy(request) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
-  return attachAnonymousCookie(request, response);
+  return attachPrivacyHeaders(request, attachAnonymousCookie(request, response));
 }
 
 export const config = {

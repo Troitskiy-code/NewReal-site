@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:sec04": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-url-privacy.ts",
     "verify:seo": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-seo.ts",
     "verify:seo:runtime": "node scripts/verify-seo-runtime.mjs",
     "seo:audit-urls": "node scripts/audit-seo-urls.mjs",
