@@ -1,5 +1,6 @@
 import { safeErrorFields } from "./redactSensitive";
 import { ChatCompletionStreamError, ChatCompletionStreamParser, extractChatStreamDelta } from "./chatCompletionStream";
+import type { ChatCompletionFinishReason } from "./chatCompletionStream";
 export { extractChatStreamDelta } from "./chatCompletionStream";
 
 export type ChatStreamMessage = {
@@ -7,6 +8,7 @@ export type ChatStreamMessage = {
   role: string;
   content: string;
   createdAt: string | Date;
+  finishReason?: string | null;
 };
 
 export type ChatStreamMetaEvent = {
@@ -106,6 +108,14 @@ export async function consumeOpenAIChatStream(
   onDelta: (text: string) => void,
   signal?: AbortSignal
 ): Promise<string> {
+  return (await consumeOpenAIChatCompletion(stream, onDelta, signal)).text;
+}
+
+export async function consumeOpenAIChatCompletion(
+  stream: ReadableStream<Uint8Array>,
+  onDelta: (text: string) => void,
+  signal?: AbortSignal
+): Promise<{ text: string; finishReason: ChatCompletionFinishReason }> {
   const reader = stream.getReader();
   const onAbort = () => { void reader.cancel().catch(() => {}); };
   signal?.addEventListener("abort", onAbort, { once: true });
@@ -129,7 +139,7 @@ export async function consumeOpenAIChatStream(
     }
 
     parser.push(decoder.decode());
-    if (parser.end() !== "completed") throw new ChatCompletionStreamError();
+    if (parser.end() !== "completed" || parser.finishReason === null) throw new ChatCompletionStreamError();
     consumed = true;
   } finally {
     signal?.removeEventListener("abort", onAbort);
@@ -142,7 +152,7 @@ export async function consumeOpenAIChatStream(
     throw new Error("Пустой ответ от ИИ");
   }
 
-  return reply;
+  return { text: reply, finishReason: parser.finishReason! };
 }
 
 function isChatStreamEvent(value: unknown): value is ChatStreamEvent {

@@ -1,6 +1,6 @@
 // Deterministic stream fixtures only: no .env, database or provider requests.
 import assert from 'node:assert/strict';
-import { consumeOpenAIChatStream, createChatNdjsonResponse } from '../src/lib/chatStream.ts';
+import { consumeOpenAIChatStream, consumeOpenAIChatCompletion, createChatNdjsonResponse } from '../src/lib/chatStream.ts';
 import { ChatCompletionStreamParser, ChatCompletionStreamError } from '../src/lib/chatCompletionStream.ts';
 
 let checks = 0;
@@ -25,6 +25,11 @@ for (const size of [1, 2, 7, 1024]) {
 }
 check(await consumeOpenAIChatStream(stream(text + terminal('length') + done), () => {}) === 'Ответ 🌌',
   'length remains a valid truncated reply for Continue');
+for (const reason of ['stop', 'length']) {
+  const completion = await consumeOpenAIChatCompletion(stream(text + terminal(reason) + usage + done, 1), () => {});
+  check(completion.text === 'Ответ 🌌' && completion.finishReason === reason,
+    `structured stream consumer preserves ${reason} with UTF8 byte splitting`);
+}
 check(await consumeOpenAIChatStream(stream(text + terminal('stop') + done), () => {}) === 'Ответ 🌌',
   'missing usage does not invalidate a completed answer');
 check(await consumeOpenAIChatStream(stream((text + terminal('stop') + done).replaceAll('\n', '\r\n')), () => {}) === 'Ответ 🌌',

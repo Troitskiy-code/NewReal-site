@@ -40,6 +40,7 @@
     "verify:economy:accounting": "node scripts/verify-cost-accounting.mjs",
     "verify:economy:streams": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-cost-streams.mjs",
     "verify:economy:streams:runtime": "node scripts/verify-cost-streams-runtime.mjs",
+    "verify:chat:continuation": "node scripts/verify-chat-continuation.mjs",
     "verify:economy:inputs": "node scripts/verify-cost-inputs.mjs",
     "verify:memory": "node scripts/verify-memory-context.mjs",
     "verify:memory:scenarios": "node scripts/verify-memory-scenarios.mjs --strict",

@@ -1,6 +1,8 @@
 // Shared by the reply consumer and cost collector. Never retain error bodies.
 const MAX_FRAME_CHARS = 1_000_000;
 
+export type ChatCompletionFinishReason = "stop" | "length";
+
 export function extractChatStreamDelta(payload: unknown): string {
   if (!payload || typeof payload !== "object") return "";
   const choices = (payload as Record<string, unknown>).choices;
@@ -36,7 +38,7 @@ export class ChatCompletionStreamParser {
   private ended = false;
   private hasText = false;
   private readonly onChunk: (chunk: Record<string, unknown>, emitText: boolean) => void;
-  finishReason: "stop" | "length" | null = null;
+  finishReason: ChatCompletionFinishReason | null = null;
 
   constructor(onChunk: (chunk: Record<string, unknown>, emitText: boolean) => void) { this.onChunk = onChunk; }
 

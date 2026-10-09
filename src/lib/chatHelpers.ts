@@ -452,16 +452,19 @@ function hasUnclosedParens(text: string): boolean {
   return open > close;
 }
 
-export function isAssistantMessageCutOff(content: string | null | undefined): boolean {
+export function isAssistantMessageCutOff(
+  content: string | null | undefined,
+  finishReason?: string | null
+): boolean {
   const text = content?.trim() ?? "";
   if (!text) return false;
 
+  // Provider termination takes precedence over stylistic punctuation.
+  if (finishReason === "length") return true;
+  if (finishReason === "stop") return false;
+
   if (/\.\.\.\s*$/.test(text) || /…\s*$/.test(text)) {
     return true;
-  }
-
-  if (/[.!?][»"”']?\s*$/.test(text)) {
-    return false;
   }
 
   return (
@@ -470,8 +473,7 @@ export function isAssistantMessageCutOff(content: string | null | undefined): bo
     CUT_OFF_CONJUNCTION_RE.test(text) ||
     /[,;:]\s*$/.test(text) ||
     /[—–-]\s*$/.test(text) ||
-    /[«"„][^«"“»"]*$/.test(text) ||
-    !/[.!?…]\s*$/.test(text)
+    /[«"„][^«"“»"]*$/.test(text)
   );
 }
 

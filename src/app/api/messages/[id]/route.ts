@@ -41,7 +41,8 @@ export async function PUT(req: NextRequest, context: RouteContext) {
 
     const updatedMessage = await prisma.message.update({
       where: { id: message.id },
-      data: { content: content.trim() },
+      // The provider's termination describes the generated text, not a manual edit.
+      data: { content: content.trim(), finishReason: null },
     });
 
     return NextResponse.json(updatedMessage);

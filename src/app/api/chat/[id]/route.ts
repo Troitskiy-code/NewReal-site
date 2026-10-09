@@ -28,7 +28,7 @@ import {
   streamChatCompletion,
 } from "@/lib/chatHelpers";
 import {
-  consumeOpenAIChatStream,
+  consumeOpenAIChatCompletion,
   createChatNdjsonResponse,
   type ChatStreamEvent,
 } from "@/lib/chatStream";
@@ -51,6 +51,7 @@ async function createMessageAndBumpTotal(data: {
   userId: string;
   role: string;
   content: string;
+  finishReason?: "stop" | "length";
 }) {
   const [message] = await prisma.$transaction([
     prisma.message.create({ data }),
@@ -188,7 +189,7 @@ async function handlePost(
         return NextResponse.json({ error: "Нет сообщения ассистента для продолжения" }, { status: 400 });
       }
 
-      continueCutOff = isAssistantMessageCutOff(lastAssistant.content);
+      continueCutOff = isAssistantMessageCutOff(lastAssistant.content, lastAssistant.finishReason);
       console.log(`📌 Обрыв обнаружен: ${continueCutOff ? "да" : "нет"}`);
       ragQueryText = lastAssistant.content;
     } else if (retryLast) {
@@ -364,13 +365,14 @@ async function handlePost(
       });
 
       let loggedTtft = false;
-      const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
+      const completion = await consumeOpenAIChatCompletion(upstream, (text) => {
         if (!loggedTtft) {
           loggedTtft = true;
           console.log(`[ChatTTFT] Total TTFT: ${Date.now() - ttftStartedAt}ms`);
         }
         emit({ type: "delta", text });
       });
+      const assistantReply = completion.text;
       if (!loggedTtft) {
         console.log(`[ChatTTFT] Total TTFT: ${Date.now() - ttftStartedAt}ms`);
       }
@@ -393,6 +395,7 @@ async function handlePost(
               where: { id: lastAssistant.id },
               data: {
                 content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
+                finishReason: completion.finishReason,
               },
             })
           : await createMessageAndBumpTotal({
@@ -401,6 +404,7 @@ async function handlePost(
               userId: session.user.id,
               role: "assistant",
               content: assistantReply,
+              finishReason: completion.finishReason,
             });
 
       (appendsToCutOff ? scheduleMessageEmbeddingRefresh : scheduleMessageEmbedding)(

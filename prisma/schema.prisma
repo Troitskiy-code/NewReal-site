@@ -115,6 +115,7 @@ model Message {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        String   // "user" или "assistant"
   content     String   @db.Text
+  finishReason String? // "stop" or "length"; null for legacy and non-generated messages
   createdAt   DateTime @default(now())
   isAutoEvent Boolean  @default(false)
   embedding   MessageEmbedding?

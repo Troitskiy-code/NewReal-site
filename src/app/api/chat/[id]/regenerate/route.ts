@@ -14,7 +14,7 @@ import {
 } from "@/lib/chatHelpers";
 import { analyzeIntent } from "@/lib/intentAnalyzer";
 import {
-  consumeOpenAIChatStream,
+  consumeOpenAIChatCompletion,
   createChatNdjsonResponse,
 } from "@/lib/chatStream";
 import { calculateRequestCost, isSubscriptionActive } from "@/lib/verseChatEconomy";
@@ -174,9 +174,10 @@ async function handlePost(
         appendToId: assistantMessage.id,
       });
 
-      const assistantReply = await consumeOpenAIChatStream(upstream, (text) => {
+      const completion = await consumeOpenAIChatCompletion(upstream, (text) => {
         emit({ type: "delta", text });
       });
+      const assistantReply = completion.text;
 
       logActionOptionsIfPresent(assistantReply);
 
@@ -193,6 +194,7 @@ async function handlePost(
         where: { id: assistantMessage.id },
         data: {
           content: assistantReply,
+          finishReason: completion.finishReason,
           createdAt: new Date(),
         },
       });
