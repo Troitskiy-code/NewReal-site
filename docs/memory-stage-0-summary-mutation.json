@@ -1,0 +1,38 @@
+{
+  "label": "summary-mutation",
+  "sourceRef": null,
+  "mutation": "summary-unconditional",
+  "generatedAt": "2026-10-08T19:39:30.150Z",
+  "passed": 0,
+  "failed": 3,
+  "results": [
+    {
+      "id": "S11",
+      "title": "Ручная замена выжимки отзывает покрытие и переживает фоновую запись",
+      "pass": false,
+      "details": {
+        "manualKept": false,
+        "coverageNull": false
+      }
+    },
+    {
+      "id": "S11b",
+      "title": "Фоновая запись не перетирает правку даже при прежнем timestamp",
+      "pass": false,
+      "details": {
+        "manualKept": false,
+        "coverageNull": false
+      }
+    },
+    {
+      "id": "S12",
+      "title": "Две фоновые выжимки фиксируют одну главу и одну запись истории",
+      "pass": false,
+      "details": {
+        "count": 55,
+        "entries": 1,
+        "writes": 2
+      }
+    }
+  ]
+}

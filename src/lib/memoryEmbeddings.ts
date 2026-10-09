@@ -35,6 +35,38 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return denom === 0 ? 0 : dot / denom;
 }
 
+function keyTokenStem(token: string): string {
+  // Full names must not collide merely because their first four letters match.
+  // A conservative terminal vowel normalization handles e.g. Лукас/Лукаса.
+  return token.toLowerCase().replace(/ё/g, "е").replace(/^(.{5,})[ауюы]$/u, "$1");
+}
+
+/**
+ * Names, numbers and explicit negation. Similar vectors are not proof of identical
+ * facts. Prefer retaining a possible duplicate to erasing a changed name or denial.
+ */
+export function extractKeyTokens(text: string): Set<string> {
+  const tokens = new Set<string>();
+  const words = text.match(/[\p{L}\p{N}][\p{L}\p{N}'-]*|[.!?…:;]/gu) ?? [];
+  for (const word of words) {
+    if (/^[.!?…:;]$/.test(word)) {
+      continue;
+    }
+    if (/^\p{N}+$/u.test(word)) tokens.add(word);
+    else if (/^\p{Lu}/u.test(word)) tokens.add(keyTokenStem(word));
+    if (/^(?:не|нет|без|никогда|not|no|never|without)$/iu.test(word)) tokens.add("!negation");
+  }
+  return tokens;
+}
+
+export function hasDistinctKeyTokens(left: string, right: string): boolean {
+  const a = extractKeyTokens(left);
+  const b = extractKeyTokens(right);
+  if (a.size !== b.size) return true;
+  for (const token of a) if (!b.has(token)) return true;
+  return false;
+}
+
 export function keepUniqueByCosine(
   items: string[],
   embeddings: number[][],
@@ -47,7 +79,7 @@ export function keepUniqueByCosine(
     const embedding = embeddings[i];
     if (!embedding) continue;
     const isDuplicate = keptEmbeddings.some(
-      (kept) => cosineSimilarity(embedding, kept) > threshold
+      (kept, keptIndex) => cosineSimilarity(embedding, kept) > threshold && !hasDistinctKeyTokens(items[i], result[keptIndex])
     );
     if (!isDuplicate) {
       result.push(items[i]);
@@ -118,6 +150,27 @@ export async function fetchEmbeddings(texts: string[], apiKey: string): Promise<
       }
       return row.embedding as number[];
     });
+}
+
+/** true/false when embeddings answered; null when the provider failed and the caller must fall back. */
+export async function isSemanticDuplicate(
+  candidate: string,
+  existing: string[],
+  apiKey: string,
+  threshold = SEMANTIC_DEDUP_THRESHOLD
+): Promise<boolean | null> {
+  if (!candidate.trim() || existing.length === 0) return false;
+
+  try {
+    const [candidateEmbedding, ...kept] = await fetchEmbeddings([candidate, ...existing], apiKey);
+    if (!candidateEmbedding) return null;
+    return kept.some(
+      (embedding, index) => cosineSimilarity(candidateEmbedding, embedding) > threshold && !hasDistinctKeyTokens(candidate, existing[index])
+    );
+  } catch (error) {
+    errorLog("Memory:Dedup", "embedding compare failed", toSafeDiagnostic(error));
+    return null;
+  }
 }
 
 export async function maxSimilarityAgainst(

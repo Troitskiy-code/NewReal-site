@@ -1,0 +1,147 @@
+▲ Next.js 16.4.0 (Turbopack)
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+✓ Running next.config.mjs took 45ms
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.3min
+  Running TypeScript ...
+  Finished TypeScript in 14.7s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/68) ...
+  Generating static pages using 11 workers (17/68)
+  Generating static pages using 11 workers (34/68)
+  Generating static pages using 11 workers (51/68)
+✓ Generating static pages using 11 workers (68/68) in 1400ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /admin/support
+├ ƒ /api/admin/add-character-messages
+├ ƒ /api/admin/add-coins
+├ ƒ /api/admin/clear-legacy-events
+├ ƒ /api/admin/compress-avatars
+├ ƒ /api/admin/moderate-character
+├ ƒ /api/admin/notifications
+├ ƒ /api/admin/set-subscription
+├ ƒ /api/admin/simulate-activity
+├ ƒ /api/admin/support
+├ ƒ /api/admin/support/migration
+├ ƒ /api/admin/test-recurring
+├ ƒ /api/admin/test-translate
+├ ƒ /api/admin/translate-characters
+├ ƒ /api/admin/update-characters
+├ ƒ /api/admin/verify-all-users
+├ ƒ /api/anonymous/transfer
+├ ƒ /api/app-instances
+├ ƒ /api/app-instances/export
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/forgot-password
+├ ƒ /api/auth/register
+├ ƒ /api/auth/resend-verification
+├ ƒ /api/auth/reset-password
+├ ƒ /api/auth/verify-email
+├ ƒ /api/avatar-tokens
+├ ƒ /api/billing/checkout
+├ ƒ /api/billing/webhook
+├ ƒ /api/characters
+├ ƒ /api/characters/[id]
+├ ƒ /api/characters/[id]/avatar
+├ ƒ /api/characters/[id]/memory
+├ ƒ /api/characters/[id]/memory/permissions
+├ ƒ /api/characters/[id]/regenerate-prompt
+├ ƒ /api/characters/slug/[slug]
+├ ƒ /api/chat
+├ ƒ /api/chat/[id]
+├ ƒ /api/chat/[id]/memory
+├ ƒ /api/chat/[id]/memory/core
+├ ƒ /api/chat/[id]/memory/episodic
+├ ƒ /api/chat/[id]/memory/episodic/[episodicId]
+├ ƒ /api/chat/[id]/memory/refresh-summary
+├ ƒ /api/chat/[id]/memory/summary
+├ ƒ /api/chat/[id]/messages
+├ ƒ /api/chat/[id]/persona
+├ ƒ /api/chat/[id]/regenerate
+├ ƒ /api/chats
+├ ƒ /api/checkout
+├ ƒ /api/coins/offer
+├ ƒ /api/coins/purchase
+├ ƒ /api/creations
+├ ƒ /api/cron/cleanup-anonymous
+├ ƒ /api/cron/cleanup-notifications
+├ ƒ /api/cron/deliver-support
+├ ƒ /api/cron/renew-subscriptions
+├ ƒ /api/cron/update-characters
+├ ƒ /api/cron/update-currency
+├ ƒ /api/currency/rates
+├ ƒ /api/daily-bonus
+├ ƒ /api/download
+├ ƒ /api/events
+├ ƒ /api/favorites
+├ ƒ /api/generate-avatar
+├ ƒ /api/generation
+├ ƒ /api/messages/[id]
+├ ƒ /api/models
+├ ƒ /api/notifications
+├ ƒ /api/notifications/read
+├ ƒ /api/notifications/read-all
+├ ƒ /api/payment/create
+├ ƒ /api/payment/status
+├ ƒ /api/payment/webhook
+├ ƒ /api/personas
+├ ƒ /api/personas/[id]
+├ ƒ /api/referral/stats
+├ ƒ /api/subscription/cancel-recurring
+├ ƒ /api/subscription/change
+├ ƒ /api/subscription/create
+├ ƒ /api/subscription/pending/cancel
+├ ƒ /api/support
+├ ƒ /api/unitpay/webhook
+├ ƒ /api/upload
+├ ƒ /api/user/apikey
+├ ƒ /api/user/balance
+├ ƒ /api/user/characters
+├ ƒ /api/user/select-model
+├ ƒ /api/user/stats
+├ ƒ /api/webhook/muapi
+├ ƒ /api/webhook/stripe
+├ ƒ /balance
+├ ƒ /character/[slug]
+├ ƒ /chat/[id]
+├ ƒ /chats
+├ ƒ /coins
+├ ƒ /create
+├ ƒ /edit/[id]
+├ ƒ /favorites
+├ ƒ /forgot-password
+├ ƒ /gallery
+├ ƒ /login
+├ ƒ /notifications
+├ ƒ /offer
+├ ƒ /pricing
+├ ƒ /privacy
+├ ƒ /profile
+├ ƒ /realcoins
+├ ƒ /referral
+├ ƒ /refund
+├ ƒ /register
+├ ƒ /reset-password/[token]
+├ ○ /robots.txt
+├ ƒ /rules
+├ ƒ /sitemap.xml
+├ ƒ /subscription
+├ ƒ /support
+├ ƒ /terms
+├ ƒ /tokens
+└ ƒ /verify-email/[token]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

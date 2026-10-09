@@ -5,9 +5,15 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
-import { scheduleMessageEmbedding, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
-import { analyzeIntent } from "@/lib/intentAnalyzer";
-import { ingestUserMessageMemory } from "@/lib/advancedMemory";
+import {
+  scheduleMessageEmbedding,
+  scheduleMessageEmbeddingRefresh,
+  shouldPersistEmbeddings,
+  shouldUseRag,
+  type RagMessage,
+} from "@/lib/messageEmbeddings";
+import { analyzeIntent, type UserIntent } from "@/lib/intentAnalyzer";
+import { ingestChatTurnMemory } from "@/lib/advancedMemory";
 import { resolveChatMemorySummary } from "@/lib/chatMemory";
 import {
   assemblePreparedChatMessages,
@@ -19,12 +25,12 @@ import {
   prepareFastContext,
   resolveChatContext,
   searchRagContext,
-  shouldWaitForRag,
   streamChatCompletion,
 } from "@/lib/chatHelpers";
 import {
   consumeOpenAIChatStream,
   createChatNdjsonResponse,
+  type ChatStreamEvent,
 } from "@/lib/chatStream";
 import {
   calculateRequestCost,
@@ -65,6 +71,8 @@ async function handlePost(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Set once the user's turn is stored; runs memory processing at most once per request.
+  let scheduleTurnMemory: (assistantReply: string | null) => void = () => {};
   try {
     const session = await getServerSession(authOptions);
     const { id } = await params;
@@ -182,9 +190,6 @@ async function handlePost(
 
       continueCutOff = isAssistantMessageCutOff(lastAssistant.content);
       console.log(`📌 Обрыв обнаружен: ${continueCutOff ? "да" : "нет"}`);
-      if (continueCutOff) {
-        console.log(`📌 Продолжение текста: ${lastAssistant.content.slice(-100)}...`);
-      }
       ragQueryText = lastAssistant.content;
     } else if (retryLast) {
       const lastUser = await prisma.message.findFirst({
@@ -254,18 +259,42 @@ async function handlePost(
       refreshSummary: false,
     };
 
+    const fastContextPromise = (async () => {
+      const started = Date.now();
+      try {
+        const context = await prepareFastContext(prepareOptions);
+        console.log(`[ChatTTFT] Fast context prepared in ${Date.now() - started}ms`);
+        return context;
+      } catch (error) {
+        errorLog("Server", "[ChatTTFT] Fast context failed", toSafeDiagnostic(error));
+        throw error;
+      }
+    })();
+    const ragSearch = (intent: UserIntent, totalHistoryTokens: number, ragEligible: boolean) =>
+      searchRagContext({
+        userId: session.user.id,
+        characterId: id,
+        apiKey: KODIKROUTER_KEY,
+        ragQueryText,
+        excludeMessageId,
+        intent,
+        ragEligible,
+        totalHistoryTokens,
+      }).catch((error): RagMessage[] => {
+        errorLog("Server", "[ChatTTFT] RAG failed, continuing without it", toSafeDiagnostic(error));
+        return [];
+      });
+    // Question words and history length are known before intent; such searches start in parallel.
+    const earlyRagPromise = fastContextPromise
+      .then((context) =>
+        shouldUseRag({ ragEligible: context.ragEligible, userQuery: ragQueryText, intent: "general", historyTokens: context.totalHistoryTokens }).use
+          ? ragSearch("general", context.totalHistoryTokens, context.ragEligible)
+          : null
+      )
+      .catch(() => null);
+
     const [fastContext, analysis] = await Promise.all([
-      (async () => {
-        const started = Date.now();
-        try {
-          const context = await prepareFastContext({ ...prepareOptions, intent: "general" });
-          console.log(`[ChatTTFT] Fast context prepared in ${Date.now() - started}ms`);
-          return context;
-        } catch (error) {
-          errorLog("Server", "[ChatTTFT] Fast context failed", toSafeDiagnostic(error));
-          throw error;
-        }
-      })(),
+      fastContextPromise,
       (async () => {
         if (continueChat || retryLast || typeof message !== "string") {
           console.log("[ChatTTFT] Intent analysis: general, 0ms");
@@ -285,43 +314,39 @@ async function handlePost(
     ]);
 
     const intent = analysis.intent;
-    const waitForRag = shouldWaitForRag(intent);
-    console.log(`[ChatTTFT] Waiting for RAG: ${waitForRag}`);
-
-    let ragContextText: string | null = null;
-    if (waitForRag) {
-      try {
-        ragContextText = await searchRagContext({
-          userId: session.user.id,
-          characterId: id,
-          apiKey: KODIKROUTER_KEY,
-          ragQueryText,
-          excludeMessageId,
-          intent,
-          ragEligible: fastContext.ragEligible,
-          totalHistoryTokens: fastContext.totalHistoryTokens,
-        });
-      } catch (error) {
-        errorLog("Server", "[ChatTTFT] RAG failed, continuing without it", toSafeDiagnostic(error));
-      }
+    let ragMessages = await earlyRagPromise;
+    if (ragMessages === null) {
+      const decision = shouldUseRag({
+        ragEligible: fastContext.ragEligible,
+        userQuery: ragQueryText,
+        intent,
+        historyTokens: fastContext.totalHistoryTokens,
+      });
+      ragMessages = decision.use ? await ragSearch(intent, fastContext.totalHistoryTokens, fastContext.ragEligible) : [];
     }
+    console.log(`[ChatTTFT] RAG quotes: ${ragMessages.length}`);
 
-    const { messages: trimmedMessages } = assemblePreparedChatMessages(
-      fastContext,
-      intent,
-      ragContextText
-    );
+    const { messages: trimmedMessages } = assemblePreparedChatMessages(fastContext, intent, ragMessages);
 
     if (!continueChat && !retryLast && typeof message === "string") {
-      void ingestUserMessageMemory({
-        userId: session.user.id,
-        characterId: id,
-        userMessage: message,
-        intent,
-        apiKey: KODIKROUTER_KEY,
-      }).catch((error) => {
-        errorLog("Server", "[ChatTTFT] background memory ingest failed", toSafeDiagnostic(error));
-      });
+      const userText = message;
+      let turnMemoryScheduled = false;
+      scheduleTurnMemory = (assistantReply) => {
+        if (turnMemoryScheduled) return;
+        turnMemoryScheduled = true;
+        void ingestChatTurnMemory({
+          userId: session.user.id,
+          characterId: id,
+          userMessage: userText,
+          assistantReply,
+          intent,
+          // Preserve story order even when background classifiers finish out of order.
+          timestamp: userMessage?.createdAt,
+          apiKey: KODIKROUTER_KEY,
+        }).catch((error) => {
+          errorLog("Server", "[ChatTTFT] background memory ingest failed", toSafeDiagnostic(error));
+        });
+      };
       void resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY, user).catch((error) => {
         errorLog("Server", "[ChatTTFT] background summary refresh failed", toSafeDiagnostic(error));
       });
@@ -329,7 +354,7 @@ async function handlePost(
 
     const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
 
-    return createChatNdjsonResponse(async (emit) => {
+    const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {
       emit({
         type: "meta",
         greetingMessage: greetingMessage ?? undefined,
@@ -361,8 +386,9 @@ async function handlePost(
 
       await recordChatCostCharge(upstream, costVC);
 
+      const appendsToCutOff = Boolean(continueChat && continueCutOff && lastAssistant);
       const assistantMessage =
-        continueChat && continueCutOff && lastAssistant
+        appendsToCutOff && lastAssistant
           ? await prisma.message.update({
               where: { id: lastAssistant.id },
               data: {
@@ -377,12 +403,13 @@ async function handlePost(
               content: assistantReply,
             });
 
-      scheduleMessageEmbedding(
+      (appendsToCutOff ? scheduleMessageEmbeddingRefresh : scheduleMessageEmbedding)(
         assistantMessage.id,
         assistantMessage.content,
         KODIKROUTER_KEY,
         persistEmbeddings
       );
+      scheduleTurnMemory(assistantReply);
 
       emit({
         type: "end",
@@ -395,8 +422,18 @@ async function handlePost(
           assistantMessage,
         }),
       });
+    };
+
+    return createChatNdjsonResponse(async (emit) => {
+      try {
+        await streamAndSaveReply(emit);
+      } catch (error) {
+        scheduleTurnMemory(null);
+        throw error;
+      }
     });
   } catch (error) {
+    scheduleTurnMemory(null);
     errorLog("Server", "Chat error:", toSafeDiagnostic(error));
     if (defaultShouldRetry(error)) {
       return NextResponse.json(

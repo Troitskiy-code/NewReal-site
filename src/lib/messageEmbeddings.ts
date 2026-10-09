@@ -1,6 +1,6 @@
 import { meteredPost } from "@/lib/aiCostTelemetry";
 import { prisma } from "@/lib/prisma";
-import { debugLog, errorLog } from "@/lib/logger";
+import { debugLog, errorLog, toSafeDiagnostic } from "@/lib/logger";
 import {
   isMessageEmbeddingsFlagEnabled,
   isRagEligible,
@@ -15,6 +15,8 @@ const EMBEDDING_DIMENSIONS = 1536;
 const RAG_TOP_K = 5;
 const RAG_MIN_SIMILARITY = 0.25;
 export const RAG_HISTORY_TOKEN_THRESHOLD = 3000;
+/** The query embedding sits on the reply path; past this the chat continues without quotes. */
+export const RAG_QUERY_EMBEDDING_TIMEOUT_MS = 3000;
 
 const RAG_QUESTION_WORD_RE =
   /(?:^|[^\p{L}])(?:кто|что|где|когда|почему|как)(?=[^\p{L}]|$)/iu;
@@ -80,7 +82,7 @@ type RagSearchRow = {
   similarity: number;
 };
 
-async function fetchEmbedding(text: string, apiKey: string): Promise<Float32Array> {
+async function fetchEmbedding(text: string, apiKey: string, timeoutMs?: number): Promise<Float32Array> {
   const response = await meteredPost("embedding",
     `${KODIKROUTER_URL}/embeddings`,
     {
@@ -92,6 +94,7 @@ async function fetchEmbedding(text: string, apiKey: string): Promise<Float32Arra
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
+      ...(timeoutMs ? { timeout: timeoutMs } : {}),
     }
   );
 
@@ -112,9 +115,9 @@ async function getQueryEmbedding(
   apiKey: string
 ): Promise<Float32Array | null> {
   try {
-    return await fetchEmbedding(query, apiKey);
+    return await fetchEmbedding(query, apiKey, RAG_QUERY_EMBEDDING_TIMEOUT_MS);
   } catch (error) {
-    errorLog("RAG", "pgvector: не удалось получить эмбеддинг запроса", error);
+    errorLog("RAG", "pgvector: не удалось получить эмбеддинг запроса", toSafeDiagnostic(error));
     return null;
   }
 }
@@ -123,40 +126,25 @@ function toVectorString(embedding: Float32Array): string {
   return `[${Array.from(embedding).join(",")}]`;
 }
 
-export function formatRagContext(messages: RagMessage[]): RagContext | null {
+export function formatRagLine(message: Pick<RagMessage, "role" | "content">, locale?: string): string {
+  const english = locale === "en";
+  const speaker = message.role === "user" ? (english ? "User" : "Пользователь") : english ? "Character" : "Персонаж";
+  return `- ${speaker}: ${message.content.replace(/\s*\n\s*/g, " ").trim()}`;
+}
+
+export function formatRagContext(messages: RagMessage[], locale?: string): RagContext | null {
   if (!messages || messages.length === 0) {
     return null;
   }
 
-  const text = messages
-    .map((message) => {
-      const speaker = message.role === "user" ? "Пользователь" : "Персонаж";
-      return `- ${speaker}: ${message.content}`;
-    })
-    .join("\n");
-
+  const text = messages.map((message) => formatRagLine(message, locale)).join("\n");
   return { text, count: messages.length };
-}
-
-export function appendRagToSystemPrompt(
-  systemPrompt: string,
-  ragContext: RagContext | null,
-  locale?: string
-): string {
-  if (!ragContext?.text) {
-    return systemPrompt;
-  }
-
-  const heading =
-    locale === "en"
-      ? "Exact quotes from past messages (for fact questions only, not plot recap):"
-      : "Точные цитаты из прошлых сообщений (для факт-вопросов, без сюжетного пересказа):";
-  return `${systemPrompt}\n\n${heading}\n${ragContext.text}`;
 }
 
 export async function saveMessageEmbedding(
   messageId: string,
-  embedding: Float32Array
+  embedding: Float32Array,
+  sourceContent: string
 ): Promise<void> {
   if (!embedding || embedding.length === 0) {
     return;
@@ -165,17 +153,23 @@ export async function saveMessageEmbedding(
   try {
     const vectorString = toVectorString(embedding);
 
-    await prisma.$executeRaw`
+    // Keep the matching source row stable until the INSERT commits; a plain
+    // snapshot check can race an update followed by embedding invalidation.
+    const inserted = await prisma.$executeRaw`
       INSERT INTO "MessageEmbedding" ("id", "messageId", embedding, "createdAt")
-      VALUES (gen_random_uuid()::text, ${messageId}, ${vectorString}::vector, NOW())
+      SELECT gen_random_uuid()::text, m.id, ${vectorString}::vector, NOW()
+      FROM "Message" m
+      WHERE m.id = ${messageId} AND m.content = ${sourceContent}
+      FOR SHARE OF m
+      ON CONFLICT ("messageId") DO NOTHING
     `;
 
-    debugLog(
+    if (inserted > 0) debugLog(
       "RAG",
       `Эмбеддинг сохранён для message=${messageId} (${embedding.length} dims)`
     );
   } catch (error) {
-    errorLog("RAG", `Ошибка эмбеддинга message=${messageId}:`, error);
+    errorLog("RAG", `Ошибка эмбеддинга message=${messageId}:`, toSafeDiagnostic(error));
   }
 }
 
@@ -195,7 +189,7 @@ async function saveMessageEmbeddingFromContent(
   }
 
   const embedding = await fetchEmbedding(content, apiKey);
-  await saveMessageEmbedding(messageId, embedding);
+  await saveMessageEmbedding(messageId, embedding, content);
 }
 
 export function scheduleMessageEmbedding(
@@ -209,7 +203,30 @@ export function scheduleMessageEmbedding(
   }
 
   void saveMessageEmbeddingFromContent(messageId, content, apiKey).catch((error) => {
-    errorLog("RAG", `Ошибка эмбеддинга message=${messageId}:`, error);
+    errorLog("RAG", `Ошибка эмбеддинга message=${messageId}:`, toSafeDiagnostic(error));
+  });
+}
+
+/** Continue/regenerate rewrite a message in place; a vector of the old text would return stale quotes. */
+export function scheduleMessageEmbeddingRefresh(
+  messageId: string,
+  content: string,
+  apiKey: string,
+  persistEmbeddings: boolean
+): void {
+  void (async () => {
+    // Invalidate even after a plan change. A delayed refresh of an older version
+    // must not erase the vector of the current text.
+    await prisma.$executeRaw`
+      WITH current_message AS (
+        SELECT id FROM "Message" WHERE id = ${messageId} AND content = ${content} FOR SHARE
+      )
+      DELETE FROM "MessageEmbedding" me USING current_message m
+      WHERE me."messageId" = m.id
+    `;
+    if (persistEmbeddings) await saveMessageEmbeddingFromContent(messageId, content, apiKey);
+  })().catch((error) => {
+    errorLog("RAG", `Ошибка обновления эмбеддинга message=${messageId}:`, toSafeDiagnostic(error));
   });
 }
 
@@ -242,7 +259,7 @@ export async function searchRelevantMessages(
           WHERE
             m."characterId" = ${characterId}
             AND m."userId" = ${userId}
-            AND m."role" = 'user'
+            AND m."role" IN ('user', 'assistant')
             AND m.id != ${excludeMessageId}
           ORDER BY me.embedding <=> ${vectorString}::vector
           LIMIT ${limit}
@@ -258,7 +275,7 @@ export async function searchRelevantMessages(
           WHERE
             m."characterId" = ${characterId}
             AND m."userId" = ${userId}
-            AND m."role" = 'user'
+            AND m."role" IN ('user', 'assistant')
           ORDER BY me.embedding <=> ${vectorString}::vector
           LIMIT ${limit}
         `;
@@ -277,7 +294,7 @@ export async function searchRelevantMessages(
       similarity: Number(row.similarity),
     }));
   } catch (error) {
-    errorLog("RAG", "ошибка поиска релевантных сообщений", error);
+    errorLog("RAG", "ошибка поиска релевантных сообщений", toSafeDiagnostic(error));
     return [];
   }
 }

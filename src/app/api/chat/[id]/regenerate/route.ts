@@ -17,7 +17,8 @@ import {
   consumeOpenAIChatStream,
   createChatNdjsonResponse,
 } from "@/lib/chatStream";
-import { calculateRequestCost } from "@/lib/verseChatEconomy";
+import { calculateRequestCost, isSubscriptionActive } from "@/lib/verseChatEconomy";
+import { scheduleMessageEmbeddingRefresh, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
 import { getApiLocale } from "@/lib/apiI18n";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 
@@ -157,6 +158,8 @@ async function handlePost(
       model,
       apiKey: KODIKROUTER_KEY,
       ragQueryText: previousUserMessage?.content ?? assistantMessage.content,
+      // The reply being replaced must not come back as a quote of itself.
+      excludeMessageId: assistantMessage.id,
       historyBeforeMessageId: assistantMessage.id,
       intent,
       locale: getApiLocale(req),
@@ -192,6 +195,12 @@ async function handlePost(
           createdAt: new Date(),
         },
       });
+      scheduleMessageEmbeddingRefresh(
+        updatedMessage.id,
+        updatedMessage.content,
+        KODIKROUTER_KEY,
+        shouldPersistEmbeddings(user.subscriptionType, isSubscriptionActive(user))
+      );
 
       emit({
         type: "end",

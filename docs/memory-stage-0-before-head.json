@@ -1,0 +1,552 @@
+{
+  "label": "before-head",
+  "sourceRef": "2e09e7acbcb2e5da73297730c419fbe3950d104b",
+  "mutation": null,
+  "generatedAt": "2026-10-09T07:12:09.119Z",
+  "passed": 8,
+  "failed": 20,
+  "results": [
+    {
+      "id": "S1",
+      "title": "Story/action получает сюжетный набор эпизодов (10), а не general (3)",
+      "pass": false,
+      "details": {
+        "shown": [
+          7,
+          9,
+          11
+        ]
+      },
+      "metrics": {
+        "promptTokens": 122,
+        "systemTokens": 104,
+        "historyMessages": 1,
+        "auxCalls": {
+          "embedding": 2,
+          "intent": 1,
+          "memory": 2
+        },
+        "syntheticPrepMs": 1390,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 6,
+          "failedAttempts": 0,
+          "inputTokens": 1320,
+          "outputTokens": 110,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0039552,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S2",
+      "title": "После отбора эпизоды идут в хронологии",
+      "pass": false,
+      "details": {
+        "orderInPrompt": [
+          11,
+          9,
+          7
+        ]
+      }
+    },
+    {
+      "id": "S1b",
+      "title": "General по-прежнему получает 3 эпизода",
+      "pass": true,
+      "details": {
+        "shown": [
+          7,
+          9,
+          11
+        ]
+      },
+      "metrics": {
+        "promptTokens": 153,
+        "systemTokens": 104,
+        "historyMessages": 3,
+        "auxCalls": {
+          "intent": 1,
+          "embedding": 2,
+          "memory": 2
+        },
+        "syntheticPrepMs": 2057,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 6,
+          "failedAttempts": 0,
+          "inputTokens": 1320,
+          "outputTokens": 110,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0039552,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S3",
+      "title": "RAG находит факт из ответа ассистента",
+      "pass": false,
+      "details": {
+        "found": false,
+        "attributed": false
+      },
+      "metrics": {
+        "promptTokens": 1622,
+        "systemTokens": 20,
+        "historyMessages": 60,
+        "auxCalls": {
+          "embedding": 3,
+          "memory": 1
+        },
+        "syntheticPrepMs": 27505,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 5,
+          "failedAttempts": 0,
+          "inputTokens": 1130,
+          "outputTokens": 70,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0012285,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S4",
+      "title": "История > 3000 токенов запускает разрешённый RAG без вопроса",
+      "pass": false,
+      "details": {
+        "queryEmbeddings": 1,
+        "hasOldQuote": false
+      },
+      "metrics": {
+        "promptTokens": 3947,
+        "systemTokens": 20,
+        "historyMessages": 32,
+        "auxCalls": {
+          "embedding": 2,
+          "intent": 1,
+          "summary": 1,
+          "memory": 2
+        },
+        "syntheticPrepMs": 30831,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 7,
+          "failedAttempts": 0,
+          "inputTokens": 1420,
+          "outputTokens": 130,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0065814,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S5",
+      "title": "Запрещённый тариф не получает RAG",
+      "pass": true,
+      "details": {
+        "hasOldQuote": false,
+        "anyEmbedding": false
+      },
+      "metrics": {
+        "promptTokens": 2309,
+        "systemTokens": 20,
+        "historyMessages": 19,
+        "auxCalls": {
+          "summary": 1,
+          "memory": 2,
+          "intent": 1
+        },
+        "syntheticPrepMs": 8617,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 5,
+          "failedAttempts": 0,
+          "inputTokens": 1400,
+          "outputTokens": 130,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0065424,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S6",
+      "title": "Данные другого пользователя или персонажа не попадают в контекст",
+      "pass": true,
+      "details": {},
+      "metrics": {
+        "promptTokens": 64,
+        "systemTokens": 20,
+        "historyMessages": 3,
+        "auxCalls": {
+          "memory": 2,
+          "embedding": 3
+        },
+        "syntheticPrepMs": 1035,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 6,
+          "failedAttempts": 0,
+          "inputTokens": 1230,
+          "outputTokens": 90,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0038547,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S7",
+      "title": "Ошибка обновления выжимки сохраняет доступный необработанный хвост",
+      "pass": false,
+      "details": {
+        "missing": [
+          "ХВОСТ-08",
+          "ХВОСТ-09",
+          "ХВОСТ-10",
+          "ХВОСТ-11",
+          "ХВОСТ-12",
+          "ХВОСТ-13",
+          "ХВОСТ-14",
+          "ХВОСТ-15",
+          "ХВОСТ-16"
+        ],
+        "lastUserKept": true,
+        "coverageKept": true,
+        "promptTokens": 3488
+      },
+      "metrics": {
+        "promptTokens": 3488,
+        "systemTokens": 53,
+        "historyMessages": 16,
+        "auxCalls": {
+          "summary": 1,
+          "intent": 1,
+          "embedding": 2,
+          "memory": 2
+        },
+        "syntheticPrepMs": 7666,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 7,
+          "failedAttempts": 1,
+          "inputTokens": 1320,
+          "outputTokens": 110,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.003955200000000001,
+          "unknownCosts": 1
+        }
+      }
+    },
+    {
+      "id": "S7b",
+      "title": "Успешная выжимка продвигает покрытие до последнего обработанного сообщения",
+      "pass": true,
+      "details": {
+        "advanced": true,
+        "isMessageTime": true
+      }
+    },
+    {
+      "id": "S7c",
+      "title": "Время ручного сохранения выжимки не считается обработкой истории",
+      "pass": false,
+      "details": {
+        "summaryCalls": 0
+      }
+    },
+    {
+      "id": "S13",
+      "title": "Поздний embedding старой версии не записывается после изменения сообщения",
+      "pass": false,
+      "details": {}
+    },
+    {
+      "id": "S13b",
+      "title": "Перезапись сообщения отзывает старый vector даже без права на новые embeddings",
+      "pass": false,
+      "details": {
+        "canRefresh": false
+      }
+    },
+    {
+      "id": "S13c",
+      "title": "Разрешённое обновление сохраняет один vector нового текста",
+      "pass": false,
+      "details": {
+        "canRefresh": false
+      }
+    },
+    {
+      "id": "S11",
+      "title": "Ручная замена выжимки отзывает покрытие и переживает фоновую запись",
+      "pass": false,
+      "details": {
+        "manualKept": false,
+        "coverageNull": false
+      }
+    },
+    {
+      "id": "S11b",
+      "title": "Фоновая запись не перетирает правку даже при прежнем timestamp",
+      "pass": false,
+      "details": {
+        "manualKept": false,
+        "coverageNull": false
+      }
+    },
+    {
+      "id": "S12",
+      "title": "Две фоновые выжимки фиксируют одну главу и одну запись истории",
+      "pass": false,
+      "details": {
+        "count": 55,
+        "entries": 2,
+        "writes": 2
+      }
+    },
+    {
+      "id": "S13d",
+      "title": "Запись embedding удерживает исходное сообщение до фиксации вектора",
+      "pass": false,
+      "details": {
+        "pass": false,
+        "rewriteBlocked": false,
+        "staleVectors": 1,
+        "errors": []
+      }
+    },
+    {
+      "id": "S13e",
+      "title": "Отзыв embedding удерживает исходное сообщение до удаления вектора",
+      "pass": false,
+      "details": {
+        "pass": false,
+        "unsupported": true
+      }
+    },
+    {
+      "id": "S8",
+      "title": "Continue/retry не создают повторную обработку и лишних списаний",
+      "pass": true,
+      "details": {
+        "firstMemoryCalls": 2,
+        "continueMemory": 0,
+        "retryMemory": 0,
+        "afterFirst": {
+          "transactions": 1,
+          "users": 1,
+          "assistants": 1
+        },
+        "afterContinue": {
+          "transactions": 2,
+          "users": 1,
+          "assistants": 2
+        },
+        "afterRetry": {
+          "transactions": 3,
+          "users": 1,
+          "assistants": 3
+        }
+      },
+      "metrics": {
+        "promptTokens": 42,
+        "systemTokens": 20,
+        "historyMessages": 1,
+        "auxCalls": {
+          "intent": 1,
+          "memory": 2
+        },
+        "syntheticPrepMs": 562,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 4,
+          "failedAttempts": 0,
+          "inputTokens": 1300,
+          "outputTokens": 110,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0039162,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S9",
+      "title": "Сбой embeddings: чат работает, fallback ограничен по размеру",
+      "pass": true,
+      "details": {
+        "status": 200,
+        "ended": true,
+        "active": 5,
+        "events": 4
+      },
+      "metrics": {
+        "promptTokens": 54,
+        "systemTokens": 20,
+        "historyMessages": 3,
+        "auxCalls": {
+          "embedding": 3
+        },
+        "syntheticPrepMs": 960,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 4,
+          "failedAttempts": 3,
+          "inputTokens": 1000,
+          "outputTokens": 50,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.00105,
+          "unknownCosts": 3
+        }
+      }
+    },
+    {
+      "id": "S10",
+      "title": "Ручная память сохраняет полезные факты и не становится инструкцией",
+      "pass": false,
+      "details": {
+        "factsKept": false,
+        "consistent": true,
+        "opens": 0,
+        "closes": 0,
+        "insideBlock": false,
+        "declaredData": false
+      },
+      "metrics": {
+        "promptTokens": 33,
+        "systemTokens": 20,
+        "historyMessages": 1,
+        "auxCalls": {
+          "memory": 1
+        },
+        "syntheticPrepMs": 583,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 2,
+          "failedAttempts": 0,
+          "inputTokens": 1100,
+          "outputTokens": 70,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.00117,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "S14",
+      "title": "Эпизоды используют время хода, а не порядок завершения фоновой обработки",
+      "pass": false,
+      "details": {
+        "order": [
+          "Нашли ключ",
+          "Потеряли ключ"
+        ]
+      }
+    },
+    {
+      "id": "E1",
+      "title": "Событие из ответа персонажа попадает в эпизоды",
+      "pass": false,
+      "details": {
+        "events": []
+      },
+      "metrics": {
+        "promptTokens": 46,
+        "systemTokens": 20,
+        "historyMessages": 1,
+        "auxCalls": {
+          "intent": 1,
+          "embedding": 2,
+          "memory": 2
+        },
+        "syntheticPrepMs": 495,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 6,
+          "failedAttempts": 0,
+          "inputTokens": 1320,
+          "outputTokens": 110,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0039552,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "E2",
+      "title": "Выдумка персонажа о биографии игрока не становится фактом пользователя",
+      "pass": true,
+      "details": {
+        "coreSawAssistant": false,
+        "attributed": true
+      }
+    },
+    {
+      "id": "M1",
+      "title": "Метрика: короткая реплика пользователя и содержательный ответ персонажа",
+      "pass": false,
+      "details": {
+        "memoryCalls": 0,
+        "measured": true,
+        "ledgerRecorded": true
+      },
+      "metrics": {
+        "promptTokens": 21,
+        "systemTokens": 20,
+        "historyMessages": 1,
+        "auxCalls": {
+          "intent": 1
+        },
+        "syntheticPrepMs": 467,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 2,
+          "failedAttempts": 0,
+          "inputTokens": 1100,
+          "outputTokens": 70,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.00117,
+          "unknownCosts": 0
+        }
+      }
+    },
+    {
+      "id": "D1",
+      "title": "Semantic dedup различает «старое имя → новое имя»",
+      "pass": false,
+      "details": {
+        "kept": 1
+      }
+    },
+    {
+      "id": "D2",
+      "title": "Fallback без embeddings не склеивает разные имена и перефразировки по пересечению слов",
+      "pass": false,
+      "details": {
+        "kept": [
+          "Пользователя зовут Игорь",
+          "Рокс проверяет Лукаса на готовность действовать",
+          "Рокс хочет понять, готов ли Лукас проявить инициативу"
+        ]
+      }
+    },
+    {
+      "id": "D3",
+      "title": "Выжимка соблюдает лимит и сохраняет разные последние факты",
+      "pass": true,
+      "details": {
+        "events": [
+          "1. Событие номер 7: упал маяк",
+          "2. Событие номер 8: пришла буря",
+          "3. Событие номер 9: открыт склеп",
+          "4. Событие номер 10: спасён ребёнок"
+        ]
+      }
+    }
+  ]
+}

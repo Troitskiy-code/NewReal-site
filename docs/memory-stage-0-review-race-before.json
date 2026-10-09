@@ -1,0 +1,21 @@
+{
+  "label": "review-race-before",
+  "sourceRef": null,
+  "mutation": null,
+  "generatedAt": "2026-10-09T07:06:53.260Z",
+  "passed": 0,
+  "failed": 1,
+  "results": [
+    {
+      "id": "S13d",
+      "title": "Запись embedding удерживает исходное сообщение до фиксации вектора",
+      "pass": false,
+      "details": {
+        "pass": false,
+        "rewriteBlocked": false,
+        "staleVectors": 1,
+        "errors": []
+      }
+    }
+  ]
+}

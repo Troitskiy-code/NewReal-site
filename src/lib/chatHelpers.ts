@@ -1,22 +1,26 @@
 import { meteredPost, meteredChatFetch } from "@/lib/aiCostTelemetry";
-import { encoding_for_model } from "tiktoken";
+import { countTokens } from "@/lib/tokenCount";
 import { prisma } from "@/lib/prisma";
-import { getRelevantMemories } from "@/lib/advancedMemory";
+import {
+  episodicLimitForIntent,
+  formatEpisodicLine,
+  loadMemoryCandidates,
+  sortEpisodicChronologically,
+  type EpisodicMemoryItem,
+  type MemoryCandidates,
+} from "@/lib/advancedMemory";
 import { appendPersonaToSystemPrompt } from "@/lib/persona";
 import { getSelectedChatPersona } from "@/lib/personaService";
 import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
-import {
-  appendMemoryToSystemPrompt,
-  readChatMemorySummary,
-  resolveChatMemorySummary,
-} from "@/lib/chatMemory";
+import { readChatMemoryState, resolveChatMemorySummary } from "@/lib/chatMemory";
+import { appendMemorySection, type MemoryBlock, type MemoryBlockKind } from "@/lib/memoryPromptFormat";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import {
-  appendRagToSystemPrompt,
-  formatRagContext,
+  formatRagLine,
   isRagEligible,
   shouldUseRag,
   searchRelevantMessages,
+  type RagMessage,
 } from "@/lib/messageEmbeddings";
 import {
   getContextTokenLimit,
@@ -104,16 +108,7 @@ export const modelSelect = {
   isActive: true,
 } as const;
 
-export function countTokens(text: string): number {
-  try {
-    const enc = encoding_for_model("gpt-4");
-    const tokens = enc.encode(text);
-    enc.free();
-    return tokens.length;
-  } catch {
-    return Math.ceil(text.length / 4);
-  }
-}
+export { countTokens };
 
 export function trimMessagesToTokenLimit(
   messages: ChatCompletionMessage[],
@@ -280,19 +275,39 @@ type PrepareChatMessagesOptions = {
   refreshSummary?: boolean;
 };
 
+export type ContextAssemblyStats = {
+  episodicShown: number;
+  ragQuotes: number;
+  historyMessages: number;
+  unprocessedInWindow: number;
+  droppedUnprocessed: number;
+  droppedMemoryBlocks: MemoryBlockKind[];
+};
+
 export type PreparedChatMessages = {
   messages: ChatCompletionMessage[];
   totalTokens: number;
   maxContextTokens: number;
   memorySummary: string | null;
+  stats: ContextAssemblyStats;
+};
+
+export type ChatHistoryRow = {
+  id: string;
+  role: string;
+  content: string;
+  createdAt: Date;
 };
 
 export type FastChatContext = {
   userId: string;
   systemPromptBase: string;
   memorySummary: string | null;
-  relevantMemoriesText: string;
-  historyRows: Array<{ role: string; content: string }>;
+  /** createdAt of the last message proven to be in the summary; null = nothing covered. */
+  summaryCoveredUntil: Date | null;
+  memoryCandidates: MemoryCandidates;
+  historyRows: ChatHistoryRow[];
+  /** Exact tokens of the loaded window plus an average-based estimate for older messages. */
   totalHistoryTokens: number;
   ragEligible: boolean;
   maxContextTokens: number;
@@ -301,8 +316,67 @@ export type FastChatContext = {
   locale: string;
 };
 
-export function shouldWaitForRag(intent: string): boolean {
-  return intent === "fact" || intent === "question";
+/** Prompt budget: plan limit, and never more than the model can take with room for the reply. */
+export function resolveContextTokenBudget(
+  user: Pick<ChatUser, "subscriptionType" | "subscriptionEnd">,
+  model: Pick<EconomyModel, "maxContextTokens">
+): number {
+  const planLimit = getContextTokenLimit(user);
+  const modelLimit = Number(model.maxContextTokens);
+  if (!Number.isFinite(modelLimit) || modelLimit <= MAX_OUTPUT_TOKENS) return planLimit;
+  return Math.min(planLimit, modelLimit - MAX_OUTPUT_TOKENS);
+}
+
+export function estimateHistoryTokens(windowTokens: number, windowCount: number, olderCount: number): number {
+  if (windowCount <= 0 || olderCount <= 0) return windowTokens;
+  return windowTokens + Math.round((olderCount * windowTokens) / windowCount);
+}
+
+/**
+ * Newest-first contiguous suffix of the window. Messages after the summary coverage
+ * (inclusive of the boundary timestamp) are unprocessed and may use the extended budget;
+ * covered messages only the base budget. The newest message is always kept.
+ */
+export function selectRecentHistory(
+  rows: ChatHistoryRow[],
+  coveredUntil: Date | null,
+  budget: { base: number; extended: number },
+  count: (text: string) => number = countTokens
+): { rows: ChatHistoryRow[]; tokens: number; unprocessedInWindow: number; droppedUnprocessed: number } {
+  const picked: ChatHistoryRow[] = [];
+  let tokens = 0;
+  let stopped = false;
+  let unprocessedInWindow = 0;
+  let droppedUnprocessed = 0;
+
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    const rowTokens = count(row.content);
+    const unprocessed = !coveredUntil || row.createdAt.getTime() >= coveredUntil.getTime();
+    if (unprocessed) unprocessedInWindow += 1;
+    const limit = unprocessed ? budget.extended : budget.base;
+    if (index === rows.length - 1 || (!stopped && tokens + rowTokens <= limit)) {
+      picked.push(row);
+      tokens += rowTokens;
+    } else {
+      stopped = true;
+      if (unprocessed) droppedUnprocessed += 1;
+    }
+  }
+
+  return { rows: picked.reverse(), tokens, unprocessedInWindow, droppedUnprocessed };
+}
+
+function fitLines<T extends { line: string }>(items: T[], budget: number): T[] {
+  const kept: T[] = [];
+  let used = 0;
+  for (const item of items) {
+    const itemTokens = countTokens(item.line) + 1;
+    if (used + itemTokens > budget) continue;
+    kept.push(item);
+    used += itemTokens;
+  }
+  return kept;
 }
 
 const CUT_OFF_CONJUNCTIONS = [
@@ -436,7 +510,8 @@ async function loadChatHistoryRows({
   characterId: string;
   historyLimit: number;
   historyBeforeMessageId?: string;
-}) {
+}): Promise<{ rows: ChatHistoryRow[]; olderCount: number }> {
+  let cutoff: Date | null = null;
   if (historyBeforeMessageId) {
     const cutoffMessage = await prisma.message.findUnique({
       where: { id: historyBeforeMessageId },
@@ -446,91 +521,124 @@ async function loadChatHistoryRows({
     if (!cutoffMessage) {
       throw new Error("Сообщение для истории не найдено");
     }
-
-    const rows = await prisma.message.findMany({
-      where: {
-        characterId,
-        userId,
-        createdAt: { lt: cutoffMessage.createdAt },
-      },
-      orderBy: { createdAt: "desc" },
-      take: historyLimit,
-      select: { role: true, content: true },
-    });
-    return rows.reverse();
+    cutoff = cutoffMessage.createdAt;
   }
 
-  const rows = await prisma.message.findMany({
-    where: { characterId, userId },
-    orderBy: { createdAt: "desc" },
-    take: historyLimit,
-    select: { role: true, content: true },
-  });
-  return rows.reverse();
+  const where = { characterId, userId, ...(cutoff ? { createdAt: { lt: cutoff } } : {}) };
+  const [rows, total] = await Promise.all([
+    prisma.message.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: historyLimit,
+      select: { id: true, role: true, content: true, createdAt: true },
+    }),
+    prisma.message.count({ where }),
+  ]);
+  return { rows: rows.reverse(), olderCount: Math.max(0, total - rows.length) };
 }
+
+const DROP_ORDER_WHEN_OVER_LIMIT: MemoryBlockKind[] = ["quotes", "summary", "events", "core"];
 
 export function assemblePreparedChatMessages(
   context: FastChatContext,
   intent: UserIntent = "general",
-  ragContextText: string | null = null
+  ragMessages: RagMessage[] | null = null
 ): PreparedChatMessages {
-  let systemPrompt = context.systemPromptBase;
-  const reservedTokens = countTokens(systemPrompt);
-  const allocations = allocateTokens([], context.maxContextTokens, reservedTokens, intent);
-  const summaryText = context.memorySummary
-    ? trimTextToTokenLimit(context.memorySummary, allocations.summary)
+  const { locale, maxContextTokens } = context;
+  const allocations = allocateTokens([], maxContextTokens, countTokens(context.systemPromptBase), intent);
+
+  // Episodic: pick by rank for the actual intent, keep what fits, show in story order.
+  const coreText = context.memoryCandidates.core
+    ? trimTextToTokenLimit(context.memoryCandidates.core, allocations.coreEpisodic)
     : "";
-  const ragText = ragContextText ? trimTextToTokenLimit(ragContextText, allocations.retrieved) : "";
-  const coreEpisodicText = context.relevantMemoriesText
-    ? trimTextToTokenLimit(context.relevantMemoriesText, allocations.coreEpisodic)
-    : "";
-
-  if (coreEpisodicText) {
-    systemPrompt = `${systemPrompt}\n\n${coreEpisodicText}`;
+  let episodicRoom = allocations.coreEpisodic - countTokens(coreText);
+  const keptEvents: EpisodicMemoryItem[] = [];
+  for (const item of context.memoryCandidates.episodic.slice(0, episodicLimitForIntent(intent))) {
+    const itemTokens = countTokens(formatEpisodicLine(item)) + 1;
+    if (itemTokens > episodicRoom) continue;
+    keptEvents.push(item);
+    episodicRoom -= itemTokens;
   }
-  if (summaryText) {
-    systemPrompt = appendMemoryToSystemPrompt(systemPrompt, summaryText, context.locale);
-  }
-  if (ragText) {
-    systemPrompt = appendRagToSystemPrompt(systemPrompt, { text: ragText, count: 1 }, context.locale);
+  const eventsText = sortEpisodicChronologically(keptEvents).map(formatEpisodicLine).join("\n");
+  const summaryText = context.memorySummary ? trimTextToTokenLimit(context.memorySummary, allocations.summary) : "";
+  const quoteCandidates = (ragMessages ?? []).map((message) => ({ id: message.id, line: formatRagLine(message, locale) }));
+  const quotesOutside = (recentIds: Set<string>) =>
+    fitLines(quoteCandidates.filter((quote) => !recentIds.has(quote.id)), allocations.retrieved);
+  const dropped = new Set<MemoryBlockKind>();
+  const compose = (quotes: Array<{ line: string }>) => {
+    const blocks: MemoryBlock[] = [
+      { kind: "core", body: coreText },
+      { kind: "events", body: eventsText },
+      { kind: "summary", body: summaryText },
+      { kind: "quotes", body: quotes.map((quote) => quote.line).join("\n") },
+    ];
+    return appendMemorySection(context.systemPromptBase, blocks.filter((block) => !dropped.has(block.kind)), locale);
+  };
+  const rows = context.historyRows;
+  const coverage = context.summaryCoveredUntil;
+
+  // Unprocessed messages have no dependable replacement in stored memory. Pin the
+  // contiguous suffix that fits with the base prompt, then shed old memory before it.
+  // If that suffix itself exceeds the budget, retain the newest messages and report
+  // the dropped rows; the timestamp never pretends that they were summarized.
+  const protectedTail = selectRecentHistory(rows, coverage, {
+    base: 0,
+    extended: Math.max(0, maxContextTokens - countTokens(context.systemPromptBase)),
+  });
+  let quotes = quotesOutside(new Set(protectedTail.rows.map((row) => row.id)));
+  let systemPrompt = compose(quotes);
+  let systemTokens = countTokens(systemPrompt);
+  for (const kind of DROP_ORDER_WHEN_OVER_LIMIT) {
+    if (systemTokens + protectedTail.tokens <= maxContextTokens) break;
+    dropped.add(kind);
+    systemPrompt = compose(quotes);
+    systemTokens = countTokens(systemPrompt);
   }
 
-  debugLog(
-    "Chat",
-    `Загружено ${context.historyRows.length} сообщений для подписки ${context.subscriptionLogType} (лимит: ${context.historyLimit}, контекст: ${context.maxContextTokens})`
-  );
+  // Covered history has its regular share. The pinned tail can use every remaining
+  // token, rather than disappearing just because old memory filled its allocation.
+  const capB = Math.max(0, maxContextTokens - systemTokens);
+  const recent = selectRecentHistory(rows, coverage, {
+    base: Math.min(allocations.recentChat, capB),
+    extended: capB,
+  });
+  const recentIds = new Set(recent.rows.map((row) => row.id));
+  if (quotes.some((quote) => recentIds.has(quote.id))) {
+    quotes = quotes.filter((quote) => !recentIds.has(quote.id));
+    systemPrompt = compose(quotes);
+    systemTokens = countTokens(systemPrompt);
+  }
 
-  const messagesForAI: ChatCompletionMessage[] = [
+  const messages: ChatCompletionMessage[] = [
     { role: "system", content: systemPrompt },
-    ...context.historyRows.map((msg) => ({
-      role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
-      content: msg.content,
+    ...recent.rows.map((row) => ({
+      role: (row.role === "user" ? "user" : "assistant") as "user" | "assistant",
+      content: row.content,
     })),
   ];
+  const totalTokens = systemTokens + recent.tokens;
+  const stats: ContextAssemblyStats = {
+    episodicShown: dropped.has("events") ? 0 : keptEvents.length,
+    ragQuotes: dropped.has("quotes") ? 0 : quotes.length,
+    historyMessages: recent.rows.length,
+    unprocessedInWindow: recent.unprocessedInWindow,
+    droppedUnprocessed: recent.droppedUnprocessed,
+    droppedMemoryBlocks: [...dropped],
+  };
 
-  const systemTokens = countTokens(systemPrompt);
-  const recentBudget = Math.min(
-    allocations.recentChat,
-    Math.max(0, context.maxContextTokens - systemTokens)
-  );
-
-  const { messages, totalTokens } = trimMessagesToTokenLimit(
-    messagesForAI,
-    Math.min(context.maxContextTokens, systemTokens + recentBudget)
-  );
-
-  const remainingTokens = Math.max(0, context.maxContextTokens - totalTokens);
   debugLog(
     "Chat",
-    `Отправлено ${messages.length} сообщений user=${context.userId} (токенов: ${totalTokens}, лимит: ${context.maxContextTokens}, осталось: ${remainingTokens})${summaryText ? ", с предысторией" : ""}${coreEpisodicText ? ", core/episodic" : ""}${ragText ? ", RAG" : ""}`
+    `Загружено ${rows.length} сообщений для подписки ${context.subscriptionLogType} (лимит: ${context.historyLimit}, контекст: ${maxContextTokens})`
   );
+  debugLog(
+    "Chat",
+    `Отправлено ${messages.length} сообщений user=${context.userId} (токенов: ${totalTokens}, лимит: ${maxContextTokens}) episodic=${stats.episodicShown} rag=${stats.ragQuotes} unprocessed=${stats.unprocessedInWindow} droppedUnprocessed=${stats.droppedUnprocessed}${stats.droppedMemoryBlocks.length ? ` droppedBlocks=${stats.droppedMemoryBlocks.join(",")}` : ""}`
+  );
+  if (totalTokens > maxContextTokens) {
+    errorLog("Chat", `Контекст превышает лимит даже без памяти: ${totalTokens}/${maxContextTokens}`);
+  }
 
-  return {
-    messages,
-    totalTokens,
-    maxContextTokens: context.maxContextTokens,
-    memorySummary: context.memorySummary,
-  };
+  return { messages, totalTokens, maxContextTokens, memorySummary: context.memorySummary, stats };
 }
 
 export async function prepareFastContext({
@@ -543,24 +651,28 @@ export async function prepareFastContext({
   continueCutOff = false,
   continueSourceText,
   historyBeforeMessageId,
-  intent = "general",
+  model,
   locale = "ru",
   refreshSummary = false,
 }: PrepareChatMessagesOptions): Promise<FastChatContext> {
   const subscriptionActive = isSubscriptionActive(user);
-  const maxContextTokens = getContextTokenLimit(user);
+  const maxContextTokens = resolveContextTokenBudget(user, model);
   const ragEligible = isRagEligible(user.subscriptionType, subscriptionActive);
   const historyLimit = getHistoryMessageLimit(user.subscriptionType, subscriptionActive);
   const subscriptionLogType = subscriptionActive ? user.subscriptionType ?? "unknown" : "start";
 
-  const [memorySummary, relevantMemories, selectedPersona, historyRows] = await Promise.all([
+  // Candidates are intent-independent; the final pick happens in assemblePreparedChatMessages.
+  const [memoryState, memoryCandidates, selectedPersona, history] = await Promise.all([
     refreshSummary
       ? resolveChatMemorySummary(userId, characterId, apiKey, user)
-      : readChatMemorySummary(userId, characterId),
-    getRelevantMemories(userId, characterId, intent, maxContextTokens),
+          .catch((error) => errorLog("Memory", "summary refresh failed, using stored summary", toSafeDiagnostic(error)))
+          .then(() => readChatMemoryState(userId, characterId))
+      : readChatMemoryState(userId, characterId),
+    loadMemoryCandidates(userId, characterId, maxContextTokens),
     getSelectedChatPersona(userId, characterId),
     loadChatHistoryRows({ userId, characterId, historyLimit, historyBeforeMessageId }),
   ]);
+  const historyRows = history.rows;
 
   let systemPromptBase = appendPersonaToSystemPrompt(
     resolveChatSystemPrompt(character, locale),
@@ -592,13 +704,15 @@ ${systemPromptBase}`;
     }
   }
 
-  const totalHistoryTokens = historyRows.reduce((sum, msg) => sum + countTokens(msg.content), 0);
+  const windowTokens = historyRows.reduce((sum, msg) => sum + countTokens(msg.content), 0);
+  const totalHistoryTokens = estimateHistoryTokens(windowTokens, historyRows.length, history.olderCount);
 
   return {
     userId,
     systemPromptBase,
-    memorySummary,
-    relevantMemoriesText: relevantMemories.text ?? "",
+    memorySummary: memoryState.summary,
+    summaryCoveredUntil: memoryState.coveredUntil,
+    memoryCandidates,
     historyRows,
     totalHistoryTokens,
     ragEligible,
@@ -627,7 +741,7 @@ export async function searchRagContext({
   intent: UserIntent;
   ragEligible: boolean;
   totalHistoryTokens: number;
-}): Promise<string | null> {
+}): Promise<RagMessage[]> {
   const ragDecision = shouldUseRag({
     ragEligible,
     userQuery: ragQueryText,
@@ -640,7 +754,7 @@ export async function searchRagContext({
   );
 
   if (!ragDecision.use || !ragQueryText) {
-    return null;
+    return [];
   }
 
   try {
@@ -652,17 +766,17 @@ export async function searchRagContext({
       excludeMessageId
     );
     debugLog("RAG", `найдено ${ragMessages.length} релевантных сообщений`);
-    return formatRagContext(ragMessages)?.text ?? null;
+    return ragMessages;
   } catch (ragError) {
-    errorLog("RAG", "ошибка поиска релевантных сообщений", ragError);
-    return null;
+    errorLog("RAG", "ошибка поиска релевантных сообщений", toSafeDiagnostic(ragError));
+    return [];
   }
 }
 
 export async function prepareChatMessages(options: PrepareChatMessagesOptions): Promise<PreparedChatMessages> {
   const intent = options.intent ?? "general";
   const fastContext = await prepareFastContext({ ...options, refreshSummary: options.refreshSummary ?? true });
-  const ragContextText = await searchRagContext({
+  const ragMessages = await searchRagContext({
     userId: options.userId,
     characterId: options.characterId,
     apiKey: options.apiKey,
@@ -672,7 +786,7 @@ export async function prepareChatMessages(options: PrepareChatMessagesOptions): 
     ragEligible: fastContext.ragEligible,
     totalHistoryTokens: fastContext.totalHistoryTokens,
   });
-  return assemblePreparedChatMessages(fastContext, intent, ragContextText);
+  return assemblePreparedChatMessages(fastContext, intent, ragMessages);
 }
 
 function logKodikRetry(attempt: number, error: unknown) {

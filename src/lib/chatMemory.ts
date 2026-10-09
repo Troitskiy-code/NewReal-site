@@ -1,14 +1,15 @@
 import { meteredPost } from "@/lib/aiCostTelemetry";
-import { encoding_for_model } from "tiktoken";
+import { countTokens } from "@/lib/tokenCount";
 import { prisma } from "@/lib/prisma";
 import { getContextTokenLimit } from "@/lib/chatEconomy";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
-import { errorLog, infoLog } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
 import {
   fetchEmbeddings,
+  hasDistinctKeyTokens,
   keepUniqueByCosine,
   logSimilarityMatrix,
   SEMANTIC_DEDUP_THRESHOLD,
@@ -17,6 +18,9 @@ import {
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
 const KEEP_RECENT_MESSAGES = 25;
+/** One summary call never takes more than this many messages; older backlogs catch up oldest-first. */
+export const MAX_SUMMARY_CHUNK_MESSAGES = 120;
+const WORD_OVERLAP_DUPLICATE_RATIO = 0.8;
 
 export type SubscriptionType = "start" | "dialog" | "story" | "universe" | null | undefined;
 
@@ -257,20 +261,24 @@ export function rebuildSummary(sections: SummarySections): string {
   return parts.join("\n\n").trim();
 }
 
+/**
+ * Offline fallback when embeddings are unavailable. Word overlap cannot tell a paraphrase
+ * from a changed fact, so only near-identical lines with the same names/numbers are merged.
+ */
 export function deduplicateLines(lines: string[]): string[] {
   const result: string[] = [];
-  const significantWords = (line: string) =>
-    line
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((word) => word.length > 4);
+  const normalize = (line: string) => line.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}\s]+/gu, " ").replace(/\s+/g, " ").trim();
+  const significantWords = (line: string) => normalize(line).split(" ").filter((word) => word.length > 4);
 
   for (const line of lines) {
     const words = significantWords(line);
     const isDuplicate = result.some((existing) => {
+      if (normalize(existing) === normalize(line)) return true;
+      if (hasDistinctKeyTokens(line, existing)) return false;
       const existingWords = significantWords(existing);
       const overlap = words.filter((word) => existingWords.includes(word)).length;
-      return words.length > 0 && overlap / words.length > 0.6;
+      const longest = Math.max(words.length, existingWords.length);
+      return longest > 0 && overlap / longest >= WORD_OVERLAP_DUPLICATE_RATIO;
     });
     if (!isDuplicate) result.push(line);
   }
@@ -397,7 +405,7 @@ export async function consolidateActiveLines(
     }
     return result;
   } catch (error) {
-    errorLog("Memory:Consolidate", "Failed:", error);
+    errorLog("Memory:Consolidate", "Failed:", toSafeDiagnostic(error));
     return lines.slice(0, maxLines);
   }
 }
@@ -482,17 +490,6 @@ function countActiveLines(summary: string): number {
     .filter((line) => line.length > 0).length;
 }
 
-function countTokens(text: string): number {
-  try {
-    const enc = encoding_for_model("gpt-4");
-    const tokens = enc.encode(text);
-    enc.free();
-    return tokens.length;
-  } catch {
-    return Math.ceil(text.length / 4);
-  }
-}
-
 function formatDialogForSummary(messages: DialogMessage[]): string {
   return messages
     .map((message) => {
@@ -505,12 +502,30 @@ function formatDialogForSummary(messages: DialogMessage[]): string {
     .join("\n\n");
 }
 
-function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
-  if (messages.length <= KEEP_RECENT_MESSAGES) {
-    return [];
-  }
+function messageTime(message: DialogMessage): number {
+  return message.createdAt ? new Date(message.createdAt).getTime() : Number.NaN;
+}
 
-  return messages.slice(0, messages.length - KEEP_RECENT_MESSAGES);
+/**
+ * Oldest-first chunk to summarize, keeping the newest `keepRecent` messages out.
+ * The boundary never splits messages with the same timestamp: coverage is stored as the
+ * last summarized createdAt and later reads use `createdAt > coverage`.
+ */
+export function takeSummaryChunk(
+  messages: DialogMessage[],
+  keepRecent = KEEP_RECENT_MESSAGES,
+  maxChunk = MAX_SUMMARY_CHUNK_MESSAGES
+): DialogMessage[] {
+  let end = Math.min(messages.length - keepRecent, maxChunk);
+  if (end <= 0) return [];
+  while (end > 0 && end < messages.length && messageTime(messages[end - 1]) === messageTime(messages[end])) {
+    end -= 1;
+  }
+  return messages.slice(0, end);
+}
+
+function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
+  return takeSummaryChunk(messages);
 }
 
 function formatCoreContext(core: string | null | undefined): string {
@@ -615,28 +630,39 @@ async function mergeSummaries(
   return finalizeSummary(result, maxTokens, apiKey, oldSummary);
 }
 
+/**
+ * Coverage moves only here, after the model returned a summary. Both coverage and text
+ * must still match, so a concurrent refresh or manual edit cannot be overwritten.
+ */
 async function persistMemorySummary(
   userId: string,
   characterId: string,
   summary: string,
   lastSummarizedAt: Date,
-  summarizedMessageCount: number
-): Promise<string> {
-  await prisma.memory.upsert({
-    where: { userId_characterId: { userId, characterId } },
-    create: {
-      userId,
-      characterId,
-      summary,
-      lastSummarizedAt,
-      summarizedMessageCount,
-    },
-    update: {
-      summary,
-      lastSummarizedAt,
-      summarizedMessageCount,
-    },
-  });
+  summarizedMessageCount: number,
+  expectedCoverage: Date | null | "none",
+  expectedSummary?: string
+): Promise<string | null> {
+  if (expectedCoverage === "none") {
+    try {
+      await prisma.memory.create({ data: { userId, characterId, summary, lastSummarizedAt, summarizedMessageCount } });
+    } catch (error) {
+      if ((error as { code?: string })?.code === "P2002") {
+        infoLog("Memory", "Summary create skipped: another refresh saved first");
+        return null;
+      }
+      throw error;
+    }
+  } else {
+    const updated = await prisma.memory.updateMany({
+      where: { userId, characterId, lastSummarizedAt: expectedCoverage, summary: expectedSummary },
+      data: { summary, lastSummarizedAt, summarizedMessageCount },
+    });
+    if (updated.count === 0) {
+      infoLog("Memory", "Summary update skipped: coverage changed by another refresh or edit");
+      return null;
+    }
+  }
   await recordSummaryMemoryEntry(userId, characterId, summary);
   return summary;
 }
@@ -657,13 +683,15 @@ async function createArcSummary(
   const tokens = countTokens(dialogText);
   const coreText = await loadCoreMemoryText(userId, characterId);
   const summary = await requestSummary(apiKey, dialogText, config.maxTokens, coreText);
-  await persistMemorySummary(
+  const saved = await persistMemorySummary(
     userId,
     characterId,
     summary,
     lastSummarizedTimestamp(messagesToSummarize),
-    messagesToSummarize.length
+    messagesToSummarize.length,
+    "none"
   );
+  if (!saved) return null;
   infoLog(
     "Memory",
     `Created arc summary (${messagesToSummarize.length} messages, ${tokens} tokens, subscription: ${plan})`
@@ -682,6 +710,7 @@ async function updateArcWithChapter(
   apiKey: string,
   existingSummary: string,
   existingCount: number,
+  existingCoverage: Date | null,
   chapterMessages: DialogMessage[],
   config: SummaryConfig,
   plan: string
@@ -705,13 +734,16 @@ async function updateArcWithChapter(
     eventsLimit,
     coreText
   );
-  await persistMemorySummary(
+  const saved = await persistMemorySummary(
     userId,
     characterId,
     mergedSummary,
     lastSummarizedTimestamp(chapterMessages),
-    existingCount + chapterMessages.length
+    existingCount + chapterMessages.length,
+    existingCoverage,
+    existingSummary
   );
+  if (!saved) return existingSummary;
   infoLog(
     "Memory",
     `Created chapter (${chapterMessages.length} messages, ${chapterTokens} tokens) → merged into arc`
@@ -753,15 +785,17 @@ export async function resolveChatMemorySummary(
     },
   });
 
+  // Only lastSummarizedAt proves coverage. A summary row without it (manual edit, legacy row)
+  // covers nothing, so every message still counts as new.
+  const coverage = existingMemory?.lastSummarizedAt ?? null;
   const allMessages = await prisma.message.findMany({
-    where: { userId, characterId },
-    orderBy: { createdAt: "asc" },
+    where: { userId, characterId, ...(coverage ? { createdAt: { gt: coverage } } : {}) },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { role: true, content: true, createdAt: true },
   });
 
   if (existingMemory) {
-    const since = existingMemory.lastSummarizedAt ?? existingMemory.createdAt;
-    const newMessages = allMessages.filter((message) => message.createdAt > since);
+    const newMessages = allMessages;
     const newTokens = newMessages.reduce((sum, message) => sum + countTokens(message.content), 0);
 
     if (
@@ -786,6 +820,7 @@ export async function resolveChatMemorySummary(
       apiKey,
       existingMemory.summary,
       existingMemory.summarizedMessageCount ?? 0,
+      coverage,
       historyToChapter,
       config,
       plan
@@ -815,24 +850,27 @@ export async function readChatMemorySummary(
   userId: string,
   characterId: string
 ): Promise<string | null> {
-  const existingMemory = await prisma.memory.findUnique({
-    where: { userId_characterId: { userId, characterId } },
-    select: { summary: true },
-  });
-  return existingMemory?.summary?.trim() || null;
+  return (await readChatMemoryState(userId, characterId)).summary;
 }
 
-export function appendMemoryToSystemPrompt(
-  systemPrompt: string,
-  summary: string | null,
-  locale?: string
-): string {
-  if (!summary?.trim()) {
-    return systemPrompt;
-  }
+export type ChatMemoryState = {
+  summary: string | null;
+  /** createdAt of the last message proven to be in the summary; null = nothing is covered. */
+  coveredUntil: Date | null;
+  summarizedMessageCount: number;
+};
 
-  const heading = locale === "en" ? "Brief backstory" : "Краткая предыстория";
-  return `${systemPrompt}\n\n${heading}: ${summary.trim()}`;
+export async function readChatMemoryState(userId: string, characterId: string): Promise<ChatMemoryState> {
+  const existingMemory = await prisma.memory.findUnique({
+    where: { userId_characterId: { userId, characterId } },
+    select: { summary: true, lastSummarizedAt: true, summarizedMessageCount: true },
+  });
+  const summary = existingMemory?.summary?.trim() || null;
+  return {
+    summary,
+    coveredUntil: summary ? existingMemory?.lastSummarizedAt ?? null : null,
+    summarizedMessageCount: existingMemory?.summarizedMessageCount ?? 0,
+  };
 }
 
 export async function forceRefreshMemorySummary(
@@ -866,7 +904,7 @@ export async function forceRefreshMemorySummary(
 
   const allMessages = await prisma.message.findMany({
     where: { userId, characterId },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { role: true, content: true, createdAt: true },
   });
 
@@ -878,16 +916,18 @@ export async function forceRefreshMemorySummary(
     const historyToSummarize =
       allMessages.length > KEEP_RECENT_MESSAGES
         ? getHistoryForSummary(allMessages)
-        : allMessages;
+        : allMessages.slice(0, MAX_SUMMARY_CHUNK_MESSAGES);
     return createArcSummary(userId, characterId, apiKey, historyToSummarize, config, plan);
   }
 
-  const since = existingMemory.lastSummarizedAt ?? existingMemory.createdAt;
-  const newMessages = allMessages.filter((message) => message.createdAt > since);
+  const coverage = existingMemory.lastSummarizedAt ?? null;
+  const newMessages = coverage ? allMessages.filter((message) => message.createdAt > coverage) : allMessages;
   const chapterMessages =
-    allMessages.length <= KEEP_RECENT_MESSAGES
-      ? allMessages
-      : getHistoryForSummary(newMessages.length > 0 ? newMessages : allMessages);
+    newMessages.length === 0
+      ? []
+      : newMessages.length <= KEEP_RECENT_MESSAGES
+        ? newMessages.slice(0, MAX_SUMMARY_CHUNK_MESSAGES)
+        : getHistoryForSummary(newMessages);
 
   if (chapterMessages.length === 0) {
     return existingMemory.summary;
@@ -899,6 +939,7 @@ export async function forceRefreshMemorySummary(
     apiKey,
     existingMemory.summary,
     existingMemory.summarizedMessageCount ?? 0,
+    coverage,
     chapterMessages,
     config,
     plan
