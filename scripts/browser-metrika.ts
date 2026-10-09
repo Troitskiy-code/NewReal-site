@@ -27,6 +27,7 @@ const MOCK_TAG = `
   window.ym = function(id, method) {
     var args = Array.prototype.slice.call(arguments, 2);
     window.__ymCalls.push({ id: id, method: method, args: args });
+    if (method === "getClientID" && typeof args[0] === "function") args[0]("1234567890123");
     if (method === "init") {
       var options = args[0] || {};
       // Model the upstream technical init: defer does not remove its URL payload.
@@ -145,6 +146,9 @@ async function installRoutes(
   context: { route: (url: string | RegExp, handler: (route: import("playwright").Route) => Promise<void>) => Promise<void> },
   options: { failPrimary?: boolean; failAll?: boolean }
 ) {
+  await context.route("**/api/payment/analytics", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
+  });
   await context.route(/mc\.yandex\.com\/metrika\/tag\.js/, async (route) => {
     if (options.failPrimary || options.failAll) {
       await route.abort("connectionrefused");
@@ -415,6 +419,48 @@ async function main() {
     assert(analyticsRequests.some((request) => request.url.includes("/watch/999001")), "privacy tests actually observed watch requests to the synthetic counter");
     assert(!analyticsRequests.some((request) => request.url.includes("112171267")), "privacy tests never use the production counter");
     await privacyCtx.close();
+
+    const attributionCtx = await browser.newContext({ locale: "ru-RU" });
+    await installRoutes(attributionCtx, {});
+    await attributionCtx.route("**/api/coins/offer", route => route.fulfill({ status: 200, contentType: "application/json", body: '{"available":true,"reserved":false}' }));
+    await attributionCtx.route("**/api/user/balance", route => route.fulfill({ status: 200, contentType: "application/json", body: '{"verseCoins":100,"canClaimBonus":false,"bonusStreak":0}' }));
+    let checkoutBody: Record<string, unknown> | null = null;
+    const receipts: Array<Record<string, unknown>> = [];
+    await attributionCtx.route("**/api/payment/create", async route => {
+      checkoutBody = route.request().postDataJSON();
+      // Stop before redirecting to any real payment provider.
+      await route.fulfill({ status: 400, contentType: "application/json", body: '{"error":"Synthetic checkout captured"}' });
+    });
+    await attributionCtx.route("**/api/payment/analytics", async route => {
+      receipts.push(route.request().postDataJSON());
+      await route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' });
+    });
+    const attributionPage = await attributionCtx.newPage();
+    await attributionPage.goto(`${base}/ru/coins?utm_source=yandex&utm_campaign=714376678&yclid=123456789`, { waitUntil: "domcontentloaded" });
+    await attributionPage.waitForFunction(() => window.__nvMetrika?.counterReady);
+    await attributionPage.getByTestId("coins-hero-buy").click();
+    await Promise.all([
+      attributionPage.waitForResponse(response => response.url().includes('/api/payment/create')),
+      attributionPage.locator('dialog [data-action="confirm-checkout"]').click(),
+    ]);
+    const captured = checkoutBody as unknown as { attribution?: { firstTouch?: { utm_source?: string; yclid?: string }; counterId?: string; clientId?: string } };
+    assert(captured.attribution?.firstTouch?.utm_source === "yandex" && captured.attribution.firstTouch.yclid === "123456789", "DATA-01 real checkout button sends campaign snapshot");
+    assert(captured.attribution?.counterId === TEST_COUNTER && captured.attribution.clientId === "1234567890123", "DATA-01 initialized synthetic SDK supplies client ID before checkout");
+    const opaqueId = "po_syntheticorder10000";
+    statusStore.set("1010", { remainingPending: 0, payload: { status: "confirmed", invId: "1010", kind: "purchase", amountRub: 129, orderId: opaqueId } });
+    await attributionPage.goto(`${base}/ru/coins?payment=success&InvId=1010&Shp_userId=private-owner`, { waitUntil: "domcontentloaded" });
+    await waitForGoal(attributionPage, "vc_purchase_success");
+    await attributionPage.waitForTimeout(300);
+    const orderGoal = (await collectCalls(attributionPage)).find(call => call.method === "reachGoal" && call.args[0] === "vc_purchase_success");
+    assert((orderGoal?.args[1] as Record<string, unknown>)?.order_id === opaqueId, "DATA-01 confirmed goal carries server order identity");
+    assert(!JSON.stringify(orderGoal?.args).includes("private-owner") && !JSON.stringify(orderGoal?.args).includes("1234567890123"), "DATA-01 goal contains no user/client/click identifiers");
+    assert(receipts.some(r => r.orderId === opaqueId && r.state === "callback_completed"), "DATA-01 client callback receipt sent separately from purchase confirmation");
+    const savedAttribution = await attributionPage.evaluate(() => JSON.parse(sessionStorage.getItem("nv-checkout-attribution:v1") ?? "null"));
+    assert(savedAttribution?.value?.lastNonDirect?.utm_source === "yandex", "DATA-01 Robokassa return preserves original campaign");
+    await attributionPage.reload({ waitUntil: "domcontentloaded" });
+    await attributionPage.waitForTimeout(1200);
+    assert(!(await goalNames(attributionPage)).includes("vc_purchase_success"), "DATA-01 opaque order metadata survives reload without second purchase goal");
+    await attributionCtx.close();
   } finally {
     await browser?.close().catch(() => undefined);
     stopChild(child);

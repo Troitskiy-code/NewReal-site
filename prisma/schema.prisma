@@ -335,6 +335,7 @@ model PaymentEvent {
   planId    String?
   amountRub Int?
   createdAt DateTime @default(now())
+  analyticsReceipts PaymentGoalReceipt[]
 
   @@unique([provider, invoiceId])
   @@index([userId])
@@ -490,6 +491,36 @@ model FirstVcPurchase {
   checkout  Json
   status    String   @default("pending")
   createdAt DateTime @default(now())
+}
+
+// Immutable checkout snapshot. Confirmation/revenue remains in PaymentEvent.
+model PaymentOrder {
+  id String @id @default(cuid())
+  provider String
+  invoiceId String
+  userId String
+  kind String
+  planId String?
+  packageId Int?
+  period String?
+  amountRub Int
+  attribution Json?
+  isTest Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@unique([provider, invoiceId])
+  @@index([userId, createdAt])
+}
+
+// Client-reported SDK states, never payment confirmation or proof of delivery.
+model PaymentGoalReceipt {
+  id String @id @default(cuid())
+  eventId String
+  event PaymentEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  goal String
+  state String
+  attempts Int
+  receivedAt DateTime @default(now())
+  @@unique([eventId, goal])
 }
 
 model AiCostEvent {

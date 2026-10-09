@@ -18,6 +18,22 @@ export function rubUnits(value) {
   } else digits += '0'.repeat(shift);
   return digits.length <= 48 ? BigInt(digits) : null;
 }
+// JS Float estimates have ~15 reliable significant digits. Normalize only this
+// approximate source; exact ledger strings must keep the strict parser above.
+export function estimatedRubUnits(value) {
+  if (typeof value !== 'number') return rubUnits(value);
+  if (!Number.isFinite(value) || value < 0 || (value > 0 && value < 1e-18)) return null;
+  const decimal = value.toPrecision(15), exact = rubUnits(decimal);
+  if (exact !== null) return exact;
+  // A small Float may still have >18 fractional places after normalization.
+  // Round approximate decimals to the report scale, without binary toFixed().
+  const match = /^(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(decimal);
+  if (!match) return null;
+  const shift = SCALE + Number(match[3] ?? 0) - (match[2]?.length ?? 0);
+  if (shift >= 0 || shift < -30) return null;
+  const divisor = 10n ** BigInt(-shift);
+  return (BigInt(match[1] + (match[2] ?? '')) + divisor / 2n) / divisor;
+}
 export function rubString(units) {
   const fraction = (units % UNIT).toString().padStart(SCALE, '0').replace(/0+$/, '');
   return (units / UNIT).toString() + (fraction ? '.' + fraction : '');
@@ -156,11 +172,16 @@ export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } =
       }
       if (done) completed.push(event);
       if (billed) { group.chargedCompleted++; charged.push(event); }
-      const old = rubUnits(event.reportedCostRub);
+      const old = estimatedRubUnits(event.reportedCostRub);
       if (old !== null) { legacy += old; group.legacyReportedCostCount++; }
       const actual = reconciliation.matched.get(event.id);
-      const approximate = done && (event.accountingVersion !== 2 || estimateSources.has(event.costSource))
-        ? rubUnits(event.estimatedCostRub) : null;
+      // A failed/cancelled reply can still consume provider tokens/money. Keep
+      // measured-usage estimates, but never invent a cost from a pending quote.
+      const partialUsage = ['failed', 'cancelled'].includes(event.outcome) && event.accountingVersion === 2
+        && (event.usageSource === 'provider' || (event.apiSurface === 'chat_completions'
+          && ['chat_usd_estimate', 'chat_cbr_estimate'].includes(event.costSource) && number(event.providerCostNative) > 0));
+      const approximate = (done || partialUsage) && (event.accountingVersion !== 2 || estimateSources.has(event.costSource))
+        ? estimatedRubUnits(event.estimatedCostRub) : null;
       let effective = null, source = 'unknown';
       if (actual !== undefined) {
         confirmed += actual; group.confirmedCostCount++; group.reportedCostCount++;
@@ -187,6 +208,7 @@ export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } =
     models.push({ ...group, ...stats(measured), ...stats(chargedMeasured, 'charged'),
       confirmedCostRub: rubNumber(confirmed), confirmedCostRubExact: rubString(confirmed),
       reportedCostRub: rubNumber(confirmed), estimatedCostRub: rubNumber(estimated),
+      estimatedCostRubExact: rubString(estimated), legacyUnverifiedRubExact: rubString(legacy),
       legacyUnverifiedRub: rubNumber(legacy), chargedCostRub: rubNumber(chargedRub),
       inputRubPerMillion: average(prices.map(e => number(e.inputRubPerMillion)).filter(n => n !== null)),
       outputRubPerMillion: average(prices.map(e => number(e.outputRubPerMillion)).filter(n => n !== null)),
@@ -196,14 +218,16 @@ export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } =
   models.sort((a, b) => a.purpose.localeCompare(b.purpose) || a.model.localeCompare(b.model));
   const total = key => models.reduce((sum, row) => sum + (row[key] ?? 0), 0);
   const exactConfirmed = models.reduce((sum, row) => sum + rubUnits(row.confirmedCostRubExact), 0n);
+  const exactEstimated = models.reduce((sum, row) => sum + rubUnits(row.estimatedCostRubExact), 0n);
+  const exactLegacy = models.reduce((sum, row) => sum + rubUnits(row.legacyUnverifiedRubExact), 0n);
   return { schemaVersion: 2, generatedAt: new Date().toISOString(), from, to,
     coverage: { attempts: total('attempts'), providerUsage: total('providerUsageCount'),
       confirmedCost: total('confirmedCostCount'), reportedCost: total('confirmedCostCount'),
       estimatedCost: total('estimatedCostCount'), unknownCost: total('unknownCostCount'), pending: total('pending'),
       legacyUnverifiedCost: total('legacyReportedCostCount') },
     totals: { confirmedCostRub: rubNumber(exactConfirmed), confirmedCostRubExact: rubString(exactConfirmed),
-      reportedCostRub: rubNumber(exactConfirmed), estimatedCostRub: total('estimatedCostRub'),
-      legacyUnverifiedRub: total('legacyUnverifiedRub'), chargedVC: total('chargedVC') },
+      reportedCostRub: rubNumber(exactConfirmed), estimatedCostRub: rubNumber(exactEstimated), estimatedCostRubExact: rubString(exactEstimated),
+      legacyUnverifiedRub: rubNumber(exactLegacy), legacyUnverifiedRubExact: rubString(exactLegacy), chargedVC: total('chargedVC') },
     reconciliation: reconciliation.summary,
     limitations: [
       'Only unique exact-ID matches to positive RUB debits in the supplied key-scoped export are ledger-confirmed. No time/token-only matches.',
@@ -211,6 +235,8 @@ export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } =
       'Embedding native cost currency/markup are unverified. RUB catalog input prices already include markup and remain estimates.',
       'Legacy reportedCostRub amounts are unverified and excluded from confirmed totals. No historical cost or response ID is invented.',
       'Catalog estimates do not apply cache-read discounts. Cache-write costs without a known tariff stay unknown unless a chat USD estimate is available.',
+      'Failed/cancelled attempts keep estimates supported by provider usage/cost; those estimates do not imply successful replies or charged VC.',
+      'Float estimates normalize to 15 significant digits and round to 18 decimal places separately from strict ledger decimals; unsupported values remain unknown.',
       'Unknown, failed, pending and async-submission costs are not zero. Export and event periods may differ; no timezone is inferred.',
       'Avatar/translation costs are configured estimates; Createya/translation invoices and failed charges need separate reconciliation.',
     ], models };

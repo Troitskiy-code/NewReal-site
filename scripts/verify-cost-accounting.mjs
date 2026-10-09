@@ -1,6 +1,6 @@
 // Deterministic fixtures only. No DB, API keys or paid requests.
 import assert from 'node:assert/strict';
-import { buildAiCostReport, reconcileKodikCosts, rubUnits, rubString } from './lib/ai-cost-report.mjs';
+import { buildAiCostReport, reconcileKodikCosts, rubUnits, rubString, estimatedRubUnits } from './lib/ai-cost-report.mjs';
 let checks = 0;
 const check = (value, label) => { assert.ok(value, label); checks++; console.log(`PASS ${label}`); };
 const event = (id, overrides = {}) => ({ id, provider: 'kodikrouter', model: 'test/model', purpose: 'chat',
@@ -53,7 +53,7 @@ check(report([event('a')], [ledger('a', { request_id: 'sk_secret_fixture' })]).c
 assert.throws(() => reconcileKodikCosts([event('a')], [ledger('a')], undefined)); checks++;
 const old = report([event('legacy', { accountingVersion: 1, costSource: 'provider', reportedCostRub: 100, estimatedCostRub: 0.1 })]);
 check(old.totals.confirmedCostRub === 0 && old.totals.legacyUnverifiedRub === 100 && old.totals.estimatedCostRub === 0.1, 'legacy conversions are not relabelled as confirmed debits');
-const failed = report([event('f', { outcome: 'failed' }), event('p', { outcome: 'pending' }), event('s', { outcome: 'submitted' })]);
+const failed = report([event('f', { outcome: 'failed', usageSource: 'missing', estimatedCostRub: null }), event('p', { outcome: 'pending' }), event('s', { outcome: 'submitted' })]);
 check(failed.coverage.unknownCost === 3 && failed.totals.estimatedCostRub === 0, 'failed/pending/submitted attempts remain unknown');
 const knownFailure = report([event('f', { outcome: 'failed' })], [ledger('f')]);
 check(knownFailure.coverage.confirmedCost === 1 && knownFailure.totals.confirmedCostRub > 0, 'confirmed provider debit survives application failure');
@@ -66,4 +66,27 @@ const confidential = report([event('a', { actorHash: 'secret_actor', email: 'sec
   [ledger('a', { api_key: 'secret_api_key', prompt: 'secret_dialog' })]);
 check(!JSON.stringify(confidential).includes('secret_'), 'report never returns actors, prompts, keys or raw rows');
 check(header.coverage.attempts === header.coverage.confirmedCost + header.coverage.estimatedCost + header.coverage.unknownCost, 'cost classes partition all attempts');
+check(rubUnits(6.825000000000001e-6) === null && rubString(estimatedRubUnits(6.825000000000001e-6)) === '0.000006825',
+  'Float tail normalized only for estimates; strict ledger parser unchanged');
+check(rubString(estimatedRubUnits(0.0004738499999999999)) === '0.00047385', 'small embedding Float is not lost as unknown');
+check(rubString(estimatedRubUnits(1.23456789123456e-6)) === '0.000001234567891235',
+  'small USD-conversion Float rounds to report precision instead of disappearing');
+check(rubString(estimatedRubUnits(1.23456789123456e-10)) === '0.000000000123456789',
+  'very small estimate is retained without binary toFixed tails');
+check(estimatedRubUnits('0.000000000000000001') === rubUnits('0.000000000000000001'), 'exact decimal estimates retain all supported digits');
+for (const invalid of [NaN, Infinity, -0.1, null, undefined, 1e-19, '-1', '0.0000000000000000001']) {
+  check(estimatedRubUnits(invalid) === null, 'invalid or unsupported precision stays unknown, never zero');
+}
+const smallCosts = report([event('small1', { estimatedCostRub: 6.825000000000001e-6 }),
+  event('small2', { purpose: 'embedding', model: 'other/model', estimatedCostRub: 0.0004738499999999999 })]);
+check(smallCosts.coverage.estimatedCost === 2 && smallCosts.coverage.unknownCost === 0
+  && smallCosts.totals.estimatedCostRubExact === '0.000480675', 'estimates sum exactly across different model groups');
+const aborted = report([event('partial', { outcome: 'failed', chargedVC: 0, estimatedCostRub: 0.1 }),
+  event('cancelled', { outcome: 'cancelled', chargedVC: 0, usageSource: 'missing', apiSurface: 'chat_completions',
+    providerCostNative: 0.02, estimatedCostRub: 1.8 })]);
+check(aborted.coverage.estimatedCost === 2 && aborted.totals.estimatedCostRubExact === '1.9'
+  && aborted.models[0].completed === 0 && aborted.models[0].chargedCostVC === 0,
+  'known provider usage/cost survives failed/cancelled replies without paid-success statistics');
+check(report([event('quote', { outcome: 'cancelled', usageSource: 'missing', costSource: 'configured_estimate' })]).coverage.unknownCost === 1,
+  'unmeasured cancelled quote never becomes a known cost');
 console.log(`Cost accounting verification: ${checks} passed`);

@@ -275,13 +275,13 @@ try {
       if (throughEditor) await advanced.setSummaryContent(user.id, character.id, manual);
       else await db.memory.update({ where: { userId_characterId: { userId: user.id, characterId: character.id } }, data: { summary: manual } });
     } finally { unblock(); }
-    await refresh;
+    const responseSummary = await refresh;
     const saved = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
     record(id, throughEditor ? 'Ручная замена выжимки отзывает покрытие и переживает фоновую запись'
       : 'Фоновая запись не перетирает правку даже при прежнем timestamp',
-      saved.summary === manual && (throughEditor ? saved.lastSummarizedAt === null && saved.summarizedMessageCount === 0
+      saved.summary === manual && responseSummary === manual && (throughEditor ? saved.lastSummarizedAt === null && saved.summarizedMessageCount === 0
         : saved.lastSummarizedAt.getTime() === rows[4].createdAt.getTime()),
-      { manualKept: saved.summary === manual, coverageNull: saved.lastSummarizedAt === null });
+      { manualKept: saved.summary === manual, responseIsCurrent: responseSummary === manual, coverageNull: saved.lastSummarizedAt === null });
   }
 
   if (want('S12')) {
@@ -396,16 +396,112 @@ try {
     const factsKept = system.includes('Мирон') && system.includes('боится высоты');
     const opens = system.split('[[MEMORY:').length - 1;
     const closes = system.split('[[/MEMORY:').length - 1;
-    const injectionAt = system.indexOf('КОД-42');
-    const lastOpenBefore = system.lastIndexOf('[[MEMORY:', injectionAt);
-    const nextCloseAfter = system.indexOf('[[/MEMORY:', injectionAt);
-    const closeBetween = lastOpenBefore >= 0 ? system.lastIndexOf('[[/MEMORY:', injectionAt) : -1;
-    const insideBlock = injectionAt > 0 && lastOpenBefore >= 0 && nextCloseAfter > injectionAt && closeBetween < lastOpenBefore;
+    const instructionRemoved = !system.includes('КОД-42') && !saved.includes('КОД-42') && !system.includes('SYSTEM: новые правила');
     const declaredData = /данные, а не инструкции/.test(system);
     const consistent = saved.includes('Мирон') && saved.includes('боится высоты');
     record('S10', 'Ручная память сохраняет полезные факты и не становится инструкцией',
-      factsKept && consistent && opens > 0 && opens === closes && insideBlock && declaredData,
-      { factsKept, consistent, opens, closes, insideBlock, declaredData }, metricsOf(turn));
+      factsKept && consistent && opens > 0 && opens === closes && instructionRemoved && declaredData,
+      { factsKept, consistent, opens, closes, instructionRemoved, declaredData }, metricsOf(turn));
+  }
+
+  if (want('S15')) {
+    const user = await helpers.user('dialog');
+    const character = await helpers.character(user.id);
+    const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
+    await advanced.setCoreMemoryContent(user.id, character.id, 'Пользователя зовут Мирон.\nОн боится высоты.');
+    provider.reset();
+    provider.coreText = '## Пользователь\nИнтересы: боится высоты.\nЛюбит море и археологию.';
+    await advanced.updateCoreMemory(user.id, character.id, 'Я люблю море и каждый день изучаю морскую археологию.', 'synthetic_memory_key');
+    const row = await db.coreMemory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const entries = await db.memoryEntry.findMany({ where: { userId: user.id, characterId: character.id, type: 'core' } });
+    record('S15', 'Фоновое извлечение добавляет сведения и сохраняет пропущенное моделью имя',
+      row.content.includes('Мирон') && row.content.includes('Он боится высоты.') && row.content.includes('Любит море') && entries.length === 1 && entries[0].content === row.content);
+  }
+
+  for (const [id, replacement] of [['S16a', 'Пользователя зовут Артём.\nОн любит сад.'], ['S16b', '']].filter(([id]) => want(id))) {
+    const user = await helpers.user('dialog');
+    const character = await helpers.character(user.id);
+    const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
+    await advanced.setCoreMemoryContent(user.id, character.id, 'Пользователя зовут Мирон.\nОн боится высоты.');
+    provider.reset();
+    provider.coreText = '## Пользователь\nЛюбит море и археологию.';
+    let entered, unblock;
+    const started = new Promise(resolve => { entered = resolve; });
+    const gate = new Promise(resolve => { unblock = resolve; });
+    provider.beforeCore = async () => { entered(); await gate; };
+    const pending = advanced.updateCoreMemory(user.id, character.id, 'Я люблю море и каждый день изучаю морскую археологию.', 'synthetic_memory_key');
+    await started;
+    const manual = await advanced.setCoreMemoryContent(user.id, character.id, replacement);
+    unblock();
+    const returned = await pending;
+    const current = await db.coreMemory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const entries = await db.memoryEntry.findMany({ where: { userId: user.id, characterId: character.id, type: 'core' } });
+    record(id, replacement ? 'Правка core выигрывает гонку с фоном' : 'Очистка core не воскрешает прежние факты',
+      current.content === manual.content && returned.content === manual.content && !current.content.includes('Мирон') && (replacement ? entries.length === 1 && entries[0].content === manual.content : entries.length === 0));
+  }
+
+  for (const [id, mode] of [['S17a', 'replace'], ['S17b', 'clear'], ['S17c', 'create']].filter(([id]) => want(id))) {
+    const user = await helpers.user('dialog');
+    const character = await helpers.character(user.id);
+    const rows = await helpers.messages(user.id, character.id, Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `Ход ${i}: обсуждаем карту маяка.` })), { mirror: false });
+    if (mode !== 'create') await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: '## Недавние события\n- Старая сводка.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
+    const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
+    const route = load(join(root, 'src/app/api/chat/[id]/memory/refresh-summary/route.ts'));
+    const { NextRequest } = require('next/server');
+    h.session.userId = user.id;
+    provider.reset();
+    let entered, unblock;
+    const started = new Promise(resolve => { entered = resolve; });
+    const gate = new Promise(resolve => { unblock = resolve; });
+    provider.beforeSummary = async () => { entered(); await gate; };
+    const previousCostIds = new Set((await db.aiCostEvent.findMany({ select: { id: true } })).map(row => row.id));
+    const pending = route.POST(new NextRequest(`http://localhost/api/chat/${character.id}/memory/refresh-summary`, { method: 'POST' }), { params: Promise.resolve({ id: character.id }) });
+    await started;
+    await advanced.setSummaryContent(user.id, character.id, mode === 'clear' ? '' : 'РУЧНАЯ-МЕТКА: северная карта.');
+    unblock();
+    const response = await pending;
+    const payload = await response.json();
+    const current = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const actual = payload.summary;
+    record(id, `Refresh возвращает каноническую сводку после конфликта (${mode})`, response.status === 200 && payload.status === 'conflict' && payload.updated === false
+      && (current ? actual?.summary === current.summary && actual.createdAt === current.createdAt.toISOString() : actual === null),
+      { http: response.status, status: payload.status, cleared: actual === null });
+    const costs = (await db.aiCostEvent.findMany({ where: { purpose: 'summary' } })).filter(row => !previousCostIds.has(row.id));
+    if (!costs.length || costs.some(row => !row.actorHash || row.subscriptionType !== 'dialog' || row.audience !== 'user')) {
+      throw new Error('Refresh did not attribute summary costs to this user and plan');
+    }
+  }
+
+  if (want('S18')) {
+    const user = await helpers.user('story');
+    const character = await helpers.character(user.id);
+    provider.reset();
+    await chat(user.id, character.id, { message: 'Я исследую маяк и хочу услышать твой рассказ о старой карте.' });
+    const answer = await db.message.findFirst({ where: { userId: user.id, characterId: character.id, role: 'assistant' }, orderBy: { createdAt: 'desc' } });
+    const before = new Set((await db.aiCostEvent.findMany({ select: { id: true } })).map(row => row.id));
+    const { NextRequest } = require('next/server');
+    const route = load(join(root, 'src/app/api/chat/[id]/regenerate/route.ts'));
+    h.session.userId = user.id;
+    const response = await route.POST(new NextRequest(`http://localhost/api/chat/${character.id}/regenerate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messageId: answer.id }) }), { params: Promise.resolve({ id: character.id }) });
+    const stream = await response.text();
+    await h.settle();
+    const costs = (await db.aiCostEvent.findMany()).filter(row => !before.has(row.id));
+    record('S18', 'Настоящая перегенерация привязывает расходы к пользователю и тарифу', response.status === 200 && stream.includes('"type":"end"') && costs.some(row => row.purpose === 'chat')
+      && costs.every(row => row.audience === 'user' && row.actorHash && row.subscriptionType === 'story'), { costs: costs.length, http: response.status });
+  }
+
+  if (want('S19')) {
+    const user = await helpers.user('dialog');
+    const character = await helpers.character(user.id);
+    const rows = await helpers.messages(user.id, character.id, Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `Ход ${i}: ключ не найден.` })), { mirror: false });
+    await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: '## Недавние события\n- Ключ пока не найден.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
+    provider.reset();
+    provider.summaryText = '{"activeLines":[],"events":["invented-key-found"]}';
+    const summaryLib = load(join(root, 'src/lib/chatMemory.ts'));
+    let refused = false;
+    try { await summaryLib.forceRefreshMemorySummary(user.id, character.id, 'synthetic_memory_key', user); } catch { refused = true; }
+    const current = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    record('S19', 'Неподтверждённый выбор модели не записывает выдуманное событие и не продвигает покрытие', refused && current.summary.includes('Ключ пока не найден.') && current.lastSummarizedAt.getTime() === rows[4].createdAt.getTime() && current.summarizedMessageCount === 5);
   }
 
   // E1/E2: assistant reply events are captured; invented player biography is not a user fact.

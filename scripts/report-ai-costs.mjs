@@ -33,7 +33,7 @@ try {
   const { rows } = await client.query(`
     SELECT "id", "provider", "providerRequestId", "providerResponseId", "apiSurface", "accountingVersion",
       "model", "actualModel", "purpose", "audience", "outcome", "usageSource", "costSource",
-      "inputTokens", "outputTokens", "inputCharacters", "chargedVC", "quotedVC",
+      "inputTokens", "outputTokens", "inputCharacters", "chargedVC", "quotedVC", "providerCostNative",
       "inputRubPerMillion", "outputRubPerMillion", "reportedCostRub", "estimatedCostRub"
     FROM "AiCostEvent" WHERE "createdAt" >= $1 AND "createdAt" < $2
     ORDER BY "createdAt", "id" LIMIT 200001

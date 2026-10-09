@@ -8,6 +8,7 @@ import { coinsCharacterId } from "@/lib/coinsReturn";
 import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { reportPaymentFailure } from "@/lib/safeDiagnostics";
+import { registerPaymentOrder } from "@/lib/paymentOrders";
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,8 +59,12 @@ export async function POST(req: NextRequest) {
       locale,
     });
     const checkout = pkg.id === FIRST_VC_PACKAGE.id
-      ? await reserveFirstVcCheckout(session.user.id, buildCheckout) : buildCheckout();
+      ? await reserveFirstVcCheckout(session.user.id, buildCheckout, (reserved, tx) => registerPaymentOrder({
+        invoiceId: reserved.fields.InvId, userId: session.user.id, kind: "purchase", amountRub: amount,
+        packageId: pkg.id, attribution: body?.attribution, reuseInvoice: true }, tx)) : buildCheckout();
     if (!checkout) return NextResponse.json({ error: "Первый пакет доступен только один раз до первой покупки", code: "FIRST_PACK_UNAVAILABLE" }, { status: 409 });
+    if (pkg.id !== FIRST_VC_PACKAGE.id) await registerPaymentOrder({ invoiceId: checkout.fields.InvId, userId: session.user.id,
+      kind: "purchase", amountRub: amount, packageId: pkg.id, attribution: body?.attribution });
     return NextResponse.json(checkout);
   } catch (error) {
     reportPaymentFailure("create", error);

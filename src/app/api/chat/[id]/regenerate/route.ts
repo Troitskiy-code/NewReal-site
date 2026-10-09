@@ -111,6 +111,7 @@ async function handlePost(
     }
 
     const { user, model, baseModel } = resolved;
+    setAiCostActor(session.user.id, user.subscriptionType);
 
     const costResult = calculateRequestCost(user, model, baseModel);
     if (costResult.ok === false) {

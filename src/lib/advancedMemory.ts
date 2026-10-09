@@ -2,7 +2,8 @@ import { meteredPost } from "@/lib/aiCostTelemetry";
 import { prisma } from "@/lib/prisma";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import { debugLog, errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
-import { normalizeManualCoreMemory, sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
+import { mergeCoreMemoryFacts, normalizeManualCoreMemory, sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
+import { stripMemoryControlInstructions } from "@/lib/memorySafety";
 import { hasDistinctKeyTokens, isSemanticDuplicate } from "@/lib/memoryEmbeddings";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
@@ -409,7 +410,7 @@ async function summarizeCoreMemory(apiKey: string, previous: string, newInfo: st
         { role: "system", content: CORE_PROMPT },
         {
           role: "user",
-          content: `Старая память:\n${previous.trim() || "(пусто)"}\n\nНовое сообщение пользователя:\n${newInfo.trim()}`,
+          content: `Старая память:\n${sanitizeCoreMemory(previous, { log: false }) || "(пусто)"}\n\nНовое сообщение пользователя:\n${stripMemoryControlInstructions(newInfo).trim()}`,
         },
       ],
       max_tokens: 500,
@@ -486,7 +487,7 @@ export async function updateCoreMemory(
       return existing;
     }
 
-    const content = sanitizeCoreMemory(rawContent);
+    const content = mergeCoreMemoryFacts(existing.content, rawContent);
     if (!content || content === existing.content.trim()) {
       infoLog("Memory", "Core updated: 0 new facts, 1 unchanged");
       debugLog(
@@ -496,13 +497,20 @@ export async function updateCoreMemory(
       return existing;
     }
 
-    const saved = await prisma.coreMemory.upsert({
-      where: { userId_characterId: { userId, characterId } },
-      create: { userId, characterId, content },
-      update: { content },
+    const saved = await prisma.$transaction(async (tx) => {
+      const updated = await tx.coreMemory.updateMany({
+        where: { userId, characterId, content: existing.content, updatedAt: existing.updatedAt },
+        data: { content },
+      });
+      if (!updated.count) return null;
+      await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "core" } });
+      await tx.memoryEntry.create({ data: { userId, characterId, type: "core", content } });
+      return tx.coreMemory.findUnique({ where: { userId_characterId: { userId, characterId } } });
     });
-
-    await upsertMemoryEntry(userId, characterId, "core", content, true);
+    if (!saved) {
+      infoLog("Memory", "Core update skipped: another update or editor save won");
+      return prisma.coreMemory.findUnique({ where: { userId_characterId: { userId, characterId } } });
+    }
     infoLog("Memory", "Core updated: 1 new facts, 0 unchanged");
     debugLog(
       "CoreUpdate",
@@ -771,19 +779,16 @@ export async function setSummaryContent(userId: string, characterId: string, sum
 
 export async function setCoreMemoryContent(userId: string, characterId: string, content: string) {
   const trimmed = normalizeManualCoreMemory(content);
-  const saved = await prisma.coreMemory.upsert({
-    where: { userId_characterId: { userId, characterId } },
-    create: { userId, characterId, content: trimmed },
-    update: { content: trimmed },
-  });
-
-  if (trimmed) {
-    await upsertMemoryEntry(userId, characterId, "core", trimmed, true);
-  } else {
-    await prisma.memoryEntry.deleteMany({
-      where: { userId, characterId, type: "core" },
+  const saved = await prisma.$transaction(async (tx) => {
+    const row = await tx.coreMemory.upsert({
+      where: { userId_characterId: { userId, characterId } },
+      create: { userId, characterId, content: trimmed },
+      update: { content: trimmed },
     });
-  }
+    await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "core" } });
+    if (trimmed) await tx.memoryEntry.create({ data: { userId, characterId, type: "core", content: trimmed } });
+    return row;
+  });
 
   debugLog("MemoryEditor", `core saved user=${userId} character=${characterId}`);
   return saved;

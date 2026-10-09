@@ -1,4 +1,5 @@
 import { infoLog } from "./logger";
+import { stripMemoryControlInstructions } from "./memorySafety";
 
 const NO_DATA_RE = /данных недостаточно/i;
 const RELATIONSHIP_EVENT_RE =
@@ -55,7 +56,7 @@ export function sanitizeCoreMemory(raw: string, options: { log?: boolean } = {})
   const log = options.log !== false;
   const kept = new Map<string, string[]>();
 
-  for (const section of parseCoreSections(raw.replace(CONTROL_CHARS_RE, ""))) {
+  for (const section of parseCoreSections(stripMemoryControlInstructions(raw.replace(CONTROL_CHARS_RE, "")))) {
     const name = canonicalSectionName(section.title);
     let lines = section.body
       .split("\n")
@@ -83,4 +84,27 @@ export function sanitizeCoreMemory(raw: string, options: { log?: boolean } = {})
 /** Manual edits use the same normalization as reads, so the editor shows exactly what the chat will use. */
 export function normalizeManualCoreMemory(raw: string): string {
   return sanitizeCoreMemory(raw.slice(0, CORE_MEMORY_MAX_CHARS), { log: false });
+}
+
+/** Background extraction may add facts, but only an explicit editor save may remove them. */
+export function mergeCoreMemoryFacts(previous: string, proposed: string): string {
+  const original = sanitizeCoreMemory(previous, { log: false });
+  const sections = new Map(parseCoreSections(original).map(({ title, body }) => [title, body.split("\n")]));
+  const key = (line: string) => line.normalize("NFKC").replace(/^[-*•\s]+/, "").trim().toLocaleLowerCase();
+  const seen = new Set([...sections.values()].flat().map(key));
+  const render = () => [...sections].map(([title, lines]) => `## ${title}\n${lines.join("\n")}`).join("\n\n");
+  for (const { title, body } of parseCoreSections(sanitizeCoreMemory(proposed, { log: false }))) {
+    for (const line of body.split("\n")) {
+      if (seen.has(key(line))) continue;
+      const lines = sections.get(title) ?? [];
+      sections.set(title, [...lines, line]);
+      if (render().length > CORE_MEMORY_MAX_CHARS) {
+        if (lines.length) sections.set(title, lines);
+        else sections.delete(title);
+        continue;
+      }
+      seen.add(key(line));
+    }
+  }
+  return render();
 }

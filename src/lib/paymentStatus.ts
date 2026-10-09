@@ -12,6 +12,8 @@ export type PaymentStatusResponse = {
   kind?: PaymentStatusKind | null;
   planId?: string | null;
   amountRub?: number | null;
+  orderId?: string;
+  analyticsExcluded?: boolean;
 };
 
 function isStatusKind(value: string): value is PaymentStatusKind {

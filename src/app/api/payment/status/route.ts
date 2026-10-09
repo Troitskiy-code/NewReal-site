@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { apiT } from "@/lib/apiI18n";
 import { normalizeInvId, visiblePaymentStatus, type PaymentStatusResponse } from "@/lib/paymentStatus";
 import { PAYMENT_PROVIDER } from "@/lib/paymentEvent";
+import { isDeclaredTestPayment, publicPaymentOrderId, paymentOrderMatchesEvent } from "@/lib/paymentOrders";
 
 export type { PaymentStatusKind, PaymentStatusResponse } from "@/lib/paymentStatus";
 
@@ -21,8 +22,18 @@ export async function GET(req: NextRequest) {
 
   const event = await prisma.paymentEvent.findUnique({
     where: { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: invId } },
-    select: { userId: true, kind: true, planId: true, amountRub: true },
+    select: { id: true, userId: true, kind: true, planId: true, amountRub: true },
   });
 
-  return NextResponse.json(visiblePaymentStatus(event, session.user.id, invId) satisfies PaymentStatusResponse);
+  const result = visiblePaymentStatus(event, session.user.id, invId);
+  if (result.status === "confirmed" && event) {
+    const order = await prisma.paymentOrder.findUnique({
+      where: { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: invId } },
+      select: { id: true, isTest: true, userId: true, kind: true, amountRub: true, planId: true },
+    });
+    const matched = paymentOrderMatchesEvent(order, event);
+    result.orderId = publicPaymentOrderId(event.id, matched ? order?.id : null);
+    result.analyticsExcluded = Boolean((matched && order?.isTest) || isDeclaredTestPayment(event.userId));
+  }
+  return NextResponse.json(result satisfies PaymentStatusResponse, { headers: { "Cache-Control": "no-store" } });
 }

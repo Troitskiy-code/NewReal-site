@@ -1,3 +1,5 @@
+import { stripMemoryControlInstructions } from "./memorySafety";
+
 export type MemoryBlockKind = "core" | "events" | "summary" | "quotes";
 
 export type MemoryBlock = {
@@ -40,11 +42,11 @@ function localeKey(locale?: string): "ru" | "en" {
 
 export function formatMemoryBlock(block: MemoryBlock, locale?: string): string {
   const title = BLOCK_TITLES[localeKey(locale)][block.kind];
-  return `[[MEMORY:${block.kind}]] ${title}\n${neutralizeMemoryText(block.body.trim())}\n[[/MEMORY:${block.kind}]]`;
+  return `[[MEMORY:${block.kind}]] ${title}\n${neutralizeMemoryText(stripMemoryControlInstructions(block.body).trim())}\n[[/MEMORY:${block.kind}]]`;
 }
 
 export function buildMemorySection(blocks: MemoryBlock[], locale?: string): string {
-  const present = blocks.filter((block) => block.body.trim());
+  const present = blocks.filter((block) => stripMemoryControlInstructions(block.body).trim());
   if (present.length === 0) return "";
   return [SECTION_HEADER[localeKey(locale)], ...present.map((block) => formatMemoryBlock(block, locale))].join("\n\n");
 }

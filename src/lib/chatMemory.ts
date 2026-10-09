@@ -7,6 +7,7 @@ import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
+import { EXTRACTIVE_SUMMARY_RULES, makeSummarySources, renderSelectedSummary, sourcesFromSummaries, type SummarySource } from "@/lib/memorySummaryEvidence";
 import {
   fetchEmbeddings,
   hasDistinctKeyTokens,
@@ -82,86 +83,9 @@ function getSummaryConfigForUser(user: {
   return { config: getSummaryConfig(plan), plan: plan === "history" ? "story" : plan || "start" };
 }
 
-const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Сделай структурированную выжимку пары пользователь+персонаж.
-
-ВАЖНО: Ниже тебе будет передан блок "Ключевая память" (Core). Эти факты НЕ нужно повторять в выжимке. Твоя задача — только сюжет, хронология и активные линии.
-
-Формат ответа (строго соблюдай):
-
-## Активные линии
-МАКСИМУМ 5 строк. Если получилось больше — объедини похожие. Не дублируй одну и ту же идею разными словами.
-Список незакрытых сюжетных линий: обещания, тайны, проверки, конфликты, цели. Каждая — одно предложение в настоящем времени.
-Пример плохого вывода (не делай так):
-- Рокс проверяет Лукаса.
-- Рокс хочет понять, готов ли Лукас.
-- Лукас пытается понять Рокс.
-Пример хорошего вывода:
-- Рокс проверяет, проявит ли Лукас инициативу.
-
-## Недавние события
-МАКСИМУМ 6 строк. Только события с последствиями. Если событий больше — выбери 6 самых значимых, остальные отбрось.
-СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ (от раннего к позднему). Только те, что ИЗМЕНИЛИ состояние мира или отношения:
-- узнал важное, дал обещание, заключил договор, нашёл/потерял предмет, совершил действие с последствиями.
-ЗАПРЕЩЕНО включать:
-- Бытовые действия в сцене (заказал напиток, выпил шот, улыбнулся, подошёл).
-- Реакции и эмоции (смеётся, удивлён, раздражён).
-- Описания физических действий без последствий (провёл пальцем, протянул руку).
-- Факты о персонаже/пользователе (они в Core).
-
-## Эмоциональный фон
-Одно предложение: тёплое / напряжённое / игривое / романтичное / тревожное.
-
-Требования:
-- Максимум {{maxTokens}} токенов.
-- Пустые разделы НЕ выводить.
-- Без «в данном диалоге», «итак», «стоит отметить».
-- НЕ дублируй факты из Core.`;
-
-const CHAPTER_PROMPT = `Ты — суммаризатор части ролевого диалога. Сделай краткую выжимку СТРОГО В ХРОНОЛОГИЧЕСКОМ ПОРЯДКЕ.
-
-Формат:
-
-## События
-2–5 значимых событий (только с последствиями). Одно предложение каждое.
-
-## Активные линии
-Если появились новые обещания, тайны или цели — добавь 1–3 строки.
-
-НЕ включай факты о характере персонажа или пользователя (они в Core).
-Максимум {{maxTokens}} токенов. Имена — точно как в диалоге.`;
-
-const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Объедини старую выжимку и новую часть в одну структурированную выжимку.
-
-ВАЖНО: блок "Ключевая память" (Core) ниже — справочный. Эти факты НЕ дублируй в выжимке. Только сюжет, хронология и активные линии.
-
-Формат:
-
-## Активные линии
-МАКСИМУМ 5 строк. Если получилось больше — объедини похожие. Не дублируй одну и ту же идею разными словами.
-Объединить старые и новые линии. Если линия ЗАКРЫТА (обещание выполнено, тайна раскрыта, проверка завершена) — УБРАТЬ её. Оставить только незакрытые.
-Пример плохого вывода (не делай так):
-- Рокс проверяет Лукаса.
-- Рокс хочет понять, готов ли Лукас.
-- Лукас пытается понять Рокс.
-Пример хорошего вывода:
-- Рокс проверяет, проявит ли Лукас инициативу.
-
-## Недавние события
-МАКСИМУМ 6 строк. Только события с последствиями. Если событий больше — выбери 6 самых значимых, остальные отбрось.
-Взять последние {{eventsLimit}} значимых событий из старой выжимки + новые события. Старые события вытесняются новыми, если их больше {{eventsLimit}}. Хронология строго от раннего к позднему.
-ЗАПРЕЩЕНО включать:
-- Бытовые действия в сцене (заказал напиток, выпил шот, улыбнулся, подошёл).
-- Реакции и эмоции (смеётся, удивлён, раздражён).
-- Описания физических действий без последствий (провёл пальцем, протянул руку).
-- Факты о персонаже/пользователе (они в Core).
-
-## Эмоциональный фон
-
-Требования:
-- Максимум {{maxTokens}} токенов.
-- Активные линии — только незакрытые.
-- Не дублируй факты и не копируй Core.
-- Без вступлений.`;
+const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Выбери важные цитаты из истории. Факты Core не дублируй.`;
+const CHAPTER_PROMPT = `Ты — суммаризатор части ролевого диалога. Выбери новые события и обещания. Факты Core не дублируй.`;
+const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Выбери актуальные цитаты старой сводки и новой главы. Предпочитай новые сведения при противоречии; не меняй слова источника.`;
 
 type DialogMessage = {
   role: string;
@@ -454,25 +378,6 @@ export async function postProcessSummary(
   return rebuildSummary(sections);
 }
 
-async function finalizeSummary(
-  raw: string,
-  maxTokens: number,
-  apiKey: string,
-  fallback?: string
-): Promise<string> {
-  const processed = await postProcessSummary(raw, maxTokens, apiKey);
-  if (processed.length >= 50) return processed;
-
-  const previous = fallback?.trim();
-  if (previous) {
-    const processedFallback = await postProcessSummary(previous, maxTokens, apiKey);
-    if (processedFallback.length >= 50) return processedFallback;
-    if (previous.length >= 50) return previous;
-  }
-
-  return processed || raw.trim();
-}
-
 function getRecentEventsLimit(arcTokens: number, maxTokens: number): number {
   if (maxTokens <= 0) return 8;
   const arcRatio = arcTokens / maxTokens;
@@ -528,12 +433,6 @@ function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
   return takeSummaryChunk(messages);
 }
 
-function formatCoreContext(core: string | null | undefined): string {
-  const text = core?.trim();
-  if (!text) return "";
-  return `\n\n=== Ключевая память (НЕ дублируй в выжимке) ===\n${text}`;
-}
-
 async function loadCoreMemoryText(userId: string, characterId: string): Promise<string | null> {
   const row = await prisma.coreMemory.findUnique({
     where: { userId_characterId: { userId, characterId } },
@@ -563,12 +462,12 @@ async function requestKodikText(
       messages: [
         {
           role: "system",
-          content: applyPromptVars(systemPrompt, { maxTokens, ...extraVars }),
+          content: applyPromptVars(systemPrompt, { maxTokens, ...extraVars }) + "\n\n" + EXTRACTIVE_SUMMARY_RULES,
         },
         { role: "user", content: userContent },
       ],
       max_tokens: maxTokens,
-      temperature: 0.4,
+      temperature: 0,
     },
     {
       headers: {
@@ -586,48 +485,29 @@ async function requestKodikText(
   return text;
 }
 
-async function requestSummary(
-  apiKey: string,
-  dialogText: string,
-  maxTokens: number,
-  coreText: string | null
+async function requestSelectedSummary(
+  apiKey: string, prompt: string, sources: SummarySource[], maxTokens: number,
+  coreText: string | null, eventsLimit = 6
 ): Promise<string> {
-  const result = await requestKodikText(
-    apiKey,
-    SUMMARY_PROMPT,
-    `${dialogText}${formatCoreContext(coreText)}`,
-    maxTokens
-  );
-  return finalizeSummary(result, maxTokens, apiKey);
+  if (!sources.length) throw new Error("No memory source quotes available");
+  const raw = await requestKodikText(apiKey, prompt,
+    JSON.stringify({ sources, core: coreText }), maxTokens);
+  const summary = renderSelectedSummary(raw, sources, maxTokens, countTokens, eventsLimit);
+  if (!summary) throw new Error("No supported memory quotes selected");
+  return summary;
 }
 
-async function requestChapterSummary(
-  apiKey: string,
-  chapterText: string,
-  maxTokens: number,
-  coreText: string | null
-): Promise<string> {
-  const result = await requestKodikText(
-    apiKey,
-    CHAPTER_PROMPT,
-    `${chapterText}${formatCoreContext(coreText)}`,
-    maxTokens
-  );
-  return finalizeSummary(result, maxTokens, apiKey);
+async function requestSummary(apiKey: string, messages: DialogMessage[], maxTokens: number, coreText: string | null): Promise<string> {
+  return requestSelectedSummary(apiKey, SUMMARY_PROMPT, makeSummarySources(messages), maxTokens, coreText);
 }
 
-async function mergeSummaries(
-  apiKey: string,
-  oldSummary: string,
-  newChapter: string,
-  maxTokens: number,
-  eventsLimit: number,
-  coreText: string | null
-): Promise<string> {
-  infoLog("Memory", "Summary merge: skipped Core duplication check");
-  const userContent = `## Старая выжимка:\n${oldSummary}\n\n## Новая часть:\n${newChapter}${formatCoreContext(coreText)}`;
-  const result = await requestKodikText(apiKey, MERGE_PROMPT, userContent, maxTokens, { eventsLimit });
-  return finalizeSummary(result, maxTokens, apiKey, oldSummary);
+async function requestChapterSummary(apiKey: string, messages: DialogMessage[], maxTokens: number, coreText: string | null): Promise<string> {
+  return requestSelectedSummary(apiKey, CHAPTER_PROMPT, makeSummarySources(messages), maxTokens, coreText);
+}
+
+async function mergeSummaries(apiKey: string, oldSummary: string, newChapter: string,
+  maxTokens: number, eventsLimit: number, coreText: string | null): Promise<string> {
+  return requestSelectedSummary(apiKey, MERGE_PROMPT, sourcesFromSummaries(oldSummary, newChapter), maxTokens, coreText, eventsLimit);
 }
 
 /**
@@ -673,7 +553,8 @@ async function createArcSummary(
   apiKey: string,
   messagesToSummarize: DialogMessage[],
   config: SummaryConfig,
-  plan: string
+  plan: string,
+  onWrite?: (status: "updated" | "conflict") => void
 ): Promise<string | null> {
   if (messagesToSummarize.length === 0) {
     return null;
@@ -682,7 +563,7 @@ async function createArcSummary(
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
   const coreText = await loadCoreMemoryText(userId, characterId);
-  const summary = await requestSummary(apiKey, dialogText, config.maxTokens, coreText);
+  const summary = await requestSummary(apiKey, messagesToSummarize, config.maxTokens, coreText);
   const saved = await persistMemorySummary(
     userId,
     characterId,
@@ -691,7 +572,11 @@ async function createArcSummary(
     messagesToSummarize.length,
     "none"
   );
-  if (!saved) return null;
+  onWrite?.(saved ? "updated" : "conflict");
+  if (!saved) {
+    const current = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } }, select: { summary: true } });
+    return current?.summary ?? null;
+  }
   infoLog(
     "Memory",
     `Created arc summary (${messagesToSummarize.length} messages, ${tokens} tokens, subscription: ${plan})`
@@ -713,8 +598,9 @@ async function updateArcWithChapter(
   existingCoverage: Date | null,
   chapterMessages: DialogMessage[],
   config: SummaryConfig,
-  plan: string
-): Promise<string> {
+  plan: string,
+  onWrite?: (status: "updated" | "conflict") => void
+): Promise<string | null> {
   const chapterText = formatDialogForSummary(chapterMessages);
   const chapterTokens = countTokens(chapterText);
   const arcTokens = countTokens(existingSummary);
@@ -725,7 +611,7 @@ async function updateArcWithChapter(
     `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}) → eventsLimit: ${eventsLimit}`
   );
   const coreText = await loadCoreMemoryText(userId, characterId);
-  const chapterSummary = await requestChapterSummary(apiKey, chapterText, config.maxTokens, coreText);
+  const chapterSummary = await requestChapterSummary(apiKey, chapterMessages, config.maxTokens, coreText);
   const mergedSummary = await mergeSummaries(
     apiKey,
     existingSummary,
@@ -743,7 +629,11 @@ async function updateArcWithChapter(
     existingCoverage,
     existingSummary
   );
-  if (!saved) return existingSummary;
+  onWrite?.(saved ? "updated" : "conflict");
+  if (!saved) {
+    const current = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } }, select: { summary: true } });
+    return current?.summary ?? null;
+  }
   infoLog(
     "Memory",
     `Created chapter (${chapterMessages.length} messages, ${chapterTokens} tokens) → merged into arc`
@@ -880,7 +770,8 @@ export async function forceRefreshMemorySummary(
   user?: {
     subscriptionType?: string | null;
     subscriptionEnd?: Date | string | null;
-  }
+  },
+  onWrite?: (status: "updated" | "conflict") => void
 ): Promise<string | null> {
   await ensureMemoryHierarchyColumns();
 
@@ -917,7 +808,7 @@ export async function forceRefreshMemorySummary(
       allMessages.length > KEEP_RECENT_MESSAGES
         ? getHistoryForSummary(allMessages)
         : allMessages.slice(0, MAX_SUMMARY_CHUNK_MESSAGES);
-    return createArcSummary(userId, characterId, apiKey, historyToSummarize, config, plan);
+    return createArcSummary(userId, characterId, apiKey, historyToSummarize, config, plan, onWrite);
   }
 
   const coverage = existingMemory.lastSummarizedAt ?? null;
@@ -942,6 +833,22 @@ export async function forceRefreshMemorySummary(
     coverage,
     chapterMessages,
     config,
-    plan
+    plan,
+    onWrite
   );
+}
+
+export async function refreshMemorySummaryWithStatus(
+  userId: string, characterId: string, apiKey: string,
+  user?: { subscriptionType?: string | null; subscriptionEnd?: Date | string | null }
+) {
+  const progress: { status: "updated" | "conflict" | "unchanged" | "empty" } = { status: "unchanged" };
+  const text = await forceRefreshMemorySummary(userId, characterId, apiKey, user, (result) => { progress.status = result; });
+  // Re-read canonical storage even after a successful write; an editor may have saved meanwhile.
+  const summary = await prisma.memory.findUnique({
+    where: { userId_characterId: { userId, characterId } }, select: { summary: true, createdAt: true },
+  });
+  if (!text && progress.status === "unchanged") progress.status = "empty";
+  const status = progress.status;
+  return { summary, status, updated: status === "updated" };
 }

@@ -51,6 +51,7 @@ export function createFakeProvider() {
     embeddingsFail: false,
     consolidationFails: false,
     beforeSummary: null,
+    beforeCore: null,
     beforeEmbedding: null,
     classify: () => ({ isEvent: false, importance: 1, text: '' }),
     calls: [],
@@ -60,7 +61,7 @@ export function createFakeProvider() {
     reset() {
       Object.assign(provider, {
         intent: 'general', reply: 'Персонаж отвечает спокойно.', coreText: 'UNCHANGED', summaryText: null,
-        summaryFails: false, embeddingsFail: false, consolidationFails: false, beforeSummary: null, beforeEmbedding: null,
+        summaryFails: false, embeddingsFail: false, consolidationFails: false, beforeSummary: null, beforeCore: null, beforeEmbedding: null,
         classify: () => ({ isEvent: false, importance: 1, text: '' }),
       });
       provider.calls = [];
@@ -105,14 +106,21 @@ export function createFakeProvider() {
         let content;
         if (kind === 'intent') content = JSON.stringify({ intent: provider.intent, confidence: 0.9 });
         else if (kind === 'classifier') content = JSON.stringify(provider.classify(prompt));
-        else if (kind === 'core') content = provider.coreText;
+        else if (kind === 'core') {
+          if (provider.beforeCore) await provider.beforeCore();
+          content = provider.coreText;
+        }
         else if (kind === 'consolidation') {
           if (provider.consolidationFails) throw axiosError(503);
           content = prompt.split('\n').filter((line) => line.startsWith('- ')).slice(0, 5).join('\n');
         } else if (kind === 'summary') {
           if (provider.beforeSummary) await provider.beforeSummary();
           if (provider.summaryFails) throw axiosError(503);
-          content = provider.summaryText ?? '## Активные линии\n- Хранитель маяка помогает гостю.\n\n## Недавние события\n1. Гость пришёл к маяку.\n\n## Эмоциональный фон\nСпокойный.';
+          if (provider.summaryText !== null) content = provider.summaryText;
+          else if (prompt.includes('MEMORY_SUMMARY_SELECTION_V1')) {
+            const sources = JSON.parse(body.messages[1].content).sources;
+            content = JSON.stringify({ activeLines: [], events: sources.slice(0, 3).map((source) => source.id) });
+          } else content = '## Активные линии\n- Хранитель маяка помогает гостю.\n\n## Недавние события\n1. Гость пришёл к маяку.\n\n## Эмоциональный фон\nСпокойный.';
         } else content = 'ok';
         return {
           status: 200,
@@ -133,6 +141,7 @@ export function createFakeProvider() {
       provider.calls.push({ kind: 'chat' });
       const frames = [
         `data: ${JSON.stringify({ id: 'gen_fake_stream', model: body.model, choices: [{ delta: { content: provider.reply } }] })}\n\n`,
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
         `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 1000, completion_tokens: 50 } })}\n\n`,
         'data: [DONE]\n\n',
       ];
@@ -449,7 +458,22 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
     encoder.free();
     await db.$disconnect().catch(() => {});
     await vectorDb.close().catch(() => {});
-    await pg.stop().catch(() => {});
+    if (process.platform === 'win32' && pg.process) {
+      // embedded-postgres taskkill can leave inherited stdio alive on Windows.
+      // Stop only this fixture's verified cluster and await its closed pipes.
+      const child = pg.process;
+      const dataArg = child.spawnargs.indexOf('-D');
+      if (dataArg < 0 || resolve(child.spawnargs[dataArg + 1]) !== resolve(join(directory, 'db'))) {
+        throw new Error('Refusing to stop an unrelated PostgreSQL cluster');
+      }
+      const closed = new Promise(done => child.once('close', done));
+      const stopped = spawnSync(join(dirname(child.spawnfile), 'pg_ctl.exe'),
+        ['stop', '-D', join(directory, 'db'), '-m', 'fast', '-w', '-t', '15'],
+        { encoding: 'utf8', windowsHide: true, timeout: 20_000 });
+      if (stopped.status !== 0) throw new Error('Fixture PostgreSQL shutdown failed');
+      await closed;
+      pg.process = undefined;
+    } else await pg.stop();
   }
 
   return { root, databaseUrl: url, db, vectorDb, provider, session, load, helpers, chat, settle, countTokens, mirrorMessages, stop, observedWrites };

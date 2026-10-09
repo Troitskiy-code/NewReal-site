@@ -10,6 +10,7 @@ import { estimatePlanRequestsFromModels, type PricedModel } from "@/lib/requestE
 import { redirectToRobokassa } from "@/lib/robokassaRedirect";
 import { PurchaseStatusBanner } from "@/components/PurchaseStatusBanner";
 import { metrikaPlanSlug } from "@/lib/metrika";
+import { getCheckoutAttribution } from "@/lib/checkoutAttributionClient";
 import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
@@ -136,6 +137,7 @@ export default function SubscriptionPlans({
     setSubscribingPlanId(plan.id);
 
     try {
+      const attribution = await getCheckoutAttribution();
       const res = await fetch("/api/subscription/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -144,6 +146,7 @@ export default function SubscriptionPlans({
           period: isYearly ? "year" : "month",
           applyMode: mode,
           recurringConsent: true,
+          attribution,
         }),
       });
       const data = await res.json();

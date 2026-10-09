@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
-import { forceRefreshMemorySummary } from "@/lib/chatMemory";
+import { refreshMemorySummaryWithStatus } from "@/lib/chatMemory";
 
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 
@@ -22,7 +22,6 @@ async function handleCostedRequest(
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
-    setAiCostActor(session.user.id);
 
     if (!KODIKROUTER_KEY) {
       return NextResponse.json({ error: "KODIKROUTER_API_KEY не настроен" }, { status: 500 });
@@ -43,25 +42,21 @@ async function handleCostedRequest(
       select: { subscriptionType: true, subscriptionEnd: true },
     });
 
-    const summary = await forceRefreshMemorySummary(
+    setAiCostActor(session.user.id, user?.subscriptionType ?? "start");
+    const result = await refreshMemorySummaryWithStatus(
       session.user.id,
       characterId,
       KODIKROUTER_KEY,
       user ?? undefined
     );
-    if (!summary) {
+    if (result.status === "empty") {
       return NextResponse.json(
         { error: "Недостаточно сообщений для суммаризации" },
         { status: 400 }
       );
     }
 
-    return NextResponse.json({
-      summary: {
-        summary,
-        createdAt: new Date().toISOString(),
-      },
-    });
+    return NextResponse.json(result);
   } catch (error) {
     errorLog("Server", "Refresh memory summary error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось обновить суммаризацию" }, { status: 500 });

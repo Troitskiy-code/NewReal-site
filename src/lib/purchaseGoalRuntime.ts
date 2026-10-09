@@ -30,6 +30,8 @@ export type PendingPurchaseRecord = {
   kind: string | null;
   planId: string | null;
   amountRub: number | null;
+  orderId?: string | null;
+  analyticsExcluded?: boolean;
   confirmed: boolean;
   bannerSession: boolean;
   goals: Record<string, GoalSlot>;
@@ -41,6 +43,8 @@ export type PaymentStatusPayload = {
   kind?: string | null;
   planId?: string | null;
   amountRub?: number | null;
+  orderId?: string | null;
+  analyticsExcluded?: boolean;
 };
 
 export type PurchaseGoalSpec = {
@@ -198,6 +202,8 @@ function mergePurchaseRecords(left: PendingPurchaseRecord, right: PendingPurchas
     kind: newer.kind ?? older.kind,
     planId: newer.planId ?? older.planId,
     amountRub: newer.amountRub ?? older.amountRub,
+    orderId: newer.confirmed ? newer.orderId ?? older.orderId ?? null : null,
+    analyticsExcluded: newer.analyticsExcluded === true,
     confirmed: newer.confirmed,
     bannerSession: false,
     goals,
@@ -372,9 +378,10 @@ export function captureInvoiceFromUrl(): PendingPurchaseRecord | null {
 }
 
 export function purchaseGoalsFromStatus(data: PaymentStatusPayload): PurchaseGoalSpec[] {
-  if (data.kind === "subscription_renewal") return [];
+  if (data.kind === "subscription_renewal" || data.analyticsExcluded) return [];
+  const order = typeof data.orderId === "string" && /^(po|pe)_[a-zA-Z0-9-]{8,64}$/.test(data.orderId) ? { order_id: data.orderId } : {};
   if (data.kind === "purchase") {
-    const params: Record<string, unknown> = {};
+    const params: Record<string, unknown> = { ...order };
     if (typeof data.amountRub === "number" && data.amountRub > 0) {
       params.order_price = data.amountRub;
       params.currency = "RUB";
@@ -383,7 +390,7 @@ export function purchaseGoalsFromStatus(data: PaymentStatusPayload): PurchaseGoa
   }
   if (data.kind === "subscription" || data.kind === "subscription_pending") {
     const specs: PurchaseGoalSpec[] = [];
-    const params: Record<string, unknown> = {};
+    const params: Record<string, unknown> = { ...order };
     if (data.planId) params.plan = metrikaPlanSlug(data.planId);
     if (typeof data.amountRub === "number" && data.amountRub > 0) {
       params.order_price = data.amountRub;
@@ -394,7 +401,7 @@ export function purchaseGoalsFromStatus(data: PaymentStatusPayload): PurchaseGoa
     if (planGoal) {
       specs.push({
         goal: planGoal,
-        params: data.planId ? { plan: metrikaPlanSlug(data.planId) } : undefined,
+        params: { ...order, plan: metrikaPlanSlug(data.planId!) },
       });
     }
     return specs;
@@ -559,13 +566,15 @@ async function dispatchPendingGoals(
     if (generation !== runGeneration || activeUserId !== ownerUserId || !renew()) return;
     const slot = record.goals[spec.goal];
     if (!slot) continue;
-    if (slot.state === "callback_completed" || slot.state === "skipped") continue;
+    if (slot.state === "callback_completed") { reportGoalReceipt(record, spec.goal, slot); continue; }
+    if (slot.state === "skipped") continue;
     if (slot.attempts >= MAX_DISPATCH_ATTEMPTS) continue;
     slot.state = "dispatched";
     slot.attempts += 1;
     slot.updatedAt = Date.now();
     upsertPendingPurchase(record, generation);
     if (!renew()) return;
+    reportGoalReceipt(record, spec.goal, slot);
     const result = await dispatchGoal(spec.goal, spec.params, callbackTimeoutMs);
     if (generation !== runGeneration || activeUserId !== ownerUserId || !renew()) return;
     if (result.status === "callback_completed") {
@@ -580,12 +589,22 @@ async function dispatchPendingGoals(
     }
     slot.updatedAt = Date.now();
     upsertPendingPurchase(record, generation);
+    reportGoalReceipt(record, spec.goal, slot);
     if (slot.state === "timeout" || slot.state === "unknown") {
       const wait = retryDelayMs ?? Math.min(8000, 2000 * slot.attempts);
       if (wait > 0) await new Promise((resolve) => window.setTimeout(resolve, wait));
       if (!renew()) return;
     }
   }
+}
+
+function reportGoalReceipt(record: PendingPurchaseRecord, goal: string, slot: GoalSlot) {
+  if (!record.orderId || !record.confirmed || slot.attempts < 1 || !["dispatched", "callback_completed", "timeout", "unknown"].includes(slot.state)) return;
+  // Receipt failure never causes a second reachGoal or blocks the payment UI.
+  void fetch("/api/payment/analytics", { method: "POST", headers: { "Content-Type": "application/json" },
+    credentials: "same-origin", keepalive: true,
+    body: JSON.stringify({ invoiceId: record.invoiceId, orderId: record.orderId, goal,
+      state: slot.state === "dispatched" ? "attempt_started" : slot.state, attempts: slot.attempts }) }).catch(() => {});
 }
 
 export async function pollAndDispatchInvoice(invoiceId: string): Promise<PendingPurchaseRecord | null> {
@@ -622,6 +641,8 @@ export async function pollAndDispatchInvoice(invoiceId: string): Promise<Pending
           return clonePurchaseRecord(record);
         }
         if (payload.status === "confirmed") {
+          record.orderId = typeof payload.orderId === "string" ? payload.orderId : null;
+          record.analyticsExcluded = payload.analyticsExcluded === true;
           if (payload.kind === "subscription_renewal") {
             record.confirmed = true;
             record.kind = payload.kind;
@@ -645,6 +666,8 @@ export async function pollAndDispatchInvoice(invoiceId: string): Promise<Pending
           record.kind = null;
           record.planId = null;
           record.amountRub = null;
+          record.orderId = null;
+          record.analyticsExcluded = false;
           upsertPendingPurchase(record, generation);
         }
       } catch {

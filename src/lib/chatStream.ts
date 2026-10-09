@@ -1,4 +1,6 @@
 import { safeErrorFields } from "./redactSensitive";
+import { ChatCompletionStreamError, ChatCompletionStreamParser, extractChatStreamDelta } from "./chatCompletionStream";
+export { extractChatStreamDelta } from "./chatCompletionStream";
 
 export type ChatStreamMessage = {
   id: string;
@@ -60,41 +62,6 @@ export function encodeChatStreamEvent(event: ChatStreamEvent): Uint8Array {
   return encoder.encode(`${JSON.stringify(event)}\n`);
 }
 
-export function extractChatStreamDelta(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
-    return "";
-  }
-
-  const record = payload as Record<string, unknown>;
-  const choices = record.choices;
-  if (!Array.isArray(choices) || choices.length === 0) {
-    return "";
-  }
-
-  const choice = choices[0] as Record<string, unknown>;
-  const delta = choice.delta;
-  if (delta && typeof delta === "object") {
-    const content = (delta as Record<string, unknown>).content;
-    if (typeof content === "string") {
-      return content;
-    }
-  }
-
-  if (typeof choice.text === "string") {
-    return choice.text;
-  }
-
-  const message = choice.message;
-  if (message && typeof message === "object") {
-    const content = (message as Record<string, unknown>).content;
-    if (typeof content === "string") {
-      return content;
-    }
-  }
-
-  return "";
-}
-
 export function createChatNdjsonResponse(
   run: (emit: (event: ChatStreamEvent) => void) => Promise<void>
 ): Response {
@@ -111,7 +78,8 @@ export function createChatNdjsonResponse(
         try {
           emit({
             type: "error",
-            error: error instanceof Error && error.message === "Пустой ответ от ИИ"
+            error: error instanceof ChatCompletionStreamError ? error.message
+              : error instanceof Error && error.message === "Пустой ответ от ИИ"
               ? error.message
               : "Ошибка при обработке запроса",
           });
@@ -142,30 +110,12 @@ export async function consumeOpenAIChatStream(
   const onAbort = () => { void reader.cancel().catch(() => {}); };
   signal?.addEventListener("abort", onAbort, { once: true });
   const decoder = new TextDecoder();
-  let buffer = "";
   let fullText = "";
-
-  const consumeLine = (line: string) => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith(":")) {
-      return;
-    }
-
-    const payload = trimmed.startsWith("data:") ? trimmed.slice(5).trim() : trimmed;
-    if (!payload || payload === "[DONE]") {
-      return;
-    }
-
-    try {
-      const delta = extractChatStreamDelta(JSON.parse(payload) as unknown);
-      if (delta) {
-        fullText += delta;
-        onDelta(delta);
-      }
-    } catch {
-      // Incomplete or non-JSON chunk.
-    }
-  };
+  let consumed = false;
+  const parser = new ChatCompletionStreamParser((chunk, emitText) => {
+    const delta = emitText ? extractChatStreamDelta(chunk) : "";
+    if (delta) { fullText += delta; onDelta(delta); }
+  });
 
   try {
     signal?.throwIfAborted();
@@ -175,20 +125,15 @@ export async function consumeOpenAIChatStream(
       if (done) {
         break;
       }
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        consumeLine(line);
-      }
+      parser.push(decoder.decode(value, { stream: true }));
     }
 
-    buffer += decoder.decode();
-    if (buffer.trim()) {
-      consumeLine(buffer);
-    }
+    parser.push(decoder.decode());
+    if (parser.end() !== "completed") throw new ChatCompletionStreamError();
+    consumed = true;
   } finally {
     signal?.removeEventListener("abort", onAbort);
+    if (!consumed) await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
 

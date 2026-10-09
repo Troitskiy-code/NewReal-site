@@ -52,8 +52,14 @@ try {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText;
   new Function('module', 'exports', redactionCode)(redactionModule, redactionModule.exports);
+  const completionModule = { exports: {} };
+  const completionCode = ts.transpileModule(readFileSync('src/lib/chatCompletionStream.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText;
+  new Function('module', 'exports', completionCode)(completionModule, completionModule.exports);
   new Function('require', 'module', 'exports', streamCode)(name => {
     if (name === './redactSensitive') return redactionModule.exports;
+    if (name === './chatCompletionStream') return completionModule.exports;
     throw new Error(`Unexpected stream dependency ${name}`);
   }, streamModule, streamModule.exports);
   const originalFetch = globalThis.fetch;

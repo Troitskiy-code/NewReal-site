@@ -8,6 +8,7 @@ import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { finiteNonnegative, readCostUsage, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
 import { canonicalKodikModel, getKodikCostRates } from "./kodikCostRates";
 import { getAccountingUsdRub } from "./currencyRates";
+import { ChatCompletionStreamParser, extractChatStreamDelta } from "./chatCompletionStream";
 
 type CostContext = { operationId: string; actorHash: string | null; subscriptionType: string | null; sequence: number; audience: string };
 const contexts = new AsyncLocalStorage<CostContext>();
@@ -118,7 +119,7 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
   }
 }
 
-const streams = new WeakMap<ReadableStream<Uint8Array>, Ticket>();
+const streams = new WeakMap<ReadableStream<Uint8Array>, { ticket: Ticket; completed: boolean }>();
 export async function meteredChatFetch(url: string, init: RequestInit, model: string, estimatedInput: number): Promise<Response> {
   const ticket = await begin(safeModel(model), "chat");
   let response: Response;
@@ -131,31 +132,29 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = "", usage = noUsage(), outputChars = 0, ended = false, actualModel: string | undefined, responseId: string | null = null;
-  const consume = (line: string) => {
-    if (!line.startsWith("data:")) return;
-    try {
-      const chunk = JSON.parse(line.slice(5).trim());
-      responseId = requestId(chunk.id) ?? responseId;
-      if (typeof chunk.model === "string") actualModel = safeModel(chunk.model);
-      const next = readCostUsage(chunk);
-      // Providers may emit tokens and cost in different final frames. These are
-      // cumulative snapshots, not increments; do not sum duplicate usage chunks.
-      usage = {
-        inputTokens: next.inputTokens ?? usage.inputTokens,
-        outputTokens: next.outputTokens ?? usage.outputTokens,
-        cachedInputTokens: next.cachedInputTokens ?? usage.cachedInputTokens,
-        cacheWriteInputTokens: next.cacheWriteInputTokens ?? usage.cacheWriteInputTokens,
-        reportedCost: next.reportedCost ?? usage.reportedCost,
-      };
-      const text = chunk?.choices?.[0]?.delta?.content;
-      if (typeof text === "string") outputChars += text.length;
-    } catch { /* [DONE], heartbeat, malformed frame: never store raw content */ }
-  };
+  let usage = noUsage(), outputChars = 0, ended = false, cancelled = false, actualModel: string | undefined, responseId: string | null = null;
+  const tracked = { ticket, completed: false };
+  const parser = new ChatCompletionStreamParser((chunk) => {
+    responseId = requestId(chunk.id) ?? responseId;
+    if (typeof chunk.model === "string") actualModel = safeModel(chunk.model);
+    const next = readCostUsage(chunk);
+    // Providers may emit tokens and cost in different final frames. These are
+    // cumulative snapshots, not increments; do not sum duplicate usage chunks.
+    usage = {
+      inputTokens: next.inputTokens ?? usage.inputTokens,
+      outputTokens: next.outputTokens ?? usage.outputTokens,
+      cachedInputTokens: next.cachedInputTokens ?? usage.cachedInputTokens,
+      cacheWriteInputTokens: next.cacheWriteInputTokens ?? usage.cacheWriteInputTokens,
+      reportedCost: next.reportedCost ?? usage.reportedCost,
+    };
+    outputChars += extractChatStreamDelta(chunk).length;
+  });
   const complete = async (outcome: string) => {
     if (ended) return;
     ended = true;
-    if (buffer.trim()) consume(buffer);
+    const protocolOutcome = parser.end();
+    if (outcome === "completed") outcome = protocolOutcome;
+    tracked.completed = outcome === "completed";
     await finish(ticket, outcome, usage, response.status, estimatedInput,
       outcome === "completed" ? Math.ceil(outputChars / 4) : undefined, actualModel, response.headers.get("x-kodikrouter-request-id"), responseId);
   };
@@ -163,23 +162,21 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
     async pull(controller) {
       try {
         const { done, value } = await reader.read();
-        if (done) { buffer += decoder.decode(); await complete("completed"); controller.close(); reader.releaseLock(); return; }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split(/\r?\n/); buffer = lines.pop() ?? "";
-        // Bound parser memory; forwarding is unaffected.
-        if (buffer.length > 1_000_000) buffer = "";
-        for (const line of lines) consume(line);
+        if (cancelled) return;
+        if (done) { parser.push(decoder.decode()); await complete("completed"); controller.close(); reader.releaseLock(); return; }
+        parser.push(decoder.decode(value, { stream: true }));
         controller.enqueue(value);
-      } catch (error) { await complete("failed"); controller.error(error); }
+      } catch (error) { await complete("failed"); controller.error(error); reader.releaseLock(); }
     },
-    async cancel(reason) { try { await reader.cancel(reason); } finally { await complete("cancelled"); } },
+    async cancel(reason) { cancelled = true; try { await reader.cancel(reason); } finally { await complete("cancelled"); reader.releaseLock(); } },
   });
-  streams.set(body, ticket);
+  streams.set(body, tracked);
   return new Response(body, { status: response.status, headers: response.headers });
 }
 export async function recordChatCostCharge(stream: ReadableStream<Uint8Array>, chargedVC: number) {
-  const ticket = streams.get(stream);
-  if (!ticket) return;
+  const tracked = streams.get(stream);
+  if (!tracked?.completed) return;
+  const { ticket } = tracked;
   try { await prisma.aiCostEvent.update({ where: { id: ticket.id }, data: { chargedVC } }); }
   catch (error) { errorLog("AiCost", "Unable to record VC charge", toSafeDiagnostic(error)); }
 }

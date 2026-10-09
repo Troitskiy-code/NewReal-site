@@ -36,12 +36,13 @@ const server = createServer((req, res) => {
   } else if (req.url === '/stream' || req.url === '/zero' || req.url === '/fallback') {
     res.setHeader('Content-Type', 'text/event-stream');
     res.end('data: {"choices":[{"delta":{"content":"answer"}}]}\n\n' +
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n' +
       `data: ${JSON.stringify({ id: 'gen_chat_fixture', model: req.url === '/fallback' ? 'unpriced/fallback' : 'test/model', choices: [], usage: { prompt_tokens: 1000, completion_tokens: 200, cost: req.url === '/zero' ? 0 : 0.3 } })}\n\n` +
       (req.url === '/stream' ? 'data: {"usage":{"prompt_tokens":1000,"completion_tokens":200}}\n\ndata: {"usage":{"cost":0.3}}\n\n' : '') +
       'data: [DONE]\n\n');
   } else if (req.url === '/no-usage') {
     res.setHeader('Content-Type', 'text/event-stream');
-    res.end('data: {"choices":[{"delta":{"content":"12345678"}}]}\n\ndata: [DONE]\n\n');
+    res.end('data: {"choices":[{"delta":{"content":"12345678"}}]}\n\ndata: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n');
   } else if (req.url === '/fail') { res.statusCode = 503; res.end('{}'); }
   else {
     res.setHeader('Content-Type', 'application/json');

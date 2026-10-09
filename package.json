@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:payments:attribution": "node scripts/verify-payment-attribution.mjs",
+    "payments:attribution": "node scripts/report-payment-attribution.mjs",
     "verify:sec04": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-url-privacy.ts",
     "verify:seo": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-seo.ts",
     "verify:seo:runtime": "node scripts/verify-seo-runtime.mjs",
@@ -36,6 +38,8 @@
     "economy:import-kodik": "node scripts/import-kodik-cost-export.mjs",
     "verify:economy:costs": "node scripts/verify-economy-costs.mjs",
     "verify:economy:accounting": "node scripts/verify-cost-accounting.mjs",
+    "verify:economy:streams": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-cost-streams.mjs",
+    "verify:economy:streams:runtime": "node scripts/verify-cost-streams-runtime.mjs",
     "verify:economy:inputs": "node scripts/verify-cost-inputs.mjs",
     "verify:memory": "node scripts/verify-memory-context.mjs",
     "verify:memory:scenarios": "node scripts/verify-memory-scenarios.mjs --strict",

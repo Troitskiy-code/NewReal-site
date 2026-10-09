@@ -19,6 +19,7 @@ import { FIRST_VC_PACKAGE, VC_PACKAGES, type VcPackage } from "@/lib/vcPackages"
 import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
 import { coinsCharacterId, coinsChatHref } from "@/lib/coinsReturn";
 import { redirectToRobokassa } from "@/lib/robokassaRedirect";
+import { getCheckoutAttribution } from "@/lib/checkoutAttributionClient";
 import { withLocale } from "@/lib/i18nConfig";
 import { showError, showSuccess } from "@/lib/toast";
 
@@ -138,8 +139,9 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
     if (!pendingPackage || paying) return;
     setPaying(true);
     try {
+      const attribution = await getCheckoutAttribution();
       const response = await fetch("/api/payment/create", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId: pendingPackage.id, characterId }) });
+        body: JSON.stringify({ packageId: pendingPackage.id, characterId, attribution }) });
       const data = await response.json();
       if (response.ok && redirectToRobokassa(data)) return;
       showError(data.code === "FIRST_PACK_UNAVAILABLE"

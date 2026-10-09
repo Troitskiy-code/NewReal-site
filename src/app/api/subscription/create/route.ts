@@ -9,6 +9,7 @@ import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { metrikaPlanSlug } from "@/lib/metrika";
 import { reportPaymentFailure } from "@/lib/safeDiagnostics";
+import { registerPaymentOrder } from "@/lib/paymentOrders";
 
 export async function POST(req: NextRequest) {
   try {
@@ -96,6 +97,8 @@ export async function POST(req: NextRequest) {
       locale,
     });
 
+    await registerPaymentOrder({ invoiceId: checkout.fields.InvId, userId: session.user.id,
+      kind: "subscription", amountRub: sumRUB, planId: plan.id, period, attribution: body?.attribution });
     return NextResponse.json(checkout);
   } catch (error) {
     reportPaymentFailure("subscription.create", error);

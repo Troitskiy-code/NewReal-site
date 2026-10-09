@@ -16,7 +16,8 @@ export async function firstVcAvailability(userId: string) {
   return { available: !await hasPaidHistory(prisma, userId), reserved: false };
 }
 
-export async function reserveFirstVcCheckout(userId: string, build: (invoiceId?: string) => RobokassaCheckout) {
+export async function reserveFirstVcCheckout(userId: string, build: (invoiceId?: string) => RobokassaCheckout,
+  onReserved?: (checkout: RobokassaCheckout, tx: Prisma.TransactionClient) => Promise<unknown>) {
   return prisma.$transaction(async tx => {
     const owners = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     if (!owners.length) return null;
@@ -26,11 +27,13 @@ export async function reserveFirstVcCheckout(userId: string, build: (invoiceId?:
       // Re-sign the return URL/locale for this visit while keeping the same invoice.
       const checkout = build(existing.invoiceId);
       await tx.firstVcPurchase.update({ where: { userId }, data: { checkout: checkout as unknown as Prisma.InputJsonValue } });
+      await onReserved?.(checkout, tx);
       return checkout;
     }
     if (await hasPaidHistory(tx, userId)) return null;
     const checkout = build();
     await tx.firstVcPurchase.create({ data: { userId, invoiceId: checkout.fields.InvId, checkout: checkout as unknown as Prisma.InputJsonValue } });
+    await onReserved?.(checkout, tx);
     return checkout;
   });
 }
