@@ -43,6 +43,10 @@
     "verify:chat:continuation": "node scripts/verify-chat-continuation.mjs",
     "verify:economy:inputs": "node scripts/verify-cost-inputs.mjs",
     "verify:memory": "node scripts/verify-memory-context.mjs",
+    "verify:memory:rag": "node scripts/verify-memory-rag.mjs",
+    "verify:memory:narrative": "node scripts/verify-memory-narrative.mjs",
+    "verify:memory:rebuild": "node scripts/verify-memory-rebuild.mjs",
+    "verify:memory:editor": "node scripts/verify-memory-editor.mjs",
     "verify:memory:scenarios": "node scripts/verify-memory-scenarios.mjs --strict",
     "memory:live-eval": "node scripts/memory-live-eval.mjs"
   },

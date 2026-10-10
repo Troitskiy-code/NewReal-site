@@ -3,11 +3,12 @@ import { countTokens } from "@/lib/tokenCount";
 import { prisma } from "@/lib/prisma";
 import { getContextTokenLimit } from "@/lib/chatEconomy";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
-import { recordSummaryMemoryEntry } from "@/lib/advancedMemory";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
-import { EXTRACTIVE_SUMMARY_RULES, makeSummarySources, renderSelectedSummary, sourcesFromSummaries, type SummarySource } from "@/lib/memorySummaryEvidence";
+import { GROUNDED_SUMMARY_RULES, makeSummarySources, renderGroundedSummary, sourcesFromSummaries, type SummarySource } from "@/lib/memorySummaryEvidence";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import {
   fetchEmbeddings,
   hasDistinctKeyTokens,
@@ -83,9 +84,13 @@ function getSummaryConfigForUser(user: {
   return { config: getSummaryConfig(plan), plan: plan === "history" ? "story" : plan || "start" };
 }
 
-const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Выбери важные цитаты из истории. Факты Core не дублируй.`;
-const CHAPTER_PROMPT = `Ты — суммаризатор части ролевого диалога. Выбери новые события и обещания. Факты Core не дублируй.`;
-const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Выбери актуальные цитаты старой сводки и новой главы. Предпочитай новые сведения при противоречии; не меняй слова источника.`;
+const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Сохрани смысл, действующие планы и изменения состояния по исходной переписке.`;
+const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Обнови краткую сводку по новой части переписки. Сохрани содержание открытых планов, объедини повторы; различай предложение, решение, выполнение и отмену. При неясном противоречии не угадывай.`;
+const MAX_SUMMARY_INPUT_TOKENS = 12_000;
+function summaryInputTooLarge(input: string, tokenLimit = MAX_SUMMARY_INPUT_TOKENS): boolean {
+  // Bound work before the tokenizer too: adversarial repeated text can make BPE expensive.
+  return input.length > tokenLimit * 8 || countTokens(input) > tokenLimit;
+}
 
 type DialogMessage = {
   role: string;
@@ -101,6 +106,8 @@ function applyPromptVars(prompt: string, vars: Record<string, string | number>):
 }
 
 type SummarySections = {
+  state?: string;
+  decisions?: string;
   permanent?: string;
   activeLines?: string;
   events?: string;
@@ -108,6 +115,9 @@ type SummarySections = {
 };
 
 const HEADING_MAP: Array<{ key: keyof SummarySections; test: RegExp }> = [
+  { key: "state", test: /^#{1,3}\s*(текущая ситуация|current situation)/i },
+  { key: "decisions", test: /^#{1,3}\s*(принятые решения|decisions)/i },
+  { key: "activeLines", test: /^#{1,3}\s*(открытые планы|open plans)/i },
   { key: "permanent", test: /^#{1,3}\s*(постоянн|permanent)/i },
   { key: "activeLines", test: /^#{1,3}\s*(активн|active\s+lines?)/i },
   { key: "events", test: /^#{1,3}\s*(недавн|recent\s+events?|событи|events)/i },
@@ -136,6 +146,8 @@ export function parseSummarySections(text: string): SummarySections {
   const lines = text.split(/\r?\n/);
   let current: keyof SummarySections | null = null;
   const buckets: Record<keyof SummarySections, string[]> = {
+    state: [],
+    decisions: [],
     permanent: [],
     activeLines: [],
     events: [],
@@ -158,7 +170,7 @@ export function parseSummarySections(text: string): SummarySections {
     if (body) sections[key] = body;
   }
 
-  if (!sections.activeLines && !sections.events && !sections.permanent && !sections.emotion) {
+  if (!Object.values(sections).some(Boolean)) {
     const items = extractListItems(text);
     if (items.length > 0) {
       sections.events = items.map((item, index) => `${index + 1}. ${item}`).join("\n");
@@ -170,6 +182,8 @@ export function parseSummarySections(text: string): SummarySections {
 
 export function rebuildSummary(sections: SummarySections): string {
   const parts: string[] = [];
+  if (sections.state?.trim()) parts.push(`## Текущая ситуация\n${sections.state.trim()}`);
+  if (sections.decisions?.trim()) parts.push(`## Принятые решения\n${sections.decisions.trim()}`);
   if (sections.permanent?.trim()) {
     parts.push(`## Постоянное\n${sections.permanent.trim()}`);
   }
@@ -462,7 +476,8 @@ async function requestKodikText(
       messages: [
         {
           role: "system",
-          content: applyPromptVars(systemPrompt, { maxTokens, ...extraVars }) + "\n\n" + EXTRACTIVE_SUMMARY_RULES,
+          content: applyPromptVars(systemPrompt, { maxTokens, ...extraVars }) + "\n\n" + GROUNDED_SUMMARY_RULES
+            + `\nОтвет целиком должен поместиться в ${maxTokens} токенов. Максимум ${Math.min(10, Math.max(1, Math.floor(maxTokens / 120)))} пунктов, коротко, без markdown-обёртки.`,
         },
         { role: "user", content: userContent },
       ],
@@ -487,12 +502,15 @@ async function requestKodikText(
 
 async function requestSelectedSummary(
   apiKey: string, prompt: string, sources: SummarySource[], maxTokens: number,
-  coreText: string | null, eventsLimit = 6
+  coreText: string | null
 ): Promise<string> {
   if (!sources.length) throw new Error("No memory source quotes available");
+  // JSON output overhead uses the existing output allowance, never an unbounded extra call.
+  const input = JSON.stringify({ sources, core: coreText });
+  if (summaryInputTooLarge(input)) throw new MemorySummaryInputError();
   const raw = await requestKodikText(apiKey, prompt,
-    JSON.stringify({ sources, core: coreText }), maxTokens);
-  const summary = renderSelectedSummary(raw, sources, maxTokens, countTokens, eventsLimit);
+    input, maxTokens);
+  const summary = renderGroundedSummary(raw, sources, maxTokens, countTokens);
   if (!summary) throw new Error("No supported memory quotes selected");
   return summary;
 }
@@ -501,13 +519,9 @@ async function requestSummary(apiKey: string, messages: DialogMessage[], maxToke
   return requestSelectedSummary(apiKey, SUMMARY_PROMPT, makeSummarySources(messages), maxTokens, coreText);
 }
 
-async function requestChapterSummary(apiKey: string, messages: DialogMessage[], maxTokens: number, coreText: string | null): Promise<string> {
-  return requestSelectedSummary(apiKey, CHAPTER_PROMPT, makeSummarySources(messages), maxTokens, coreText);
-}
-
-async function mergeSummaries(apiKey: string, oldSummary: string, newChapter: string,
-  maxTokens: number, eventsLimit: number, coreText: string | null): Promise<string> {
-  return requestSelectedSummary(apiKey, MERGE_PROMPT, sourcesFromSummaries(oldSummary, newChapter), maxTokens, coreText, eventsLimit);
+function mergeSources(oldSummary: string, messages: DialogMessage[]): SummarySource[] {
+  return [...sourcesFromSummaries(oldSummary), ...makeSummarySources(messages)]
+    .map((source, index) => ({ ...source, id: `s${index + 1}` }));
 }
 
 /**
@@ -521,30 +535,32 @@ async function persistMemorySummary(
   lastSummarizedAt: Date,
   summarizedMessageCount: number,
   expectedCoverage: Date | null | "none",
-  expectedSummary?: string
+  expectedSummary?: string,
+  historyGuard?: (tx: Prisma.TransactionClient) => Promise<boolean>
 ): Promise<string | null> {
-  if (expectedCoverage === "none") {
-    try {
-      await prisma.memory.create({ data: { userId, characterId, summary, lastSummarizedAt, summarizedMessageCount } });
-    } catch (error) {
-      if ((error as { code?: string })?.code === "P2002") {
-        infoLog("Memory", "Summary create skipped: another refresh saved first");
-        return null;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      if (historyGuard && !(await historyGuard(tx))) return null;
+      if (expectedCoverage === "none") {
+        await tx.memory.create({ data: { userId, characterId, summary, lastSummarizedAt, summarizedMessageCount } });
+      } else {
+        const updated = await tx.memory.updateMany({
+          where: { userId, characterId, lastSummarizedAt: expectedCoverage, summary: expectedSummary },
+          data: { summary, lastSummarizedAt, summarizedMessageCount },
+        });
+        if (!updated.count) return null;
       }
-      throw error;
-    }
-  } else {
-    const updated = await prisma.memory.updateMany({
-      where: { userId, characterId, lastSummarizedAt: expectedCoverage, summary: expectedSummary },
-      data: { summary, lastSummarizedAt, summarizedMessageCount },
+      await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "summary" } });
+      await tx.memoryEntry.create({ data: { userId, characterId, type: "summary", content: summary } });
+      return summary;
     });
-    if (updated.count === 0) {
-      infoLog("Memory", "Summary update skipped: coverage changed by another refresh or edit");
+  } catch (error) {
+    if (expectedCoverage === "none" && (error as { code?: string })?.code === "P2002") {
+      infoLog("Memory", "Summary create skipped: another refresh saved first");
       return null;
     }
+    throw error;
   }
-  await recordSummaryMemoryEntry(userId, characterId, summary);
-  return summary;
 }
 
 async function createArcSummary(
@@ -611,15 +627,9 @@ async function updateArcWithChapter(
     `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}) → eventsLimit: ${eventsLimit}`
   );
   const coreText = await loadCoreMemoryText(userId, characterId);
-  const chapterSummary = await requestChapterSummary(apiKey, chapterMessages, config.maxTokens, coreText);
-  const mergedSummary = await mergeSummaries(
-    apiKey,
-    existingSummary,
-    chapterSummary,
-    config.maxTokens,
-    eventsLimit,
-    coreText
-  );
+  // One grounded update sees the actual new messages, not a twice-compressed chapter.
+  const mergedSummary = await requestSelectedSummary(apiKey, MERGE_PROMPT,
+    mergeSources(existingSummary, chapterMessages), config.maxTokens, coreText);
   const saved = await persistMemorySummary(
     userId,
     characterId,
@@ -851,4 +861,106 @@ export async function refreshMemorySummaryWithStatus(
   if (!text && progress.status === "unchanged") progress.status = "empty";
   const status = progress.status;
   return { summary, status, updated: status === "updated" };
+}
+
+export class MemorySummaryInputError extends Error {
+  constructor() { super("Memory summary input exceeds bounded processing limit"); this.name = "MemorySummaryInputError"; }
+}
+
+type RebuildCursor = {
+  version: 1; userId: string; characterId: string; snapshot: string;
+  historyRevision: string;
+  through: string; after: string | null; processed: number; total: number;
+  draft: string; expires: number;
+};
+
+async function rebuildHistoryRevision(userId: string, characterId: string, through: Date, tx?: Prisma.TransactionClient): Promise<string> {
+  const client = tx ?? prisma;
+  // Final commit locks the source rows briefly; edits/regeneration/deletion cannot publish a stale rebuilt summary.
+  const [row] = tx ? await client.$queryRaw<Array<{ revision: string | null }>>`
+    WITH source AS (SELECT "id", "role", "content", "createdAt" FROM "Message"
+      WHERE "userId" = ${userId} AND "characterId" = ${characterId} AND "createdAt" <= ${through} FOR SHARE)
+    SELECT md5(string_agg(md5("id" || ':' || "role" || ':' || "content"), ',' ORDER BY "createdAt", "id")) AS revision FROM source
+  ` : await client.$queryRaw<Array<{ revision: string | null }>>`
+    SELECT md5(string_agg(md5("id" || ':' || "role" || ':' || "content"), ',' ORDER BY "createdAt", "id")) AS revision
+    FROM "Message" WHERE "userId" = ${userId} AND "characterId" = ${characterId} AND "createdAt" <= ${through}
+  `;
+  return row.revision ?? "empty";
+}
+function rebuildSecret(): string {
+  const secret = process.env['NEXTAUTH_SECRET'];
+  if (!secret) throw new Error("NEXTAUTH_SECRET is required");
+  return secret;
+}
+function summarySnapshot(row: { id: string; summary: string; lastSummarizedAt: Date | null } | null): string {
+  return createHash("sha256").update(JSON.stringify(row ? [row.id, row.summary, row.lastSummarizedAt?.toISOString()] : null)).digest("hex");
+}
+function signRebuildCursor(cursor: RebuildCursor): string {
+  const encoded = Buffer.from(JSON.stringify(cursor)).toString("base64url");
+  return `${encoded}.${createHmac("sha256", rebuildSecret()).update(`memory-rebuild:${encoded}`).digest("base64url")}`;
+}
+function readRebuildCursor(token: string, userId: string, characterId: string): RebuildCursor {
+  if (token.length > 30_000) throw new MemoryRebuildCursorError();
+  const parts = token.split(".");
+  if (parts.length !== 2) throw new MemoryRebuildCursorError();
+  const expected = createHmac("sha256", rebuildSecret()).update(`memory-rebuild:${parts[0]}`).digest();
+  const supplied = Buffer.from(parts[1], "base64url");
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) throw new MemoryRebuildCursorError();
+  const cursor = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8")) as RebuildCursor;
+  if (cursor.version !== 1 || cursor.userId !== userId || cursor.characterId !== characterId
+    || cursor.expires < Date.now() || !Number.isFinite(Date.parse(cursor.through))
+    || (cursor.after !== null && !Number.isFinite(Date.parse(cursor.after)))) throw new MemoryRebuildCursorError();
+  return cursor;
+}
+
+export class MemoryRebuildCursorError extends Error {
+  constructor() { super("Invalid rebuild continuation"); this.name = "MemoryRebuildCursorError"; }
+}
+
+/** One request = one bounded model call. Draft is signed, client-carried, never published until complete. */
+export async function rebuildMemorySummaryStep(
+  userId: string, characterId: string, apiKey: string,
+  user: { subscriptionType?: string | null; subscriptionEnd?: Date | string | null }, continuation?: string
+) {
+  const current = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } } });
+  let cursor: RebuildCursor;
+  if (continuation) cursor = readRebuildCursor(continuation, userId, characterId);
+  else {
+    const latest = await prisma.message.findFirst({ where: { userId, characterId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+    if (!latest) return { status: "empty" as const, updated: false, summary: null };
+    const total = await prisma.message.count({ where: { userId, characterId, createdAt: { lte: latest.createdAt } } });
+    cursor = { version: 1, userId, characterId, snapshot: summarySnapshot(current),
+      historyRevision: await rebuildHistoryRevision(userId, characterId, latest.createdAt), through: latest.createdAt.toISOString(),
+      after: null, processed: 0, total, draft: "", expires: Date.now() + 15 * 60_000 };
+  }
+  if (summarySnapshot(current) !== cursor.snapshot
+    || await rebuildHistoryRevision(userId, characterId, new Date(cursor.through)) !== cursor.historyRevision) {
+    return { status: "conflict" as const, updated: false, summary: current ? { summary: current.summary, createdAt: current.createdAt } : null };
+  }
+  const rows = await prisma.message.findMany({
+    where: { userId, characterId, createdAt: { lte: new Date(cursor.through), ...(cursor.after ? { gt: new Date(cursor.after) } : {}) } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: MAX_SUMMARY_CHUNK_MESSAGES + 1,
+    select: { role: true, content: true, createdAt: true },
+  });
+  // Preserve timestamp coverage semantics, including equal-time groups. Bound input before the AI call.
+  let chunk = takeSummaryChunk(rows, 0);
+  while (chunk.length && summaryInputTooLarge(JSON.stringify(mergeSources(cursor.draft, chunk)), MAX_SUMMARY_INPUT_TOKENS - 2000)) {
+    const end = messageTime(chunk[chunk.length - 1]);
+    chunk = chunk.filter((row) => messageTime(row) !== end);
+  }
+  if (!chunk.length) throw new MemorySummaryInputError();
+  const { config } = getSummaryConfigForUser(user);
+  const coreText = await loadCoreMemoryText(userId, characterId);
+  cursor.draft = await requestSelectedSummary(apiKey, cursor.draft ? MERGE_PROMPT : SUMMARY_PROMPT,
+    mergeSources(cursor.draft, chunk), config.maxTokens, coreText);
+  cursor.after = lastSummarizedTimestamp(chunk).toISOString();
+  cursor.processed += chunk.length;
+  const remaining = await prisma.message.count({ where: { userId, characterId, createdAt: { gt: new Date(cursor.after), lte: new Date(cursor.through) } } });
+  if (remaining) return { status: "rebuilding" as const, updated: false, processed: cursor.processed, total: cursor.total,
+    continuation: signRebuildCursor(cursor) };
+  const saved = await persistMemorySummary(userId, characterId, cursor.draft, new Date(cursor.after), cursor.processed,
+    current ? current.lastSummarizedAt : "none", current?.summary,
+    async (tx) => await rebuildHistoryRevision(userId, characterId, new Date(cursor.through), tx) === cursor.historyRevision);
+  const summary = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } }, select: { summary: true, createdAt: true } });
+  return { status: saved ? "updated" as const : "conflict" as const, updated: Boolean(saved), summary, processed: cursor.processed, total: cursor.total };
 }

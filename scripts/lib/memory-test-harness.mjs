@@ -117,7 +117,10 @@ export function createFakeProvider() {
           if (provider.beforeSummary) await provider.beforeSummary();
           if (provider.summaryFails) throw axiosError(503);
           if (provider.summaryText !== null) content = provider.summaryText;
-          else if (prompt.includes('MEMORY_SUMMARY_SELECTION_V1')) {
+          else if (prompt.includes('MEMORY_GROUNDED_SUMMARY_V1')) {
+            const sources = JSON.parse(body.messages[1].content).sources;
+            content = JSON.stringify({ items: sources.slice(0, 3).map(source => ({ section: 'events', status: 'reported', text: source.text, sources: [source.id] })) });
+          } else if (prompt.includes('MEMORY_SUMMARY_SELECTION_V1')) {
             const sources = JSON.parse(body.messages[1].content).sources;
             content = JSON.stringify({ activeLines: [], events: sources.slice(0, 3).map((source) => source.id) });
           } else content = '## Активные линии\n- Хранитель маяка помогает гостю.\n\n## Недавние события\n1. Гость пришёл к маяку.\n\n## Эмоциональный фон\nСпокойный.';
@@ -317,7 +320,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
   process.env.DATABASE_URL = url;
 
   const observedWrites = { summaries: 0 };
-  const observedDb = new Proxy(db, { get(target, key) {
+  const observe = (client) => new Proxy(client, { get(target, key) {
     if (key === 'memory') return new Proxy(target.memory, { get(delegate, operation) {
       const value = delegate[operation];
       if (!['create', 'upsert', 'updateMany'].includes(operation)) return value;
@@ -327,9 +330,12 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
         return result;
       };
     } });
+    if (key === '$transaction') return (input, ...options) => typeof input === 'function'
+      ? target.$transaction((tx) => input(observe(tx)), ...options) : target.$transaction(input, ...options);
     const value = target[key];
     return typeof value === 'function' ? value.bind(target) : value;
   } });
+  const observedDb = observe(db);
   const { load } = createModuleLoader({
     prismaFor: (file) => (file.endsWith('messageEmbeddings.ts') ? vectorPrisma : observedDb),
     session,

@@ -26,6 +26,7 @@ import {
   resolveChatContext,
   searchRagContext,
   streamChatCompletion,
+  type ChatHistoryRow,
 } from "@/lib/chatHelpers";
 import {
   consumeOpenAIChatCompletion,
@@ -271,7 +272,7 @@ async function handlePost(
         throw error;
       }
     })();
-    const ragSearch = (intent: UserIntent, totalHistoryTokens: number, ragEligible: boolean) =>
+    const ragSearch = (intent: UserIntent, totalHistoryTokens: number, ragEligible: boolean, historyRows: ChatHistoryRow[]) =>
       searchRagContext({
         userId: session.user.id,
         characterId: id,
@@ -281,6 +282,7 @@ async function handlePost(
         intent,
         ragEligible,
         totalHistoryTokens,
+        historyRows,
       }).catch((error): RagMessage[] => {
         errorLog("Server", "[ChatTTFT] RAG failed, continuing without it", toSafeDiagnostic(error));
         return [];
@@ -289,7 +291,7 @@ async function handlePost(
     const earlyRagPromise = fastContextPromise
       .then((context) =>
         shouldUseRag({ ragEligible: context.ragEligible, userQuery: ragQueryText, intent: "general", historyTokens: context.totalHistoryTokens }).use
-          ? ragSearch("general", context.totalHistoryTokens, context.ragEligible)
+          ? ragSearch("general", context.totalHistoryTokens, context.ragEligible, context.historyRows)
           : null
       )
       .catch(() => null);
@@ -323,7 +325,7 @@ async function handlePost(
         intent,
         historyTokens: fastContext.totalHistoryTokens,
       });
-      ragMessages = decision.use ? await ragSearch(intent, fastContext.totalHistoryTokens, fastContext.ragEligible) : [];
+      ragMessages = decision.use ? await ragSearch(intent, fastContext.totalHistoryTokens, fastContext.ragEligible, fastContext.historyRows) : [];
     }
     console.log(`[ChatTTFT] RAG quotes: ${ragMessages.length}`);
 

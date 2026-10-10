@@ -5,6 +5,7 @@ import {
   episodicLimitForIntent,
   formatEpisodicLine,
   loadMemoryCandidates,
+  rankEpisodicCandidates,
   sortEpisodicChronologically,
   type EpisodicMemoryItem,
   type MemoryCandidates,
@@ -16,12 +17,12 @@ import { readChatMemoryState, resolveChatMemorySummary } from "@/lib/chatMemory"
 import { appendMemorySection, type MemoryBlock, type MemoryBlockKind } from "@/lib/memoryPromptFormat";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import {
-  formatRagLine,
   isRagEligible,
   shouldUseRag,
   searchRelevantMessages,
   type RagMessage,
 } from "@/lib/messageEmbeddings";
+import { buildRagSearchQuery, fitRagExcerpts, excludeRecentRagSources, limitRagHistoryToQuery } from "@/lib/ragRetrieval";
 import {
   getContextTokenLimit,
   getHistoryMessageLimit,
@@ -307,6 +308,8 @@ export type FastChatContext = {
   summaryCoveredUntil: Date | null;
   memoryCandidates: MemoryCandidates;
   historyRows: ChatHistoryRow[];
+  /** Strict regeneration cutoff, including when there are no preceding messages. */
+  historyBefore?: Date | null;
   /** Exact tokens of the loaded window plus an average-based estimate for older messages. */
   totalHistoryTokens: number;
   ragEligible: boolean;
@@ -365,18 +368,6 @@ export function selectRecentHistory(
   }
 
   return { rows: picked.reverse(), tokens, unprocessedInWindow, droppedUnprocessed };
-}
-
-function fitLines<T extends { line: string }>(items: T[], budget: number): T[] {
-  const kept: T[] = [];
-  let used = 0;
-  for (const item of items) {
-    const itemTokens = countTokens(item.line) + 1;
-    if (used + itemTokens > budget) continue;
-    kept.push(item);
-    used += itemTokens;
-  }
-  return kept;
 }
 
 const CUT_OFF_CONJUNCTIONS = [
@@ -512,7 +503,7 @@ async function loadChatHistoryRows({
   characterId: string;
   historyLimit: number;
   historyBeforeMessageId?: string;
-}): Promise<{ rows: ChatHistoryRow[]; olderCount: number }> {
+}): Promise<{ rows: ChatHistoryRow[]; olderCount: number; historyBefore: Date | null }> {
   let cutoff: Date | null = null;
   if (historyBeforeMessageId) {
     const cutoffMessage = await prisma.message.findUnique({
@@ -536,7 +527,7 @@ async function loadChatHistoryRows({
     }),
     prisma.message.count({ where }),
   ]);
-  return { rows: rows.reverse(), olderCount: Math.max(0, total - rows.length) };
+  return { rows: rows.reverse(), olderCount: Math.max(0, total - rows.length), historyBefore: cutoff };
 }
 
 const DROP_ORDER_WHEN_OVER_LIMIT: MemoryBlockKind[] = ["quotes", "summary", "events", "core"];
@@ -555,7 +546,8 @@ export function assemblePreparedChatMessages(
     : "";
   let episodicRoom = allocations.coreEpisodic - countTokens(coreText);
   const keptEvents: EpisodicMemoryItem[] = [];
-  for (const item of context.memoryCandidates.episodic.slice(0, episodicLimitForIntent(intent))) {
+  const query = [...context.historyRows].reverse().find((row) => row.role === "user")?.content ?? "";
+  for (const item of rankEpisodicCandidates(context.memoryCandidates.episodic, query).slice(0, episodicLimitForIntent(intent))) {
     const itemTokens = countTokens(formatEpisodicLine(item)) + 1;
     if (itemTokens > episodicRoom) continue;
     keptEvents.push(item);
@@ -563,9 +555,8 @@ export function assemblePreparedChatMessages(
   }
   const eventsText = sortEpisodicChronologically(keptEvents).map(formatEpisodicLine).join("\n");
   const summaryText = context.memorySummary ? trimTextToTokenLimit(context.memorySummary, allocations.summary) : "";
-  const quoteCandidates = (ragMessages ?? []).map((message) => ({ id: message.id, line: formatRagLine(message, locale) }));
   const quotesOutside = (recentIds: Set<string>) =>
-    fitLines(quoteCandidates.filter((quote) => !recentIds.has(quote.id)), allocations.retrieved);
+    fitRagExcerpts(ragMessages ?? [], recentIds, allocations.retrieved, countTokens, locale);
   const dropped = new Set<MemoryBlockKind>();
   const compose = (quotes: Array<{ line: string }>) => {
     const blocks: MemoryBlock[] = [
@@ -605,8 +596,8 @@ export function assemblePreparedChatMessages(
     extended: capB,
   });
   const recentIds = new Set(recent.rows.map((row) => row.id));
-  if (quotes.some((quote) => recentIds.has(quote.id))) {
-    quotes = quotes.filter((quote) => !recentIds.has(quote.id));
+  if (quotes.some(quote => quote.messages.some(message => recentIds.has(message.id)))) {
+    quotes = excludeRecentRagSources(quotes, recentIds, locale);
     systemPrompt = compose(quotes);
     systemTokens = countTokens(systemPrompt);
   }
@@ -621,7 +612,7 @@ export function assemblePreparedChatMessages(
   const totalTokens = systemTokens + recent.tokens;
   const stats: ContextAssemblyStats = {
     episodicShown: dropped.has("events") ? 0 : keptEvents.length,
-    ragQuotes: dropped.has("quotes") ? 0 : quotes.length,
+    ragQuotes: dropped.has("quotes") ? 0 : quotes.reduce((sum, quote) => sum + quote.messages.length, 0),
     historyMessages: recent.rows.length,
     unprocessedInWindow: recent.unprocessedInWindow,
     droppedUnprocessed: recent.droppedUnprocessed,
@@ -716,6 +707,7 @@ ${systemPromptBase}`;
     summaryCoveredUntil: memoryState.coveredUntil,
     memoryCandidates,
     historyRows,
+    historyBefore: history.historyBefore,
     totalHistoryTokens,
     ragEligible,
     maxContextTokens,
@@ -734,6 +726,8 @@ export async function searchRagContext({
   intent,
   ragEligible,
   totalHistoryTokens,
+  historyRows = [],
+  historyBefore,
 }: {
   userId: string;
   characterId: string;
@@ -743,6 +737,8 @@ export async function searchRagContext({
   intent: UserIntent;
   ragEligible: boolean;
   totalHistoryTokens: number;
+  historyRows?: ChatHistoryRow[];
+  historyBefore?: Date | null;
 }): Promise<RagMessage[]> {
   const ragDecision = shouldUseRag({
     ragEligible,
@@ -760,12 +756,17 @@ export async function searchRagContext({
   }
 
   try {
+    const queryHistory = limitRagHistoryToQuery(historyRows, excludeMessageId);
+    const query = buildRagSearchQuery(ragQueryText, queryHistory, excludeMessageId);
     const ragMessages = await searchRelevantMessages(
       userId,
       characterId,
-      ragQueryText,
+      query,
       apiKey,
-      excludeMessageId
+      excludeMessageId,
+      undefined,
+      undefined,
+      { currentQuery: ragQueryText, excludedMessageIds: queryHistory.slice(-3).map(row => row.id), throughMessage: queryHistory.at(-1), before: historyBefore }
     );
     debugLog("RAG", `найдено ${ragMessages.length} релевантных сообщений`);
     return ragMessages;
@@ -787,6 +788,8 @@ export async function prepareChatMessages(options: PrepareChatMessagesOptions): 
     intent,
     ragEligible: fastContext.ragEligible,
     totalHistoryTokens: fastContext.totalHistoryTokens,
+    historyRows: fastContext.historyRows,
+    historyBefore: fastContext.historyBefore,
   });
   return assemblePreparedChatMessages(fastContext, intent, ragMessages);
 }

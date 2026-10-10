@@ -71,12 +71,26 @@ export default function MemoryEditor({
   characterId: string;
   onClose: () => void;
 }) {
+  // A new character gets a new editor; late responses cannot overwrite its draft.
+  return <CharacterMemoryEditor key={characterId} characterId={characterId} onClose={onClose} />;
+}
+
+function CharacterMemoryEditor({ characterId, onClose }: {
+  characterId: string;
+  onClose: () => void;
+}) {
   const [tab, setTab] = useState<TabId>("summary");
   const [loading, setLoading] = useState(true);
+  const [loadedCharacterId, setLoadedCharacterId] = useState<string | null>(null);
+  const loadVersionRef = useRef(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState("");
   const [coreDraft, setCoreDraft] = useState("");
+  const [rebuildConfirmed, setRebuildConfirmed] = useState(false);
+  const [rebuildProgress, setRebuildProgress] = useState<string | null>(null);
+  const stopRebuildRef = useRef(false);
+  useEffect(() => () => { stopRebuildRef.current = true; }, [characterId]);
   const [events, setEvents] = useState<EpisodicItem[]>([]);
   const [addingEvent, setAddingEvent] = useState(false);
   const [newEvent, setNewEvent] = useState("");
@@ -87,16 +101,19 @@ export default function MemoryEditor({
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [episodicCounts, setEpisodicCounts] = useState<EpisodicCounts>({ 1: 0, 2: 0, 3: 0 });
   const showAllEventsRef = useRef(false);
-  showAllEventsRef.current = showAllEvents;
+  useEffect(() => { showAllEventsRef.current = showAllEvents; }, [showAllEvents]);
 
-  const loadMemory = useCallback(async (includeAll = showAllEventsRef.current) => {
+  const loadMemory = useCallback(async (includeAll = showAllEventsRef.current, signal?: AbortSignal) => {
+    const version = ++loadVersionRef.current;
     const query = includeAll ? "?all=1" : "";
-    const { data } = await axios.get<MemoryPayload>(`/api/chat/${characterId}/memory${query}`);
+    const { data } = await axios.get<MemoryPayload>(`/api/chat/${characterId}/memory${query}`, { signal });
+    if (version !== loadVersionRef.current) return;
     setSummaryDraft(data.summary?.summary ?? "");
     setCoreDraft(data.core?.content ?? data.coreMemory?.content ?? "");
     setEvents(data.episodic ?? data.episodicMemories ?? []);
     setIsOwner(Boolean(data.isOwner));
     setEpisodicCounts(data.episodicCounts ?? { 1: 0, 2: 0, 3: 0 });
+    setLoadedCharacterId(characterId);
     if (!data.isOwner) {
       setShowAllEvents(false);
     }
@@ -115,8 +132,13 @@ export default function MemoryEditor({
   }, [loadMemory]);
 
   useEffect(() => {
-    void fetchMemory();
-  }, [fetchMemory]);
+    let active = true;
+    const controller = new AbortController();
+    void loadMemory(undefined, controller.signal).then(() => { if (active) setLoadError(null); })
+      .catch(() => { if (active) { setLoadError("Не удалось загрузить память"); setLoadedCharacterId(characterId); } })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, [loadMemory, characterId]);
 
   const handleSaveSummary = async () => {
     setSaving(true);
@@ -131,6 +153,37 @@ export default function MemoryEditor({
     } catch (error) {
       showError(apiError(error, "Не удалось сохранить суммаризацию"));
     } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRefreshSummary = async (rebuild = false) => {
+    if (rebuild && !rebuildConfirmed) return;
+    setSaving(true);
+    stopRebuildRef.current = false;
+    let continuation: string | undefined;
+    try {
+      do {
+        const { data } = await axios.post<{
+          status: "updated" | "conflict" | "unchanged" | "empty" | "rebuilding";
+          summary?: SummaryMemory | null; continuation?: string; processed?: number; total?: number;
+        }>(`/api/chat/${characterId}/memory/refresh-summary`, { mode: rebuild ? "rebuild" : "refresh", confirm: rebuild, continuation });
+        if (data.status === "rebuilding") {
+          if (!data.continuation) throw new Error("Missing continuation");
+          continuation = data.continuation;
+          setRebuildProgress(`Обработано сообщений: ${data.processed} из ${data.total}. Прежняя сводка пока сохранена.`);
+        } else {
+          setSummaryDraft(data.summary?.summary ?? "");
+          if (data.status === "conflict") showError("Память изменилась во время обработки. Показана сохранённая версия.");
+          else showSuccess(data.status === "updated" ? "Сводка обновлена" : "Новых сообщений для обновления нет");
+          break;
+        }
+      } while (rebuild && !stopRebuildRef.current);
+    } catch (error) {
+      showError(apiError(error, "Не удалось обновить сводку. Сохранённая память не изменена."));
+    } finally {
+      setRebuildProgress(null);
+      setRebuildConfirmed(false);
       setSaving(false);
     }
   };
@@ -202,7 +255,7 @@ export default function MemoryEditor({
     }
   };
 
-  if (loading) {
+  if (loading || loadedCharacterId !== characterId) {
     return (
       <div className="flex items-center justify-center py-10">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -236,6 +289,23 @@ export default function MemoryEditor({
 
       {tab === "summary" ? (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="space-y-2 rounded-lg border border-[#2A2A2A] p-3 text-xs text-gray-400">
+            <p>Обновление добавляет новые события. Пересборка заново читает переписку и заменяет сводку; постоянная память и события сохраняются.</p>
+            <label className="flex items-start gap-2">
+              <input type="checkbox" checked={rebuildConfirmed} disabled={saving}
+                onChange={(event) => setRebuildConfirmed(event.target.checked)} />
+              Заменить сводку из переписки, включая мои ручные правки сводки
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={saving} onClick={() => void handleRefreshSummary()}
+                className="rounded-full border border-[#2A2A2A] px-3 py-2 font-semibold text-white disabled:opacity-50">Обновить сводку</button>
+              <button type="button" disabled={saving || !rebuildConfirmed} onClick={() => void handleRefreshSummary(true)}
+                className="rounded-full border border-[#2A2A2A] px-3 py-2 font-semibold text-white disabled:opacity-50">Пересобрать из переписки</button>
+              {rebuildProgress && <button type="button" onClick={() => { stopRebuildRef.current = true; }}
+                className="rounded-full px-3 py-2 text-white">Остановить после текущего шага</button>}
+            </div>
+            {rebuildProgress && <p role="status" aria-live="polite">{rebuildProgress}</p>}
+          </div>
           <textarea
             id="memory-summary"
             value={summaryDraft}

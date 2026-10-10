@@ -1,6 +1,9 @@
 import { meteredPost } from "@/lib/aiCostTelemetry";
 import { prisma } from "@/lib/prisma";
 import { debugLog, errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { formatRagLine, selectDiverseRagCandidates, type RagMessage, type RagSourceMessage } from "./ragRetrieval";
+export { formatRagLine } from "./ragRetrieval";
+export type { RagMessage } from "./ragRetrieval";
 import {
   isMessageEmbeddingsFlagEnabled,
   isRagEligible,
@@ -63,13 +66,6 @@ export function shouldUseRag({
 
 export const MESSAGE_EMBEDDINGS_ENABLED = isMessageEmbeddingsFlagEnabled();
 
-export type RagMessage = {
-  id: string;
-  role: string;
-  content: string;
-  similarity: number;
-};
-
 export type RagContext = {
   text: string;
   count: number;
@@ -80,6 +76,18 @@ type RagSearchRow = {
   role: string;
   content: string;
   similarity: number;
+  createdAt: Date;
+};
+
+type RagNeighborRow = RagSourceMessage & { anchorId: string; createdAt: Date };
+
+export type RagSearchOptions = {
+  /** Actual question, before adding nearby context; used for deterministic ranking. */
+  currentQuery?: string;
+  excludedMessageIds?: string[];
+  /** Snapshot upper bound, also prevents future replies returning during regeneration. */
+  throughMessage?: { id: string; createdAt: Date };
+  before?: Date | null;
 };
 
 async function fetchEmbedding(text: string, apiKey: string, timeoutMs?: number): Promise<Float32Array> {
@@ -124,12 +132,6 @@ async function getQueryEmbedding(
 
 function toVectorString(embedding: Float32Array): string {
   return `[${Array.from(embedding).join(",")}]`;
-}
-
-export function formatRagLine(message: Pick<RagMessage, "role" | "content">, locale?: string): string {
-  const english = locale === "en";
-  const speaker = message.role === "user" ? (english ? "User" : "Пользователь") : english ? "Character" : "Персонаж";
-  return `- ${speaker}: ${message.content.replace(/\s*\n\s*/g, " ").trim()}`;
 }
 
 export function formatRagContext(messages: RagMessage[], locale?: string): RagContext | null {
@@ -237,62 +239,67 @@ export async function searchRelevantMessages(
   apiKey: string,
   excludeMessageId?: string,
   limit: number = RAG_TOP_K,
-  threshold: number = RAG_MIN_SIMILARITY
+  threshold: number = RAG_MIN_SIMILARITY,
+  options: RagSearchOptions = {}
 ): Promise<RagMessage[]> {
   try {
+    const anchorLimit = Math.min(10, Math.max(0, Math.floor(limit)));
+    if (!anchorLimit || !queryText.trim()) return [];
     const queryEmbedding = await getQueryEmbedding(queryText, apiKey);
     if (!queryEmbedding) {
       return [];
     }
 
     const vectorString = toVectorString(queryEmbedding);
+    const excludedIds = [...new Set([...(options.excludedMessageIds ?? []), ...(excludeMessageId ? [excludeMessageId] : [])])];
+    const throughAt = options.throughMessage?.createdAt ?? null;
+    const throughId = options.throughMessage?.id ?? "";
+    const beforeAt = options.before ?? null;
+    const candidateLimit = Math.min(40, anchorLimit * 4);
+    const results = await prisma.$queryRaw<RagSearchRow[]>`
+      SELECT m.id, m.role, m.content, m."createdAt",
+        1 - (me.embedding <=> ${vectorString}::vector) AS similarity
+      FROM "MessageEmbedding" me JOIN "Message" m ON m.id = me."messageId"
+      WHERE m."characterId" = ${characterId} AND m."userId" = ${userId}
+        AND m.role IN ('user', 'assistant') AND NOT (m.id = ANY(${excludedIds}::text[]))
+        AND (${throughAt}::timestamp IS NULL OR (m."createdAt", m.id) <= (${throughAt}::timestamp, ${throughId}))
+        AND (${beforeAt}::timestamp IS NULL OR m."createdAt" < ${beforeAt}::timestamp)
+      ORDER BY me.embedding <=> ${vectorString}::vector, m."createdAt" DESC, m.id DESC
+      LIMIT ${candidateLimit}
+    `;
+    const candidates = results.map(row => ({ ...row, similarity: Number(row.similarity) }))
+      .filter(row => Number.isFinite(row.similarity) && row.similarity > threshold);
+    if (!candidates.length) return [];
+    const anchorIds = candidates.map(row => row.id);
+    // One batched read, independent of embeddings: an unembedded neighbouring reply
+    // can be the acceptance, correction or cancellation that gives the anchor meaning.
+    const neighbors = await prisma.$queryRaw<RagNeighborRow[]>`
+      WITH ordered AS (
+        SELECT m.id,
+          LAG(m.id) OVER (ORDER BY m."createdAt", m.id) AS "previousId",
+          LEAD(m.id) OVER (ORDER BY m."createdAt", m.id) AS "nextId"
+        FROM "Message" m
+        WHERE m."userId" = ${userId} AND m."characterId" = ${characterId}
+          AND m.role IN ('user', 'assistant') AND NOT (m.id = ANY(${excludedIds}::text[]))
+          AND (${throughAt}::timestamp IS NULL OR (m."createdAt", m.id) <= (${throughAt}::timestamp, ${throughId}))
+          AND (${beforeAt}::timestamp IS NULL OR m."createdAt" < ${beforeAt}::timestamp)
+      )
+      SELECT o.id AS "anchorId", s.id, s.role, s.content, s."createdAt"
+      FROM ordered o CROSS JOIN LATERAL (VALUES (o."previousId"), (o.id), (o."nextId")) AS neighbor(id)
+      JOIN "Message" s ON s.id = neighbor.id
+      WHERE o.id = ANY(${anchorIds}::text[])
+      ORDER BY o.id, s."createdAt", s.id
+    `;
 
-    const results = excludeMessageId
-      ? await prisma.$queryRaw<RagSearchRow[]>`
-          SELECT
-            m.id,
-            m.role,
-            m.content,
-            1 - (me.embedding <=> ${vectorString}::vector) AS similarity
-          FROM "MessageEmbedding" me
-          JOIN "Message" m ON m.id = me."messageId"
-          WHERE
-            m."characterId" = ${characterId}
-            AND m."userId" = ${userId}
-            AND m."role" IN ('user', 'assistant')
-            AND m.id != ${excludeMessageId}
-          ORDER BY me.embedding <=> ${vectorString}::vector
-          LIMIT ${limit}
-        `
-      : await prisma.$queryRaw<RagSearchRow[]>`
-          SELECT
-            m.id,
-            m.role,
-            m.content,
-            1 - (me.embedding <=> ${vectorString}::vector) AS similarity
-          FROM "MessageEmbedding" me
-          JOIN "Message" m ON m.id = me."messageId"
-          WHERE
-            m."characterId" = ${characterId}
-            AND m."userId" = ${userId}
-            AND m."role" IN ('user', 'assistant')
-          ORDER BY me.embedding <=> ${vectorString}::vector
-          LIMIT ${limit}
-        `;
-
-    const filtered = results.filter((row) => Number(row.similarity) > threshold);
-
-    debugLog(
-      "RAG",
-      `найдено ${filtered.length} релевантных сообщений (проверено ${results.length})`
-    );
-
-    return filtered.map((row) => ({
-      id: row.id,
-      role: row.role,
-      content: row.content,
-      similarity: Number(row.similarity),
-    }));
+    const enriched = candidates.flatMap(row => {
+      const context = neighbors.filter(source => source.anchorId === row.id);
+      // A rewrite/delete between reads must not return a stale anchor quotation.
+      if (!context.some(source => source.id === row.id && source.content === row.content)) return [];
+      return [{ ...row, context }];
+    });
+    const selected = selectDiverseRagCandidates(enriched, options.currentQuery ?? queryText, anchorLimit, threshold);
+    debugLog("RAG", `найдено ${selected.length} фрагментов (проверено ${results.length} кандидатов)`);
+    return selected;
   } catch (error) {
     errorLog("RAG", "ошибка поиска релевантных сообщений", toSafeDiagnostic(error));
     return [];
