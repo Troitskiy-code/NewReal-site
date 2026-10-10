@@ -1,0 +1,74 @@
+[
+  {
+    "name": "thedrummer/cydonia-24b-v4.1",
+    "displayName": "Cydonia 24B V4.1",
+    "pricePer1MInput": 29.01,
+    "pricePer1MOutput": 48.35,
+    "priceVC": 9,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для персонажей и творческих сюжетов. Проверяем русский язык, удержание роли и разнообразие текста."
+  },
+  {
+    "name": "cognitivecomputations/dolphin-mistral-24b-venice-edition",
+    "displayName": "Venice Uncensored 24B",
+    "pricePer1MInput": 19.34,
+    "pricePer1MOutput": 87.03,
+    "priceVC": 7,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для свободного творческого письма. Качество ролевых диалогов и русского языка ещё оцениваем."
+  },
+  {
+    "name": "thedrummer/unslopnemo-12b",
+    "displayName": "UnslopNemo 12B",
+    "pricePer1MInput": 38.68,
+    "pricePer1MOutput": 38.68,
+    "priceVC": 11,
+    "maxContextTokens": 20000,
+    "description": "Лёгкая тестовая модель для приключений и ролевых сцен. Проверяем связность длинного диалога."
+  },
+  {
+    "name": "thedrummer/skyfall-36b-v2",
+    "displayName": "Skyfall 36B V2",
+    "pricePer1MInput": 53.19,
+    "pricePer1MOutput": 77.36,
+    "priceVC": 16,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для выразительной прозы и последовательного развития сюжета."
+  },
+  {
+    "name": "aion-labs/aion-rp-llama-3.1-8b",
+    "displayName": "Aion-RP 1.0 (8B)",
+    "pricePer1MInput": 77.36,
+    "pricePer1MOutput": 154.72,
+    "priceVC": 24,
+    "maxContextTokens": 20000,
+    "description": "Специализированная тестовая модель для ролевых диалогов. Проверяем русский язык и устойчивость персонажа."
+  },
+  {
+    "name": "aion-labs/aion-2.0",
+    "displayName": "Aion 2.0",
+    "pricePer1MInput": 77.36,
+    "pricePer1MOutput": 154.72,
+    "priceVC": 24,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для сюжетных конфликтов и эмоциональных сцен. Запрашиваем отключение рассуждений; работу режима через шлюз ещё проверяем."
+  },
+  {
+    "name": "nousresearch/hermes-3-llama-3.1-405b",
+    "displayName": "Hermes 3 405B",
+    "pricePer1MInput": 96.7,
+    "pricePer1MOutput": 96.7,
+    "priceVC": 28,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для сложных персонажей и длинных диалогов. Ответ может занимать больше времени."
+  },
+  {
+    "name": "aion-labs/aion-3.5-mini",
+    "displayName": "Aion 3.5 Mini",
+    "pricePer1MInput": 67.69,
+    "pricePer1MOutput": 135.38,
+    "priceVC": 38,
+    "maxContextTokens": 20000,
+    "description": "Модель для ролевых сцен с обязательными рассуждениями. Сохраняем как ориентир качества по результатам пользовательских тестов; расход ещё измеряется."
+  }
+]

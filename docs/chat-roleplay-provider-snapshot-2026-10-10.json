@@ -1,0 +1,380 @@
+{
+  "retrievedAt": "2026-10-10T18:02:29.934Z",
+  "source": "https://api.kodikrouter.ru/v1/catalog/models/{id}",
+  "models": [
+    {
+      "id": "thedrummer/cydonia-24b-v4.1",
+      "name": "TheDrummer: Cydonia 24B V4.1",
+      "provider": "thedrummer",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "Модель для неконфиденциального и креативного письма, построенная на базе Mistral Small 3.2 с 24 миллиардами параметров. Обладает высокой способностью к запоминанию информации, точным следованием заданному запросу и высоким уровнем интеллектуальности.",
+      "context_length": 131072,
+      "input_price_per_1m": 0.3,
+      "output_price_per_1m": 0.5,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": 0.15,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "frequency_penalty",
+        "logit_bias",
+        "logprobs",
+        "max_tokens",
+        "presence_penalty",
+        "repetition_penalty",
+        "response_format",
+        "seed",
+        "stop",
+        "structured_outputs",
+        "temperature",
+        "top_k",
+        "top_logprobs",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": "2024-04-30",
+      "release_date": null,
+      "categories": [
+        "chat"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    },
+    {
+      "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition",
+      "name": "Venice: Uncensored",
+      "provider": "cognitivecomputations",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "Venice Uncensored Dolphin Mistral 24B Venice Edition is a fine-tuned variant of Mistral-Small-24B-Instruct-2501, developed by dphn.ai in collaboration with Venice.ai. This model is designed as an “uncensored” instruct-tuned LLM, preserving...",
+      "context_length": 128000,
+      "input_price_per_1m": 0.2,
+      "output_price_per_1m": 0.9,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": null,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "frequency_penalty",
+        "max_tokens",
+        "presence_penalty",
+        "response_format",
+        "stop",
+        "temperature",
+        "top_k",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": "2024-04-30",
+      "release_date": null,
+      "categories": [
+        "chat"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    },
+    {
+      "id": "thedrummer/unslopnemo-12b",
+      "name": "TheDrummer: UnslopNemo 12B",
+      "provider": "thedrummer",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "UnslopNemo v4.1 — это новейшая версия модели от разработчика Rocinante, специально созданная для написания приключенческих текстов и ролевых сценариев.",
+      "context_length": 1024000,
+      "input_price_per_1m": 0.4,
+      "output_price_per_1m": 0.4,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": null,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "frequency_penalty",
+        "logit_bias",
+        "logprobs",
+        "max_tokens",
+        "presence_penalty",
+        "repetition_penalty",
+        "seed",
+        "stop",
+        "structured_outputs",
+        "temperature",
+        "top_k",
+        "top_logprobs",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": "2024-04-30",
+      "release_date": null,
+      "categories": [
+        "chat"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    },
+    {
+      "id": "thedrummer/skyfall-36b-v2",
+      "name": "TheDrummer: Skyfall 36B V2",
+      "provider": "thedrummer",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "Skyfall 36B v2 представляет собой усовершенствованную версию модели Mistral Small 2501, специально доработанную для повышения креативности, создания более тонких и выразительных текстов, а также улучшенного ведения ролевых сценариев и последовательного повествования.",
+      "context_length": 32768,
+      "input_price_per_1m": 0.55,
+      "output_price_per_1m": 0.8,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": 0.25,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "frequency_penalty",
+        "logit_bias",
+        "logprobs",
+        "max_tokens",
+        "presence_penalty",
+        "repetition_penalty",
+        "response_format",
+        "seed",
+        "stop",
+        "structured_outputs",
+        "temperature",
+        "top_k",
+        "top_logprobs",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": "2024-06-30",
+      "release_date": null,
+      "categories": [
+        "chat"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    },
+    {
+      "id": "aion-labs/aion-rp-llama-3.1-8b",
+      "name": "AionLabs: Aion-RP 1.0 (8B)",
+      "provider": "aion-labs",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "Модель Aion-RP-Llama-3.1-8B занимает лидирующую позицию в оценке персонажей по результатам RPBench-Auto — специализированного варианта бенчмарка Arena-Hard-Auto, ориентированного на ролевые игры, где языковые модели оценивают ответы друг друга. Эта модель представляет собой дообученную версию базовой архитектуры с 8 миллиардами параметров, оптимизированную для более глубокого и реалистичного взаимодействия в ролевых сценариях. Благодаря расширенному контекстному окну и тонкой настройке, Aion-RP-Llama-3.1-8B демонстрирует высокую точность и выразительность в генерации ответов, что делает её одним из лучших решений для задач, связанных с имитацией персонажей и сложными диалогами.",
+      "context_length": 32768,
+      "input_price_per_1m": 0.8,
+      "output_price_per_1m": 1.6,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": null,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "max_tokens",
+        "temperature",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": "2023-12-31",
+      "release_date": null,
+      "categories": [
+        "chat"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    },
+    {
+      "id": "aion-labs/aion-2.0",
+      "name": "AionLabs: Aion-2.0",
+      "provider": "aion-labs",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "Aion-2.0 представляет собой модификацию модели DeepSeek V3.2, специально оптимизированную для создания захватывающих ролевых игр и повествований. Эта версия выделяется способностью эффективно вводить в сюжет напряжённые моменты, кризисы и конфликты, что значительно усиливает вовлечённость аудитории и делает истории более живыми и динамичными. Благодаря таким особенностям Aion-2.0 отлично подходит для сценариев, где важна эмоциональная глубина и драматическое развитие событий.",
+      "context_length": 131072,
+      "input_price_per_1m": 0.8,
+      "output_price_per_1m": 1.6,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": 0.2,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "include_reasoning",
+        "max_tokens",
+        "reasoning",
+        "response_format",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": null,
+      "release_date": null,
+      "categories": [
+        "chat",
+        "tools"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    },
+    {
+      "id": "nousresearch/hermes-3-llama-3.1-405b",
+      "name": "Nous: Hermes 3 405B Instruct",
+      "provider": "nousresearch",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "Hermes 3 представляет собой универсальную языковую модель, значительно превосходящую своего предшественника Hermes 2 по ряду ключевых параметров. В новой версии улучшены агентные возможности, что позволяет модели более эффективно выполнять сложные задачи и взаимодействовать с пользователем. Модель демонстрирует заметно более качественную ролевую игру, улучшенное логическое мышление и способность вести многотуровые диалоги с сохранением контекста. Кроме того, Hermes 3 обеспечивает высокую когерентность при работе с длинными контекстами, что расширяет её применимость в разнообразных сценариях. Все эти улучшения делают Hermes 3 мощным инструментом для широкого круга задач в области обработки естественного языка.",
+      "context_length": 131072,
+      "input_price_per_1m": 1,
+      "output_price_per_1m": 1,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": null,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "frequency_penalty",
+        "logit_bias",
+        "max_tokens",
+        "min_p",
+        "presence_penalty",
+        "repetition_penalty",
+        "response_format",
+        "seed",
+        "stop",
+        "structured_outputs",
+        "temperature",
+        "top_k",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": "2023-12-31",
+      "release_date": null,
+      "categories": [
+        "chat"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    },
+    {
+      "id": "aion-labs/aion-3.5-mini",
+      "name": "AionLabs: Aion 3.5 Mini",
+      "provider": "aion-labs",
+      "api_surface": "chat",
+      "api_surfaces": [
+        "chat"
+      ],
+      "description": "Aion 3.5 Mini is a multi-model roleplaying and storytelling system from AionLabs, built on the GLM family of models. It is the smaller, lower-cost sibling of Aion 3.5 and uses...",
+      "context_length": 262144,
+      "input_price_per_1m": 0.7,
+      "output_price_per_1m": 1.4,
+      "pricing_basis": "tokens",
+      "cache_read_price_per_1m": 0.18,
+      "cache_write_price_per_1m": null,
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "supported_parameters": [
+        "include_reasoning",
+        "max_tokens",
+        "reasoning",
+        "reasoning_effort",
+        "response_format",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_p"
+      ],
+      "distillable": null,
+      "knowledge_cutoff": null,
+      "release_date": null,
+      "categories": [
+        "chat",
+        "tools"
+      ],
+      "use_case_categories": [],
+      "series": null,
+      "zero_data_retention": null,
+      "media_capabilities": null,
+      "media_pricing": null,
+      "media_pricing_endpoints": null
+    }
+  ],
+  "catalogQuoteFxRubPerUsd": 96.7,
+  "quoteSemantics": "Fixed catalog estimate using the calculation rate from the source chat; not current FX or a measured RUB debit."
+}

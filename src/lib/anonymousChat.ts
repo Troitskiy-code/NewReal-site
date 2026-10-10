@@ -40,7 +40,7 @@ import {
   renewGuestGeneration,
 } from "@/lib/guestRequestStore";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { TESTING_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
+import { NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 
 const ANON_POST_LIMIT = 30;
 const ANON_POST_WINDOW_MS = 60_000;
@@ -66,7 +66,7 @@ async function resolveAnonymousModel() {
   });
   if (preferred) return preferred;
   return prisma.model.findFirst({
-    where: { isActive: true, name: { notIn: TESTING_CHAT_MODEL_NAMES } },
+    where: { isActive: true, name: { notIn: NON_DEFAULT_CHAT_MODEL_NAMES } },
     orderBy: { priceVC: "asc" },
     select: { id: true, name: true, displayName: true, maxContextTokens: true },
   });

@@ -1,6 +1,6 @@
 import snapshot from "./data/kodik-cost-rates-2026-10-08.json";
 import aliases from "./data/kodik-model-aliases.json";
-import { TESTING_CHAT_MODELS } from "./testingChatModels";
+import { CHAT_MODEL_CATALOG_QUOTES } from "./testingChatModels";
 import { finiteNonnegative } from "./aiCostMath";
 
 export function canonicalKodikModel(model: string): string {
@@ -16,7 +16,7 @@ export function getKodikCostRates(model: string, catalog?: CatalogRates | null) 
     override = configured[model] ?? configured[canonical] ?? null;
   } catch { /* Malformed optional configuration must not interrupt AI replies. */ }
   const quoted = (snapshot.rates as Record<string, { input: number; output: number }>)[canonical];
-  const testingQuote = TESTING_CHAT_MODELS.find((entry) => entry.name === canonical);
+  const testingQuote = CHAT_MODEL_CATALOG_QUOTES.find((entry) => entry.name === canonical);
   return {
     input: finiteNonnegative(override?.input) ?? finiteNonnegative(catalog?.pricePer1MInput) ?? quoted?.input ?? testingQuote?.pricePer1MInput ?? null,
     output: finiteNonnegative(override?.output) ?? finiteNonnegative(catalog?.pricePer1MOutput) ?? quoted?.output ?? testingQuote?.pricePer1MOutput ?? null,

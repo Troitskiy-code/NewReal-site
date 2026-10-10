@@ -33,7 +33,7 @@ import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { spendCoins } from "@/lib/verseCoins";
 import { debugLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
-import { chatModelGenerationOptions, chatModelRequestTimeoutMs, TESTING_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
+import { chatModelGenerationOptions, chatModelRequestTimeoutMs, isRetiredChatModel, NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -198,7 +198,7 @@ export function allocateTokens(
 
 export async function getOrCreateBaseModel(): Promise<EconomyModel> {
   let baseModel = await prisma.model.findFirst({
-    where: { isActive: true, name: { notIn: TESTING_CHAT_MODEL_NAMES } },
+    where: { isActive: true, name: { notIn: NON_DEFAULT_CHAT_MODEL_NAMES } },
     orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }],
     select: modelSelect,
   });
@@ -244,7 +244,7 @@ export async function resolveChatContext(userId: string) {
   const subscriptionEnd = synced?.subscriptionEnd ?? user.subscriptionEnd;
 
   let model = user.selectedModel;
-  if (!model || !model.isActive) {
+  if (!model || !model.isActive || isRetiredChatModel(model.name)) {
     model = baseModel;
   }
 

@@ -789,7 +789,7 @@ function ModelSettingsList({
               )}
             </label>
 
-            {model.name === "aion-labs/aion-3.0-mini" && (
+            {model.name === "aion-labs/aion-2.0" && (
               <p className="px-4 pb-3 text-xs leading-relaxed text-amber-300 md:px-6">
                 {english ? "Disabling reasoning through the gateway is unverified. The output limit may shorten or prevent an answer."
                   : "Отключение рассуждений через шлюз ещё проверяем. Лимит выхода может сократить ответ или помешать его завершению."}

@@ -1,7 +1,17 @@
-import catalog from "./data/testing-chat-models-2026-10-10.json";
+import catalog from "./data/testing-roleplay-models-2026-10-10.json";
+import previousCatalog from "./data/testing-chat-models-2026-10-10.json";
 
 export const TESTING_CHAT_MODELS = catalog;
 export const TESTING_CHAT_MODEL_NAMES = catalog.map((model) => model.name);
+export const RETIRED_TESTING_CHAT_MODEL_NAMES = previousCatalog
+  .map((model) => model.name).filter((name) => !TESTING_CHAT_MODEL_NAMES.includes(name));
+export const NON_DEFAULT_CHAT_MODEL_NAMES = [...TESTING_CHAT_MODEL_NAMES, ...RETIRED_TESTING_CHAT_MODEL_NAMES];
+// Retain old quotes for accounting of requests already in flight during a rollout.
+export const CHAT_MODEL_CATALOG_QUOTES = [...catalog, ...previousCatalog];
+
+export function isRetiredChatModel(name: string): boolean {
+  return RETIRED_TESTING_CHAT_MODEL_NAMES.includes(name);
+}
 
 export function isTestingChatModel(name: string): boolean {
   return TESTING_CHAT_MODEL_NAMES.includes(name);
@@ -10,10 +20,7 @@ export function isTestingChatModel(name: string): boolean {
 /** These are request settings, not proof that a gateway obeys a reasoning mode. */
 export function chatModelGenerationOptions(modelName: string) {
   const base = { max_tokens: 1000, temperature: 0.7 };
-  if (modelName === "xiaomi/mimo-v2.6-flash") {
-    return { ...base, reasoning: { enabled: false, exclude: true } };
-  }
-  if (modelName === "aion-labs/aion-3.0-mini") {
+  if (modelName === "aion-labs/aion-2.0") {
     // Direct Aion accepts none. Routed support is unverified: retain a strict total cap.
     return { ...base, reasoning: { effort: "none", enabled: false, exclude: true } };
   }

@@ -4,14 +4,14 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
-import { isTestingChatModel } from "@/lib/testingChatModels";
+import { isTestingChatModel, RETIRED_TESTING_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
     const models = await prisma.model.findMany({
-      where: { isActive: true },
+      where: { isActive: true, name: { notIn: RETIRED_TESTING_CHAT_MODEL_NAMES } },
       orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
@@ -41,7 +41,8 @@ export async function GET() {
           subscriptionEnd: true,
         },
       });
-      selectedModelId = user?.selectedModelId ?? null;
+      selectedModelId = models.some((model) => model.id === user?.selectedModelId)
+        ? user?.selectedModelId ?? null : null;
       subscriptionActive = user ? isSubscriptionActive(user) : false;
     }
 
