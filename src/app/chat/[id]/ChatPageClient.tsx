@@ -52,6 +52,7 @@ type Message = {
 };
 
 type ChatModel = EconomyModel & {
+  isTesting?: boolean;
   pricePer1MInput: number | null;
   pricePer1MOutput: number | null;
   description: string | null;
@@ -708,6 +709,12 @@ function ModelSettingsList({
   onModelChange,
 }: ModelSettingsListProps) {
   const [expandedModelId, setExpandedModelId] = useState<string | null>(null);
+  const { i18n } = useTranslation();
+  const english = i18n.language?.startsWith("en");
+  const sections = [
+    { title: english ? "Main models" : "Основные модели", testing: false, items: models.filter((model) => !model.isTesting) },
+    { title: english ? "Testing" : "Тестируется", testing: true, items: models.filter((model) => model.isTesting) },
+  ].filter((section) => section.items.length > 0);
 
   const toggleDescription = (modelId: string) => {
     setExpandedModelId((current) => (current === modelId ? null : modelId));
@@ -715,7 +722,13 @@ function ModelSettingsList({
 
   return (
     <>
-      {models.map((model) => {
+      {sections.map((section) => (
+        <section key={section.title} aria-label={section.title}>
+          <h3 className="border-b border-gray-700/50 px-4 py-3 text-sm font-bold text-gray-300 md:px-6">{section.title}</h3>
+          {section.testing && <p className="px-4 py-2 text-xs text-gray-400 md:px-6">
+            {english ? "New models: we are evaluating response quality and speed." : "Новые модели: оцениваем качество и скорость ответов."}
+          </p>}
+      {section.items.map((model) => {
         const isExpanded = expandedModelId === model.id;
         const description = model.description ?? MODEL_DESCRIPTIONS[model.displayName];
         const priceLabel =
@@ -776,6 +789,13 @@ function ModelSettingsList({
               )}
             </label>
 
+            {model.name === "aion-labs/aion-3.0-mini" && (
+              <p className="px-4 pb-3 text-xs leading-relaxed text-amber-300 md:px-6">
+                {english ? "Disabling reasoning through the gateway is unverified. The output limit may shorten or prevent an answer."
+                  : "Отключение рассуждений через шлюз ещё проверяем. Лимит выхода может сократить ответ или помешать его завершению."}
+              </p>
+            )}
+
             {description && isExpanded && (
               <p className="px-4 pb-3 pl-11 text-xs leading-relaxed text-gray-500 md:hidden">
                 {description}
@@ -790,6 +810,8 @@ function ModelSettingsList({
           </div>
         );
       })}
+        </section>
+      ))}
     </>
   );
 }

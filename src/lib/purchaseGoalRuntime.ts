@@ -8,6 +8,7 @@ import {
   subscriptionGoal,
 } from "./metrika";
 import { isMetrikaCounterReady, waitForMetrika } from "./metrikaLoader";
+import { logPurchaseAnalytics } from "./purchaseAnalyticsLog";
 
 export type GoalRuntimeState =
   | "pending_confirmation"
@@ -372,6 +373,7 @@ export function captureInvoiceFromUrl(): PendingPurchaseRecord | null {
   const bannerPersisted = persistBannerInvoice(invoiceId);
   const others = readAll().filter((item) => item.invoiceId !== invoiceId);
   const stored = writeAll([...others, record]);
+  logPurchaseAnalytics("return_captured", record);
   if (stored && bannerPersisted) stripPaymentQuery();
   emitBanner();
   return clonePurchaseRecord(record);
@@ -559,6 +561,9 @@ async function dispatchPendingGoals(
   ensureGoalStates(record, specs);
   if (!renew()) return;
   const ready = isMetrikaCounterReady() || (await waitForMetrika(12000));
+  if (!ready && generation === runGeneration && activeUserId === ownerUserId) {
+    logPurchaseAnalytics("counter_not_ready", record);
+  }
   if (!ready || generation !== runGeneration || activeUserId !== ownerUserId || !renew()) return;
   if (record.userId && activeUserId && record.userId !== activeUserId) return;
 
@@ -575,7 +580,9 @@ async function dispatchPendingGoals(
     upsertPendingPurchase(record, generation);
     if (!renew()) return;
     reportGoalReceipt(record, spec.goal, slot);
+    logPurchaseAnalytics("dispatch_started", record, { goal: spec.goal, attempts: slot.attempts });
     const result = await dispatchGoal(spec.goal, spec.params, callbackTimeoutMs);
+    logPurchaseAnalytics("dispatch_result", record, { goal: spec.goal, attempts: slot.attempts, state: result.status });
     if (generation !== runGeneration || activeUserId !== ownerUserId || !renew()) return;
     if (result.status === "callback_completed") {
       slot.state = "callback_completed";
@@ -601,10 +608,15 @@ async function dispatchPendingGoals(
 function reportGoalReceipt(record: PendingPurchaseRecord, goal: string, slot: GoalSlot) {
   if (!record.orderId || !record.confirmed || slot.attempts < 1 || !["dispatched", "callback_completed", "timeout", "unknown"].includes(slot.state)) return;
   // Receipt failure never causes a second reachGoal or blocks the payment UI.
+  // Snapshot: slot can change while the request is in flight.
+  const details = { goal, attempts: slot.attempts, state: slot.state };
   void fetch("/api/payment/analytics", { method: "POST", headers: { "Content-Type": "application/json" },
     credentials: "same-origin", keepalive: true,
     body: JSON.stringify({ invoiceId: record.invoiceId, orderId: record.orderId, goal,
-      state: slot.state === "dispatched" ? "attempt_started" : slot.state, attempts: slot.attempts }) }).catch(() => {});
+      state: slot.state === "dispatched" ? "attempt_started" : slot.state, attempts: slot.attempts }) })
+    .then((response) => logPurchaseAnalytics(response.ok ? "receipt_saved" : "receipt_rejected", record,
+      { ...details, status: response.status }))
+    .catch(() => logPurchaseAnalytics("receipt_network_error", record, details));
 }
 
 export async function pollAndDispatchInvoice(invoiceId: string): Promise<PendingPurchaseRecord | null> {
@@ -641,6 +653,7 @@ export async function pollAndDispatchInvoice(invoiceId: string): Promise<Pending
           return clonePurchaseRecord(record);
         }
         if (payload.status === "confirmed") {
+          const wasConfirmed = record.confirmed;
           record.orderId = typeof payload.orderId === "string" ? payload.orderId : null;
           record.analyticsExcluded = payload.analyticsExcluded === true;
           if (payload.kind === "subscription_renewal") {
@@ -657,6 +670,7 @@ export async function pollAndDispatchInvoice(invoiceId: string): Promise<Pending
           record.kind = payload.kind ?? null;
           record.planId = payload.planId ?? null;
           record.amountRub = typeof payload.amountRub === "number" ? payload.amountRub : null;
+          if (!wasConfirmed) logPurchaseAnalytics("payment_confirmed", record);
           if (activeUserId) record.userId = activeUserId;
           ensureGoalStates(record, purchaseGoalsFromStatus(record));
           upsertPendingPurchase(record, generation);

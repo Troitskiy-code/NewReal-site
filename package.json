@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:models:testing": "node scripts/verify-testing-chat-models.mjs",
+    "verify:payments:logs": "node scripts/verify-payment-analytics-logs.mjs",
     "verify:payments:attribution": "node scripts/verify-payment-attribution.mjs",
     "payments:attribution": "node scripts/report-payment-attribution.mjs",
     "verify:sec04": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-url-privacy.ts",

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "xiaomi/mimo-v2.6-flash",
+    "displayName": "MiMo V2.6 Flash",
+    "pricePer1MInput": 13.54,
+    "pricePer1MOutput": 27.07,
+    "priceVC": 4,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для диалогов и развития сюжета. Оцениваем качество русского языка и скорость ответов."
+  },
+  {
+    "name": "sao10k/l3.3-euryale-70b",
+    "displayName": "Euryale 3.3",
+    "pricePer1MInput": 62.86,
+    "pricePer1MOutput": 72.53,
+    "priceVC": 18,
+    "maxContextTokens": 20000,
+    "description": "Модель для ролевых диалогов и характеров персонажей. Скорость ответа может быть ниже привычной."
+  },
+  {
+    "name": "sao10k/l3.1-euryale-70b",
+    "displayName": "Euryale 3.1",
+    "pricePer1MInput": 82.20,
+    "pricePer1MOutput": 82.20,
+    "priceVC": 23,
+    "maxContextTokens": 20000,
+    "description": "Предыдущая версия Euryale для сравнения стиля и поведения персонажей. Скорость ответа может быть ниже привычной."
+  },
+  {
+    "name": "aion-labs/aion-3.0-mini",
+    "displayName": "Aion 3.0 Mini",
+    "pricePer1MInput": 67.69,
+    "pricePer1MOutput": 135.38,
+    "priceVC": 22,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для ролевых сцен. Запрашиваем режим без рассуждений, но его поддержку через шлюз ещё проверяем. Ответ может оказаться коротким или не завершиться."
+  },
+  {
+    "name": "aion-labs/aion-3.5-mini",
+    "displayName": "Aion 3.5 Mini",
+    "pricePer1MInput": 67.69,
+    "pricePer1MOutput": 135.38,
+    "priceVC": 38,
+    "maxContextTokens": 20000,
+    "description": "Тестовая модель для ролевых сцен с обязательными рассуждениями. Может отвечать дольше; качество и фактические расходы ещё проверяются."
+  }
+]

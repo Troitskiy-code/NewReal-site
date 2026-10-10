@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
+import { isTestingChatModel } from "@/lib/testingChatModels";
 
 export async function GET() {
   try {
@@ -26,7 +27,7 @@ export async function GET() {
       },
     });
 
-    const baseModel = models[0] ?? null;
+    const baseModel = models.find((model) => !isTestingChatModel(model.name)) ?? null;
 
     let selectedModelId: string | null = null;
     let subscriptionActive = false;
@@ -45,7 +46,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      models,
+      models: models.map((model) => ({ ...model, isTesting: isTestingChatModel(model.name) })),
       selectedModelId,
       subscriptionActive,
       baseModelId: baseModel?.id ?? null,

@@ -33,6 +33,7 @@ import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { spendCoins } from "@/lib/verseCoins";
 import { debugLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
+import { chatModelGenerationOptions, chatModelRequestTimeoutMs, TESTING_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -197,7 +198,7 @@ export function allocateTokens(
 
 export async function getOrCreateBaseModel(): Promise<EconomyModel> {
   let baseModel = await prisma.model.findFirst({
-    where: { isActive: true },
+    where: { isActive: true, name: { notIn: TESTING_CHAT_MODEL_NAMES } },
     orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }],
     select: modelSelect,
   });
@@ -322,12 +323,13 @@ export type FastChatContext = {
 /** Prompt budget: plan limit, and never more than the model can take with room for the reply. */
 export function resolveContextTokenBudget(
   user: Pick<ChatUser, "subscriptionType" | "subscriptionEnd">,
-  model: Pick<EconomyModel, "maxContextTokens">
+  model: Pick<EconomyModel, "maxContextTokens"> & { name?: string }
 ): number {
   const planLimit = getContextTokenLimit(user);
   const modelLimit = Number(model.maxContextTokens);
-  if (!Number.isFinite(modelLimit) || modelLimit <= MAX_OUTPUT_TOKENS) return planLimit;
-  return Math.min(planLimit, modelLimit - MAX_OUTPUT_TOKENS);
+  const outputReserve = chatModelGenerationOptions(model.name ?? "").max_tokens;
+  if (!Number.isFinite(modelLimit) || modelLimit <= outputReserve) return planLimit;
+  return Math.min(planLimit, modelLimit - outputReserve);
 }
 
 export function estimateHistoryTokens(windowTokens: number, windowCount: number, olderCount: number): number {
@@ -812,15 +814,14 @@ export async function callChatCompletion(
         {
           model: modelName,
           messages,
-          max_tokens: MAX_OUTPUT_TOKENS,
-          temperature: 0.7,
+          ...chatModelGenerationOptions(modelName),
         },
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          timeout: 30_000,
+          timeout: chatModelRequestTimeoutMs(modelName),
         }
       );
 
@@ -846,7 +847,7 @@ export async function streamChatCompletion(
   return retryWithBackoff(
     async () => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 30_000);
+      const timer = setTimeout(() => controller.abort(), chatModelRequestTimeoutMs(modelName));
       let response: Response;
       try {
         response = await meteredChatFetch(`${KODIKROUTER_URL}/chat/completions`, {
@@ -858,8 +859,7 @@ export async function streamChatCompletion(
           body: JSON.stringify({
             model: modelName,
             messages,
-            max_tokens: MAX_OUTPUT_TOKENS,
-            temperature: 0.7,
+            ...chatModelGenerationOptions(modelName),
             stream: true,
             stream_options: { include_usage: true },
           }),

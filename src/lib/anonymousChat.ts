@@ -5,6 +5,7 @@ import { isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { getApiLocale } from "@/lib/apiI18n";
 import {
+  resolveContextTokenBudget,
   resolveChatSystemPrompt,
   streamChatCompletion,
   trimMessagesToTokenLimit,
@@ -39,6 +40,7 @@ import {
   renewGuestGeneration,
 } from "@/lib/guestRequestStore";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { TESTING_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 
 const ANON_POST_LIMIT = 30;
 const ANON_POST_WINDOW_MS = 60_000;
@@ -64,7 +66,7 @@ async function resolveAnonymousModel() {
   });
   if (preferred) return preferred;
   return prisma.model.findFirst({
-    where: { isActive: true },
+    where: { isActive: true, name: { notIn: TESTING_CHAT_MODEL_NAMES } },
     orderBy: { priceVC: "asc" },
     select: { id: true, name: true, displayName: true, maxContextTokens: true },
   });
@@ -354,7 +356,7 @@ export async function handleAnonymousChatPost(
     ];
     const { messages: trimmedMessages } = trimMessagesToTokenLimit(
       promptMessages,
-      Math.max(2000, (model.maxContextTokens ?? 4000) - 400)
+      resolveContextTokenBudget({ subscriptionType: "start", subscriptionEnd: null }, model)
     );
 
     const stubReply =
