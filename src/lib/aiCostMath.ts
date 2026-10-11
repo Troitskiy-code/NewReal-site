@@ -27,8 +27,8 @@ export function readCostUsage(data: unknown, embedding = false): CostUsage {
   };
 }
 
-export function readDeepinfraCostUsage(data: unknown): CostUsage {
-  return { ...readCostUsage(data), reportedCost: finiteNonnegative(record(record(data).usage).estimated_cost) };
+export function readDeepinfraCostUsage(data: unknown, embedding = false): CostUsage {
+  return { ...readCostUsage(data, embedding), reportedCost: finiteNonnegative(record(record(data).usage).estimated_cost) };
 }
 
 export function resolveDeepinfraCost(usage: CostUsage, catalogRub: number | null, usdRub: number | null) {

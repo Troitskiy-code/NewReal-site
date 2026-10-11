@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { finiteNonnegative, readCostUsage, readDeepinfraCostUsage, resolveDeepinfraCost, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
 import { deepinfraModel } from "./deepinfraModels";
+import { DEEPINFRA_EMBEDDING_MODEL, DEEPINFRA_EMBEDDING_INPUT_USD_PER_MILLION } from "./embeddingProviders";
 import { deepinfraUsdRub, textProviderForUrl } from "./aiProviders";
 import { canonicalKodikModel, getKodikCostRates } from "./kodikCostRates";
 import { getAccountingUsdRub } from "./currencyRates";
@@ -55,6 +56,10 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
       quotedVC = catalog?.priceVC ?? quote?.priceVC ?? null;
       ticket.inputRate = quote && ticket.fx ? quote.inputUsdPerMillion * ticket.fx : null;
       ticket.outputRate = quote && ticket.fx ? quote.outputUsdPerMillion * ticket.fx : null;
+      if (surface === "embeddings" && model === DEEPINFRA_EMBEDDING_MODEL && ticket.fx) {
+        ticket.inputRate = DEEPINFRA_EMBEDDING_INPUT_USD_PER_MILLION * ticket.fx;
+        ticket.outputRate = 0;
+      }
     }
     await prisma.aiCostEvent.create({ data: {
       id: ticket.id, operationId: ctx?.operationId ?? randomUUID(), actorHash: ctx?.actorHash,
@@ -116,7 +121,7 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
 }
 const noUsage = () => readCostUsage(null);
 function providerUsage(ticket: Ticket, data: unknown, embedding = false) {
-  return ticket.provider === "deepinfra" ? readDeepinfraCostUsage(data) : readCostUsage(data, embedding);
+  return ticket.provider === "deepinfra" ? readDeepinfraCostUsage(data, embedding) : readCostUsage(data, embedding);
 }
 function responseRequestId(ticket: Ticket, headers: Record<string, unknown>) {
   return ticket.provider === "deepinfra" ? headers["x-deepinfra-request-id"] ?? headers["x-request-id"] : headers["x-kodikrouter-request-id"];

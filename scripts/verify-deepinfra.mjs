@@ -19,7 +19,7 @@ const originalFetch = h.provider.fetch.bind(h.provider);
 const axios = require('axios');
 axios.post = async (url, body, config) => {
   posts.push({ url, body, config });
-  if (!['https://api.deepinfra.com/v1/openai/chat/completions', 'https://api.kodikrouter.ru/v1/chat/completions', 'https://api.kodikrouter.ru/v1/embeddings'].includes(url)) throw new Error('External request blocked');
+  if (!['https://api.deepinfra.com/v1/openai/chat/completions', 'https://api.deepinfra.com/v1/openai/embeddings', 'https://api.kodikrouter.ru/v1/chat/completions', 'https://api.kodikrouter.ru/v1/embeddings'].includes(url)) throw new Error('External request blocked');
   const result = await originalPost(url, body);
   if (url.includes('deepinfra.com')) {
     result.headers = { 'x-request-id': 'di_request_fixture' };
@@ -164,9 +164,24 @@ try {
     && provider.serviceTransport('memory', 'openai/gpt-4o-mini').model.startsWith('mistralai/'), 'core memory uses Gemma; episodic classifier uses Mistral');
   const embeddings = load('src/lib/memoryEmbeddings.ts');
   const vectors = await embeddings.fetchEmbeddings(['Факт для сравнения'], 'synthetic_memory_key');
-  check(vectors[0].length === 1536 && posts.at(-1).url === 'https://api.kodikrouter.ru/v1/embeddings'
+  check(vectors[0].length === 1024 && posts.at(-1).url === 'https://api.deepinfra.com/v1/openai/embeddings'
+    && posts.at(-1).body.model === 'Qwen/Qwen3-Embedding-0.6B', 'embeddings follow the DeepInfra memory provider in an isolated vector space');
+  const backfill = load('src/lib/embeddingBackfill.ts');
+  await h.helpers.messages(user.id, character.id, [{ role: 'user', content: 'UNINDEXED_BACKFILL_FIXTURE' }], { embed: false });
+  const backlog = await backfill.embeddingBackfillStatus();
+  check(backlog.provider === 'deepinfra' && Number.isSafeInteger(backlog.remaining) && backlog.remaining > 0,
+    'native PostgreSQL Prisma relation filter reads the eligible embedding backlog');
+  const beforeBackfill = posts.length;
+  const batch = await backfill.backfillDeepinfraEmbeddings();
+  check(!batch.busy && !batch.failed && batch.saved > 0 && batch.attempted <= 10
+    && posts.slice(beforeBackfill).every(p => p.url === 'https://api.deepinfra.com/v1/openai/embeddings'),
+    'native PostgreSQL lease and eligible Prisma batch call only DeepInfra, with a ten-message cap');
+  process.env['EMBEDDING_AI_PROVIDER'] = 'kodikrouter';
+  const legacyVectors = await embeddings.fetchEmbeddings(['Факт для сравнения'], 'synthetic_memory_key');
+  check(legacyVectors[0].length === 1536 && posts.at(-1).url === 'https://api.kodikrouter.ru/v1/embeddings'
     && posts.at(-1).body.model === 'openai/text-embedding-3-small'
-    && posts.at(-1).config.headers.Authorization === 'Bearer synthetic_memory_key', 'existing embeddings retain provider, key, model and 1536 dimensions');
+    && posts.at(-1).config.headers.Authorization === 'Bearer synthetic_memory_key', 'explicit rollback retains provider, key, model and 1536 dimensions');
+  delete process.env['EMBEDDING_AI_PROVIDER'];
   process.env['MEMORY_AI_PROVIDER'] = 'kodikrouter';
   await client.serviceChatPost('intent', 'https://api.kodikrouter.ru/v1/chat/completions', { model: 'google/gemma-4-31b-it', messages: [] }, { headers: { Authorization: 'Bearer synthetic_memory_key' } });
   check(posts.at(-1).url.includes('kodikrouter.ru') && provider.getChatProvider() === 'deepinfra', 'memory rollback is independent of chat');

@@ -47,9 +47,9 @@ export function chatTransport(name: string, legacyKey?: string) {
   return { provider, model, url: provider === "deepinfra" ? DEEPINFRA_CHAT_URL : KODIK_CHAT_URL,
     apiKey: providerApiKey(provider, legacyKey) };
 }
-// Embeddings deliberately stay in the existing OpenAI/Kodik vector space.
+// Embedding storage is isolated per provider; only allow the exact fixed API URLs.
 export function textProviderForUrl(url: string): TextProvider {
-  if (url === DEEPINFRA_CHAT_URL) return "deepinfra";
+  if (url === DEEPINFRA_CHAT_URL || url === "https://api.deepinfra.com/v1/openai/embeddings") return "deepinfra";
   if (url === KODIK_CHAT_URL || url === "https://api.kodikrouter.ru/v1/embeddings") return "kodikrouter";
   throw new AiProviderConfigurationError();
 }

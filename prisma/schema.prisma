@@ -127,6 +127,7 @@ model Message {
   createdAt   DateTime @default(now())
   isAutoEvent Boolean  @default(false)
   embedding   MessageEmbedding?
+  deepinfraEmbedding MessageEmbeddingDeepinfra?
 
   @@index([userId, characterId])
   @@index([userId, chatId])
@@ -138,6 +139,22 @@ model MessageEmbedding {
   message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   embedding Unsupported("vector(1536)")
   createdAt DateTime @default(now())
+}
+
+// Qwen/Qwen3-Embedding-0.6B, 1024 dimensions, document vectors without instructions.
+// A different model/preprocessing version requires a new isolated store.
+model MessageEmbeddingDeepinfra {
+  id        String @id @default(cuid())
+  messageId String @unique
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  embedding Unsupported("vector(1024)")
+  createdAt DateTime @default(now())
+}
+
+model EmbeddingBackfillLease {
+  id         String @id
+  owner      String
+  leaseUntil DateTime
 }
 
 model Memory {

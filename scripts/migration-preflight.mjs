@@ -38,6 +38,7 @@ try {
   }
   // Unsupported vector fields are not exposed in the Prisma DMMF.
   if (!present.has('MessageEmbedding.embedding')) missing.push('MessageEmbedding.embedding');
+  if (mode === 'ready' && !present.has('MessageEmbeddingDeepinfra.embedding')) missing.push('MessageEmbeddingDeepinfra.embedding');
   if (missing.length || Object.keys(orphans).length) {
     console.error(JSON.stringify({ ok: false, mode, missingColumns: missing, orphanCounts: orphans })); process.exitCode = 1;
   } else {

@@ -95,7 +95,7 @@ export function createFakeProvider() {
               id: 'gen_fake_embedding',
               model: body.model,
               usage: { prompt_tokens: 10 * inputs.length, total_tokens: 10 * inputs.length },
-              data: inputs.map((text, index) => ({ index, embedding: fakeEmbedding(text) })),
+              data: inputs.map((text, index) => ({ index, embedding: body.model === 'Qwen/Qwen3-Embedding-0.6B' ? fakeEmbedding(text).slice(0, 1024) : fakeEmbedding(text) })),
             },
           };
         }
@@ -249,7 +249,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
   await pg.start();
   await pg.createDatabase('nv_memory_test');
   const schema = join(directory, 'schema.prisma');
-  writeFileSync(schema, readFileSync(join(root, 'prisma/schema.prisma'), 'utf8').replace('Unsupported("vector(1536)")', 'Bytes'));
+  writeFileSync(schema, readFileSync(join(root, 'prisma/schema.prisma'), 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes'));
   const push = spawnSync(process.execPath, [join(root, 'node_modules/prisma/build/index.js'), 'db', 'push', '--skip-generate', '--schema', schema], {
     // Prisma CLI must not discover the repository .env; the schema and working
     // directory are both isolated, with every database override pointing locally.
@@ -265,12 +265,17 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
       "role" TEXT NOT NULL, "content" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL);
     CREATE TABLE "MessageEmbedding" ("id" TEXT PRIMARY KEY, "messageId" TEXT NOT NULL UNIQUE,
       "embedding" vector(1536) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL);
+    CREATE TABLE "MessageEmbeddingDeepinfra" ("id" TEXT PRIMARY KEY, "messageId" TEXT NOT NULL UNIQUE,
+      "embedding" vector(1024) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL);
   `);
   const runTagged = (strings, values) => {
     const { text, values: params } = sqlFromTemplate(strings, values);
     return vectorDb.query(text, params);
   };
   const vectorPrisma = {
+    messageEmbeddingDeepinfra: {
+      findUnique: async ({ where }) => (await vectorDb.query('SELECT "id" FROM "MessageEmbeddingDeepinfra" WHERE "messageId" = $1', [where.messageId])).rows[0] ?? null,
+    },
     messageEmbedding: {
       findUnique: async ({ where }) => (await vectorDb.query('SELECT "id" FROM "MessageEmbedding" WHERE "messageId" = $1', [where.messageId])).rows[0] ?? null,
       deleteMany: async ({ where }) => {
@@ -313,7 +318,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
 
   const session = { userId: null };
   for (const key of Object.keys(process.env)) {
-    if (/^(CHAT_AI_PROVIDER$|MEMORY_AI_PROVIDER$|DEEPINFRA_|LOGTAIL_|AI_COST_|KODIK_COST_|ENABLE_RAG_EMBEDDINGS$|MEMORY_DEDUP_THRESHOLD$|DEBUG$)/.test(key)) delete process.env[key];
+    if (/^(CHAT_AI_PROVIDER$|MEMORY_AI_PROVIDER$|EMBEDDING_AI_PROVIDER$|DEEPINFRA_|LOGTAIL_|AI_COST_|KODIK_COST_|ENABLE_RAG_EMBEDDINGS$|MEMORY_DEDUP_THRESHOLD$|DEBUG$)/.test(key)) delete process.env[key];
   }
   process.env.KODIKROUTER_API_KEY = realProvider ? liveKey : 'synthetic_memory_key';
   process.env.NEXTAUTH_SECRET = 'synthetic_memory_actor';

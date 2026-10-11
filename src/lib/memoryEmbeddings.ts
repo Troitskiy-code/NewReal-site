@@ -1,8 +1,6 @@
-import { meteredPost } from "@/lib/aiCostTelemetry";
+import { fetchTextEmbeddings } from "./embeddingClient";
 import { debugLog, errorLog, toSafeDiagnostic } from "./logger";
 
-const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const EMBEDDING_MODEL = "openai/text-embedding-3-small";
 const DEFAULT_DEDUP_THRESHOLD = 0.8;
 
 function parseDedupThreshold(): number {
@@ -122,34 +120,7 @@ export function logSimilarityMatrix(
 
 export async function fetchEmbeddings(texts: string[], apiKey: string): Promise<number[][]> {
   if (texts.length === 0) return [];
-
-  const response = await meteredPost("embedding",
-    `${KODIKROUTER_URL}/embeddings`,
-    {
-      model: EMBEDDING_MODEL,
-      input: texts,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  const rows = response.data?.data;
-  if (!Array.isArray(rows) || rows.length !== texts.length) {
-    throw new Error("Неполный ответ эмбеддингов");
-  }
-
-  return [...rows]
-    .sort((left, right) => (left.index ?? 0) - (right.index ?? 0))
-    .map((row) => {
-      if (!Array.isArray(row.embedding) || row.embedding.length === 0) {
-        throw new Error("Пустой эмбеддинг от API");
-      }
-      return row.embedding as number[];
-    });
+  return (await fetchTextEmbeddings(texts, apiKey, "dedup")).vectors;
 }
 
 /** true/false when embeddings answered; null when the provider failed and the caller must fall back. */

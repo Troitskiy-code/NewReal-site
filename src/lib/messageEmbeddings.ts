@@ -1,4 +1,6 @@
-import { meteredPost } from "@/lib/aiCostTelemetry";
+import { fetchTextEmbeddings } from "./embeddingClient";
+import { getEmbeddingProvider } from "./embeddingProviders";
+import type { TextProvider } from "./aiProviders";
 import { prisma } from "@/lib/prisma";
 import { debugLog, errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { formatRagLine, selectDiverseRagCandidates, type RagMessage, type RagSourceMessage } from "./ragRetrieval";
@@ -12,9 +14,6 @@ import {
 
 export { isMessageEmbeddingsFlagEnabled, isRagEligible, shouldPersistEmbeddings };
 
-const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
-const EMBEDDING_MODEL = "openai/text-embedding-3-small";
-const EMBEDDING_DIMENSIONS = 1536;
 const RAG_TOP_K = 5;
 const RAG_MIN_SIMILARITY = 0.25;
 export const RAG_HISTORY_TOKEN_THRESHOLD = 3000;
@@ -90,40 +89,18 @@ export type RagSearchOptions = {
   before?: Date | null;
 };
 
-async function fetchEmbedding(text: string, apiKey: string, timeoutMs?: number): Promise<Float32Array> {
-  const response = await meteredPost("embedding",
-    `${KODIKROUTER_URL}/embeddings`,
-    {
-      model: EMBEDDING_MODEL,
-      input: text,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      ...(timeoutMs ? { timeout: timeoutMs } : {}),
-    }
-  );
-
-  const vector = response.data?.data?.[0]?.embedding;
-  if (!Array.isArray(vector) || vector.length === 0) {
-    throw new Error("Пустой эмбеддинг от API");
-  }
-
-  if (vector.length !== EMBEDDING_DIMENSIONS) {
-    throw new Error(`Неожиданная размерность эмбеддинга: ${vector.length}`);
-  }
-
-  return new Float32Array(vector);
+async function fetchEmbedding(text: string, apiKey: string, task: "document" | "query", timeoutMs?: number) {
+  const result = await fetchTextEmbeddings([text], apiKey, task, timeoutMs);
+  return { embedding: new Float32Array(result.vectors[0]), provider: result.provider };
 }
 
 async function getQueryEmbedding(
   query: string,
   apiKey: string
-): Promise<Float32Array | null> {
+) {
   try {
-    return await fetchEmbedding(query, apiKey, RAG_QUERY_EMBEDDING_TIMEOUT_MS);
+    if (getEmbeddingProvider() === "disabled") return null;
+    return await fetchEmbedding(query, apiKey, "query", RAG_QUERY_EMBEDDING_TIMEOUT_MS);
   } catch (error) {
     errorLog("RAG", "pgvector: не удалось получить эмбеддинг запроса", toSafeDiagnostic(error));
     return null;
@@ -146,18 +123,29 @@ export function formatRagContext(messages: RagMessage[], locale?: string): RagCo
 export async function saveMessageEmbedding(
   messageId: string,
   embedding: Float32Array,
-  sourceContent: string
-): Promise<void> {
+  sourceContent: string,
+  provider?: TextProvider
+): Promise<boolean> {
   if (!embedding || embedding.length === 0) {
-    return;
+    return false;
   }
 
   try {
+    const selected = provider ?? getEmbeddingProvider();
+    if (selected === "disabled") return false;
+    if (selected === "deepinfra" && (embedding.length !== 1024 || !embedding.every(Number.isFinite))) return false;
     const vectorString = toVectorString(embedding);
 
     // Keep the matching source row stable until the INSERT commits; a plain
     // snapshot check can race an update followed by embedding invalidation.
-    const inserted = await prisma.$executeRaw`
+    const inserted = selected === "deepinfra" ? await prisma.$executeRaw`
+      INSERT INTO "MessageEmbeddingDeepinfra" ("id", "messageId", embedding, "createdAt")
+      SELECT gen_random_uuid()::text, m.id, ${vectorString}::vector, NOW()
+      FROM "Message" m
+      WHERE m.id = ${messageId} AND m.content = ${sourceContent}
+      FOR SHARE OF m
+      ON CONFLICT ("messageId") DO NOTHING
+    ` : await prisma.$executeRaw`
       INSERT INTO "MessageEmbedding" ("id", "messageId", embedding, "createdAt")
       SELECT gen_random_uuid()::text, m.id, ${vectorString}::vector, NOW()
       FROM "Message" m
@@ -170,28 +158,33 @@ export async function saveMessageEmbedding(
       "RAG",
       `Эмбеддинг сохранён для message=${messageId} (${embedding.length} dims)`
     );
+    return inserted > 0;
   } catch (error) {
     errorLog("RAG", `Ошибка эмбеддинга message=${messageId}:`, toSafeDiagnostic(error));
+    throw error;
   }
 }
 
-async function saveMessageEmbeddingFromContent(
+export async function saveMessageEmbeddingFromContent(
   messageId: string,
   content: string,
   apiKey: string
-): Promise<void> {
-  const existing = await prisma.messageEmbedding.findUnique({
+): Promise<boolean> {
+  const provider = getEmbeddingProvider();
+  if (provider === "disabled") return false;
+  const store = provider === "deepinfra" ? prisma.messageEmbeddingDeepinfra : prisma.messageEmbedding;
+  const existing = await store.findUnique({
     where: { messageId },
     select: { id: true },
   });
 
   if (existing) {
     debugLog("RAG", `Эмбеддинг уже есть для message=${messageId}`);
-    return;
+    return false;
   }
 
-  const embedding = await fetchEmbedding(content, apiKey);
-  await saveMessageEmbedding(messageId, embedding, content);
+  const result = await fetchEmbedding(content, apiKey, "document");
+  return saveMessageEmbedding(messageId, result.embedding, content, result.provider);
 }
 
 export function scheduleMessageEmbedding(
@@ -226,6 +219,13 @@ export function scheduleMessageEmbeddingRefresh(
       DELETE FROM "MessageEmbedding" me USING current_message m
       WHERE me."messageId" = m.id
     `;
+    await prisma.$executeRaw`
+      WITH current_message AS (
+        SELECT id FROM "Message" WHERE id = ${messageId} AND content = ${content} FOR SHARE
+      )
+      DELETE FROM "MessageEmbeddingDeepinfra" me USING current_message m
+      WHERE me."messageId" = m.id
+    `;
     if (persistEmbeddings) await saveMessageEmbeddingFromContent(messageId, content, apiKey);
   })().catch((error) => {
     errorLog("RAG", `Ошибка обновления эмбеддинга message=${messageId}:`, toSafeDiagnostic(error));
@@ -250,13 +250,23 @@ export async function searchRelevantMessages(
       return [];
     }
 
-    const vectorString = toVectorString(queryEmbedding);
+    const vectorString = toVectorString(queryEmbedding.embedding);
     const excludedIds = [...new Set([...(options.excludedMessageIds ?? []), ...(excludeMessageId ? [excludeMessageId] : [])])];
     const throughAt = options.throughMessage?.createdAt ?? null;
     const throughId = options.throughMessage?.id ?? "";
     const beforeAt = options.before ?? null;
     const candidateLimit = Math.min(40, anchorLimit * 4);
-    const results = await prisma.$queryRaw<RagSearchRow[]>`
+    const results = queryEmbedding.provider === "deepinfra" ? await prisma.$queryRaw<RagSearchRow[]>`
+      SELECT m.id, m.role, m.content, m."createdAt",
+        1 - (me.embedding <=> ${vectorString}::vector) AS similarity
+      FROM "MessageEmbeddingDeepinfra" me JOIN "Message" m ON m.id = me."messageId"
+      WHERE m."characterId" = ${characterId} AND m."userId" = ${userId}
+        AND m.role IN ('user', 'assistant') AND NOT (m.id = ANY(${excludedIds}::text[]))
+        AND (${throughAt}::timestamp IS NULL OR (m."createdAt", m.id) <= (${throughAt}::timestamp, ${throughId}))
+        AND (${beforeAt}::timestamp IS NULL OR m."createdAt" < ${beforeAt}::timestamp)
+      ORDER BY me.embedding <=> ${vectorString}::vector, m."createdAt" DESC, m.id DESC
+      LIMIT ${candidateLimit}
+    ` : await prisma.$queryRaw<RagSearchRow[]>`
       SELECT m.id, m.role, m.content, m."createdAt",
         1 - (me.embedding <=> ${vectorString}::vector) AS similarity
       FROM "MessageEmbedding" me JOIN "Message" m ON m.id = me."messageId"

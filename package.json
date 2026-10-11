@@ -55,7 +55,8 @@
     "verify:memory:editor": "node scripts/verify-memory-editor.mjs",
     "verify:memory:scenarios": "node scripts/verify-memory-scenarios.mjs --strict",
     "memory:live-eval": "node scripts/memory-live-eval.mjs",
-    "verify:deepinfra": "node scripts/verify-deepinfra.mjs"
+    "verify:deepinfra": "node scripts/verify-deepinfra.mjs",
+    "verify:deepinfra:embeddings": "node scripts/verify-deepinfra-embeddings.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

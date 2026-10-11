@@ -75,6 +75,10 @@ function load(file) {
   const loaded = { exports: {} }; cache.set(file, loaded.exports);
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   const dependency = name => {
+    if (name === './aiProviders') {
+      const providers = load('src/lib/aiProviders.ts');
+      return { ...providers, textProviderForUrl: value => String(value).startsWith(providerUrl + '/') ? 'kodikrouter' : providers.textProviderForUrl(value) };
+    }
     if (name === './currencyRates') return { getAccountingUsdRub: async () => cbrRate };
     if (name === '@/lib/prisma') return { prisma: file.endsWith('messageEmbeddings.ts')
       ? { $queryRaw: async () => [] } // Isolate provider accounting from pgvector lookup.
@@ -97,6 +101,7 @@ try {
   for (const key of Object.keys(process.env)) if (/^(COST_REPORT_|KODIK_COST_|ECONOMY_COST_REPORT$|ECONOMY_OUTPUT_DIR$)/.test(key)) delete process.env[key];
   process.env['ECONOMY_OUTPUT_DIR'] = directory;
   delete process.env['AI_COST_RATES_RUB_JSON']; delete process.env['KODIKROUTER_USAGE_COST_CURRENCY']; delete process.env['AI_COST_USD_RUB'];
+  delete process.env['MEMORY_AI_PROVIDER']; delete process.env['EMBEDDING_AI_PROVIDER'];
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_economy_test'); await ddl.connect();
   await ddl.query("SET TIME ZONE 'UTC'");
   for (const name of readdirSync('prisma/migrations').filter(n => /^\d+_/.test(n)).sort()) {
@@ -106,7 +111,8 @@ try {
     }
     const sql = readFileSync(join('prisma/migrations', name, 'migration.sql'), 'utf8')
       .replace('CREATE EXTENSION IF NOT EXISTS vector;', '-- omitted only for disposable fixture')
-      .replace(/vector\(1536\)/g, 'BYTEA');
+      .replace(/vector\(\d+\)/g, 'BYTEA')
+      .replace(/CREATE INDEX "MessageEmbeddingDeepinfra_embedding_hnsw_idx"[\s\S]*?;/g, '-- pgvector index tested separately in verify:deepinfra:embeddings');
     await ddl.query(sql);
   }
   check(!!await db.aiCostEvent.count().then(() => true), 'fresh full migration chain includes cost collector');

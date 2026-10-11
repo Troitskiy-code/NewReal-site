@@ -25,6 +25,8 @@ export async function verifyEmbeddingWriteRace({ databaseUrl, root, sourceRef, o
       CREATE TABLE ${schema}."Message" (id text PRIMARY KEY, content text NOT NULL);
       CREATE TABLE ${schema}."MessageEmbedding"
         (id text PRIMARY KEY, "messageId" text UNIQUE, embedding ${schema}.vector, "createdAt" timestamptz);
+      CREATE TABLE ${schema}."MessageEmbeddingDeepinfra"
+        (id text PRIMARY KEY, "messageId" text UNIQUE, embedding ${schema}.vector, "createdAt" timestamptz);
       INSERT INTO ${schema}."Message" VALUES ('race-message', 'old content');
       ${operation === 'delete' ? `INSERT INTO ${schema}."MessageEmbedding" VALUES ('existing-vector', 'race-message', '[0.25,0.75]', NOW());` : ''}
       CREATE FUNCTION ${schema}.pause_write() RETURNS trigger LANGUAGE plpgsql AS $$
