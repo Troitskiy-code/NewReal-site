@@ -18,6 +18,17 @@ export function extractChatStreamDelta(payload: unknown): string {
     ? (message as { content: string }).content : "";
 }
 
+/** True when a chunk carries reasoning text (DeepInfra: reasoning_content, OpenRouter-style: reasoning). */
+export function hasChatStreamReasoning(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const choices = (payload as Record<string, unknown>).choices;
+  if (!Array.isArray(choices) || !choices[0] || typeof choices[0] !== "object") return false;
+  const delta = (choices[0] as Record<string, unknown>).delta;
+  if (!delta || typeof delta !== "object") return false;
+  const { reasoning_content: content, reasoning } = delta as Record<string, unknown>;
+  return (typeof content === "string" && content.length > 0) || (typeof reasoning === "string" && reasoning.length > 0);
+}
+
 export class ChatCompletionStreamError extends Error {
   readonly code = "incomplete_ai_stream";
   readonly __noRetry = true;

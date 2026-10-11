@@ -191,7 +191,7 @@ async function handlePost(
 
       const completion = await consumeOpenAIChatCompletion(upstream, (text) => {
         emit({ type: "delta", text });
-      });
+      }, undefined, () => emit({ type: "thinking" }));
       const assistantReply = completion.text;
 
       logActionOptionsIfPresent(assistantReply);

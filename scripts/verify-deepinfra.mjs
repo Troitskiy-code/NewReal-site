@@ -101,9 +101,10 @@ try {
     && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins, 'missing key fails before charge or upstream');
   process.env['DEEPINFRA_API_KEY'] = 'synthetic_deepinfra_key';
   const list = await (await modelsRoute.GET()).json();
-  check(list.models.length === 11 && list.baseModelId === ids.find(id => id === 'di_chat_20261011_01'), 'switched API exposes eleven models and the Mistral default');
+  check(list.models.length === 9 && list.baseModelId === ids.find(id => id === 'di_chat_20261011_01'), 'switched API exposes nine models and the Mistral default');
+  check(models.DISABLED_DEEPINFRA_MODEL_NAMES.every(name => !list.models.some(m => m.name === name)), 'models that produced no tokens in 60 s stay hidden');
   check(list.selectedModelId === null && list.models.filter(m => m.isTesting).length === 2, 'old selection is safely ignored; only DeepSeek V4 and MiMo are testing');
-  for (const item of models.DEEPINFRA_CHAT_MODELS) {
+  for (const item of models.DEEPINFRA_CHAT_MODELS.filter(m => !models.DISABLED_DEEPINFRA_MODEL_NAMES.includes(m.name))) {
     const row = list.models.find(m => m.name === item.name);
     check(row?.priceVC === item.priceVC && row.maxContextTokens === 20000, `${item.displayName}: agreed price and full product context`);
   }

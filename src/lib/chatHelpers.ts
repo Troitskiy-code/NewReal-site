@@ -37,7 +37,7 @@ import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { getPermanentCoins, spendCoins } from "@/lib/verseCoins";
 import { debugLog, infoLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
-import { chatModelGenerationOptions, chatModelRequestTimeoutMs } from "@/lib/testingChatModels";
+import { chatModelGenerationOptions, chatModelRequestTimeoutMs, chatModelStreamTimeouts } from "@/lib/testingChatModels";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -881,6 +881,18 @@ export async function callChatCompletion(
   );
 }
 
+type ChatStreamTimeoutStage = "first_byte" | "idle" | "total";
+
+/** Named TimeoutError so a first-byte timeout is retried and the user sees a timeout message. */
+export class ChatStreamTimeoutError extends Error {
+  readonly stage: ChatStreamTimeoutStage;
+  constructor(stage: ChatStreamTimeoutStage) {
+    super("Модель не ответила вовремя");
+    this.name = "TimeoutError";
+    this.stage = stage;
+  }
+}
+
 export async function streamChatCompletion(
   modelName: string,
   messages: ChatCompletionMessage[],
@@ -888,11 +900,25 @@ export async function streamChatCompletion(
 ): Promise<ReadableStream<Uint8Array>> {
   const route = chatTransport(modelName, apiKey);
   logPromptDelivery(modelName, messages, true);
+  const limits = chatModelStreamTimeouts(modelName);
   return retryWithBackoff(
     async () => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), chatModelRequestTimeoutMs(modelName));
-      timer.unref?.();
+      const abortWith = (stage: ChatStreamTimeoutStage) => controller.abort(new ChatStreamTimeoutError(stage));
+      const unref = (timer: ReturnType<typeof setTimeout>) => { timer.unref?.(); return timer; };
+      // Before headers a timeout is retried; after them the reply is already streaming to the user.
+      const firstByte = unref(setTimeout(() => abortWith("first_byte"), limits.firstByteMs));
+      const total = unref(setTimeout(() => abortWith("total"), limits.totalMs));
+      let idle: ReturnType<typeof setTimeout> | undefined;
+      const armIdle = () => {
+        clearTimeout(idle);
+        idle = unref(setTimeout(() => abortWith("idle"), limits.idleMs));
+      };
+      const stopTimers = () => {
+        clearTimeout(firstByte);
+        clearTimeout(total);
+        clearTimeout(idle);
+      };
       let response: Response;
       try {
         response = await meteredChatFetch(route.url, {
@@ -909,14 +935,16 @@ export async function streamChatCompletion(
             stream_options: { include_usage: true },
           }),
           signal: controller.signal,
-        }, route.model, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4), () => clearTimeout(timer));
+        }, route.model, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4), stopTimers, armIdle);
       } catch (error) {
-        clearTimeout(timer);
+        stopTimers();
         throw error;
       }
+      clearTimeout(firstByte);
+      armIdle();
 
       if (!response.ok) {
-        clearTimeout(timer);
+        stopTimers();
         await response.body?.cancel().catch(() => {});
         const error = new Error(
           `Ошибка стриминга ИИ: ${response.status}`
@@ -926,13 +954,15 @@ export async function streamChatCompletion(
       }
 
       if (!response.body) {
+        stopTimers();
         throw new Error("Пустой поток ответа от ИИ");
       }
 
       return response.body;
     },
     {
-      maxAttempts: 3,
+      // One quick retry: with a 15 s first-byte limit the worst wait is about 31 s, not 3 minutes.
+      maxAttempts: 2,
       shouldRetry: (error) => {
         if ((error as { __noRetry?: boolean }).__noRetry) return false;
         return defaultShouldRetry(error);

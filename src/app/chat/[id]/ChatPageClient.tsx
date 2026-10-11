@@ -384,6 +384,7 @@ type ChatMessageItemProps = {
   editError?: boolean;
   actionDisabled: boolean;
   isStreaming?: boolean;
+  isThinking?: boolean;
   onEditDraftChange: (value: string) => void;
   onEditCancel: () => void;
   onEditSave: (messageId: string) => void;
@@ -403,6 +404,7 @@ function ChatMessageItem({
   editError = false,
   actionDisabled,
   isStreaming = false,
+  isThinking = false,
   onEditDraftChange,
   onEditCancel,
   onEditSave,
@@ -503,7 +505,7 @@ function ChatMessageItem({
           }`}
         >
           {isStreaming && !message.content ? (
-            <span className="animate-pulse text-gray-400">Печатает...</span>
+            <span className="animate-pulse text-gray-400">{isThinking ? "Думает..." : "Печатает..."}</span>
           ) : (
             <span
               dangerouslySetInnerHTML={{
@@ -865,6 +867,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const [editingDraft, setEditingDraft] = useState("");
   const [editingError, setEditingError] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  // A reasoning model is thinking before its first visible token.
+  const [thinking, setThinking] = useState(false);
   const [anonymousRemaining, setAnonymousRemaining] = useState<number | null>(null);
   const [showAnonymousLimitModal, setShowAnonymousLimitModal] = useState(false);
   const [confirmClearChat, setConfirmClearChat] = useState(false);
@@ -1160,6 +1164,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         `/api/chat/${characterId}/regenerate`,
         { messageId },
         {
+          onThinking: () => setThinking(true),
           onMeta: () => {
             setMessages((prev) =>
               prev.map((msg) => (msg.id === messageId ? { ...msg, content: "" } : msg))
@@ -1199,6 +1204,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       handleApiError(error, "Не удалось перегенерировать ответ");
     } finally {
       setStreamingMessageId(null);
+      setThinking(false);
       setActionLoading(false);
     }
   };
@@ -1217,6 +1223,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         `/api/chat/${characterId}`,
         { continue: true },
         {
+          onThinking: () => setThinking(true),
           onMeta: (event) => {
             if (event.appendToId) {
               targetId = event.appendToId;
@@ -1291,6 +1298,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       handleApiError(error, "Не удалось продолжить ответ");
     } finally {
       setStreamingMessageId(null);
+      setThinking(false);
       setSending(false);
     }
   };
@@ -1439,6 +1447,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           ? { message: userMessage, history, requestId }
           : { message: userMessage },
         {
+          onThinking: () => setThinking(true),
           onMeta: (event) => {
             if (event.userMessage) {
               persistedUser = asChatMessage(event.userMessage);
@@ -1526,6 +1535,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
     } finally {
       setStreamingMessageId(null);
+      setThinking(false);
       setSending(false);
     }
   };
@@ -1564,6 +1574,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           ? { message: lastSend.message, history: lastSend.history, requestId: lastSend.requestId }
           : { retryLast: true },
         {
+          onThinking: () => setThinking(true),
           onDelta: (text) => {
             setMessages((prev) =>
               prev.map((msg) =>
@@ -1607,6 +1618,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
     } finally {
       setStreamingMessageId(null);
+      setThinking(false);
       setSending(false);
     }
   };
@@ -1777,6 +1789,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                   editError={editingError}
                   actionDisabled={sending || actionLoading || clearingChat}
                   isStreaming={streamingMessageId === msg.id}
+                  isThinking={thinking && streamingMessageId === msg.id}
                   onEditDraftChange={(value) => {
                     setEditingDraft(value);
                     if (editingError) setEditingError(false);

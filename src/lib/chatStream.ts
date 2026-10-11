@@ -1,5 +1,5 @@
 import { safeErrorFields } from "./redactSensitive";
-import { ChatCompletionStreamError, ChatCompletionStreamParser, extractChatStreamDelta } from "./chatCompletionStream";
+import { ChatCompletionStreamError, ChatCompletionStreamParser, extractChatStreamDelta, hasChatStreamReasoning } from "./chatCompletionStream";
 import type { ChatCompletionFinishReason } from "./chatCompletionStream";
 export { extractChatStreamDelta } from "./chatCompletionStream";
 
@@ -23,6 +23,11 @@ export type ChatStreamDeltaEvent = {
   text: string;
 };
 
+/** Sent once while a reasoning model thinks before its first visible token. */
+export type ChatStreamThinkingEvent = {
+  type: "thinking";
+};
+
 export type ChatStreamEndEvent = {
   type: "end";
   assistantMessage: ChatStreamMessage;
@@ -43,6 +48,7 @@ export type ChatStreamErrorEvent = {
 export type ChatStreamEvent =
   | ChatStreamMetaEvent
   | ChatStreamDeltaEvent
+  | ChatStreamThinkingEvent
   | ChatStreamEndEvent
   | ChatStreamErrorEvent;
 
@@ -83,6 +89,8 @@ export function createChatNdjsonResponse(
             error: error instanceof ChatCompletionStreamError ? error.message
               : error instanceof Error && error.message === "Пустой ответ от ИИ"
               ? error.message
+              : error instanceof Error && error.name === "TimeoutError"
+              ? "Модель не ответила вовремя. Попробуйте ещё раз или выберите другую модель."
               : "Ошибка при обработке запроса",
           });
         } catch {
@@ -114,7 +122,8 @@ export async function consumeOpenAIChatStream(
 export async function consumeOpenAIChatCompletion(
   stream: ReadableStream<Uint8Array>,
   onDelta: (text: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onThinking?: () => void
 ): Promise<{ text: string; finishReason: ChatCompletionFinishReason }> {
   const reader = stream.getReader();
   const onAbort = () => { void reader.cancel().catch(() => {}); };
@@ -122,9 +131,11 @@ export async function consumeOpenAIChatCompletion(
   const decoder = new TextDecoder();
   let fullText = "";
   let consumed = false;
+  let thinkingSent = false;
   const parser = new ChatCompletionStreamParser((chunk, emitText) => {
     const delta = emitText ? extractChatStreamDelta(chunk) : "";
     if (delta) { fullText += delta; onDelta(delta); }
+    else if (!thinkingSent && !fullText && hasChatStreamReasoning(chunk)) { thinkingSent = true; onThinking?.(); }
   });
 
   try {
@@ -160,7 +171,7 @@ function isChatStreamEvent(value: unknown): value is ChatStreamEvent {
     return false;
   }
   const type = (value as { type: unknown }).type;
-  return type === "meta" || type === "delta" || type === "end" || type === "error";
+  return type === "meta" || type === "delta" || type === "thinking" || type === "end" || type === "error";
 }
 
 export async function readChatNdjsonStream(
@@ -259,6 +270,7 @@ export async function fetchAndReadChatStream(
   handlers: {
     onMeta?: (event: ChatStreamMetaEvent) => void;
     onDelta?: (text: string) => void;
+    onThinking?: () => void;
     onEnd?: (event: ChatStreamEndEvent) => void;
   } = {}
 ): Promise<ChatStreamEndEvent | null> {
@@ -270,6 +282,8 @@ export async function fetchAndReadChatStream(
       handlers.onMeta?.(event);
     } else if (event.type === "delta") {
       handlers.onDelta?.(event.text);
+    } else if (event.type === "thinking") {
+      handlers.onThinking?.();
     } else if (event.type === "end") {
       endEvent = event;
       handlers.onEnd?.(event);

@@ -1,4 +1,4 @@
-import { DEEPINFRA_BASE_MODEL, DEEPINFRA_MODEL_NAMES, deepinfraModel } from "./deepinfraModels";
+import { DEEPINFRA_AVAILABLE_MODEL_NAMES, DEEPINFRA_BASE_MODEL, DEEPINFRA_MODEL_NAMES, deepinfraModel } from "./deepinfraModels";
 import { NON_DEFAULT_CHAT_MODEL_NAMES, RETIRED_TESTING_CHAT_MODEL_NAMES } from "./testingChatModels";
 
 export type TextProvider = "kodikrouter" | "deepinfra";
@@ -32,11 +32,11 @@ export function deepinfraUsdRub(): number | null {
 }
 export function chatModelNameFilter(baseOnly = false) {
   return getChatProvider() === "deepinfra"
-    ? { in: baseOnly ? [DEEPINFRA_BASE_MODEL] : DEEPINFRA_MODEL_NAMES }
+    ? { in: baseOnly ? [DEEPINFRA_BASE_MODEL] : DEEPINFRA_AVAILABLE_MODEL_NAMES }
     : { notIn: baseOnly ? NON_DEFAULT_CHAT_MODEL_NAMES : [...RETIRED_TESTING_CHAT_MODEL_NAMES, ...DEEPINFRA_MODEL_NAMES] };
 }
 export function availableChatModel(name: string): boolean {
-  if (getChatProvider() === "deepinfra") return DEEPINFRA_MODEL_NAMES.includes(name);
+  if (getChatProvider() === "deepinfra") return DEEPINFRA_AVAILABLE_MODEL_NAMES.includes(name);
   return !name.startsWith("deepinfra:") && !RETIRED_TESTING_CHAT_MODEL_NAMES.includes(name);
 }
 export function chatTransport(name: string, legacyKey?: string) {

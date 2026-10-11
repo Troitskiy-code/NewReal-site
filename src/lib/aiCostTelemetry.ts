@@ -122,12 +122,16 @@ function responseRequestId(ticket: Ticket, headers: Record<string, unknown>) {
   return ticket.provider === "deepinfra" ? headers["x-deepinfra-request-id"] ?? headers["x-request-id"] : headers["x-kodikrouter-request-id"];
 }
 
+// A provider that stops answering (KodikRouter ETIMEDOUT on 2026-10-11) otherwise holds a request
+// until the OS gives up, about 130 s. Callers on the reply path pass a shorter timeout.
+const SERVICE_REQUEST_TIMEOUT_MS = 30_000;
+
 export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, url: string, body: unknown,
   config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
   const payload = body as { model?: unknown };
   const ticket = await begin(safeModel(payload?.model), purpose, textProviderForUrl(url));
   try {
-    const response = await axios.post<T>(url, body, { ...config, maxRedirects: 0 });
+    const response = await axios.post<T>(url, body, { ...config, timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
     const actualModel = (response.data as { model?: unknown })?.model;
     await finish(ticket, response.status >= 400 ? "failed" : "completed", providerUsage(ticket, response.data, purpose === "embedding"), response.status,
       undefined, undefined, typeof actualModel === "string" ? safeModel(actualModel) : undefined,
@@ -142,7 +146,9 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
 }
 
 const streams = new WeakMap<ReadableStream<Uint8Array>, { ticket: Ticket; completed: boolean }>();
-export async function meteredChatFetch(url: string, init: RequestInit, model: string, estimatedInput: number, onEnd?: () => void): Promise<Response> {
+/** onChunk fires for every body chunk, so callers can run an idle watchdog without replacing the tracked stream. */
+export async function meteredChatFetch(url: string, init: RequestInit, model: string, estimatedInput: number,
+  onEnd?: () => void, onChunk?: () => void): Promise<Response> {
   const ticket = await begin(safeModel(model), "chat", textProviderForUrl(url));
   const requestIdHeader = ticket.provider === "deepinfra" ? "x-request-id" : "x-kodikrouter-request-id";
   let response: Response;
@@ -189,6 +195,7 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
         const { done, value } = await reader.read();
         if (cancelled) return;
         if (done) { parser.push(decoder.decode()); await complete("completed"); controller.close(); reader.releaseLock(); return; }
+        onChunk?.();
         parser.push(decoder.decode(value, { stream: true }));
         controller.enqueue(value);
       } catch (error) { await complete("failed"); controller.error(error); reader.releaseLock(); }

@@ -5,6 +5,7 @@ import { debugLog, errorLog } from "@/lib/logger";
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const INTENT_MODEL = "google/gemma-4-31b-it";
 const MIN_INTENT_CONFIDENCE = 0.6;
+const INTENT_TIMEOUT_MS = 8_000;
 
 export const USER_INTENTS = ["general", "story", "fact", "question", "action"] as const;
 
@@ -178,6 +179,9 @@ export async function analyzeIntent(userMessage: string, apiKey: string): Promis
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
+        // The reply waits for this; on 2026-10-11 a hung call delayed a message by 136 s.
+        // On timeout the analysis falls back to "general".
+        timeout: INTENT_TIMEOUT_MS,
       }
     );
 

@@ -392,7 +392,7 @@ async function handlePost(
           console.log(`[ChatTTFT] Total TTFT: ${Date.now() - ttftStartedAt}ms`);
         }
         emit({ type: "delta", text });
-      });
+      }, undefined, () => emit({ type: "thinking" }));
       const assistantReply = completion.text;
       if (!loggedTtft) {
         console.log(`[ChatTTFT] Total TTFT: ${Date.now() - ttftStartedAt}ms`);

@@ -37,3 +37,16 @@ export function chatModelRequestTimeoutMs(modelName: string): number {
   if (DEEPINFRA_MODEL_NAMES.includes(modelName)) return 60_000;
   return isTestingChatModel(modelName) ? 60_000 : 30_000;
 }
+
+export type ChatStreamTimeouts = { firstByteMs: number; idleMs: number; totalMs: number };
+
+/**
+ * Streaming limits. A single 60 s timer for the whole stream, retried 3 times, let a stalled
+ * provider hold a reply for up to 3 minutes and cut slow but working replies mid-sentence.
+ * Reasoning models may stay silent while they think, so they get a longer gap between chunks.
+ */
+export function chatModelStreamTimeouts(modelName: string): ChatStreamTimeouts {
+  const reasoning = DEEPINFRA_CHAT_MODELS.some((model) => model.name === modelName && model.reasoning)
+    || modelName === "aion-labs/aion-3.5-mini";
+  return { firstByteMs: 15_000, idleMs: reasoning ? 45_000 : 20_000, totalMs: 120_000 };
+}
