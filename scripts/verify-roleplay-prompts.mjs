@@ -25,7 +25,14 @@ const format = load('src/lib/memoryPromptFormat.ts', { './memorySafety': safety 
 const builder = load('src/lib/chatSystemPrompt.ts', { './roleplayConfig': config, './memoryPromptFormat': format, './memorySafety': safety });
 const imagePrompt = load('src/lib/avatarPrompt.ts');
 check(!imagePrompt.buildAvatarPrompt({ roleplayMode: 'world', name: 'Современный город', avatarPrompt: 'Ночной город' }).includes('character portrait'), 'universe cover generation does not impose a character portrait');
-check(imagePrompt.buildAvatarPrompt({ roleplayMode: 'group', name: 'Экспедиция' }).includes('cover art'), 'group image uses a cover prompt');
+check(imagePrompt.buildAvatarPrompt({ roleplayMode: 'group', name: 'Экспедиция' }).includes('ensemble illustration'), 'group image uses an ensemble scene prompt');
+{
+  const world = imagePrompt.buildAvatarPrompt({ roleplayMode: 'world', name: 'Неон', avatarPrompt: 'кинематографичная картинка мира киберпанк', style: 'anime' });
+  check(world.includes('establishing view') && world.includes('The place is the subject') && world.includes('small figures'), 'universe image shows the place, with people only at realistic scale');
+  check(!/cover art|character portrait|Exactly one character/.test(world), 'universe image has no cover or portrait wording that invites a giant hero');
+  const group = imagePrompt.buildAvatarPrompt({ roleplayMode: 'group', name: 'Экспедиция', description: 'Трое учёных в джунглях' });
+  check(group.includes('natural human scale') && !group.includes('Exactly one character'), 'group image keeps several characters at natural scale');
+}
 check(imagePrompt.buildAvatarPrompt({ name: 'Анна' }).includes('character portrait'), 'existing single-character avatar behaviour remains compatible');
 {
   const card = { name: 'Лира Теней', appearance: 'тёмная коса, льняной фартук', description: 'Хозяйка лесного приюта' };
