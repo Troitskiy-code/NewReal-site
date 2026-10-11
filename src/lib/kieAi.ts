@@ -54,19 +54,22 @@ async function request(url: string, body?: unknown) {
   }
   return data;
 }
+// Phone cameras shoot 24–50 MP; the input is capped at 5 MB, so this only guards against decompression bombs.
+const MAX_REFERENCE_PIXELS = 64_000_000;
 export async function prepareKieReference(value: string) {
   if (!isSafeAvatarReference(value)) throw new KieError("invalid_reference", true);
   try {
     const buffer = Buffer.from(value.slice(value.indexOf(",") + 1), "base64");
-    const png = await sharp(buffer, { limitInputPixels: 16_000_000, animated: false })
-      .rotate().resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true }).png().toBuffer();
-    if (png.length > 5 * 1024 * 1024) throw new Error("too large");
-    return `data:image/png;base64,${png.toString("base64")}`;
+    // WebP keeps photos near 1 MB at 1536 px; PNG often exceeded the cap and slowed the upload.
+    const webp = await sharp(buffer, { limitInputPixels: MAX_REFERENCE_PIXELS, animated: false })
+      .rotate().resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true }).webp({ quality: 90 }).toBuffer();
+    if (webp.length > 5 * 1024 * 1024) throw new Error("too large");
+    return `data:image/webp;base64,${webp.toString("base64")}`;
   } catch { throw new KieError("invalid_reference", true); }
 }
 export async function uploadKieReference(base64Data: string) {
   const data = await request(`${UPLOAD}/api/file-base64-upload`, {
-    base64Data, uploadPath: "newverse/references", fileName: `${randomUUID()}.png`,
+    base64Data, uploadPath: "newverse/references", fileName: `${randomUUID()}.webp`,
   });
   const url = record(data.data).downloadUrl;
   if (typeof url !== "string" || !isKieImageUrl(url)) throw new KieError("invalid_response");

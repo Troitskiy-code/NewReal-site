@@ -235,8 +235,36 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+const REFERENCE_MAX_SIDE = 2048;
+
+/**
+ * Phone photos are often 24–50 MP; the server only needs ~1.5K px, so shrink large ones before upload.
+ * Falls back to the original file when the browser cannot decode or re-encode it.
+ */
+async function fileToReferenceDataUrl(file: File): Promise<string> {
+  if (file.type === "image/gif" || typeof createImageBitmap !== "function") return fileToDataUrl(file);
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, REFERENCE_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= 2 * 1024 * 1024) {
+      bitmap.close();
+      return fileToDataUrl(file);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    // Browsers without WebP encoding return PNG, which the server also accepts.
+    const dataUrl = canvas.toDataURL("image/webp", 0.9);
+    return /^data:image\/(webp|png);base64,/.test(dataUrl) ? dataUrl : fileToDataUrl(file);
+  } catch {
+    return fileToDataUrl(file);
+  }
+}
+
 async function resolveReferenceImage(preview: string | null, file?: File | null): Promise<string | null> {
-  if (file) return fileToDataUrl(file);
+  if (file) return fileToReferenceDataUrl(file);
   if (preview && (preview.startsWith("data:") || preview.startsWith("http") || preview.startsWith("blob:"))) {
     return ensureReferenceImageDataUrl(preview);
   }

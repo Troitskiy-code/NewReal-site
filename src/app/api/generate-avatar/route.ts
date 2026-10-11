@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
     let job: Awaited<ReturnType<typeof prisma.avatarGeneration.findUnique>> = null;
     let attempted = false;
     let ownsNewJob = false;
+    // Which step failed; logged with our own error code because provider text is never logged.
+    let stage = "request";
+    let withReference = false;
     try {
       const session = await getServerSession(authOptions);
       if (!session?.user?.id) return json({ error: "Не авторизован" }, 401);
@@ -36,8 +39,11 @@ export async function POST(req: NextRequest) {
       const name = text(body.name), reference = text(body.referenceImage), scope = text(body.scope), clientKey = text(body.clientKey);
       if (!name || name.length > 200) return json({ error: "Укажите имя или название до 200 символов" }, 400);
       if (!validScope(scope) || !validKey(clientKey)) return json({ error: "Некорректный идентификатор генерации. Обновите страницу." }, 400);
+      withReference = Boolean(reference);
       if (reference && !isSafeAvatarReference(reference)) return json({ error: "Загрузите PNG, JPEG, WebP или GIF размером до 5 МБ" }, 400);
+      stage = "prepare_reference";
       const prepared = reference ? await prepareKieReference(reference) : undefined;
+      stage = "reserve";
       const prompt = buildAvatarPrompt(body);
       // Never accept modelId, resolution or number of images from the client.
       const model = kieAvatarModel(Boolean(reference));
@@ -52,11 +58,14 @@ export async function POST(req: NextRequest) {
       if (reservation.isNew) {
         ownsNewJob = true;
         await recordKieAvatarCost(job);
+        stage = "upload_reference";
         const referenceUrl = prepared ? await uploadKieReference(prepared) : undefined;
+        stage = "create_task";
         attempted = true;
         const taskId = await createKieAvatar(prompt, referenceUrl);
         // No prompt/reference/key: operators can recover a task after a DB write failure.
         infoLog("KieAvatar", "Task accepted", { taskId, jobId: job.id, model: model.id });
+        stage = "save_task";
         job = await prisma.avatarGeneration.update({ where: { id: job.id }, data: {
           providerTaskId: taskId, state: "pending", leaseUntil: null, nextPollAt: new Date(),
         } });
@@ -67,7 +76,12 @@ export async function POST(req: NextRequest) {
       const usage = await getAvatarUsageUser(session.user.id);
       return json({ ...publicAvatarJob(job), tokenStatus: getAvatarTokenStatus(usage) }, job.state === "succeeded" ? 200 : 202);
     } catch (error) {
-      errorLog("KieAvatar", "Unable to start generation", toSafeDiagnostic(error));
+      errorLog("KieAvatar", "Unable to start generation", {
+        stage,
+        withReference,
+        ...(error instanceof KieError ? { kieCode: error.code, rejected: error.rejected } : {}),
+        ...toSafeDiagnostic(error),
+      });
       if (error instanceof AvatarBodyTooLarge) return json({ error: "Референс слишком большой" }, 413);
       if (error instanceof AvatarRequestConflict) return json({ error: "Запрос изменился. Проверьте результат предыдущей генерации перед новым запуском." }, 409);
       if (job && ownsNewJob) {

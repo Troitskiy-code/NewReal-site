@@ -41,7 +41,7 @@ async function providerFetch(url, init = {}) {
   const parsed = new URL(url);
   if (parsed.host === 'kieai.redpandaai.co' && parsed.pathname === '/api/file-base64-upload') {
     uploads++; const body = JSON.parse(init.body);
-    assert.ok(body.base64Data.startsWith('data:image/png;base64,'));
+    assert.ok(body.base64Data.startsWith('data:image/webp;base64,') && body.fileName.endsWith('.webp'));
     return json({ code: 200, data: { downloadUrl: `https://tempfile.redpandaai.co/${body.fileName}` } });
   }
   if (parsed.host === 'api.kie.ai' && parsed.pathname === '/api/v1/jobs/createTask') {
