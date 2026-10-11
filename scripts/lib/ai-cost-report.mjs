@@ -134,7 +134,7 @@ const percentile = (values, p) => {
   const sorted = [...values].sort((a, b) => a - b), position = (sorted.length - 1) * p, index = Math.floor(position);
   return sorted[index] + (sorted[Math.ceil(position)] - sorted[index]) * (position - index);
 };
-const estimateSources = new Set(['chat_usd_estimate', 'chat_cbr_estimate', 'catalog_estimate', 'configured_estimate']);
+const estimateSources = new Set(['chat_usd_estimate', 'chat_cbr_estimate', 'catalog_estimate', 'configured_estimate', 'kie_credits_estimate']);
 
 export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } = {}) {
   const reconciliation = ledgerRows ? reconcileKodikCosts(events, ledgerRows, apiKeyName)

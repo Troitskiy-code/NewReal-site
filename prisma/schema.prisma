@@ -599,8 +599,36 @@ model AvatarQuotaReservation {
   month     DateTime
   status    String   @default("reserved")
   createdAt DateTime @default(now())
+  generation AvatarGeneration?
 
   @@index([userId, createdAt])
+}
+
+model AvatarGeneration {
+  id String @id
+  reservationId String @unique
+  reservation AvatarQuotaReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  userId String
+  clientKey String
+  scope String
+  payloadHash String
+  model String
+  state String @default("creating")
+  providerTaskId String? @unique
+  imageUrl String? @db.Text
+  errorCode String?
+  credits Float?
+  creditRub Float @default(0.5)
+  estimatedCredits Float
+  leaseToken String?
+  leaseUntil DateTime?
+  nextPollAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, clientKey])
+  @@index([userId, scope, createdAt])
+  @@index([state, nextPollAt])
 }
 
 model SupportTicket {

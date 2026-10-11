@@ -68,7 +68,7 @@ let db = new PrismaClient({ datasourceUrl: url, log: [] });
 const ddl = new Client({ connectionString: url });
 let checks = 0;
 const check = (value, label) => { assert.ok(value, label); checks++; console.log(`PASS ${label}`); };
-let userId, avatarFail = false, imageDownloadFail = false;
+let userId;
 const cache = new Map();
 function load(file) {
   file = resolve(file); if (cache.has(file)) return cache.get(file);
@@ -81,11 +81,6 @@ function load(file) {
       : db };
     if (name === '@/lib/auth') return { authOptions: {} };
     if (name === 'next-auth/next') return { getServerSession: async () => ({ user: { id: userId } }) };
-    if (name === '@/lib/createya') return { convertImageToPNG: async x => x,
-      generateWithCreateya: async (_prompt, _reference, _model, onRun) => {
-        await onRun?.('run_test_1');
-        if (avatarFail) throw Object.assign(new Error('secret_provider_response'), { avatarQuotaRefundable: avatarFail === true }); return 'https://example.test/image'; },
-      imageUrlToDataUrl: async () => { if (imageDownloadFail) throw new Error('download failed'); return 'data:image/png;base64,dGVzdA=='; } };
     if (name.startsWith('@/')) return load(join('src', name.slice(2) + '.ts'));
     if (name.startsWith('.')) {
       const target = resolve(dirname(file), name);
@@ -255,25 +250,17 @@ try {
   await tokens.settleAvatarGeneration(old.id, false);
   check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 1, 'old refund cannot subtract new activation period');
   await db.user.update({ where: { id: user.id }, data: { tokensUsedThisMonth: 0, lastTokenMonth: new Date() } });
-  const handler = load('src/app/api/generate-avatar/route.ts'), { NextRequest } = require('next/server');
-  const request = modelId => new NextRequest('https://example.test/api/generate-avatar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Test', modelId }) });
-  const result = await handler.POST(request('gpt-image')); const body = await result.json();
-  check(result.status === 200 && body.tokenStatus.monthlyRemaining === 8, 'GPT avatar consumes one generation and returns authoritative status');
-  check((await db.avatarQuotaReservation.findFirst({ where: { userId: user.id, status: 'completed' } })).units === 1, 'GPT reservation stores one generation regardless of model multiplier');
-  check(!!await db.aiCostEvent.findFirst({ where: { providerRequestId: 'run_test_1', quotaReservationId: { not: null } } }), 'avatar cost linked to provider run and quota reservation');
-  await db.user.update({ where: { id: user.id }, data: { tokensUsedThisMonth: 8 } });
-  const lastGeneration = await handler.POST(request('gpt-image'));
-  check(lastGeneration.status === 200 && (await lastGeneration.json()).tokenStatus.monthlyRemaining === 0, 'GPT avatar can use the final remaining generation');
-  const exhausted = await handler.POST(request('gpt-image'));
-  check(exhausted.status === 402 && (await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 9, 'avatar generation rejected after monthly limit is exhausted');
-  await db.user.update({ where: { id: user.id }, data: { tokensUsedThisMonth: 1 } });
-  avatarFail = true; const rejection = await handler.POST(request('flux-kontext'));
-  check(rejection.status === 500 && !JSON.stringify(await rejection.json()).includes('secret_provider_response'), 'avatar failure does not leak provider error');
-  check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 1, 'failed provider refunds one reserved generation');
-  avatarFail = 'timeout'; await handler.POST(request('flux-kontext'));
-  check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 2 && !!await db.avatarQuotaReservation.findFirst({ where: { status: 'manual_review' } }), 'ambiguous provider failure keeps quota for reconciliation');
-  avatarFail = false; imageDownloadFail = true; await handler.POST(request('flux-kontext'));
-  check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 3, 'completed provider run not refunded on image download failure');
+  // Legacy Createya telemetry stays compatible; Kie real-handler/SQL/concurrency
+  // acceptance now lives in verify-kie-avatars.mjs (the API is asynchronous).
+  const one = await tokens.reserveAvatarGeneration(user.id);
+  await telemetry.withAvatarCost('test/image', 5, async onRun => { await onRun('legacy_avatar_fixture'); return 'fixture'; }, one.id);
+  await tokens.settleAvatarGeneration(one.id, true);
+  check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 1, 'legacy completed avatar consumes one unit');
+  check(!!await db.aiCostEvent.findFirst({ where: { providerRequestId: 'legacy_avatar_fixture', quotaReservationId: one.id } }), 'legacy provider cost remains linked to its reservation');
+  const failure = await tokens.reserveAvatarGeneration(user.id);
+  await assert.rejects(telemetry.withAvatarCost('test/image',5,async () => { throw new Error('fixture'); },failure.id));
+  await tokens.settleAvatarGeneration(failure.id,false);
+  check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 1, 'known legacy failure refunds one unit');
   const exportResult = spawnSync(process.execPath, ['scripts/report-ai-costs.mjs'], { encoding: 'utf8', env: { ...process.env, COST_REPORT_DATABASE_URL: url } });
   check(exportResult.status === 0, 'read-only cost report against private PostgreSQL');
   const report = JSON.parse(exportResult.stdout);

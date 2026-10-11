@@ -9,6 +9,7 @@ import { finiteNonnegative, readCostUsage, resolveKodikCost, tokenCostRub, type 
 import { canonicalKodikModel, getKodikCostRates } from "./kodikCostRates";
 import { getAccountingUsdRub } from "./currencyRates";
 import { ChatCompletionStreamParser, extractChatStreamDelta } from "./chatCompletionStream";
+import type { AvatarGeneration } from "@prisma/client";
 
 type CostContext = { operationId: string; actorHash: string | null; subscriptionType: string | null; sequence: number; audience: string };
 const contexts = new AsyncLocalStorage<CostContext>();
@@ -236,4 +237,32 @@ export async function withAvatarCost<T>(model: string, estimatedCostRub: number,
     } }).catch(err => errorLog("AiCost", "Unable to record avatar failure", toSafeDiagnostic(err)));
     throw error;
   }
+}
+
+/** One durable event per paid image job. Credits are measured; RUB is an acquisition estimate. */
+export async function recordKieAvatarCost(job: AvatarGeneration) {
+  const ctx = contexts.getStore();
+  const credits = job.credits;
+  const data = {
+    provider: "kie", model: job.model, purpose: "avatar", apiSurface: "image_generation",
+    accountingVersion: 2, providerRequestId: job.providerTaskId, quotaReservationId: job.reservationId,
+    outcome: job.state === "succeeded" ? "completed" : job.state === "failed" ? "failed" : "pending",
+    durationMs: ["succeeded", "failed"].includes(job.state) ? job.updatedAt.getTime() - job.createdAt.getTime() : null,
+    usageSource: credits === null ? "configured" : "provider",
+    providerCostNative: credits, providerCostCurrency: credits === null ? null : "CREDIT",
+    providerCostSemantics: credits === null ? "unverified" : "reported_credits_consumed",
+    // Keep estimated conversion separate from confirmed RUB ledger debits.
+    reportedCostRub: null,
+    costSource: credits !== null ? "kie_credits_estimate" : job.state === "succeeded" ? "configured_estimate" : "unknown",
+    estimatedCostRub: credits !== null ? credits * job.creditRub : job.state === "succeeded" ? job.estimatedCredits * job.creditRub : null,
+  };
+  try {
+    await prisma.aiCostEvent.upsert({ where: { id: job.id }, update: {}, create: {
+      id: job.id, operationId: job.id, attempt: 1, audience: "user", ...data,
+      actorHash: ctx?.actorHash ?? (process.env.NEXTAUTH_SECRET ? createHmac("sha256", process.env.NEXTAUTH_SECRET).update(job.userId).digest("hex") : null),
+      subscriptionType: ctx?.subscriptionType,
+    } });
+    // A stale creation/poll writer cannot overwrite a completed event from another worker.
+    await prisma.aiCostEvent.updateMany({ where: { id: job.id, outcome: { in: data.outcome === "pending" ? ["pending"] : ["pending", data.outcome] } }, data });
+  } catch (error) { errorLog("AiCost", "Unable to record Kie avatar cost", toSafeDiagnostic(error)); }
 }

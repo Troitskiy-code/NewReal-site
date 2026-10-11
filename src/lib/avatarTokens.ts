@@ -160,11 +160,24 @@ export function getAvatarTokenStatus(user: AvatarTokenUser) {
   };
 }
 
-export async function reserveAvatarGeneration(userId: string) {
+type GenerationInput = { clientKey: string; scope: string; payloadHash: string; model: string; estimatedCredits: number; creditRub: number };
+export class AvatarRequestConflict extends Error {}
+
+export async function reserveAvatarGeneration(userId: string, generation?: GenerationInput) {
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const user = await tx.user.findUnique({ where: { id: userId }, select: AVATAR_TOKEN_SELECT });
     if (!user) throw new Error("Пользователь не найден");
+    if (generation) {
+      const existing = await tx.avatarGeneration.findUnique({ where: { userId_clientKey: { userId, clientKey: generation.clientKey } } });
+      if (existing) {
+        if (existing.payloadHash !== generation.payloadHash) throw new AvatarRequestConflict("Avatar idempotency conflict");
+        return { id: existing.reservationId, user, generation: existing, isNew: false };
+      }
+      // Serialize new requests from tabs on the user lock. One outstanding paid run per user.
+      const active = await tx.avatarGeneration.findFirst({ where: { userId, state: { in: ["creating", "pending", "uncertain"] } }, orderBy: { createdAt: "desc" } });
+      if (active) return { id: active.reservationId, user, generation: active, isNew: false };
+    }
     if (!canGenerateThisMonth(user).ok) return null;
     const monthly = normalizeMonthlyUsage(user);
     const id = randomUUID();
@@ -172,7 +185,10 @@ export async function reserveAvatarGeneration(userId: string) {
     const updated = await tx.user.update({ where: { id: userId }, data: {
       tokensUsedThisMonth: monthly.tokensUsedThisMonth + 1, lastTokenMonth: monthly.lastTokenMonth,
     }, select: AVATAR_TOKEN_SELECT });
-    return { id, user: updated };
+    const job = generation ? await tx.avatarGeneration.create({ data: {
+      id, reservationId: id, userId, ...generation, leaseUntil: new Date(Date.now() + 90_000),
+    } }) : null;
+    return { id, user: updated, generation: job, isNew: true };
   });
 }
 

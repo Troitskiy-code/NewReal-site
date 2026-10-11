@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import axios from "axios";
 import { Trans } from "react-i18next";
-import { showError, showSuccess } from "@/lib/toast";
+import { useSession } from "next-auth/react";
+import { showError } from "@/lib/toast";
 import LocaleLink from "@/components/LocaleLink";
 import ModerationWarning from "@/components/ModerationWarning";
 import {
@@ -20,18 +21,11 @@ import {
 import { CHARACTER_LIMITS } from "@/lib/characterFields";
 import { MEMORY_CONTENT_LIMIT } from "@/lib/persistentMemory";
 import { ensureReferenceImageDataUrl, ensureReferenceImageFile } from "@/lib/convertAvifToPng";
-import {
-  AVATAR_MODELS,
-  getAvatarModel,
-  readStoredAvatarModelId,
-  storeAvatarModelId,
-  type AvatarModelId,
-} from "@/lib/avatarModels";
+import { useAvatarGeneration } from "@/lib/useAvatarGeneration";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
 import RoleplayPromptSettings from "@/components/RoleplayPromptSettings";
 import RoleplayCardFields from "@/components/RoleplayCardFields";
 import type { RoleplayConfig, RoleplayMode, RoleplayStyle } from "@/lib/roleplayConfig";
-import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
 const HINT_CLASS = "text-sm text-gray-400 leading-relaxed";
@@ -256,7 +250,8 @@ type AvatarLimitStatus = {
 };
 
 export default function CharacterForm(props: CharacterFormProps) {
-  return <CharacterFormContent key={props.characterId ?? "new"} {...props} />;
+  const { data: session } = useSession();
+  return <CharacterFormContent key={`${session?.user?.id ?? "guest"}:${props.characterId ?? props.values.roleplayMode}`} {...props} />;
 }
 
 function CharacterFormContent({
@@ -279,14 +274,13 @@ function CharacterFormContent({
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isWarned = moderationStatus === "warning";
-  const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
-  const [avatarModelId, setAvatarModelId] = useState<AvatarModelId>(() => readStoredAvatarModelId(characterId));
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
   const [localErrors, setLocalErrors] = useState<{ name?: string; lora?: string; prompt?: string }>({});
 
   const usesSd = Boolean(loraFile || loraPreview);
-  const selectedAvatarModel = getAvatarModel(avatarModelId);
+  const generation = useAvatarGeneration(characterId ? `edit:${characterId}` : `create:${values.roleplayMode}`, onAvatarGenerated, setTokenStatus);
+  const generatingAvatar = generation.busy;
   const canGenerate = Boolean(tokenStatus && tokenStatus.monthlyRemaining >= 1);
 
   const handleLoraInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -332,64 +326,17 @@ function CharacterFormContent({
 
     setLocalErrors((current) => ({ ...current, name: undefined }));
     onClearError?.("name");
-    setGeneratingAvatar(true);
-    const apiModel = usesSd ? selectedAvatarModel.apiModelI2i : selectedAvatarModel.apiModel;
-    console.log("[AvatarModel] Selected model:", selectedAvatarModel.id);
-    console.log("[AvatarModel] generate", {
-      modelId: selectedAvatarModel.id,
-      apiModel,
-      hasReference: usesSd,
-      costMultiplier: selectedAvatarModel.costMultiplier,
-    });
     try {
       const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
-      const { data } = await axios.post<{ imageUrl: string; tokenStatus?: AvatarLimitStatus }>("/api/generate-avatar", {
-        name: values.name.trim(),
-        roleplayMode: values.roleplayMode,
+      await generation.start({
+        name: values.name.trim(), roleplayMode: values.roleplayMode,
         appearance: values.appearance.trim() || undefined,
         description: values.description.trim() || undefined,
-        scenario: values.scenario.trim() || undefined,
-        exampleDialogs: values.exampleDialogs.trim() || undefined,
         avatarPrompt: values.avatarPrompt.trim() || undefined,
-        referenceImage: referenceImage || undefined,
-        style,
-        modelId: selectedAvatarModel.id,
+        referenceImage: referenceImage || undefined, style,
       });
-
-      if (!data.imageUrl) {
-        throw new Error("Сервер не вернул изображение");
-      }
-
-      reachGoal(METRIKA_GOALS.generateAvatar);
-      onAvatarGenerated(data.imageUrl);
-      setTokenStatus((prev) => data.tokenStatus ?? (
-        prev
-          ? {
-              ...prev,
-              tokensUsedThisMonth: prev.tokensUsedThisMonth + 1,
-              monthlyRemaining: Math.max(0, prev.monthlyRemaining - 1),
-            }
-          : prev)
-      );
-      showSuccess(values.roleplayMode === "character" ? "Аватар сгенерирован" : "Обложка сгенерирована");
-    } catch (err: unknown) {
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      const serverError =
-        axios.isAxiosError(err) && typeof err.response?.data?.error === "string"
-          ? err.response.data.error
-          : null;
-      const message =
-        status === 400
-          ? serverError ||
-            "Ваш запрос был отклонён из-за политики безопасности. Попробуйте изменить описание персонажа или использовать более нейтральные формулировки."
-          : serverError ||
-            (err instanceof Error ? err.message : "Не удалось сгенерировать аватар");
-      showError(message);
-    } finally {
-      // Includes uncertain provider failures which retain a reserved budget unit.
-      await axios.get<AvatarLimitStatus>("/api/avatar-tokens")
-        .then(({ data }) => setTokenStatus(data)).catch(() => {});
-      setGeneratingAvatar(false);
+    } catch {
+      showError("Не удалось прочитать референс. Загрузите другое изображение.");
     }
   };
 
@@ -441,25 +388,7 @@ function CharacterFormContent({
               />
             </FormBlock>
 
-            <FormBlock title={values.roleplayMode === "character" ? "Аватар для улучшенной генерации" : "Изображение-образец для обложки"}>
-              <p className={HINT_CLASS}>
-                {values.roleplayMode === "character" ? "По этой фотографии система точнее повторяет образ и внешний вид персонажа." : "Необязательный образец для сохранения композиции и стиля обложки."}
-              </p>
-              <ul className={`list-disc space-y-1 pl-5 ${HINT_CLASS}`}>
-                <li>
-                  {values.roleplayMode === "character" ? "Если не загрузить, генерация будет ориентироваться на обычный аватар персонажа." : "Если не загрузить, генерация будет ориентироваться на описание истории."}
-                </li>
-                <li>
-                  {values.roleplayMode === "character" ? "Лучше всего подходит чёткое изображение лица или полный образ." : "Используйте изображение, близкое к желаемой сцене."}
-                </li>
-              </ul>
-              <ImageUploadField
-                preview={loraPreview}
-                onChange={handleLoraInput}
-                onRemove={onLoraRemove}
-                error={localErrors.lora || errors?.lora}
-              />
-            </FormBlock>
+
           </div>
         )}
       </section>
@@ -499,14 +428,20 @@ function CharacterFormContent({
             )}
           </p>
         </div>
+        <details className="rounded-lg border border-[#2A2A2A] p-3">
+          <summary className="cursor-pointer text-sm font-medium text-white">Изображение-референс (необязательно)</summary>
+          <div className="mt-3 space-y-3">
+            <p className={HINT_CLASS}>Загрузите образец, чтобы сохранить внешность персонажа или композицию обложки. Без образца изображение создаётся по текстовому описанию.</p>
+            <ImageUploadField preview={loraPreview} onChange={handleLoraInput} onRemove={onLoraRemove} error={localErrors.lora || errors?.lora} footerHint="PNG, JPEG, WebP или GIF до 5 МБ." />
+          </div>
+        </details>
         {tokenStatus && (
           <div className="space-y-2 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-gray-300">
             <p>
               Месячный лимит: осталось {tokenStatus.monthlyRemaining} из {tokenStatus.monthlyLimit} генераций
             </p>
             <p>
-              Модель: {selectedAvatarModel.name}
-              {usesSd ? " · референс" : ""}
+              {usesSd ? "Генерация по референсу" : "Генерация по описанию"}
             </p>
             {tokenStatus.monthlyLimit === 0 && (
               <p className="text-red-400">Генерация доступна по подписке Диалог, История или Вселенная.</p>
@@ -516,36 +451,10 @@ function CharacterFormContent({
             )}
           </div>
         )}
-        <p className="text-xs text-wd-muted">Любая модель расходует одну генерацию аватара.</p>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label="Модель генерации аватара">
-          {AVATAR_MODELS.map((model) => {
-            const active = avatarModelId === model.id;
-            return (
-              <button
-                key={model.id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => {
-                  setAvatarModelId(model.id);
-                  storeAvatarModelId(model.id, characterId);
-                  console.log("[AvatarModel] Selected model:", model.id);
-                }}
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  active
-                    ? "border-wd-secondary bg-wd-secondary/15 text-white"
-                    : "border-[#2A2A2A] bg-[#0A0A0A] text-gray-300 hover:border-gray-500"
-                }`}
-              >
-                <p className="text-sm font-bold text-white">{model.name}</p>
-                <p className="mt-1 text-xs leading-relaxed text-gray-400">{model.description}</p>
-              </button>
-            );
-          })}
-        </div>
-        {selectedAvatarModel.costMultiplier > 1 && (
-          <p className="text-sm text-amber-400">Генерация с этой моделью может занять больше времени</p>
-        )}
+        <p className="text-xs text-wd-text-secondary">Одна генерация создаёт одно изображение. Добавьте референс, чтобы сохранить внешность персонажа.</p>
+        {generation.notice && <p role="status" className="text-sm text-amber-400">{generation.notice}</p>}
+        {generation.canRestore && <button type="button" onClick={generation.restore} className="text-sm text-wd-secondary underline">Восстановить последнее изображение</button>}
+        {(generation.busy || generation.blocked || generation.notice) && <button type="button" onClick={generation.refresh} className="text-sm text-wd-secondary underline">Проверить результат</button>}
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div
             className="flex w-full gap-2 sm:w-auto"
@@ -582,7 +491,7 @@ function CharacterFormContent({
             id="generate-avatar-btn"
             data-metrika="generate-avatar"
             onClick={handleGenerateAvatar}
-            disabled={generatingAvatar || (tokenStatus !== null && !canGenerate)}
+            disabled={generatingAvatar || generation.blocked || (tokenStatus !== null && !canGenerate)}
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-wd-secondary bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-wd-secondary/15 disabled:opacity-50 sm:w-auto"
           >
             {generatingAvatar ? (

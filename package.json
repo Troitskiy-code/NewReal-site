@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:avatars:kie": "node scripts/verify-kie-avatars.mjs",
+    "verify:avatars:kie:browser": "node scripts/browser-kie-avatars.mjs",
     "verify:prompts": "node scripts/verify-roleplay-prompts.mjs",
     "verify:editor:browser": "node scripts/browser-roleplay-editor.mjs",
     "verify:models:testing": "node scripts/verify-testing-chat-models.mjs",

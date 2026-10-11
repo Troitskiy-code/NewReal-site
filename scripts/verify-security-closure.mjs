@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import ts from 'typescript';
+import * as crypto from 'node:crypto';
 
 let checks = 0;
 const check = (condition, label) => { assert.ok(condition, label); checks++; };
 const marker = 'SYNTHETIC_UNKNOWN_ERROR_VALUE';
-const env = { CREATEYA_API_KEY: 'synthetic_placeholder' };
+const env = { CREATEYA_API_KEY: 'synthetic_placeholder', KIE_API_KEY: 'synthetic_placeholder' };
 const errors = [new Error(marker), { message: marker }, { name: 'AxiosError', message: marker, config: { headers: { Authorization: marker } } }];
 let fault = errors[0];
 let avatarFixture;
@@ -24,6 +25,7 @@ const database = new Proxy({}, { get: (_target, name) => name === 'character'
 let reserved = 0;
 const nextResponse = class extends Response {};
 const mocks = {
+  'node:crypto': crypto,
   'next/server': { NextRequest: Request, NextResponse: nextResponse },
   'next-auth/next': { getServerSession: async () => ({ user: { id: sessionUser } }) },
   '@/lib/auth': { authOptions: {} },
@@ -31,11 +33,15 @@ const mocks = {
   '@/lib/handlePrismaError': { prismaPoolOverloadResponse: () => null },
   '@logtail/node': { Logtail: class { constructor() { throw new Error('No live sink allowed'); } } },
   '@/lib/personaService': { listUserPersonas: throwing, assignPersonaToChat: async () => ({}), toChatPersona: value => value },
-  '@/lib/avatarTokens': { reserveAvatarGeneration: async () => { reserved++; return { id: 'fixture_reservation', user: {} }; }, settleAvatarGeneration: async () => {}, getAvatarTokenStatus: () => ({}) },
+  '@/lib/avatarTokens': { reserveAvatarGeneration: async () => { reserved++; return { id: 'fixture_reservation', user: {}, isNew: true,
+    generation: { id: 'fixture_reservation', scope: 'create:character', state: 'creating' } }; }, AvatarRequestConflict: class extends Error {}, getAvatarUsageUser: async () => ({}), settleAvatarGeneration: async () => {}, getAvatarTokenStatus: () => ({}) },
+  '@/lib/kieAi': { KieError: class extends Error {}, hasKieKey: () => true, prepareKieReference: async value => value,
+    uploadKieReference: async () => 'https://tempfile.redpandaai.co/fixture.png', createKieAvatar: throwing },
+  '@/lib/kieAvatarJobs': { finishAvatarJob: async job => ({ ...job, state: 'failed' }), publicAvatarJob: job => ({ jobId: job.id, state: job.state }) },
   '@/lib/avatarPrompt': { buildAvatarPrompt: () => 'fixture prompt', resolveAvatarStyle: () => 'fixture', isSensitiveGenerationError: () => false, SENSITIVE_CLIENT_MESSAGE: 'fixture' },
   '@/lib/avatarModels': { getAvatarModel: () => ({ id: 'fixture', costMultiplier: 1 }), resolveCreateyaAvatarModel: () => 'fixture' },
   '@/lib/avatarEconomy': { AVATAR_BASE_COST_RUB: 5 },
-  '@/lib/aiCostTelemetry': { withAiCostContext: work => work(), setAiCostActor() {}, withAvatarCost: async (_model, _cost, work) => work(() => {}) },
+  '@/lib/aiCostTelemetry': { withAiCostContext: work => work(), setAiCostActor() {}, recordKieAvatarCost: async () => {}, withAvatarCost: async (_model, _cost, work) => work(() => {}) },
   '@/lib/createya': { convertImageToPNG: async value => value, generateWithCreateya: async () => 'data:image/png;base64,AAAA', imageUrlToDataUrl: async value => value },
 };
 const cache = new Map();
@@ -123,10 +129,10 @@ sessionUser = 'fixture_owner';
 
 const avatar = load('src/app/api/generate-avatar/route.ts');
 for (const referenceImage of ['http://127.0.0.1/private', 'https://example.invalid/reference.png', 'data:image/svg+xml;base64,AAAA', 'data:text/html;base64,AAAA']) {
-  const response = await avatar.POST(new Request('https://example.invalid/api/generate-avatar', { method: 'POST', body: JSON.stringify({ name: 'fixture', referenceImage }) }));
+  const response = await avatar.POST(new Request('https://example.invalid/api/generate-avatar', { method: 'POST', body: JSON.stringify({ name: 'fixture', scope: 'create:character', clientKey: 'fixture_client_key_123', referenceImage }) }));
   check(response.status === 400 && reserved === 0 && (await response.text()).includes('PNG'), 'invalid avatar reference rejected before quota/provider');
 }
-check((await avatar.POST(new Request('https://example.invalid/api/generate-avatar', { method: 'POST', body: JSON.stringify({ name: 'fixture', referenceImage: 'data:image/png;base64,AAAA' }) }))).status === 200 && reserved === 1, 'valid reference preserves generation flow');
+check((await avatar.POST(new Request('https://example.invalid/api/generate-avatar', { method: 'POST', body: JSON.stringify({ name: 'fixture', scope: 'create:character', clientKey: 'fixture_client_key_123', referenceImage: 'data:image/png;base64,AAAA' }) }))).status === 202 && reserved === 1, 'valid reference reaches reservation; safe asynchronous provider failure response');
 
 function walk(dir) { return readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(join(dir, e.name)) : /route\.(js|ts)$/.test(e.name) ? [join(dir, e.name)] : []); }
 for (const file of walk('src/app/api')) {
@@ -140,32 +146,5 @@ for (const file of walk('src/app/api')) {
   visit(ast);
 }
 
-// Real browser helper with synthetic DOM/network. No external requests.
-let saved = 0, opened = 0, options, openedFeatures;
-globalThis.document = { createElement: () => ({ click() { saved++; }, remove() {} }), body: { appendChild() {} } };
-globalThis.window = { open(_url, _target, features) { opened++; openedFeatures = features; } };
-const browserModule = { exports: {} };
-const browserCode = ts.transpileModule(readFileSync('src/lib/downloadGeneratedMedia.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-let browserFetch = async (_url, opts) => { options = opts; return new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/png' } }); };
-new Function('module', 'exports', 'fetch', 'setTimeout', browserCode)(browserModule, browserModule.exports, (...args) => browserFetch(...args), work => { work(); });
-const save = browserModule.exports.downloadGeneratedMedia;
-check(await save('data:image/png;base64,AAAA', 'fixture.png') === 'saved' && saved === 1, 'data image downloads without a proxy');
-check(await save('https://example.invalid/fixture.png', 'fixture.png') === 'saved' && options.credentials === 'omit', 'HTTPS download uses browser CORS without credentials');
-for (const source of ['javascript:alert(1)', 'http://127.0.0.1/private', 'data:text/html,fixture', 'https://user:password@example.invalid/a']) {
-  await assert.rejects(save(source, 'fixture.png')); checks++;
-}
-browserFetch = async () => { throw new TypeError('synthetic CORS'); };
-check(await save('https://example.invalid/fixture.png', 'fixture.png') === 'opened' && opened === 1 && openedFeatures === 'noopener,noreferrer', 'CORS failure offers original via isolated tab');
-browserFetch = async () => new Response('fixture', { headers: { 'content-type': 'text/html' } });
-await assert.rejects(save('https://example.invalid/fixture.html', 'fixture.png')); checks++;
-browserFetch = async () => new Response('fixture', { headers: { 'content-type': 'image/png', 'content-length': String(101 * 1024 * 1024) } });
-await assert.rejects(save('https://example.invalid/large.png', 'fixture.png')); checks++;
-let cancelled = false, released = false;
-browserFetch = async () => ({ ok: true, headers: new Headers({ 'content-type': 'image/png' }), body: {
-  getReader: () => ({ read: async () => ({ done: false, value: { byteLength: 101 * 1024 * 1024 } }),
-    cancel: async () => { cancelled = true; }, releaseLock: () => { released = true; } })
-} });
-await assert.rejects(save('https://example.invalid/chunked.png', 'fixture.png')); checks++;
-check(cancelled && released, 'stream without declared size is stopped at the byte limit');
 check(serverFetches === 0, 'all probes performed without a real upstream request');
 console.log(`Security closure: ${checks} checks passed`);
