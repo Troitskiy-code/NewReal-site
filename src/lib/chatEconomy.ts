@@ -27,7 +27,7 @@ const FREE_PLAN: SubscriptionPlan = {
   name: "Старт",
   monthlyPrice: 0,
   yearlyPrice: 0,
-  vcPerMonth: 100,
+  vcPerMonth: 50,
   contextTokens: 6_000,
   contextMultiplier: 1,
   priority: false,

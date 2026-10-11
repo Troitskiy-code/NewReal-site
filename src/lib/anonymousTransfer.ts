@@ -98,6 +98,20 @@ export async function transferAnonymousChatToUser(params: {
       );
 
       const copies = mapGuestMessagesToUserMessages(uniqueGuest, params.userId);
+      // Transfer the pinned mode along with the guest history. An existing user story keeps its own mode.
+      for (const characterId of [...new Set(copies.map(copy => copy.characterId))]) {
+        const guestState = await tx.chatPromptState.findUnique({
+          where: { scopeKey_characterId: { scopeKey: `guest:${params.sessionId}`, characterId } },
+        });
+        const hasUserHistory = already.some(row => row.characterId === characterId);
+        await tx.chatPromptState.upsert({
+          where: { scopeKey_characterId: { scopeKey: `user:${params.userId}`, characterId } },
+          create: { scopeKey: `user:${params.userId}`, characterId,
+            builderVersion: hasUserHistory ? 1 : guestState?.builderVersion ?? 1,
+            mode: hasUserHistory ? "character" : guestState?.mode ?? "character" },
+          update: {},
+        });
+      }
       if (copies.length > 0) {
         await tx.message.createMany({ data: copies });
         await tx.anonymousMessage.updateMany({

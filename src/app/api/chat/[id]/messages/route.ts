@@ -55,6 +55,8 @@ export async function DELETE(
     });
 
     await clearChatMemories(session.user.id, characterId);
+    // An explicit restart is the only operation that re-adopts the card's default mode.
+    await prisma.chatPromptState.deleteMany({ where: { scopeKey: `user:${session.user.id}`, characterId } });
 
     return NextResponse.json({
       success: true,

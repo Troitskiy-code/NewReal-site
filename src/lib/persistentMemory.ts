@@ -137,8 +137,12 @@ export function buildInitialPublicMemory(name: string, description: string | nul
 export function sanitizeCharacterMemory<T extends {
   userId: string;
   privateMemory?: unknown;
+  privateMemory_en?: unknown;
   publicMemory?: unknown;
   memoryPermissions?: unknown;
+  systemPrompt?: string | null;
+  legacyPromptArchive?: string | null;
+  promptOrigin?: string;
 }>(character: T, viewerId: string | null | undefined) {
   const isOwner = Boolean(viewerId && viewerId === character.userId);
   const canReadPrivate = canReadPrivateMemory(character.memoryPermissions, character.userId, viewerId);
@@ -147,6 +151,11 @@ export function sanitizeCharacterMemory<T extends {
     ...character,
     publicMemory: character.publicMemory ?? null,
     privateMemory: canReadPrivate ? character.privateMemory ?? null : null,
+    privateMemory_en: canReadPrivate ? character.privateMemory_en ?? null : null,
     memoryPermissions: isOwner ? character.memoryPermissions ?? null : null,
+    // A legacy prompt may contain private memory even when the card itself is public.
+    systemPrompt: isOwner ? character.systemPrompt ?? null : null,
+    legacyPromptArchive: isOwner ? character.legacyPromptArchive ?? null : null,
+    promptOrigin: isOwner ? character.promptOrigin : undefined,
   };
 }

@@ -14,6 +14,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { FaUser } from "react-icons/fa";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { memoryToText } from "@/lib/persistentMemory";
+import { roleplayMode, roleplayStyle, readRoleplayConfig } from "@/lib/roleplayConfig";
 
 type Character = CharacterFormValues & {
   id: string;
@@ -78,6 +79,10 @@ export default function EditCharacterPage() {
           descriptionCard: data.descriptionCard || "",
           avatarPrompt: data.avatarPrompt || "",
           systemPrompt: data.systemPrompt || "",
+          promptBuilderVersion: data.promptBuilderVersion ?? 1,
+          roleplayMode: roleplayMode(data.roleplayMode),
+          roleplayStyle: roleplayStyle(data.roleplayStyle),
+          rpConfig: readRoleplayConfig(data.rpConfig),
           tags: data.tags || "",
           isPublic: data.isPublic,
           publicMemory: memoryToText(data.publicMemory),
@@ -150,7 +155,7 @@ export default function EditCharacterPage() {
   const handleClearDraft = () => {
     revokeBlobUrl(avatarPreview);
     revokeBlobUrl(loraPreview);
-    setForm(EMPTY_CHARACTER_FORM);
+    setForm(previous => ({ ...EMPTY_CHARACTER_FORM, promptBuilderVersion: previous.promptBuilderVersion, systemPrompt: previous.systemPrompt }));
     setAvatarFile(null);
     setAvatarPreview(null);
     setLoraFile(null);
@@ -188,7 +193,9 @@ export default function EditCharacterPage() {
         exampleDialogs: form.exampleDialogs.trim() || null,
         descriptionCard: form.descriptionCard.trim() || null,
         avatarPrompt: form.avatarPrompt.trim() || null,
-        systemPrompt: form.systemPrompt.trim() || null,
+        roleplayMode: form.roleplayMode,
+        roleplayStyle: form.roleplayStyle,
+        rpConfig: form.rpConfig,
         tags: form.tags.trim() || null,
         imageUrl: finalImageUrl,
         imageLora: finalImageLora,

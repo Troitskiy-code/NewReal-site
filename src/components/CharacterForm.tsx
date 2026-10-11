@@ -32,6 +32,8 @@ import {
   type AvatarModelId,
 } from "@/lib/avatarModels";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
+import RoleplayPromptSettings from "@/components/RoleplayPromptSettings";
+import type { RoleplayConfig, RoleplayMode, RoleplayStyle } from "@/lib/roleplayConfig";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
@@ -181,6 +183,10 @@ export type CharacterFormValues = {
   tags: string;
   avatarPrompt: string;
   systemPrompt: string;
+  promptBuilderVersion: number;
+  roleplayMode: RoleplayMode;
+  roleplayStyle: RoleplayStyle;
+  rpConfig: RoleplayConfig;
   isPublic: boolean;
   publicMemory: string;
   privateMemory: string;
@@ -197,6 +203,10 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
   tags: "",
   avatarPrompt: "",
   systemPrompt: "",
+  promptBuilderVersion: 2,
+  roleplayMode: "character",
+  roleplayStyle: "mixed",
+  rpConfig: {},
   isPublic: false,
   publicMemory: "",
   privateMemory: "",
@@ -247,7 +257,11 @@ type AvatarLimitStatus = {
   monthlyRemaining: number;
 };
 
-export default function CharacterForm({
+export default function CharacterForm(props: CharacterFormProps) {
+  return <CharacterFormContent key={props.characterId ?? "new"} {...props} />;
+}
+
+function CharacterFormContent({
   characterId,
   values,
   onChange,
@@ -270,7 +284,6 @@ export default function CharacterForm({
   const [style, setStyle] = useState<"anime" | "realistic">("realistic");
   const [avatarModelId, setAvatarModelId] = useState<AvatarModelId>(() => readStoredAvatarModelId(characterId));
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
-  const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [localErrors, setLocalErrors] = useState<{ name?: string; lora?: string; prompt?: string }>({});
 
   const usesSd = Boolean(loraFile || loraPreview);
@@ -295,11 +308,7 @@ export default function CharacterForm({
     }
   };
 
-  useEffect(() => {
-    const stored = readStoredAvatarModelId(characterId);
-    setAvatarModelId(stored);
-    console.log("[AvatarModel] restored", { modelId: stored, characterId: characterId ?? "new" });
-  }, [characterId]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -315,43 +324,6 @@ export default function CharacterForm({
       cancelled = true;
     };
   }, []);
-
-  const handleRegeneratePrompt = async () => {
-    if (!characterId) {
-      setLocalErrors((current) => ({
-        ...current,
-        prompt: "Сначала сохраните персонажа, чтобы перегенерировать промпт",
-      }));
-      return;
-    }
-
-    setLocalErrors((current) => ({ ...current, prompt: undefined }));
-    setRegeneratingPrompt(true);
-    try {
-      const { data } = await axios.post<{ systemPrompt: string }>(
-        `/api/characters/${characterId}/regenerate-prompt`,
-        {
-          name: values.name,
-          appearance: values.appearance,
-          description: values.description,
-          scenario: values.scenario,
-          exampleDialogs: values.exampleDialogs,
-          publicMemory: values.publicMemory,
-          privateMemory: values.privateMemory,
-        }
-      );
-      onChange("systemPrompt", data.systemPrompt || "");
-      showSuccess("Промпт обновлён");
-    } catch (err: unknown) {
-      const message =
-        axios.isAxiosError(err) && typeof err.response?.data?.error === "string"
-          ? err.response.data.error
-          : "Не удалось сгенерировать промпт";
-      showError(message);
-    } finally {
-      setRegeneratingPrompt(false);
-    }
-  };
 
   const handleGenerateAvatar = async () => {
     if (!values.name.trim()) {
@@ -525,7 +497,7 @@ export default function CharacterForm({
         {advancedOpen && (
           <div className="space-y-4 border-t border-[#2A2A2A] p-3 md:space-y-8 md:p-4">
             <FormBlock
-              title="Сценарий и окружение"
+              title={values.roleplayMode === "world" ? "Исходный сценарий мира" : "Исходный сценарий и окружение"}
               hints={[
                 hintWithCounter(
                   "Пара предложений о том, что происходит или будет происходить. ИИ будет стараться следовать сценарию.",
@@ -791,40 +763,7 @@ export default function CharacterForm({
         </FormBlock>
       </section>
 
-      <FormBlock
-        title="Сгенерированный промпт"
-        icon={FaMagic}
-        hints={[
-          hintWithCounter(
-            "Используется как системный промпт в чате. Можно править вручную. Сохраняется вместе с персонажем.",
-            values.systemPrompt,
-            CHARACTER_LIMITS.systemPrompt
-          ),
-        ]}
-      >
-        <LimitedTextarea
-          id="systemPrompt"
-          value={values.systemPrompt}
-          onChange={(v) => onChange("systemPrompt", v)}
-          maxLength={CHARACTER_LIMITS.systemPrompt}
-          rows={10}
-          placeholder="Промпт появится после создания персонажа или нажмите «Перегенерировать промпт»..."
-        />
-        <button
-          type="button"
-          onClick={handleRegeneratePrompt}
-          disabled={regeneratingPrompt}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
-        >
-          {regeneratingPrompt ? (
-            <FaSpinner className="animate-spin text-sm" />
-          ) : (
-            <FaMagic className="text-sm" />
-          )}
-          {regeneratingPrompt ? "Генерация..." : "Перегенерировать промпт"}
-        </button>
-        {localErrors.prompt && <p className="text-xs text-red-400">{localErrors.prompt}</p>}
-      </FormBlock>
+      <RoleplayPromptSettings characterId={characterId} values={values} onChange={onChange} />
 
       <section className="space-y-3">
         <VisibilityToggle isPublic={values.isPublic} onChange={(v) => onChange("isPublic", v)} />

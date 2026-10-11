@@ -12,7 +12,10 @@ import {
 } from "@/lib/advancedMemory";
 import { appendPersonaToSystemPrompt } from "@/lib/persona";
 import { getSelectedChatPersona } from "@/lib/personaService";
-import { buildChatSystemPrompt } from "@/lib/chatSystemPrompt";
+import { assembleRoleplayPrompt, fitPromptAssembly, type PromptAssemblyOptions, type PromptAssembly } from "@/lib/chatSystemPrompt";
+import { buildChatSystemPrompt as buildLegacyChatSystemPrompt } from "@/lib/chatSystemPromptV1";
+import { getOrCreatePromptState, isPromptV2Enabled, type PromptState } from "@/lib/promptState";
+import { promptAssemblyDiagnostics, logPromptDelivery } from "@/lib/promptDiagnostics";
 import { readChatMemoryState, resolveChatMemorySummary } from "@/lib/chatMemory";
 import { appendMemorySection, type MemoryBlock, type MemoryBlockKind } from "@/lib/memoryPromptFormat";
 import type { UserIntent } from "@/lib/intentAnalyzer";
@@ -31,7 +34,7 @@ import {
 } from "@/lib/verseChatEconomy";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { spendCoins } from "@/lib/verseCoins";
-import { debugLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
+import { debugLog, infoLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
 import { chatModelGenerationOptions, chatModelRequestTimeoutMs, isRetiredChatModel, NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 
@@ -60,7 +63,16 @@ export type CharacterForChat = {
   scenario_en?: string | null;
   exampleDialogs_en?: string | null;
   systemPrompt?: string | null;
+  legacyPromptArchive?: string | null;
+  promptBuilderVersion?: number;
+  roleplayMode?: string | null;
+  roleplayStyle?: string | null;
+  rpConfig?: unknown;
 };
+
+export const promptCharacterSelect = {
+  promptBuilderVersion: true, roleplayMode: true, roleplayStyle: true, rpConfig: true, legacyPromptArchive: true,
+} as const;
 
 export function localizeCharacterForChat(
   character: CharacterForChat,
@@ -81,15 +93,22 @@ export function localizeCharacterForChat(
 
 export function resolveChatSystemPrompt(
   character: CharacterForChat,
-  locale: string | null | undefined
+  locale: string | null | undefined,
+  state?: PromptState,
+  options: PromptAssemblyOptions = {}
 ): string {
-  const stored = character.systemPrompt?.trim();
-  if (stored) {
-    debugLog("Chat", `Using stored systemPrompt character=${character.id}`);
-    return stored;
+  return resolveChatPromptAssembly(character, locale, state, options).content;
+}
+
+export function resolveChatPromptAssembly(character: CharacterForChat, locale: string | null | undefined, state?: PromptState, options: PromptAssemblyOptions = {}): PromptAssembly {
+  const version = state?.builderVersion ?? character.promptBuilderVersion ?? 1;
+  if (version === 2 && isPromptV2Enabled()) {
+    const assembly = assembleRoleplayPrompt(localizeCharacterForChat(character, locale), locale, { ...options, ...(state ? { mode: state.mode } : {}) });
+    return options.tokenBudget ? fitPromptAssembly(assembly, options.tokenBudget, countTokens) : assembly;
   }
-  debugLog("Chat", `Fallback buildChatSystemPrompt character=${character.id}`);
-  return buildChatSystemPrompt(localizeCharacterForChat(character, locale), locale);
+  const stored = (character.legacyPromptArchive ?? character.systemPrompt)?.trim();
+  const content = appendPersonaToSystemPrompt(stored || buildLegacyChatSystemPrompt(localizeCharacterForChat(character, locale), locale ?? "ru"), options.persona ? { name: options.persona.name, description: options.persona.description ?? null } : null, locale ?? "ru");
+  return { version: "rp-v1", mode: state?.mode ?? "character", content, blocks: [{ source: stored ? "legacy.stored" : "legacy.template", content }] };
 }
 
 export type ChatUser = {
@@ -219,6 +238,22 @@ export async function getOrCreateBaseModel(): Promise<EconomyModel> {
   }
 
   return { ...baseModel, isFreeForSubscribers: false };
+}
+
+/** Preview must never activate a subscription or create a fallback model. */
+export async function resolveChatPreviewContext(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { subscriptionType: true, subscriptionEnd: true, selectedModel: { select: modelSelect } },
+  });
+  if (!user) return null;
+  const selected = user.selectedModel;
+  const model = selected?.isActive && !isRetiredChatModel(selected.name) ? selected
+    : await prisma.model.findFirst({
+      where: { isActive: true, name: { notIn: NON_DEFAULT_CHAT_MODEL_NAMES } },
+      orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }], select: modelSelect,
+    });
+  return model ? { user, model: { ...model, isFreeForSubscribers: false } } : null;
 }
 
 export async function resolveChatContext(userId: string) {
@@ -669,16 +704,18 @@ export async function prepareFastContext({
   ]);
   const historyRows = history.rows;
 
-  let systemPromptBase = appendPersonaToSystemPrompt(
-    resolveChatSystemPrompt(character, locale),
-    selectedPersona,
-    locale
-  );
+  const promptState = await getOrCreatePromptState(`user:${userId}`, characterId, character);
+  const assembly = resolveChatPromptAssembly(character, locale, promptState, {
+    persona: selectedPersona, operation: continueMode ? "continue" : historyBeforeMessageId ? "regenerate" : "reply", cutOff: continueCutOff,
+    tokenBudget: Math.floor(maxContextTokens * 0.5),
+  });
+  infoLog("PromptAssembly", JSON.stringify({ characterId, userId, ...promptAssemblyDiagnostics(assembly) }));
+  let systemPromptBase = assembly.content;
   if (selectedPersona) {
     debugLog("Persona", `prompt user=${userId} character=${characterId} persona=${selectedPersona.id}`);
   }
 
-  if (continueMode) {
+  if (continueMode && assembly.version === "rp-v1") {
     const english = locale === "en";
     if (continueCutOff && continueSourceText?.trim()) {
       systemPromptBase = english
@@ -807,6 +844,7 @@ export async function callChatCompletion(
   messages: ChatCompletionMessage[],
   apiKey: string
 ): Promise<string> {
+  logPromptDelivery(modelName, messages, false);
   return retryWithBackoff(
     async () => {
       const response = await meteredPost("chat",
@@ -844,6 +882,7 @@ export async function streamChatCompletion(
   messages: ChatCompletionMessage[],
   apiKey: string
 ): Promise<ReadableStream<Uint8Array>> {
+  logPromptDelivery(modelName, messages, true);
   return retryWithBackoff(
     async () => {
       const controller = new AbortController();

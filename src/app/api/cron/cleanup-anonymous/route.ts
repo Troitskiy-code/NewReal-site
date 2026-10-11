@@ -30,6 +30,7 @@ async function handle(req: NextRequest) {
       select: { sessionId: true },
     });
     const sessionIds = expiredSessions.map((row) => row.sessionId);
+    if (sessionIds.length) await prisma.chatPromptState.deleteMany({ where: { scopeKey: { in: sessionIds.map(id => `guest:${id}`) } } });
     const messages = sessionIds.length
       ? await prisma.anonymousMessage.deleteMany({ where: { sessionId: { in: sessionIds } } })
       : { count: 0 };

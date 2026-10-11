@@ -7,6 +7,7 @@ import { getApiLocale } from "@/lib/apiI18n";
 import {
   resolveContextTokenBudget,
   resolveChatSystemPrompt,
+  promptCharacterSelect,
   streamChatCompletion,
   trimMessagesToTokenLimit,
   type ChatCompletionMessage,
@@ -41,6 +42,7 @@ import {
 } from "@/lib/guestRequestStore";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
+import { getOrCreatePromptState } from "@/lib/promptState";
 
 const ANON_POST_LIMIT = 30;
 const ANON_POST_WINDOW_MS = 60_000;
@@ -281,6 +283,7 @@ export async function handleAnonymousChatPost(
       scenario_en: true,
       exampleDialogs_en: true,
       systemPrompt: true,
+      ...promptCharacterSelect,
     },
   });
   if (!character) {
@@ -323,6 +326,7 @@ export async function handleAnonymousChatPost(
   const generation = { sessionId, requestId, attempt: claimed.attempt };
   const stopHeartbeat = startGuestHeartbeat(generation);
   try {
+    const promptState = await getOrCreatePromptState(`guest:${sessionId}`, characterId, character);
     const userRow = await persistGuestUserMessage({ ...generation, characterId, message });
     if (!userRow) {
       stopHeartbeat();
@@ -344,7 +348,8 @@ export async function handleAnonymousChatPost(
     }
 
     const locale = getApiLocale(req);
-    const systemPrompt = resolveChatSystemPrompt(character, locale);
+    const inputBudget = resolveContextTokenBudget({ subscriptionType: "start", subscriptionEnd: null }, model);
+    const systemPrompt = resolveChatSystemPrompt(character, locale, promptState, { tokenBudget: Math.floor(inputBudget * 0.5) });
     const stored = await loadStoredMessages(sessionId, characterId);
     const history = stored
       .filter((item) => item.id !== userMessageId)

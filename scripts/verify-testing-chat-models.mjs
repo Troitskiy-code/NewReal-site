@@ -58,6 +58,7 @@ let selectedModelFixture;
 const baseFixture = { id: 'base', name: 'existing-model', isActive: true, priceVC: 4, maxContextTokens: 20000 };
 const helpers = load('src/lib/chatHelpers.ts', {
   '@/lib/testingChatModels': policy,
+  '@/lib/promptDiagnostics': { logPromptDelivery: () => {} },
   '@/lib/verseChatEconomy': economy,
   '@/lib/prisma': { prisma: {
     model: { findFirst: async query => {

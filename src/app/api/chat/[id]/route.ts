@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreatePromptState } from "@/lib/promptState";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import {
   scheduleMessageEmbedding,
@@ -23,6 +24,7 @@ import {
   logActionOptionsIfPresent,
   mergeAssistantContinuation,
   prepareFastContext,
+  promptCharacterSelect,
   resolveChatContext,
   searchRagContext,
   streamChatCompletion,
@@ -110,6 +112,7 @@ async function handlePost(
         scenario_en: true,
         exampleDialogs_en: true,
         systemPrompt: true,
+        ...promptCharacterSelect,
       },
     });
 
@@ -175,6 +178,9 @@ async function handlePost(
     let ragQueryText: string | undefined;
     let excludeMessageId: string | undefined;
     let continueCutOff = false;
+
+    // Pin before inserting the first greeting/user turn, so a new chat is not mistaken for legacy history.
+    await getOrCreatePromptState(`user:${session.user.id}`, id, character);
 
     if (continueChat) {
       lastAssistant = await prisma.message.findFirst({

@@ -9,7 +9,6 @@ import { parseCharacterBody } from "@/lib/characterFields";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
 import { buildInitialPublicMemory } from "@/lib/persistentMemory";
-import { tryGenerateCharacterPrompt } from "@/lib/generateCharacterPrompt";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { temporaryCharacterSlug } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
@@ -62,12 +61,16 @@ async function handlePost(req: NextRequest) {
       publicMemory,
       privateMemory,
       memoryPermissions,
-      systemPrompt: providedSystemPrompt,
+      roleplayMode, roleplayStyle, rpConfig,
     } = parsed;
 
     if (!name) {
       return NextResponse.json({ error: "Имя обязательно" }, { status: 400 });
     }
+
+    // Compatibility imports keep their exact unknown-origin text; no implicit conversion to v2.
+    const importedLegacyText = typeof body.systemPrompt === "string" && body.systemPrompt.trim() ? body.systemPrompt : null;
+    if (importedLegacyText && importedLegacyText.length > 8000) return NextResponse.json({ error: "Старый промпт: максимум 8000 символов" }, { status: 400 });
 
     const seededPublicMemory = publicMemory ?? buildInitialPublicMemory(name, description);
     const initialPermissions = memoryPermissions ?? { privateAccessUserIds: [] };
@@ -94,7 +97,10 @@ async function handlePost(req: NextRequest) {
         privateMemory: privateMemory ?? undefined,
         memoryPermissions: initialPermissions,
         lastActive: new Date(),
-        systemPrompt: providedSystemPrompt ?? null,
+        systemPrompt: importedLegacyText,
+        legacyPromptArchive: importedLegacyText,
+        promptBuilderVersion: importedLegacyText ? 1 : 2,
+        roleplayMode, roleplayStyle, rpConfig,
       },
     });
 
@@ -135,31 +141,8 @@ async function handlePost(req: NextRequest) {
       errorLog("Server", "[Translate] Failed to save character translations", toSafeDiagnostic(translateError));
     }
 
-    let promptError: string | undefined;
-    if (!character.systemPrompt) {
-      const generated = await tryGenerateCharacterPrompt({
-        name,
-        appearance,
-        description,
-        scenario,
-        exampleDialogs,
-        publicMemory: seededPublicMemory,
-        privateMemory,
-      });
-      if (generated) {
-        character = await prisma.character.update({
-          where: { id: character.id },
-          data: { systemPrompt: generated },
-        });
-      } else {
-        promptError = "Не удалось сгенерировать системный промпт. Персонаж создан без него.";
-      }
-    }
-
-    return NextResponse.json(
-      promptError ? { ...character, promptError } : character,
-      { status: 201 }
-    );
+    // Prompt assembly is deterministic and uses the live card on each request; no AI generation here.
+    return NextResponse.json(character, { status: 201 });
   } catch (error) {
     errorLog("Server", "Character creation error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });

@@ -60,7 +60,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
       ? { ...sanitized, ...ownerModerationFields(character, session?.user?.id) }
       : sanitized;
 
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     errorLog("Server", "Character fetch error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
@@ -130,8 +130,17 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
       data.memoryPermissions = parsed.memoryPermissions ?? Prisma.DbNull;
     }
 
-    if (body.systemPrompt !== undefined) {
-      data.systemPrompt = parsed.systemPrompt ?? null;
+    // Existing prompt text is an immutable legacy source. Switching versions is a separate owner action.
+    if (body.systemPrompt !== undefined && body.systemPrompt !== authResult.character.systemPrompt) {
+      return NextResponse.json({ error: "Старый промпт сохранён для отката. Изменяйте поля карточки." }, { status: 400 });
+    }
+    if (body.roleplayMode !== undefined) data.roleplayMode = parsed.roleplayMode;
+    if (body.roleplayStyle !== undefined) data.roleplayStyle = parsed.roleplayStyle;
+    if (body.rpConfig !== undefined) data.rpConfig = parsed.rpConfig;
+
+    // A failed/empty translation must never make an old EN card override a fresh edit.
+    for (const field of ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt"] as const) {
+      if (body[field] !== undefined) Object.assign(data, { [`${field}_en`]: null });
     }
 
     if (Object.keys(data).length === 0) {

@@ -2,6 +2,7 @@ import { ClientInputError } from "./publicError";
 import { normalizeTagsString } from "@/lib/characterTags";
 import { parseMemoryInput, parseMemoryPermissionsInput, memoryToText } from "@/lib/persistentMemory";
 import { isEnglishLocale } from "@/lib/i18nConfig";
+import { parseRoleplayFields } from "./roleplayConfig";
 
 export const CHARACTER_LIMITS = {
   appearance: 2000,
@@ -45,6 +46,7 @@ export function parseCharacterBody(body: Record<string, unknown>) {
   const tagsValue = normalizeTagsString(typeof tags === "string" ? tags : null);
 
   return {
+    ...parseRoleplayFields(body),
     name: typeof name === "string" ? name.trim() : "",
     description: trimOptionalText(description, CHARACTER_LIMITS.description),
     descriptionCard: trimOptionalText(descriptionCard, CHARACTER_LIMITS.descriptionCard),

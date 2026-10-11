@@ -75,6 +75,14 @@ model Character {
   publicMemory_en   Json?
   privateMemory_en  Json?
   systemPrompt      String?   @db.Text
+  // Legacy text is retained; unknown provenance is never auto-converted into v2 rules.
+  legacyPromptArchive String? @db.Text
+  promptOrigin      String    @default("unknown")
+  promptBuilderVersion Int    @default(1)
+  roleplayMode      String    @default("character")
+  roleplayStyle     String    @default("mixed")
+  rpConfig          Json?
+  promptStates      ChatPromptState[]
   moderationStatus    String?
   moderationReason    String?   @db.Text
   moderationWarnedAt  DateTime?
@@ -422,6 +430,19 @@ model EmailVerificationToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model ChatPromptState {
+  id             String @id @default(cuid())
+  scopeKey       String
+  characterId    String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  builderVersion Int @default(1)
+  mode           String @default("character")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([scopeKey, characterId])
 }
 
 model AnonymousSession {

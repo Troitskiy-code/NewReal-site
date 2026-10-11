@@ -9,6 +9,7 @@ import {
   chargeForChatRequest,
   logActionOptionsIfPresent,
   prepareChatMessages,
+  promptCharacterSelect,
   resolveChatContext,
   streamChatCompletion,
 } from "@/lib/chatHelpers";
@@ -98,6 +99,7 @@ async function handlePost(
         scenario_en: true,
         exampleDialogs_en: true,
         systemPrompt: true,
+        ...promptCharacterSelect,
       },
     });
 

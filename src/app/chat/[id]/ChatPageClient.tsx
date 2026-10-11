@@ -9,6 +9,7 @@ import MemoryEditor from "@/components/MemoryEditor";
 import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
 import PersonaSelector from "@/components/PersonaSelector";
+import ChatPromptVersionSettings from "@/components/ChatPromptVersionSettings";
 import type { ChatPersona } from "@/lib/persona";
 import {
   calculateRequestCost,
@@ -543,6 +544,7 @@ function ChatSettingsMenu({
   onOpenModels,
   onOpenMemory,
   onOpenPersona,
+  onOpenPrompt,
   onClearChat,
   disabled,
 }: {
@@ -552,6 +554,7 @@ function ChatSettingsMenu({
   onOpenModels: () => void;
   onOpenMemory: () => void;
   onOpenPersona: () => void;
+  onOpenPrompt: () => void;
   onClearChat: () => void;
   disabled: boolean;
 }) {
@@ -623,6 +626,9 @@ function ChatSettingsMenu({
           >
             Моя личность
           </button>
+          <button type="button" role="menuitem" onClick={() => { onClose(); onOpenPrompt(); }} className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]">
+            Тип и правила истории
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -633,7 +639,7 @@ function ChatSettingsMenu({
             disabled={disabled}
             className="block w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-[#2A2A2A] disabled:opacity-50"
           >
-            Очистить чат
+            Начать новый чат
           </button>
         </div>
       )}
@@ -848,6 +854,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [memoryEditorOpen, setMemoryEditorOpen] = useState(false);
   const [personaSelectorOpen, setPersonaSelectorOpen] = useState(false);
+  const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<ChatPersona | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -1674,6 +1681,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           />
         </Modal>
 
+        <Modal open={promptSettingsOpen} onClose={() => setPromptSettingsOpen(false)} title="Тип и правила истории" wide>
+          {!isAnonymous && <ChatPromptVersionSettings key={characterId} characterId={characterId} disabled={sending || actionLoading || clearingChat} />}
+        </Modal>
+
         {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
         {(character?.slug || !isAnonymous) && (
           <aside className="fixed right-2 top-16 z-20 flex w-10 flex-col items-center gap-2 bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
@@ -1696,6 +1707,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                 onOpenModels={() => setSettingsOpen(true)}
                 onOpenMemory={() => setMemoryEditorOpen(true)}
                 onOpenPersona={() => setPersonaSelectorOpen(true)}
+                onOpenPrompt={() => setPromptSettingsOpen(true)}
                 onClearChat={() => {
                   setSettingsMenuOpen(false);
                   setConfirmClearChat(true);
@@ -1807,9 +1819,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       </div>
       <ConfirmModal
         open={confirmClearChat}
-        title="Очистить чат"
-        description="Очистить всю историю чата с этим персонажем?"
-        confirmLabel="Очистить"
+        title="Начать новый чат"
+        description="История и память вашего текущего чата с этим персонажем будут удалены. Новая история возьмёт тип из актуальной карточки. Продолжить?"
+        confirmLabel="Начать заново"
         danger
         loading={clearingChat}
         onConfirm={() => void handleClearChat()}
