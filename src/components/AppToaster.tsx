@@ -6,7 +6,7 @@ export default function AppToaster() {
   return (
     <Toaster
       position="bottom-center"
-      containerStyle={{ bottom: 20, zIndex: 9999 }}
+      containerStyle={{ bottom: "calc(20px + var(--nv-bottom-nav-height, 0px))", zIndex: 9999 }}
       toastOptions={{
         style: {
           background: "#1A1A1A",

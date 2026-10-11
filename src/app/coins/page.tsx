@@ -176,7 +176,7 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
   return <div className="min-h-dvh bg-wd-bg text-wd-text">
     <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 sm:space-y-10 sm:px-6 sm:py-8 lg:px-8 lg:py-12">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-wd-border pb-5">
-        <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-wd-text-secondary"><FaCoins className="text-wd-secondary" /> VerseCoins</span>
+        <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-wd-text-secondary"><FaCoins className="text-wd-secondary-text" /> VerseCoins</span>
         <CurrencySelector value={currency} onChange={setCurrency} />
       </div>
       <PurchaseStatusBanner ns="coins" />
@@ -194,12 +194,12 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
             <div><p className="font-bold text-white">{personalName}</p><p className="text-xs text-wd-text-secondary">{text("После подтверждения оплаты вернёмся к этому диалогу", "Return to this chat after payment confirmation")}</p></div>
           </div>}
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-wd-text-secondary sm:text-sm">
-            <span className="inline-flex items-center gap-2"><FaCheck className="text-wd-secondary" /> {text("VC не сгорают", "VC never expire")}</span>
-            <span className="inline-flex items-center gap-2"><FaLock className="text-wd-secondary" /> {text("Оплата через Robokassa", "Payment via Robokassa")}</span>
+            <span className="inline-flex items-center gap-2"><FaCheck className="text-wd-secondary-text" /> {text("VC не сгорают", "VC never expire")}</span>
+            <span className="inline-flex items-center gap-2"><FaLock className="text-wd-secondary-text" /> {text("Оплата через Robokassa", "Payment via Robokassa")}</span>
           </div>
         </div>
         <div data-testid="coins-hero-offer" className="relative overflow-hidden rounded-3xl border border-wd-secondary/40 bg-wd-card p-5 sm:p-8">
-          <div className="flex items-center justify-between gap-3"><span className="rounded-full bg-wd-secondary/15 px-3 py-1 text-xs font-bold text-wd-secondary">{firstVisible ? text("Первое знакомство", "First introduction") : text("Разовое пополнение", "One-time top-up")}</span><FaCoins className="text-2xl text-wd-secondary" /></div>
+          <div className="flex items-center justify-between gap-3"><span className="rounded-full bg-wd-secondary/15 px-3 py-1 text-xs font-bold text-wd-secondary-text">{firstVisible ? text("Первое знакомство", "First introduction") : text("Разовое пополнение", "One-time top-up")}</span><FaCoins className="text-2xl text-wd-secondary-text" /></div>
           <p className="mt-4 text-4xl font-black tracking-tight text-white sm:mt-7 sm:text-5xl">{number(heroPackage.vc)} <span className="text-xl font-medium text-wd-text-secondary">VC</span></p>
           <p className="mt-2 hidden text-sm text-wd-text-secondary sm:block">{text("Для новых сцен и разговоров", "For new scenes and conversations")}</p>
           <p className="mt-3 text-3xl font-bold text-white sm:mt-6"><ConvertedPrice amountRub={heroPackage.price} /></p>
@@ -210,15 +210,15 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
           {estimate(heroPackage) && <p className="mt-4 text-xs leading-relaxed text-wd-text-secondary">{estimate(heroPackage)}. {text("Количество зависит от выбранной модели.", "The number depends on the model you choose.")}</p>}
           {firstVisible && <p className="mt-4 border-t border-wd-border pt-4 text-xs leading-relaxed text-wd-text-secondary">{text("Один первый пакет на аккаунт до первой покупки. Подписка и генерации аватаров не включены.", "One introductory pack per account before your first purchase. Subscription and avatar generations are not included.")}</p>}
           {firstVisible && offer?.reserved && <p className="mt-2 text-xs text-wd-text-secondary">{text("Первый пакет уже зарезервирован: продолжите оплату того же счёта.", "Your introductory pack is reserved: continue paying the same invoice.")}</p>}
-          {offerError && <button type="button" onClick={() => { void refreshAccount(); }} className="mt-3 text-sm text-wd-secondary underline">{t("common.retry")}</button>}
+          {offerError && <button type="button" onClick={() => { void refreshAccount(); }} className="mt-3 text-sm text-wd-secondary-text underline">{t("common.retry")}</button>}
         </div>
       </section>
       {status === "authenticated" && <section aria-label={t("coins.balance")} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-wd-border bg-wd-card px-5 py-4">
         <div><p className="text-xs text-wd-text-secondary">{t("coins.balance")}</p><p className="mt-1 text-xl font-bold text-white">{balance ? `${number(balance.verseCoins)} VC` : balanceError ? t("coins.loadError") : text("Загрузка…", "Loading…")}</p>{balance?.subscriptionActive && <p className="mt-1 text-xs text-wd-text-secondary">{balance.subscriptionLabel}</p>}</div>
-        {balanceError && <button type="button" onClick={() => { void refreshAccount(); }} className="text-sm text-wd-secondary underline">{t("common.retry")}</button>}
+        {balanceError && <button type="button" onClick={() => { void refreshAccount(); }} className="text-sm text-wd-secondary-text underline">{t("common.retry")}</button>}
       </section>}
       {status === "authenticated" && balance && <section aria-labelledby="coins-daily-bonus-title" className="space-y-5 rounded-2xl border border-wd-border bg-wd-card p-5 sm:p-6">
-        <div className="flex items-center gap-2"><FaGift className="text-wd-primary" /><h2 id="coins-daily-bonus-title" className="text-base font-bold text-white">{t("coins.dailyBonus")}</h2></div>
+        <div className="flex items-center gap-2"><FaGift className="text-wd-primary-soft" /><h2 id="coins-daily-bonus-title" className="text-base font-bold text-white">{t("coins.dailyBonus")}</h2></div>
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-wd-text-secondary">
             <span>{t("coins.streakDay", { day: bonusDay })}</span>
@@ -227,7 +227,7 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
           <div role="progressbar" aria-labelledby="coins-daily-bonus-title" aria-valuemin={0} aria-valuemax={7} aria-valuenow={completedBonusDays} className="h-3 overflow-hidden rounded-full bg-[#0A0A0A]">
             <div className="h-full rounded-full bg-gradient-to-r from-wd-primary to-wd-secondary transition-all motion-reduce:transition-none" style={{ width: `${completedBonusDays / 7 * 100}%` }} />
           </div>
-          <div className="flex justify-between text-[10px] text-wd-text-secondary sm:text-xs">{bonusScale.map((amount, index) => <span key={index} className={index < completedBonusDays ? "font-semibold text-wd-primary" : ""}>{amount}</span>)}</div>
+          <div className="flex justify-between text-[10px] text-wd-text-secondary sm:text-xs">{bonusScale.map((amount, index) => <span key={index} className={index < completedBonusDays ? "font-semibold text-wd-primary-soft" : ""}>{amount}</span>)}</div>
         </div>
         {!balance.canClaimBonus && <p className="text-xs text-wd-text-secondary">{t("coins.alreadyClaimed")}</p>}
         <button type="button" onClick={claimBonus} disabled={claiming || !balance.canClaimBonus} className="wd-button flex w-full items-center justify-center gap-2 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"><FaGift />{claiming ? t("coins.claiming") : balance.canClaimBonus ? t("coins.claim", { amount: balance.currentBonusAmount }) : text(`Завтра +${balance.nextBonus} VC`, `Tomorrow +${balance.nextBonus} VC`)}</button>
@@ -248,7 +248,7 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
           [text("У купленных VC есть срок действия?", "Do purchased VC expire?"), text("VC из разовых пакетов не сгорают. Месячные VC подписки учитываются отдельно и действуют по условиям подписки.", "VC from one-time packs never expire. Monthly subscription VC are separate and follow subscription terms.")],
           [text("Когда обновится баланс?", "When will my balance update?"), text("После подтверждения платежа от Robokassa. Возврат на сайт может произойти раньше: в этом случае покажем статус ожидания.", "After Robokassa confirms payment. You may return to the site earlier; in that case we show a pending status.")],
         ].map(([question, answer]) => <details key={question} className="border-b border-wd-border py-4"><summary className="cursor-pointer text-sm font-semibold text-white">{question}</summary><p className="mt-3 max-w-3xl text-sm leading-relaxed text-wd-text-secondary">{answer}</p></details>)}
-        <p className="mt-5 text-sm text-wd-text-secondary">{text("Нужна помощь с оплатой?", "Need help with payment?")} <LocaleLink href="/support?topic=payment" className="text-wd-secondary underline">{text("Написать в поддержку", "Contact support")}</LocaleLink></p>
+        <p className="mt-5 text-sm text-wd-text-secondary">{text("Нужна помощь с оплатой?", "Need help with payment?")} <LocaleLink href="/support?topic=payment" className="text-wd-secondary-text underline">{text("Написать в поддержку", "Contact support")}</LocaleLink></p>
       </section>
     </main>
     {pendingPackage && <CheckoutModal pkg={pendingPackage} paying={paying} onBuy={handleBuy} onClose={() => { if (!paying) setPendingPackage(null); }} />}

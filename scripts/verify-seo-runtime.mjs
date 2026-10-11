@@ -168,7 +168,7 @@ try {
   check(await page.locator('a[href="/en/character/seo-hero-26"]:visible').count() === 1, 'desktop refresh keeps English q search results');
   check(await page.locator('a[href="/en/character/seo-hero-1"]:visible').count() === 0, 'desktop refresh does not reset search');
   await page.getByPlaceholder('Search by name or tag...').fill('SEO hero 25');
-  await page.getByRole('combobox', { name: 'Sort', exact: true }).selectOption('new');
+  await page.getByRole('group', { name: 'Sort', exact: true }).getByRole('button', { name: 'New', exact: true }).click();
   await page.locator('a[href="/en/character/seo-hero-25"]:visible').waitFor();
   check(new URL(page.url()).searchParams.get('q') === 'SEO hero 25', 'sort navigation retains typed search in URL');
   check(await page.getByPlaceholder('Search by name or tag...').inputValue() === 'SEO hero 25', 'sort navigation retains search input');

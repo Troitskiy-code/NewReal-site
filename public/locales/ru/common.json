@@ -6,6 +6,15 @@
     "collapseMenu": "Свернуть меню",
     "expandMenu": "Развернуть меню",
     "profileMenu": "Меню профиля",
+    "mainNav": "Основная навигация",
+    "bottomNav": "Быстрая навигация",
+    "menuShort": {
+      "home": "Главная",
+      "chats": "Чаты",
+      "create": "Создать",
+      "coins": "Монеты",
+      "profile": "Профиль"
+    },
     "menu": {
       "home": "Главная",
       "chats": "Мои чаты",
@@ -122,11 +131,48 @@
     "prevPage": "Предыдущая страница",
     "nextPage": "Следующая страница",
     "reset": "Сбросить",
-    "resetSearch": "Сбросить поиск"
+    "resetSearch": "Сбросить поиск",
+    "genresLabel": "Жанры",
+    "allGenres": "Все",
+    "genres": {
+      "fantasy": "Фэнтези",
+      "romance": "Романтика",
+      "anime": "Аниме",
+      "scifi": "Sci-Fi",
+      "mystic": "Мистика",
+      "realistic": "Реализм",
+      "adventure": "Приключения",
+      "horror": "Ужасы",
+      "comedy": "Комедия",
+      "drama": "Драма"
+    },
+    "sectionTitle": {
+      "top": "Популярное сейчас",
+      "new": "Новинки",
+      "random": "Случайная подборка",
+      "for-you": "Подборка для вас",
+      "search": "Результаты поиска"
+    },
+    "hero": {
+      "eyebrow": "NewVerse — ролевые истории с ИИ",
+      "title": "Истории, которые помнят вас",
+      "text": "Выберите героя или целый мир и продолжайте сюжет, когда захотите. Персонажи помнят детали и развивают историю вместе с вами.",
+      "start": "Начать историю",
+      "create": "Создать своего персонажа",
+      "catalogCount_one": "{{count}} персонаж в каталоге",
+      "catalogCount_few": "{{count}} персонажа в каталоге",
+      "catalogCount_many": "{{count}} персонажей в каталоге",
+      "catalogCount_other": "{{count}} персонажа в каталоге",
+      "languages": "Русский и английский"
+    }
   },
   "characterCard": {
     "knownAbout": "Известно о персонаже:",
-    "noDescription": "Без описания"
+    "noDescription": "Без описания",
+    "messages_one": "{{formatted}} сообщение",
+    "messages_few": "{{formatted}} сообщения",
+    "messages_many": "{{formatted}} сообщений",
+    "messages_other": "{{formatted}} сообщения"
   },
   "characterPage": {
     "author": "Автор",

@@ -1,8 +1,9 @@
 "use client";
 
-import { FaChevronDown, FaSearch, FaTimes } from "react-icons/fa";
+import { FaSearch, FaTimes } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { CHARACTER_SORT_OPTIONS, type CharacterSort } from "@/lib/characterSort";
+import { FEATURED_GENRES } from "@/lib/characterTags";
 
 const SORT_LABEL_KEYS: Record<CharacterSort, string> = {
   top: "home.sortTop",
@@ -19,8 +20,8 @@ type CharacterSearchFiltersProps = {
   placeholder?: string;
 };
 
-const controlClassName =
-  "h-11 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] text-sm text-white outline-none transition-colors placeholder:text-[#A0A0A0] focus:border-[#6C63FF]/50";
+const chipClassName =
+  "inline-flex min-h-9 shrink-0 items-center rounded-full border px-3.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary";
 
 export default function CharacterSearchFilters({
   search,
@@ -30,55 +31,88 @@ export default function CharacterSearchFilters({
   placeholder,
 }: CharacterSearchFiltersProps) {
   const { t } = useTranslation();
-  const hasFilters = search.trim().length > 0;
+  const query = search.trim();
+  const hasFilters = query.length > 0;
   const searchPlaceholder = placeholder || t("home.searchPlaceholder");
+  const activeGenre = FEATURED_GENRES.find((genre) => genre.tag.toLowerCase() === query.toLowerCase());
 
   return (
-    <section className="mb-4 w-full shrink-0 border-b border-[#2A2A2A] bg-[#121212] px-4 pb-4 pt-3 md:mb-6 md:py-4">
-      <div className="flex flex-wrap items-center gap-2 md:gap-3">
-        <div className="relative min-w-0 w-full flex-1 basis-full min-[520px]:basis-auto min-[520px]:min-w-[200px] md:min-w-[240px]">
-          <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#A0A0A0]" />
+    <section className="mb-2 w-full shrink-0 px-4 pt-4 md:mb-4 md:px-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="relative min-w-0 flex-1 md:max-w-xl">
+          <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-wd-text-secondary" />
           <input
-            type="text"
+            type="search"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className={`${controlClassName} w-full py-0 pl-10 pr-3`}
+            className="h-11 w-full rounded-full border border-wd-border bg-wd-card py-0 pl-11 pr-11 text-sm text-white outline-none transition-colors placeholder:text-wd-text-secondary focus:border-wd-secondary/60 [&::-webkit-search-cancel-button]:hidden"
           />
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 max-[519px]:w-full sm:flex-nowrap md:flex-none md:shrink-0">
-          <div className="relative min-w-[108px] flex-1 sm:flex-none sm:w-[130px] md:w-[140px]">
-            <select
-              value={sort}
-              onChange={(e) => onSortChange(e.target.value as CharacterSort)}
-              className={`${controlClassName} w-full appearance-none py-0 pl-3 pr-8 font-semibold`}
-              aria-label={t("home.sort")}
-            >
-              {CHARACTER_SORT_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id} className="bg-[#1A1A1A] text-white">
-                  {t(SORT_LABEL_KEYS[option.id])}
-                </option>
-              ))}
-            </select>
-            <FaChevronDown
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#A0A0A0]"
-              aria-hidden
-            />
-          </div>
-
           {hasFilters && (
             <button
               type="button"
               onClick={() => onSearchChange("")}
-              className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] px-3 text-xs font-bold text-[#A0A0A0] transition-colors hover:text-white md:px-4"
+              className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-wd-text-secondary transition-colors hover:bg-white/10 hover:text-white"
+              aria-label={t("home.resetSearch")}
               title={t("home.resetSearch")}
             >
-              <FaTimes className="text-[10px]" />
-              <span className="hidden min-[360px]:inline">{t("home.reset")}</span>
+              <FaTimes className="text-xs" />
             </button>
           )}
         </div>
+
+        <div
+          role="group"
+          aria-label={t("home.sort")}
+          className="flex shrink-0 self-start rounded-full border border-wd-border bg-wd-card p-1 md:ml-auto md:self-auto"
+        >
+          {CHARACTER_SORT_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onSortChange(option.id)}
+              aria-pressed={sort === option.id}
+              className={`min-h-9 rounded-full px-3.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary ${
+                sort === option.id ? "bg-white/12 text-white" : "text-wd-text-secondary hover:text-white"
+              }`}
+            >
+              {t(SORT_LABEL_KEYS[option.id])}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        role="group"
+        aria-label={t("home.genresLabel")}
+        className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden"
+      >
+        <button
+          type="button"
+          onClick={() => onSearchChange("")}
+          aria-pressed={!hasFilters}
+          className={`${chipClassName} ${
+            !hasFilters ? "border-transparent bg-wd-primary text-white" : "border-wd-border bg-wd-card text-wd-text-secondary hover:text-white"
+          }`}
+        >
+          {t("home.allGenres")}
+        </button>
+        {FEATURED_GENRES.map((genre) => {
+          const active = activeGenre?.id === genre.id;
+          return (
+            <button
+              key={genre.id}
+              type="button"
+              onClick={() => onSearchChange(active ? "" : genre.tag)}
+              aria-pressed={active}
+              className={`${chipClassName} ${
+                active ? "border-transparent bg-wd-primary text-white" : "border-wd-border bg-wd-card text-wd-text-secondary hover:text-white"
+              }`}
+            >
+              {t(`home.genres.${genre.id}`)}
+            </button>
+          );
+        })}
       </div>
     </section>
   );

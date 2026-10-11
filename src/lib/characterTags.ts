@@ -23,7 +23,7 @@ export const CHARACTER_TAG_GROUPS = [
     label: "Черты характера",
     tags: [
       "Милый/Добрый",
-      "Цуцере",
+      "Цундере",
       "Сложный",
       "Флиртующий",
       "От лица мужчины",
@@ -79,12 +79,40 @@ export const CHARACTER_TAG_GROUPS = [
 
 export const ALL_CHARACTER_TAGS: string[] = CHARACTER_TAG_GROUPS.flatMap((g) => [...g.tags]);
 
+/** Old spellings still stored on existing characters; mapped so normalizing does not drop them. */
+const LEGACY_TAG_ALIASES: Record<string, string> = { "Цуцере": "Цундере" };
+
+/** Genres shown as catalog chips and card badges; `id` keys the translation in home.genres. */
+export const FEATURED_GENRES = [
+  { id: "fantasy", tag: "Фэнтези" },
+  { id: "romance", tag: "Романтика" },
+  { id: "anime", tag: "Аниме" },
+  { id: "scifi", tag: "Sci-Fi" },
+  { id: "mystic", tag: "Мистика" },
+  { id: "realistic", tag: "Реалистичный" },
+  { id: "adventure", tag: "Приключение" },
+  { id: "horror", tag: "Ужасы" },
+  { id: "comedy", tag: "Комедия" },
+  { id: "drama", tag: "Драма" },
+] as const;
+
+export type FeaturedGenre = (typeof FEATURED_GENRES)[number];
+
 export function parseTagsString(tags: string | null | undefined): string[] {
   if (!tags) return [];
   return tags
     .split(",")
     .map((t) => t.trim())
+    .map((t) => LEGACY_TAG_ALIASES[t] ?? t)
     .filter(Boolean);
+}
+
+export function pickFeaturedGenre(tags: string | null | undefined): FeaturedGenre | null {
+  for (const tag of parseTagsString(tags)) {
+    const genre = FEATURED_GENRES.find((item) => item.tag === tag);
+    if (genre) return genre;
+  }
+  return null;
 }
 
 export function joinTagsString(tags: string[]): string {

@@ -85,7 +85,7 @@ export default function EmailVerificationBanner() {
         </div>
       </div>
       {message && <p className="mt-1 text-center text-xs text-emerald-400">{message}</p>}
-      {error && <p className="mt-1 text-center text-xs text-primary">{error}</p>}
+      {error && <p className="mt-1 text-center text-xs text-primary-soft">{error}</p>}
     </div>
   );
 }

@@ -2,176 +2,57 @@
 
 import LocaleLink, { useLocalizedPathname } from "./LocaleLink";
 import { useTranslation } from "react-i18next";
-import { useEffect, useLayoutEffect, useState } from "react";
-import {
-  FaHome,
-  FaComments,
-  FaStar,
-  FaCoins,
-  FaPlusCircle,
-  FaHeart,
-  FaQuestionCircle,
-  FaUser,
-  FaRegComments,
-  FaRegStar,
-  FaRegHeart,
-  FaRegQuestionCircle,
-} from "react-icons/fa";
-import {
-  HEADER_HEIGHT_DESKTOP_PX,
-  HEADER_HEIGHT_MOBILE_PX,
-  SIDEBAR_COLLAPSED_DESKTOP,
-  SIDEBAR_EXPANDED_DESKTOP,
-} from "@/lib/layoutConstants";
+import { Fragment, useEffect, useLayoutEffect, useState } from "react";
 import { useSidebar } from "./SidebarContext";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { NAV_SECTIONS, isNavItemActive } from "./navItems";
 
-const ACTIVE_BLUE = "#4A90D9";
-
-const NAV_ITEMS = [
-  {
-    nameKey: "header.menu.home",
-    path: "/",
-    iconActive: FaHome,
-    iconInactive: FaHome,
-    inactiveMuted: true,
-  },
-  {
-    nameKey: "header.menu.chats",
-    path: "/chats",
-    iconInactive: FaRegComments,
-    iconActive: FaComments,
-    matchPaths: ["/chats", "/chat"],
-    prefetch: true,
-  },
-  {
-    nameKey: "header.menu.pricing",
-    path: "/pricing",
-    iconInactive: FaRegStar,
-    iconActive: FaStar,
-    matchPaths: ["/pricing", "/subscription"],
-    prefetch: true,
-  },
-  {
-    nameKey: "header.menu.coins",
-    path: "/coins",
-    iconActive: FaCoins,
-    iconInactive: FaCoins,
-    inactiveMuted: true,
-    prefetch: true,
-  },
-  {
-    nameKey: "header.menu.create",
-    path: "/create",
-    iconInactive: FaPlusCircle,
-    iconActive: FaPlusCircle,
-    inactiveMuted: true,
-    matchPaths: ["/create", "/edit"],
-  },
-  {
-    nameKey: "header.menu.profile",
-    path: "/profile",
-    iconInactive: FaUser,
-    iconActive: FaUser,
-    matchPaths: ["/profile", "/edit"],
-  },
-  {
-    nameKey: "header.menu.favorites",
-    path: "/favorites",
-    iconInactive: FaRegHeart,
-    iconActive: FaHeart,
-    matchPaths: ["/favorites"],
-  },
-  {
-    nameKey: "header.menu.support",
-    path: "/support",
-    iconInactive: FaRegQuestionCircle,
-    iconActive: FaQuestionCircle,
-    matchPaths: ["/support"],
-  },
-];
-
-function MenuIcon({ iconActive, iconInactive, active, inactiveMuted, size = 28 }) {
-  const Icon = active ? iconActive : iconInactive;
-
-  return (
-    <Icon
-      size={size}
-      className={`shrink-0 ${!active && inactiveMuted ? "opacity-50" : ""}`}
-      style={{ color: active ? ACTIVE_BLUE : "#FFFFFF" }}
-    />
-  );
-}
-
-function isNavItemActive(item, pathname) {
-  const paths = item.matchPaths ?? [item.path];
-
-  return paths.some((path) => {
-    if (path === "/") return pathname === "/";
-    return pathname === path || pathname.startsWith(`${path}/`);
-  });
-}
-
-function NavMenuList({ pathname, showLabels, iconSize, onItemClick }) {
+function NavMenuList({ pathname, variant, onItemClick }) {
   const { t } = useTranslation();
+  const isRail = variant === "rail";
 
   return (
-    <ul className={`space-y-2 ${showLabels ? "px-2" : "px-1"}`}>
-      {NAV_ITEMS.map((item) => {
-        const isActive = isNavItemActive(item, pathname);
-        const name = t(item.nameKey);
+    <ul className={`flex flex-col gap-1 ${isRail ? "items-center px-2 lg:items-stretch lg:px-3" : "px-3"}`}>
+      {NAV_SECTIONS.map((section, index) => (
+        <Fragment key={index}>
+          {index > 0 && <li aria-hidden className="mx-3 my-2 h-px self-stretch bg-wd-border" />}
+          {section.map((item) => {
+            const isActive = isNavItemActive(item, pathname);
+            const name = t(item.nameKey);
+            const Icon = item.icon;
 
-        const linkClass = `flex w-full items-center rounded-xl border transition-all duration-300 ${
-          showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-3 md:py-4"
-        } ${
-          isActive
-            ? "border-[#4A90D9]/40 bg-[#4A90D9]/15"
-            : "border-transparent text-white hover:bg-[#2A2A2A]"
-        }`;
-
-        const textClass = isActive ? "text-[#4A90D9]" : "text-white";
-
-        const content = (
-          <>
-            <MenuIcon
-              iconActive={item.iconActive}
-              iconInactive={item.iconInactive}
-              active={isActive}
-              inactiveMuted={item.inactiveMuted}
-              size={iconSize}
-            />
-            <span
-              className={`overflow-hidden whitespace-nowrap text-sm font-semibold leading-none transition-all duration-300 ${textClass} ${
-                showLabels ? "max-w-[200px] opacity-100" : "max-w-0 opacity-0"
-              }`}
-            >
-              {name}
-            </span>
-          </>
-        );
-
-        return (
-          <li key={item.nameKey}>
-            <LocaleLink
-              href={item.path}
-              prefetch={item.prefetch === true ? true : undefined}
-              onClick={() => onItemClick(item)}
-              className={linkClass}
-            >
-              {content}
-            </LocaleLink>
-          </li>
-        );
-      })}
+            return (
+              <li key={item.nameKey} className={isRail ? "w-full" : undefined}>
+                <LocaleLink
+                  href={item.path}
+                  prefetch={item.prefetch === true ? true : undefined}
+                  onClick={onItemClick}
+                  title={isRail ? name : undefined}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex min-h-11 items-center gap-3 rounded-xl text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary ${
+                    isRail ? "justify-center px-0 lg:justify-start lg:px-3" : "px-3"
+                  } ${
+                    isActive
+                      ? "bg-wd-primary/12 font-semibold text-wd-primary-soft"
+                      : "font-medium text-wd-text-secondary hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <Icon size={20} aria-hidden className="shrink-0" />
+                  <span className={isRail ? "sr-only lg:not-sr-only lg:truncate" : "truncate"}>{name}</span>
+                </LocaleLink>
+              </li>
+            );
+          })}
+        </Fragment>
+      ))}
     </ul>
   );
 }
 
 export default function Navbar() {
   const pathname = useLocalizedPathname();
-  const { isExpanded, sidebarWidth, collapse, isMobile } = useSidebar();
-
-  const desktopPanelWidth = isExpanded ? SIDEBAR_EXPANDED_DESKTOP : SIDEBAR_COLLAPSED_DESKTOP;
-  const showDesktopLabels = isExpanded;
+  const { t } = useTranslation();
+  const { isExpanded, collapse, isMobile } = useSidebar();
   const [mobileSlideOpen, setMobileSlideOpen] = useState(false);
 
   // Paint the closed width first, then open — otherwise iOS skips the 300ms width tween.
@@ -185,18 +66,6 @@ export default function Navbar() {
     });
     return () => cancelAnimationFrame(id);
   }, [isExpanded]);
-
-  useEffect(() => {
-    const headerHeight = isMobile ? HEADER_HEIGHT_MOBILE_PX : HEADER_HEIGHT_DESKTOP_PX;
-    document.body.style.paddingLeft = isMobile ? "0px" : `${sidebarWidth}px`;
-    document.body.style.paddingTop = `${headerHeight}px`;
-    document.body.style.transition = "padding-left 300ms ease-in-out";
-    return () => {
-      document.body.style.paddingLeft = "";
-      document.body.style.paddingTop = "";
-      document.body.style.transition = "";
-    };
-  }, [sidebarWidth, isMobile]);
 
   useEffect(() => {
     const updateOverflow = () => {
@@ -226,35 +95,26 @@ export default function Navbar() {
       />
 
       <aside
-        className={`nv-mobile-drawer border-[#2A2A2A] bg-[#1A1A1A] text-white ${
+        className={`nv-mobile-drawer border-wd-border bg-[#101010] text-white ${
           mobileSlideOpen ? "is-open" : "pointer-events-none"
         }`}
         aria-hidden={!isExpanded}
       >
         <div className="nv-mobile-drawer-inner">
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
-            <NavMenuList
-              pathname={pathname}
-              showLabels
-              iconSize={24}
-              onItemClick={handleNavClick}
-            />
+          <nav aria-label={t("header.mainNav")} className="flex-1 overflow-y-auto overflow-x-hidden py-4">
+            <NavMenuList pathname={pathname} variant="drawer" onItemClick={handleNavClick} />
           </nav>
+          <div className="border-t border-wd-border px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+            <p className="mb-2 text-xs text-wd-text-secondary">{t("language.label")}</p>
+            <LanguageSwitcher variant="menu" />
+          </div>
         </div>
       </aside>
 
-      {/* Desktop persistent sidebar */}
-      <aside
-        className="fixed left-0 top-20 z-[210] m-0 hidden h-[calc(100vh-5rem)] flex-col items-start justify-start overflow-hidden border-r border-[#2A2A2A] bg-[#1A1A1A] p-0 text-white shadow-2xl transition-all duration-300 ease-in-out md:flex"
-        style={{ width: desktopPanelWidth }}
-      >
-        <nav className="m-0 w-full flex-1 overflow-y-auto overflow-x-hidden p-0 py-4">
-          <NavMenuList
-            pathname={pathname}
-            showLabels={showDesktopLabels}
-            iconSize={28}
-            onItemClick={handleNavClick}
-          />
+      {/* Desktop persistent sidebar: icon rail on md, labelled sidebar from lg (widths mirror body padding). */}
+      <aside className="fixed left-0 top-20 z-[210] hidden h-[calc(100vh-5rem)] w-20 flex-col overflow-hidden border-r border-wd-border bg-[#0d0d0d] text-white md:flex lg:w-[232px]">
+        <nav aria-label={t("header.mainNav")} className="w-full flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-subtle">
+          <NavMenuList pathname={pathname} variant="rail" onItemClick={handleNavClick} />
         </nav>
       </aside>
     </>

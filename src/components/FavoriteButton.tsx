@@ -85,7 +85,7 @@ function FavoriteToggle({
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className={`flex items-center justify-center rounded-full border border-white/10 bg-black/55 backdrop-blur-sm transition-colors hover:border-wd-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-wd-bg disabled:opacity-60 ${isFavorited ? "text-wd-primary hover:text-wd-primary" : "text-white hover:text-wd-primary"} ${className}`}
+      className={`flex items-center justify-center rounded-full border border-white/10 bg-black/55 backdrop-blur-sm transition-colors hover:border-wd-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-wd-bg disabled:opacity-60 ${isFavorited ? "text-wd-primary-soft hover:text-wd-primary-soft" : "text-white hover:text-wd-primary-soft"} ${className}`}
       aria-label={isFavorited ? "Убрать из избранного" : "Добавить в избранное"}
       aria-pressed={isFavorited}
       aria-busy={loading}

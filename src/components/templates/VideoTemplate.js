@@ -42,8 +42,8 @@ function CustomSelect({ value, onChange, options, placeholder = "Выберит�
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer ${
-                  value === opt.value ? "text-primary font-bold bg-primary/5" : "text-primary-text"
+                className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-primary/10 hover:text-primary-soft cursor-pointer ${
+                  value === opt.value ? "text-primary-soft font-bold bg-primary/5" : "text-primary-text"
                 }`}
               >
                 {opt.label}
@@ -278,7 +278,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
       {/* Configuration Form */}
       <div className="w-full lg:w-[400px] shrink-0 border border-divider/40 bg-bg-card/30 p-6 rounded-lg flex flex-col gap-6">
         <div>
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary flex items-center gap-2">
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary-soft flex items-center gap-2">
             <FaVideo className="text-xs" /> Видеостудия
           </h2>
           <p className="text-[11px] text-secondary-text">Генерируйте ИИ-видео для {appInstance.name}.</p>
@@ -321,11 +321,11 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                               <img src={url} alt="Uploaded source" className="w-full h-full object-cover" />
                             ) : param.type === "video_list" ? (
                               <div className="w-full h-full flex items-center justify-center bg-black">
-                                <FaVideo size={16} className="text-primary" />
+                                <FaVideo size={16} className="text-primary-soft" />
                               </div>
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-bg-card">
-                                <FaMicrophone size={16} className="text-primary" />
+                                <FaMicrophone size={16} className="text-primary-soft" />
                               </div>
                             )}
                             <button
@@ -399,7 +399,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
                   <div key={param.key} className="space-y-2">
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">{param.label}</label>
-                      <span className="text-xs font-bold text-primary">{val}</span>
+                      <span className="text-xs font-bold text-primary-soft">{val}</span>
                     </div>
                     <input
                       type="range"
@@ -486,7 +486,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">Длительность</label>
-                  <span className="text-xs font-bold text-primary">{duration}s</span>
+                  <span className="text-xs font-bold text-primary-soft">{duration}s</span>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {DURATION_PRESETS.map((d) => (
@@ -601,7 +601,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
               <div className="space-y-1 min-w-0">
                 <p className="text-xs font-bold text-primary-text truncate">{activeCreation.prompt}</p>
                 <div className="flex items-center gap-3 text-[10px] text-secondary-text">
-                  <span className="uppercase font-bold tracking-widest text-primary">{activeCreation.status}</span>
+                  <span className="uppercase font-bold tracking-widest text-primary-soft">{activeCreation.status}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <FaVideo className="text-[8px]" /> Видео
@@ -611,7 +611,7 @@ export default function VideoTemplate({ appInstance, userCredits, activeCreation
               {activeCreation.status === "completed" && (
                 <button
                   onClick={() => handleDownload(activeCreation.resultImage)}
-                  className="bg-bg-page hover:bg-bg-card border border-divider rounded-full p-3 text-primary transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
+                  className="bg-bg-page hover:bg-bg-card border border-divider rounded-full p-3 text-primary-soft transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <FaDownload className="text-xs" />
                 </button>

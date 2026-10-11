@@ -136,7 +136,7 @@ export default function VerifyEmailPage() {
         {resending ? t("auth.sending") : t("auth.resendEmail")}
       </button>
       {resendMessage && <p className="mt-4 text-sm text-emerald-400">{resendMessage}</p>}
-      {resendError && <p className="mt-4 text-sm text-primary">{resendError}</p>}
+      {resendError && <p className="mt-4 text-sm text-primary-soft">{resendError}</p>}
     </AuthCard>
   );
 }

@@ -51,43 +51,13 @@ export default function UserAvatarMenu() {
 
   if (status === "unauthenticated") {
     return (
-      <div ref={menuRef} className="relative flex items-center">
-        <LocaleLink
-          href="/login"
-          className="hidden h-10 w-10 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:bg-[#2A2A2A] md:flex"
-          title={t("auth.login")}
-        >
-          <FaSignInAlt size={18} />
-        </LocaleLink>
-        <button
-          type="button"
-          onClick={() => setOpen((prev) => !prev)}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:bg-[#2A2A2A] md:hidden"
-          title={t("auth.login")}
-          aria-label={t("auth.login")}
-          aria-expanded={open}
-        >
-          <FaSignInAlt size={16} />
-        </button>
-        {open && (
-          <div className="absolute right-0 top-full z-50 mt-2 min-w-[200px] overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] py-1 shadow-xl md:hidden">
-            <div className="px-4 py-2.5">
-              <p className="mb-1.5 text-xs text-[#A0A0A0]">{t("language.label")}</p>
-              <LanguageSwitcher variant="menu" />
-            </div>
-            <div className="border-t border-[#2A2A2A] py-1">
-              <LocaleLink
-                href="/login"
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-white transition-colors hover:bg-[#2A2A2A]"
-                onClick={() => setOpen(false)}
-              >
-                <FaSignInAlt size={16} className="shrink-0" />
-                {t("auth.login")}
-              </LocaleLink>
-            </div>
-          </div>
-        )}
-      </div>
+      <LocaleLink
+        href="/login"
+        className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 px-4 text-sm font-semibold text-white transition-colors hover:border-white/30 hover:bg-white/5"
+      >
+        <FaSignInAlt size={14} aria-hidden className="text-wd-text-secondary" />
+        {t("auth.login")}
+      </LocaleLink>
     );
   }
 
@@ -105,7 +75,7 @@ export default function UserAvatarMenu() {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-[#2A2A2A] bg-[#0A0A0A] transition-colors hover:border-[#4A90D9]/50 md:h-10 md:w-10"
+        className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-[#2A2A2A] bg-[#0A0A0A] transition-colors hover:border-wd-primary/50 md:h-10 md:w-10"
         aria-label={t("header.profileMenu")}
         aria-expanded={open}
       >
@@ -130,7 +100,7 @@ export default function UserAvatarMenu() {
               const Icon = item.icon;
               const itemClass = `flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                 item.active
-                  ? "bg-[#4A90D9]/15 text-[#4A90D9]"
+                  ? "bg-wd-primary/12 text-wd-primary-soft"
                   : "text-white hover:bg-[#2A2A2A]"
               }`;
 
@@ -154,7 +124,7 @@ export default function UserAvatarMenu() {
                 setOpen(false);
                 signOut({ callbackUrl: withLocale("/login", locale) });
               }}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-[#FF2D55] transition-colors hover:bg-[#2A2A2A]"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-wd-primary-soft transition-colors hover:bg-[#2A2A2A]"
             >
               <FaSignOutAlt size={16} />
               {t("profile.logout")}

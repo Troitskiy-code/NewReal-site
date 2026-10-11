@@ -29,8 +29,8 @@ export default function VerseCoinsBalance({ className = "", size = "sm" }) {
   if (status !== "authenticated" || verseCoins === null) return null;
   const sizeClasses = size === "md" ? "gap-2 px-4 py-2 text-sm" : "gap-1.5 px-2.5 py-1 text-xs md:px-3 md:py-1.5 md:text-sm";
   return <Link href={coinsHrefFromChat(pathname)}
-    className={`inline-flex items-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A]/80 font-bold text-white transition-colors hover:border-[#6C63FF]/50 ${sizeClasses} ${className}`} title="VerseCoins">
-    <FaCoins className="shrink-0 text-[#6C63FF]" size={size === "md" ? "16" : "14"} />
+    className={`inline-flex items-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A]/80 font-bold text-white transition-colors hover:border-wd-secondary/50 ${sizeClasses} ${className}`} title="VerseCoins">
+    <FaCoins className="shrink-0 text-wd-secondary-text" size={size === "md" ? "16" : "14"} />
     <span>{verseCoins.toLocaleString("ru-RU")} VC</span>
   </Link>;
 }

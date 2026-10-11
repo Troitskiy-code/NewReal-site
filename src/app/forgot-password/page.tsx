@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard title={t("auth.forgotTitle")}>
       {sent ? (
-        <p className="text-sm text-wd-secondary">{t("auth.linkSent")}</p>
+        <p className="text-sm text-wd-secondary-text">{t("auth.linkSent")}</p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -63,10 +63,10 @@ export default function ForgotPasswordPage() {
           </button>
         </form>
       )}
-      {error && <p className="mt-4 text-sm text-primary">{error}</p>}
+      {error && <p className="mt-4 text-sm text-primary-soft">{error}</p>}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
         {t("auth.rememberedPassword")}{" "}
-        <LocaleLink href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
+        <LocaleLink href="/login" className="font-semibold text-primary-soft transition hover:text-primary-hover">
           {t("auth.login")}
         </LocaleLink>
       </p>

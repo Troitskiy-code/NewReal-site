@@ -56,7 +56,7 @@ export default async function RulesPage() {
             <h2 className="text-lg font-bold text-white">{translate(locale, "rules.appealTitle")}</h2>
             <p>
               {translate(locale, "rules.appeal")}{" "}
-              <LocaleLink href="/support?topic=moderation" className="text-wd-secondary underline hover:text-white">
+              <LocaleLink href="/support?topic=moderation" className="text-wd-secondary-text underline hover:text-white">
                 {translate(locale, "rules.appealLink")}
               </LocaleLink>
               .

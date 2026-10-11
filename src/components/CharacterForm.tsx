@@ -36,7 +36,7 @@ import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
 const HINT_CLASS = "text-sm text-gray-400 leading-relaxed";
 const INPUT_CLASS =
-  "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-base text-white outline-none transition-colors placeholder:text-gray-400 focus:border-[#6C63FF]";
+  "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-base text-white outline-none transition-colors placeholder:text-gray-400 focus:border-wd-secondary";
 
 type FormBlockProps = {
   title: string;
@@ -110,7 +110,7 @@ function ImageUploadField({ preview, onChange, onRemove, footerHint, error }: Im
   return (
     <div className="space-y-3">
       <div
-        className={`relative flex min-h-[160px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-[#0A0A0A] p-6 transition-colors hover:border-[#6C63FF]/50 ${
+        className={`relative flex min-h-[160px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-[#0A0A0A] p-6 transition-colors hover:border-wd-secondary/50 ${
           error ? "border-red-500" : "border-gray-500"
         }`}
       >
@@ -146,7 +146,7 @@ type VisibilityToggleProps = {
 
 function VisibilityToggle({ isPublic, onChange }: VisibilityToggleProps) {
   const base = "flex-1 rounded-lg border px-6 py-3 text-base font-bold transition-colors";
-  const active = "border-[#6C63FF] bg-[#6C63FF] text-white";
+  const active = "border-wd-secondary bg-wd-secondary text-white";
   const inactive = "border-gray-500 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-300";
 
   return (
@@ -533,7 +533,7 @@ function CharacterFormContent({
                 }}
                 className={`rounded-lg border p-3 text-left transition-colors ${
                   active
-                    ? "border-[#6C63FF] bg-[#6C63FF]/15 text-white"
+                    ? "border-wd-secondary bg-wd-secondary/15 text-white"
                     : "border-[#2A2A2A] bg-[#0A0A0A] text-gray-300 hover:border-gray-500"
                 }`}
               >
@@ -568,7 +568,7 @@ function CharacterFormContent({
                   onClick={() => setStyle(option.value)}
                   className={`flex-1 rounded-lg border px-4 py-3 text-sm font-bold transition-colors sm:flex-none ${
                     active
-                      ? "border-[#6C63FF] bg-[#6C63FF] text-white"
+                      ? "border-wd-secondary bg-wd-secondary text-white"
                       : "border-gray-500 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-300"
                   }`}
                 >
@@ -583,7 +583,7 @@ function CharacterFormContent({
             data-metrika="generate-avatar"
             onClick={handleGenerateAvatar}
             disabled={generatingAvatar || (tokenStatus !== null && !canGenerate)}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#6C63FF] bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-[#6C63FF]/15 disabled:opacity-50 sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-wd-secondary bg-transparent px-4 py-3 text-base font-bold text-white transition-colors hover:bg-wd-secondary/15 disabled:opacity-50 sm:w-auto"
           >
             {generatingAvatar ? (
               <FaSpinner className="animate-spin text-sm" />

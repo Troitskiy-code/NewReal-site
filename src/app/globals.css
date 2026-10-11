@@ -4,12 +4,20 @@
   --font-sans: var(--font-inter), sans-serif;
   --font-outfit: var(--font-inter), sans-serif;
 
-  /* WetDreams palette */
+  /*
+    Brand palette. Fills (buttons, chips) use primary/secondary with white text
+    (>= 4.5:1). Text on dark surfaces uses the *-soft / *-text shades, because
+    the fill shades are too dark to read as small text on #0a0a0a–#1a1a1a.
+  */
   --color-wd-bg: #0a0a0a;
   --color-wd-card: #1a1a1a;
   --color-wd-border: #2a2a2a;
-  --color-wd-primary: #ff2d55;
-  --color-wd-secondary: #6c63ff;
+  --color-wd-primary: #e11d48;
+  --color-wd-primary-hover: #be123c;
+  --color-wd-primary-soft: #fb7185;
+  --color-wd-secondary: #5b54e6;
+  --color-wd-secondary-hover: #4c45d1;
+  --color-wd-secondary-text: #a5a0ff;
   --color-wd-text: #ffffff;
   --color-wd-text-secondary: #a0a0a0;
 
@@ -18,8 +26,9 @@
   --color-bg-card-hover: var(--bg-card-hover, #242424);
   --color-bg-elevated: var(--bg-elevated, #1f1f1f);
   --color-divider: var(--divider, #2a2a2a);
-  --color-primary: var(--primary, #ff2d55);
-  --color-primary-hover: var(--primary-hover, #e0264b);
+  --color-primary: var(--primary, #e11d48);
+  --color-primary-hover: var(--primary-hover, #be123c);
+  --color-primary-soft: var(--primary-soft, #fb7185);
   --color-primary-text: var(--primary-text, #ffffff);
   --color-secondary-text: var(--secondary-text, #a0a0a0);
   --color-primary-btn-text: var(--primary-btn-text, #ffffff);
@@ -37,8 +46,9 @@
   --bg-card-hover: #242424;
   --bg-elevated: #1f1f1f;
   --divider: #2a2a2a;
-  --primary: #ff2d55;
-  --primary-hover: #e0264b;
+  --primary: #e11d48;
+  --primary-hover: #be123c;
+  --primary-soft: #fb7185;
   --primary-text: #ffffff;
   --secondary-text: #a0a0a0;
   --primary-btn-text: #ffffff;
@@ -53,6 +63,7 @@
   --divider: #ec4899;
   --primary: #f43f5e;
   --primary-hover: #e11d48;
+  --primary-soft: #fb7185;
   --primary-text: #fff1f2;
   --secondary-text: #06b6d4;
   --primary-btn-text: #ffffff;
@@ -66,6 +77,7 @@
   --divider: #115e59;
   --primary: #10b981;
   --primary-hover: #059669;
+  --primary-soft: #34d399;
   --primary-text: #ecfdf5;
   --secondary-text: #34d399;
   --primary-btn-text: #ffffff;
@@ -79,6 +91,7 @@
   --divider: #ea580c;
   --primary: #f97316;
   --primary-hover: #ea580c;
+  --primary-soft: #fb923c;
   --primary-text: #fff7ed;
   --secondary-text: #fb923c;
   --primary-btn-text: #ffffff;
@@ -92,6 +105,7 @@
   --divider: #2d2d34;
   --primary: #ffffff;
   --primary-hover: #e4e4e7;
+  --primary-soft: #ffffff;
   --primary-text: #f4f4f5;
   --secondary-text: #a1a1aa;
   --primary-btn-text: #000000;
@@ -113,6 +127,24 @@
   }
 }
 
+/* Offsets for the fixed header and desktop sidebar; keep in sync with layoutConstants.ts. */
+body {
+  padding-top: 3.5rem;
+}
+
+@media (min-width: 768px) {
+  body {
+    padding-top: 5rem;
+    padding-left: 80px;
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    padding-left: 232px;
+  }
+}
+
 /* WetDreams UI utilities */
 .wd-card {
   background-color: #1a1a1a;
@@ -122,7 +154,7 @@
 }
 
 .wd-button {
-  background-color: #ff2d55;
+  background-color: var(--color-wd-primary);
   color: #ffffff;
   border: none;
   border-radius: 50px;
@@ -132,7 +164,7 @@
 }
 
 .wd-button:hover {
-  background-color: #e0264b;
+  background-color: var(--color-wd-primary-hover);
 }
 
 .wd-button:disabled {
@@ -154,7 +186,7 @@
 }
 
 .wd-input:focus {
-  border-color: #ff2d55;
+  border-color: var(--color-wd-primary);
 }
 
 /* Glassmorphism Utilities */

@@ -30,7 +30,7 @@ export default function LanguageSwitcher({
 
   return (
     <div
-      className={`${isMenu ? "flex w-full" : "inline-flex"} items-center gap-1 ${className}`}
+      className={`${isMenu ? "flex w-full" : "inline-flex"} items-center gap-0.5 rounded-full border border-wd-border bg-wd-card p-1 ${className}`}
       aria-label={t("language.label")}
     >
       {LOCALES.map((locale) => (
@@ -38,12 +38,13 @@ export default function LanguageSwitcher({
           key={locale}
           type="button"
           onClick={() => switchLocale(locale)}
-          className={`rounded px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide transition-colors ${
-            isMenu ? "flex-1 px-3 py-1.5" : ""
+          aria-pressed={current === locale}
+          className={`min-h-8 rounded-full px-3 text-xs font-bold uppercase tracking-wide transition-colors ${
+            isMenu ? "min-h-10 flex-1" : ""
           } ${
             current === locale
-              ? "bg-white/10 text-white"
-              : "text-[#A0A0A0] hover:text-white"
+              ? "bg-white/12 text-white"
+              : "text-wd-text-secondary hover:text-white"
           }`}
         >
           {t(`language.${locale}`)}

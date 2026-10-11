@@ -75,7 +75,7 @@ export default function ReferralPage() {
     return (
       <div className="min-h-dvh flex flex-col bg-bg-page text-primary-text">
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
-          <FaUserFriends className="text-4xl opacity-30 text-primary" />
+          <FaUserFriends className="text-4xl opacity-30 text-primary-soft" />
           <h1 className="text-xl font-black uppercase tracking-tight">Реферальная программа</h1>
           <p className="text-xs text-secondary-text max-w-sm">Войдите, чтобы получить реферальную ссылку</p>
           <Link
@@ -95,7 +95,7 @@ export default function ReferralPage() {
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-8 sm:px-6 lg:px-8 flex flex-col gap-6 overflow-y-auto scrollbar-subtle">
         <div className="space-y-1 border-b border-divider/40 pb-4">
           <h1 className="text-2xl font-black tracking-tight uppercase flex items-center gap-2">
-            <FaUserFriends className="text-primary" />
+            <FaUserFriends className="text-primary-soft" />
             Реферальная программа
           </h1>
           <p className="text-xs text-secondary-text">
@@ -133,7 +133,7 @@ export default function ReferralPage() {
               </button>
               {stats?.referralCode && (
                 <p className="text-[10px] text-secondary-text text-center">
-                  Ваш код: <span className="font-bold text-primary">{stats.referralCode}</span>
+                  Ваш код: <span className="font-bold text-primary-soft">{stats.referralCode}</span>
                 </p>
               )}
             </div>
@@ -141,7 +141,7 @@ export default function ReferralPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="border border-divider/40 bg-bg-card/30 rounded-lg p-5 text-center space-y-1">
                 <p className="text-xs font-bold text-secondary-text uppercase tracking-widest">Приглашено</p>
-                <p className="text-3xl font-black text-primary">{stats?.count ?? 0}</p>
+                <p className="text-3xl font-black text-primary-soft">{stats?.count ?? 0}</p>
               </div>
               <div className="border border-divider/40 bg-bg-card/30 rounded-lg p-5 text-center space-y-1">
                 <p className="text-xs font-bold text-secondary-text uppercase tracking-widest">Заработано</p>

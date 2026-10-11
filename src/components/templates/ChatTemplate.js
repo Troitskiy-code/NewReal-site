@@ -62,7 +62,7 @@ export default function ChatTemplate({ appInstance, userCredits, activeCreation,
       {/* Header Info */}
       <div className="flex items-center justify-between border-b border-divider/40 pb-4">
         <div className="space-y-0.5">
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">Чат {appInstance.name}</h2>
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary-soft">Чат {appInstance.name}</h2>
           <p className="text-[11px] text-secondary-text">LLM-движок: {parsedConfig.model || "gpt-4o"}</p>
         </div>
         <div className="text-[10px] text-secondary-text bg-bg-page/50 border border-divider/40 px-3 py-1 rounded">

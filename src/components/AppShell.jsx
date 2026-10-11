@@ -7,6 +7,7 @@ import Navbar from "./Navbar";
 import EmailVerificationBanner from "./EmailVerificationBanner";
 import { PaymentGoalTracker } from "@/lib/goalTracking";
 import CheckoutAttributionCapture from "./CheckoutAttributionCapture";
+import MobileBottomNav from "./MobileBottomNav";
 
 export default function AppShell({ children }) {
   return (
@@ -19,6 +20,7 @@ export default function AppShell({ children }) {
       <EmailVerificationBanner />
       <Navbar />
       {children}
+      <MobileBottomNav />
     </SidebarProvider>
   );
 }

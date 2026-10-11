@@ -105,6 +105,16 @@ export function getLocalizedCardDescription(
   return getCardDescription(character);
 }
 
+/** Card blurbs often open with "Name — …"; drop the echo because the title is shown right above. */
+export function stripLeadingName(text: string, name: string | null | undefined): string {
+  const base = name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (!base) return text;
+  const escaped = base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = text.match(new RegExp(`^${escaped}\\s*[—–-]\\s*`, "i"));
+  const rest = match ? text.slice(match[0].length) : "";
+  return rest ? rest.charAt(0).toLocaleUpperCase() + rest.slice(1) : text;
+}
+
 export function pickLocalizedMemory(
   original: unknown,
   translated: unknown,

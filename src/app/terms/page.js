@@ -29,7 +29,7 @@ export default function TermsPage() {
             </p>
             <p>
               Все условия оказания услуг регулируются{" "}
-              <Link href="/offer" className="text-wd-secondary underline hover:text-white">
+              <Link href="/offer" className="text-wd-secondary-text underline hover:text-white">
                 публичной офертой
               </Link>
               .
@@ -69,7 +69,7 @@ export default function TermsPage() {
             </p>
             <p>
               Условия возврата денежных средств описаны в{" "}
-              <Link href="/refund" className="text-wd-secondary underline hover:text-white">
+              <Link href="/refund" className="text-wd-secondary-text underline hover:text-white">
                 Политике возврата средств
               </Link>
               .
@@ -98,7 +98,7 @@ export default function TermsPage() {
             <p>
               Все вопросы, жалобы и обращения по использованию сервиса, оплате и возвратам
               принимаются через форму на{" "}
-              <Link href="/support" className="text-wd-secondary underline hover:text-white">
+              <Link href="/support" className="text-wd-secondary-text underline hover:text-white">
                 странице поддержки
               </Link>
               .
@@ -107,7 +107,7 @@ export default function TermsPage() {
               Перейдите по ссылке{" "}
               <a
                 href="https://newvers.ai/support"
-                className="text-wd-secondary underline hover:text-white"
+                className="text-wd-secondary-text underline hover:text-white"
               >
                 https://newvers.ai/support
               </a>

@@ -198,7 +198,7 @@ export default function PersonaManager() {
                             setCreating(false);
                             setEditingId(persona.id);
                           }}
-                          className="flex-1 rounded-[50px] border border-wd-border bg-[#0A0A0A] py-2 text-[10px] font-bold text-white hover:border-[#6C63FF]"
+                          className="flex-1 rounded-[50px] border border-wd-border bg-[#0A0A0A] py-2 text-[10px] font-bold text-white hover:border-wd-secondary"
                         >
                           <span className="inline-flex items-center justify-center gap-1.5">
                             <FaEdit className="text-[9px]" />
@@ -210,7 +210,7 @@ export default function PersonaManager() {
                             type="button"
                             onClick={() => handleMakeGlobal(persona)}
                             disabled={saving}
-                            className="flex-1 rounded-[50px] border border-[#6C63FF]/30 bg-[#6C63FF]/10 py-2 text-[10px] font-bold text-white hover:bg-[#6C63FF]/20 disabled:opacity-50"
+                            className="flex-1 rounded-[50px] border border-wd-secondary/30 bg-wd-secondary/10 py-2 text-[10px] font-bold text-white hover:bg-wd-secondary/20 disabled:opacity-50"
                           >
                             <span className="inline-flex items-center justify-center gap-1.5">
                               <FaGlobe className="text-[9px]" />
@@ -222,7 +222,7 @@ export default function PersonaManager() {
                           type="button"
                           onClick={() => handleDelete(persona)}
                           disabled={deletingId === persona.id}
-                          className="flex-1 rounded-[50px] border border-wd-primary/30 bg-wd-primary/10 py-2 text-[10px] font-bold text-wd-primary disabled:opacity-50"
+                          className="flex-1 rounded-[50px] border border-wd-primary/30 bg-wd-primary/10 py-2 text-[10px] font-bold text-wd-primary-soft disabled:opacity-50"
                         >
                           <span className="inline-flex items-center justify-center gap-1.5">
                             <FaTrash className="text-[9px]" />

@@ -6,6 +6,15 @@
     "collapseMenu": "Collapse menu",
     "expandMenu": "Expand menu",
     "profileMenu": "Profile menu",
+    "mainNav": "Main navigation",
+    "bottomNav": "Quick navigation",
+    "menuShort": {
+      "home": "Home",
+      "chats": "Chats",
+      "create": "Create",
+      "coins": "Coins",
+      "profile": "Profile"
+    },
     "menu": {
       "home": "Home",
       "chats": "My chats",
@@ -122,11 +131,44 @@
     "prevPage": "Previous page",
     "nextPage": "Next page",
     "reset": "Reset",
-    "resetSearch": "Clear search"
+    "resetSearch": "Clear search",
+    "genresLabel": "Genres",
+    "allGenres": "All",
+    "genres": {
+      "fantasy": "Fantasy",
+      "romance": "Romance",
+      "anime": "Anime",
+      "scifi": "Sci-Fi",
+      "mystic": "Mystery",
+      "realistic": "Realistic",
+      "adventure": "Adventure",
+      "horror": "Horror",
+      "comedy": "Comedy",
+      "drama": "Drama"
+    },
+    "sectionTitle": {
+      "top": "Popular right now",
+      "new": "New arrivals",
+      "random": "Random picks",
+      "for-you": "Picked for you",
+      "search": "Search results"
+    },
+    "hero": {
+      "eyebrow": "NewVerse — AI roleplay stories",
+      "title": "Stories that remember you",
+      "text": "Pick a hero or a whole world and continue the plot whenever you like. Characters remember details and grow the story with you.",
+      "start": "Start a story",
+      "create": "Create your character",
+      "catalogCount_one": "{{count}} character in the catalog",
+      "catalogCount_other": "{{count}} characters in the catalog",
+      "languages": "Russian and English"
+    }
   },
   "characterCard": {
     "knownAbout": "Known about the character:",
-    "noDescription": "No description"
+    "noDescription": "No description",
+    "messages_one": "{{formatted}} message",
+    "messages_other": "{{formatted}} messages"
   },
   "characterPage": {
     "author": "Author",

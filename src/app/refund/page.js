@@ -24,7 +24,7 @@ export default function RefundPage() {
             </p>
             <p>
               Полные условия оказания услуг содержатся в{" "}
-              <Link href="/offer" className="text-wd-secondary underline hover:text-white">
+              <Link href="/offer" className="text-wd-secondary-text underline hover:text-white">
                 публичной оферте
               </Link>
               .
@@ -64,12 +64,12 @@ export default function RefundPage() {
                 Направить письменное заявление на электронную почту{" "}
                 <a
                   href="mailto:mrcheleng87@gmail.com"
-                  className="text-wd-secondary underline hover:text-white"
+                  className="text-wd-secondary-text underline hover:text-white"
                 >
                   mrcheleng87@gmail.com
                 </a>{" "}
                 или через{" "}
-                <Link href="/support" className="text-wd-secondary underline hover:text-white">
+                <Link href="/support" className="text-wd-secondary-text underline hover:text-white">
                   страницу поддержки
                 </Link>
                 .
@@ -104,23 +104,23 @@ export default function RefundPage() {
               Обращения принимаются на{" "}
               <a
                 href="mailto:mrcheleng87@gmail.com"
-                className="text-wd-secondary underline hover:text-white"
+                className="text-wd-secondary-text underline hover:text-white"
               >
                 mrcheleng87@gmail.com
               </a>{" "}
               и через{" "}
-              <Link href="/support" className="text-wd-secondary underline hover:text-white">
+              <Link href="/support" className="text-wd-secondary-text underline hover:text-white">
                 страницу поддержки
               </Link>
               .
             </p>
             <p>
               Также см.{" "}
-              <Link href="/offer" className="text-wd-secondary underline hover:text-white">
+              <Link href="/offer" className="text-wd-secondary-text underline hover:text-white">
                 Публичную оферту
               </Link>{" "}
               и{" "}
-              <Link href="/terms" className="text-wd-secondary underline hover:text-white">
+              <Link href="/terms" className="text-wd-secondary-text underline hover:text-white">
                 Пользовательское соглашение
               </Link>
               .

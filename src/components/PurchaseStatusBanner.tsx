@@ -61,7 +61,7 @@ export function PurchaseStatusBanner({ ns = "payment" }: { ns?: "payment" | "coi
       {status === "waiting" ? (
         <>
           {" "}
-          <a href="/support?topic=payment" className="text-wd-secondary underline">
+          <a href="/support?topic=payment" className="text-wd-secondary-text underline">
             {t("footer.support")}
           </a>
         </>

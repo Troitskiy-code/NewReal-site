@@ -458,7 +458,7 @@ function ChatMessageItem({
           className={`w-full min-w-[220px] rounded-lg border p-3 ${
             isUser
               ? "border-[#9C27B0]/70 bg-black/50 text-white backdrop-blur-sm"
-              : "border-[#6C63FF]/40 bg-black/40 text-white backdrop-blur-sm"
+              : "border-wd-secondary/40 bg-black/40 text-white backdrop-blur-sm"
           }`}
         >
           <textarea
@@ -497,7 +497,7 @@ function ChatMessageItem({
           className={`w-full break-words rounded-lg border px-4 py-2 text-sm ${
             isUser
               ? "border-[#9C27B0]/70 bg-black/50 text-white backdrop-blur-sm"
-              : "border-[#6C63FF]/40 bg-black/40 text-white backdrop-blur-sm"
+              : "border-wd-secondary/40 bg-black/40 text-white backdrop-blur-sm"
           }`}
         >
           {isStreaming && !message.content ? (
@@ -527,7 +527,7 @@ function formatMessageContent(content: string): string {
 function CharacterDescriptionCard({ description }: { description: string }) {
   return (
     <section className="w-full rounded-xl border border-wd-secondary/40 bg-wd-secondary/10 px-4 py-3 text-center">
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#C8C4FF]">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-wd-secondary-text">
         Описание персонажа
       </p>
       <p className="whitespace-pre-wrap text-sm italic leading-relaxed text-gray-200">
@@ -579,7 +579,7 @@ function ChatSettingsMenu({
         type="button"
         onClick={onToggle}
         disabled={disabled}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-[#6C63FF] disabled:opacity-50 md:bg-transparent md:backdrop-blur-none"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text disabled:opacity-50 md:bg-transparent md:backdrop-blur-none"
         title="Настройки чата"
         aria-label="Настройки чата"
         aria-expanded={open}
@@ -755,7 +755,7 @@ function ModelSettingsList({
           <div key={model.id} className="group border-b border-gray-700/50 last:border-b-0">
             <label
               className={`flex cursor-pointer items-center justify-between px-4 py-3 transition-colors md:px-6 ${
-                selectedModelId === model.id ? "bg-[#6C63FF]/10" : "hover:bg-[#0A0A0A]"
+                selectedModelId === model.id ? "bg-wd-secondary/10" : "hover:bg-[#0A0A0A]"
               } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
               title={description}
             >
@@ -766,7 +766,7 @@ function ModelSettingsList({
                   value={model.id}
                   checked={selectedModelId === model.id}
                   onChange={() => onModelChange(model.id)}
-                  className="shrink-0 accent-[#6C63FF]"
+                  className="shrink-0 accent-wd-secondary"
                 />
                 <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
                   <span className="truncate text-base font-bold text-white md:text-lg">
@@ -1692,7 +1692,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               <LocaleLink
                 href={`/character/${character.slug}`}
                 onClick={captureCharacterReturn}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-[#6C63FF] md:bg-transparent md:backdrop-blur-none"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text md:bg-transparent md:backdrop-blur-none"
                 title="О персонаже"
                 aria-label="О персонаже"
               >

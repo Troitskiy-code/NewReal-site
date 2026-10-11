@@ -159,8 +159,8 @@ export default function SubscriptionPage() {
     return (
       <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <FaCrown className="text-4xl text-wd-secondary opacity-40" />
-          <h1 className="text-xl font-black uppercase tracking-tight">Управление подпиской</h1>
+          <FaCrown className="text-4xl text-wd-secondary-text" />
+          <h1 className="text-2xl font-bold tracking-tight">Управление подпиской</h1>
           <p className="max-w-sm text-xs text-wd-text-secondary">
             Войдите в аккаунт, чтобы смотреть тариф и менять подписку.
           </p>
@@ -182,7 +182,7 @@ export default function SubscriptionPage() {
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 overflow-y-auto px-4 py-10 scrollbar-subtle sm:px-6 lg:px-8">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 text-wd-secondary">
+          <div className="inline-flex items-center gap-2 text-wd-secondary-text">
             <FaCrown className="text-lg" />
             <span className="text-xs font-bold uppercase tracking-widest">Подписка</span>
           </div>
@@ -194,7 +194,7 @@ export default function SubscriptionPage() {
 
         {error && (
           <section className="wd-card space-y-3 border-wd-primary/30 p-6 text-center">
-            <p className="text-sm font-extrabold uppercase text-wd-primary">Ошибка</p>
+            <p className="text-sm font-extrabold uppercase text-wd-primary-soft">Ошибка</p>
             <p className="text-xs text-wd-text-secondary">{error}</p>
             <button type="button" onClick={fetchBalance} className="wd-button px-5 py-2.5 text-xs">
               Повторить
@@ -237,7 +237,7 @@ export default function SubscriptionPage() {
                     type="button"
                     disabled={cancellingRecurring}
                     onClick={() => setConfirmCancelRecurring(true)}
-                    className="inline-flex items-center justify-center gap-2 rounded-wd-pill border border-wd-primary/40 bg-wd-primary/10 px-4 py-2 text-xs font-bold text-wd-primary transition-colors hover:bg-wd-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-wd-pill border border-wd-primary/40 bg-wd-primary/10 px-4 py-2 text-xs font-bold text-wd-primary-soft transition-colors hover:bg-wd-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {cancellingRecurring && (
                       <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
@@ -254,20 +254,20 @@ export default function SubscriptionPage() {
               <p className="rounded-wd border border-wd-primary/40 bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
                 Автопродление для нового тарифа не настроено. Чтобы списания продолжались автоматически,
                 оформите подписку ещё раз на странице{" "}
-                <Link href="/pricing" className="font-bold text-wd-secondary hover:text-white">
+                <Link href="/pricing" className="font-bold text-wd-secondary-text hover:text-white">
                   тарифов
                 </Link>
                 .
               </p>
             )}
-            <Link href="/pricing" className="inline-flex text-sm font-bold text-wd-secondary hover:text-white">
+            <Link href="/pricing" className="inline-flex text-sm font-bold text-wd-secondary-text hover:text-white">
               Оплатить новый период
             </Link>
           </section>
         )}
 
         <section className="space-y-4">
-          <h2 className="text-lg font-black uppercase tracking-wide text-white">Доступные тарифы</h2>
+          <h2 className="text-xl font-bold text-white">Доступные тарифы</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {SUBSCRIPTION_PLANS.map((plan) => {
               const Icon = PLAN_ICONS[plan.id] ?? FaStar;
@@ -276,7 +276,7 @@ export default function SubscriptionPage() {
               return (
                 <article key={plan.id} className="wd-card flex flex-col gap-4 p-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-wd bg-[#0A0A0A] text-wd-secondary">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-wd bg-[#0A0A0A] text-wd-secondary-text">
                       <Icon />
                     </div>
                     <div>
@@ -295,7 +295,7 @@ export default function SubscriptionPage() {
                   <ul className="space-y-1.5 text-xs text-wd-text-secondary">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2">
-                        <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
+                        <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary-soft" />
                         <span>{feature}</span>
                       </li>
                     ))}

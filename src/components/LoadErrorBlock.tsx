@@ -12,7 +12,7 @@ export default function LoadErrorBlock({ message, onRetry }: LoadErrorBlockProps
       <button
         type="button"
         onClick={onRetry}
-        className="mt-3 rounded-full border border-[#2A2A2A] px-4 py-2 text-xs font-semibold text-white transition-colors hover:border-[#6C63FF]"
+        className="mt-3 rounded-full border border-[#2A2A2A] px-4 py-2 text-xs font-semibold text-white transition-colors hover:border-wd-secondary"
       >
         Повторить
       </button>

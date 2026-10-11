@@ -6,7 +6,7 @@ export default function CreateSelectionPage() {
     <main className="flex-1 px-4 py-8 sm:px-6 md:py-12">
       <div className="mx-auto max-w-6xl space-y-8">
         <header className="space-y-3">
-          <p className="text-sm font-medium text-[#B9AEFF]">Ваша следующая история</p>
+          <p className="text-sm font-medium text-wd-secondary-text">Ваша следующая история</p>
           <h1 className="text-2xl font-bold sm:text-3xl">Что создаём?</h1>
           <p className="max-w-2xl text-base leading-relaxed text-[#A0A0A0]">Выберите формат — затем откроется редактор с подходящими полями.</p>
         </header>

@@ -108,13 +108,13 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={openDropdown}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:border-[#6C63FF]/50 hover:text-white md:h-10 md:w-10"
+        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:border-wd-secondary/50 hover:text-white md:h-10 md:w-10"
         aria-label={t("notifications.open")}
         aria-expanded={open}
       >
         <FaBell size={16} className="text-[#A0A0A0]" />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF2D55] px-1 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-wd-primary px-1 text-[10px] font-bold leading-none text-white">
             {badgeLabel}
           </span>
         )}
@@ -128,7 +128,7 @@ export default function NotificationBell() {
               type="button"
               onClick={markAllRead}
               disabled={unreadCount === 0}
-              className="text-xs text-[#6C63FF] transition-colors hover:text-white disabled:cursor-default disabled:text-[#A0A0A0]"
+              className="text-xs text-wd-secondary-text transition-colors hover:text-white disabled:cursor-default disabled:text-[#A0A0A0]"
             >
               {t("notifications.markAllRead")}
             </button>
@@ -144,13 +144,13 @@ export default function NotificationBell() {
                   <li
                     key={notification.id}
                     className={`px-4 py-2.5 ${
-                      notification.read ? "opacity-80" : "bg-[#6C63FF]/5"
+                      notification.read ? "opacity-80" : "bg-wd-secondary/5"
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <Icon
                         size={14}
-                        className={`mt-0.5 shrink-0 ${notification.read ? "text-[#A0A0A0]" : "text-[#6C63FF]"}`}
+                        className={`mt-0.5 shrink-0 ${notification.read ? "text-[#A0A0A0]" : "text-wd-secondary-text"}`}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-white">{notification.title}</p>
@@ -169,7 +169,7 @@ export default function NotificationBell() {
           <div className="border-t border-[#2A2A2A] py-1">
             <LocaleLink
               href="/notifications"
-              className="block px-4 py-2.5 text-center text-sm text-[#6C63FF] transition-colors hover:bg-[#2A2A2A] hover:text-white"
+              className="block px-4 py-2.5 text-center text-sm text-wd-secondary-text transition-colors hover:bg-[#2A2A2A] hover:text-white"
               onClick={() => setOpen(false)}
             >
               {t("notifications.showAll")}

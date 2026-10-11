@@ -26,7 +26,7 @@ export default function PrivacyPage() {
               525914183000. Контакт для обращений по персональным данным:{" "}
               <a
                 href="mailto:mrcheleng87@gmail.com"
-                className="text-wd-secondary underline hover:text-white"
+                className="text-wd-secondary-text underline hover:text-white"
               >
                 mrcheleng87@gmail.com
               </a>
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-bold text-white">3. Цели обработки</h2>
             <p>
               Данные обрабатываются для предоставления доступа к сервису NewVerse, исполнения{" "}
-              <Link href="/offer" className="text-wd-secondary underline hover:text-white">
+              <Link href="/offer" className="text-wd-secondary-text underline hover:text-white">
                 публичной оферты
               </Link>
               , поддержки пользователей, предотвращения злоупотреблений и информирования о работе
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
             <p>
               Пользователь вправе запросить уточнение, ограничение обработки или удаление своих
               персональных данных, направив обращение через{" "}
-              <Link href="/support" className="text-wd-secondary underline hover:text-white">
+              <Link href="/support" className="text-wd-secondary-text underline hover:text-white">
                 страницу поддержки
               </Link>
               .

@@ -49,7 +49,7 @@ export default function ConfirmModal({
             disabled={loading}
             className={`inline-flex flex-1 items-center justify-center gap-2 rounded-wd-pill px-4 py-3 text-sm font-bold disabled:opacity-50 ${
               danger
-                ? "border border-wd-primary/40 bg-wd-primary/15 text-wd-primary hover:bg-wd-primary/25"
+                ? "border border-wd-primary/40 bg-wd-primary/15 text-wd-primary-soft hover:bg-wd-primary/25"
                 : "wd-button"
             }`}
           >

@@ -5,23 +5,29 @@ import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
 import CharacterPagination from "@/components/CharacterPagination";
+import HomeHero from "@/components/HomeHero";
 import { FaUser } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
 import { useTranslation } from "react-i18next";
 import { withLocale } from "@/lib/i18nConfig";
 
-export default function HomePageContent({ initialData }) {
+export default function HomePageContent({ initialData, showHero = false }) {
   const { t, i18n } = useTranslation();
   const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
   const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload } =
     usePaginatedCharacters({ sort, page, setPage, listKey: "home", initialData, onSearchChange: setSearchQuery });
 
   const hasFilters = search.trim().length > 0;
+  const sectionTitle = t(hasFilters ? "home.sectionTitle.search" : `home.sectionTitle.${sort}`);
 
   return (
-    <div className="flex min-h-dvh flex-col overflow-hidden bg-[#121212] text-wd-text">
-      <h1 className="px-4 pt-4 text-xl font-bold text-white md:px-6">{t("meta.home.title")}</h1>
+    <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
+      {showHero ? (
+        <HomeHero total={initialData?.meta.total ?? total} characters={initialData?.data ?? []} />
+      ) : (
+        <h1 className="px-4 pt-5 text-xl font-bold text-white md:px-6 md:text-2xl">{t("meta.home.title")}</h1>
+      )}
 
       <CharacterSearchFilters
         search={search}
@@ -30,12 +36,19 @@ export default function HomePageContent({ initialData }) {
         onSortChange={setSort}
       />
 
-      <main data-character-list-scroll className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-6 md:px-6 md:pt-4">
-        {!loading && total > 0 && (
-          <p className="text-xs text-wd-text-secondary">
-            {t("home.found")}<span className="font-bold text-white">{total}</span>
-          </p>
-        )}
+      <main
+        id="catalog"
+        data-character-list-scroll
+        className="flex min-h-0 flex-1 scroll-mt-24 flex-col gap-4 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-5 md:px-6"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-bold text-white md:text-xl">{sectionTitle}</h2>
+          {!loading && total > 0 && (
+            <p className="shrink-0 text-[13px] text-wd-text-secondary">
+              {t("home.found")}<span className="font-semibold text-white">{total}</span>
+            </p>
+          )}
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -43,7 +56,7 @@ export default function HomePageContent({ initialData }) {
           </div>
         ) : error ? (
           <div className="rounded-wd border border-wd-primary/30 bg-wd-card p-10 text-center shadow-wd">
-            <p className="text-sm font-extrabold uppercase text-wd-primary">{t("common.error")}</p>
+            <p className="text-sm font-extrabold uppercase text-wd-primary-soft">{t("common.error")}</p>
             <p className="mx-auto mt-2 max-w-xs text-xs text-wd-text-secondary">{error}</p>
             <button type="button" onClick={reload} className="wd-button mt-4 px-5 py-2.5 text-xs">
               {t("common.retry")}
@@ -64,7 +77,7 @@ export default function HomePageContent({ initialData }) {
           </div>
         ) : (
           <>
-            <div className="grid w-full grid-cols-2 gap-4 md:grid-cols-3 md:gap-5 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
+            <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5 xl:gap-5">
               {characters.map((character) => (
                 <CharacterCard key={character.id} character={character} />
               ))}

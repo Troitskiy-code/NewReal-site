@@ -12,7 +12,7 @@ type Props = {
   onClearNameError: () => void;
   showModePicker?: boolean;
 };
-const inputClass = "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-base text-white outline-none focus:border-[#6C63FF]";
+const inputClass = "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-base text-white outline-none focus:border-wd-secondary";
 function TextField({ id, label, value, onChange, maxLength, hint, required = false, rows = 4 }: {
   id: string; label: string; value: string; onChange: (value: string) => void;
   maxLength: number; hint: string; required?: boolean; rows?: number;
@@ -55,7 +55,7 @@ export default function RoleplayCardFields({ values, onChange, nameError, onClea
       <RoleplayModeCards selected={values.roleplayMode} onSelect={mode => onChange("roleplayMode", mode)} />
     </fieldset>}
     <p className="text-sm text-[#A0A0A0]">Поля со звёздочкой обязательны. Смена типа карточки сохраняет начатые истории и их выбранный режим.</p>
-    {values.promptBuilderVersion === 1 && <p className="rounded-lg border border-[#6C63FF]/40 p-3 text-sm text-[#A0A0A0]">Карточка использует прежние инструкции. Для применения новых настроек сохраните поля и подключите новую сборку в разделе «Расширенные настройки».</p>}
+    {values.promptBuilderVersion === 1 && <p className="rounded-lg border border-wd-secondary/40 p-3 text-sm text-[#A0A0A0]">Карточка использует прежние инструкции. Для применения новых настроек сохраните поля и подключите новую сборку в разделе «Расширенные настройки».</p>}
     <div className="space-y-2"><label htmlFor="name" className="block text-base font-semibold">{single ? "Имя персонажа" : world ? "Название вселенной" : "Название истории"} *</label>
       <input id="name" className={inputClass} value={values.name} required onChange={event => { onChange("name", event.target.value); onClearNameError(); }} />
       {nameError && <p role="alert" className="text-sm text-red-400">{nameError}</p>}

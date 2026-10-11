@@ -109,7 +109,7 @@ function ChatsPageContent() {
     return (
       <div className="flex min-h-dvh flex-col bg-[#121212] text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <FaComments className="text-4xl text-wd-primary opacity-30" />
+          <FaComments className="text-4xl text-wd-primary-soft opacity-30" />
           <h1 className="text-xl font-black uppercase tracking-tight text-white">Мои чаты</h1>
           <p className="max-w-sm text-xs text-wd-text-secondary">
             Войдите в аккаунт, чтобы видеть историю переписок с персонажами.
@@ -139,7 +139,7 @@ function ChatsPageContent() {
       <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-4 md:px-6 md:pt-4">
         {error ? (
           <div className="rounded-wd border border-wd-primary/30 bg-wd-card p-10 text-center shadow-wd">
-            <p className="text-sm font-extrabold uppercase text-wd-primary">Ошибка</p>
+            <p className="text-sm font-extrabold uppercase text-wd-primary-soft">Ошибка</p>
             <p className="mx-auto mt-2 max-w-xs text-xs text-wd-text-secondary">{error}</p>
             <button type="button" onClick={loadChats} className="wd-button mt-4 px-5 py-2.5 text-xs">
               Повторить
@@ -161,7 +161,7 @@ function ChatsPageContent() {
             <Link
               key={chat.character.id}
               href={`/chat/${chat.character.id}`}
-              className="flex items-center gap-3 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 transition-colors hover:border-[#6C63FF]/40 md:gap-4 md:p-4"
+              className="flex items-center gap-3 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 transition-colors hover:border-wd-secondary/40 md:gap-4 md:p-4"
             >
               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A] md:h-16 md:w-16">
                 <div className="flex h-full w-full items-center justify-center">

@@ -94,13 +94,13 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
           {t("auth.login")}
         </button>
       </form>
-      {error && <p className="mt-4 text-sm text-primary">{error}</p>}
+      {error && <p className="mt-4 text-sm text-primary-soft">{error}</p>}
       {passwordResetSuccess && (
-        <p className="mt-4 text-sm text-wd-secondary">{t("auth.passwordChanged")}</p>
+        <p className="mt-4 text-sm text-wd-secondary-text">{t("auth.passwordChanged")}</p>
       )}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
         {t("auth.noAccount")}{" "}
-        <LocaleLink href={registerHref} className="font-semibold text-primary transition hover:text-primary-hover">
+        <LocaleLink href={registerHref} className="font-semibold text-primary-soft transition hover:text-primary-hover">
           {t("auth.register")}
         </LocaleLink>
       </p>

@@ -2,10 +2,6 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-export const SIDEBAR_COLLAPSED_DESKTOP = 80;
-export const SIDEBAR_EXPANDED_DESKTOP = 280;
-export const SIDEBAR_MOBILE_DRAWER_WIDTH = 240;
-
 const SidebarContext = createContext(null);
 
 function useIsMobileViewport() {
@@ -22,6 +18,7 @@ function useIsMobileViewport() {
   return isMobile;
 }
 
+/** Desktop sidebar width is pure CSS (globals.css); this only drives the mobile drawer. */
 export function SidebarProvider({ children }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useIsMobileViewport();
@@ -30,20 +27,15 @@ export function SidebarProvider({ children }) {
     setIsExpanded(false);
   }, [isMobile]);
 
-  const value = useMemo(() => {
-    const desktopWidth = isExpanded ? SIDEBAR_EXPANDED_DESKTOP : SIDEBAR_COLLAPSED_DESKTOP;
-
-    return {
+  const value = useMemo(
+    () => ({
       isExpanded,
       isMobile,
-      /** Width reserved in page layout (desktop sidebar only). */
-      sidebarWidth: isMobile ? 0 : desktopWidth,
-      /** Drawer width when mobile menu is open. */
-      mobileDrawerWidth: SIDEBAR_MOBILE_DRAWER_WIDTH,
       toggle: () => setIsExpanded((prev) => !prev),
       collapse: () => setIsExpanded(false),
-    };
-  }, [isExpanded, isMobile]);
+    }),
+    [isExpanded, isMobile]
+  );
 
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }

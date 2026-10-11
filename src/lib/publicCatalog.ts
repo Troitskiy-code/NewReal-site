@@ -30,7 +30,7 @@ export const getPublicCatalog = cache(async (sort: string, page: number, search:
     const total = await prisma.character.count({ where });
     const select = {
       id: true, slug: true, name: true, name_en: true, description: true, description_en: true,
-      descriptionCard: true, descriptionCard_en: true, totalMessages: true, updatedAt: true,
+      descriptionCard: true, descriptionCard_en: true, tags: true, totalMessages: true, updatedAt: true,
     } as const;
     let rows;
     if (sort === "random") {

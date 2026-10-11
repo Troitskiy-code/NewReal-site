@@ -46,11 +46,11 @@ export default function OfferPage() {
             <h2 className="text-lg font-bold text-white">3. Стоимость услуг и порядок оплаты</h2>
             <p>
               Цены на пакеты VC и подписки указаны на страницах{" "}
-              <Link href="/coins" className="text-wd-secondary underline hover:text-white">
+              <Link href="/coins" className="text-wd-secondary-text underline hover:text-white">
                 /coins
               </Link>{" "}
               и{" "}
-              <Link href="/pricing" className="text-wd-secondary underline hover:text-white">
+              <Link href="/pricing" className="text-wd-secondary-text underline hover:text-white">
                 /pricing
               </Link>
               .
@@ -111,7 +111,7 @@ export default function OfferPage() {
                 Направить письменное заявление на электронную почту{" "}
                 <a
                   href="mailto:mrcheleng87@gmail.com"
-                  className="text-wd-secondary underline hover:text-white"
+                  className="text-wd-secondary-text underline hover:text-white"
                 >
                   mrcheleng87@gmail.com
                 </a>
@@ -147,7 +147,7 @@ export default function OfferPage() {
               <strong className="text-white">E-mail:</strong>{" "}
               <a
                 href="mailto:mrcheleng87@gmail.com"
-                className="text-wd-secondary underline hover:text-white"
+                className="text-wd-secondary-text underline hover:text-white"
               >
                 mrcheleng87@gmail.com
               </a>

@@ -68,13 +68,13 @@ try {
   });
   const page = await context.newPage();
   page.on('pageerror', error => pageErrors.push(error.message));
-  const settleLayout = (expanded = false) => page.waitForFunction(isExpanded => {
+  const settleLayout = () => page.waitForFunction(() => {
     const desktop = window.innerWidth >= 768;
     const panel = [...document.querySelectorAll('aside')].find(item => getComputedStyle(item).display !== 'none' && getComputedStyle(item).position === 'fixed');
-    const expected = desktop ? (isExpanded ? 280 : 80) : 0;
+    const expected = desktop ? (window.innerWidth >= 1024 ? 232 : 80) : 0;
     return Math.abs(parseFloat(getComputedStyle(document.body).paddingLeft) - expected) < 1
       && (!desktop || Math.abs((panel?.getBoundingClientRect().width ?? 0) - expected) < 1);
-  }, expanded);
+  });
   mkdirSync('docs/roleplay-editor-local-qa', { recursive: true });
   await page.goto(`${base}/ru/create`);
   await page.getByRole('link', { name: 'Один персонаж', exact: true }).waitFor();
@@ -83,22 +83,24 @@ try {
   await art.evaluateAll(images => Promise.all(images.map(image => image.decode())));
   check(await art.evaluateAll(images => images.length === 3 && images.every(image => image.naturalWidth > 0)), 'all three approved illustrations load through local image optimization');
   await settleLayout();
-  check(await page.locator('main h1').evaluate(element => element.getBoundingClientRect().left >= 80), 'desktop heading clears the sidebar');
+  check(await page.locator('main h1').evaluate(element => element.getBoundingClientRect().left >= 232), 'desktop heading clears the labelled sidebar');
   await page.screenshot({ path: 'docs/roleplay-editor-local-qa/selection-desktop.png' });
-  const menuToggle = page.locator('header').first().getByRole('button').first();
-  await menuToggle.click();
-  await settleLayout(true);
-  check(await page.locator('main h1').evaluate(element => element.getBoundingClientRect().left >= 280), 'expanded desktop menu does not cover the selection');
+  const menuToggle = page.getByRole('button', { name: 'Открыть меню', exact: true });
+  check(await menuToggle.isHidden(), 'desktop has a persistent sidebar without a drawer toggle');
   await page.setViewportSize({ width: 800, height: 900 });
-  await settleLayout(true);
+  await settleLayout();
   check(await page.locator('main a[href*="/create/"]').evaluateAll(cards => cards.every(card => {
     const bounds = card.getBoundingClientRect();
     const caption = card.lastElementChild.getBoundingClientRect();
     return caption.top >= bounds.top && caption.bottom <= bounds.bottom;
-  })), 'narrow space with expanded menu keeps captions inside the cards');
-  await menuToggle.click();
+  })), 'tablet icon rail keeps captions inside the cards');
   await page.setViewportSize({ width: 390, height: 844 });
   await settleLayout();
+  await menuToggle.click();
+  await page.locator('.nv-mobile-drawer.is-open').waitFor();
+  check(await page.getByRole('button', { name: 'Закрыть меню', exact: true }).isVisible(), 'mobile drawer opens from the header');
+  await page.getByRole('button', { name: 'Закрыть меню', exact: true }).click();
+  await page.locator('.nv-mobile-drawer.is-open').waitFor({ state: 'hidden' });
   check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'mobile type selection has no horizontal overflow');
   await page.screenshot({ path: 'docs/roleplay-editor-local-qa/selection-mobile.png', fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });

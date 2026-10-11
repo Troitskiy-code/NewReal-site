@@ -144,7 +144,7 @@ export default function CharacterPublicView({ character }: { character: Characte
 
           {publicMemory ? (
             <div className="rounded-wd border border-wd-border bg-[#0A0A0A] p-4">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-wd-secondary">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-wd-secondary-text">
                 {t("characterPage.knownAbout")}
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-gray-200">{publicMemory}</p>

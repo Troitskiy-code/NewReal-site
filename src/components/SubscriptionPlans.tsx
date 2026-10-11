@@ -206,8 +206,8 @@ export default function SubscriptionPlans({
       {showHero ? (
         <div className="space-y-4 text-center">
           <div className="mb-1 inline-flex items-center gap-2 rounded-wd-pill border border-wd-secondary/30 bg-wd-secondary/10 px-3 py-1">
-            <FaCrown className="text-xs text-wd-secondary" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-wd-secondary">
+            <FaCrown className="text-xs text-wd-secondary-text" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-wd-secondary-text">
               {t("pricing.badge")}
             </span>
           </div>
@@ -311,13 +311,13 @@ export default function SubscriptionPlans({
               }`}
             >
               {isPopular ? (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow">
                   {t("pricing.popular")}
                 </span>
               ) : null}
 
               <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-wd bg-[#0A0A0A] text-wd-secondary">
+                <div className="flex h-11 w-11 items-center justify-center rounded-wd bg-[#0A0A0A] text-wd-secondary-text">
                   <Icon />
                 </div>
                 <div>
@@ -351,12 +351,12 @@ export default function SubscriptionPlans({
 
               <ul className="mb-6 flex-1 space-y-2.5 border-t border-wd-border pt-5 text-xs text-wd-text-secondary">
                 <li className="flex items-start gap-3 text-sm text-wd-text">
-                  <FaCheck className="mt-1 shrink-0 text-wd-primary" />
+                  <FaCheck className="mt-1 shrink-0 text-wd-primary-soft" />
                   <span>{i18n.language.startsWith("en") ? `Up to ${avatarMonthlyAllowance(plan.id)} avatars per calendar month; every model uses one generation` : `До ${avatarMonthlyAllowance(plan.id)} аватаров в календарный месяц; любая модель расходует одну генерацию`}</span>
                 </li>
                 {features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
-                    <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
+                    <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary-soft" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -365,14 +365,14 @@ export default function SubscriptionPlans({
                   if (!estimate.available) {
                     return (
                       <li className="flex items-start gap-2">
-                        <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
+                        <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary-soft" />
                         <span>{t("pricing.estimateUnavailable")}</span>
                       </li>
                     );
                   }
                   return (
                     <li className="flex items-start gap-2">
-                      <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary" />
+                      <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary-soft" />
                       <span>
                         {t("pricing.estimate", {
                           base: formatNumber(estimate.baseModel, i18n.language),
@@ -456,7 +456,7 @@ export default function SubscriptionPlans({
                   type="checkbox"
                   checked={recurringConsent}
                   onChange={(e) => setRecurringConsent(e.target.checked)}
-                  className="mt-1 accent-[#6C63FF]"
+                  className="mt-1 accent-wd-secondary"
                 />
                 <span>
                   {t("pricing.offerConsent")}{" "}
@@ -465,7 +465,7 @@ export default function SubscriptionPlans({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="text-wd-secondary underline hover:text-white"
+                    className="text-wd-secondary-text underline hover:text-white"
                   >
                     {t("pricing.offerLink")}
                   </LocaleLink>{" "}

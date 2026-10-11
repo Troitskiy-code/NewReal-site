@@ -230,7 +230,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
-          <FaUser className="text-4xl opacity-30 text-wd-primary" />
+          <FaUser className="text-4xl opacity-30 text-wd-primary-soft" />
           <h1 className="text-xl font-black uppercase tracking-tight">{t("profile.title")}</h1>
           <p className="text-xs text-wd-text-secondary max-w-sm">
             {t("profile.loginPrompt")}
@@ -262,14 +262,14 @@ export default function ProfilePage() {
                 {userImage ? (
                   <img src={userImage} alt={userName} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-xl font-black text-wd-primary">{initials}</span>
+                  <span className="text-xl font-black text-wd-primary-soft">{initials}</span>
                 )}
               </div>
               <div className="space-y-1">
                 <h1 className="truncate text-xl font-black tracking-tight text-white sm:text-2xl md:text-3xl">{userName}</h1>
                 {userEmail && (
                   <p className="text-sm text-wd-text-secondary flex items-center gap-2">
-                    <FaEnvelope className="text-wd-primary text-xs" />
+                    <FaEnvelope className="text-wd-primary-soft text-xs" />
                     {userEmail}
                   </p>
                 )}
@@ -288,9 +288,9 @@ export default function ProfilePage() {
               </LocaleLink>
               <LocaleLink
                 href="/gallery"
-                className="inline-flex items-center gap-2 rounded-[50px] border border-wd-border bg-[#0A0A0A] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:border-[#6C63FF]"
+                className="inline-flex items-center gap-2 rounded-[50px] border border-wd-border bg-[#0A0A0A] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:border-wd-secondary"
               >
-                <FaImages className="text-[10px] text-[#6C63FF]" />
+                <FaImages className="text-[10px] text-wd-secondary-text" />
                 {t("profile.gallery")}
               </LocaleLink>
             </div>
@@ -300,7 +300,7 @@ export default function ProfilePage() {
         {subscription && (
           <section className="wd-card flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-6">
             <div className="flex items-start gap-3">
-              <FaCrown className="mt-1 shrink-0 text-wd-secondary" />
+              <FaCrown className="mt-1 shrink-0 text-wd-secondary-text" />
               <div className="space-y-1">
                 <p className="text-xs font-bold uppercase tracking-widest text-wd-text-secondary">
                   {t("profile.subscription")}
@@ -317,7 +317,7 @@ export default function ProfilePage() {
                   <p className="text-xs text-wd-text-secondary">{t("profile.freePlan")}</p>
                 )}
                 {subscription.pendingSubscriptionLabel && (
-                  <p className="text-xs text-wd-secondary">
+                  <p className="text-xs text-wd-secondary-text">
                     {t("profile.then", { label: subscription.pendingSubscriptionLabel })}
                   </p>
                 )}
@@ -325,7 +325,7 @@ export default function ProfilePage() {
                   {subscription.recurringEnabled ? t("profile.recurringOn") : t("profile.recurringOff")}
                 </p>
                 {subscription.recurringSetupRequired && (
-                  <p className="text-xs text-wd-primary">
+                  <p className="text-xs text-wd-primary-soft">
                     {t("profile.recurringSetup")}
                   </p>
                 )}
@@ -340,8 +340,8 @@ export default function ProfilePage() {
         {/* Stats */}
         <section className="grid grid-cols-3 gap-2 md:gap-4">
           <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
-            <FaRobot className="mx-auto text-base text-wd-primary md:text-lg" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-[11px] md:tracking-widest">
+            <FaRobot className="mx-auto text-base text-wd-primary-soft md:text-lg" />
+            <p className="text-[11px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-xs md:tracking-widest">
               {t("profile.characters")}
             </p>
             <p className="text-xl font-black text-white md:text-3xl">
@@ -349,8 +349,8 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
-            <FaComments className="mx-auto text-base text-[#6C63FF] md:text-lg" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-[11px] md:tracking-widest">
+            <FaComments className="mx-auto text-base text-wd-secondary-text md:text-lg" />
+            <p className="text-[11px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-xs md:tracking-widest">
               {t("profile.chats")}
             </p>
             <p className="text-xl font-black text-white md:text-3xl">
@@ -358,8 +358,8 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
-            <FaEnvelope className="mx-auto text-base text-wd-primary md:text-lg" />
-            <p className="text-[9px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-[11px] md:tracking-widest">
+            <FaEnvelope className="mx-auto text-base text-wd-primary-soft md:text-lg" />
+            <p className="text-[11px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-xs md:tracking-widest">
               {t("profile.messages")}
             </p>
             <p className="text-xl font-black text-white md:text-3xl">
@@ -385,7 +385,7 @@ export default function ProfilePage() {
             </div>
           ) : error ? (
             <div className="wd-card p-8 text-center">
-              <p className="text-sm font-extrabold uppercase text-wd-primary">{t("common.error")}</p>
+              <p className="text-sm font-extrabold uppercase text-wd-primary-soft">{t("common.error")}</p>
               <p className="text-xs text-wd-text-secondary max-w-xs mx-auto mt-2">{error}</p>
             </div>
           ) : characters.length === 0 ? (
@@ -451,7 +451,7 @@ export default function ProfilePage() {
                           {tags.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
-                              className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-wd-primary/10 text-wd-primary border border-wd-primary/20"
+                              className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-wd-primary/10 text-wd-primary-soft border border-wd-primary/20"
                             >
                               {tag}
                             </span>
@@ -463,14 +463,14 @@ export default function ProfilePage() {
                           <LocaleLink
                             href={`/character/${character.slug}`}
                             onClick={captureCharacterReturn}
-                            className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-[#6C63FF]"
+                            className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-wd-secondary"
                           >
                             {t("characterPage.about")}
                           </LocaleLink>
                         )}
                         <LocaleLink
                           href={`/chat/${character.id}`}
-                          className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-[#6C63FF]/30 bg-[#6C63FF]/10 text-white transition-all hover:bg-[#6C63FF]/20"
+                          className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-secondary/30 bg-wd-secondary/10 text-white transition-all hover:bg-wd-secondary/20"
                         >
                           {t("profile.chat")}
                         </LocaleLink>
@@ -478,7 +478,7 @@ export default function ProfilePage() {
                           <button
                             type="button"
                             onClick={() => handleEdit(character.id)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-[#6C63FF]"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-wd-secondary"
                           >
                             <FaEdit className="text-[9px]" />
                             {t("common.edit")}
@@ -487,7 +487,7 @@ export default function ProfilePage() {
                             type="button"
                             onClick={() => setDeleteTarget(character)}
                             disabled={deletingId === character.id}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-primary/30 bg-wd-primary/10 text-wd-primary transition-all disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-primary/30 bg-wd-primary/10 text-wd-primary-soft transition-all disabled:opacity-50"
                           >
                             <FaTrash className="text-[9px]" />
                             {t("common.delete")}

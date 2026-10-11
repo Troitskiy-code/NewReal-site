@@ -188,7 +188,7 @@ export default function SupportPage() {
           </form>
 
           {success ? (
-            <p className="mt-4 text-sm text-wd-secondary">
+            <p className="mt-4 text-sm text-wd-secondary-text">
               {success}
               {ticketId ? ` ${t("support.ticketId", { id: ticketId })}` : ""}
             </p>

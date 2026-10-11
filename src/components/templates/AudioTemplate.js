@@ -34,8 +34,8 @@ function CustomSelect({ value, onChange, options, placeholder = "Выберит�
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer ${
-                  value === opt.value ? "text-primary font-bold bg-primary/5" : "text-primary-text"
+                className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-primary/10 hover:text-primary-soft cursor-pointer ${
+                  value === opt.value ? "text-primary-soft font-bold bg-primary/5" : "text-primary-text"
                 }`}
               >
                 {opt.label}
@@ -244,7 +244,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
       {/* File Upload Box */}
       <div className="w-full lg:w-[400px] shrink-0 border border-divider/40 bg-bg-card/30 p-6 rounded-lg flex flex-col gap-6">
         <div>
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary">Загрузка аудио</h2>
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-primary-soft">Загрузка аудио</h2>
           <p className="text-[11px] text-secondary-text">Выберите запись речи или подкаст.</p>
         </div>
 
@@ -285,11 +285,11 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
                               <img src={url} alt="Uploaded source" className="w-full h-full object-cover" />
                             ) : param.type === "video_list" ? (
                               <div className="w-full h-full flex items-center justify-center bg-black">
-                                <FaVideo size={16} className="text-primary" />
+                                <FaVideo size={16} className="text-primary-soft" />
                               </div>
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-bg-card">
-                                <FaMicrophone size={16} className="text-primary" />
+                                <FaMicrophone size={16} className="text-primary-soft" />
                               </div>
                             )}
                             <button
@@ -363,7 +363,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
                   <div key={param.key} className="space-y-2">
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-secondary-text uppercase tracking-wider">{param.label}</label>
-                      <span className="text-xs font-bold text-primary">{val}</span>
+                      <span className="text-xs font-bold text-primary-soft">{val}</span>
                     </div>
                     <input
                       type="range"
@@ -425,7 +425,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
               <div className="relative border-2 border-dashed border-divider hover:border-primary/50 transition-colors rounded-lg h-36 flex flex-col items-center justify-center bg-bg-page/40 p-4">
                 {audioUrl ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative group p-2 text-center">
-                    <FaMicrophone className="text-3xl text-primary animate-pulse" />
+                    <FaMicrophone className="text-3xl text-primary-soft animate-pulse" />
                     <span className="text-[10px] text-secondary-text truncate w-full">Файл загружен</span>
                     <button
                       type="button"
@@ -501,7 +501,7 @@ export default function AudioTemplate({ appInstance, userCredits, activeCreation
           <div className="border-t border-divider/40 pt-4 flex justify-end">
             <button
               onClick={() => handleDownloadTxt(activeCreation.resultImage)}
-              className="bg-bg-page hover:bg-bg-card border border-divider px-4 py-2 text-xs text-primary font-bold rounded-full transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-md"
+              className="bg-bg-page hover:bg-bg-card border border-divider px-4 py-2 text-xs text-primary-soft font-bold rounded-full transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-md"
             >
               <FaDownload size={10} />
               <span>Скачать расшифровку (.txt)</span>

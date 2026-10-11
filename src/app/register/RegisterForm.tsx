@@ -26,7 +26,7 @@ function ConsentLink({ href, children }: { href: string; children?: React.ReactN
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="font-semibold text-primary underline hover:text-primary-hover"
+      className="font-semibold text-primary-soft underline hover:text-primary-hover"
     >
       {children}
     </LocaleLink>
@@ -127,7 +127,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
               setAcceptedTerms(e.target.checked);
               setError("");
             }}
-            className="mt-0.5 accent-[#6C63FF]"
+            className="mt-0.5 accent-wd-secondary"
           />
           <span>
             <Trans
@@ -147,7 +147,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
               setAcceptedOffer(e.target.checked);
               setError("");
             }}
-            className="mt-0.5 accent-[#6C63FF]"
+            className="mt-0.5 accent-wd-secondary"
           />
           <span>
             <Trans
@@ -166,7 +166,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
               setAcceptedRules(e.target.checked);
               setError("");
             }}
-            className="mt-0.5 accent-[#6C63FF]"
+            className="mt-0.5 accent-wd-secondary"
           />
           <span>
             <Trans
@@ -185,7 +185,7 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
           </GoogleAuthButton>
         </div>
       )}
-      {error && <p className="mt-4 text-sm text-primary">{error}</p>}
+      {error && <p className="mt-4 text-sm text-primary-soft">{error}</p>}
       {googleAuthEnabled && (
         <div className="my-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-divider" />
@@ -230,10 +230,10 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
           {t("auth.register")}
         </button>
       </form>
-      {success && <p className="mt-4 text-sm text-wd-secondary">{success}</p>}
+      {success && <p className="mt-4 text-sm text-wd-secondary-text">{success}</p>}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
         {t("auth.hasAccount")}{" "}
-        <LocaleLink href={loginHref} className="font-semibold text-primary transition hover:text-primary-hover">
+        <LocaleLink href={loginHref} className="font-semibold text-primary-soft transition hover:text-primary-hover">
           {t("auth.login")}
         </LocaleLink>
       </p>

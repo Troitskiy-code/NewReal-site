@@ -158,7 +158,7 @@ export default function PersonaSelector({
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="w-full rounded-full border border-[#6C63FF]/40 bg-[#6C63FF]/10 px-4 py-2 text-sm font-semibold text-white hover:bg-[#6C63FF]/20"
+          className="w-full rounded-full border border-wd-secondary/40 bg-wd-secondary/10 px-4 py-2 text-sm font-semibold text-white hover:bg-wd-secondary/20"
         >
           Создать новую
         </button>
@@ -180,8 +180,8 @@ export default function PersonaSelector({
                     disabled={saving || active}
                     className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                       active
-                        ? "border-[#6C63FF]/60 bg-[#6C63FF]/10"
-                        : "border-[#2A2A2A] bg-[#0A0A0A] hover:border-[#6C63FF]/40"
+                        ? "border-wd-secondary/60 bg-wd-secondary/10"
+                        : "border-[#2A2A2A] bg-[#0A0A0A] hover:border-wd-secondary/40"
                     } disabled:opacity-70`}
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1A1A1A]">

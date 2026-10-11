@@ -234,7 +234,7 @@ export default function EditCharacterPage() {
     return (
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <FaUser className="text-4xl text-wd-primary opacity-30" />
+          <FaUser className="text-4xl text-wd-primary-soft opacity-30" />
           <h1 className="text-xl font-black uppercase tracking-tight">Редактирование карточки</h1>
           <p className="max-w-sm text-xs text-wd-text-secondary">
             Войдите в аккаунт, чтобы редактировать карточки.
@@ -252,7 +252,7 @@ export default function EditCharacterPage() {
     return (
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <p className="text-sm font-extrabold uppercase text-wd-primary">Ошибка</p>
+          <p className="text-sm font-extrabold uppercase text-wd-primary-soft">Ошибка</p>
           <p className="max-w-sm text-xs text-wd-text-secondary">{error}</p>
           <Link href="/profile" className="wd-button px-6 py-2.5 text-sm">
             Вернуться в профиль
@@ -321,7 +321,7 @@ export default function EditCharacterPage() {
                   id="character-save-submit"
                   data-metrika="character-save"
                   disabled={submitting}
-                  className="w-full rounded-lg bg-[#6C63FF] px-8 py-3 text-base font-bold text-white transition-colors hover:bg-[#5a52e0] disabled:opacity-50 sm:w-auto"
+                  className="w-full rounded-lg bg-wd-secondary px-8 py-3 text-base font-bold text-white transition-colors hover:bg-wd-secondary-hover disabled:opacity-50 sm:w-auto"
                 >
                   {submitting ? (
                     <span className="inline-flex items-center gap-2">

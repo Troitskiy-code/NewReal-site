@@ -10,7 +10,7 @@ import {
 } from "@/lib/persona";
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-white outline-none transition-colors placeholder:text-gray-400 focus:border-[#6C63FF]";
+  "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-white outline-none transition-colors placeholder:text-gray-400 focus:border-wd-secondary";
 
 export type PersonaFormValues = {
   name: string;
@@ -103,7 +103,7 @@ export default function PersonaForm({
               <FaUser className="text-gray-500" />
             )}
           </div>
-          <label className="cursor-pointer text-xs font-semibold text-[#6C63FF] hover:underline">
+          <label className="cursor-pointer text-xs font-semibold text-wd-secondary-text hover:underline">
             {uploading ? "Загрузка..." : "Загрузить аватар"}
             <input
               type="file"
@@ -172,7 +172,7 @@ export default function PersonaForm({
           onChange={(event) =>
             setForm((current) => ({ ...current, isGlobal: event.target.checked }))
           }
-          className="accent-[#6C63FF]"
+          className="accent-wd-secondary"
           disabled={submitting}
         />
         Сохранить для всех чатов

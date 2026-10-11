@@ -24,7 +24,7 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
           {selectedTags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#6C63FF] px-3 py-1 text-xs text-white"
+              className="inline-flex items-center gap-1.5 rounded-full bg-wd-secondary px-3 py-1 text-xs text-white"
             >
               {tag}
               <button
@@ -56,7 +56,7 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
                   onClick={() => onChange(toggleTagInString(value, tag))}
                   className={`rounded-full px-3 py-1 text-xs transition-colors ${
                     isActive
-                      ? "bg-[#6C63FF] text-white"
+                      ? "bg-wd-secondary text-white"
                       : "bg-[#2A2A2A] text-gray-300 hover:bg-[#3A3A3A] hover:text-white"
                   }`}
                 >

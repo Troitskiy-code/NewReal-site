@@ -34,7 +34,7 @@ export const showInfo = (message: string, duration = 2000) => {
   return toast(message, {
     style: {
       ...BASE_STYLE,
-      border: "1px solid #6C63FF",
+      border: "1px solid #5B54E6",
       color: "#D1C4E9",
     },
     duration,

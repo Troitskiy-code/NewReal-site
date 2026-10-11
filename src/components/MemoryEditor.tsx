@@ -278,7 +278,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
               type="button"
               onClick={() => setTab(item.id)}
               className={`flex-1 rounded-md px-2 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors sm:text-xs ${
-                active ? "bg-[#6C63FF] text-white" : "text-gray-400 hover:text-white"
+                active ? "bg-wd-secondary text-white" : "text-gray-400 hover:text-white"
               }`}
             >
               {item.label}
@@ -312,7 +312,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
             onChange={(event) => setSummaryDraft(event.target.value)}
             placeholder="Краткая выжимка диалога, появляется при длительных диалогах для сохранения качества памяти"
             disabled={saving}
-            className="min-h-[32vh] w-full flex-1 resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60"
+            className="min-h-[32vh] w-full flex-1 resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-white outline-none placeholder:text-gray-500 focus:border-wd-secondary disabled:opacity-60"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-gray-500">{summaryDraft.length} символов</p>
@@ -346,7 +346,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
             onChange={(event) => setCoreDraft(event.target.value)}
             placeholder="Устойчивые факты о персонаже и отношениях."
             disabled={saving}
-            className="min-h-[32vh] w-full flex-1 resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60"
+            className="min-h-[32vh] w-full flex-1 resize-y rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm leading-relaxed text-white outline-none placeholder:text-gray-500 focus:border-wd-secondary disabled:opacity-60"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-gray-500">{coreDraft.length} символов</p>
@@ -388,7 +388,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
                   setShowAllEvents(next);
                   void loadMemory(next);
                 }}
-                className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs font-semibold text-gray-300 transition-colors hover:border-[#6C63FF] hover:text-white"
+                className="rounded-full border border-[#2A2A2A] px-3 py-1 text-xs font-semibold text-gray-300 transition-colors hover:border-wd-secondary hover:text-white"
               >
                 {showAllEvents ? "Скрыть importance 1" : "Показать все events"}
               </button>
@@ -404,7 +404,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
                 }}
                 placeholder="Что произошло?"
                 disabled={saving}
-                className={`min-h-[96px] w-full resize-y rounded-lg border bg-[#121212] p-2 text-sm text-white outline-none placeholder:text-gray-500 focus:border-[#6C63FF] disabled:opacity-60 ${
+                className={`min-h-[96px] w-full resize-y rounded-lg border bg-[#121212] p-2 text-sm text-white outline-none placeholder:text-gray-500 focus:border-wd-secondary disabled:opacity-60 ${
                   eventError ? "border-red-500" : "border-[#2A2A2A]"
                 }`}
               />
@@ -451,7 +451,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
             <button
               type="button"
               onClick={() => setAddingEvent(true)}
-              className="rounded-full border border-[#2A2A2A] px-4 py-2 text-sm font-semibold text-white transition-colors hover:border-[#6C63FF]"
+              className="rounded-full border border-[#2A2A2A] px-4 py-2 text-sm font-semibold text-white transition-colors hover:border-wd-secondary"
             >
               Добавить событие
             </button>

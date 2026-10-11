@@ -115,9 +115,9 @@ export default function ResetPasswordPage() {
   if (tokenError) {
     return (
       <AuthCard title={t("auth.resetTitle")}>
-        <p className="text-sm text-primary">{tokenError}</p>
+        <p className="text-sm text-primary-soft">{tokenError}</p>
         <p className="mt-6 text-center text-sm text-wd-text-secondary">
-          <LocaleLink href="/forgot-password" className="font-semibold text-primary transition hover:text-primary-hover">
+          <LocaleLink href="/forgot-password" className="font-semibold text-primary-soft transition hover:text-primary-hover">
             {t("auth.requestNewLink")}
           </LocaleLink>
         </p>
@@ -150,9 +150,9 @@ export default function ResetPasswordPage() {
           {loading ? t("auth.saving") : t("auth.resetPassword")}
         </button>
       </form>
-      {error && <p className="mt-4 text-sm text-primary">{error}</p>}
+      {error && <p className="mt-4 text-sm text-primary-soft">{error}</p>}
       <p className="mt-6 text-center text-sm text-wd-text-secondary">
-        <LocaleLink href="/login" className="font-semibold text-primary transition hover:text-primary-hover">
+        <LocaleLink href="/login" className="font-semibold text-primary-soft transition hover:text-primary-hover">
           {t("auth.backToLogin")}
         </LocaleLink>
       </p>
