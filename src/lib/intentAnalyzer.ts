@@ -1,4 +1,4 @@
-import { meteredPost } from "@/lib/aiCostTelemetry";
+import { serviceChatPost as meteredPost } from "@/lib/aiTextClient";
 import axios from "axios";
 import { debugLog, errorLog } from "@/lib/logger";
 

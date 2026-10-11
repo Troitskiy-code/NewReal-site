@@ -1,3 +1,4 @@
+import { memoryProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
@@ -24,8 +25,8 @@ async function handleCostedRequest(
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    if (!KODIKROUTER_KEY) {
-      return NextResponse.json({ error: "KODIKROUTER_API_KEY не настроен" }, { status: 500 });
+    if (!memoryProviderConfigured(KODIKROUTER_KEY)) {
+      return NextResponse.json({ error: "Провайдер памяти не настроен" }, { status: 500 });
     }
 
     const { id: characterId } = await params;

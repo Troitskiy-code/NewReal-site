@@ -1,5 +1,6 @@
+import { memoryProviderConfigured, getMemoryProvider } from "./aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { meteredPost } from "@/lib/aiCostTelemetry";
+import { serviceChatPost as meteredPost } from "@/lib/aiTextClient";
 import axios from "axios";
 import { memoryToText } from "@/lib/persistentMemory";
 
@@ -82,7 +83,7 @@ export async function generateCharacterPrompt(
   ];
 
   let lastError: unknown;
-  for (const model of promptModels()) {
+  for (const model of (getMemoryProvider() === "deepinfra" ? ["Qwen/Qwen3-235B-A22B-Instruct-2507"] : promptModels())) {
     try {
       console.log(`[CharacterPrompt] Requesting model=${model}`);
       const response = await meteredPost("character_prompt",
@@ -124,7 +125,7 @@ export async function tryGenerateCharacterPrompt(
   characterData: CharacterPromptSource
 ): Promise<string | null> {
   const apiKey = process.env.KODIKROUTER_API_KEY?.trim() ?? "";
-  if (!apiKey) {
+  if (!memoryProviderConfigured(apiKey)) {
     errorLog("Server", "[CharacterPrompt] KODIKROUTER_API_KEY is not set");
     return null;
   }

@@ -1,4 +1,5 @@
 import { meteredPost, meteredChatFetch } from "@/lib/aiCostTelemetry";
+import { availableChatModel, chatModelNameFilter, chatTransport, getChatProvider, AiProviderConfigurationError } from "./aiProviders";
 import { countTokens } from "@/lib/tokenCount";
 import { prisma } from "@/lib/prisma";
 import {
@@ -36,7 +37,7 @@ import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { getPermanentCoins, spendCoins } from "@/lib/verseCoins";
 import { debugLog, infoLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
-import { chatModelGenerationOptions, chatModelRequestTimeoutMs, isRetiredChatModel, NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
+import { chatModelGenerationOptions, chatModelRequestTimeoutMs } from "@/lib/testingChatModels";
 
 export const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 export const MAX_OUTPUT_TOKENS = 1000;
@@ -218,12 +219,13 @@ export function allocateTokens(
 
 export async function getOrCreateBaseModel(): Promise<EconomyModel> {
   let baseModel = await prisma.model.findFirst({
-    where: { isActive: true, name: { notIn: NON_DEFAULT_CHAT_MODEL_NAMES } },
+    where: { isActive: true, name: chatModelNameFilter(true) },
     orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }],
     select: modelSelect,
   });
 
   if (!baseModel) {
+    if (getChatProvider() === "deepinfra") throw new AiProviderConfigurationError();
     baseModel = await prisma.model.create({
       data: {
         name: "google/gemma-4-31b",
@@ -249,9 +251,9 @@ export async function resolveChatPreviewContext(userId: string) {
   });
   if (!user) return null;
   const selected = user.selectedModel;
-  const model = selected?.isActive && !isRetiredChatModel(selected.name) ? selected
+  const model = selected?.isActive && availableChatModel(selected.name) ? selected
     : await prisma.model.findFirst({
-      where: { isActive: true, name: { notIn: NON_DEFAULT_CHAT_MODEL_NAMES } },
+      where: { isActive: true, name: chatModelNameFilter(true) },
       orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }], select: modelSelect,
     });
   return model ? { user, model: { ...model, isFreeForSubscribers: false } } : null;
@@ -280,7 +282,7 @@ export async function resolveChatContext(userId: string) {
   const subscriptionEnd = synced?.subscriptionEnd ?? user.subscriptionEnd;
 
   let model = user.selectedModel;
-  if (!model || !model.isActive || isRetiredChatModel(model.name)) {
+  if (!model || !model.isActive || !availableChatModel(model.name)) {
     model = baseModel;
   }
 
@@ -845,19 +847,20 @@ export async function callChatCompletion(
   messages: ChatCompletionMessage[],
   apiKey: string
 ): Promise<string> {
+  const route = chatTransport(modelName, apiKey);
   logPromptDelivery(modelName, messages, false);
   return retryWithBackoff(
     async () => {
       const response = await meteredPost("chat",
-        `${KODIKROUTER_URL}/chat/completions`,
+        route.url,
         {
-          model: modelName,
+          model: route.model,
           messages,
           ...chatModelGenerationOptions(modelName),
         },
         {
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${route.apiKey}`,
             "Content-Type": "application/json",
           },
           timeout: chatModelRequestTimeoutMs(modelName),
@@ -883,36 +886,40 @@ export async function streamChatCompletion(
   messages: ChatCompletionMessage[],
   apiKey: string
 ): Promise<ReadableStream<Uint8Array>> {
+  const route = chatTransport(modelName, apiKey);
   logPromptDelivery(modelName, messages, true);
   return retryWithBackoff(
     async () => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), chatModelRequestTimeoutMs(modelName));
+      timer.unref?.();
       let response: Response;
       try {
-        response = await meteredChatFetch(`${KODIKROUTER_URL}/chat/completions`, {
+        response = await meteredChatFetch(route.url, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${route.apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: modelName,
+            model: route.model,
             messages,
             ...chatModelGenerationOptions(modelName),
             stream: true,
             stream_options: { include_usage: true },
           }),
           signal: controller.signal,
-        }, modelName, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4));
-      } finally {
+        }, route.model, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4), () => clearTimeout(timer));
+      } catch (error) {
         clearTimeout(timer);
+        throw error;
       }
 
       if (!response.ok) {
-        const details = await response.text().catch(() => "");
+        clearTimeout(timer);
+        await response.body?.cancel().catch(() => {});
         const error = new Error(
-          `Ошибка стриминга ИИ: ${response.status}${details ? ` ${details.slice(0, 300)}` : ""}`
+          `Ошибка стриминга ИИ: ${response.status}`
         ) as Error & { status: number };
         error.status = response.status;
         throw error;

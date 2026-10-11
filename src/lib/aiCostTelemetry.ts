@@ -5,7 +5,9 @@ import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { finiteNonnegative, readCostUsage, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
+import { finiteNonnegative, readCostUsage, readDeepinfraCostUsage, resolveDeepinfraCost, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
+import { deepinfraModel } from "./deepinfraModels";
+import { deepinfraUsdRub, textProviderForUrl } from "./aiProviders";
 import { canonicalKodikModel, getKodikCostRates } from "./kodikCostRates";
 import { getAccountingUsdRub } from "./currencyRates";
 import { ChatCompletionStreamParser, extractChatStreamDelta } from "./chatCompletionStream";
@@ -25,7 +27,7 @@ export function setAiCostActor(actorId: string, subscriptionType?: string | null
   ctx.subscriptionType = ["start", "dialog", "story", "history", "universe"].includes(subscriptionType ?? "") ? subscriptionType! : null;
 }
 
-type Ticket = { id: string; started: number; requestedModel: string; inputRate: number | null; outputRate: number | null; surface: KodikApiSurface | null };
+type Ticket = { id: string; started: number; requestedModel: string; inputRate: number | null; outputRate: number | null; surface: KodikApiSurface | null; provider: string; fx: number | null };
 function safeModel(model: unknown): string {
   return typeof model === "string" && /^[a-zA-Z0-9._:/-]{1,160}$/.test(model)
     && !/^(https?:|postgres|sk[-_]|crya_|re_|bearer)/i.test(model) ? model : "unknown";
@@ -36,8 +38,8 @@ function requestId(value: unknown): string | null {
 }
 async function begin(model: string, purpose: string, provider = "kodikrouter", imageRub?: number): Promise<Ticket> {
   const ctx = contexts.getStore();
-  const surface = provider === "kodikrouter" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
-  const ticket: Ticket = { id: randomUUID(), started: Date.now(), requestedModel: model, inputRate: null, outputRate: null, surface };
+  const surface = provider === "kodikrouter" || provider === "deepinfra" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
+  const ticket: Ticket = { id: randomUUID(), started: Date.now(), requestedModel: model, inputRate: null, outputRate: null, surface, provider, fx: provider === "deepinfra" ? deepinfraUsdRub() : null };
   try {
     let quotedVC: number | null = null;
     if (provider === "kodikrouter") {
@@ -46,6 +48,13 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
       const rates = getKodikCostRates(model, catalog);
       ticket.inputRate = rates.input;
       ticket.outputRate = rates.output;
+    }
+    if (provider === "deepinfra") {
+      const quote = deepinfraModel(model);
+      const catalog = quote ? await prisma.model.findUnique({ where: { name: quote.name }, select: { priceVC: true } }) : null;
+      quotedVC = catalog?.priceVC ?? quote?.priceVC ?? null;
+      ticket.inputRate = quote && ticket.fx ? quote.inputUsdPerMillion * ticket.fx : null;
+      ticket.outputRate = quote && ticket.fx ? quote.outputUsdPerMillion * ticket.fx : null;
     }
     await prisma.aiCostEvent.create({ data: {
       id: ticket.id, operationId: ctx?.operationId ?? randomUUID(), actorHash: ctx?.actorHash,
@@ -65,19 +74,25 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
   const output = usage.outputTokens ?? estimatedOutput ?? null;
   try {
     if (actualModel && actualModel !== ticket.requestedModel) {
-      const catalog = await prisma.model.findUnique({ where: { name: canonicalKodikModel(actualModel) }, select: { pricePer1MInput: true, pricePer1MOutput: true } });
-      const rates = getKodikCostRates(actualModel, catalog);
-      ticket.inputRate = rates.input;
-      ticket.outputRate = rates.output;
+      if (ticket.provider === "deepinfra") {
+        const quote = deepinfraModel(actualModel);
+        ticket.inputRate = quote && ticket.fx ? quote.inputUsdPerMillion * ticket.fx : null;
+        ticket.outputRate = quote && ticket.fx ? quote.outputUsdPerMillion * ticket.fx : null;
+      } else {
+        const catalog = await prisma.model.findUnique({ where: { name: canonicalKodikModel(actualModel) }, select: { pricePer1MInput: true, pricePer1MOutput: true } });
+        const rates = getKodikCostRates(actualModel, catalog);
+        ticket.inputRate = rates.input;
+        ticket.outputRate = rates.output;
+      }
     }
     // Cached reads are included in prompt_tokens. Full input pricing ignores
     // their discount and is an estimate. Cache writes can cost MORE than input;
     // without a verified write rate, do not invent a catalog estimate for them.
     const catalog = (usage.cacheWriteInputTokens ?? 0) > 0 ? null : tokenCostRub(input, output, ticket.inputRate, ticket.outputRate);
     const explicitFx = finiteNonnegative(Number(process.env['AI_COST_USD_RUB']));
-    const needsFx = ticket.surface === "chat_completions" && (usage.reportedCost ?? 0) > 0;
+    const needsFx = ticket.provider === "kodikrouter" && ticket.surface === "chat_completions" && (usage.reportedCost ?? 0) > 0;
     const fx = needsFx ? explicitFx && explicitFx > 0 ? explicitFx : await getAccountingUsdRub() : null;
-    const cost = ticket.surface ? resolveKodikCost(ticket.surface, usage, catalog, fx) : {
+    const cost = ticket.provider === "deepinfra" ? resolveDeepinfraCost(usage, catalog, ticket.fx) : ticket.surface ? resolveKodikCost(ticket.surface, usage, catalog, fx) : {
       providerCostCurrency: null, providerCostSemantics: "unverified", usdRub: null,
       estimatedCostRub: null, costSource: "unknown",
     };
@@ -100,35 +115,43 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
   } catch (error) { errorLog("AiCost", "Unable to complete cost attempt", toSafeDiagnostic(error)); }
 }
 const noUsage = () => readCostUsage(null);
+function providerUsage(ticket: Ticket, data: unknown, embedding = false) {
+  return ticket.provider === "deepinfra" ? readDeepinfraCostUsage(data) : readCostUsage(data, embedding);
+}
+function responseRequestId(ticket: Ticket, headers: Record<string, unknown>) {
+  return ticket.provider === "deepinfra" ? headers["x-deepinfra-request-id"] ?? headers["x-request-id"] : headers["x-kodikrouter-request-id"];
+}
 
 export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, url: string, body: unknown,
   config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
   const payload = body as { model?: unknown };
-  const ticket = await begin(safeModel(payload?.model), purpose);
+  const ticket = await begin(safeModel(payload?.model), purpose, textProviderForUrl(url));
   try {
-    const response = await axios.post<T>(url, body, config);
+    const response = await axios.post<T>(url, body, { ...config, maxRedirects: 0 });
     const actualModel = (response.data as { model?: unknown })?.model;
-    await finish(ticket, response.status >= 400 ? "failed" : "completed", readCostUsage(response.data, purpose === "embedding"), response.status,
+    await finish(ticket, response.status >= 400 ? "failed" : "completed", providerUsage(ticket, response.data, purpose === "embedding"), response.status,
       undefined, undefined, typeof actualModel === "string" ? safeModel(actualModel) : undefined,
-      response.headers["x-kodikrouter-request-id"], (response.data as { id?: unknown })?.id);
+      responseRequestId(ticket, response.headers), (response.data as { id?: unknown })?.id);
     return response;
   } catch (error) {
     const response = axios.isAxiosError(error) ? error.response : null;
-    await finish(ticket, "failed", readCostUsage(response?.data, purpose === "embedding"), response?.status,
-      undefined, undefined, undefined, response?.headers?.["x-kodikrouter-request-id"], response?.data?.id);
+    await finish(ticket, "failed", providerUsage(ticket, response?.data, purpose === "embedding"), response?.status,
+      undefined, undefined, undefined, responseRequestId(ticket, response?.headers ?? {}), response?.data?.id);
     throw error;
   }
 }
 
 const streams = new WeakMap<ReadableStream<Uint8Array>, { ticket: Ticket; completed: boolean }>();
-export async function meteredChatFetch(url: string, init: RequestInit, model: string, estimatedInput: number): Promise<Response> {
-  const ticket = await begin(safeModel(model), "chat");
+export async function meteredChatFetch(url: string, init: RequestInit, model: string, estimatedInput: number, onEnd?: () => void): Promise<Response> {
+  const ticket = await begin(safeModel(model), "chat", textProviderForUrl(url));
+  const requestIdHeader = ticket.provider === "deepinfra" ? "x-request-id" : "x-kodikrouter-request-id";
   let response: Response;
-  try { response = await fetch(url, init); }
-  catch (error) { await finish(ticket, "failed", noUsage()); throw error; }
+  try { response = await fetch(url, { ...init, redirect: "error" }); }
+  catch (error) { onEnd?.(); await finish(ticket, "failed", noUsage()); throw error; }
   if (!response.ok || !response.body) {
     await finish(ticket, "failed", noUsage(), response.status, undefined, undefined, undefined,
-      response.headers.get("x-kodikrouter-request-id"));
+      response.headers.get(requestIdHeader));
+    onEnd?.();
     return response;
   }
   const reader = response.body.getReader();
@@ -138,7 +161,7 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   const parser = new ChatCompletionStreamParser((chunk) => {
     responseId = requestId(chunk.id) ?? responseId;
     if (typeof chunk.model === "string") actualModel = safeModel(chunk.model);
-    const next = readCostUsage(chunk);
+    const next = providerUsage(ticket, chunk);
     // Providers may emit tokens and cost in different final frames. These are
     // cumulative snapshots, not increments; do not sum duplicate usage chunks.
     usage = {
@@ -153,11 +176,12 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   const complete = async (outcome: string) => {
     if (ended) return;
     ended = true;
+    onEnd?.();
     const protocolOutcome = parser.end();
     if (outcome === "completed") outcome = protocolOutcome;
     tracked.completed = outcome === "completed";
     await finish(ticket, outcome, usage, response.status, estimatedInput,
-      outcome === "completed" ? Math.ceil(outputChars / 4) : undefined, actualModel, response.headers.get("x-kodikrouter-request-id"), responseId);
+      outcome === "completed" ? Math.ceil(outputChars / 4) : undefined, actualModel, response.headers.get("x-deepinfra-request-id") ?? response.headers.get(requestIdHeader), responseId);
   };
   const body = new ReadableStream<Uint8Array>({
     async pull(controller) {

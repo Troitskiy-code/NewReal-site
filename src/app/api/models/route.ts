@@ -4,14 +4,16 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
-import { isTestingChatModel, RETIRED_TESTING_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
+import { isTestingChatModel } from "@/lib/testingChatModels";
+import { chatModelNameFilter, getChatProvider } from "@/lib/aiProviders";
+import { DEEPINFRA_BASE_MODEL } from "@/lib/deepinfraModels";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
     const models = await prisma.model.findMany({
-      where: { isActive: true, name: { notIn: RETIRED_TESTING_CHAT_MODEL_NAMES } },
+      where: { isActive: true, name: chatModelNameFilter() },
       orderBy: [{ priceVC: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
@@ -27,7 +29,8 @@ export async function GET() {
       },
     });
 
-    const baseModel = models.find((model) => !isTestingChatModel(model.name)) ?? null;
+    const baseModel = getChatProvider() === "deepinfra" ? models.find((model) => model.name === DEEPINFRA_BASE_MODEL) ?? null
+      : models.find((model) => !isTestingChatModel(model.name)) ?? null;
 
     let selectedModelId: string | null = null;
     let subscriptionActive = false;

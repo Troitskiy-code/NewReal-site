@@ -1,11 +1,12 @@
 import catalog from "./data/testing-roleplay-models-2026-10-10.json";
 import previousCatalog from "./data/testing-chat-models-2026-10-10.json";
+import { DEEPINFRA_CHAT_MODELS, DEEPINFRA_MODEL_NAMES, deepinfraGenerationOptions } from "./deepinfraModels";
 
 export const TESTING_CHAT_MODELS = catalog;
 export const TESTING_CHAT_MODEL_NAMES = catalog.map((model) => model.name);
 export const RETIRED_TESTING_CHAT_MODEL_NAMES = previousCatalog
   .map((model) => model.name).filter((name) => !TESTING_CHAT_MODEL_NAMES.includes(name));
-export const NON_DEFAULT_CHAT_MODEL_NAMES = [...TESTING_CHAT_MODEL_NAMES, ...RETIRED_TESTING_CHAT_MODEL_NAMES];
+export const NON_DEFAULT_CHAT_MODEL_NAMES = [...TESTING_CHAT_MODEL_NAMES, ...RETIRED_TESTING_CHAT_MODEL_NAMES, ...DEEPINFRA_MODEL_NAMES];
 // Retain old quotes for accounting of requests already in flight during a rollout.
 export const CHAT_MODEL_CATALOG_QUOTES = [...catalog, ...previousCatalog];
 
@@ -14,11 +15,12 @@ export function isRetiredChatModel(name: string): boolean {
 }
 
 export function isTestingChatModel(name: string): boolean {
-  return TESTING_CHAT_MODEL_NAMES.includes(name);
+  return TESTING_CHAT_MODEL_NAMES.includes(name) || DEEPINFRA_CHAT_MODELS.some((model) => model.name === name && model.testing);
 }
 
 /** These are request settings, not proof that a gateway obeys a reasoning mode. */
 export function chatModelGenerationOptions(modelName: string) {
+  if (DEEPINFRA_MODEL_NAMES.includes(modelName)) return deepinfraGenerationOptions(modelName);
   const base = { max_tokens: 1000, temperature: 0.7 };
   if (modelName === "aion-labs/aion-2.0") {
     // Direct Aion accepts none. Routed support is unverified: retain a strict total cap.
@@ -32,5 +34,6 @@ export function chatModelGenerationOptions(modelName: string) {
 }
 
 export function chatModelRequestTimeoutMs(modelName: string): number {
+  if (DEEPINFRA_MODEL_NAMES.includes(modelName)) return 60_000;
   return isTestingChatModel(modelName) ? 60_000 : 30_000;
 }

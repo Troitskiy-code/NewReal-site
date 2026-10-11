@@ -17,10 +17,17 @@ function load(file, dependencies = {}) {
 }
 const previousCatalog = JSON.parse(readFileSync('src/lib/data/testing-chat-models-2026-10-10.json', 'utf8'));
 const catalog = JSON.parse(readFileSync('src/lib/data/testing-roleplay-models-2026-10-10.json', 'utf8'));
+delete process.env['CHAT_AI_PROVIDER'];
+delete process.env['MEMORY_AI_PROVIDER'];
+const deepinfra = load('src/lib/deepinfraModels.ts', {
+  './data/deepinfra-chat-models-2026-10-11.json': JSON.parse(readFileSync('src/lib/data/deepinfra-chat-models-2026-10-11.json', 'utf8')),
+});
 const policy = load('src/lib/testingChatModels.ts', {
   './data/testing-chat-models-2026-10-10.json': previousCatalog,
   './data/testing-roleplay-models-2026-10-10.json': catalog,
+  './deepinfraModels': deepinfra,
 });
+const providers = load('src/lib/aiProviders.ts', { './deepinfraModels': deepinfra, './testingChatModels': policy });
 assert.equal(catalog.length, 8);
 assert.equal(new Set(catalog.map(model => model.name)).size, 8);
 const expectedVC = [9, 7, 11, 16, 24, 24, 28, 38];
@@ -57,6 +64,7 @@ const economy = load('src/lib/chatEconomy.ts');
 let selectedModelFixture;
 const baseFixture = { id: 'base', name: 'existing-model', isActive: true, priceVC: 4, maxContextTokens: 20000 };
 const helpers = load('src/lib/chatHelpers.ts', {
+  './aiProviders': providers,
   '@/lib/testingChatModels': policy,
   '@/lib/promptDiagnostics': { logPromptDelivery: () => {} },
   '@/lib/verseChatEconomy': economy,
@@ -129,9 +137,9 @@ assert.equal(guestBudget(helpers.resolveContextTokenBudget, { name: 'google/gemm
 const guestResolver = guestAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'resolveAnonymousModel');
 const guestCode = ts.transpileModule(guestResolver.getText(guestAst), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 const guestQueries = [];
-const resolveGuestModel = new Function('prisma', 'NON_DEFAULT_CHAT_MODEL_NAMES', guestCode + '\nreturn resolveAnonymousModel;')({
+const resolveGuestModel = new Function('prisma', 'getChatProvider', 'DEEPINFRA_BASE_MODEL', 'chatModelNameFilter', guestCode + '\nreturn resolveAnonymousModel;')({
   model: { findFirst: async query => { guestQueries.push(query); return null; } },
-}, policy.NON_DEFAULT_CHAT_MODEL_NAMES);
+}, providers.getChatProvider, deepinfra.DEEPINFRA_BASE_MODEL, providers.chatModelNameFilter);
 await resolveGuestModel();
 assert.equal(guestQueries.length, 2);
 assert.deepEqual(guestQueries[1].where.name.notIn, policy.NON_DEFAULT_CHAT_MODEL_NAMES);
@@ -187,11 +195,12 @@ try {
   let session = null;
   const visibleRows = (query) => rows.filter(model => model.isActive && !query.where.name.notIn.includes(model.name));
   const api = load('src/app/api/models/route.ts', {
+    '@/lib/aiProviders': providers, '@/lib/deepinfraModels': deepinfra,
     '@/lib/testingChatModels': policy, 'next/server': { NextResponse },
     'next-auth/next': { getServerSession: async () => session },
     '@/lib/verseChatEconomy': { isSubscriptionActive: () => false },
     '@/lib/prisma': { prisma: { model: { findMany: async query => {
-      assert.deepEqual(query.where.name.notIn, policy.RETIRED_TESTING_CHAT_MODEL_NAMES);
+      assert.deepEqual(query.where.name.notIn, [...policy.RETIRED_TESTING_CHAT_MODEL_NAMES, ...deepinfra.DEEPINFRA_MODEL_NAMES]);
       return visibleRows(query);
     } }, user: { findUnique: async () => ({ selectedModelId: 'preserved-id' }) } } },
   });
@@ -204,11 +213,12 @@ try {
   assert.equal((await (await api.GET()).json()).selectedModelId, null, 'API does not advertise a retired saved selection');
   let selectionWrites = 0;
   const select = load('src/app/api/user/select-model/route.ts', {
+    '@/lib/aiProviders': providers,
     '@/lib/testingChatModels': policy, 'next/server': { NextRequest, NextResponse },
     'next-auth/next': { getServerSession: async () => session },
     '@/lib/prisma': { prisma: {
       model: { findFirst: async query => {
-        assert.deepEqual(query.where.name.notIn, policy.RETIRED_TESTING_CHAT_MODEL_NAMES);
+        assert.deepEqual(query.where.name.notIn, [...policy.RETIRED_TESTING_CHAT_MODEL_NAMES, ...deepinfra.DEEPINFRA_MODEL_NAMES]);
         // Keep retired fixture active: code must reject it even before SQL.
         return rows.map(row => ({ ...row, isActive: true })).find(row => row.id === query.where.id && !query.where.name.notIn.includes(row.name));
       } },

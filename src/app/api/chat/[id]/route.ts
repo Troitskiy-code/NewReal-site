@@ -1,3 +1,4 @@
+import { chatProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
@@ -87,8 +88,8 @@ async function handlePost(
       return NextResponse.json({ error: "ID персонажа не указан" }, { status: 400 });
     }
 
-    if (!KODIKROUTER_KEY) {
-      return NextResponse.json({ error: "KODIKROUTER_API_KEY не настроен" }, { status: 500 });
+    if (!chatProviderConfigured()) {
+      return NextResponse.json({ error: "Провайдер чата не настроен" }, { status: 500 });
     }
 
     if (!session?.user?.id) {

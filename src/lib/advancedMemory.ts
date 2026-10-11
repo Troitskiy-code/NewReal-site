@@ -1,4 +1,4 @@
-import { meteredPost } from "@/lib/aiCostTelemetry";
+import { serviceChatPost as meteredPost } from "@/lib/aiTextClient";
 import { prisma } from "@/lib/prisma";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import { debugLog, errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";

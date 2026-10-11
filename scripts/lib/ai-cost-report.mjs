@@ -134,7 +134,7 @@ const percentile = (values, p) => {
   const sorted = [...values].sort((a, b) => a - b), position = (sorted.length - 1) * p, index = Math.floor(position);
   return sorted[index] + (sorted[Math.ceil(position)] - sorted[index]) * (position - index);
 };
-const estimateSources = new Set(['chat_usd_estimate', 'chat_cbr_estimate', 'catalog_estimate', 'configured_estimate', 'kie_credits_estimate']);
+const estimateSources = new Set(['chat_usd_estimate', 'chat_cbr_estimate', 'catalog_estimate', 'configured_estimate', 'kie_credits_estimate', 'deepinfra_usd_estimate', 'deepinfra_catalog_estimate']);
 
 export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } = {}) {
   const reconciliation = ledgerRows ? reconcileKodikCosts(events, ledgerRows, apiKeyName)
@@ -179,7 +179,7 @@ export function buildAiCostReport(events, { from, to, ledgerRows, apiKeyName } =
       // measured-usage estimates, but never invent a cost from a pending quote.
       const partialUsage = ['failed', 'cancelled'].includes(event.outcome) && event.accountingVersion === 2
         && (event.usageSource === 'provider' || (event.apiSurface === 'chat_completions'
-          && ['chat_usd_estimate', 'chat_cbr_estimate'].includes(event.costSource) && number(event.providerCostNative) > 0));
+          && ['chat_usd_estimate', 'chat_cbr_estimate', 'deepinfra_usd_estimate'].includes(event.costSource) && number(event.providerCostNative) > 0));
       const approximate = (done || partialUsage) && (event.accountingVersion !== 2 || estimateSources.has(event.costSource))
         ? estimatedRubUnits(event.estimatedCostRub) : null;
       let effective = null, source = 'unknown';

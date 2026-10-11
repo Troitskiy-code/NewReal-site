@@ -27,6 +27,21 @@ export function readCostUsage(data: unknown, embedding = false): CostUsage {
   };
 }
 
+export function readDeepinfraCostUsage(data: unknown): CostUsage {
+  return { ...readCostUsage(data), reportedCost: finiteNonnegative(record(record(data).usage).estimated_cost) };
+}
+
+export function resolveDeepinfraCost(usage: CostUsage, catalogRub: number | null, usdRub: number | null) {
+  const amount = finiteNonnegative(usage.reportedCost);
+  const fx = finiteNonnegative(usdRub);
+  const converted = amount !== null && fx !== null && fx > 0 ? finiteNonnegative(amount * fx) : null;
+  return { providerCostCurrency: amount === null ? null : "USD",
+    providerCostSemantics: amount === null ? "not_reported" : "provider_estimated_usd",
+    usdRub: fx !== null && fx > 0 ? fx : null,
+    estimatedCostRub: converted ?? finiteNonnegative(catalogRub),
+    costSource: converted !== null ? "deepinfra_usd_estimate" : finiteNonnegative(catalogRub) !== null ? "deepinfra_catalog_estimate" : "unknown" };
+}
+
 export type KodikApiSurface = "chat_completions" | "embeddings";
 // Endpoint semantics come from documentation, never from the balance currency
 // or a shared environment switch. RUB conversions remain estimates, not debits.

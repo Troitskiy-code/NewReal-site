@@ -14,6 +14,8 @@ import {
 } from "@/lib/chatHelpers";
 import { consumeOpenAIChatStream, createChatNdjsonResponse } from "@/lib/chatStream";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
+import { chatModelNameFilter, getChatProvider } from "./aiProviders";
+import { DEEPINFRA_BASE_MODEL } from "./deepinfraModels";
 import {
   ANONYMOUS_LIMIT_CODE,
   ANONYMOUS_LIMIT_MESSAGE,
@@ -64,12 +66,12 @@ function startGuestHeartbeat(params: { sessionId: string; requestId: string; att
 
 async function resolveAnonymousModel() {
   const preferred = await prisma.model.findFirst({
-    where: { isActive: true, name: "google/gemma-4-31b-it" },
+    where: { isActive: true, name: getChatProvider() === "deepinfra" ? DEEPINFRA_BASE_MODEL : "google/gemma-4-31b-it" },
     select: { id: true, name: true, displayName: true, maxContextTokens: true },
   });
   if (preferred) return preferred;
   return prisma.model.findFirst({
-    where: { isActive: true, name: { notIn: NON_DEFAULT_CHAT_MODEL_NAMES } },
+    where: { isActive: true, name: chatModelNameFilter(true) },
     orderBy: { priceVC: "asc" },
     select: { id: true, name: true, displayName: true, maxContextTokens: true },
   });

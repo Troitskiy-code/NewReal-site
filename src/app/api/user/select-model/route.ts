@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { RETIRED_TESTING_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
+import { chatModelNameFilter } from "@/lib/aiProviders";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     const model = await prisma.model.findFirst({
-      where: { id: modelId, isActive: true, name: { notIn: RETIRED_TESTING_CHAT_MODEL_NAMES } },
+      where: { id: modelId, isActive: true, name: chatModelNameFilter() },
       select: {
         id: true,
         name: true,

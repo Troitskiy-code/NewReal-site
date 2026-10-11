@@ -313,7 +313,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
 
   const session = { userId: null };
   for (const key of Object.keys(process.env)) {
-    if (/^(LOGTAIL_|AI_COST_|KODIK_COST_|ENABLE_RAG_EMBEDDINGS$|MEMORY_DEDUP_THRESHOLD$|DEBUG$)/.test(key)) delete process.env[key];
+    if (/^(CHAT_AI_PROVIDER$|MEMORY_AI_PROVIDER$|DEEPINFRA_|LOGTAIL_|AI_COST_|KODIK_COST_|ENABLE_RAG_EMBEDDINGS$|MEMORY_DEDUP_THRESHOLD$|DEBUG$)/.test(key)) delete process.env[key];
   }
   process.env.KODIKROUTER_API_KEY = realProvider ? liveKey : 'synthetic_memory_key';
   process.env.NEXTAUTH_SECRET = 'synthetic_memory_actor';

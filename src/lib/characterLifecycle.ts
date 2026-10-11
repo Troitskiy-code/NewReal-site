@@ -1,15 +1,12 @@
-import { meteredPost } from "@/lib/aiCostTelemetry";
+import { getMemoryProvider, providerApiKey } from "./aiProviders";
+import { serviceChatPost as meteredPost } from "@/lib/aiTextClient";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const LIFECYCLE_MODEL = "google/gemma-4-31b-it";
 const MAX_ACTION_LENGTH = 280;
 
-function getKodikApiKey(): string {
-  const apiKey = process.env.KODIKROUTER_API_KEY?.trim() ?? "";
-  if (!apiKey) {
-    throw new Error("KODIKROUTER_API_KEY не настроен");
-  }
-  return apiKey;
+function getTextApiKey(): string {
+  return providerApiKey(getMemoryProvider());
 }
 
 function firstSentence(text: string): string {
@@ -38,7 +35,7 @@ export async function generateCharacterEvent(prompt: string): Promise<string> {
     },
     {
       headers: {
-        Authorization: `Bearer ${getKodikApiKey()}`,
+        Authorization: `Bearer ${getTextApiKey()}`,
         "Content-Type": "application/json",
       },
     }
@@ -110,7 +107,7 @@ export async function generateCharacterEvent(prompt: string): Promise<string> {
  *     },
  *     {
  *       headers: {
- *         Authorization: `Bearer ${getKodikApiKey()}`,
+ *         Authorization: `Bearer ${getTextApiKey()}`,
  *         "Content-Type": "application/json",
  *       },
  *     }

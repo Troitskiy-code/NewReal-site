@@ -1,4 +1,4 @@
-import { meteredPost } from "@/lib/aiCostTelemetry";
+import { serviceChatPost as meteredPost } from "@/lib/aiTextClient";
 import { countTokens } from "@/lib/tokenCount";
 import { prisma } from "@/lib/prisma";
 import { getContextTokenLimit } from "@/lib/chatEconomy";
