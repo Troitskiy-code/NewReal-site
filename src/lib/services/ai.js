@@ -175,24 +175,31 @@ export const AIService = {
       }
     }
 
-    // 5. Update creation record in database
+    // 5. Update creation record in database; the webhook may have finished it first.
     if (completed) {
-      creation = await prisma.creation.update({
-        where: { id: creation.id },
-        data: {
-          status,
-          resultImage: status === "completed" ? resultImage : null,
-          error: status === "failed" ? "Polling returned failed status" : null,
-        }
-      });
-
-      // Refund if failed
-      if (status === "failed") {
-        await UserService.addCredits(userId, cost);
-      }
+      const finished = await this.finishCreation(creation, status === "completed"
+        ? { status, resultImage }
+        : { status, error: "Polling returned failed status" });
+      creation = finished ?? creation;
     }
 
     return creation;
+  },
+
+  /**
+   * Moves a processing creation to its final state exactly once, refunding on failure.
+   * Returns the updated record, or null when another caller already finished it.
+   */
+  async finishCreation(creation, data, include) {
+    const { count } = await prisma.creation.updateMany({
+      where: { id: creation.id, status: "processing" },
+      data,
+    });
+    if (count === 0) return null;
+    if (data.status === "failed") {
+      await UserService.addCredits(creation.userId, creation.creditCost);
+    }
+    return prisma.creation.findUnique({ where: { id: creation.id }, include });
   },
 
   /**
@@ -220,27 +227,20 @@ export const AIService = {
         if (checkStatus === "completed" || checkStatus === "succeeded") {
           const outputs = result.outputs || [];
           const outputUrl = outputs[0] || result.output;
-          return await prisma.creation.update({
-            where: { id: creationId },
-            data: { status: "completed", resultImage: outputUrl },
-            include: { app: true }
-          });
+          return (await this.finishCreation(creation, { status: "completed", resultImage: outputUrl }, { app: true }))
+            ?? prisma.creation.findUnique({ where: { id: creationId }, include: { app: true } });
         } else if (checkStatus === "failed") {
-          // Refund credits
-          await UserService.addCredits(creation.userId, creation.creditCost);
-          return await prisma.creation.update({
-            where: { id: creationId },
-            data: { status: "failed", error: result.error || "Generation failed" },
-            include: { app: true }
-          });
+          return (await this.finishCreation(creation, { status: "failed", error: result.error || "Generation failed" }, { app: true }))
+            ?? prisma.creation.findUnique({ where: { id: creationId }, include: { app: true } });
         }
       } else if (response.status === 404) {
-        // Request not found or expired upstream, mark as failed so it does not hijack activeCreation
-        return await prisma.creation.update({
-          where: { id: creationId },
+        // Request not found or expired upstream, mark as failed so it does not hijack activeCreation.
+        // Not refunded, matching the previous behaviour for expired requests.
+        await prisma.creation.updateMany({
+          where: { id: creationId, status: "processing" },
           data: { status: "failed", error: "Request expired or not found upstream" },
-          include: { app: true }
         });
+        return prisma.creation.findUnique({ where: { id: creationId }, include: { app: true } });
       }
     } catch (e) {
       errorLog("Server", "src/lib/services/ai.js", toSafeDiagnostic(`Error syncing creation state ${creationId}:`), toSafeDiagnostic(e));

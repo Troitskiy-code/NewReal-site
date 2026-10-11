@@ -26,13 +26,13 @@ export default function ChatPromptVersionSettings({ characterId, disabled }: { c
     <button type="button" className="wd-btn my-3" disabled={busy || disabled} onClick={() => act()}>Проверить настройки</button>
     {state && <div className="space-y-3">
       <p className="text-sm">Версия {state.builderVersion}, режим: {ROLEPLAY_MODE_LABELS[state.mode]}.</p>
-      <p className="text-sm text-wd-muted">Изменение карточки не переключает эту историю автоматически. Явное переключение сохраняет память и сообщения; старые ручные инструкции могут перестать действовать. Полный перезапуск — отдельное действие «Начать новый чат».</p>
-      {state.builderVersion === 1 && <p className="text-sm text-wd-muted">В прежней версии роль задаётся сохранённым текстом; её происхождение может быть неизвестно. Выбранный здесь тип действует после перехода на новую сборку.</p>}
+      <p className="text-sm text-wd-text-secondary">Изменение карточки не переключает эту историю автоматически. Явное переключение сохраняет память и сообщения; старые ручные инструкции могут перестать действовать. Полный перезапуск — отдельное действие «Начать новый чат».</p>
+      {state.builderVersion === 1 && <p className="text-sm text-wd-text-secondary">В прежней версии роль задаётся сохранённым текстом; её происхождение может быть неизвестно. Выбранный здесь тип действует после перехода на новую сборку.</p>}
       <label className="block">Тип этой истории<select className="ml-2 rounded border border-wd-border bg-wd-bg p-2" value={mode} onChange={event => setMode(event.target.value as RoleplayMode)}>{ROLEPLAY_MODES.map(item => <option key={item} value={item}>{ROLEPLAY_MODE_LABELS[item]}</option>)}</select></label>
       <label className="flex gap-2"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />Подтверждаю изменение этой истории</label>
       <div className="flex flex-wrap gap-2"><button type="button" className="wd-btn" disabled={busy || disabled || !confirmed || !state.rolloutEnabled || state.cardVersion !== 2} onClick={() => act(2)}>Использовать новую сборку</button><button type="button" className="wd-btn" disabled={busy || disabled || !confirmed || mode === "group"} onClick={() => act(1)}>Вернуть прежнюю сборку</button></div>
-      {mode === "group" && <p className="text-sm text-wd-muted">Групповой режим использует версию 2. Состав обновляется владельцем в карточке; сообщения и память остаются общей историей.</p>}
-      {(!state.rolloutEnabled || state.cardVersion !== 2) && <p className="text-sm text-wd-muted">Новую сборку ещё должен включить оператор или владелец карточки.</p>}
+      {mode === "group" && <p className="text-sm text-wd-text-secondary">Групповой режим использует версию 2. Состав обновляется владельцем в карточке; сообщения и память остаются общей историей.</p>}
+      {(!state.rolloutEnabled || state.cardVersion !== 2) && <p className="text-sm text-wd-text-secondary">Новую сборку ещё должен включить оператор или владелец карточки.</p>}
     </div>}
   </details>;
 }

@@ -107,7 +107,8 @@ export default function CharacterPublicView({ character }: { character: Characte
             <img
               src={avatarUrl}
               alt={name}
-              className="h-full w-full object-cover"
+              // Portraits are 2:3 with the face in the upper third; a centred crop in the wide frame cut it off.
+              className="h-full w-full object-cover object-[center_22%]"
               onError={(event) => {
                 event.currentTarget.style.display = "none";
               }}

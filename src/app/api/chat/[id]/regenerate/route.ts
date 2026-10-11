@@ -8,7 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   buildChatResponsePayload,
-  chargeForChatRequest,
+  reserveChatCharge,
   logActionOptionsIfPresent,
   prepareChatMessages,
   promptCharacterSelect,
@@ -19,6 +19,7 @@ import { analyzeIntent } from "@/lib/intentAnalyzer";
 import {
   consumeOpenAIChatCompletion,
   createChatNdjsonResponse,
+  type ChatStreamEvent,
 } from "@/lib/chatStream";
 import { calculateRequestCost, isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { scheduleMessageEmbeddingRefresh, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
@@ -37,6 +38,8 @@ async function handlePost(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Debited before generation; returned if the new reply is never stored.
+  let refundCharge: () => Promise<void> = async () => {};
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -130,16 +133,23 @@ async function handlePost(
 
     const { costVC } = costResult;
 
-    if (costVC > 0 && user.verseCoins < costVC) {
+    const charge = await reserveChatCharge({
+      userId: session.user.id,
+      costVC,
+      characterName: character.name,
+      modelDisplayName: model.displayName,
+    });
+    if (charge.ok === false) {
       return NextResponse.json(
         {
           error: "Недостаточно VerseCoins",
           requiredVC: costVC,
-          balance: user.verseCoins,
+          balance: charge.balance,
         },
         { status: 402 }
       );
     }
+    refundCharge = charge.refund;
 
     const previousUserMessage = await prisma.message.findFirst({
       where: {
@@ -172,7 +182,7 @@ async function handlePost(
 
     const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
 
-    return createChatNdjsonResponse(async (emit) => {
+    const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {
       emit({
         type: "meta",
         appendToId: assistantMessage.id,
@@ -184,13 +194,6 @@ async function handlePost(
       const assistantReply = completion.text;
 
       logActionOptionsIfPresent(assistantReply);
-
-      const charge = await chargeForChatRequest({
-        userId: session.user.id,
-        costVC,
-        characterName: character.name,
-        modelDisplayName: model.displayName,
-      });
 
       await recordChatCostCharge(upstream, costVC);
 
@@ -208,6 +211,8 @@ async function handlePost(
         KODIKROUTER_KEY,
         shouldPersistEmbeddings(user.subscriptionType, isSubscriptionActive(user))
       );
+      // The reply is stored, so the debit is final.
+      refundCharge = async () => {};
 
       emit({
         type: "end",
@@ -218,8 +223,18 @@ async function handlePost(
           assistantMessage: updatedMessage,
         }),
       });
+    };
+
+    return createChatNdjsonResponse(async (emit) => {
+      try {
+        await streamAndSaveReply(emit);
+      } catch (error) {
+        await refundCharge();
+        throw error;
+      }
     });
   } catch (error) {
+    await refundCharge();
     if (error instanceof GroupPromptUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof PromptBudgetError) return NextResponse.json({ error: error.message }, { status: 400 });
     errorLog("Server", "Regenerate error:", toSafeDiagnostic(error));

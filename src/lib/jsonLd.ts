@@ -25,7 +25,6 @@ type CharacterJsonLdInput = {
 export function buildCharacterJsonLd(character: CharacterJsonLdInput, locale: Locale) {
   const pageUrl = absoluteSiteUrl(`/character/${character.slug}`, locale);
   const homeUrl = absoluteSiteUrl("/", locale);
-  const galleryUrl = absoluteSiteUrl("/gallery", locale);
   const fallbackDescription =
     locale === "en"
       ? `Chat with ${character.name} on NewVerse`
@@ -82,12 +81,6 @@ export function buildCharacterJsonLd(character: CharacterJsonLdInput, locale: Lo
           {
             "@type": "ListItem",
             position: 2,
-            name: locale === "en" ? "Gallery" : "Галерея",
-            item: galleryUrl,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
             name: character.name,
             item: pageUrl,
           },

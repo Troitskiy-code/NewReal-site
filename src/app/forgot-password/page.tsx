@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   AUTH_BUTTON_CLASS,
   AUTH_INPUT_CLASS,
+  AuthField,
   AuthCard,
 } from "@/components/AuthCard";
 import LocaleLink from "@/components/LocaleLink";
@@ -50,14 +51,16 @@ export default function ForgotPasswordPage() {
         <p className="text-sm text-wd-secondary-text">{t("auth.linkSent")}</p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder={t("auth.emailPlaceholder")}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className={AUTH_INPUT_CLASS}
-          />
+          <AuthField label={t("auth.emailPlaceholder")}>
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className={AUTH_INPUT_CLASS}
+            />
+          </AuthField>
           <button type="submit" disabled={loading} className={AUTH_BUTTON_CLASS}>
             {loading ? t("auth.sending") : t("auth.sendLink")}
           </button>

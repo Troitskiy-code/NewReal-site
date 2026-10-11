@@ -8,6 +8,7 @@ import { trackSuccessfulRegistration } from "@/lib/acquisitionGoals";
 import {
   AUTH_BUTTON_CLASS,
   AUTH_INPUT_CLASS,
+  AuthField,
   AuthCard,
   GoogleAuthButton,
 } from "@/components/AuthCard";
@@ -194,38 +195,46 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
         </div>
       )}
       <form onSubmit={handleSubmit} className={googleAuthEnabled ? "space-y-4" : "mt-6 space-y-4"}>
-        <input
-          type="text"
-          placeholder={t("auth.name")}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className={AUTH_INPUT_CLASS}
-        />
-        <input
-          type="email"
-          placeholder={t("auth.emailPlaceholder")}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className={AUTH_INPUT_CLASS}
-        />
-        <input
-          type="password"
-          placeholder={t("auth.password")}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className={AUTH_INPUT_CLASS}
-        />
-        <input
-          type="password"
-          placeholder={t("auth.confirmPassword")}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          className={AUTH_INPUT_CLASS}
-        />
+        <AuthField label={t("auth.name")}>
+          <input
+            type="text"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
+        <AuthField label={t("auth.emailPlaceholder")}>
+          <input
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
+        <AuthField label={t("auth.password")}>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
+        <AuthField label={t("auth.confirmPassword")}>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
         <button type="submit" id="register-submit" data-metrika="register" className={AUTH_BUTTON_CLASS}>
           {t("auth.register")}
         </button>

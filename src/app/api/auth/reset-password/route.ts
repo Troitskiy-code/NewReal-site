@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { apiT } from "@/lib/apiI18n";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { consumeIpRateLimit, retryAfterSeconds } from "@/lib/rateLimit";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -59,6 +60,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: apiT(req, "api.minPassword", { count: MIN_PASSWORD_LENGTH }) },
         { status: 400 }
+      );
+    }
+
+    const limited = await consumeIpRateLimit(req, "reset-password", { limit: 10, sharedLimit: 200, windowMs: 15 * 60 * 1000 });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: apiT(req, "api.rateLimited") },
+        { status: 429, headers: { "Retry-After": retryAfterSeconds(limited) } }
       );
     }
 

@@ -132,7 +132,6 @@ api/
 │
 │  ниже — наследство шаблона, не основной прод-контур NewVerse:
 ├── billing/  checkout/  webhook/stripe  webhook/muapi
-├── unitpay/webhook
 ├── generation/  creations/  upload/  download/
 └── app-instances/  (+ export на GitHub/Vercel)
 ```
@@ -216,7 +215,6 @@ Cron-ручки:
 | --- | --- | --- |
 | **Stripe** | `src/lib/stripe.js`, `/api/billing/*`, `/api/webhook/stripe`, `/api/checkout` | шаблон биллинга |
 | **MuAPI** | `src/lib/services/ai.js`, `/api/webhook/muapi`, `/api/generation`, `MUAPIAPP_API_KEY` | старый генератор картинок |
-| **UnitPay** | `/api/unitpay/webhook`, `UNITPAY_SECRET_KEY` | альтернативный вебхук VC |
 | **GitHub + Vercel** | `/api/app-instances/export` | экспорт инстанса шаблона |
 | **Unsplash** | заглушка картинки в `services/ai.js` | не продукт |
 

@@ -20,7 +20,7 @@ import { resolveChatMemorySummary } from "@/lib/chatMemory";
 import {
   assemblePreparedChatMessages,
   buildChatResponsePayload,
-  chargeForChatRequest,
+  reserveChatCharge,
   isAssistantMessageCutOff,
   logActionOptionsIfPresent,
   mergeAssistantContinuation,
@@ -78,6 +78,8 @@ async function handlePost(
 ) {
   // Set once the user's turn is stored; runs memory processing at most once per request.
   let scheduleTurnMemory: (assistantReply: string | null) => void = () => {};
+  // Debited before generation; returned if the reply is never stored.
+  let refundCharge: () => Promise<void> = async () => {};
   try {
     const session = await getServerSession(authOptions);
     const { id } = await params;
@@ -157,16 +159,23 @@ async function handlePost(
 
     const { costVC } = costResult;
 
-    if (costVC > 0 && user.verseCoins < costVC) {
+    const charge = await reserveChatCharge({
+      userId: session.user.id,
+      costVC,
+      characterName: character.name,
+      modelDisplayName: model.displayName,
+    });
+    if (charge.ok === false) {
       return NextResponse.json(
         {
           error: "Недостаточно VerseCoins",
           requiredVC: costVC,
-          balance: user.verseCoins,
+          balance: charge.balance,
         },
         { status: 402 }
       );
     }
+    refundCharge = charge.refund;
 
     const locale = getApiLocale(req);
     const localizedGreeting =
@@ -194,6 +203,7 @@ async function handlePost(
       });
 
       if (!lastAssistant) {
+        await refundCharge();
         return NextResponse.json({ error: "Нет сообщения ассистента для продолжения" }, { status: 400 });
       }
 
@@ -211,6 +221,7 @@ async function handlePost(
       });
 
       if (!lastUser) {
+        await refundCharge();
         return NextResponse.json({ error: "Нет сообщения для повтора" }, { status: 400 });
       }
 
@@ -388,13 +399,6 @@ async function handlePost(
 
       logActionOptionsIfPresent(assistantReply);
 
-      const charge = await chargeForChatRequest({
-        userId: session.user.id,
-        costVC,
-        characterName: character.name,
-        modelDisplayName: model.displayName,
-      });
-
       await recordChatCostCharge(upstream, costVC);
 
       const appendsToCutOff = Boolean(continueChat && continueCutOff && lastAssistant);
@@ -423,6 +427,8 @@ async function handlePost(
         persistEmbeddings
       );
       scheduleTurnMemory(assistantReply);
+      // The reply is stored, so the debit is final.
+      refundCharge = async () => {};
 
       emit({
         type: "end",
@@ -442,11 +448,13 @@ async function handlePost(
         await streamAndSaveReply(emit);
       } catch (error) {
         scheduleTurnMemory(null);
+        await refundCharge();
         throw error;
       }
     });
   } catch (error) {
     scheduleTurnMemory(null);
+    await refundCharge();
     if (error instanceof GroupPromptUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof PromptBudgetError) return NextResponse.json({ error: error.message }, { status: 400 });
     errorLog("Server", "Chat error:", toSafeDiagnostic(error));

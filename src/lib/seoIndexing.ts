@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LOCALES, withLocale, type Locale } from "@/lib/i18nConfig";
 
 export const PUBLIC_PAGE_PATHS = {
-  home: "/", gallery: "/gallery", pricing: "/pricing", coins: "/coins",
+  home: "/", pricing: "/pricing", coins: "/coins",
   support: "/support", offer: "/offer", refund: "/refund", terms: "/terms",
   privacy: "/privacy", rules: "/rules",
 } as const;
@@ -15,7 +15,7 @@ export function pageIndexingMetadata(
   if (!(page in PUBLIC_PAGE_PATHS)) return { robots: { index: false, follow: true } };
   const path = PUBLIC_PAGE_PATHS[page as keyof typeof PUBLIC_PAGE_PATHS];
   const query = new URLSearchParams();
-  if (page === "home" || page === "gallery") {
+  if (page === "home") {
     // Only these parameters change the catalog. Tracking stays in the browser URL,
     // but never enters canonical/hreflang. Preserve meaningful variants as their own URLs.
     for (const key of ["sort", "page", "q"]) {

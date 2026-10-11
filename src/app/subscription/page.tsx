@@ -10,6 +10,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import ConvertedPrice from "@/components/ConvertedPrice";
+import SubscriptionPlans from "@/components/SubscriptionPlans";
 
 type SubscriptionBalance = {
   subscriptionType: string | null;
@@ -156,17 +157,11 @@ export default function SubscriptionPage() {
   }
 
   if (status === "unauthenticated") {
+    // Guests see the plans; choosing one sends them to sign in and back here.
     return (
-      <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
-        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <FaCrown className="text-4xl text-wd-secondary-text" />
-          <h1 className="text-2xl font-bold tracking-tight">Управление подпиской</h1>
-          <p className="max-w-sm text-xs text-wd-text-secondary">
-            Войдите в аккаунт, чтобы смотреть тариф и менять подписку.
-          </p>
-          <Link href="/login" className="wd-button px-6 py-2.5 text-sm">
-            Войти
-          </Link>
+      <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
+        <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center gap-10 overflow-y-auto px-4 py-12 scrollbar-subtle sm:px-6 lg:px-8">
+          <SubscriptionPlans />
         </main>
         <Footer />
       </div>
@@ -194,7 +189,7 @@ export default function SubscriptionPage() {
 
         {error && (
           <section className="wd-card space-y-3 border-wd-primary/30 p-6 text-center">
-            <p className="text-sm font-extrabold uppercase text-wd-primary-soft">Ошибка</p>
+            <p className="text-sm font-semibold text-wd-primary-soft">Ошибка</p>
             <p className="text-xs text-wd-text-secondary">{error}</p>
             <button type="button" onClick={fetchBalance} className="wd-button px-5 py-2.5 text-xs">
               Повторить

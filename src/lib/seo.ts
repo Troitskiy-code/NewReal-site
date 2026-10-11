@@ -15,7 +15,6 @@ export const THEME_COLOR = "#0A0A0A";
 
 export type MetaPageKey =
   | "home"
-  | "gallery"
   | "create"
   | "edit"
   | "profile"
@@ -81,7 +80,6 @@ function pageMetadata(page: MetaPageKey, locale = DEFAULT_LOCALE): Metadata {
 
 export const PAGE_METADATA = {
   home: pageMetadata("home"),
-  gallery: pageMetadata("gallery"),
   create: pageMetadata("create"),
   edit: pageMetadata("edit"),
   profile: pageMetadata("profile"),

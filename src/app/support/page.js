@@ -103,7 +103,7 @@ export default function SupportPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="mb-4 text-3xl font-black uppercase tracking-tight text-white">{t("support.title")}</h1>
+        <h1 className="mb-4 text-3xl font-bold tracking-tight text-white">{t("support.title")}</h1>
         <p className="mb-10 text-sm leading-relaxed text-wd-text-secondary">{t("support.intro")}</p>
 
         <section className="rounded-wd border border-wd-border bg-wd-card p-6 shadow-wd">
@@ -111,7 +111,7 @@ export default function SupportPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label htmlFor="support-topic" className="block text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
+              <label htmlFor="support-topic" className="block text-sm font-medium text-wd-text-secondary">
                 {t("support.topic")}
               </label>
               <select
@@ -129,7 +129,7 @@ export default function SupportPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="support-email" className="block text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
+              <label htmlFor="support-email" className="block text-sm font-medium text-wd-text-secondary">
                 {t("support.email")}
               </label>
               <input
@@ -144,7 +144,7 @@ export default function SupportPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="support-reference" className="block text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
+              <label htmlFor="support-reference" className="block text-sm font-medium text-wd-text-secondary">
                 {t("support.referenceTicket")}
               </label>
               <input
@@ -162,7 +162,7 @@ export default function SupportPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="support-message" className="block text-xs font-bold uppercase tracking-wider text-wd-text-secondary">
+              <label htmlFor="support-message" className="block text-sm font-medium text-wd-text-secondary">
                 {t("support.message")}
               </label>
               <textarea

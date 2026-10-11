@@ -3,7 +3,7 @@
 import { avatarMonthlyAllowance } from "@/lib/avatarEconomy";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/chatEconomy";
 import { estimatePlanRequestsFromModels, type PricedModel } from "@/lib/requestEstimate";
@@ -15,7 +15,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
-import { dateLocale, withLocale } from "@/lib/i18nConfig";
+import { dateLocale, stripLocalePrefix, withLocale } from "@/lib/i18nConfig";
 import CurrencySelector from "@/components/CurrencySelector";
 import ConvertedPrice from "@/components/ConvertedPrice";
 import PaymentChargeSummary from "@/components/PaymentChargeSummary";
@@ -67,6 +67,7 @@ export default function SubscriptionPlans({
 }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const { t, i18n } = useTranslation();
   const locale = useCurrentLocale();
   const { currency, setCurrency } = useCurrency();
@@ -175,7 +176,9 @@ export default function SubscriptionPlans({
     if (!selectedPlan) return;
     if (!recurringConsent) return;
     if (status !== "authenticated") {
-      router.push(withLocale("/login", locale));
+      // Return to the same plans page after sign-in instead of the catalog.
+      const callbackUrl = encodeURIComponent(stripLocalePrefix(pathname));
+      router.push(`${withLocale("/login", locale)}?callbackUrl=${callbackUrl}`);
       return;
     }
     console.log("[Consent] recurring checkout", { planId: selectedPlan.id });
@@ -211,7 +214,7 @@ export default function SubscriptionPlans({
               {t("pricing.badge")}
             </span>
           </div>
-          <h1 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             {t("pricing.title")}
           </h1>
           <p className="mx-auto max-w-2xl text-sm leading-relaxed text-wd-text-secondary">

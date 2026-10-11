@@ -420,27 +420,6 @@ console.log("P0 unpaid VC grant regressions");
   assert((await retired.POST(new Request("http://localhost/api/coins/purchase", { method: "POST", body: "{" }))).status === 410,
     "retired route rejects malformed input without parsing or database access");
   assert(responses.every(response => response.headers.get("Cache-Control") === "no-store"), "retired payment response is not cached");
-
-  let unitpayDbAccesses = 0;
-  const blockedPrisma = new Proxy({}, { get() { unitpayDbAccesses++; throw new Error("Unitpay DB access forbidden"); } });
-  const isolatedEnv: Record<string, string | undefined> = {};
-  const unitpay = loadIsolated("src/app/api/unitpay/webhook/route.ts", {
-    "next/server": nextServer, "crypto": require("crypto"), "@/lib/prisma": { prisma: blockedPrisma },
-    "@/lib/verseCoins": { grantPermanentUpdate() { unitpayDbAccesses++; throw new Error("Unpaid grant forbidden"); } },
-  }, { process: { env: isolatedEnv } as unknown as NodeJS.Process }) as {
-    GET: (req: InstanceType<typeof nextServer.NextRequest>) => Promise<Response>;
-  };
-  const signature = require("crypto").createHash("sha256").update("synthetic_user{up}RUB{up}300{up}undefined").digest("hex");
-  const unitpayRequest = () => new nextServer.NextRequest("http://localhost/api/unitpay/webhook?" + new URLSearchParams({
-    method: "PAY", account: "synthetic_user", currency: "RUB", sum: "300", signature,
-  }));
-  for (const [label, key] of [["missing", undefined], ["empty", ""], ["whitespace", "   "]] as const) {
-    isolatedEnv.UNITPAY_SECRET_KEY = key;
-    assert((await unitpay.GET(unitpayRequest())).status === 503, `Unitpay ${label} secret rejects predictable undefined signature`);
-  }
-  isolatedEnv.UNITPAY_SECRET_KEY = "synthetic_unitpay_secret";
-  assert((await unitpay.GET(unitpayRequest())).status === 403, "configured Unitpay rejects a forged signature");
-  assert(unitpayDbAccesses === 0, "unconfigured or forged Unitpay request never reaches database or VC grant");
 }
 
 const handlerLines: string[] = [];
@@ -472,9 +451,15 @@ try {
     "@/lib/apiI18n": { apiT: () => "safe_public_error", getApiLocale: () => "ru" },
     bcryptjs: { hash: async () => "SYNTHETIC_HASH" },
     "@/lib/logger": { errorLog, infoLog, debugLog: errorLog, toSafeDiagnostic },
+    // These checks cover error redaction; limits always allow so the handlers reach Prisma.
+    "@/lib/rateLimit": {
+      consumeRateLimit: async () => ({ ok: true, remaining: 1 }),
+      consumeIpRateLimit: async () => ({ ok: true, remaining: 1 }),
+      retryAfterSeconds: () => "0",
+    },
   };
 
-  const register = loadIsolated("src/app/api/auth/register/route.ts", {
+  const register =loadIsolated("src/app/api/auth/register/route.ts", {
     ...commonImports,
     "@/lib/prisma": { prisma: { user: { findUnique: async () => { throw fakePrismaError(); } } } },
     "@/lib/ensureUserConsent": { isAcceptedFlag: () => true, ensureUserConsentColumns: async () => {} },

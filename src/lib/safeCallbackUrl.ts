@@ -5,10 +5,10 @@ const ALLOWED_PREFIXES = [
   "/chat/",
   "/chats",
   "/pricing",
+  "/subscription",
   "/coins",
   "/profile",
   "/create",
-  "/gallery",
   "/support",
   "/character/",
 ];

@@ -3,6 +3,7 @@
 import type { CharacterFormValues } from "./CharacterForm";
 import { GROUP_FIELD_LIMITS, MAX_GROUP_PARTICIPANTS, RP_FIELD_LIMITS, type GroupParticipant } from "@/lib/roleplayConfig";
 import RoleplayModeCards from "@/components/RoleplayModeCards";
+import { useConfirm } from "@/components/useConfirm";
 import { CHARACTER_LIMITS } from "@/lib/characterFields";
 
 type Props = {
@@ -24,6 +25,7 @@ function TextField({ id, label, value, onChange, maxLength, hint, required = fal
   </div>;
 }
 function GroupMembers({ values, onChange }: Pick<Props, "values" | "onChange">) {
+  const [confirm, confirmModal] = useConfirm();
   const participants = values.rpConfig.participants ?? [];
   const setMembers = (members: GroupParticipant[]) => onChange("rpConfig", { ...values.rpConfig, participants: members });
   const update = (id: string, field: keyof typeof GROUP_FIELD_LIMITS, text: string) => setMembers(participants.map(member => member.id === id ? { ...member, [field]: text } : member));
@@ -37,14 +39,15 @@ function GroupMembers({ values, onChange }: Pick<Props, "values" | "onChange">) 
         <TextField id={`member-${member.id}-description`} label="Характер и история" required maxLength={GROUP_FIELD_LIMITS.description} value={member.description} onChange={text => update(member.id, "description", text)} hint="Личность, цели и исходные связи с другими героями." />
         <TextField id={`member-${member.id}-appearance`} label="Внешность" maxLength={GROUP_FIELD_LIMITS.appearance} value={member.appearance} onChange={text => update(member.id, "appearance", text)} hint="Несколько узнаваемых черт." rows={2} />
         <TextField id={`member-${member.id}-speechStyle`} label="Манера общения" maxLength={GROUP_FIELD_LIMITS.speechStyle} value={member.speechStyle} onChange={text => update(member.id, "speechStyle", text)} hint="Например: короткие реплики, сухой юмор, официальное обращение." rows={2} />
-        <button type="button" className="text-sm text-red-400 underline" onClick={() => {
-          if (window.confirm(`Убрать ${member.name || "этого персонажа"} из состава? Сообщения истории останутся.`)) setMembers(participants.filter(item => item.id !== member.id));
+        <button type="button" className="text-sm text-red-400 underline" onClick={async () => {
+          if (await confirm({ title: `Убрать ${member.name || "этого персонажа"} из состава?`, description: "Сообщения истории останутся.", confirmLabel: "Убрать", danger: true })) setMembers(participants.filter(item => item.id !== member.id));
         }}>Убрать персонажа</button>
       </div>
     </details>)}
     {!participants.length && <p className="text-sm text-[#A0A0A0]">Добавьте первого персонажа, чтобы сохранить групповую историю.</p>}
     <button type="button" className="wd-btn" disabled={participants.length >= MAX_GROUP_PARTICIPANTS} onClick={() => setMembers([...participants, { id: crypto.randomUUID(), name: "", description: "", appearance: "", speechStyle: "" }])}>Добавить персонажа</button>
     <p className="text-sm text-[#A0A0A0]">Все участники делят контекст выбранной модели. Добавление в состав не делает героя свидетелем прошлых событий.</p>
+    {confirmModal}
   </section>;
 }
 export default function RoleplayCardFields({ values, onChange, nameError, onClearNameError, showModePicker = true }: Props) {

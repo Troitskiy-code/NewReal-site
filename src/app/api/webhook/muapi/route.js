@@ -1,61 +1,34 @@
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { UserService } from "@/lib/services/user";
+import { AIService } from "@/lib/services/ai";
 
+// The callback is unauthenticated, so its payload is only a hint: the result and any
+// refund come from MuAPI itself via syncStatus, using the server's API key.
 export async function POST(req) {
   try {
-    const data = await req.json();
-    const requestId = data.id || data.request_id;
+    const data = await req.json().catch(() => null);
+    const requestId = data?.id || data?.request_id;
 
-    if (!requestId) {
+    if (!requestId || typeof requestId !== "string") {
       return NextResponse.json({ error: "Missing prediction identifier" }, { status: 400 });
     }
 
     const creation = await prisma.creation.findFirst({
       where: { requestId },
+      select: { id: true, status: true },
     });
 
     if (!creation) {
       return NextResponse.json({ error: "Creation record not found" }, { status: 404 });
     }
 
-    // Skip processing if already finished
-    if (creation.status === "completed" || creation.status === "failed") {
+    if (creation.status !== "processing") {
       return NextResponse.json({ success: true, message: "Already processed" });
     }
 
-    if (data.error || data.status === "failed") {
-      const errorMsg = data.error || "Async prediction failed";
-      
-      // Update record to failed
-      await prisma.creation.update({
-        where: { id: creation.id },
-        data: { status: "failed", error: errorMsg },
-      });
-
-      // Refund user credits
-      await UserService.addCredits(creation.userId, creation.creditCost);
-      
-      return NextResponse.json({ success: true, status: "failed_refunded" });
-    } else {
-      const outputs = data.outputs || [];
-      const imageUrl = outputs[0] || data.output;
-
-      if (!imageUrl) {
-        return NextResponse.json({ error: "No output URL provided" }, { status: 400 });
-      }
-
-      await prisma.creation.update({
-        where: { id: creation.id },
-        data: {
-          status: "completed",
-          resultImage: imageUrl,
-        },
-      });
-
-      return NextResponse.json({ success: true, status: "completed" });
-    }
+    const synced = await AIService.syncStatus(creation.id);
+    return NextResponse.json({ success: true, status: synced?.status ?? creation.status });
   } catch (error) {
     errorLog("Server", "MUAPI webhook processing error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });

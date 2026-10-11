@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy, FaInfoCircle } from "react-icons/fa";
+import { LuPencil, LuTrash2 } from "react-icons/lu";
 import MemoryEditor from "@/components/MemoryEditor";
 import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
@@ -30,6 +31,7 @@ import { captureCharacterReturn } from "@/lib/characterReturn";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT, ANONYMOUS_TTL_DAYS, createAnonymousRequestId } from "@/lib/anonymousCookie";
 import ConfirmModal from "@/components/ConfirmModal";
+import { useConfirm } from "@/components/useConfirm";
 import { KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 import { GuestTransferPendingError, waitForGuestTransfer } from "@/lib/guestTransferRetry";
 
@@ -230,7 +232,7 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
             disabled={disabled}
             className={menuItemClass}
           >
-            <span aria-hidden>✏️</span>
+            <LuPencil aria-hidden className="text-sm" />
             Редактировать
           </button>
           <button
@@ -243,7 +245,7 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
             disabled={disabled}
             className={menuItemClass}
           >
-            <span aria-hidden>🗑️</span>
+            <LuTrash2 aria-hidden className="text-sm" />
             Удалить
           </button>
         </div>
@@ -457,7 +459,7 @@ function ChatMessageItem({
         <div
           className={`w-full min-w-[220px] rounded-lg border p-3 ${
             isUser
-              ? "border-[#9C27B0]/70 bg-black/50 text-white backdrop-blur-sm"
+              ? "border-wd-primary/60 bg-black/50 text-white backdrop-blur-sm"
               : "border-wd-secondary/40 bg-black/40 text-white backdrop-blur-sm"
           }`}
         >
@@ -496,7 +498,7 @@ function ChatMessageItem({
         <div
           className={`w-full break-words rounded-lg border px-4 py-2 text-sm ${
             isUser
-              ? "border-[#9C27B0]/70 bg-black/50 text-white backdrop-blur-sm"
+              ? "border-wd-primary/60 bg-black/50 text-white backdrop-blur-sm"
               : "border-wd-secondary/40 bg-black/40 text-white backdrop-blur-sm"
           }`}
         >
@@ -521,7 +523,7 @@ function formatMessageContent(content: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  return escaped.replace(/\*(.*?)\*/g, '<span style="color: #B39DDB;">$1</span>').replace(/\n/g, "<br />");
+  return escaped.replace(/\*(.*?)\*/g, '<span class="text-wd-secondary-text">$1</span>').replace(/\n/g, "<br />");
 }
 
 function CharacterDescriptionCard({ description }: { description: string }) {
@@ -828,6 +830,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
 
+  const [confirm, confirmModal] = useConfirm();
   const [messages, setMessages] = useState<Message[]>([]);
   const [character, setCharacter] = useState<ChatCharacter | null>({
     id: initialShell.id,
@@ -1294,7 +1297,13 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
   const handleDelete = async (messageId: string) => {
     if (sending || actionLoading) return;
-    if (!window.confirm("Удалить это сообщение?")) return;
+    const confirmed = await confirm({
+      title: "Удалить сообщение?",
+      description: "Сообщение исчезнет из истории чата. Это действие нельзя отменить.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!confirmed) return;
 
     setActionLoading(true);
     try {
@@ -1827,6 +1836,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         onConfirm={() => void handleClearChat()}
         onClose={() => setConfirmClearChat(false)}
       />
+      {confirmModal}
     </div>
     </>
   );

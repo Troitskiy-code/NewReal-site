@@ -18,6 +18,7 @@ import {
   FaRobot,
   FaCrown,
 } from "react-icons/fa";
+import { LuLock, LuTriangleAlert } from "react-icons/lu";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import FavoriteButton from "@/components/FavoriteButton";
 import PersonaManager from "@/components/PersonaManager";
@@ -231,7 +232,7 @@ export default function ProfilePage() {
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
           <FaUser className="text-4xl opacity-30 text-wd-primary-soft" />
-          <h1 className="text-xl font-black uppercase tracking-tight">{t("profile.title")}</h1>
+          <h1 className="text-xl font-bold tracking-tight">{t("profile.title")}</h1>
           <p className="text-xs text-wd-text-secondary max-w-sm">
             {t("profile.loginPrompt")}
           </p>
@@ -287,11 +288,11 @@ export default function ProfilePage() {
                 {t("header.menu.create")}
               </LocaleLink>
               <LocaleLink
-                href="/gallery"
+                href="/"
                 className="inline-flex items-center gap-2 rounded-[50px] border border-wd-border bg-[#0A0A0A] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:border-wd-secondary"
               >
                 <FaImages className="text-[10px] text-wd-secondary-text" />
-                {t("profile.gallery")}
+                {t("profile.catalog")}
               </LocaleLink>
             </div>
           </div>
@@ -373,7 +374,7 @@ export default function ProfilePage() {
         {/* Characters */}
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-black uppercase tracking-wide text-white">{t("profile.myCharacters")}</h2>
+            <h2 className="text-lg font-bold tracking-tight text-white">{t("profile.myCharacters")}</h2>
             {!loading && (
               <span className="text-xs text-wd-text-secondary">{t("profile.count", { count: total })}</span>
             )}
@@ -385,13 +386,13 @@ export default function ProfilePage() {
             </div>
           ) : error ? (
             <div className="wd-card p-8 text-center">
-              <p className="text-sm font-extrabold uppercase text-wd-primary-soft">{t("common.error")}</p>
+              <p className="text-sm font-semibold text-wd-primary-soft">{t("common.error")}</p>
               <p className="text-xs text-wd-text-secondary max-w-xs mx-auto mt-2">{error}</p>
             </div>
           ) : characters.length === 0 ? (
             <div className="wd-card p-10 text-center space-y-4">
               <FaUser className="text-4xl opacity-20 mx-auto" />
-              <h3 className="text-sm font-extrabold uppercase">{t("profile.empty")}</h3>
+              <h3 className="text-sm font-semibold">{t("profile.empty")}</h3>
               <LocaleLink href="/create" className="wd-button inline-flex px-5 py-2.5 text-xs">
                 {t("profile.createFirst")}
               </LocaleLink>
@@ -426,21 +427,28 @@ export default function ProfilePage() {
                         iconSize={14}
                       />
                       {!character.isPublic && (
-                        <span className={`absolute top-2 left-2 text-[9px] uppercase font-bold px-2 py-0.5 rounded border ${
+                        <span className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold backdrop-blur-sm ${
                           character.moderationStatus === "warning"
                             ? "bg-orange-500/20 text-orange-200 border-orange-500/40"
                             : "bg-[#0A0A0A]/90 text-wd-text-secondary border-wd-border"
                         }`}>
-                          {character.moderationStatus === "warning"
-                            ? `⚠️ ${t("profile.hiddenForViolation")}`
-                            : t("profile.private")}
+                          {character.moderationStatus === "warning" ? (
+                            <>
+                              <LuTriangleAlert aria-hidden className="shrink-0" />
+                              {t("profile.hiddenForViolation")}
+                            </>
+                          ) : (
+                            <>
+                              <LuLock aria-hidden className="shrink-0" />
+                              {t("profile.private")}
+                            </>
+                          )}
                         </span>
                       )}
                     </div>
 
                     <div className="p-4 flex flex-col gap-2 flex-1">
-                      <h3 className="text-sm font-extrabold text-white truncate">
-                        {character.moderationStatus === "warning" && !character.isPublic ? "⚠️ " : ""}
+                      <h3 className="text-sm font-semibold text-white truncate">
                         {name}
                       </h3>
                       <p className="text-xs text-wd-text-secondary line-clamp-3 leading-relaxed flex-1">

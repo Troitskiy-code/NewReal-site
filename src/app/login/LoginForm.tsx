@@ -8,12 +8,14 @@ import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import {
   AUTH_BUTTON_CLASS,
   AUTH_INPUT_CLASS,
+  AuthField,
   AuthCard,
   GoogleAuthButton,
 } from "@/components/AuthCard";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
 import { callbackUrlFromSearchParam } from "@/lib/safeCallbackUrl";
+import { LOGIN_RATE_LIMITED } from "@/lib/authErrors";
 
 type LoginFormProps = {
   googleAuthEnabled: boolean;
@@ -47,7 +49,7 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
     });
 
     if (result?.error) {
-      setError(t("auth.invalidCredentials"));
+      setError(t(result.error === LOGIN_RATE_LIMITED ? "api.rateLimited" : "auth.invalidCredentials"));
     } else {
       reachGoal(METRIKA_GOALS.login);
       router.push(localizedCallback);
@@ -74,22 +76,26 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
         </>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="email"
-          placeholder={t("auth.emailPlaceholder")}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className={AUTH_INPUT_CLASS}
-        />
-        <input
-          type="password"
-          placeholder={t("auth.password")}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className={AUTH_INPUT_CLASS}
-        />
+        <AuthField label={t("auth.emailPlaceholder")}>
+          <input
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
+        <AuthField label={t("auth.password")}>
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
         <button type="submit" id="login-submit" data-metrika="login" className={AUTH_BUTTON_CLASS}>
           {t("auth.login")}
         </button>

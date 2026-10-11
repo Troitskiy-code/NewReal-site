@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   AUTH_BUTTON_CLASS,
   AUTH_INPUT_CLASS,
+  AuthField,
   AuthCard,
 } from "@/components/AuthCard";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
@@ -128,24 +129,28 @@ export default function ResetPasswordPage() {
   return (
     <AuthCard title={t("auth.resetTitle")}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="password"
-          placeholder={t("auth.newPassword")}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          className={AUTH_INPUT_CLASS}
-        />
-        <input
-          type="password"
-          placeholder={t("auth.confirmNewPassword")}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          minLength={MIN_PASSWORD_LENGTH}
-          className={AUTH_INPUT_CLASS}
-        />
+        <AuthField label={t("auth.newPassword")}>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={MIN_PASSWORD_LENGTH}
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
+        <AuthField label={t("auth.confirmNewPassword")}>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={MIN_PASSWORD_LENGTH}
+            className={AUTH_INPUT_CLASS}
+          />
+        </AuthField>
         <button type="submit" disabled={loading} className={AUTH_BUTTON_CLASS}>
           {loading ? t("auth.saving") : t("auth.resetPassword")}
         </button>

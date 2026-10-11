@@ -23,8 +23,31 @@ import {
   isValidAnonymousSessionId,
 } from "./anonymousCookie";
 import type { JWT } from "next-auth/jwt";
+import { consumeIpRateLimit, consumeRateLimit } from "./rateLimit";
+import { LOGIN_RATE_LIMITED } from "./authErrors";
 
 export { isGoogleAuthEnabled };
+
+let dummyPasswordHash: Promise<string> | null = null;
+
+// Compared against when no password exists; same cost factor as stored hashes.
+function getDummyPasswordHash(): Promise<string> {
+  dummyPasswordHash ??= bcrypt.hash("no-such-user", 10);
+  return dummyPasswordHash;
+}
+
+// NextAuth hands authorize() a plain header record rather than a Headers object.
+function nextAuthHeaders(headers: Record<string, unknown> | undefined) {
+  return {
+    headers: {
+      get(name: string): string | null {
+        const value = headers?.[name.toLowerCase()];
+        if (Array.isArray(value)) return typeof value[0] === "string" ? value[0] : null;
+        return typeof value === "string" ? value : null;
+      },
+    },
+  };
+}
 
 function toEmailVerifiedTokenValue(
   value: Date | string | null | undefined
@@ -157,9 +180,19 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       name: "credentials",
       credentials: { email: { label: "Email", type: "email" }, password: { label: "Password", type: "password" } },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error(translate(DEFAULT_LOCALE, "api.missingCredentials"));
+        }
+
+        // Checked before the password hash, so guessing is capped per account and per client.
+        const window = { windowMs: 15 * 60 * 1000 };
+        const ipLimit = await consumeIpRateLimit(nextAuthHeaders(req?.headers), "login", { ...window, limit: 30, sharedLimit: 600 });
+        const emailLimit = ipLimit.ok
+          ? await consumeRateLimit(`login:email:${credentials.email.trim().toLowerCase()}`, 10, window.windowMs)
+          : ipLimit;
+        if (!emailLimit.ok) {
+          throw new Error(LOGIN_RATE_LIMITED);
         }
 
         const user = await prisma.user.findUnique({
@@ -167,13 +200,14 @@ export const authOptions: AuthOptions = {
           select: { id: true, email: true, name: true, password: true, createdAt: true, emailVerified: true },
         });
 
-        if (!user || !user.password) {
-          throw new Error(translate(DEFAULT_LOCALE, "api.userNotFound"));
-        }
-
-        const passwordMatch = await bcrypt.compare(credentials.password, user.password);
-        if (!passwordMatch) {
-          throw new Error(translate(DEFAULT_LOCALE, "api.wrongPassword"));
+        // One error and one bcrypt run for every failure, so neither the message nor the
+        // response time tells whether the email is registered.
+        const passwordMatch = await bcrypt.compare(
+          credentials.password,
+          user?.password || (await getDummyPasswordHash())
+        );
+        if (!user?.password || !passwordMatch) {
+          throw new Error(translate(DEFAULT_LOCALE, "auth.invalidCredentials"));
         }
 
         return {

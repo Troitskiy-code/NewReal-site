@@ -21,7 +21,28 @@ export async function consumeRateLimit(key: string, limit: number, windowMs: num
   return { ok: true, remaining: Math.max(0, limit - row.count) };
 }
 
-export function clientKeyFromRequest(req: { headers: { get(name: string): string | null } }): string {
+type HeaderSource = { headers: { get(name: string): string | null } };
+
+/**
+ * Per-IP limit. Without TRUST_PROXY the client IP is unknown, so every caller shares one
+ * bucket with the larger sharedLimit: a backstop against floods that rarely hits real users.
+ */
+export function consumeIpRateLimit(
+  req: HeaderSource,
+  scope: string,
+  { limit, sharedLimit, windowMs }: { limit: number; sharedLimit: number; windowMs: number }
+): Promise<RateLimitResult> {
+  const ip = clientKeyFromRequest(req);
+  return ip === "unknown"
+    ? consumeRateLimit(`${scope}:shared`, sharedLimit, windowMs)
+    : consumeRateLimit(`${scope}:ip:${ip}`, limit, windowMs);
+}
+
+export function retryAfterSeconds(result: RateLimitResult): string {
+  return String("retryAfterMs" in result ? Math.max(1, Math.ceil(result.retryAfterMs / 1000)) : 0);
+}
+
+export function clientKeyFromRequest(req: HeaderSource): string {
   if (process.env['TRUST_PROXY'] === "1") {
     const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     if (forwarded) return forwarded;

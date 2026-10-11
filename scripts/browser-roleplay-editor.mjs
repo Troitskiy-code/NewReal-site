@@ -62,6 +62,7 @@ try {
     if (url.pathname === '/api/avatar-tokens') return json({ tokensUsedThisMonth: 0, monthlyLimit: 10, monthlyRemaining: 10 });
     if (url.pathname === '/api/user/balance') return json({ verseCoins: 50, canClaimBonus: false, bonusStreak: 0 });
     if (url.pathname === '/api/currency/rates') return json({ USD: 85, EUR: 95 });
+    if (url.pathname === '/api/generate-avatar' && request.method() === 'GET') return json({ state: 'none' });
     if (/^\/api\/(?:generate-avatar|chat\/|payment\/create|generation)/.test(url.pathname)) { paidRequests++; return route.abort(); }
     if (url.pathname.startsWith('/api/')) return json([]);
     return route.continue();
@@ -113,11 +114,11 @@ try {
   check(await page.locator('#descriptionCard').isVisible() && await page.locator('#scenario').isVisible(), 'catalog description and initial situation are in main form');
   check(await page.locator('#exampleDialogs').count() === 0, 'examples are hidden in optional settings');
   await page.locator('#name').fill('Временная идея');
-  page.once('dialog', dialog => dialog.dismiss());
   await page.getByRole('button', { name: /Выбрать другой тип/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Остаться' }).click();
   check(await page.locator('#name').inputValue() === 'Временная идея' && new URL(page.url()).pathname === '/ru/create/character', 'cancelled type change keeps an unsaved draft');
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: /Выбрать другой тип/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Вернуться' }).click();
   await page.getByRole('link', { name: 'Вселенная', exact: true }).click();
   await page.locator('#npcs').waitFor();
   check(new URL(page.url()).pathname === '/ru/create/world', 'universe card navigates to its own editor');
@@ -165,8 +166,8 @@ try {
   await page.screenshot({ path: 'docs/roleplay-editor-local-qa/group-mobile.png', fullPage: false });
   await page.getByRole('heading', { name: /Персонажи истории/ }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'docs/roleplay-editor-local-qa/group-members-mobile.png', fullPage: false });
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Убрать персонажа', exact: true }).last().click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Убрать', exact: true }).click();
   check(await page.getByRole('button', { name: 'Добавить персонажа', exact: true }).isEnabled(), 'removing a member frees one slot');
   await page.getByRole('button', { name: 'Добавить персонажа', exact: true }).click();
   await page.getByRole('textbox', { name: 'Имя персонажа 8', exact: true }).fill('Новый герой');

@@ -2,6 +2,7 @@
 
 import LocaleLink from "@/components/LocaleLink";
 import { FaComment, FaUser } from "react-icons/fa";
+import { LuTriangleAlert } from "react-icons/lu";
 import { useTranslation } from "react-i18next";
 import FavoriteButton from "@/components/FavoriteButton";
 import { getLocalizedCardDescription, pickLocalizedText, stripLeadingName } from "@/lib/characterFields";
@@ -71,7 +72,8 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
 
           {character.moderationStatus === "warning" && character.isPublic === false && (
             <span className="absolute left-2 top-2 max-w-[calc(100%-4rem)] rounded-full border border-orange-500/50 bg-black/70 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-orange-200 backdrop-blur-sm md:left-3 md:top-3">
-              ⚠️ {t("moderation.hiddenBadge")}
+              <LuTriangleAlert aria-hidden className="mr-1 inline-block align-[-2px]" />
+              {t("moderation.hiddenBadge")}
             </span>
           )}
 

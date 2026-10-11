@@ -7,8 +7,10 @@ import { FaEdit, FaGlobe, FaPlus, FaTrash, FaUser } from "react-icons/fa";
 import type { ChatPersona } from "@/lib/persona";
 import PersonaForm, { type PersonaFormValues } from "@/components/PersonaForm";
 import LoadErrorBlock from "@/components/LoadErrorBlock";
+import { useConfirm } from "@/components/useConfirm";
 
 export default function PersonaManager() {
+  const [confirm, confirmModal] = useConfirm();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -87,7 +89,13 @@ export default function PersonaManager() {
   };
 
   const handleDelete = async (persona: ChatPersona) => {
-    if (!window.confirm(`Удалить личность «${persona.name}»? Она отвяжется от всех чатов.`)) {
+    const confirmed = await confirm({
+      title: `Удалить личность «${persona.name}»?`,
+      description: "Она отвяжется от всех чатов. Это действие нельзя отменить.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -108,7 +116,7 @@ export default function PersonaManager() {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-black uppercase tracking-wide text-white">Мои личности</h2>
+        <h2 className="text-lg font-bold tracking-tight text-white">Мои личности</h2>
         {!loading && (
           <span className="text-xs text-wd-text-secondary">{personas.length} шт.</span>
         )}
@@ -238,6 +246,7 @@ export default function PersonaManager() {
           )}
         </>
       )}
+      {confirmModal}
     </section>
   );
 }

@@ -235,7 +235,7 @@ export default function EditCharacterPage() {
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <FaUser className="text-4xl text-wd-primary-soft opacity-30" />
-          <h1 className="text-xl font-black uppercase tracking-tight">Редактирование карточки</h1>
+          <h1 className="text-xl font-bold tracking-tight">Редактирование карточки</h1>
           <p className="max-w-sm text-xs text-wd-text-secondary">
             Войдите в аккаунт, чтобы редактировать карточки.
           </p>
@@ -252,7 +252,7 @@ export default function EditCharacterPage() {
     return (
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-          <p className="text-sm font-extrabold uppercase text-wd-primary-soft">Ошибка</p>
+          <p className="text-sm font-semibold text-wd-primary-soft">Ошибка</p>
           <p className="max-w-sm text-xs text-wd-text-secondary">{error}</p>
           <Link href="/profile" className="wd-button px-6 py-2.5 text-sm">
             Вернуться в профиль

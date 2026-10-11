@@ -33,7 +33,7 @@ import {
   type EconomyModel,
 } from "@/lib/verseChatEconomy";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
-import { spendCoins } from "@/lib/verseCoins";
+import { getPermanentCoins, spendCoins } from "@/lib/verseCoins";
 import { debugLog, infoLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
 import { chatModelGenerationOptions, chatModelRequestTimeoutMs, isRetiredChatModel, NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
@@ -935,7 +935,16 @@ export async function streamChatCompletion(
   );
 }
 
-export async function chargeForChatRequest({
+export type ChatChargeReservation =
+  | { ok: false; balance: number }
+  | { ok: true; remainingVC: number; refund: () => Promise<void> };
+
+/**
+ * Debits the request cost before generation. The user row is locked, so parallel
+ * requests cannot each pass the balance check and a concurrent grant is never overwritten.
+ * Callers must refund() if the reply is not stored.
+ */
+export async function reserveChatCharge({
   userId,
   costVC,
   characterName,
@@ -945,54 +954,71 @@ export async function chargeForChatRequest({
   costVC: number;
   characterName: string;
   modelDisplayName: string;
-}) {
-  const updatedUser = await prisma.$transaction(async (tx) => {
-    const current = await tx.user.findUnique({
-      where: { id: userId },
-      select: { verseCoins: true, permanentCoins: true },
-    });
-
+}): Promise<ChatChargeReservation> {
+  const reserved = await prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<{ verseCoins: number; permanentCoins: number | null }[]>`
+      SELECT "verseCoins", "permanentCoins" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const current = rows[0];
     if (!current) {
       throw new Error("Пользователь не найден");
     }
+    if (costVC <= 0) {
+      return { ok: true as const, remainingVC: current.verseCoins, fromPermanent: 0, transactionId: null };
+    }
+    if (current.verseCoins < costVC) {
+      return { ok: false as const, balance: current.verseCoins };
+    }
 
-    const nextCoins =
-      costVC > 0
-        ? spendCoins(
-            { verseCoins: current.verseCoins, permanentCoins: current.permanentCoins },
-            costVC
-          )
-        : current;
-
-    return tx.user.update({
+    const nextCoins = spendCoins(current, costVC);
+    await tx.user.update({
       where: { id: userId },
-      data: {
-        verseCoins: nextCoins.verseCoins,
-        permanentCoins: nextCoins.permanentCoins,
-      },
-      select: { verseCoins: true, permanentCoins: true },
+      data: { verseCoins: nextCoins.verseCoins, permanentCoins: nextCoins.permanentCoins },
     });
-  });
-
-  if (costVC > 0) {
-    await prisma.transaction.create({
+    const transaction = await tx.transaction.create({
       data: {
         userId,
         amount: -costVC,
         type: "chat",
         description: `Чат: ${characterName}, модель ${modelDisplayName}`,
       },
+      select: { id: true },
     });
+    return {
+      ok: true as const,
+      remainingVC: nextCoins.verseCoins,
+      fromPermanent: getPermanentCoins(current) - nextCoins.permanentCoins,
+      transactionId: transaction.id,
+    };
+  });
+
+  if (reserved.ok === false) {
+    return reserved;
   }
 
-  debugLog(
-    "Chat",
-    `После отправки user=${userId} осталось ${updatedUser.verseCoins} VC (списано ${costVC})`
-  );
+  debugLog("Chat", `Зарезервировано ${costVC} VC user=${userId}, осталось ${reserved.remainingVC} VC`);
 
-  return {
-    remainingVC: updatedUser.verseCoins,
+  let refunded = false;
+  const refund = async () => {
+    if (refunded || !reserved.transactionId) return;
+    refunded = true;
+    try {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            verseCoins: { increment: costVC },
+            permanentCoins: { increment: reserved.fromPermanent },
+          },
+        }),
+        prisma.transaction.delete({ where: { id: reserved.transactionId } }),
+      ]);
+      debugLog("Chat", `Возвращено ${costVC} VC user=${userId}: ответ не сохранён`);
+    } catch (error) {
+      errorLog("Chat", "VC refund failed", toSafeDiagnostic(error), { userId, costVC });
+    }
   };
+
+  return { ok: true, remainingVC: reserved.remainingVC, refund };
 }
 
 export function buildChatResponsePayload({

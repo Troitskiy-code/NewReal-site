@@ -6,9 +6,19 @@ import { apiT, getApiLocale } from "@/lib/apiI18n";
 import { isLocale } from "@/lib/i18nConfig";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { emailDomain } from "@/lib/redactSensitive";
+import { consumeIpRateLimit, consumeRateLimit, retryAfterSeconds, type RateLimitResult } from "@/lib/rateLimit";
+
+const HOUR_MS = 60 * 60 * 1000;
 
 function success() {
   return NextResponse.json({ success: true });
+}
+
+function rateLimited(req: NextRequest, result: RateLimitResult) {
+  return NextResponse.json(
+    { error: apiT(req, "api.rateLimited") },
+    { status: 429, headers: { "Retry-After": retryAfterSeconds(result) } }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -19,6 +29,12 @@ export async function POST(req: NextRequest) {
     if (!email) {
       return NextResponse.json({ error: apiT(req, "api.emailRequired") }, { status: 400 });
     }
+
+    // Applied whether or not the account exists, so the limit reveals nothing about it.
+    const ipLimit = await consumeIpRateLimit(req, "forgot-password", { limit: 10, sharedLimit: 100, windowMs: HOUR_MS });
+    if (!ipLimit.ok) return rateLimited(req, ipLimit);
+    const emailLimit = await consumeRateLimit(`forgot-password:email:${email.toLowerCase()}`, 3, HOUR_MS);
+    if (!emailLimit.ok) return rateLimited(req, emailLimit);
 
     const user = await prisma.user.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },

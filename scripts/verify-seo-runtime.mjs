@@ -96,7 +96,9 @@ try {
     check(character.body.includes(locale === 'ru' ? 'Публичное описание 1' : 'Public description 1'), `${locale}: localized SSR description`);
     check(character.body.includes(`rel="canonical" href="https://newvers.ai/${locale}/character/seo-hero-1"`), `${locale}: canonical`);
     for (const sentinel of ['PRIVATE_MEMORY_SENTINEL', 'SYSTEM_PROMPT_SENTINEL', 'MODERATION_SENTINEL']) check(!character.body.includes(sentinel), `public payload omits ${sentinel}`);
-    for (const path of [`/${locale}`, `/${locale}/gallery`]) {
+    const gallery = await request(`/${locale}/gallery?page=2`);
+    check(gallery.status === 308 && gallery.headers.get('location')?.endsWith(`/${locale}?page=2`), `/${locale}/gallery: permanent redirect to catalog`);
+    for (const path of [`/${locale}`]) {
       const catalog = await request(path);
       check(catalog.status === 200 && /<h1[^>]*>/.test(catalog.body), `${path}: SSR H1`);
       check(catalog.body.includes(`href="/${locale}/character/seo-hero-1"`), `${path}: SSR public links`);
@@ -109,7 +111,7 @@ try {
     const response = await request(`/${locale}/character/seo-hero-1`);
     check(response.body.match(/<h1[^>]*>(.*?)<\/h1>/s)?.[1] === (locale === 'ru' ? 'Герой SEO 1' : 'SEO hero 1'), 'concurrent requests keep their locale');
   }));
-  const secondPage = await request('/ru/gallery?page=2');
+  const secondPage = await request('/ru?page=2');
   check(secondPage.body.includes('href="/ru/character/seo-hero-25"') && !secondPage.body.includes('href="/ru/character/seo-hero-1"'), 'server pagination uses requested page');
   const search = await request('/en?q=SEO%20hero%2026');
   check(search.body.includes('href="/en/character/seo-hero-26"') && !search.body.includes('href="/en/character/seo-hero-1"'), 'server q search uses English fields');

@@ -76,7 +76,7 @@ export default function ReferralPage() {
       <div className="min-h-dvh flex flex-col bg-bg-page text-primary-text">
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 text-center gap-4">
           <FaUserFriends className="text-4xl opacity-30 text-primary-soft" />
-          <h1 className="text-xl font-black uppercase tracking-tight">Реферальная программа</h1>
+          <h1 className="text-xl font-bold tracking-tight">Реферальная программа</h1>
           <p className="text-xs text-secondary-text max-w-sm">Войдите, чтобы получить реферальную ссылку</p>
           <Link
             href="/login"
@@ -94,7 +94,7 @@ export default function ReferralPage() {
     <div className="min-h-dvh flex flex-col bg-bg-page select-none text-primary-text overflow-hidden">
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-8 sm:px-6 lg:px-8 flex flex-col gap-6 overflow-y-auto scrollbar-subtle">
         <div className="space-y-1 border-b border-divider/40 pb-4">
-          <h1 className="text-2xl font-black tracking-tight uppercase flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <FaUserFriends className="text-primary-soft" />
             Реферальная программа
           </h1>
@@ -105,7 +105,7 @@ export default function ReferralPage() {
 
         {error ? (
           <div className="flex flex-col items-center text-center py-12 bg-bg-card/20 rounded border border-red-500/30 gap-3">
-            <p className="text-sm font-extrabold uppercase text-red-500">Ошибка</p>
+            <p className="text-sm font-semibold text-red-500">Ошибка</p>
             <p className="text-xs text-secondary-text">{error}</p>
             <button
               type="button"

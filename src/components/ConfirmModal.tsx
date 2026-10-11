@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 type ConfirmModalProps = {
   open: boolean;
   title: string;
@@ -23,6 +25,15 @@ export default function ConfirmModal({
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
+  useEffect(() => {
+    if (!open || loading) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, loading, onClose]);
+
   if (!open) return null;
 
   return (

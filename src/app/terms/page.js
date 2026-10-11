@@ -10,7 +10,7 @@ export default function TermsPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="mb-8 text-3xl font-black uppercase tracking-tight text-white">
+        <h1 className="mb-8 text-3xl font-bold tracking-tight text-white">
           Пользовательское соглашение NewVerse
         </h1>
 

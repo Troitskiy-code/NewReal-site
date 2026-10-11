@@ -6,6 +6,7 @@ import { ensureUserConsentColumns, isAcceptedFlag } from "@/lib/ensureUserConsen
 import { applySignupBenefits } from "@/lib/provisionNewUser";
 import { createAndSendVerificationEmail } from "@/lib/emailVerification";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { consumeIpRateLimit, retryAfterSeconds } from "@/lib/rateLimit";
 
 async function generateUniqueReferralCode(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -32,6 +33,15 @@ export async function POST(req: NextRequest) {
 
     if (!isAcceptedFlag(acceptedTerms) || !isAcceptedFlag(acceptedOffer) || !isAcceptedFlag(acceptedRules)) {
       return NextResponse.json({ error: apiT(req, "api.consentRequired") }, { status: 400 });
+    }
+
+    // Before the existence check, so the "user exists" answer cannot be harvested in bulk.
+    const limited = await consumeIpRateLimit(req, "register", { limit: 5, sharedLimit: 300, windowMs: 60 * 60 * 1000 });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: apiT(req, "api.rateLimited") },
+        { status: 429, headers: { "Retry-After": retryAfterSeconds(limited) } }
+      );
     }
 
     const existingUser = await prisma.user.findUnique({

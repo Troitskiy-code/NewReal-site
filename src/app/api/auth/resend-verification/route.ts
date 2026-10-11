@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { apiT, getApiLocale } from "@/lib/apiI18n";
 import { createAndSendVerificationEmail, isEmailVerified } from "@/lib/emailVerification";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { consumeRateLimit, retryAfterSeconds } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,6 +31,14 @@ export async function POST(req: NextRequest) {
 
     if (isEmailVerified(user)) {
       return NextResponse.json({ error: apiT(req, "api.emailAlreadyVerified") }, { status: 400 });
+    }
+
+    const limited = await consumeRateLimit(`resend-verification:user:${user.id}`, 3, 60 * 60 * 1000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: apiT(req, "api.rateLimited") },
+        { status: 429, headers: { "Retry-After": retryAfterSeconds(limited) } }
+      );
     }
 
     try {

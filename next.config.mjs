@@ -15,6 +15,13 @@ const nextConfig = {
     '/*': ['./.env', './.env.*', './.git/**/*'],
   },
   serverExternalPackages: ["tiktoken", "jimp", "sharp", "@jsquash/webp", "@logtail/node", "@logtail/core"],
+  async redirects() {
+    return [
+      // The prototype /gallery duplicated the home catalog; keep indexed links working (query is preserved).
+      { source: "/:locale(ru|en)/gallery", destination: "/:locale", permanent: true },
+      { source: "/gallery", destination: "/", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

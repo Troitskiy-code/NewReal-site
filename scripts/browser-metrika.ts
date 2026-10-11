@@ -325,7 +325,7 @@ async function main() {
     await latePage.goto(`${base}/ru/coins?InvId=1005`, { waitUntil: "domcontentloaded" });
     await latePage.waitForTimeout(800);
     assert(!(await goalNames(latePage)).includes("vc_purchase_success"), "late webhook: no goal before confirmation");
-    await latePage.goto(`${base}/ru/gallery`, { waitUntil: "domcontentloaded" });
+    await latePage.goto(`${base}/ru/pricing`, { waitUntil: "domcontentloaded" });
     await latePage.waitForTimeout(500);
     await latePage.goto(`${base}/ru/coins`, { waitUntil: "domcontentloaded" });
     const lateGoals = await waitForGoal(latePage, "vc_purchase_success", 40000);

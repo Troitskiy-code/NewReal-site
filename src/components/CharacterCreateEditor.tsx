@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
+import { useConfirm } from "@/components/useConfirm";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
 import CharacterForm, {
@@ -30,6 +31,7 @@ export default function CharacterCreateEditor({ initialMode }: { initialMode: Ro
   const router = useRouter();
   const locale = useCurrentLocale();
 
+  const [confirm, confirmModal] = useConfirm();
   const [form, setForm] = useState<CharacterFormValues>(() => ({ ...EMPTY_CHARACTER_FORM, roleplayMode: initialMode }));
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -156,7 +158,7 @@ export default function CharacterCreateEditor({ initialMode }: { initialMode: Ro
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <FaUser className="text-4xl text-wd-primary-soft opacity-30" />
-          <h1 className="text-xl font-black uppercase tracking-tight">Создание персонажа</h1>
+          <h1 className="text-xl font-bold tracking-tight">Создание персонажа</h1>
           <p className="max-w-sm text-xs text-wd-text-secondary">
             Войдите в аккаунт, чтобы создавать и сохранять персонажей.
           </p>
@@ -174,9 +176,10 @@ export default function CharacterCreateEditor({ initialMode }: { initialMode: Ro
       <main className="flex w-full flex-1 flex-col overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:py-8 lg:px-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 md:gap-8">
           <header className="space-y-1 border-b border-[#2A2A2A] pb-4 md:pb-5">
-            <button type="button" className="mb-3 text-sm text-[#A0A0A0] underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-wd-secondary" onClick={() => {
+            <button type="button" className="mb-3 text-sm text-[#A0A0A0] underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-wd-secondary" onClick={async () => {
               const hasDraft = Object.entries(form).some(([key, value]) => typeof value === "string" && !["roleplayMode", "roleplayStyle"].includes(key) && value.trim()) || Object.values(form.rpConfig).some(value => Array.isArray(value) ? value.length > 0 : Boolean(value)) || avatarPreview || loraPreview;
-              if (!hasDraft || window.confirm("Вернуться к выбору типа? Несохранённый черновик будет потерян.")) router.push(withLocale("/create", locale));
+              if (hasDraft && !(await confirm({ title: "Вернуться к выбору типа?", description: "Несохранённый черновик будет потерян.", confirmLabel: "Вернуться", cancelLabel: "Остаться", danger: true }))) return;
+              router.push(withLocale("/create", locale));
             }}>← Выбрать другой тип</button>
             <h1 className="text-xl font-bold text-white md:text-2xl">{initialMode === "character" ? "Создать персонажа" : initialMode === "world" ? "Создать вселенную" : "Создать историю с несколькими персонажами"}</h1>
             <p className="text-sm text-[#A0A0A0]">
@@ -256,6 +259,7 @@ export default function CharacterCreateEditor({ initialMode }: { initialMode: Ro
       </main>
 
       <Footer />
+      {confirmModal}
     </div>
   );
 }

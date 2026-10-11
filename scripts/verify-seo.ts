@@ -18,7 +18,7 @@ for (const page of ["login", "register", "create", "edit", "profile", "referral"
   const metadata = pageIndexingMetadata(page, "ru", origin);
   check((metadata.robots as { index: boolean }).index === false && !metadata.alternates, `${page}: noindex without homepage canonical`);
 }
-for (const page of ["home", "gallery"]) {
+for (const page of ["home"]) {
   const base = pageIndexingMetadata(page, "ru", origin);
   const tracked = pageIndexingMetadata(page, "ru", origin, { etext: "ad", ybaip: "ad", utm_source: "direct", sort: "top", page: "1" });
   check(tracked.alternates?.canonical === base.alternates?.canonical, `${page}: advertising/default queries normalized`);
