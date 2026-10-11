@@ -11,15 +11,11 @@ import ModerationWarning from "@/components/ModerationWarning";
 import {
   FaChevronDown,
   FaCog,
-  FaCommentDots,
-  FaIdCard,
   FaImage,
-  FaInfoCircle,
   FaBook,
   FaMagic,
   FaSpinner,
   FaTags,
-  FaUser,
 } from "react-icons/fa";
 import { CHARACTER_LIMITS } from "@/lib/characterFields";
 import { MEMORY_CONTENT_LIMIT } from "@/lib/persistentMemory";
@@ -33,6 +29,7 @@ import {
 } from "@/lib/avatarModels";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
 import RoleplayPromptSettings from "@/components/RoleplayPromptSettings";
+import RoleplayCardFields from "@/components/RoleplayCardFields";
 import type { RoleplayConfig, RoleplayMode, RoleplayStyle } from "@/lib/roleplayConfig";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
@@ -214,6 +211,7 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
 
 type CharacterFormProps = {
   characterId?: string;
+  showModePicker?: boolean;
   values: CharacterFormValues;
   onChange: <K extends keyof CharacterFormValues>(field: K, value: CharacterFormValues[K]) => void;
   avatarPreview: string | null;
@@ -263,6 +261,7 @@ export default function CharacterForm(props: CharacterFormProps) {
 
 function CharacterFormContent({
   characterId,
+  showModePicker = true,
   values,
   onChange,
   avatarPreview,
@@ -327,7 +326,7 @@ function CharacterFormContent({
 
   const handleGenerateAvatar = async () => {
     if (!values.name.trim()) {
-      setLocalErrors((current) => ({ ...current, name: "Сначала укажите имя персонажа" }));
+      setLocalErrors((current) => ({ ...current, name: "Сначала укажите имя или название" }));
       return;
     }
 
@@ -346,6 +345,7 @@ function CharacterFormContent({
       const referenceImage = await resolveReferenceImage(loraPreview, loraFile);
       const { data } = await axios.post<{ imageUrl: string; tokenStatus?: AvatarLimitStatus }>("/api/generate-avatar", {
         name: values.name.trim(),
+        roleplayMode: values.roleplayMode,
         appearance: values.appearance.trim() || undefined,
         description: values.description.trim() || undefined,
         scenario: values.scenario.trim() || undefined,
@@ -371,7 +371,7 @@ function CharacterFormContent({
             }
           : prev)
       );
-      showSuccess("Аватар сгенерирован");
+      showSuccess(values.roleplayMode === "character" ? "Аватар сгенерирован" : "Обложка сгенерирована");
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       const serverError =
@@ -396,87 +396,9 @@ function CharacterFormContent({
   return (
     <div className="space-y-4 text-base md:space-y-8">
       {isWarned && <ModerationWarning reason={moderationReason} />}
-      <FormBlock title="Имя персонажа" icon={FaUser}>
-        <input
-          id="name"
-          type="text"
-          value={values.name}
-          onChange={(e) => {
-            onChange("name", e.target.value);
-            if (localErrors.name) setLocalErrors((current) => ({ ...current, name: undefined }));
-            onClearError?.("name");
-          }}
-          placeholder="Введите имя персонажа"
-          className={`${INPUT_CLASS} ${localErrors.name || errors?.name ? "border-red-500" : ""}`}
-        />
-        {(localErrors.name || errors?.name) && (
-          <p className="text-xs text-red-400">{localErrors.name || errors?.name}</p>
-        )}
-      </FormBlock>
-
-      <FormBlock
-        title="Внешность"
-        icon={FaImage}
-        hints={[
-          hintWithCounter(
-            "Влияет на поведение и генерацию изображений.",
-            values.appearance,
-            CHARACTER_LIMITS.appearance
-          ),
-        ]}
-      >
-        <LimitedTextarea
-          id="appearance"
-          value={values.appearance}
-          onChange={(v) => onChange("appearance", v)}
-          maxLength={CHARACTER_LIMITS.appearance}
-          rows={5}
-          placeholder="Опишите внешность персонажа..."
-        />
-      </FormBlock>
-
-      <FormBlock
-        title="Описание персонажа"
-        icon={FaInfoCircle}
-        hints={[
-          hintWithCounter(
-            "Расскажи про персонажа: его характер, поведение, привычки, личную историю. Чем больше деталей, тем живее персонаж!",
-            values.description,
-            CHARACTER_LIMITS.description
-          ),
-          "Влияет на поведение персонажа.",
-        ]}
-      >
-        <LimitedTextarea
-          id="description"
-          value={values.description}
-          onChange={(v) => onChange("description", v)}
-          maxLength={CHARACTER_LIMITS.description}
-          rows={6}
-          placeholder="Характер, манера речи, предыстория..."
-        />
-      </FormBlock>
-
-      <FormBlock
-        title="Первое сообщение"
-        icon={FaCommentDots}
-        hints={[
-          hintWithCounter(
-            "Опишите начало сцены, первые слова персонажа. Первое сообщение при начале беседы.",
-            values.greeting,
-            CHARACTER_LIMITS.greeting
-          ),
-        ]}
-      >
-        <LimitedTextarea
-          id="greeting"
-          value={values.greeting}
-          onChange={(v) => onChange("greeting", v)}
-          maxLength={CHARACTER_LIMITS.greeting}
-          rows={5}
-          placeholder="Первые слова персонажа при начале чата..."
-        />
-      </FormBlock>
+      <RoleplayCardFields values={values} onChange={onChange} showModePicker={showModePicker} nameError={localErrors.name || errors?.name} onClearNameError={() => {
+        setLocalErrors(current => ({ ...current, name: undefined })); onClearError?.("name");
+      }} />
 
       <section className="overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#0A0A0A]">
         <button
@@ -496,28 +418,10 @@ function CharacterFormContent({
 
         {advancedOpen && (
           <div className="space-y-4 border-t border-[#2A2A2A] p-3 md:space-y-8 md:p-4">
-            <FormBlock
-              title={values.roleplayMode === "world" ? "Исходный сценарий мира" : "Исходный сценарий и окружение"}
-              hints={[
-                hintWithCounter(
-                  "Пара предложений о том, что происходит или будет происходить. ИИ будет стараться следовать сценарию.",
-                  values.scenario,
-                  CHARACTER_LIMITS.scenario
-                ),
-              ]}
-            >
-              <LimitedTextarea
-                id="scenario"
-                value={values.scenario}
-                onChange={(v) => onChange("scenario", v)}
-                maxLength={CHARACTER_LIMITS.scenario}
-                rows={4}
-                placeholder="Пара предложений о том, что происходит или будет происходить..."
-              />
-            </FormBlock>
+            <RoleplayPromptSettings characterId={characterId} values={values} onChange={onChange} />
 
             <FormBlock
-              title="Примеры диалогов"
+              title="Образцы реплик — необязательно"
               hints={[
                 hintWithCounter(
                   "Используйте {{char}} для реплик персонажа и {{user}} для реплик пользователя.",
@@ -537,17 +441,16 @@ function CharacterFormContent({
               />
             </FormBlock>
 
-            <FormBlock title="Аватар для улучшенной генерации">
+            <FormBlock title={values.roleplayMode === "character" ? "Аватар для улучшенной генерации" : "Изображение-образец для обложки"}>
               <p className={HINT_CLASS}>
-                Используется для улучшенной генерации изображений: по этой фотографии система будет
-                точнее повторять образ, черты лица и внешний вид персонажа.
+                {values.roleplayMode === "character" ? "По этой фотографии система точнее повторяет образ и внешний вид персонажа." : "Необязательный образец для сохранения композиции и стиля обложки."}
               </p>
               <ul className={`list-disc space-y-1 pl-5 ${HINT_CLASS}`}>
                 <li>
-                  Если не загрузить, генерация будет ориентироваться на обычный аватар персонажа.
+                  {values.roleplayMode === "character" ? "Если не загрузить, генерация будет ориентироваться на обычный аватар персонажа." : "Если не загрузить, генерация будет ориентироваться на описание истории."}
                 </li>
                 <li>
-                  Лучше всего подходит четкое изображение лица или полный образ без лишних деталей.
+                  {values.roleplayMode === "character" ? "Лучше всего подходит чёткое изображение лица или полный образ." : "Используйте изображение, близкое к желаемой сцене."}
                 </li>
               </ul>
               <ImageUploadField
@@ -561,32 +464,11 @@ function CharacterFormContent({
         )}
       </section>
 
-      <FormBlock
-        title="Описание карточки персонажа"
-        icon={FaIdCard}
-        hints={[
-          hintWithCounter(
-            "Не влияет на поведение персонажа. Эта информация появится в карточке персонажа.",
-            values.descriptionCard,
-            CHARACTER_LIMITS.descriptionCard
-          ),
-        ]}
-      >
-        <LimitedTextarea
-          id="descriptionCard"
-          value={values.descriptionCard}
-          onChange={(v) => onChange("descriptionCard", v)}
-          maxLength={CHARACTER_LIMITS.descriptionCard}
-          rows={3}
-          placeholder="Краткий текст для карточки в галерее..."
-        />
-      </FormBlock>
-
       <FormBlock title="Теги" icon={FaTags}>
         <CharacterTagPicker value={values.tags} onChange={(v) => onChange("tags", v)} />
       </FormBlock>
 
-      <FormBlock title="Аватар персонажа" icon={FaImage}>
+      <FormBlock title={values.roleplayMode === "character" ? "Аватар персонажа — необязательно" : "Обложка истории"} icon={FaImage}>
         <ImageUploadField
           preview={avatarPreview}
           onChange={(event) => {
@@ -599,7 +481,7 @@ function CharacterFormContent({
         />
         <div className="space-y-3">
           <label htmlFor="avatarPrompt" className="block text-sm font-medium text-white">
-            Описание для генерации аватара
+            {values.roleplayMode === "character" ? "Описание для генерации аватара" : "Описание для генерации обложки"}
           </label>
           <LimitedTextarea
             id="avatarPrompt"
@@ -607,11 +489,11 @@ function CharacterFormContent({
             onChange={(v) => onChange("avatarPrompt", v)}
             maxLength={CHARACTER_LIMITS.avatarPrompt}
             rows={4}
-            placeholder="Опишите образ для генерации аватара..."
+            placeholder={values.roleplayMode === "character" ? "Опишите образ для генерации аватара..." : "Опишите сцену и композицию обложки..."}
           />
           <p className={HINT_CLASS}>
             {hintWithCounter(
-              "Если заполнено, используется для создания аватара вместо автоматического промпта из внешности и описания.",
+              "Если заполнено, используется для генерации изображения вместо автоматического описания.",
               values.avatarPrompt,
               CHARACTER_LIMITS.avatarPrompt
             )}
@@ -708,14 +590,15 @@ function CharacterFormContent({
             ) : (
               <FaMagic className="text-sm" />
             )}
-            {generatingAvatar ? "Генерация..." : "Сгенерировать аватар"}
+            {generatingAvatar ? "Генерация..." : values.roleplayMode === "character" ? "Сгенерировать аватар" : "Сгенерировать обложку"}
           </button>
         </div>
       </FormBlock>
 
-      <section>
+      <details className="rounded-lg border border-[#2A2A2A] p-4">
+        <summary className="cursor-pointer font-semibold">Начальные сведения и секреты — необязательно</summary>
         <FormBlock
-          title="Память персонажа"
+          title="Память истории — необязательно"
           icon={FaBook}
         >
           <div className="space-y-4">
@@ -761,9 +644,8 @@ function CharacterFormContent({
             </div>
           </div>
         </FormBlock>
-      </section>
+      </details>
 
-      <RoleplayPromptSettings characterId={characterId} values={values} onChange={onChange} />
 
       <section className="space-y-3">
         <VisibilityToggle isPublic={values.isPublic} onChange={(v) => onChange("isPublic", v)} />

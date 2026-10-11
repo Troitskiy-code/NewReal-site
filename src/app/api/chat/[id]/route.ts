@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOrCreatePromptState } from "@/lib/promptState";
+import { getOrCreatePromptState, assertPromptStateAvailable, GroupPromptUnavailableError } from "@/lib/promptState";
+import { PromptBudgetError } from "@/lib/chatSystemPrompt";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import {
   scheduleMessageEmbedding,
@@ -180,7 +181,7 @@ async function handlePost(
     let continueCutOff = false;
 
     // Pin before inserting the first greeting/user turn, so a new chat is not mistaken for legacy history.
-    await getOrCreatePromptState(`user:${session.user.id}`, id, character);
+    assertPromptStateAvailable(await getOrCreatePromptState(`user:${session.user.id}`, id, character), character.rpConfig);
 
     if (continueChat) {
       lastAssistant = await prisma.message.findFirst({
@@ -446,6 +447,8 @@ async function handlePost(
     });
   } catch (error) {
     scheduleTurnMemory(null);
+    if (error instanceof GroupPromptUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error instanceof PromptBudgetError) return NextResponse.json({ error: error.message }, { status: 400 });
     errorLog("Server", "Chat error:", toSafeDiagnostic(error));
     if (defaultShouldRetry(error)) {
       return NextResponse.json(

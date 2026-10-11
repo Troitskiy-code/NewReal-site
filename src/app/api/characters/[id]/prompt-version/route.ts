@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isPromptV2Enabled } from "@/lib/promptState";
+import { validateGroupConfig } from "@/lib/roleplayConfig";
+import { ClientInputError } from "@/lib/publicError";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +18,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const result = await prisma.$transaction(async tx => {
       const card = await tx.character.findUnique({ where: { id } });
       if (!card || card.userId !== session.user.id) return null;
+      if (card.roleplayMode === "group" && body.version === 1) throw new ClientInputError("Групповая карточка требует новой сборки. Сначала смените тип карточки и сохраните её.");
+      if (body.version === 2) validateGroupConfig(card.roleplayMode, card.rpConfig);
       return tx.character.update({ where: { id }, data: {
         promptBuilderVersion: body.version,
         ...(body.version === 2 && card.legacyPromptArchive === null ? { legacyPromptArchive: card.systemPrompt } : {}),
@@ -24,6 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!result) return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
+    if (error instanceof ClientInputError) return NextResponse.json({ error: error.message }, { status: 400 });
     errorLog("PromptVersion", "Card switch failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось сменить сборку" }, { status: 500 });
   }

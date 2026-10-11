@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
+import { validateGroupConfig } from "@/lib/roleplayConfig";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
 import { buildInitialPublicMemory } from "@/lib/persistentMemory";
@@ -38,6 +39,7 @@ async function handlePost(req: NextRequest) {
     let parsed;
     try {
       parsed = parseCharacterBody(body);
+      validateGroupConfig(parsed.roleplayMode, parsed.rpConfig);
     } catch (err) {
       const message = err instanceof ClientInputError ? err.message : "Некорректные данные";
       return NextResponse.json({ error: message }, { status: 400 });
@@ -70,6 +72,7 @@ async function handlePost(req: NextRequest) {
 
     // Compatibility imports keep their exact unknown-origin text; no implicit conversion to v2.
     const importedLegacyText = typeof body.systemPrompt === "string" && body.systemPrompt.trim() ? body.systemPrompt : null;
+    if (importedLegacyText && roleplayMode === "group") return NextResponse.json({ error: "Групповая история использует новую сборку, без импорта старого промпта" }, { status: 400 });
     if (importedLegacyText && importedLegacyText.length > 8000) return NextResponse.json({ error: "Старый промпт: максимум 8000 символов" }, { status: 400 });
 
     const seededPublicMemory = publicMemory ?? buildInitialPublicMemory(name, description);

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
-import { assembleRoleplayPrompt, fitPromptAssembly } from "@/lib/chatSystemPrompt";
+import { assembleRoleplayPrompt, fitPromptAssembly, PromptBudgetError } from "@/lib/chatSystemPrompt";
 import { countTokens } from "@/lib/tokenCount";
 import { promptAssemblyDiagnostics } from "@/lib/promptDiagnostics";
 import { chatModelGenerationOptions } from "@/lib/testingChatModels";
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       scope: "card-preview-without-conversation-memory-or-history",
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
-    if (error instanceof ClientInputError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof ClientInputError || error instanceof PromptBudgetError) return NextResponse.json({ error: error.message }, { status: 400 });
     errorLog("PromptPreview", "Preview failed", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Не удалось собрать инструкции" }, { status: 500 });
   }

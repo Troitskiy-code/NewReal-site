@@ -14,7 +14,7 @@ import { appendPersonaToSystemPrompt } from "@/lib/persona";
 import { getSelectedChatPersona } from "@/lib/personaService";
 import { assembleRoleplayPrompt, fitPromptAssembly, type PromptAssemblyOptions, type PromptAssembly } from "@/lib/chatSystemPrompt";
 import { buildChatSystemPrompt as buildLegacyChatSystemPrompt } from "@/lib/chatSystemPromptV1";
-import { getOrCreatePromptState, isPromptV2Enabled, type PromptState } from "@/lib/promptState";
+import { getOrCreatePromptState, isPromptV2Enabled, assertPromptStateAvailable, type PromptState } from "@/lib/promptState";
 import { promptAssemblyDiagnostics, logPromptDelivery } from "@/lib/promptDiagnostics";
 import { readChatMemoryState, resolveChatMemorySummary } from "@/lib/chatMemory";
 import { appendMemorySection, type MemoryBlock, type MemoryBlockKind } from "@/lib/memoryPromptFormat";
@@ -102,6 +102,7 @@ export function resolveChatSystemPrompt(
 
 export function resolveChatPromptAssembly(character: CharacterForChat, locale: string | null | undefined, state?: PromptState, options: PromptAssemblyOptions = {}): PromptAssembly {
   const version = state?.builderVersion ?? character.promptBuilderVersion ?? 1;
+  assertPromptStateAvailable({ builderVersion: version, mode: state?.mode ?? (character.roleplayMode === "group" ? "group" : "character") }, character.rpConfig);
   if (version === 2 && isPromptV2Enabled()) {
     const assembly = assembleRoleplayPrompt(localizeCharacterForChat(character, locale), locale, { ...options, ...(state ? { mode: state.mode } : {}) });
     return options.tokenBudget ? fitPromptAssembly(assembly, options.tokenBudget, countTokens) : assembly;

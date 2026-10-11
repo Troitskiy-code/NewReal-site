@@ -1,6 +1,8 @@
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
+import { GroupPromptUnavailableError } from "@/lib/promptState";
+import { PromptBudgetError } from "@/lib/chatSystemPrompt";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -218,6 +220,8 @@ async function handlePost(
       });
     });
   } catch (error) {
+    if (error instanceof GroupPromptUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error instanceof PromptBudgetError) return NextResponse.json({ error: error.message }, { status: 400 });
     errorLog("Server", "Regenerate error:", toSafeDiagnostic(error));
     if (defaultShouldRetry(error)) {
       return NextResponse.json(

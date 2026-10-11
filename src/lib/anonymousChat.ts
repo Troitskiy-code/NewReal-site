@@ -42,7 +42,8 @@ import {
 } from "@/lib/guestRequestStore";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
-import { getOrCreatePromptState } from "@/lib/promptState";
+import { getOrCreatePromptState, assertPromptStateAvailable, GroupPromptUnavailableError } from "@/lib/promptState";
+import { PromptBudgetError } from "@/lib/chatSystemPrompt";
 
 const ANON_POST_LIMIT = 30;
 const ANON_POST_WINDOW_MS = 60_000;
@@ -327,6 +328,7 @@ export async function handleAnonymousChatPost(
   const stopHeartbeat = startGuestHeartbeat(generation);
   try {
     const promptState = await getOrCreatePromptState(`guest:${sessionId}`, characterId, character);
+    assertPromptStateAvailable(promptState, character.rpConfig);
     const userRow = await persistGuestUserMessage({ ...generation, characterId, message });
     if (!userRow) {
       stopHeartbeat();
@@ -477,6 +479,7 @@ export async function handleAnonymousChatPost(
     } catch (cleanupError) {
       errorLog("Anonymous", "generation recovery deferred", toSafeDiagnostic(cleanupError));
     }
-    return withCookie(NextResponse.json({ error: "Ошибка при обработке запроса" }, { status: 500 }), sessionId);
+    const publicError = error instanceof GroupPromptUnavailableError || error instanceof PromptBudgetError;
+    return withCookie(NextResponse.json({ error: publicError ? error.message : "Ошибка при обработке запроса" }, { status: error instanceof GroupPromptUnavailableError ? 409 : publicError ? 400 : 500 }), sessionId);
   }
 }

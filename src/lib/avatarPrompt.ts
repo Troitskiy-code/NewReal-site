@@ -47,14 +47,17 @@ export function buildAvatarPrompt(body: {
   style?: unknown;
   avatarPrompt?: unknown;
   customPrompt?: unknown;
+  roleplayMode?: unknown;
 }): string {
   const style = resolveAvatarStyle(body.style);
   const customPrompt = asText(body.customPrompt) || asText(body.avatarPrompt);
+  const cover = body.roleplayMode === "world" || body.roleplayMode === "group";
+  const subject = cover ? "safe, appropriate, story cover illustration" : "safe, appropriate, family friendly fantasy character portrait";
 
   if (customPrompt) {
     const custom = sanitizePromptText(customPrompt, 1000);
     return [
-      "safe, appropriate, family friendly fantasy character portrait",
+      subject,
       custom,
       STYLE_PROMPT[style],
     ]
@@ -67,12 +70,12 @@ export function buildAvatarPrompt(body: {
   const description = sanitizePromptText(asText(body.description));
 
   return [
-    "safe, appropriate, family friendly fantasy character portrait",
+    subject,
     `of ${name}`,
     appearance,
     description,
     STYLE_PROMPT[style],
-    "fantasy character portrait, character art",
+    cover ? "scene illustration, cover art" : "fantasy character portrait, character art",
   ]
     .filter(Boolean)
     .join(", ");

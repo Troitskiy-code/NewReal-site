@@ -14,7 +14,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { FaUser } from "react-icons/fa";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { memoryToText } from "@/lib/persistentMemory";
-import { roleplayMode, roleplayStyle, readRoleplayConfig } from "@/lib/roleplayConfig";
+import { roleplayMode, roleplayStyle, readRoleplayConfig, validateGroupConfig } from "@/lib/roleplayConfig";
 
 type Character = CharacterFormValues & {
   id: string;
@@ -171,9 +171,10 @@ export default function EditCharacterPage() {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      setFieldErrors((current) => ({ ...current, name: "Введите имя персонажа" }));
+      setFieldErrors((current) => ({ ...current, name: "Введите имя или название" }));
       return;
     }
+    try { validateGroupConfig(form.roleplayMode, form.rpConfig); } catch (error) { showError(error instanceof Error ? error.message : "Проверьте состав группы"); return; }
 
     setFieldErrors((current) => ({ ...current, name: undefined }));
     setSubmitting(true);
@@ -204,7 +205,7 @@ export default function EditCharacterPage() {
         privateMemory: form.privateMemory,
       });
 
-      showSuccess("Персонаж обновлён!");
+      showSuccess("Карточка обновлена!");
       reachGoal(METRIKA_GOALS.saveCharacter);
       router.push("/profile");
     } catch (err: unknown) {
@@ -234,9 +235,9 @@ export default function EditCharacterPage() {
       <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <FaUser className="text-4xl text-wd-primary opacity-30" />
-          <h1 className="text-xl font-black uppercase tracking-tight">Редактирование персонажа</h1>
+          <h1 className="text-xl font-black uppercase tracking-tight">Редактирование карточки</h1>
           <p className="max-w-sm text-xs text-wd-text-secondary">
-            Войдите в аккаунт, чтобы редактировать персонажей.
+            Войдите в аккаунт, чтобы редактировать карточки.
           </p>
           <Link href="/login" className="wd-button px-6 py-2.5 text-sm">
             Войти
@@ -267,8 +268,8 @@ export default function EditCharacterPage() {
       <main className="flex w-full flex-1 flex-col overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:py-8 lg:px-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 md:gap-8">
           <header className="space-y-1 border-b border-[#2A2A2A] pb-4 md:pb-5">
-            <h1 className="text-xl font-bold text-white md:text-2xl">Редактировать персонажа</h1>
-            <p className="text-sm text-[#A0A0A0]">Измените данные персонажа и сохраните изменения.</p>
+            <h1 className="text-xl font-bold text-white md:text-2xl">Редактировать карточку</h1>
+            <p className="text-sm text-[#A0A0A0]">Измените данные истории и сохраните изменения.</p>
           </header>
 
           <form

@@ -1,10 +1,19 @@
 import { prisma } from "@/lib/prisma";
-import { roleplayMode, type RoleplayMode } from "./roleplayConfig";
+import { roleplayMode, validateGroupConfig, type RoleplayMode } from "./roleplayConfig";
 
 export function isPromptV2Enabled(): boolean {
   return ["1", "true"].includes((process.env['RP_PROMPT_V2_ENABLED'] ?? "").trim().toLowerCase());
 }
 export type PromptState = { builderVersion: number; mode: RoleplayMode };
+export class GroupPromptUnavailableError extends Error {
+  constructor(reason: "disabled" | "roster" = "disabled") { super(reason === "roster" ? "В карточке отсутствует заполненный состав группы. Владелец должен восстановить участников или вы можете явно сменить режим истории." : "Групповой чат требует включённой новой сборки и версии 2 этой истории"); }
+}
+export function assertPromptStateAvailable(state: PromptState, config?: unknown): void {
+  if (state.mode === "group" && (state.builderVersion !== 2 || !isPromptV2Enabled())) throw new GroupPromptUnavailableError();
+  if (state.mode === "group") {
+    try { validateGroupConfig(state.mode, config); } catch { throw new GroupPromptUnavailableError("roster"); }
+  }
+}
 export function initialPromptState(card: { promptBuilderVersion?: number; roleplayMode?: string | null }, hasHistory: boolean): PromptState {
   // Existing history is grandfathered into v1; never infer GM mode from an unknown prompt.
   return hasHistory ? { builderVersion: 1, mode: "character" }

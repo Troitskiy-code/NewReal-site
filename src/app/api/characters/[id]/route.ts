@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
+import { validateGroupConfig } from "@/lib/roleplayConfig";
 import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
@@ -91,6 +92,8 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
     let parsed;
     try {
       parsed = parseCharacterBody(body);
+      validateGroupConfig(body.roleplayMode === undefined ? authResult.character.roleplayMode : parsed.roleplayMode,
+        body.rpConfig === undefined ? authResult.character.rpConfig : parsed.rpConfig);
     } catch (err) {
       const message = err instanceof ClientInputError ? err.message : "Некорректные данные";
       return NextResponse.json({ error: message }, { status: 400 });

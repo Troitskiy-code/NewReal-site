@@ -30,6 +30,7 @@ type GenerateAvatarBody = {
   referenceImage?: unknown;
   style?: unknown;
   avatarPrompt?: unknown;
+  roleplayMode?: unknown;
   modelId?: unknown;
 };
 
