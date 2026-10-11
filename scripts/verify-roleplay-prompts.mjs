@@ -27,12 +27,30 @@ const imagePrompt = load('src/lib/avatarPrompt.ts');
 check(!imagePrompt.buildAvatarPrompt({ roleplayMode: 'world', name: 'Современный город', avatarPrompt: 'Ночной город' }).includes('character portrait'), 'universe cover generation does not impose a character portrait');
 check(imagePrompt.buildAvatarPrompt({ roleplayMode: 'group', name: 'Экспедиция' }).includes('cover art'), 'group image uses a cover prompt');
 check(imagePrompt.buildAvatarPrompt({ name: 'Анна' }).includes('character portrait'), 'existing single-character avatar behaviour remains compatible');
+{
+  const card = { name: 'Лира Теней', appearance: 'тёмная коса, льняной фартук', description: 'Хозяйка лесного приюта' };
+  const portrait = imagePrompt.buildAvatarPrompt(card);
+  check(!portrait.includes('Лира Теней') && portrait.includes('тёмная коса'), 'portrait prompt uses visual fields but not the name, which models would print');
+  check(portrait.includes('upper third') && portrait.includes('No text') && portrait.includes('Exactly one character'), 'portrait prompt fixes framing for card crops and forbids text');
+  check(!portrait.includes('reference image'), 'text-only prompt has no reference instructions');
+  const withReference = imagePrompt.buildAvatarPrompt({ ...card, referenceImage: 'data:image/png;base64,AAAA' });
+  check(withReference.includes('reference image') && withReference.includes('rather than editing the photo'), 'reference prompt asks for a new portrait with the same likeness');
+  const custom = imagePrompt.buildAvatarPrompt({ ...card, avatarPrompt: 'В полный рост у печи' });
+  check(custom.includes('В полный рост у печи') && custom.includes('Unless described otherwise') && !custom.includes('тёмная коса'), 'custom prompt stays the main description and framing is only a default');
+  const long = imagePrompt.buildAvatarPrompt({ name: 'X', description: 'слово '.repeat(80) });
+  check(/Character context: (слово )*слово\./.test(long), 'long fields are cut at a word boundary');
+  check(imagePrompt.buildAvatarPrompt({ ...card, style: 'anime' }).startsWith('Anime illustration'), 'style selector still controls the style line');
+}
 const legacy = load('src/lib/chatSystemPromptV1.ts');
 const persona = load('src/lib/persona.ts', { './publicError': errorType });
 const economy = load('src/lib/chatEconomy.ts');
+const deepinfraModels = load('src/lib/deepinfraModels.ts', {
+  './data/deepinfra-chat-models-2026-10-11.json': JSON.parse(readFileSync('src/lib/data/deepinfra-chat-models-2026-10-11.json')),
+});
 const policy = load('src/lib/testingChatModels.ts', {
   './data/testing-roleplay-models-2026-10-10.json': JSON.parse(readFileSync('src/lib/data/testing-roleplay-models-2026-10-10.json')),
   './data/testing-chat-models-2026-10-10.json': JSON.parse(readFileSync('src/lib/data/testing-chat-models-2026-10-10.json')),
+  './deepinfraModels': deepinfraModels,
 });
 const tokens = require('tiktoken').encoding_for_model('gpt-4');
 const countTokens = text => tokens.encode(text).length;
@@ -75,6 +93,8 @@ const prisma = {
 const states = load('src/lib/promptState.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config });
 check(!states.isPromptV2Enabled(), 'v2 rollout defaults off');
 process.env.RP_PROMPT_V2_ENABLED = 'true';
+// Provider routing rejects an empty key; network calls in this script are stubbed.
+process.env.KODIKROUTER_API_KEY ??= 'synthetic_kodik_key';
 check(states.isPromptV2Enabled(), 'explicit flag enables v2');
 const card = { id: 'card', name: 'Анна', appearance: 'Красный плащ', description: 'Не доверяет незнакомцам', scenario: 'Москва, современный офис', exampleDialogs: 'Анна: Нет.', systemPrompt: 'LEGACY_PRIVATE_DO_NOT_LOG', promptBuilderVersion: 2, roleplayMode: 'character', roleplayStyle: 'mixed', rpConfig: { motivations: 'Защитить сестру', canonicalNotes: 'Сестру зовут Лена.' } };
 const wires = [];
@@ -91,6 +111,8 @@ const deps = {
   '@/lib/retryWithBackoff': { retryWithBackoff: fn => fn() },
   '@/lib/aiCostTelemetry': { meteredPost: async (_purpose, _url, body) => { wires.push(body); return { data: { choices: [{ message: { content: 'synthetic reply' } }] } }; }, meteredChatFetch: async (_url, init) => { wires.push(JSON.parse(init.body)); return new Response('synthetic'); } },
 };
+// Real provider routing; with no CHAT_AI_PROVIDER set it keeps the Kodik catalogue.
+deps['./aiProviders'] = load('src/lib/aiProviders.ts', { './deepinfraModels': deepinfraModels, './testingChatModels': policy });
 const helpers = load('src/lib/chatHelpers.ts', deps);
 let previewSelection = { name: 'aion-labs/aion-3.5-mini', isActive: true, maxContextTokens: 20000 };
 let previewFallbackReads = 0;
@@ -212,7 +234,7 @@ const guestDeps = {
     persistGuestUserMessage: async ({ message }) => { const row = { id: 'guest-turn', role: 'user', content: message, createdAt: new Date() }; guestHistory.push(row); return row; },
     finalizeGuestGeneration: async () => ({ assistantMessageId: 'guest-assistant' }), failGuestGeneration: async () => {}, renewGuestGeneration: async () => true },
 };
-const guest = load('src/lib/anonymousChat.ts', guestDeps);
+const guest = load('src/lib/anonymousChat.ts', { ...guestDeps, './aiProviders': deps['./aiProviders'], './deepinfraModels': deepinfraModels });
 await db.query('UPDATE "Character" SET "roleplayMode"=$1 WHERE id=$2', ['world', 'card']);
 for (const locale of ['ru', 'en']) {
   guestLocale = locale; guestHistory = [];
