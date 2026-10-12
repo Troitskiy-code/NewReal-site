@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import axios from "axios";
+import { useSession } from "next-auth/react";
 import { useCharactersPageLimit } from "@/hooks/useCharactersPageLimit";
 import {
   characterReturnMatches,
@@ -18,6 +19,13 @@ function scrollCharacterListToTop() {
 }
 
 export function usePaginatedCharacters({ sort, listKey, page, setPage, initialData, onSearchChange }) {
+  const { data: session, status } = useSession();
+  const accountKey = status === "loading" ? (initialData?.viewerId ?? "guest") : (session?.user?.id ?? "guest");
+  // A cached/navigation server snapshot can belong to a different session.
+  const initialAccount = initialData ? (initialData.viewerId ?? "guest") : accountKey;
+  const [loadedAccount, setLoadedAccount] = useState(initialAccount);
+  const [recommendationMode, setRecommendationMode] = useState(initialData?.meta.recommendationMode ?? null);
+  const activeRequest = useRef({ generation: 0, controller: null });
   const limit = useCharactersPageLimit(initialData?.meta.limit ?? null);
   const [search, setSearch] = useState(initialData?.search ?? "");
   const [characters, setCharacters] = useState(initialData?.data ?? []);
@@ -27,17 +35,21 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
   const [totalPages, setTotalPages] = useState(initialData?.meta.totalPages ?? 0);
   const [ready, setReady] = useState(false);
   const skipFetchRef = useRef(false);
-  const lastQueryRef = useRef(initialData ? `${sort}\0${initialData.search}\0${page}\0${initialData.meta.limit}` : "");
+  const lastQueryRef = useRef(initialData ? `${initialAccount}\0${sort}\0${initialData.search}\0${page}\0${initialData.meta.limit}` : "");
 
   useLayoutEffect(() => {
     // Browser-only return state is restored after hydration; never replace the
     // server snapshot during render or synchronously cascade layout updates.
     const frame = requestAnimationFrame(() => {
       const snapshot = readCharacterReturn();
-      if (characterReturnMatches(snapshot, listKey, sort) && Array.isArray(snapshot.characters)) {
+      if (sort === "for-you" && characterReturnMatches(snapshot, listKey, sort, accountKey)) {
+        restoreCharacterScroll(snapshot);
+      }
+      if (sort !== "for-you" && characterReturnMatches(snapshot, listKey, sort, accountKey) && Array.isArray(snapshot.characters)) {
         const restoredSearch = snapshot.search ?? "";
         setSearch(restoredSearch);
         setCharacters(snapshot.characters);
+        setLoadedAccount(accountKey);
         setTotal(snapshot.total ?? snapshot.characters.length);
         setTotalPages(snapshot.totalPages ?? 0);
         setLoading(false);
@@ -51,10 +63,15 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
     return () => cancelAnimationFrame(frame);
     // Restore against the sort from the first paint (URL).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listKey]);
+  }, [listKey, accountKey]);
 
   const fetchCharacters = useCallback(
     async (pageNum, pageLimit, { scrollToTop = false } = {}) => {
+      activeRequest.current.controller?.abort();
+      const controller = new AbortController();
+      const generation = activeRequest.current.generation + 1;
+      activeRequest.current = { generation, controller };
+      const current = () => !controller.signal.aborted && activeRequest.current.generation === generation;
       setLoading(true);
       setError(null);
 
@@ -65,11 +82,14 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
         params.set("sort", sort);
         if (search.trim()) params.set("search", search.trim());
 
-        const { data } = await axios.get(`/api/characters?${params.toString()}`);
+        const { data } = await axios.get(`/api/characters?${params.toString()}`, { signal: controller.signal });
+        if (!current()) return;
         const nextTotalPages = Number(data.meta.totalPages) || 0;
         const nextPage = Number(data.meta.page) || pageNum;
 
         setCharacters(data.data);
+        setLoadedAccount(accountKey);
+        setRecommendationMode(data.meta.recommendationMode ?? null);
         setTotal(Number(data.meta.total) || 0);
         setTotalPages(nextTotalPages);
 
@@ -81,23 +101,28 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
           scrollCharacterListToTop();
         }
       } catch (err) {
+        if (!current() || axios.isCancel(err)) return;
         const message =
           axios.isAxiosError(err) && err.response?.data?.error
             ? err.response.data.error
             : "Не удалось загрузить персонажей";
         setError(message);
         setCharacters([]);
+        setLoadedAccount(accountKey);
+        setRecommendationMode(null);
       } finally {
-        setLoading(false);
+        if (current()) setLoading(false);
       }
     },
-    [search, setPage, sort]
+    [search, setPage, sort, accountKey]
   );
+
+  useEffect(() => () => { activeRequest.current.controller?.abort(); }, [accountKey]);
 
   useEffect(() => {
     if (!ready || limit == null) return;
 
-    const queryKey = `${sort}\0${search}\0${page}\0${limit}`;
+    const queryKey = `${accountKey}\0${sort}\0${search}\0${page}\0${limit}`;
     if (lastQueryRef.current === queryKey) return;
 
     if (skipFetchRef.current) {
@@ -110,10 +135,10 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
     const shouldScroll = lastQueryRef.current !== "";
     lastQueryRef.current = queryKey;
     fetchCharacters(page, limit, { scrollToTop: shouldScroll });
-  }, [fetchCharacters, limit, page, ready, search, sort]);
+  }, [fetchCharacters, limit, page, ready, search, sort, accountKey]);
 
   useEffect(() => {
-    if (!ready || loading) return;
+    if (!ready || loading || loadedAccount !== accountKey) return;
     rememberCharacterListState({
       listKey,
       search,
@@ -123,8 +148,9 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
       hasMore: page < totalPages,
       total,
       totalPages,
+      viewerId: accountKey,
     });
-  }, [ready, loading, listKey, search, sort, characters, page, total, totalPages]);
+  }, [ready, loading, listKey, search, sort, characters, page, total, totalPages, accountKey, loadedAccount]);
 
   const goToPage = useCallback(
     (nextPage) => {
@@ -153,8 +179,9 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
   return {
     search,
     setSearch: handleSearchChange,
-    characters,
-    loading: loading || limit == null,
+    characters: loadedAccount === accountKey ? characters : [],
+    recommendationMode: loadedAccount === accountKey ? recommendationMode : null,
+    loading: loading || limit == null || loadedAccount !== accountKey,
     loadingMore: false,
     error,
     page,

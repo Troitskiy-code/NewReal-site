@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:characters:discovery": "node scripts/verify-character-discovery.mjs",
+    "verify:characters:discovery:browser": "node scripts/verify-character-discovery.mjs --browser",
     "verify:avatars:kie": "node scripts/verify-kie-avatars.mjs",
     "verify:avatars:kie:browser": "node scripts/browser-kie-avatars.mjs",
     "verify:prompts": "node scripts/verify-roleplay-prompts.mjs",

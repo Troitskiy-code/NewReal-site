@@ -17,6 +17,10 @@ import { clampCharactersPageLimit } from "@/lib/charactersList";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
+import { catalogSearchCondition } from "@/lib/characterCatalogSearch";
+import { characterTagSearchTerms } from "@/lib/characterTags";
+import { getCharacterRecommendationOrder } from "@/lib/characterRecommendations";
+import type { RecommendationMode } from "@/lib/characterRecommendationRank";
 
 export const maxDuration = 60;
 
@@ -171,7 +175,7 @@ export async function GET(req: NextRequest) {
     console.log("[Characters] session", (performance.now() - tSession).toFixed(0), "ms");
 
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") || "";
+    const search = (searchParams.get("search") || "").trim().slice(0, 200);
     const tagsParam = searchParams.get("tags") || "";
     const tagParam = searchParams.get("tag") || "";
     const tagList = [
@@ -180,7 +184,7 @@ export async function GET(req: NextRequest) {
       ...searchParams.getAll("tag"),
       ...tagParam.split(",").map((t) => t.trim()),
     ].filter(Boolean);
-    const uniqueTags = [...new Set(tagList)];
+    const uniqueTags = [...new Set(tagList.slice(0, 32).flatMap(tag => characterTagSearchTerms(tag.slice(0, 100))))];
     const userId = searchParams.get("userId") || "";
     const publicFlag = searchParams.get("public") ?? searchParams.get("isPublic");
     const isPublic =
@@ -206,18 +210,16 @@ export async function GET(req: NextRequest) {
       where.isPublic = true;
     } else {
       where.isPublic = isPublic;
+      if (isPublic === false) {
+        if (!session?.user?.id) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+        where.userId = session.user.id;
+      }
     }
 
     const andConditions: Record<string, unknown>[] = [{ ...where }];
 
     if (search) {
-      andConditions.push({
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { name_en: { contains: search, mode: "insensitive" } },
-          { tags: { contains: search, mode: "insensitive" } },
-        ],
-      });
+      andConditions.push(catalogSearchCondition(search));
     }
 
     if (uniqueTags.length > 0) {
@@ -258,12 +260,24 @@ export async function GET(req: NextRequest) {
 
     let characters;
     const tCount = performance.now();
-    const total = await prisma.character.count({ where: queryWhere });
+    let total = await prisma.character.count({ where: queryWhere });
+    let recommendationMode: RecommendationMode | null = null;
     console.log("[Characters] prisma count", (performance.now() - tCount).toFixed(0), "ms");
 
     const loadCharacters = async (
       cardSelect: typeof characterCardSelect | typeof characterCardSelectNoSlug
     ) => {
+      if (sort === "for-you") {
+        const recommendations = await getCharacterRecommendationOrder(queryWhere, session?.user?.id ?? null);
+        recommendationMode = recommendations.mode;
+        total = recommendations.ids.length;
+        const ids = recommendations.ids.slice(skip, skip + limit);
+        const rows = ids.length ? await prisma.character.findMany({
+          where: { AND: [queryWhere, { isPublic: true, slug: { not: null }, id: { in: ids } }] }, select: cardSelect,
+        }) : [];
+        const byId = new Map(rows.map(row => [row.id, row]));
+        return ids.flatMap(id => { const row = byId.get(id); return row ? [row] : []; });
+      }
       if (sort === "random") {
         const ids = await prisma.character.findMany({
           where: queryWhere,
@@ -277,7 +291,7 @@ export async function GET(req: NextRequest) {
         }
 
         const rows = await prisma.character.findMany({
-          where: { id: { in: pageIds } },
+          where: { AND: [queryWhere, { id: { in: pageIds } }] },
           select: cardSelect,
         });
         const byId = new Map(rows.map((row) => [row.id, row]));
@@ -287,9 +301,9 @@ export async function GET(req: NextRequest) {
       }
 
       const orderBy =
-        sort === "top" || sort === "for-you"
-          ? { totalMessages: "desc" as const }
-          : { createdAt: "desc" as const };
+        sort === "top"
+          ? [{ totalMessages: "desc" as const }, { id: "asc" as const }]
+          : [{ createdAt: "desc" as const }, { id: "asc" as const }];
 
       return prisma.character.findMany({
         where: queryWhere,
@@ -348,9 +362,11 @@ export async function GET(req: NextRequest) {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+        recommendationMode,
       },
     };
     const response = NextResponse.json(payload);
+    response.headers.set("Cache-Control", "private, no-store");
     const jsonMs = (performance.now() - tJson).toFixed(0);
     const totalMs = (performance.now() - t0).toFixed(0);
     console.log("[Characters] json", jsonMs, "ms");

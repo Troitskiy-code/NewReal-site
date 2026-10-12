@@ -15,11 +15,11 @@ import { withLocale } from "@/lib/i18nConfig";
 export default function HomePageContent({ initialData, showHero = false }) {
   const { t, i18n } = useTranslation();
   const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
-  const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload } =
+  const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload, recommendationMode } =
     usePaginatedCharacters({ sort, page, setPage, listKey: "home", initialData, onSearchChange: setSearchQuery });
 
   const hasFilters = search.trim().length > 0;
-  const sectionTitle = t(hasFilters ? "home.sectionTitle.search" : `home.sectionTitle.${sort}`);
+  const sectionTitle = t(hasFilters ? "home.sectionTitle.search" : sort === "for-you" && recommendationMode !== "personalized" ? "home.recommendations.discoveryTitle" : `home.sectionTitle.${sort}`);
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
@@ -50,6 +50,10 @@ export default function HomePageContent({ initialData, showHero = false }) {
           )}
         </div>
 
+        {sort === "for-you" && !loading && !error && <p className="text-sm leading-relaxed text-wd-text-secondary">
+          {t(recommendationMode === "personalized" ? "home.recommendations.personalizedHint" : "home.recommendations.discoveryHint")}
+        </p>}
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
@@ -79,7 +83,8 @@ export default function HomePageContent({ initialData, showHero = false }) {
           <>
             <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5 xl:gap-5">
               {characters.map((character) => (
-                <CharacterCard key={character.id} character={character} />
+                <CharacterCard key={character.id} character={character}
+                  onFavoriteChange={sort === "for-you" ? reload : undefined} />
               ))}
             </div>
 
