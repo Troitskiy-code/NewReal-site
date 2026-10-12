@@ -128,7 +128,8 @@ export async function consumeOpenAIChatCompletion(
   stream: ReadableStream<Uint8Array>,
   onDelta: (text: string) => void,
   signal?: AbortSignal,
-  onThinking?: () => void
+  onThinking?: () => void,
+  onFailure?: (error: unknown, stage: string, fields: ReturnType<ChatCompletionStreamParser["diagnostics"]>) => void
 ): Promise<{ text: string; finishReason: ChatCompletionFinishReason }> {
   const reader = stream.getReader();
   const onAbort = () => { void reader.cancel().catch(() => {}); };
@@ -137,26 +138,35 @@ export async function consumeOpenAIChatCompletion(
   let fullText = "";
   let consumed = false;
   let thinkingSent = false;
+  let consumerStage = "read_upstream";
   const parser = new ChatCompletionStreamParser((chunk, emitText) => {
     const delta = emitText ? extractChatStreamDelta(chunk) : "";
+    consumerStage = "deliver_delta";
     if (delta) { fullText += delta; onDelta(delta); }
     else if (!thinkingSent && !fullText && hasChatStreamReasoning(chunk)) { thinkingSent = true; onThinking?.(); }
+    consumerStage = "parse_upstream";
   });
 
   try {
     signal?.throwIfAborted();
     while (true) {
+      consumerStage = "read_upstream";
       const { done, value } = await reader.read();
       signal?.throwIfAborted();
       if (done) {
         break;
       }
+      consumerStage = "parse_upstream";
       parser.push(decoder.decode(value, { stream: true }));
     }
 
     parser.push(decoder.decode());
+    consumerStage = "validate_completion";
     if (parser.end() !== "completed" || parser.finishReason === null) throw new ChatCompletionStreamError();
     consumed = true;
+  } catch (error) {
+    try { onFailure?.(error, consumerStage, parser.diagnostics()); } catch { /* Diagnostics must not replace the original error. */ }
+    throw error;
   } finally {
     signal?.removeEventListener("abort", onAbort);
     if (!consumed) await reader.cancel().catch(() => {});

@@ -6,6 +6,7 @@ import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { logChatTransportFailure } from "./chatDiagnostics";
+import { beginAiTransport, createChatReadMetrics, safeTransportHeaders, traceChatTransport } from "./aiTransportDiagnostics";
 import { finiteNonnegative, readCostUsage, readDeepinfraCostUsage, resolveDeepinfraCost, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
 import { deepinfraModel } from "./deepinfraModels";
 import { DEEPINFRA_EMBEDDING_MODEL, DEEPINFRA_EMBEDDING_INPUT_USD_PER_MILLION } from "./embeddingProviders";
@@ -153,8 +154,11 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
   config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
   const payload = body as { model?: unknown };
   const ticket = await begin(safeModel(payload?.model), purpose, textProviderForUrl(url));
+  const transport = beginAiTransport(ticket.provider, ticket.requestedModel, purpose);
+  const started = Date.now();
   try {
     const response = await axios.post<T>(url, body, { ...config, timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
+    transport.release();
     const actualModel = (response.data as { model?: unknown })?.model;
     await finish(ticket, response.status >= 400 ? "failed" : "completed", providerUsage(ticket, response.data, purpose === "embedding"), response.status,
       undefined, undefined, typeof actualModel === "string" ? safeModel(actualModel) : undefined,
@@ -162,33 +166,48 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
     return response;
   } catch (error) {
     const response = axios.isAxiosError(error) ? error.response : null;
+    errorLog("ChatDiagnostics", "service attempt failed", { ...ticketDiagnosticContext(ticket), ...transport.fields(),
+      ...safeTransportHeaders(response?.headers ?? {}, ticket.provider), stage: "service_request",
+      status: response?.status, durationMs: Date.now() - started }, toSafeDiagnostic(error));
+    transport.release();
     await finish(ticket, "failed", providerUsage(ticket, response?.data, purpose === "embedding"), response?.status,
       undefined, undefined, undefined, responseRequestId(ticket, response?.headers ?? {}), response?.data?.id);
     throw error;
+  } finally {
+    transport.release();
   }
 }
 
 const streams = new WeakMap<ReadableStream<Uint8Array>, { ticket: Ticket; completed: boolean }>();
 /** onChunk fires for every body chunk, so callers can run an idle watchdog without replacing the tracked stream. */
 export async function meteredChatFetch(url: string, init: RequestInit, model: string, estimatedInput: number,
-  onEnd?: () => void, onChunk?: () => void): Promise<Response> {
+  onEnd?: () => void, onChunk?: () => void,
+  limits?: { firstByteMs: number; idleMs: number; totalMs: number }): Promise<Response> {
   const ticket = await begin(safeModel(model), "chat", textProviderForUrl(url));
   const requestIdHeader = ticket.provider === "deepinfra" ? "x-request-id" : "x-kodikrouter-request-id";
   // Provider timing starts after local cost bookkeeping, immediately before the request.
   const started = Date.now();
-  const context = ticketDiagnosticContext(ticket);
+  const transport = beginAiTransport(ticket.provider, ticket.requestedModel, "chat");
+  const context = { ...ticketDiagnosticContext(ticket), firstByteLimitMs: limits?.firstByteMs,
+    idleLimitMs: limits?.idleMs, totalLimitMs: limits?.totalMs };
+  const metrics = createChatReadMetrics(started);
+  traceChatTransport("attempt started", { ...context, ...transport.fields() });
   let response: Response;
   try { response = await fetch(url, { ...init, redirect: "error" }); }
   catch (error) {
-    logChatTransportFailure({ ...context, stage: "awaiting_headers", durationMs: Date.now() - started }, error, init.signal);
+    logChatTransportFailure({ ...context, ...transport.fields(), stage: "awaiting_headers", durationMs: Date.now() - started }, error, init.signal);
+    transport.release();
     onEnd?.(); await finish(ticket, "failed", noUsage()); throw error;
   }
   const headersMs = Date.now() - started;
+  const headerFields = safeTransportHeaders(response.headers, ticket.provider);
+  traceChatTransport("headers received", { ...context, ...transport.fields(), ...headerFields, status: response.status, headersMs });
   if (!response.ok || !response.body) {
-    errorLog("ChatDiagnostics", "attempt failed", { ...context, stage: "headers", status: response.status,
+    errorLog("ChatDiagnostics", "attempt failed", { ...context, ...transport.fields(), ...headerFields, stage: "headers", status: response.status,
       durationMs: Date.now() - started, headersMs, reason: !response.ok ? "http_error" : "missing_body" });
+    transport.release();
     await finish(ticket, "failed", noUsage(), response.status, undefined, undefined, undefined,
-      response.headers.get(requestIdHeader));
+      headerFields.providerRequestId);
     onEnd?.();
     return response;
   }
@@ -222,7 +241,8 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
     if (outcome === "completed") outcome = protocolOutcome;
     tracked.completed = outcome === "completed";
     if (!tracked.completed) {
-      const diagnostic = { ...context, stage: firstTextMs === null ? "awaiting_text" : "streaming",
+      const diagnostic = { ...context, ...transport.fields(), ...headerFields, ...metrics.fields(), providerResponseId: responseId,
+        stage: firstTextMs === null ? "awaiting_text" : "streaming",
         outcome, status: response.status, durationMs: Date.now() - started, headersMs, firstChunkMs,
         firstTextMs, bytesReceived, idleMs: Date.now() - (lastChunkAt ?? started + headersMs), ...parser.diagnostics() };
       if (error !== undefined || init.signal?.aborted) {
@@ -232,22 +252,32 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
           reason: outcome === "cancelled" ? "consumer_cancelled" : "invalid_stream" });
       }
     }
+    traceChatTransport("attempt ended", { ...context, ...transport.fields(), ...headerFields, ...metrics.fields(),
+      providerResponseId: responseId, outcome, status: response.status,
+      timings: { headersMs, firstChunkMs, firstTextMs, bytesReceived,
+        idleMs: Date.now() - (lastChunkAt ?? started + headersMs), durationMs: Date.now() - started }, ...parser.diagnostics() });
+    transport.release();
     await finish(ticket, outcome, usage, response.status, estimatedInput,
       outcome === "completed" ? Math.ceil(outputChars / 4) : undefined, actualModel, response.headers.get("x-deepinfra-request-id") ?? response.headers.get(requestIdHeader), responseId);
   };
   const body = new ReadableStream<Uint8Array>({
     async pull(controller) {
       try {
+        metrics.startRead();
         const { done, value } = await reader.read();
+        metrics.endRead();
         if (cancelled) return;
         if (done) { parser.push(decoder.decode()); await complete("completed"); controller.close(); reader.releaseLock(); return; }
         bytesReceived += value.byteLength;
         lastChunkAt = Date.now();
         firstChunkMs ??= lastChunkAt - started;
+        const chunkFields = metrics.chunk(value.byteLength);
+        // Bound per-attempt trace volume, but keep summary counters for the entire stream.
+        if (chunkFields.chunkIndex <= 20) traceChatTransport("chunk received", { ...context, ...chunkFields });
         onChunk?.();
         parser.push(decoder.decode(value, { stream: true }));
         controller.enqueue(value);
-      } catch (error) { await complete("failed", error); controller.error(error); reader.releaseLock(); }
+      } catch (error) { metrics.endRead(); await complete("failed", error); controller.error(error); reader.releaseLock(); }
     },
     async cancel(reason) { cancelled = true; try { await reader.cancel(reason); } finally { await complete("cancelled"); reader.releaseLock(); } },
   });

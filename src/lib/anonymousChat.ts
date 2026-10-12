@@ -12,7 +12,8 @@ import {
   trimMessagesToTokenLimit,
   type ChatCompletionMessage,
 } from "@/lib/chatHelpers";
-import { consumeOpenAIChatStream, createChatNdjsonResponse } from "@/lib/chatStream";
+import { createChatNdjsonResponse } from "@/lib/chatStream";
+import { consumeOpenAIChatStream } from "@/lib/chatStreamDiagnostics";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 import { chatModelNameFilter, getChatProvider } from "./aiProviders";
 import { DEEPINFRA_BASE_MODEL } from "./deepinfraModels";

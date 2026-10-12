@@ -929,7 +929,7 @@ export async function streamChatCompletion(
             stream_options: { include_usage: true },
           }),
           signal: controller.signal,
-        }, route.model, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4), stopTimers, armIdle);
+        }, route.model, Math.ceil(messages.reduce((n, m) => n + m.content.length, 0) / 4), stopTimers, armIdle, limits);
       } catch (error) {
         stopTimers();
         throw error;

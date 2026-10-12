@@ -19,10 +19,10 @@ import {
 } from "@/lib/chatHelpers";
 import { analyzeIntent } from "@/lib/intentAnalyzer";
 import {
-  consumeOpenAIChatCompletion,
   createChatNdjsonResponse,
   type ChatStreamEvent,
 } from "@/lib/chatStream";
+import { consumeOpenAIChatCompletion } from "@/lib/chatStreamDiagnostics";
 import { calculateRequestCost, isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { scheduleMessageEmbeddingRefresh, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
 import { getApiLocale } from "@/lib/apiI18n";

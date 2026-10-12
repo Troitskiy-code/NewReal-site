@@ -28,6 +28,9 @@ const ALLOWED_ERROR_NAMES = new Set([
   "ReferenceError",
   "SyntaxError",
   "URIError",
+  "AbortError",
+  "TimeoutError",
+  "ChatCompletionStreamError",
   "PrismaClientKnownRequestError",
   "PrismaClientUnknownRequestError",
   "PrismaClientRustPanicError",
@@ -58,6 +61,12 @@ const ALLOWED_HTTP_CODES = new Set([
   "ERR_NETWORK",
   "ERR_CANCELED",
   "ERR_FR_TOO_MANY_REDIRECTS",
+  "ECONNABORTED",
+  "EAI_AGAIN",
+  "UND_ERR_SOCKET",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
 ]);
 
 export type SafeLogValue =

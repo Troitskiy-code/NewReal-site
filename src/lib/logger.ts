@@ -56,6 +56,11 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "durationMs", "headersMs", "firstChunkMs", "firstTextMs", "idleMs", "bytesReceived",
   "hasDone", "hasText", "hasReasoning", "finishReason", "frameCount", "protocolReason",
   "timeoutStage", "outcome", "transactionId", "costVC", "refundStatus",
+  "providerRequestId", "providerResponseId", "retryAfterMs", "purpose", "processInstanceId",
+  "activeProviderAtStart", "activeModelAtStart", "activeProviderNow", "activeModelNow",
+  "responseContentType", "responseEncoding", "chunkCount", "lastChunkBytes", "lastChunkMs",
+  "maxChunkGapMs", "lastReadWaitMs", "maxReadWaitMs", "readPending", "readPendingMs",
+  "firstByteLimitMs", "idleLimitMs", "totalLimitMs",
 ]);
 
 const ERROR_PAYLOAD_KEYS = new Set([

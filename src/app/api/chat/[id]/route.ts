@@ -45,10 +45,10 @@ import {
   type ChatHistoryRow,
 } from "@/lib/chatHelpers";
 import {
-  consumeOpenAIChatCompletion,
   createChatNdjsonResponse,
   type ChatStreamEvent,
 } from "@/lib/chatStream";
+import { consumeOpenAIChatCompletion } from "@/lib/chatStreamDiagnostics";
 import {
   calculateRequestCost,
   isSubscriptionActive,
