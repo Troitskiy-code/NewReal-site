@@ -48,9 +48,14 @@ async function request(url: string, body?: unknown) {
   try { data = record(await response.json()); } catch { throw new KieError("invalid_response"); }
   const code = typeof data.code === "number" ? data.code : response.status;
   if (!response.ok || data.code !== 200) {
-    // 5xx/timeouts/malformed responses are uncertain, not proof no paid task exists.
-    throw new KieError(failureCode(data, code), (response.status === 200 || response.status < 500)
-      && [400, 401, 402, 403, 404, 422, 429, 455, 505].includes(code));
+    const category = failureCode(data, code);
+    // Kie returns HTTP 200 with an error code in the body when it refuses a request (including
+    // 500/501 for moderated content): that is a definite "no task was created". Only HTTP 5xx
+    // responses stay uncertain, since a paid task may exist. A content-policy refusal is never billed.
+    const definite = response.ok
+      || (response.status < 500 && [400, 401, 402, 403, 404, 422, 429, 455, 505].includes(code))
+      || category === "safety";
+    throw new KieError(category, definite);
   }
   return data;
 }

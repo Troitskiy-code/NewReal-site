@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { avatarMonthlyAllowance } from "./avatarEconomy";
 import { randomUUID } from "node:crypto";
+import { UNCERTAIN_BLOCK_MS } from "./kieAvatarModels";
 
 export const MAX_AVATAR_TOKENS = 10;
 export const AVATAR_REPLENISH_HOURS = 6;
@@ -175,7 +176,10 @@ export async function reserveAvatarGeneration(userId: string, generation?: Gener
         return { id: existing.reservationId, user, generation: existing, isNew: false };
       }
       // Serialize new requests from tabs on the user lock. One outstanding paid run per user.
-      const active = await tx.avatarGeneration.findFirst({ where: { userId, state: { in: ["creating", "pending", "uncertain"] } }, orderBy: { createdAt: "desc" } });
+      const active = await tx.avatarGeneration.findFirst({ where: { userId, OR: [
+        { state: { in: ["creating", "pending"] } },
+        { state: "uncertain", updatedAt: { gt: new Date(Date.now() - UNCERTAIN_BLOCK_MS) } },
+      ] }, orderBy: { createdAt: "desc" } });
       if (active) return { id: active.reservationId, user, generation: active, isNew: false };
     }
     if (!canGenerateThisMonth(user).ok) return null;
