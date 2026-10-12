@@ -48,5 +48,8 @@ export type ChatStreamTimeouts = { firstByteMs: number; idleMs: number; totalMs:
 export function chatModelStreamTimeouts(modelName: string): ChatStreamTimeouts {
   const reasoning = DEEPINFRA_CHAT_MODELS.some((model) => model.name === modelName && model.reasoning)
     || modelName === "aion-labs/aion-3.5-mini";
-  return { firstByteMs: 15_000, idleMs: reasoning ? 45_000 : 20_000, totalMs: 120_000 };
+  // Production Mistral streams have started promptly, then hit our 20 s idle watchdog.
+  // Allow a bounded pause for this route only; the absolute attempt deadline still applies.
+  const mistral = modelName === "deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506";
+  return { firstByteMs: 15_000, idleMs: reasoning || mistral ? 45_000 : 20_000, totalMs: 120_000 };
 }

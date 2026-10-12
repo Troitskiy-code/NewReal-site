@@ -217,8 +217,10 @@ try {
     check(policy.chatModelGenerationOptions(model.name).reasoning_effort === 'none', `${model.displayName}: requested non-thinking mode and fixed total cap`);
   }
   mode = 'stall';
-  const normalTimeout = policy.chatModelRequestTimeoutMs;
-  policy.chatModelRequestTimeoutMs = () => 100;
+  const normalTimeouts = policy.chatModelStreamTimeouts;
+  // This fixture must shorten the actual streaming watchdog, not the non-streaming Axios timeout.
+  // Exact 45/120-second production limits are exercised separately by verify-mistral-idle.
+  policy.chatModelStreamTimeouts = () => ({ firstByteMs: 1000, idleMs: 100, totalMs: 2000 });
   const stalledUser = await h.helpers.user('start'), stalledCharacter = await h.helpers.character(stalledUser.id);
   const beforeStall = routes.length;
   try {
@@ -226,7 +228,23 @@ try {
     check(stalled.wire.includes('"type":"error"') && !stalled.wire.includes('"type":"end"')
       && routes.length === beforeStall + 1 && (await h.db.user.findUnique({ where: { id: stalledUser.id } })).verseCoins === stalledUser.verseCoins,
       'timeout remains active after headers: stalled partial stream terminates, refunds, and never retries');
-  } finally { policy.chatModelRequestTimeoutMs = normalTimeout; }
+    check(await h.db.transaction.count({ where: { userId: stalledUser.id, type: 'chat' } }) === 0
+      && await h.db.message.count({ where: { userId: stalledUser.id, role: 'assistant' } }) === 0,
+      'Mistral idle failure removes the reserved chat charge and saves no assistant message');
+    h.session.userId = null;
+    const guestRequestId = randomUUID();
+    const guestStall = await telemetry.withAiCostContext(() => guest.handleAnonymousChatPost(new NextRequest('http://localhost/api/chat/guest', {
+      method: 'POST', headers: { 'x-forwarded-for': '127.0.0.3' },
+    }), stalledCharacter.id, { message: 'Оборванный гостевой поток.', requestId: guestRequestId }));
+    const guestStallWire = await guestStall.text();
+    await h.settle();
+    const request = await h.db.anonymousChatRequest.findFirst({ where: { requestId: guestRequestId } });
+    check(guestStallWire.includes('"type":"error"') && !guestStallWire.includes('"type":"end"')
+      && request?.status === 'failed' && request.refundedAt !== null,
+      'guest Mistral idle failure returns the reserved anonymous message quota');
+    check(await h.db.anonymousMessage.count({ where: { sessionId: request.sessionId, role: 'assistant' } }) === 0,
+      'guest Mistral idle failure does not save a partial assistant message');
+  } finally { policy.chatModelStreamTimeouts = normalTimeouts; }
   process.env['CHAT_AI_PROVIDER'] = 'invalid';
   assert.throws(() => provider.getChatProvider());
   check(true, 'invalid provider configuration fails closed');
