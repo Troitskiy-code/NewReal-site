@@ -80,6 +80,7 @@ export default function PromptMigrationAdmin() {
   const currentEntry = detail?.entry;
   return <main className="mx-auto max-w-6xl space-y-5 p-5 text-wd-text">
     <h1 className="text-2xl font-semibold">Переход персонажей на новые инструкции</h1>
+    <a className="underline" href="/admin/chat-diagnostics">Диагностика ответов DeepInfra</a>
     <p>Сначала сравните старый промпт с полями карточки. Проверка сохраняет черновик перевода, а не меняет персонажа. Платные генерации не запускаются.</p>
     {notice && <p role="status" aria-live="polite" className="rounded-xl border border-wd-border p-3">{notice}</p>}
     {!status ? <form className="max-w-md space-y-3" onSubmit={event => { event.preventDefault(); void run(refresh); }}>

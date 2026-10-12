@@ -1,10 +1,18 @@
 // Transport observations only: never retain payloads, credentials or arbitrary headers.
 import { randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { infoLog } from "./logger";
 
 const processInstanceId = randomUUID();
 const activeProviders = new Map<string, number>();
 const activeModels = new Map<string, number>();
+const observers = new AsyncLocalStorage<(event: string, fields: Record<string, unknown>) => void>();
+export function withChatTransportObserver<T>(observer: (event: string, fields: Record<string, unknown>) => void, fn: () => T): T {
+  return observers.run(observer, fn);
+}
+export function observeChatTransport(event: string, fields: Record<string, unknown>) {
+  observers.getStore()?.(event, fields);
+}
 export function chatTransportTraceEnabled() { return process.env['CHAT_TRANSPORT_TRACE'] === "1"; }
 
 export function safeProviderRequestId(value: unknown): string | null {
@@ -55,6 +63,7 @@ export function beginAiTransport(provider: string, model: string, purpose: strin
 }
 
 export function traceChatTransport(event: string, fields: Record<string, unknown>) {
+  observeChatTransport(event, fields);
   if (chatTransportTraceEnabled()) infoLog("ChatTransport", event, fields);
 }
 

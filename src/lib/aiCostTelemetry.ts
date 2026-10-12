@@ -18,6 +18,11 @@ import type { AvatarGeneration } from "@prisma/client";
 
 type CostContext = { operationId: string; actorHash: string | null; threadHash: string | null; subscriptionType: string | null; sequence: number; audience: string };
 const contexts = new AsyncLocalStorage<CostContext>();
+// Request-scoped diagnostic accounting; never changes the store used by concurrent users.
+const diagnosticAttempts = new AsyncLocalStorage<(fields: Record<string, unknown>) => void>();
+export function withInMemoryAiCostContext<T>(onAttempt: (fields: Record<string, unknown>) => void, fn: () => T): T {
+  return diagnosticAttempts.run(onAttempt, () => withAiCostContext(fn));
+}
 export function withAiCostContext<T>(fn: () => T): T {
   return contexts.run({ operationId: randomUUID(), actorHash: null, threadHash: null, subscriptionType: null, sequence: 0, audience: "system" }, fn);
 }
@@ -60,6 +65,12 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
   const surface = provider === "kodikrouter" || provider === "deepinfra" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
   const ticket: Ticket = { id: randomUUID(), operationId: ctx?.operationId ?? randomUUID(), attempt: ctx ? ++ctx.sequence : 1,
     audience: ctx?.audience ?? "system", started: Date.now(), requestedModel: model, inputRate: null, outputRate: null, surface, provider, fx: provider === "deepinfra" ? deepinfraUsdRub() : null };
+  const diagnostic = diagnosticAttempts.getStore();
+  if (diagnostic) {
+    if (provider !== "deepinfra" || purpose !== "chat") throw Object.assign(new Error("Diagnostic provider unavailable"), { __noRetry: true });
+    diagnostic({ id: ticket.id, operationId: ticket.operationId, attempt: ticket.attempt, outcome: "pending" });
+    return ticket;
+  }
   try {
     let quotedVC: number | null = null;
     if (provider === "kodikrouter") {
@@ -93,6 +104,13 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
   return ticket;
 }
 async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?: number, estimatedInput?: number, estimatedOutput?: number, actualModel?: string, providerRequestId?: unknown, providerResponseId?: unknown) {
+  const diagnostic = diagnosticAttempts.getStore();
+  if (diagnostic) {
+    diagnostic({ id: ticket.id, outcome, durationMs: Date.now() - ticket.started, status: status ?? null,
+      providerRequestId: requestId(providerRequestId), providerResponseId: requestId(providerResponseId),
+      inputTokens: usage.inputTokens, outputTokens: usage.outputTokens });
+    return;
+  }
   const measured = usage.inputTokens !== null && usage.outputTokens !== null;
   const input = usage.inputTokens ?? estimatedInput ?? null;
   const output = usage.outputTokens ?? estimatedOutput ?? null;

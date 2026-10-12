@@ -7,7 +7,7 @@ import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
 export const diagnosticRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-export function createChatDiagnosticRuntime() {
+export function createChatDiagnosticRuntime(moduleOverrides = {}) {
   const rows = new Map(), cache = new Map();
   const prisma = {
     model: { findUnique: async () => null },
@@ -29,6 +29,7 @@ export function createChatDiagnosticRuntime() {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX }, fileName: file,
     }).outputText;
     function dependency(name) {
+      if (Object.hasOwn(moduleOverrides, name)) return moduleOverrides[name];
       if (name === '@/lib/prisma') return { prisma };
       // Diagnostic requests are DeepInfra-only. Never fetch FX rates as a side effect.
       if (name === './currencyRates' || name === '@/lib/currencyRates') return { getAccountingUsdRub: async () => null };

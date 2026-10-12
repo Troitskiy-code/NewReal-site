@@ -1,4 +1,5 @@
 import { errorLog, toSafeDiagnostic } from "./logger";
+import { observeChatTransport } from "./aiTransportDiagnostics";
 
 /** Never use an exception message, provider body or arbitrary abort reason as a log label. */
 export function chatTransportDiagnostic(error: unknown, signal?: AbortSignal | null) {
@@ -20,5 +21,6 @@ export function chatTransportDiagnostic(error: unknown, signal?: AbortSignal | n
 
 export function logChatTransportFailure(context: Record<string, unknown>, error: unknown, signal?: AbortSignal | null) {
   const diagnostic = chatTransportDiagnostic(error, signal);
+  observeChatTransport("attempt failed", { ...context, ...diagnostic.fields });
   errorLog("ChatDiagnostics", "attempt failed", { ...context, ...diagnostic.fields }, diagnostic.error, diagnostic.cause);
 }
