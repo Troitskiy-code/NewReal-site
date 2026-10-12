@@ -9,7 +9,7 @@ type RetryOptions = {
 };
 
 export const KODIK_RETRY_ERROR_MESSAGE =
-  "Сервис временно недоступен. Мы попробовали 3 раза, но ИИ не ответил. Нажмите «Отправить» ещё раз через 10 секунд.";
+  "Сервис временно недоступен: ИИ не ответил и после повторной попытки. Нажмите «Отправить» ещё раз через 10 секунд.";
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
