@@ -46,6 +46,16 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "scope",
   "id",
   "expiresAt",
+  // Avatar generation diagnostics: our own stage names and error codes, never provider text.
+  "stage",
+  "withReference",
+  "kieCode",
+  "rejected",
+  // Locally constructed chat diagnostics; no raw payloads or exception messages.
+  "operationId", "costEventId", "attempt", "retryAttempt", "audience", "provider", "model",
+  "durationMs", "headersMs", "firstChunkMs", "firstTextMs", "idleMs", "bytesReceived",
+  "hasDone", "hasText", "hasReasoning", "finishReason", "frameCount", "protocolReason",
+  "timeoutStage", "outcome", "transactionId", "costVC", "refundStatus",
 ]);
 
 const ERROR_PAYLOAD_KEYS = new Set([

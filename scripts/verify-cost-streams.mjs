@@ -67,7 +67,23 @@ for (const [label, payload] of invalid) {
   const chunks = [], parser = new ChatCompletionStreamParser(chunk => chunks.push(chunk));
   parser.push(payload);
   check(parser.end() === 'failed', `${label}: accounting classifier also fails`);
+  const expectedReason = {
+    'partial/error/EOF': 'provider_error', 'partial/error/stop/DONE': 'provider_error',
+    'error after DONE': 'provider_error', 'text/EOF': 'missing_done', 'text/usage/EOF': 'missing_done',
+    'stop without DONE': 'missing_done', 'DONE without stop': 'missing_finish',
+    'finish after DONE': 'finish_after_done', content_filter: 'content_filter', tool_calls: 'tool_calls',
+    'unknown finish': 'unsupported_finish', 'empty answer': 'empty_text', 'malformed data': 'malformed_json',
+    'explicit SSE error event': 'sse_error', 'text after terminal choice': 'content_after_terminal',
+    'oversized data frame': 'oversized_frame',
+  }[label];
+  check(parser.diagnostics().protocolReason === expectedReason
+    && !JSON.stringify(parser.diagnostics()).includes('secret_provider'), `${label}: safe, specific protocol diagnosis`);
 }
+const thinking = new ChatCompletionStreamParser(() => {});
+thinking.push(frame({ choices: [{ delta: { reasoning_content: 'private_reasoning' } }] }) + terminal('stop') + done);
+check(thinking.end() === 'failed' && thinking.diagnostics().hasReasoning && !thinking.diagnostics().hasText
+  && thinking.diagnostics().protocolReason === 'empty_text'
+  && !JSON.stringify(thinking.diagnostics()).includes('private_reasoning'), 'reasoning-only stream diagnoses empty visible answer without exposing reasoning');
 const measured = [], parser = new ChatCompletionStreamParser(chunk => measured.push(chunk));
 parser.push(text + usage + error);
 check(parser.end() === 'failed' && measured.some(chunk => chunk.usage?.cost === 0.1), 'known usage retained on failed stream');

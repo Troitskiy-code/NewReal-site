@@ -2,6 +2,10 @@
 const MAX_FRAME_CHARS = 1_000_000;
 
 export type ChatCompletionFinishReason = "stop" | "length";
+export type ChatStreamProtocolReason = "provider_error" | "sse_error" | "malformed_json"
+  | "invalid_payload" | "oversized_frame" | "content_after_terminal" | "finish_after_done"
+  | "conflicting_finish" | "content_filter" | "tool_calls" | "unsupported_finish"
+  | "missing_done" | "missing_finish" | "empty_text";
 
 export function extractChatStreamDelta(payload: unknown): string {
   if (!payload || typeof payload !== "object") return "";
@@ -48,6 +52,9 @@ export class ChatCompletionStreamParser {
   private done = false;
   private ended = false;
   private hasText = false;
+  private hasReasoning = false;
+  private frameCount = 0;
+  private protocolReason: ChatStreamProtocolReason | null = null;
   private readonly onChunk: (chunk: Record<string, unknown>, emitText: boolean) => void;
   finishReason: ChatCompletionFinishReason | null = null;
 
@@ -63,9 +70,24 @@ export class ChatCompletionStreamParser {
       this.consumeLine(line);
     }
     if (this.buffer.length > MAX_FRAME_CHARS) {
-      this.invalid = true;
+      this.invalidate("oversized_frame");
       this.buffer = "";
     }
+  }
+
+  /** Only bounded categories and counters; never expose frame contents or provider error text. */
+  diagnostics() {
+    return {
+      hasDone: this.done, hasText: this.hasText, hasReasoning: this.hasReasoning,
+      finishReason: this.finishReason, frameCount: this.frameCount,
+      protocolReason: this.protocolReason ?? (!this.done ? "missing_done"
+        : this.finishReason === null ? "missing_finish" : !this.hasText ? "empty_text" : null),
+    };
+  }
+
+  private invalidate(reason: ChatStreamProtocolReason) {
+    this.invalid = true;
+    this.protocolReason ??= reason;
   }
 
   end(): "completed" | "failed" {
@@ -81,7 +103,7 @@ export class ChatCompletionStreamParser {
 
   private consumeLine(line: string) {
     if (!line) { this.consumeFrame(); return; }
-    if (line.length > MAX_FRAME_CHARS) { this.invalid = true; return; }
+    if (line.length > MAX_FRAME_CHARS) { this.invalidate("oversized_frame"); return; }
     if (line.startsWith(":")) return;
     const colon = line.indexOf(":");
     const field = colon === -1 ? line : line.slice(0, colon);
@@ -89,32 +111,37 @@ export class ChatCompletionStreamParser {
     if (field === "event") this.event = value;
     if (field !== "data") return;
     this.dataChars += value.length + 1;
-    if (this.dataChars > MAX_FRAME_CHARS) { this.invalid = true; this.data = []; return; }
+    if (this.dataChars > MAX_FRAME_CHARS) { this.invalidate("oversized_frame"); this.data = []; return; }
     this.data.push(value);
   }
 
   private consumeFrame() {
     const payload = this.data.join("\n").trim();
-    if (this.event === "error") this.invalid = true;
+    if (this.event === "error") this.invalidate("sse_error");
     this.data = []; this.dataChars = 0; this.event = "";
     if (!payload) return;
+    this.frameCount++;
     if (payload === "[DONE]") { this.done = true; return; }
     let chunk: unknown;
-    try { chunk = JSON.parse(payload); } catch { this.invalid = true; return; }
-    if (!chunk || typeof chunk !== "object" || Array.isArray(chunk)) { this.invalid = true; return; }
+    try { chunk = JSON.parse(payload); } catch { this.invalidate("malformed_json"); return; }
+    if (!chunk || typeof chunk !== "object" || Array.isArray(chunk)) { this.invalidate("invalid_payload"); return; }
     const record = chunk as Record<string, unknown>;
-    if (record.error != null) this.invalid = true;
+    if (record.error != null) this.invalidate("provider_error");
+    this.hasReasoning ||= hasChatStreamReasoning(record);
     const beforeTerminal = !this.done && this.finishReason === null;
     const delta = extractChatStreamDelta(record);
     if (delta) {
-      if (!beforeTerminal) this.invalid = true;
+      if (!beforeTerminal) this.invalidate("content_after_terminal");
       if (delta.trim()) this.hasText = true;
     }
     const choice = Array.isArray(record.choices) ? record.choices[0] : null;
     if (choice && typeof choice === "object" && choice.finish_reason != null) {
       const reason = choice.finish_reason;
-      if (this.done || (reason !== "stop" && reason !== "length")
-        || (this.finishReason !== null && this.finishReason !== reason)) this.invalid = true;
+      if (this.done) this.invalidate("finish_after_done");
+      else if (reason !== "stop" && reason !== "length") {
+        this.invalidate(reason === "content_filter" || reason === "tool_calls" ? reason : "unsupported_finish");
+      }
+      else if (this.finishReason !== null && this.finishReason !== reason) this.invalidate("conflicting_finish");
       else this.finishReason = reason;
     }
     // Usage on errors and after the terminal choice is still available to accounting.

@@ -1,6 +1,6 @@
 import { chatProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
+import { withAiCostContext, setAiCostActor, recordChatCostCharge, aiCostDiagnosticContext } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -376,6 +376,7 @@ async function handlePost(
 
     const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
 
+    let responseStage = "deliver_meta";
     const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {
       emit({
         type: "meta",
@@ -386,6 +387,7 @@ async function handlePost(
       });
 
       let loggedTtft = false;
+      responseStage = "consume_reply";
       const completion = await consumeOpenAIChatCompletion(upstream, (text) => {
         if (!loggedTtft) {
           loggedTtft = true;
@@ -402,6 +404,7 @@ async function handlePost(
 
       await recordChatCostCharge(upstream, costVC);
 
+      responseStage = "save_reply";
       const appendsToCutOff = Boolean(continueChat && continueCutOff && lastAssistant);
       const assistantMessage =
         appendsToCutOff && lastAssistant
@@ -421,6 +424,7 @@ async function handlePost(
               finishReason: completion.finishReason,
             });
 
+      responseStage = "schedule_memory";
       (appendsToCutOff ? scheduleMessageEmbeddingRefresh : scheduleMessageEmbedding)(
         assistantMessage.id,
         assistantMessage.content,
@@ -431,6 +435,7 @@ async function handlePost(
       // The reply is stored, so the debit is final.
       refundCharge = async () => {};
 
+      responseStage = "deliver_end";
       emit({
         type: "end",
         ...buildChatResponsePayload({
@@ -448,6 +453,8 @@ async function handlePost(
       try {
         await streamAndSaveReply(emit);
       } catch (error) {
+        errorLog("ChatDiagnostics", "response failed", { ...aiCostDiagnosticContext(),
+          stage: responseStage, reason: "response_pipeline_error", costVC }, toSafeDiagnostic(error));
         scheduleTurnMemory(null);
         await refundCharge();
         throw error;
@@ -458,7 +465,7 @@ async function handlePost(
     await refundCharge();
     if (error instanceof GroupPromptUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof PromptBudgetError) return NextResponse.json({ error: error.message }, { status: 400 });
-    errorLog("Server", "Chat error:", toSafeDiagnostic(error));
+    errorLog("ChatDiagnostics", "request failed", { ...aiCostDiagnosticContext(), stage: "prepare_reply" }, toSafeDiagnostic(error));
     if (defaultShouldRetry(error)) {
       return NextResponse.json(
         { error: KODIK_RETRY_ERROR_MESSAGE },
