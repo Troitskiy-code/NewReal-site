@@ -7,7 +7,9 @@ import { METRIKA_GOALS, reachGoal } from "./metrika";
 type Limit = { tokensUsedThisMonth: number; monthlyLimit: number; monthlyRemaining: number };
 type Job = { jobId?: string; clientKey?: string; scope?: string; state: string; imageUrl?: string; error?: string; tokenStatus?: Limit;
   /** For "uncertain": true while the server still refuses a new paid run. */
-  blocked?: boolean };
+  blocked?: boolean;
+  /** For a blocking "uncertain" job: seconds until a new run is allowed. */
+  retryAfterSeconds?: number };
 export function useAvatarGeneration(scope: string, onImage: (image: string) => void, onLimits: (limits: Limit) => void) {
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
@@ -98,6 +100,14 @@ export function useAvatarGeneration(scope: string, onImage: (image: string) => v
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.jobId, job.state]);
+
+  // Re-check when the uncertain window ends, so the button comes back without a reload.
+  useEffect(() => {
+    if (job.state !== "uncertain" || !job.blocked || !job.retryAfterSeconds) return;
+    const timer = setTimeout(() => { void readStatus(job.jobId); }, (job.retryAfterSeconds + 1) * 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job.jobId, job.state, job.blocked, job.retryAfterSeconds]);
 
   // An uncertain run blocks only for a limited window; older ones no longer stop a new generation.
   const uncertainBlocks = job.state === "uncertain" && job.blocked !== false;

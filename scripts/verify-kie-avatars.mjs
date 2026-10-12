@@ -199,6 +199,7 @@ try {
   const beforeLost = creates;
   await handler.POST(post(bodyFor()));
   check(creates === beforeLost && lostBody.blocked === true, 'uncertain task blocks automatic duplicate paid calls');
+  check(lostBody.retryAfterSeconds > 0 && lostBody.retryAfterSeconds <= 300 && /через \d+ мин/.test(lostBody.error), 'blocked run tells how long the 5-minute window still lasts');
   // After the window the user can generate again; the uncertain run keeps its quota for review.
   await db.avatarGeneration.update({ where: { id: lostBody.jobId }, data: { updatedAt: new Date(Date.now() - 16 * 60_000) } });
   check((await (await handler.GET(get({ jobId: lostBody.jobId }))).json()).blocked === false, 'expired uncertain run reports it no longer blocks');

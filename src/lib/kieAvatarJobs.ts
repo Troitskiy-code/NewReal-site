@@ -4,7 +4,7 @@ import { prisma } from "./prisma";
 import { getKieAvatarTask, saveKieImage } from "./kieAi";
 import { recordKieAvatarCost } from "./aiCostTelemetry";
 import { errorLog, toSafeDiagnostic } from "./logger";
-import { uncertainJobBlocks } from "./kieAvatarModels";
+import { uncertainBlockSecondsLeft, uncertainJobBlocks } from "./kieAvatarModels";
 
 export function publicAvatarJob(job: AvatarGeneration) {
   return { jobId: job.id, clientKey: job.clientKey, scope: job.scope, state: job.state,
@@ -12,9 +12,10 @@ export function publicAvatarJob(job: AvatarGeneration) {
     ...(job.state === "failed" ? { error: job.errorCode === "safety"
       ? "Запрос отклонён правилами генерации. Измените описание или референс."
       : "Не удалось сгенерировать изображение. Генерация возвращена в лимит." } : {}),
-    // The client uses "blocked" to keep the button disabled only while the uncertain window lasts.
+    // The client keeps the button disabled while "blocked" and re-checks after retryAfterSeconds.
     ...(job.state === "uncertain" ? uncertainJobBlocks(job)
-      ? { blocked: true, error: "Результат запуска пока неизвестен. Повторный запуск станет доступен через несколько минут." }
+      ? { blocked: true, retryAfterSeconds: uncertainBlockSecondsLeft(job),
+        error: `Сервис генерации не подтвердил запуск. Новую генерацию можно будет запустить через ${Math.max(1, Math.ceil(uncertainBlockSecondsLeft(job) / 60))} мин.` }
       : { blocked: false, error: "Предыдущий запуск не подтвердился. Можно запустить новую генерацию." } : {}),
   };
 }
