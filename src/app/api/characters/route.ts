@@ -21,6 +21,7 @@ import { catalogSearchCondition } from "@/lib/characterCatalogSearch";
 import { characterTagSearchTerms } from "@/lib/characterTags";
 import { getCharacterRecommendationOrder } from "@/lib/characterRecommendations";
 import type { RecommendationMode } from "@/lib/characterRecommendationRank";
+import { promptRolloutFinalized } from "@/lib/promptRolloutPolicy";
 
 export const maxDuration = 60;
 
@@ -39,6 +40,9 @@ async function handlePost(req: NextRequest) {
 
     setAiCostActor(session.user.id);
     const body = await req.json();
+    if (typeof body.systemPrompt === "string" && body.systemPrompt.trim() && await promptRolloutFinalized()) {
+      return NextResponse.json({ error: "Импорт старых инструкций завершён. Перенесите их в поля карточки" }, { status: 409 });
+    }
 
     let parsed;
     try {

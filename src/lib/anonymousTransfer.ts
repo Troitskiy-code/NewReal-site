@@ -3,6 +3,7 @@ import { isAnonymousExpired } from "@/lib/anonymousCookie";
 import { mapGuestMessagesToUserMessages } from "@/lib/anonymousChatMap";
 import { assertGuestSchemaReady, GuestSchemaMissingError, lockGuestSession, recoverExpiredGuestGenerations } from "@/lib/guestRequestStore";
 import { isLeaseActive } from "@/lib/guestRequestPolicy";
+import { migratedInitialState, promptRolloutEnabled } from "@/lib/promptRolloutPolicy";
 
 export type TransferResult =
   | { ok: true; alreadyTransferred: boolean; copied: number; characterIds: string[] }
@@ -99,16 +100,43 @@ export async function transferAnonymousChatToUser(params: {
 
       const copies = mapGuestMessagesToUserMessages(uniqueGuest, params.userId);
       // Transfer the pinned mode along with the guest history. An existing user story keeps its own mode.
-      for (const characterId of [...new Set(copies.map(copy => copy.characterId))]) {
-        const guestState = await tx.chatPromptState.findUnique({
+      for (const characterId of [...new Set(copies.map(copy => copy.characterId))].sort()) {
+        let guestState = await tx.chatPromptState.findUnique({
           where: { scopeKey_characterId: { scopeKey: `guest:${params.sessionId}`, characterId } },
         });
         const hasUserHistory = already.some(row => row.characterId === characterId);
+        const scopeKey = `user:${params.userId}`;
+        let initial: { builderVersion: number; mode: string; promptMigrationId?: string | null } = {
+          builderVersion: hasUserHistory ? 1 : guestState?.builderVersion ?? 1,
+          mode: hasUserHistory ? "character" : guestState?.mode ?? "character",
+        };
+        if (promptRolloutEnabled()) {
+          const card = (await tx.$queryRaw<{ promptBuilderVersion: number; roleplayMode: string }[]>`
+            SELECT "promptBuilderVersion", "roleplayMode" FROM "Character" WHERE "id" = ${characterId} FOR UPDATE`)[0];
+          if (card) {
+            // Rollback may have completed while this transfer was waiting for the card.
+            guestState = await tx.chatPromptState.findUnique({
+              where: { scopeKey_characterId: { scopeKey: `guest:${params.sessionId}`, characterId } },
+            });
+            initial = { builderVersion: hasUserHistory ? 1 : guestState?.builderVersion ?? 1,
+              mode: hasUserHistory ? "character" : guestState?.mode ?? "character" };
+            if (!hasUserHistory && guestState?.promptMigrationId) {
+              const oldGuest = await tx.promptMigrationStory.findUnique({ where: { entryId_scopeKey: {
+                entryId: guestState.promptMigrationId, scopeKey: `guest:${params.sessionId}` } } });
+              if (oldGuest) {
+                await tx.promptMigrationStory.upsert({ where: { entryId_scopeKey: { entryId: oldGuest.entryId, scopeKey } },
+                  create: { entryId: oldGuest.entryId, scopeKey, builderVersion: oldGuest.builderVersion, mode: oldGuest.mode,
+                    previousMigrationId: oldGuest.previousMigrationId }, update: {} });
+                initial.promptMigrationId = oldGuest.entryId;
+              }
+            } else if (hasUserHistory || initial.builderVersion !== 2) {
+              initial = await migratedInitialState(tx, characterId, scopeKey, initial, card, hasUserHistory);
+            }
+          }
+        }
         await tx.chatPromptState.upsert({
           where: { scopeKey_characterId: { scopeKey: `user:${params.userId}`, characterId } },
-          create: { scopeKey: `user:${params.userId}`, characterId,
-            builderVersion: hasUserHistory ? 1 : guestState?.builderVersion ?? 1,
-            mode: hasUserHistory ? "character" : guestState?.mode ?? "character" },
+          create: { scopeKey, characterId, ...initial },
           update: {},
         });
       }

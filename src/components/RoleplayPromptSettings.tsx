@@ -4,6 +4,7 @@ import axios from "axios";
 import type { CharacterFormValues } from "./CharacterForm";
 import { RP_FIELD_LIMITS, type RoleplayTextConfig, type RoleplayStyle } from "@/lib/roleplayConfig";
 import { showError, showSuccess } from "@/lib/toast";
+import { usePromptRolloutFinalized } from "@/hooks/usePromptRollout";
 
 const LABELS: Record<keyof RoleplayTextConfig, string> = {
   motivations: "Мотивы и цели", speechStyle: "Манера речи", relationships: "Отношения",
@@ -14,6 +15,7 @@ export default function RoleplayPromptSettings({ characterId, values, onChange }
   characterId?: string; values: CharacterFormValues;
   onChange: <K extends keyof CharacterFormValues>(field: K, value: CharacterFormValues[K]) => void;
 }) {
+  const finalized = usePromptRolloutFinalized();
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<{ content: string; version: string; rolloutEnabled: boolean; modelName: string | null; parameters: unknown; diagnostics: unknown } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -52,7 +54,7 @@ export default function RoleplayPromptSettings({ characterId, values, onChange }
       <textarea readOnly aria-label="Итоговые инструкции карточки" className={inputClass} rows={14} value={preview.content} />
       <details><summary>Диагностика сборки и параметры выбранной модели</summary><pre className="overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify({ version: preview.version, model: preview.modelName, parameters: preview.parameters, diagnostics: preview.diagnostics }, null, 2)}</pre></details>
     </div>}
-    {characterId && <details className="space-y-3"><summary>Переход со старых инструкций и откат</summary>
+    {characterId && !finalized && <details className="space-y-3"><summary>Переход со старых инструкций и откат</summary>
       <p className="text-sm text-wd-text-secondary">Текущая версия карточки: {values.promptBuilderVersion}. Старый текст сохраняется без изменений. Его происхождение может быть неизвестно: перенесите нужные особенности вручную в поля карточки и сохраните их до переключения. Новая сборка не выполняет старый текст; текущие истории переключаются отдельно в чате.</p>
       {values.systemPrompt && <textarea readOnly aria-label="Архив старых инструкций" className={inputClass} rows={7} value={values.systemPrompt} />}
       <label className="flex gap-2"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />Подтверждаю выбор версии после сохранения карточки</label>

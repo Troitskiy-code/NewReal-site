@@ -8,6 +8,8 @@
     "verify:avatars:kie": "node scripts/verify-kie-avatars.mjs",
     "verify:avatars:kie:browser": "node scripts/browser-kie-avatars.mjs",
     "verify:prompts": "node scripts/verify-roleplay-prompts.mjs",
+    "verify:prompts:migration": "node scripts/verify-prompt-migration.mjs",
+    "verify:prompts:migration:browser": "node scripts/verify-prompt-migration.mjs --browser",
     "verify:editor:browser": "node scripts/browser-roleplay-editor.mjs",
     "verify:models:testing": "node scripts/verify-testing-chat-models.mjs",
     "verify:payments:logs": "node scripts/verify-payment-analytics-logs.mjs",
