@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
@@ -11,6 +12,8 @@ import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
 import PersonaSelector from "@/components/PersonaSelector";
 import ChatPromptVersionSettings from "@/components/ChatPromptVersionSettings";
+import ChatThreadsPanel from "@/components/ChatThreadsPanel";
+import { THREAD_QUERY_PARAM, threadDisplayTitle, withThread, type ChatThreadSummary } from "@/lib/chatThreadShared";
 import type { ChatPersona } from "@/lib/persona";
 import {
   calculateRequestCost,
@@ -94,6 +97,8 @@ export type ChatShell = {
 type ChatHistoryResponse = {
   messages: Message[];
   character: ChatCharacter;
+  threadsEnabled?: boolean;
+  thread?: ChatThreadSummary | null;
   anonymous?: boolean;
   remainingMessages?: number;
   retentionDays?: number;
@@ -550,6 +555,9 @@ function ChatSettingsMenu({
   onOpenPersona,
   onOpenPrompt,
   onClearChat,
+  threadsEnabled = false,
+  onOpenThreads,
+  onNewThread,
   disabled,
 }: {
   open: boolean;
@@ -560,8 +568,13 @@ function ChatSettingsMenu({
   onOpenPersona: () => void;
   onOpenPrompt: () => void;
   onClearChat: () => void;
+  /** Stories on: "new story" and the story list replace the destructive restart. */
+  threadsEnabled?: boolean;
+  onOpenThreads?: () => void;
+  onNewThread?: () => void;
   disabled: boolean;
 }) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -633,18 +646,31 @@ function ChatSettingsMenu({
           <button type="button" role="menuitem" onClick={() => { onClose(); onOpenPrompt(); }} className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]">
             Тип и правила истории
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onClose();
-              onClearChat();
-            }}
-            disabled={disabled}
-            className="block w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-[#2A2A2A] disabled:opacity-50"
-          >
-            Начать новый чат
-          </button>
+          {threadsEnabled ? (
+            <>
+              <button type="button" role="menuitem" onClick={() => { onClose(); onOpenThreads?.(); }}
+                className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]">
+                {t("chatThreads.openList")}
+              </button>
+              <button type="button" role="menuitem" disabled={disabled} onClick={() => { onClose(); onNewThread?.(); }}
+                className="block w-full px-4 py-2.5 text-left text-sm text-wd-primary-soft transition-colors hover:bg-[#2A2A2A] disabled:opacity-50">
+                {t("chatThreads.newStory")}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onClose();
+                onClearChat();
+              }}
+              disabled={disabled}
+              className="block w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-[#2A2A2A] disabled:opacity-50"
+            >
+              Начать новый чат
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -661,6 +687,22 @@ type ModalProps = {
 };
 
 function Modal({ open, onClose, title, wide = false, dismissible = true, children }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      // A handler inside the dialog (inline rename/confirmation) may consume Escape first.
+      if (event.key === "Escape" && dismissible && !event.defaultPrevented) onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      previous?.focus();
+    };
+  }, [open, dismissible, onClose]);
+
   if (!open) return null;
 
   return (
@@ -674,6 +716,8 @@ function Modal({ open, onClose, title, wide = false, dismissible = true, childre
           wide ? "max-w-lg md:max-w-2xl" : "max-w-sm md:max-w-md"
         }`}
         onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chat-modal-title"
@@ -831,6 +875,18 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const { data: session, status } = useSession();
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // The story chosen in the address; without it the server opens the latest active story.
+  const urlThreadId = searchParams.get(THREAD_QUERY_PARAM);
+  const newThreadRequested = searchParams.get("new") === "1";
+  const [threadsEnabled, setThreadsEnabled] = useState(false);
+  const [currentThread, setCurrentThread] = useState<ChatThreadSummary | null>(null);
+  // Story of every request; set from the URL, the history response or the first stored turn.
+  const [threadId, setThreadId] = useState<string | null>(urlThreadId);
+  const [threadsOpen, setThreadsOpen] = useState(false);
+  const [creatingThread, setCreatingThread] = useState(false);
+  const newThreadRef = useRef<Promise<string | null> | null>(null);
 
   const [confirm, confirmModal] = useConfirm();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -872,6 +928,11 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const [anonymousRemaining, setAnonymousRemaining] = useState<number | null>(null);
   const [showAnonymousLimitModal, setShowAnonymousLimitModal] = useState(false);
   const [confirmClearChat, setConfirmClearChat] = useState(false);
+  const chatUrl = (suffix = "") => withThread(`/api/chat/${characterId}${suffix}`, threadId);
+  const navigateToThread = (id: string | null) => {
+    const path = window.location.pathname;
+    router.replace(id ? withThread(path, id) : path, { scroll: false });
+  };
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSendRef = useRef<{
     message: string;
@@ -945,6 +1006,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
     const applyChatPayload = (data: ChatHistoryResponse) => {
       setCharacter(data.character);
+      setThreadsEnabled(Boolean(data.threadsEnabled));
+      setCurrentThread(data.thread ?? null);
+      setThreadId(data.thread?.id ?? null);
       const greeting = pickLocalizedText(data.character.greeting, data.character.greeting_en, locale);
       if (data.messages.length === 0 && greeting) {
         setMessages([createGreetingMessage(greeting)]);
@@ -963,7 +1027,21 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       setShowAnonymousLimitModal(false);
       setHistoryLoading(true);
       setTransferState("idle");
+      setThreadsOpen(false);
       try {
+        if (!guest && newThreadRequested) {
+          // "New story" from the character page: create it once, then open it by its own address.
+          newThreadRef.current ??= axios.post<{ thread: ChatThreadSummary }>(
+            `/api/chat/${characterId}/threads`, {}, { validateStatus: (code) => code === 201 || code === 404 }
+          ).then((response) => response.status === 201 ? response.data.thread.id : null).catch(() => null);
+          // A superseded run (React dev double effect) shares the same creation and leaves navigation to the live run.
+          const created = await newThreadRef.current;
+          if (signal.aborted) return;
+          newThreadRef.current = null;
+          if (!created) showError(t("chatThreads.createFailed"));
+          navigateToThread(created);
+          return;
+        }
         if (!guest) {
           const copied = await waitForGuestTransfer({
             signal,
@@ -984,6 +1062,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           const chatRes = await axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`, { signal });
           signal.throwIfAborted();
           applyChatPayload(chatRes.data);
+          setThreadsEnabled(false);
           const remaining = chatRes.data.remainingMessages ?? 0;
           setAnonymousRemaining(remaining);
           if (remaining <= 0) {
@@ -993,10 +1072,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         }
 
         const [chatRes, modelsRes, balanceRes, personaRes] = await Promise.all([
-          axios.get<ChatHistoryResponse>(`/api/chat/${characterId}`, { signal }),
+          axios.get<ChatHistoryResponse>(withThread(`/api/chat/${characterId}`, urlThreadId), { signal }),
           axios.get<ModelsResponse>("/api/models", { signal }),
           axios.get<BalanceData>("/api/user/balance", { signal }),
-          axios.get<{ persona: ChatPersona | null }>(`/api/chat/${characterId}/persona`, { signal }),
+          axios.get<{ persona: ChatPersona | null }>(withThread(`/api/chat/${characterId}/persona`, urlThreadId), { signal }),
         ]);
         signal.throwIfAborted();
 
@@ -1016,6 +1095,12 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           return;
         }
         const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined;
+        if (!guest && urlThreadId && statusCode === 404) {
+          // Deleted or foreign story: never reveal which; open the latest active story instead.
+          showError(t("chatThreads.notFound"));
+          navigateToThread(null);
+          return;
+        }
         if (guest && statusCode === 410) {
           setAnonymousRemaining(0);
           showError(t("guestChat.expired"));
@@ -1031,7 +1116,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
     fetchData();
     return () => controller.abort();
-  }, [characterId, status, session?.user?.id, historyReload, locale, t]);
+    // navigateToThread only reads the current location; the story is part of the address.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterId, status, session?.user?.id, historyReload, locale, t, urlThreadId, newThreadRequested]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1048,6 +1135,27 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       html.style.overscrollBehavior = previousHtmlOverscroll;
     };
   }, []);
+
+  /** The stored turn names its story: the first one created it, and an archived one is active again. */
+  const adoptThread = (thread: ChatThreadSummary) => {
+    setThreadId((current) => current ?? thread.id);
+    setCurrentThread((current) => (!current || current.id === thread.id ? { ...current, ...thread } : current));
+  };
+
+  const handleNewThread = async () => {
+    if (creatingThread || sending || actionLoading) return;
+    setCreatingThread(true);
+    try {
+      const { data } = await axios.post<{ thread: ChatThreadSummary }>(`/api/chat/${characterId}/threads`, threadId ? { sourceThreadId: threadId } : {});
+      showSuccess(t("chatThreads.created"));
+      setThreadsOpen(false);
+      navigateToThread(data.thread.id);
+    } catch (error) {
+      handleApiError(error, t("chatThreads.createFailed"));
+    } finally {
+      setCreatingThread(false);
+    }
+  };
 
   const handleModelChange = async (modelId: string) => {
     if (modelId === selectedModelId) return;
@@ -1161,7 +1269,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
     try {
       const endEvent = await fetchAndReadChatStream(
-        `/api/chat/${characterId}/regenerate`,
+        chatUrl("/regenerate"),
         { messageId },
         {
           onThinking: () => setThinking(true),
@@ -1220,7 +1328,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     setSending(true);
     try {
       const endEvent = await fetchAndReadChatStream(
-        `/api/chat/${characterId}`,
+        chatUrl(),
         { continue: true },
         {
           onThinking: () => setThinking(true),
@@ -1374,7 +1482,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
     setClearingChat(true);
     try {
-      await axios.delete(`/api/chat/${characterId}/messages`);
+      await axios.delete(chatUrl("/messages"));
       const greeting = characterGreeting;
       setMessages(greeting ? [createGreetingMessage(greeting)] : []);
       setEditingMessageId(null);
@@ -1442,13 +1550,14 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
     try {
       const endEvent = await fetchAndReadChatStream(
-        `/api/chat/${characterId}`,
+        isAnonymous ? `/api/chat/${characterId}` : chatUrl(),
         isAnonymous
           ? { message: userMessage, history, requestId }
           : { message: userMessage },
         {
           onThinking: () => setThinking(true),
           onMeta: (event) => {
+            if (event.thread) adoptThread(event.thread);
             if (event.userMessage) {
               persistedUser = asChatMessage(event.userMessage);
               if (lastSendRef.current?.requestId === requestId) lastSendRef.current.userMessageId = event.userMessage.id;
@@ -1569,7 +1678,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
     try {
       const endEvent = await fetchAndReadChatStream(
-        `/api/chat/${characterId}`,
+        isAnonymous ? `/api/chat/${characterId}` : chatUrl(),
         isAnonymous && lastSend
           ? { message: lastSend.message, history: lastSend.history, requestId: lastSend.requestId }
           : { retryLast: true },
@@ -1685,6 +1794,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         >
           <MemoryEditor
             characterId={characterId}
+            threadId={threadId}
             onClose={() => setMemoryEditorOpen(false)}
           />
         </Modal>
@@ -1697,14 +1807,37 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         >
           <PersonaSelector
             characterId={characterId}
+            threadId={threadId}
             selectedPersona={selectedPersona}
             onChange={setSelectedPersona}
           />
         </Modal>
 
         <Modal open={promptSettingsOpen} onClose={() => setPromptSettingsOpen(false)} title="Тип и правила истории" wide>
-          {!isAnonymous && <ChatPromptVersionSettings key={characterId} characterId={characterId} disabled={sending || actionLoading || clearingChat} />}
+          {!isAnonymous && <ChatPromptVersionSettings key={`${characterId}:${threadId ?? ""}`} characterId={characterId} threadId={threadId} threadsEnabled={threadsEnabled} disabled={sending || actionLoading || clearingChat} />}
         </Modal>
+
+        {threadsEnabled && !isAnonymous ? (
+          <Modal open={threadsOpen} onClose={() => setThreadsOpen(false)} title={t("chatThreads.listTitle", { name: characterDisplayName })} wide>
+            <ChatThreadsPanel
+              characterId={characterId}
+              currentThreadId={threadId}
+              disabled={sending || actionLoading || clearingChat}
+              creating={creatingThread}
+              onCreate={() => void handleNewThread()}
+              onOpen={(thread) => {
+                setThreadsOpen(false);
+                if (thread.id !== threadId) navigateToThread(thread.id);
+              }}
+              onCurrentChanged={(thread) => setCurrentThread((current) => (current ? { ...current, ...thread } : thread))}
+              onCurrentDeleted={() => {
+                setThreadsOpen(false);
+                navigateToThread(null);
+                setHistoryReload((value) => value + 1);
+              }}
+            />
+          </Modal>
+        ) : null}
 
         {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
         {(character?.slug || !isAnonymous) && (
@@ -1733,7 +1866,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                   setSettingsMenuOpen(false);
                   setConfirmClearChat(true);
                 }}
-                disabled={sending || actionLoading || clearingChat}
+                threadsEnabled={threadsEnabled}
+                onOpenThreads={() => setThreadsOpen(true)}
+                onNewThread={() => void handleNewThread()}
+                disabled={sending || actionLoading || clearingChat || creatingThread}
               />
             )}
           </aside>
@@ -1752,8 +1888,28 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                 <FaUser className="text-wd-text-secondary/40" size={16} />
               </div>
             )}
-            <h1 className="truncate text-sm font-bold text-white md:text-base">{characterDisplayName}</h1>
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-bold text-white md:text-base">{characterDisplayName}</h1>
+              {threadsEnabled && !isAnonymous ? (
+                <button
+                  type="button"
+                  onClick={() => setThreadsOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={threadsOpen}
+                  className="flex max-w-full items-center gap-1 truncate text-xs text-wd-secondary-text transition-colors hover:text-white"
+                >
+                  <span className="truncate">{currentThread ? threadDisplayTitle(currentThread, t) : t("chatThreads.newStory")}</span>
+                  <FaChevronDown aria-hidden size={10} className="shrink-0" />
+                  <span className="sr-only">{t("chatThreads.openList")}</span>
+                </button>
+              ) : null}
+            </div>
           </div>
+          {threadsEnabled && currentThread?.status === "archived" ? (
+            <p role="status" className="mx-4 mb-1 rounded-lg border border-wd-border bg-black/40 px-3 py-2 text-xs text-wd-text-secondary">
+              {t("chatThreads.archivedBanner")}
+            </p>
+          ) : null}
           <div data-character-list-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-4 md:space-y-4 md:px-4 md:pt-6">
             {characterCardDescription ? (

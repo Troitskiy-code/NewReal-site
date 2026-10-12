@@ -7,6 +7,7 @@ import { stripMemoryControlInstructions } from "@/lib/memorySafety";
 import { hasDistinctKeyTokens, isSemanticDuplicate } from "@/lib/memoryEmbeddings";
 import { STATUS_LABELS, inferMemoryStatus, memoryOverlap, safeMemoryParaphrase, sameMemoryMeaning } from "@/lib/memoryNarrative";
 import { makeSummarySources } from "@/lib/memorySummaryEvidence";
+import { memoryScopeWhere, type ChatScope } from "@/lib/chatThreads";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const CORE_MEMORY_MODEL = "google/gemma-4-31b-it";
@@ -286,12 +287,11 @@ export async function classifyEvent(message: string, apiKey: string): Promise<Ev
 }
 
 export async function isEventAlreadyInSummary(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   eventText: string
 ): Promise<boolean> {
   const memory = await prisma.memory.findUnique({
-    where: { userId_characterId: { userId, characterId } },
+    where: { threadId: scope.threadId },
     select: { summary: true },
   });
   if (!memory?.summary) return false;
@@ -300,13 +300,12 @@ export async function isEventAlreadyInSummary(
 }
 
 async function isDuplicateEvent(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   eventText: string,
   apiKey: string
 ): Promise<boolean> {
   const recent = await prisma.episodicMemory.findMany({
-    where: { userId, characterId },
+    where: memoryScopeWhere(scope),
     orderBy: { timestamp: "desc" },
     take: 20,
     select: { event: true },
@@ -396,8 +395,7 @@ export type RelevantMemories = {
 };
 
 async function upsertMemoryEntry(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   type: "summary" | "core" | "episodic",
   content: string,
   replaceExisting = false
@@ -407,12 +405,12 @@ async function upsertMemoryEntry(
 
   if (replaceExisting) {
     await prisma.memoryEntry.deleteMany({
-      where: { userId, characterId, type },
+      where: { ...memoryScopeWhere(scope), type },
     });
   }
 
   await prisma.memoryEntry.create({
-    data: { userId, characterId, type, content: trimmed },
+    data: { ...memoryScopeWhere(scope), type, content: trimmed },
   });
 }
 
@@ -447,40 +445,39 @@ async function summarizeCoreMemory(apiKey: string, previous: string, newInfo: st
   return content;
 }
 
-export async function ensureCoreMemory(userId: string, characterId: string, seed = "") {
+export async function ensureCoreMemory(scope: ChatScope, seed = "") {
   const existing = await prisma.coreMemory.findUnique({
-    where: { userId_characterId: { userId, characterId } },
+    where: { threadId: scope.threadId },
   });
 
   if (existing) return existing;
 
   const created = await prisma.coreMemory.create({
     data: {
-      userId,
-      characterId,
+      ...memoryScopeWhere(scope),
       content: seed.trim(),
     },
   });
 
   if (created.content) {
-    await upsertMemoryEntry(userId, characterId, "core", created.content, true);
+    await upsertMemoryEntry(scope, "core", created.content, true);
   }
 
-  debugLog("CoreMemory", `created user=${userId} character=${characterId}`);
+  debugLog("CoreMemory", `created user=${scope.userId} character=${scope.characterId}`);
   return created;
 }
 
 export async function updateCoreMemory(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   newInfo: string,
   apiKey: string
 ) {
+  const { userId, characterId } = scope;
   const info = newInfo.trim();
   if (!info) return null;
 
   try {
-    const existing = await ensureCoreMemory(userId, characterId);
+    const existing = await ensureCoreMemory(scope);
 
     if (!hasSubstantialNewCoreInfo(existing.content, info)) {
       infoLog("Memory", "Core updated: 0 new facts, 1 unchanged");
@@ -514,17 +511,17 @@ export async function updateCoreMemory(
 
     const saved = await prisma.$transaction(async (tx) => {
       const updated = await tx.coreMemory.updateMany({
-        where: { userId, characterId, content: existing.content, updatedAt: existing.updatedAt },
+        where: { ...memoryScopeWhere(scope), content: existing.content, updatedAt: existing.updatedAt },
         data: { content },
       });
       if (!updated.count) return null;
-      await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "core" } });
-      await tx.memoryEntry.create({ data: { userId, characterId, type: "core", content } });
-      return tx.coreMemory.findUnique({ where: { userId_characterId: { userId, characterId } } });
+      await tx.memoryEntry.deleteMany({ where: { ...memoryScopeWhere(scope), type: "core" } });
+      await tx.memoryEntry.create({ data: { ...memoryScopeWhere(scope), type: "core", content } });
+      return tx.coreMemory.findUnique({ where: { threadId: scope.threadId } });
     });
     if (!saved) {
       infoLog("Memory", "Core update skipped: another update or editor save won");
-      return prisma.coreMemory.findUnique({ where: { userId_characterId: { userId, characterId } } });
+      return prisma.coreMemory.findUnique({ where: { threadId: scope.threadId } });
     }
     infoLog("Memory", "Core updated: 1 new facts, 0 unchanged");
     debugLog(
@@ -544,8 +541,7 @@ export async function updateCoreMemory(
 }
 
 export async function addEpisodicMemory(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   event: string,
   importance = 1,
   timestamp = new Date()
@@ -557,21 +553,20 @@ export async function addEpisodicMemory(
 
   const created = await prisma.episodicMemory.create({
     data: {
-      userId,
-      characterId,
+      ...memoryScopeWhere(scope),
       event: trimmed.slice(0, 2000),
       importance: clampedImportance,
       timestamp,
     },
   });
 
-  await upsertMemoryEntry(userId, characterId, "episodic", created.event);
+  await upsertMemoryEntry(scope, "episodic", created.event);
 
-  const total = await prisma.episodicMemory.count({ where: { userId, characterId } });
+  const total = await prisma.episodicMemory.count({ where: memoryScopeWhere(scope) });
   const overflow = total - EPISODIC_CAP;
   if (overflow > 0) {
     const extra = await prisma.episodicMemory.findMany({
-      where: { userId, characterId },
+      where: memoryScopeWhere(scope),
       orderBy: [{ importance: "asc" }, { timestamp: "asc" }],
       take: overflow,
       select: { id: true },
@@ -586,18 +581,18 @@ export async function addEpisodicMemory(
 
   debugLog(
     "Episodic",
-    `added user=${userId} character=${characterId} importance=${clampedImportance}`
+    `added user=${scope.userId} character=${scope.characterId} importance=${clampedImportance}`
   );
   return created;
 }
 
 export async function deleteEpisodicMemory(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   episodicId: string
 ) {
+  const { userId, characterId } = scope;
   const existing = await prisma.episodicMemory.findFirst({
-    where: { id: episodicId, userId, characterId },
+    where: { id: episodicId, ...memoryScopeWhere(scope) },
   });
 
   if (!existing) return false;
@@ -605,8 +600,7 @@ export async function deleteEpisodicMemory(
   await prisma.episodicMemory.delete({ where: { id: existing.id } });
   await prisma.memoryEntry.deleteMany({
     where: {
-      userId,
-      characterId,
+      ...memoryScopeWhere(scope),
       type: "episodic",
       content: existing.event,
     },
@@ -688,25 +682,25 @@ export function formatRelevantMemories(memories: RelevantMemories): string | nul
 }
 
 export async function loadMemoryCandidates(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   maxContextTokens = 6000
 ): Promise<MemoryCandidates> {
+  const { userId, characterId } = scope;
   const minImportance = episodicImportanceThreshold(maxContextTokens);
 
   const [core, important, recent] = await Promise.all([
     prisma.coreMemory.findUnique({
-      where: { userId_characterId: { userId, characterId } },
+      where: { threadId: scope.threadId },
       select: { content: true },
     }),
     prisma.episodicMemory.findMany({
-      where: { userId, characterId, importance: { gte: minImportance } },
+      where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
       orderBy: [{ importance: "desc" }, { timestamp: "desc" }, { id: "desc" }],
       take: EPISODIC_CANDIDATE_LIMIT,
       select: { id: true, event: true, timestamp: true, importance: true },
     }),
     prisma.episodicMemory.findMany({
-      where: { userId, characterId, importance: { gte: minImportance } },
+      where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
       orderBy: [{ timestamp: "desc" }, { id: "desc" }], take: 30,
       select: { id: true, event: true, timestamp: true, importance: true },
     }),
@@ -725,49 +719,54 @@ export async function loadMemoryCandidates(
 }
 
 export async function getRelevantMemories(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   intent: UserIntent,
   maxContextTokens = 6000
 ): Promise<RelevantMemories> {
-  return selectRelevantMemories(await loadMemoryCandidates(userId, characterId, maxContextTokens), intent);
+  return selectRelevantMemories(await loadMemoryCandidates(scope, maxContextTokens), intent);
 }
 
 export async function recordSummaryMemoryEntry(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   summary: string
 ) {
-  await upsertMemoryEntry(userId, characterId, "summary", summary, true);
+  await upsertMemoryEntry(scope, "summary", summary, true);
+}
+
+/** Editor payload for a character whose first story does not exist yet. */
+export function emptyChatMemoryPayload(includeLowImportance = false) {
+  return {
+    summary: null, core: null, coreMemory: null, episodic: [], episodicMemories: [],
+    episodicCounts: tallyEpisodicCounts([]), includeLowImportance,
+  };
 }
 
 export async function getChatMemoryPayload(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   options: { includeLowImportance?: boolean } = {}
 ) {
+  const key = memoryScopeWhere(scope);
   const includeLowImportance = Boolean(options.includeLowImportance);
 
   const [coreMemory, episodicMemories, summary, importanceRows] = await Promise.all([
     prisma.coreMemory.findUnique({
-      where: { userId_characterId: { userId, characterId } },
+      where: { threadId: scope.threadId },
       select: { id: true, content: true, updatedAt: true },
     }),
     prisma.episodicMemory.findMany({
       where: {
-        userId,
-        characterId,
+        ...key,
         ...(includeLowImportance ? {} : { importance: { gte: EDITOR_EPISODIC_MIN_IMPORTANCE } }),
       },
       orderBy: { timestamp: "desc" },
       select: { id: true, event: true, timestamp: true, importance: true },
     }),
     prisma.memory.findUnique({
-      where: { userId_characterId: { userId, characterId } },
+      where: { threadId: scope.threadId },
       select: { summary: true, createdAt: true },
     }),
     prisma.episodicMemory.findMany({
-      where: { userId, characterId },
+      where: key,
       select: { importance: true },
     }),
   ]);
@@ -785,13 +784,15 @@ export async function getChatMemoryPayload(
   };
 }
 
-export async function setSummaryContent(userId: string, characterId: string, summary: string) {
+export async function setSummaryContent(scope: ChatScope, summary: string) {
+  const { userId, characterId } = scope;
+  const key = memoryScopeWhere(scope);
   const trimmed = summary.trim();
 
   if (!trimmed) {
     await prisma.$transaction(async (tx) => {
-      await tx.memory.deleteMany({ where: { userId, characterId } });
-      await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "summary" } });
+      await tx.memory.deleteMany({ where: key });
+      await tx.memoryEntry.deleteMany({ where: { ...key, type: "summary" } });
     });
     debugLog("MemoryEditor", `summary cleared user=${userId} character=${characterId}`);
     return null;
@@ -799,30 +800,32 @@ export async function setSummaryContent(userId: string, characterId: string, sum
 
   const saved = await prisma.$transaction(async (tx) => {
     const row = await tx.memory.upsert({
-    where: { userId_characterId: { userId, characterId } },
-    create: { userId, characterId, summary: trimmed },
+    where: { threadId: scope.threadId },
+    create: { ...key, summary: trimmed },
     // A manual replacement is not proof that any message is represented in it.
     // Also invalidate in-flight refreshes that read the previous coverage/text.
     update: { summary: trimmed, lastSummarizedAt: null, summarizedMessageCount: 0 },
     });
-    await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "summary" } });
-    await tx.memoryEntry.create({ data: { userId, characterId, type: "summary", content: trimmed } });
+    await tx.memoryEntry.deleteMany({ where: { ...key, type: "summary" } });
+    await tx.memoryEntry.create({ data: { ...key, type: "summary", content: trimmed } });
     return row;
   });
   debugLog("MemoryEditor", `summary saved user=${userId} character=${characterId} chars=${trimmed.length}`);
   return saved;
 }
 
-export async function setCoreMemoryContent(userId: string, characterId: string, content: string) {
+export async function setCoreMemoryContent(scope: ChatScope, content: string) {
+  const { userId, characterId } = scope;
+  const key = memoryScopeWhere(scope);
   const trimmed = normalizeManualCoreMemory(content);
   const saved = await prisma.$transaction(async (tx) => {
     const row = await tx.coreMemory.upsert({
-      where: { userId_characterId: { userId, characterId } },
-      create: { userId, characterId, content: trimmed },
+      where: { threadId: scope.threadId },
+      create: { ...key, content: trimmed },
       update: { content: trimmed },
     });
-    await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "core" } });
-    if (trimmed) await tx.memoryEntry.create({ data: { userId, characterId, type: "core", content: trimmed } });
+    await tx.memoryEntry.deleteMany({ where: { ...key, type: "core" } });
+    if (trimmed) await tx.memoryEntry.create({ data: { ...key, type: "core", content: trimmed } });
     return row;
   });
 
@@ -830,12 +833,13 @@ export async function setCoreMemoryContent(userId: string, characterId: string, 
   return saved;
 }
 
-export async function clearChatMemories(userId: string, characterId: string) {
+export async function clearChatMemories(scope: ChatScope) {
+  const key = memoryScopeWhere(scope);
   await Promise.all([
-    prisma.memory.deleteMany({ where: { userId, characterId } }),
-    prisma.coreMemory.deleteMany({ where: { userId, characterId } }),
-    prisma.episodicMemory.deleteMany({ where: { userId, characterId } }),
-    prisma.memoryEntry.deleteMany({ where: { userId, characterId } }),
+    prisma.memory.deleteMany({ where: key }),
+    prisma.coreMemory.deleteMany({ where: key }),
+    prisma.episodicMemory.deleteMany({ where: key }),
+    prisma.memoryEntry.deleteMany({ where: key }),
   ]);
 }
 
@@ -845,45 +849,42 @@ export async function clearChatMemories(userId: string, characterId: string) {
  * assistantReply is null when generation failed, so the user's turn is still processed once.
  */
 export async function ingestChatTurnMemory({
-  userId,
-  characterId,
+  scope,
   userMessage,
   assistantReply,
   intent,
   apiKey,
   timestamp,
 }: {
-  userId: string;
-  characterId: string;
+  scope: ChatScope;
   userMessage: string;
   assistantReply: string | null;
   intent: UserIntent;
   apiKey: string;
   timestamp?: Date;
 }) {
-  await ensureCoreMemory(userId, characterId);
+  await ensureCoreMemory(scope);
 
   const classification = await classifyTurnEvent(userMessage, assistantReply, apiKey);
   if (classification.importance === 0) {
     infoLog("Memory", "Episodic skipped: trivial turn");
   } else if (!classification.isEvent || classification.importance < 2) {
     infoLog("Memory", `Episodic skipped: non-event (importance: ${classification.importance})`);
-  } else if (await isEventAlreadyInSummary(userId, characterId, classification.text)) {
+  } else if (await isEventAlreadyInSummary(scope, classification.text)) {
     infoLog("Memory", "Episodic skipped: already in summary");
-  } else if (await isDuplicateEvent(userId, characterId, classification.text, apiKey)) {
+  } else if (await isDuplicateEvent(scope, classification.text, apiKey)) {
     infoLog("Episodic", "Duplicate detected, skipped");
   } else {
-    await addEpisodicMemory(userId, characterId, classification.text, classification.importance, timestamp);
+    await addEpisodicMemory(scope, classification.text, classification.importance, timestamp);
     infoLog("Memory", `Episodic saved: importance ${classification.importance} source=${classification.source ?? "user"}`);
   }
 
   debugLog("Importance", `intent=${intent} classifier-driven episodic ingest reply=${assistantReply ? "yes" : "no"}`);
-  await updateCoreMemory(userId, characterId, userMessage, apiKey);
+  await updateCoreMemory(scope, userMessage, apiKey);
 }
 
 export async function ingestUserMessageMemory(options: {
-  userId: string;
-  characterId: string;
+  scope: ChatScope;
   userMessage: string;
   intent: UserIntent;
   apiKey: string;

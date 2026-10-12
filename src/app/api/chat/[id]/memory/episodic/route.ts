@@ -2,7 +2,8 @@ import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
+import { getAuthorizedChatScope } from "@/lib/chatAccess";
+import { requestedThreadId } from "@/lib/chatThreads";
 import { addEpisodicMemory, MANUAL_EPISODIC_IMPORTANCE } from "@/lib/advancedMemory";
 
 export async function POST(
@@ -30,12 +31,13 @@ export async function POST(
       typeof body?.importance === "number" ? body.importance : MANUAL_EPISODIC_IMPORTANCE;
     const importance = Math.min(5, Math.max(2, Math.round(requestedImportance)));
 
-    const access = await getAuthorizedCharacterForChat(session.user.id, characterId);
+    const access = await getAuthorizedChatScope(session.user.id, characterId, requestedThreadId(req), { create: true });
     if ("error" in access) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
+    if (access.resolution.status !== "found") throw new Error("Story was not created");
 
-    const created = await addEpisodicMemory(session.user.id, characterId, event, importance);
+    const created = await addEpisodicMemory(access.resolution.scope, event, importance);
     if (!created) {
       return NextResponse.json({ error: "Не удалось добавить событие" }, { status: 400 });
     }

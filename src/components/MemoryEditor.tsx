@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import LoadErrorBlock from "@/components/LoadErrorBlock";
+import { withThread } from "@/lib/chatThreadShared";
 
 type TabId = "summary" | "core" | "episodic";
 
@@ -66,19 +67,24 @@ function apiError(error: unknown, fallback: string): string {
 
 export default function MemoryEditor({
   characterId,
+  threadId = null,
   onClose,
 }: {
   characterId: string;
+  /** Story whose memory is edited; null = the default story. */
+  threadId?: string | null;
   onClose: () => void;
 }) {
-  // A new character gets a new editor; late responses cannot overwrite its draft.
-  return <CharacterMemoryEditor key={characterId} characterId={characterId} onClose={onClose} />;
+  // A new character or story gets a new editor; late responses cannot overwrite its draft.
+  return <CharacterMemoryEditor key={`${characterId}:${threadId ?? ""}`} characterId={characterId} threadId={threadId} onClose={onClose} />;
 }
 
-function CharacterMemoryEditor({ characterId, onClose }: {
+function CharacterMemoryEditor({ characterId, threadId, onClose }: {
   characterId: string;
+  threadId: string | null;
   onClose: () => void;
 }) {
+  const api = useCallback((path: string) => withThread(`/api/chat/${characterId}/memory${path}`, threadId), [characterId, threadId]);
   const [tab, setTab] = useState<TabId>("summary");
   const [loading, setLoading] = useState(true);
   const [loadedCharacterId, setLoadedCharacterId] = useState<string | null>(null);
@@ -106,7 +112,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
   const loadMemory = useCallback(async (includeAll = showAllEventsRef.current, signal?: AbortSignal) => {
     const version = ++loadVersionRef.current;
     const query = includeAll ? "?all=1" : "";
-    const { data } = await axios.get<MemoryPayload>(`/api/chat/${characterId}/memory${query}`, { signal });
+    const { data } = await axios.get<MemoryPayload>(api(query), { signal });
     if (version !== loadVersionRef.current) return;
     setSummaryDraft(data.summary?.summary ?? "");
     setCoreDraft(data.core?.content ?? data.coreMemory?.content ?? "");
@@ -117,7 +123,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
     if (!data.isOwner) {
       setShowAllEvents(false);
     }
-  }, [characterId]);
+  }, [characterId, api]);
 
   const fetchMemory = useCallback(async () => {
     setLoading(true);
@@ -144,7 +150,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
     setSaving(true);
     try {
       const { data } = await axios.put<{ summary: SummaryMemory | null }>(
-        `/api/chat/${characterId}/memory/summary`,
+        api("/summary"),
         { summary: summaryDraft }
       );
       setSummaryDraft(data.summary?.summary ?? "");
@@ -167,7 +173,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
         const { data } = await axios.post<{
           status: "updated" | "conflict" | "unchanged" | "empty" | "rebuilding";
           summary?: SummaryMemory | null; continuation?: string; processed?: number; total?: number;
-        }>(`/api/chat/${characterId}/memory/refresh-summary`, { mode: rebuild ? "rebuild" : "refresh", confirm: rebuild, continuation });
+        }>(api("/refresh-summary"), { mode: rebuild ? "rebuild" : "refresh", confirm: rebuild, continuation });
         if (data.status === "rebuilding") {
           if (!data.continuation) throw new Error("Missing continuation");
           continuation = data.continuation;
@@ -192,7 +198,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
     setSaving(true);
     try {
       const { data } = await axios.put<{ coreMemory: CoreMemory; core?: CoreMemory }>(
-        `/api/chat/${characterId}/memory/core`,
+        api("/core"),
         { content: coreDraft }
       );
       setCoreDraft(data.core?.content ?? data.coreMemory.content);
@@ -215,7 +221,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
     setSaving(true);
     try {
       const { data } = await axios.post<{ episodic: EpisodicItem }>(
-        `/api/chat/${characterId}/memory/episodic`,
+        api("/episodic"),
         { event: newEvent, importance: newImportance }
       );
       setEvents((prev) => [data.episodic, ...prev]);
@@ -238,7 +244,7 @@ function CharacterMemoryEditor({ characterId, onClose }: {
     setDeletingId(episodicId);
     try {
       const removed = events.find((item) => item.id === episodicId);
-      await axios.delete(`/api/chat/${characterId}/memory/episodic/${episodicId}`);
+      await axios.delete(api(`/episodic/${episodicId}`));
       setEvents((prev) => prev.filter((item) => item.id !== episodicId));
       if (removed) {
         setEpisodicCounts((prev) => {

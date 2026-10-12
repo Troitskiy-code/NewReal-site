@@ -15,7 +15,8 @@ import { appendPersonaToSystemPrompt } from "@/lib/persona";
 import { getSelectedChatPersona } from "@/lib/personaService";
 import { assembleRoleplayPrompt, fitPromptAssembly, type PromptAssemblyOptions, type PromptAssembly } from "@/lib/chatSystemPrompt";
 import { buildChatSystemPrompt as buildLegacyChatSystemPrompt } from "@/lib/chatSystemPromptV1";
-import { getOrCreatePromptState, isPromptV2Enabled, assertPromptStateAvailable, type PromptState } from "@/lib/promptState";
+import { getOrCreateThreadPromptState, isPromptV2Enabled, assertPromptStateAvailable, type PromptState } from "@/lib/promptState";
+import { messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { promptAssemblyDiagnostics, logPromptDelivery } from "@/lib/promptDiagnostics";
 import { readChatMemoryState, resolveChatMemorySummary } from "@/lib/chatMemory";
 import { appendMemorySection, type MemoryBlock, type MemoryBlockKind } from "@/lib/memoryPromptFormat";
@@ -298,8 +299,7 @@ export async function resolveChatContext(userId: string) {
 }
 
 type PrepareChatMessagesOptions = {
-  userId: string;
-  characterId: string;
+  scope: ChatScope;
   character: CharacterForChat;
   user: ChatUser;
   model: EconomyModel;
@@ -534,13 +534,11 @@ export function mergeAssistantContinuation(original: string, continuation: strin
 }
 
 async function loadChatHistoryRows({
-  userId,
-  characterId,
+  scope,
   historyLimit,
   historyBeforeMessageId,
 }: {
-  userId: string;
-  characterId: string;
+  scope: ChatScope;
   historyLimit: number;
   historyBeforeMessageId?: string;
 }): Promise<{ rows: ChatHistoryRow[]; olderCount: number; historyBefore: Date | null }> {
@@ -557,7 +555,7 @@ async function loadChatHistoryRows({
     cutoff = cutoffMessage.createdAt;
   }
 
-  const where = { characterId, userId, ...(cutoff ? { createdAt: { lt: cutoff } } : {}) };
+  const where = { ...messageScopeWhere(scope), ...(cutoff ? { createdAt: { lt: cutoff } } : {}) };
   const [rows, total] = await Promise.all([
     prisma.message.findMany({
       where,
@@ -675,8 +673,7 @@ export function assemblePreparedChatMessages(
 }
 
 export async function prepareFastContext({
-  userId,
-  characterId,
+  scope,
   character,
   user,
   apiKey,
@@ -688,6 +685,7 @@ export async function prepareFastContext({
   locale = "ru",
   refreshSummary = false,
 }: PrepareChatMessagesOptions): Promise<FastChatContext> {
+  const { userId, characterId } = scope;
   const subscriptionActive = isSubscriptionActive(user);
   const maxContextTokens = resolveContextTokenBudget(user, model);
   const ragEligible = isRagEligible(user.subscriptionType, subscriptionActive);
@@ -697,17 +695,17 @@ export async function prepareFastContext({
   // Candidates are intent-independent; the final pick happens in assemblePreparedChatMessages.
   const [memoryState, memoryCandidates, selectedPersona, history] = await Promise.all([
     refreshSummary
-      ? resolveChatMemorySummary(userId, characterId, apiKey, user)
+      ? resolveChatMemorySummary(scope, apiKey, user)
           .catch((error) => errorLog("Memory", "summary refresh failed, using stored summary", toSafeDiagnostic(error)))
-          .then(() => readChatMemoryState(userId, characterId))
-      : readChatMemoryState(userId, characterId),
-    loadMemoryCandidates(userId, characterId, maxContextTokens),
-    getSelectedChatPersona(userId, characterId),
-    loadChatHistoryRows({ userId, characterId, historyLimit, historyBeforeMessageId }),
+          .then(() => readChatMemoryState(scope))
+      : readChatMemoryState(scope),
+    loadMemoryCandidates(scope, maxContextTokens),
+    getSelectedChatPersona(userId, characterId, scope.threadId),
+    loadChatHistoryRows({ scope, historyLimit, historyBeforeMessageId }),
   ]);
   const historyRows = history.rows;
 
-  const promptState = await getOrCreatePromptState(`user:${userId}`, characterId, character);
+  const promptState = await getOrCreateThreadPromptState(scope, character);
   const assembly = resolveChatPromptAssembly(character, locale, promptState, {
     persona: selectedPersona, operation: continueMode ? "continue" : historyBeforeMessageId ? "regenerate" : "reply", cutOff: continueCutOff,
     tokenBudget: Math.floor(maxContextTokens * 0.5),
@@ -760,8 +758,7 @@ ${systemPromptBase}`;
 }
 
 export async function searchRagContext({
-  userId,
-  characterId,
+  scope,
   apiKey,
   ragQueryText,
   excludeMessageId,
@@ -771,8 +768,7 @@ export async function searchRagContext({
   historyRows = [],
   historyBefore,
 }: {
-  userId: string;
-  characterId: string;
+  scope: ChatScope;
   apiKey: string;
   ragQueryText?: string;
   excludeMessageId?: string;
@@ -801,8 +797,7 @@ export async function searchRagContext({
     const queryHistory = limitRagHistoryToQuery(historyRows, excludeMessageId);
     const query = buildRagSearchQuery(ragQueryText, queryHistory, excludeMessageId);
     const ragMessages = await searchRelevantMessages(
-      userId,
-      characterId,
+      scope,
       query,
       apiKey,
       excludeMessageId,
@@ -822,8 +817,7 @@ export async function prepareChatMessages(options: PrepareChatMessagesOptions): 
   const intent = options.intent ?? "general";
   const fastContext = await prepareFastContext({ ...options, refreshSummary: options.refreshSummary ?? true });
   const ragMessages = await searchRagContext({
-    userId: options.userId,
-    characterId: options.characterId,
+    scope: options.scope,
     apiKey: options.apiKey,
     ragQueryText: options.ragQueryText,
     excludeMessageId: options.excludeMessageId,

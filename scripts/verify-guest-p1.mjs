@@ -53,7 +53,7 @@ function check(value, label) { assert.ok(value, label); checks++; console.log(`P
 try {
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_guest_p1_test');
   const schema = join(directory, 'schema.prisma');
-  writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace('Unsupported("vector(1536)")', 'Bytes'));
+  writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes'));
   if (process.env['P1_CLOSURE'] === '1') {
     for (const name of readdirSync('prisma/migrations').filter(name => /^\d+_/.test(name))) {
       const target = join(directory, 'migrations', name); mkdirSync(target, { recursive: true });

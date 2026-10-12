@@ -4,6 +4,7 @@ import type { TextProvider } from "./aiProviders";
 import { prisma } from "@/lib/prisma";
 import { debugLog, errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { formatRagLine, selectDiverseRagCandidates, type RagMessage, type RagSourceMessage } from "./ragRetrieval";
+import type { ChatScope } from "./chatThreads";
 export { formatRagLine } from "./ragRetrieval";
 export type { RagMessage } from "./ragRetrieval";
 import {
@@ -232,9 +233,9 @@ export function scheduleMessageEmbeddingRefresh(
   });
 }
 
+/** Search stays inside one story; legacy (flag off) also covers rows not yet assigned a story. */
 export async function searchRelevantMessages(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   queryText: string,
   apiKey: string,
   excludeMessageId?: string,
@@ -250,6 +251,7 @@ export async function searchRelevantMessages(
       return [];
     }
 
+    const { userId, characterId, threadId, legacy } = scope;
     const vectorString = toVectorString(queryEmbedding.embedding);
     const excludedIds = [...new Set([...(options.excludedMessageIds ?? []), ...(excludeMessageId ? [excludeMessageId] : [])])];
     const throughAt = options.throughMessage?.createdAt ?? null;
@@ -261,6 +263,7 @@ export async function searchRelevantMessages(
         1 - (me.embedding <=> ${vectorString}::vector) AS similarity
       FROM "MessageEmbeddingDeepinfra" me JOIN "Message" m ON m.id = me."messageId"
       WHERE m."characterId" = ${characterId} AND m."userId" = ${userId}
+        AND (m."threadId" = ${threadId} OR (${legacy}::boolean AND m."threadId" IS NULL))
         AND m.role IN ('user', 'assistant') AND NOT (m.id = ANY(${excludedIds}::text[]))
         AND (${throughAt}::timestamp IS NULL OR (m."createdAt", m.id) <= (${throughAt}::timestamp, ${throughId}))
         AND (${beforeAt}::timestamp IS NULL OR m."createdAt" < ${beforeAt}::timestamp)
@@ -271,6 +274,7 @@ export async function searchRelevantMessages(
         1 - (me.embedding <=> ${vectorString}::vector) AS similarity
       FROM "MessageEmbedding" me JOIN "Message" m ON m.id = me."messageId"
       WHERE m."characterId" = ${characterId} AND m."userId" = ${userId}
+        AND (m."threadId" = ${threadId} OR (${legacy}::boolean AND m."threadId" IS NULL))
         AND m.role IN ('user', 'assistant') AND NOT (m.id = ANY(${excludedIds}::text[]))
         AND (${throughAt}::timestamp IS NULL OR (m."createdAt", m.id) <= (${throughAt}::timestamp, ${throughId}))
         AND (${beforeAt}::timestamp IS NULL OR m."createdAt" < ${beforeAt}::timestamp)
@@ -290,6 +294,7 @@ export async function searchRelevantMessages(
           LEAD(m.id) OVER (ORDER BY m."createdAt", m.id) AS "nextId"
         FROM "Message" m
         WHERE m."userId" = ${userId} AND m."characterId" = ${characterId}
+          AND (m."threadId" = ${threadId} OR (${legacy}::boolean AND m."threadId" IS NULL))
           AND m.role IN ('user', 'assistant') AND NOT (m.id = ANY(${excludedIds}::text[]))
           AND (${throughAt}::timestamp IS NULL OR (m."createdAt", m.id) <= (${throughAt}::timestamp, ${throughId}))
           AND (${beforeAt}::timestamp IS NULL OR m."createdAt" < ${beforeAt}::timestamp)

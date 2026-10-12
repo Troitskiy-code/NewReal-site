@@ -9,6 +9,7 @@ import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
 import { GROUNDED_SUMMARY_RULES, makeSummarySources, renderGroundedSummary, sourcesFromSummaries, type SummarySource } from "@/lib/memorySummaryEvidence";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import {
   fetchEmbeddings,
   hasDistinctKeyTokens,
@@ -447,9 +448,9 @@ function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
   return takeSummaryChunk(messages);
 }
 
-async function loadCoreMemoryText(userId: string, characterId: string): Promise<string | null> {
+async function loadCoreMemoryText(scope: ChatScope): Promise<string | null> {
   const row = await prisma.coreMemory.findUnique({
-    where: { userId_characterId: { userId, characterId } },
+    where: { threadId: scope.threadId },
     select: { content: true },
   });
   if (!row?.content?.trim()) return null;
@@ -529,8 +530,7 @@ function mergeSources(oldSummary: string, messages: DialogMessage[]): SummarySou
  * must still match, so a concurrent refresh or manual edit cannot be overwritten.
  */
 async function persistMemorySummary(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   summary: string,
   lastSummarizedAt: Date,
   summarizedMessageCount: number,
@@ -541,17 +541,18 @@ async function persistMemorySummary(
   try {
     return await prisma.$transaction(async (tx) => {
       if (historyGuard && !(await historyGuard(tx))) return null;
+      const key = memoryScopeWhere(scope);
       if (expectedCoverage === "none") {
-        await tx.memory.create({ data: { userId, characterId, summary, lastSummarizedAt, summarizedMessageCount } });
+        await tx.memory.create({ data: { ...key, summary, lastSummarizedAt, summarizedMessageCount } });
       } else {
         const updated = await tx.memory.updateMany({
-          where: { userId, characterId, lastSummarizedAt: expectedCoverage, summary: expectedSummary },
+          where: { ...key, lastSummarizedAt: expectedCoverage, summary: expectedSummary },
           data: { summary, lastSummarizedAt, summarizedMessageCount },
         });
         if (!updated.count) return null;
       }
-      await tx.memoryEntry.deleteMany({ where: { userId, characterId, type: "summary" } });
-      await tx.memoryEntry.create({ data: { userId, characterId, type: "summary", content: summary } });
+      await tx.memoryEntry.deleteMany({ where: { ...key, type: "summary" } });
+      await tx.memoryEntry.create({ data: { ...key, type: "summary", content: summary } });
       return summary;
     });
   } catch (error) {
@@ -564,8 +565,7 @@ async function persistMemorySummary(
 }
 
 async function createArcSummary(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   apiKey: string,
   messagesToSummarize: DialogMessage[],
   config: SummaryConfig,
@@ -578,11 +578,10 @@ async function createArcSummary(
 
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
-  const coreText = await loadCoreMemoryText(userId, characterId);
+  const coreText = await loadCoreMemoryText(scope);
   const summary = await requestSummary(apiKey, messagesToSummarize, config.maxTokens, coreText);
   const saved = await persistMemorySummary(
-    userId,
-    characterId,
+    scope,
     summary,
     lastSummarizedTimestamp(messagesToSummarize),
     messagesToSummarize.length,
@@ -590,7 +589,7 @@ async function createArcSummary(
   );
   onWrite?.(saved ? "updated" : "conflict");
   if (!saved) {
-    const current = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } }, select: { summary: true } });
+    const current = await prisma.memory.findUnique({ where: { threadId: scope.threadId }, select: { summary: true } });
     return current?.summary ?? null;
   }
   infoLog(
@@ -606,8 +605,7 @@ async function createArcSummary(
 }
 
 async function updateArcWithChapter(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   apiKey: string,
   existingSummary: string,
   existingCount: number,
@@ -626,13 +624,12 @@ async function updateArcWithChapter(
     "Memory",
     `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}) → eventsLimit: ${eventsLimit}`
   );
-  const coreText = await loadCoreMemoryText(userId, characterId);
+  const coreText = await loadCoreMemoryText(scope);
   // One grounded update sees the actual new messages, not a twice-compressed chapter.
   const mergedSummary = await requestSelectedSummary(apiKey, MERGE_PROMPT,
     mergeSources(existingSummary, chapterMessages), config.maxTokens, coreText);
   const saved = await persistMemorySummary(
-    userId,
-    characterId,
+    scope,
     mergedSummary,
     lastSummarizedTimestamp(chapterMessages),
     existingCount + chapterMessages.length,
@@ -641,7 +638,7 @@ async function updateArcWithChapter(
   );
   onWrite?.(saved ? "updated" : "conflict");
   if (!saved) {
-    const current = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } }, select: { summary: true } });
+    const current = await prisma.memory.findUnique({ where: { threadId: scope.threadId }, select: { summary: true } });
     return current?.summary ?? null;
   }
   infoLog(
@@ -657,8 +654,7 @@ async function updateArcWithChapter(
 }
 
 export async function resolveChatMemorySummary(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   apiKey: string,
   user: {
     subscriptionType?: string | null;
@@ -671,12 +667,7 @@ export async function resolveChatMemorySummary(
   const maxContextTokens = getContextTokenLimit(user);
 
   const existingMemory = await prisma.memory.findUnique({
-    where: {
-      userId_characterId: {
-        userId,
-        characterId,
-      },
-    },
+    where: { threadId: scope.threadId },
     select: {
       summary: true,
       createdAt: true,
@@ -689,7 +680,7 @@ export async function resolveChatMemorySummary(
   // covers nothing, so every message still counts as new.
   const coverage = existingMemory?.lastSummarizedAt ?? null;
   const allMessages = await prisma.message.findMany({
-    where: { userId, characterId, ...(coverage ? { createdAt: { gt: coverage } } : {}) },
+    where: { ...messageScopeWhere(scope), ...(coverage ? { createdAt: { gt: coverage } } : {}) },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { role: true, content: true, createdAt: true },
   });
@@ -715,8 +706,7 @@ export async function resolveChatMemorySummary(
     }
 
     return updateArcWithChapter(
-      userId,
-      characterId,
+      scope,
       apiKey,
       existingMemory.summary,
       existingMemory.summarizedMessageCount ?? 0,
@@ -743,14 +733,11 @@ export async function resolveChatMemorySummary(
     return null;
   }
 
-  return createArcSummary(userId, characterId, apiKey, historyToSummarize, config, plan);
+  return createArcSummary(scope, apiKey, historyToSummarize, config, plan);
 }
 
-export async function readChatMemorySummary(
-  userId: string,
-  characterId: string
-): Promise<string | null> {
-  return (await readChatMemoryState(userId, characterId)).summary;
+export async function readChatMemorySummary(scope: ChatScope): Promise<string | null> {
+  return (await readChatMemoryState(scope)).summary;
 }
 
 export type ChatMemoryState = {
@@ -760,9 +747,9 @@ export type ChatMemoryState = {
   summarizedMessageCount: number;
 };
 
-export async function readChatMemoryState(userId: string, characterId: string): Promise<ChatMemoryState> {
+export async function readChatMemoryState(scope: ChatScope): Promise<ChatMemoryState> {
   const existingMemory = await prisma.memory.findUnique({
-    where: { userId_characterId: { userId, characterId } },
+    where: { threadId: scope.threadId },
     select: { summary: true, lastSummarizedAt: true, summarizedMessageCount: true },
   });
   const summary = existingMemory?.summary?.trim() || null;
@@ -774,8 +761,7 @@ export async function readChatMemoryState(userId: string, characterId: string): 
 }
 
 export async function forceRefreshMemorySummary(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   apiKey: string,
   user?: {
     subscriptionType?: string | null;
@@ -788,13 +774,13 @@ export async function forceRefreshMemorySummary(
   const loadedUser =
     user ??
     (await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: scope.userId },
       select: { subscriptionType: true, subscriptionEnd: true },
     }));
   const { config, plan } = getSummaryConfigForUser(loadedUser ?? {});
 
   const existingMemory = await prisma.memory.findUnique({
-    where: { userId_characterId: { userId, characterId } },
+    where: { threadId: scope.threadId },
     select: {
       summary: true,
       createdAt: true,
@@ -804,7 +790,7 @@ export async function forceRefreshMemorySummary(
   });
 
   const allMessages = await prisma.message.findMany({
-    where: { userId, characterId },
+    where: messageScopeWhere(scope),
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: { role: true, content: true, createdAt: true },
   });
@@ -818,7 +804,7 @@ export async function forceRefreshMemorySummary(
       allMessages.length > KEEP_RECENT_MESSAGES
         ? getHistoryForSummary(allMessages)
         : allMessages.slice(0, MAX_SUMMARY_CHUNK_MESSAGES);
-    return createArcSummary(userId, characterId, apiKey, historyToSummarize, config, plan, onWrite);
+    return createArcSummary(scope, apiKey, historyToSummarize, config, plan, onWrite);
   }
 
   const coverage = existingMemory.lastSummarizedAt ?? null;
@@ -835,8 +821,7 @@ export async function forceRefreshMemorySummary(
   }
 
   return updateArcWithChapter(
-    userId,
-    characterId,
+    scope,
     apiKey,
     existingMemory.summary,
     existingMemory.summarizedMessageCount ?? 0,
@@ -849,14 +834,14 @@ export async function forceRefreshMemorySummary(
 }
 
 export async function refreshMemorySummaryWithStatus(
-  userId: string, characterId: string, apiKey: string,
+  scope: ChatScope, apiKey: string,
   user?: { subscriptionType?: string | null; subscriptionEnd?: Date | string | null }
 ) {
   const progress: { status: "updated" | "conflict" | "unchanged" | "empty" } = { status: "unchanged" };
-  const text = await forceRefreshMemorySummary(userId, characterId, apiKey, user, (result) => { progress.status = result; });
+  const text = await forceRefreshMemorySummary(scope, apiKey, user, (result) => { progress.status = result; });
   // Re-read canonical storage even after a successful write; an editor may have saved meanwhile.
   const summary = await prisma.memory.findUnique({
-    where: { userId_characterId: { userId, characterId } }, select: { summary: true, createdAt: true },
+    where: { threadId: scope.threadId }, select: { summary: true, createdAt: true },
   });
   if (!text && progress.status === "unchanged") progress.status = "empty";
   const status = progress.status;
@@ -868,22 +853,25 @@ export class MemorySummaryInputError extends Error {
 }
 
 type RebuildCursor = {
-  version: 1; userId: string; characterId: string; snapshot: string;
+  version: 2; userId: string; characterId: string; threadId: string; snapshot: string;
   historyRevision: string;
   through: string; after: string | null; processed: number; total: number;
   draft: string; expires: number;
 };
 
-async function rebuildHistoryRevision(userId: string, characterId: string, through: Date, tx?: Prisma.TransactionClient): Promise<string> {
+async function rebuildHistoryRevision(scope: ChatScope, through: Date, tx?: Prisma.TransactionClient): Promise<string> {
   const client = tx ?? prisma;
+  const { userId, characterId, threadId, legacy } = scope;
   // Final commit locks the source rows briefly; edits/regeneration/deletion cannot publish a stale rebuilt summary.
   const [row] = tx ? await client.$queryRaw<Array<{ revision: string | null }>>`
     WITH source AS (SELECT "id", "role", "content", "createdAt" FROM "Message"
-      WHERE "userId" = ${userId} AND "characterId" = ${characterId} AND "createdAt" <= ${through} FOR SHARE)
+      WHERE "userId" = ${userId} AND "characterId" = ${characterId}
+        AND ("threadId" = ${threadId} OR (${legacy}::boolean AND "threadId" IS NULL)) AND "createdAt" <= ${through} FOR SHARE)
     SELECT md5(string_agg(md5("id" || ':' || "role" || ':' || "content"), ',' ORDER BY "createdAt", "id")) AS revision FROM source
   ` : await client.$queryRaw<Array<{ revision: string | null }>>`
     SELECT md5(string_agg(md5("id" || ':' || "role" || ':' || "content"), ',' ORDER BY "createdAt", "id")) AS revision
-    FROM "Message" WHERE "userId" = ${userId} AND "characterId" = ${characterId} AND "createdAt" <= ${through}
+    FROM "Message" WHERE "userId" = ${userId} AND "characterId" = ${characterId}
+      AND ("threadId" = ${threadId} OR (${legacy}::boolean AND "threadId" IS NULL)) AND "createdAt" <= ${through}
   `;
   return row.revision ?? "empty";
 }
@@ -899,7 +887,7 @@ function signRebuildCursor(cursor: RebuildCursor): string {
   const encoded = Buffer.from(JSON.stringify(cursor)).toString("base64url");
   return `${encoded}.${createHmac("sha256", rebuildSecret()).update(`memory-rebuild:${encoded}`).digest("base64url")}`;
 }
-function readRebuildCursor(token: string, userId: string, characterId: string): RebuildCursor {
+function readRebuildCursor(token: string, scope: ChatScope): RebuildCursor {
   if (token.length > 30_000) throw new MemoryRebuildCursorError();
   const parts = token.split(".");
   if (parts.length !== 2) throw new MemoryRebuildCursorError();
@@ -907,7 +895,8 @@ function readRebuildCursor(token: string, userId: string, characterId: string): 
   const supplied = Buffer.from(parts[1], "base64url");
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) throw new MemoryRebuildCursorError();
   const cursor = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8")) as RebuildCursor;
-  if (cursor.version !== 1 || cursor.userId !== userId || cursor.characterId !== characterId
+  if (cursor.version !== 2 || cursor.userId !== scope.userId || cursor.characterId !== scope.characterId
+    || cursor.threadId !== scope.threadId
     || cursor.expires < Date.now() || !Number.isFinite(Date.parse(cursor.through))
     || (cursor.after !== null && !Number.isFinite(Date.parse(cursor.after)))) throw new MemoryRebuildCursorError();
   return cursor;
@@ -919,26 +908,26 @@ export class MemoryRebuildCursorError extends Error {
 
 /** One request = one bounded model call. Draft is signed, client-carried, never published until complete. */
 export async function rebuildMemorySummaryStep(
-  userId: string, characterId: string, apiKey: string,
+  scope: ChatScope, apiKey: string,
   user: { subscriptionType?: string | null; subscriptionEnd?: Date | string | null }, continuation?: string
 ) {
-  const current = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } } });
+  const current = await prisma.memory.findUnique({ where: { threadId: scope.threadId } });
   let cursor: RebuildCursor;
-  if (continuation) cursor = readRebuildCursor(continuation, userId, characterId);
+  if (continuation) cursor = readRebuildCursor(continuation, scope);
   else {
-    const latest = await prisma.message.findFirst({ where: { userId, characterId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+    const latest = await prisma.message.findFirst({ where: messageScopeWhere(scope), orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
     if (!latest) return { status: "empty" as const, updated: false, summary: null };
-    const total = await prisma.message.count({ where: { userId, characterId, createdAt: { lte: latest.createdAt } } });
-    cursor = { version: 1, userId, characterId, snapshot: summarySnapshot(current),
-      historyRevision: await rebuildHistoryRevision(userId, characterId, latest.createdAt), through: latest.createdAt.toISOString(),
+    const total = await prisma.message.count({ where: { ...messageScopeWhere(scope), createdAt: { lte: latest.createdAt } } });
+    cursor = { version: 2, userId: scope.userId, characterId: scope.characterId, threadId: scope.threadId, snapshot: summarySnapshot(current),
+      historyRevision: await rebuildHistoryRevision(scope, latest.createdAt), through: latest.createdAt.toISOString(),
       after: null, processed: 0, total, draft: "", expires: Date.now() + 15 * 60_000 };
   }
   if (summarySnapshot(current) !== cursor.snapshot
-    || await rebuildHistoryRevision(userId, characterId, new Date(cursor.through)) !== cursor.historyRevision) {
+    || await rebuildHistoryRevision(scope, new Date(cursor.through)) !== cursor.historyRevision) {
     return { status: "conflict" as const, updated: false, summary: current ? { summary: current.summary, createdAt: current.createdAt } : null };
   }
   const rows = await prisma.message.findMany({
-    where: { userId, characterId, createdAt: { lte: new Date(cursor.through), ...(cursor.after ? { gt: new Date(cursor.after) } : {}) } },
+    where: { ...messageScopeWhere(scope), createdAt: { lte: new Date(cursor.through), ...(cursor.after ? { gt: new Date(cursor.after) } : {}) } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: MAX_SUMMARY_CHUNK_MESSAGES + 1,
     select: { role: true, content: true, createdAt: true },
   });
@@ -950,17 +939,17 @@ export async function rebuildMemorySummaryStep(
   }
   if (!chunk.length) throw new MemorySummaryInputError();
   const { config } = getSummaryConfigForUser(user);
-  const coreText = await loadCoreMemoryText(userId, characterId);
+  const coreText = await loadCoreMemoryText(scope);
   cursor.draft = await requestSelectedSummary(apiKey, cursor.draft ? MERGE_PROMPT : SUMMARY_PROMPT,
     mergeSources(cursor.draft, chunk), config.maxTokens, coreText);
   cursor.after = lastSummarizedTimestamp(chunk).toISOString();
   cursor.processed += chunk.length;
-  const remaining = await prisma.message.count({ where: { userId, characterId, createdAt: { gt: new Date(cursor.after), lte: new Date(cursor.through) } } });
+  const remaining = await prisma.message.count({ where: { ...messageScopeWhere(scope), createdAt: { gt: new Date(cursor.after), lte: new Date(cursor.through) } } });
   if (remaining) return { status: "rebuilding" as const, updated: false, processed: cursor.processed, total: cursor.total,
     continuation: signRebuildCursor(cursor) };
-  const saved = await persistMemorySummary(userId, characterId, cursor.draft, new Date(cursor.after), cursor.processed,
+  const saved = await persistMemorySummary(scope, cursor.draft, new Date(cursor.after), cursor.processed,
     current ? current.lastSummarizedAt : "none", current?.summary,
-    async (tx) => await rebuildHistoryRevision(userId, characterId, new Date(cursor.through), tx) === cursor.historyRevision);
-  const summary = await prisma.memory.findUnique({ where: { userId_characterId: { userId, characterId } }, select: { summary: true, createdAt: true } });
+    async (tx) => await rebuildHistoryRevision(scope, new Date(cursor.through), tx) === cursor.historyRevision);
+  const summary = await prisma.memory.findUnique({ where: { threadId: scope.threadId }, select: { summary: true, createdAt: true } });
   return { status: saved ? "updated" as const : "conflict" as const, updated: Boolean(saved), summary, processed: cursor.processed, total: cursor.total };
 }

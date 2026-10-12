@@ -1,11 +1,12 @@
 import { memoryProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
+import { withAiCostContext, setAiCostActor, setAiCostThread } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
+import { getAuthorizedChatScope } from "@/lib/chatAccess";
+import { requestedThreadId } from "@/lib/chatThreads";
 import { refreshMemorySummaryWithStatus, rebuildMemorySummaryStep, MemorySummaryInputError, MemoryRebuildCursorError } from "@/lib/chatMemory";
 import { consumeRateLimit } from "@/lib/rateLimit";
 
@@ -34,7 +35,7 @@ async function handleCostedRequest(
       return NextResponse.json({ error: "ID персонажа не указан" }, { status: 400 });
     }
 
-    const access = await getAuthorizedCharacterForChat(session.user.id, characterId);
+    const access = await getAuthorizedChatScope(session.user.id, characterId, requestedThreadId(req));
     if ("error" in access) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
@@ -63,11 +64,16 @@ async function handleCostedRequest(
       select: { subscriptionType: true, subscriptionEnd: true },
     });
 
+    // No story yet means no messages: nothing to summarize, and no model call.
+    if (access.resolution.status !== "found") {
+      return NextResponse.json({ error: "Недостаточно сообщений для суммаризации" }, { status: 400 });
+    }
+    const { scope } = access.resolution;
     setAiCostActor(session.user.id, user?.subscriptionType ?? "start");
-    const result = body.mode === "rebuild" ? await rebuildMemorySummaryStep(session.user.id, characterId,
+    setAiCostThread(scope.threadId);
+    const result = body.mode === "rebuild" ? await rebuildMemorySummaryStep(scope,
       KODIKROUTER_KEY, user ?? {}, body.continuation as string | undefined) : await refreshMemorySummaryWithStatus(
-      session.user.id,
-      characterId,
+      scope,
       KODIKROUTER_KEY,
       user ?? undefined
     );

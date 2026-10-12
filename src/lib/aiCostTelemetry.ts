@@ -14,10 +14,10 @@ import { getAccountingUsdRub } from "./currencyRates";
 import { ChatCompletionStreamParser, extractChatStreamDelta } from "./chatCompletionStream";
 import type { AvatarGeneration } from "@prisma/client";
 
-type CostContext = { operationId: string; actorHash: string | null; subscriptionType: string | null; sequence: number; audience: string };
+type CostContext = { operationId: string; actorHash: string | null; threadHash: string | null; subscriptionType: string | null; sequence: number; audience: string };
 const contexts = new AsyncLocalStorage<CostContext>();
 export function withAiCostContext<T>(fn: () => T): T {
-  return contexts.run({ operationId: randomUUID(), actorHash: null, subscriptionType: null, sequence: 0, audience: "system" }, fn);
+  return contexts.run({ operationId: randomUUID(), actorHash: null, threadHash: null, subscriptionType: null, sequence: 0, audience: "system" }, fn);
 }
 export function setAiCostActor(actorId: string, subscriptionType?: string | null) {
   const ctx = contexts.getStore();
@@ -26,6 +26,13 @@ export function setAiCostActor(actorId: string, subscriptionType?: string | null
   ctx.actorHash = key ? createHmac("sha256", key).update(actorId).digest("hex") : null;
   ctx.audience = actorId.startsWith("guest:") ? "guest" : "user";
   ctx.subscriptionType = ["start", "dialog", "story", "history", "universe"].includes(subscriptionType ?? "") ? subscriptionType! : null;
+}
+/** Story of the operation; background memory work of the same request inherits it. Only an HMAC is stored. */
+export function setAiCostThread(threadId: string | null) {
+  const ctx = contexts.getStore();
+  if (!ctx) return;
+  const key = process.env.NEXTAUTH_SECRET;
+  ctx.threadHash = key && threadId ? createHmac("sha256", key).update(`thread:${threadId}`).digest("hex") : null;
 }
 
 type Ticket = { id: string; started: number; requestedModel: string; inputRate: number | null; outputRate: number | null; surface: KodikApiSurface | null; provider: string; fx: number | null };
@@ -62,7 +69,7 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
       }
     }
     await prisma.aiCostEvent.create({ data: {
-      id: ticket.id, operationId: ctx?.operationId ?? randomUUID(), actorHash: ctx?.actorHash,
+      id: ticket.id, operationId: ctx?.operationId ?? randomUUID(), actorHash: ctx?.actorHash, threadHash: ctx?.threadHash ?? null,
       subscriptionType: ctx?.subscriptionType, attempt: ctx ? ++ctx.sequence : 1,
       provider, model, purpose, outcome: "pending", costSource: "unknown",
       apiSurface: surface ?? "other", accountingVersion: 2,

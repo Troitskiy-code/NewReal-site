@@ -2,7 +2,8 @@ import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
+import { getAuthorizedChatScope } from "@/lib/chatAccess";
+import { requestedThreadId } from "@/lib/chatThreads";
 import { setCoreMemoryContent } from "@/lib/advancedMemory";
 
 export async function PUT(
@@ -26,12 +27,13 @@ export async function PUT(
       return NextResponse.json({ error: "content обязателен" }, { status: 400 });
     }
 
-    const access = await getAuthorizedCharacterForChat(session.user.id, characterId);
+    const access = await getAuthorizedChatScope(session.user.id, characterId, requestedThreadId(req), { create: true });
     if ("error" in access) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
+    if (access.resolution.status !== "found") throw new Error("Story was not created");
 
-    const coreMemory = await setCoreMemoryContent(session.user.id, characterId, content);
+    const coreMemory = await setCoreMemoryContent(access.resolution.scope, content);
     console.log("[MemoryEditor] core updated");
     return NextResponse.json({ coreMemory, core: coreMemory });
   } catch (error) {

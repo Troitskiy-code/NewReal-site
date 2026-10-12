@@ -262,7 +262,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
   await vectorDb.exec(`
     CREATE EXTENSION IF NOT EXISTS vector;
     CREATE TABLE "Message" ("id" TEXT PRIMARY KEY, "characterId" TEXT NOT NULL, "userId" TEXT NOT NULL,
-      "role" TEXT NOT NULL, "content" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL);
+      "role" TEXT NOT NULL, "content" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL, "threadId" TEXT);
     CREATE TABLE "MessageEmbedding" ("id" TEXT PRIMARY KEY, "messageId" TEXT NOT NULL UNIQUE,
       "embedding" vector(1536) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL);
     CREATE TABLE "MessageEmbeddingDeepinfra" ("id" TEXT PRIMARY KEY, "messageId" TEXT NOT NULL UNIQUE,
@@ -370,8 +370,8 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
 
   async function mirrorMessages(rows, { embed = true } = {}) {
     for (const row of rows) {
-      await vectorDb.query('INSERT INTO "Message" VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT ("id") DO UPDATE SET "content" = EXCLUDED."content", "createdAt" = EXCLUDED."createdAt"',
-        [row.id, row.characterId, row.userId, row.role, row.content, row.createdAt]);
+      await vectorDb.query('INSERT INTO "Message" VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT ("id") DO UPDATE SET "content" = EXCLUDED."content", "createdAt" = EXCLUDED."createdAt", "threadId" = EXCLUDED."threadId"',
+        [row.id, row.characterId, row.userId, row.role, row.content, row.createdAt, row.threadId ?? null]);
       if (embed) {
         await vectorDb.query('INSERT INTO "MessageEmbedding" VALUES ($1, $2, $3::vector, $4) ON CONFLICT ("messageId") DO NOTHING',
           [`emb_${row.id}`, row.id, `[${fakeEmbedding(row.content).join(',')}]`, row.createdAt]);
@@ -380,7 +380,26 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
   }
 
   let seq = 0;
+  const threadsOn = () => ['1', 'true'].includes(String(process.env.CHAT_THREADS_ENABLED ?? '').trim().toLowerCase());
   const helpers = {
+    /** Default (most recent) story of a pair, created like the migration does when absent. */
+    async thread(userId, characterId) {
+      const existing = await db.chatThread.findFirst({
+        where: { userId, characterId, ...(threadsOn() ? { status: 'active' } : {}) },
+        orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      });
+      if (existing) return existing;
+      const last = await db.chatThread.aggregate({ where: { userId, characterId }, _max: { number: true } });
+      return db.chatThread.create({ data: { userId, characterId, number: (last._max.number ?? 0) + 1 } });
+    },
+    /** Owner columns of a memory row in the pair's default story, for direct seeding. */
+    async key(userId, characterId) {
+      return { userId, characterId, threadId: (await helpers.thread(userId, characterId)).id };
+    },
+    /** Library scope for direct calls; legacy follows CHAT_THREADS_ENABLED like the application. */
+    async scope(userId, characterId, threadId) {
+      return { userId, characterId, threadId: threadId ?? (await helpers.thread(userId, characterId)).id, legacy: !threadsOn() };
+    },
     async model(maxContextTokens = 16_000) {
       return db.model.upsert({
         where: { name: 'google/gemma-4-31b-it' },
@@ -401,9 +420,11 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
       seq += 1;
       return db.character.create({ data: { name: `${name} ${seq}`, userId: ownerId, isPublic: true, systemPrompt: `Ты — ${name}. Отвечай коротко.` } });
     },
-    async messages(userId, characterId, items, { start = Date.now() - 3_600_000, stepMs = 1000, mirror = true, embed = true } = {}) {
+    async messages(userId, characterId, items, { start = Date.now() - 3_600_000, stepMs = 1000, mirror = true, embed = true, threadId } = {}) {
+      // undefined = the pair's default story; null = an unassigned legacy row (before the backfill).
+      const story = threadId === undefined ? (await helpers.thread(userId, characterId)).id : threadId;
       const rows = items.map((item, index) => ({
-        id: `msg_${label}_${++seq}`, userId, characterId, chatId: characterId,
+        id: `msg_${label}_${++seq}`, userId, characterId, chatId: characterId, threadId: story,
         role: item.role, content: item.content,
         createdAt: item.createdAt ?? new Date(start + index * stepMs),
       }));
@@ -413,7 +434,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
     },
   };
 
-  async function chat(userId, characterId, body, locale = 'ru') {
+  async function chat(userId, characterId, body, locale = 'ru', threadId = null) {
     const { NextRequest } = require('next/server');
     const route = load(join(root, 'src/app/api/chat/[id]/route.ts'));
     session.userId = userId;
@@ -421,7 +442,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
     const callsBefore = provider.calls.length;
     const chatRequestsBefore = provider.chatRequests.length;
     const started = performance.now();
-    const request = new NextRequest(`http://localhost/api/chat/${characterId}`, {
+    const request = new NextRequest(`http://localhost/api/chat/${characterId}${threadId ? `?thread=${threadId}` : ''}`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-locale': locale }, body: JSON.stringify(body),
     });
     const response = await route.POST(request, { params: Promise.resolve({ id: characterId }) });

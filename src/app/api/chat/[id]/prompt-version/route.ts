@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOrCreatePromptState, isPromptV2Enabled } from "@/lib/promptState";
+import { getOrCreateThreadPromptState, initialPromptState, isPromptV2Enabled } from "@/lib/promptState";
 import { ROLEPLAY_MODES, roleplayMode, validateGroupConfig, type RoleplayMode } from "@/lib/roleplayConfig";
 import { ClientInputError } from "@/lib/publicError";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { requestedThreadId, resolveChatScope, threadPromptScopeKey } from "@/lib/chatThreads";
 
 async function handle(req: NextRequest, characterId: string, write: boolean) {
   try {
@@ -13,15 +14,25 @@ async function handle(req: NextRequest, characterId: string, write: boolean) {
     if (!session?.user?.id) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     const card = await prisma.character.findUnique({ where: { id: characterId }, select: { userId: true, isPublic: true, promptBuilderVersion: true, roleplayMode: true, rpConfig: true } });
     if (!card || (!card.isPublic && card.userId !== session.user.id)) return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
-    const scopeKey = `user:${session.user.id}`;
-    const state = await getOrCreatePromptState(scopeKey, characterId, card);
-    if (!write) return NextResponse.json({ ...state, rolloutEnabled: isPromptV2Enabled(), cardVersion: card.promptBuilderVersion }, { headers: { "Cache-Control": "private, no-store" } });
-    const body = await req.json();
-    if (body?.confirmed !== true || ![1, 2].includes(body?.version) || !ROLEPLAY_MODES.includes(body?.mode as RoleplayMode)) return NextResponse.json({ error: "Подтвердите версию и режим этой истории" }, { status: 400 });
-    if (body.mode === "group" && body.version !== 2) return NextResponse.json({ error: "Несколько персонажей доступны только в новой сборке" }, { status: 400 });
-    validateGroupConfig(body.mode, card.rpConfig);
-    if (body.version === 2 && (!isPromptV2Enabled() || card.promptBuilderVersion !== 2)) return NextResponse.json({ error: "Владелец карточки или оператор ещё не включил новую сборку" }, { status: 409 });
-    const updated = await prisma.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey, characterId } }, data: { builderVersion: body.version, mode: roleplayMode(body.mode) } });
+    let body: { confirmed?: unknown; version?: unknown; mode?: unknown } | null = null;
+    if (write) {
+      body = await req.json();
+      if (body?.confirmed !== true || ![1, 2].includes(body?.version as number) || !ROLEPLAY_MODES.includes(body?.mode as RoleplayMode)) return NextResponse.json({ error: "Подтвердите версию и режим этой истории" }, { status: 400 });
+      if (body.mode === "group" && body.version !== 2) return NextResponse.json({ error: "Несколько персонажей доступны только в новой сборке" }, { status: 400 });
+      validateGroupConfig(body.mode as RoleplayMode, card.rpConfig);
+      if (body.version === 2 && (!isPromptV2Enabled() || card.promptBuilderVersion !== 2)) return NextResponse.json({ error: "Владелец карточки или оператор ещё не включил новую сборку" }, { status: 409 });
+    }
+    // Settings belong to one story. Choosing them before the first message creates that story.
+    const resolution = await resolveChatScope(session.user.id, characterId, requestedThreadId(req), { create: write });
+    if (resolution.status === "not_found") return NextResponse.json({ error: "История не найдена" }, { status: 404 });
+    if (!write) {
+      const state = resolution.status === "found" ? await getOrCreateThreadPromptState(resolution.scope, card) : initialPromptState(card, false);
+      return NextResponse.json({ ...state, rolloutEnabled: isPromptV2Enabled(), cardVersion: card.promptBuilderVersion }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+    if (resolution.status !== "found" || !body) throw new Error("Story was not created");
+    await getOrCreateThreadPromptState(resolution.scope, card);
+    const scopeKey = threadPromptScopeKey(resolution.scope.threadId);
+    const updated = await prisma.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey, characterId } }, data: { builderVersion: body.version as number, mode: roleplayMode(body.mode as string) } });
     return NextResponse.json({ builderVersion: updated.builderVersion, mode: updated.mode }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     if (error instanceof ClientInputError) return NextResponse.json({ error: error.message }, { status: 400 });

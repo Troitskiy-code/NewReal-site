@@ -3,9 +3,10 @@ import { isAnonymousExpired } from "@/lib/anonymousCookie";
 import { mapGuestMessagesToUserMessages } from "@/lib/anonymousChatMap";
 import { assertGuestSchemaReady, GuestSchemaMissingError, lockGuestSession, recoverExpiredGuestGenerations } from "@/lib/guestRequestStore";
 import { isLeaseActive } from "@/lib/guestRequestPolicy";
+import { chatThreadsEnabled, createThreadInTransaction, findDefaultThread, threadPromptScopeKey } from "@/lib/chatThreads";
 
 export type TransferResult =
-  | { ok: true; alreadyTransferred: boolean; copied: number; characterIds: string[] }
+  | { ok: true; alreadyTransferred: boolean; copied: number; characterIds: string[]; threads?: Array<{ characterId: string; threadId: string }> }
   | { ok: false; code: "expired" | "foreign_session" | "not_found" | "in_progress" | "schema" };
 
 export async function transferAnonymousChatToUser(params: {
@@ -97,21 +98,31 @@ export async function transferAnonymousChatToUser(params: {
         (message) => !seen.has(`${message.characterId}:${message.role}:${message.content}:${message.createdAt.toISOString()}`)
       );
 
-      const copies = mapGuestMessagesToUserMessages(uniqueGuest, params.userId);
+      const mapped = mapGuestMessagesToUserMessages(uniqueGuest, params.userId);
+      const legacy = !chatThreadsEnabled();
+      const threadByCharacter = new Map<string, string>();
       // Transfer the pinned mode along with the guest history. An existing user story keeps its own mode.
-      for (const characterId of [...new Set(copies.map(copy => copy.characterId))]) {
+      for (const characterId of [...new Set(mapped.map(copy => copy.characterId))]) {
         const guestState = await tx.chatPromptState.findUnique({
           where: { scopeKey_characterId: { scopeKey: `guest:${params.sessionId}`, characterId } },
         });
-        const hasUserHistory = already.some(row => row.characterId === characterId);
+        // Stories on: the guest history always becomes its own story and never mixes into an
+        // existing one (it is the default story only when the user has none). Flag off: legacy merge.
+        const existing = legacy ? await findDefaultThread(params.userId, characterId, true, tx) : null;
+        const thread = existing
+          ? await tx.chatThread.update({ where: { id: existing.id }, data: { lastMessageAt: now, status: "active" } })
+          : await createThreadInTransaction(tx, { userId: params.userId, characterId, lastMessageAt: now });
+        threadByCharacter.set(characterId, thread.id);
+        const hasUserHistory = Boolean(existing) && already.some(row => row.characterId === characterId);
         await tx.chatPromptState.upsert({
-          where: { scopeKey_characterId: { scopeKey: `user:${params.userId}`, characterId } },
-          create: { scopeKey: `user:${params.userId}`, characterId,
+          where: { scopeKey_characterId: { scopeKey: threadPromptScopeKey(thread.id), characterId } },
+          create: { scopeKey: threadPromptScopeKey(thread.id), characterId,
             builderVersion: hasUserHistory ? 1 : guestState?.builderVersion ?? 1,
             mode: hasUserHistory ? "character" : guestState?.mode ?? "character" },
           update: {},
         });
       }
+      const copies = mapped.map((copy) => ({ ...copy, threadId: threadByCharacter.get(copy.characterId)! }));
       if (copies.length > 0) {
         await tx.message.createMany({ data: copies });
         await tx.anonymousMessage.updateMany({
@@ -135,6 +146,7 @@ export async function transferAnonymousChatToUser(params: {
         alreadyTransferred: false,
         copied: copies.length,
         characterIds: [...new Set(copies.map((item) => item.characterId))],
+        threads: [...threadByCharacter].map(([characterId, threadId]) => ({ characterId, threadId })),
       };
     },
     { isolationLevel: "ReadCommitted" }

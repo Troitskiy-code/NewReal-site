@@ -4,9 +4,12 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { clearChatMemories } from "@/lib/advancedMemory";
+import { getAuthorizedChatScope } from "@/lib/chatAccess";
+import { messageScopeWhere, requestedThreadId, threadPromptScopeKey } from "@/lib/chatThreads";
 
+/** Clears the messages and memory of one story; the story itself and other stories remain. */
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -17,24 +20,18 @@ export async function DELETE(
 
     const { id: characterId } = await params;
 
-    const character = await prisma.character.findUnique({
-      where: { id: characterId },
-      select: { id: true, isPublic: true, userId: true },
-    });
-
-    if (!character) {
-      return NextResponse.json({ error: "Персонаж не найден" }, { status: 404 });
+    const access = await getAuthorizedChatScope(session.user.id, characterId, requestedThreadId(req));
+    if ("error" in access) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
-
-    if (!character.isPublic && character.userId !== session.user.id) {
-      return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
+    if (access.resolution.status !== "found") {
+      return NextResponse.json({ success: true, deletedCount: 0 });
     }
+    const { scope } = access.resolution;
+    const where = messageScopeWhere(scope);
 
     const messagesToClear = await prisma.message.findMany({
-      where: {
-        characterId,
-        userId: session.user.id,
-      },
+      where,
       select: { id: true },
     });
 
@@ -47,16 +44,16 @@ export async function DELETE(
     }
 
     // totalMessages не уменьшаем: это накопительный счётчик по всем пользователям.
-    const result = await prisma.message.deleteMany({
+    const result = await prisma.message.deleteMany({ where });
+
+    await clearChatMemories(scope);
+    // An explicit restart is the only operation that re-adopts the card's default mode.
+    await prisma.chatPromptState.deleteMany({
       where: {
         characterId,
-        userId: session.user.id,
+        scopeKey: { in: [threadPromptScopeKey(scope.threadId), ...(scope.legacy ? [`user:${session.user.id}`] : [])] },
       },
     });
-
-    await clearChatMemories(session.user.id, characterId);
-    // An explicit restart is the only operation that re-adopts the card's default mode.
-    await prisma.chatPromptState.deleteMany({ where: { scopeKey: `user:${session.user.id}`, characterId } });
 
     return NextResponse.json({
       success: true,

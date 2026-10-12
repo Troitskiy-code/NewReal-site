@@ -53,6 +53,7 @@ model Character {
   initiatedWorldEvents WorldEvent[] @relation("InitiatedEvents")
   personaSelections    PersonaSelection[]
   scopedPersonas       Persona[]
+  chatThreads          ChatThread[]
 
   // Новые поля для редактора WetDreams
   greeting          String?   // Первое сообщение
@@ -118,7 +119,11 @@ model Message {
   id          String   @id @default(cuid())
   characterId String
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  // Legacy: always the character id. The story is threadId.
   chatId      String?
+  // Nullable until scripts/backfill-chat-threads.mjs has assigned every legacy row.
+  threadId    String?
+  thread      ChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        String   // "user" или "assistant"
@@ -131,6 +136,36 @@ model Message {
 
   @@index([userId, characterId])
   @@index([userId, chatId])
+  @@index([threadId, createdAt])
+}
+
+// An independent story with one character (single hero, universe or group).
+// Messages, memory, persona and prompt state (scopeKey "thread:<id>") belong to it.
+model ChatThread {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId   String
+  character     Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  personaId     String?
+  persona       Persona?   @relation(fields: [personaId], references: [id], onDelete: SetNull)
+  // Per user+character ordinal for the automatic title ("Story N").
+  number        Int        @default(1)
+  title         String?
+  status        String     @default("active") // active | archived
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  // Last message, or creation time: the default story and "continue" use it.
+  lastMessageAt DateTime   @default(now())
+  messages         Message[]
+  memories         Memory[]
+  coreMemories     CoreMemory[]
+  episodicMemories EpisodicMemory[]
+  memoryEntries    MemoryEntry[]
+
+  @@index([userId, characterId, status, lastMessageAt])
+  @@index([userId, lastMessageAt])
+  @@index([personaId])
 }
 
 model MessageEmbedding {
@@ -163,12 +198,14 @@ model Memory {
   character              Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   userId                 String
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  threadId               String?   @unique
+  thread                 ChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
   summary                String    @db.Text
   createdAt              DateTime  @default(now())
   lastSummarizedAt       DateTime?
   summarizedMessageCount Int       @default(0)
 
-  @@unique([userId, characterId])
+  @@index([userId, characterId])
   @@index([characterId])
 }
 
@@ -202,10 +239,12 @@ model CoreMemory {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   characterId String
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  threadId    String?   @unique
+  thread      ChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
   content     String    @db.Text
   updatedAt   DateTime  @default(now()) @updatedAt
 
-  @@unique([userId, characterId])
+  @@index([userId, characterId])
   @@index([characterId])
 }
 
@@ -215,11 +254,14 @@ model EpisodicMemory {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   characterId String
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  threadId    String?
+  thread      ChatThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
   event       String    @db.Text
   timestamp   DateTime  @default(now())
   importance  Int       @default(1)
 
   @@index([userId, characterId, timestamp])
+  @@index([threadId, timestamp])
 }
 
 model MemoryEntry {
@@ -228,11 +270,14 @@ model MemoryEntry {
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   characterId String
   character   Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  threadId    String?
+  thread      ChatThread?     @relation(fields: [threadId], references: [id], onDelete: Cascade)
   type        MemoryEntryType
   content     String          @db.Text
   createdAt   DateTime        @default(now())
 
   @@index([userId, characterId, type])
+  @@index([threadId, type])
 }
 
 model Persona {
@@ -248,11 +293,14 @@ model Persona {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   selections  PersonaSelection[]
+  chatThreads ChatThread[]
 
   @@index([userId, isGlobal])
   @@index([userId, characterId])
 }
 
+// Last persona chosen for this user+character; copied into a new ChatThread.
+// The persona of a story itself is ChatThread.personaId.
 model PersonaSelection {
   id          String    @id @default(cuid())
   userId      String
@@ -333,6 +381,7 @@ model User {
   memoryEntries      MemoryEntry[]
   personas           Persona[]
   personaSelections  PersonaSelection[]
+  chatThreads        ChatThread[]
   transactions       Transaction[]
   notifications      Notification[]
   passwordResetTokens PasswordResetToken[]
@@ -566,6 +615,8 @@ model AiCostEvent {
   id                  String   @id
   operationId         String
   actorHash           String?
+  // HMAC of the ChatThread id; never the raw id.
+  threadHash          String?
   subscriptionType    String?
   provider            String
   providerRequestId   String?

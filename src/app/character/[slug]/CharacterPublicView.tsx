@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import axios from "axios";
+import { LuPlus } from "react-icons/lu";
+import { threadDisplayTitle, withThread, type ChatThreadSummary } from "@/lib/chatThreadShared";
 import { useTranslation } from "react-i18next";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaComments, FaShareAlt, FaTimes, FaUser } from "react-icons/fa";
@@ -41,6 +45,18 @@ export default function CharacterPublicView({ character }: { character: Characte
   const router = useRouter();
   const locale = useCurrentLocale();
   const [copied, setCopied] = useState(false);
+  const { status } = useSession();
+  // Signed-in only, and only when stories are enabled (the list endpoint is 404 otherwise).
+  const [loadedThread, setLoadedThread] = useState<{ characterId: string; thread: ChatThreadSummary | null } | null>(null);
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const controller = new AbortController();
+    axios.get<{ threads: ChatThreadSummary[] }>(`/api/chat/${character.id}/threads`, { signal: controller.signal })
+      .then(({ data }) => setLoadedThread({ characterId: character.id, thread: data.threads.find((thread) => thread.status === "active") ?? null }))
+      .catch(() => setLoadedThread({ characterId: character.id, thread: null }));
+    return () => controller.abort();
+  }, [status, character.id]);
+  const latestThread = status === "authenticated" && loadedThread?.characterId === character.id ? loadedThread.thread : null;
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description = getLocalizedCardDescription(character, locale) || "";
   const publicMemory = pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale);
@@ -153,10 +169,23 @@ export default function CharacterPublicView({ character }: { character: Characte
           ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <LocaleLink href={chatHref} className="wd-button flex flex-1 items-center justify-center gap-2 py-3 text-sm">
-              <FaComments />
-              {t("characterPage.startChat")}
-            </LocaleLink>
+            {latestThread ? (
+              <>
+                <LocaleLink href={withThread(chatHref, latestThread.id)} className="wd-button flex min-w-0 flex-1 items-center justify-center gap-2 py-3 text-sm">
+                  <FaComments className="shrink-0" />
+                  <span className="truncate">{t("chatThreads.continueNamed", { title: threadDisplayTitle(latestThread, t) })}</span>
+                </LocaleLink>
+                <LocaleLink href={`${chatHref}?new=1`} className="flex flex-1 items-center justify-center gap-2 rounded-wd-pill border border-wd-primary/40 bg-wd-primary/10 px-4 py-3 text-sm font-bold text-wd-primary-soft transition-colors hover:bg-wd-primary/20">
+                  <LuPlus aria-hidden />
+                  {t("chatThreads.newStory")}
+                </LocaleLink>
+              </>
+            ) : (
+              <LocaleLink href={chatHref} className="wd-button flex flex-1 items-center justify-center gap-2 py-3 text-sm">
+                <FaComments />
+                {t("characterPage.startChat")}
+              </LocaleLink>
+            )}
             <button
               type="button"
               onClick={handleShare}

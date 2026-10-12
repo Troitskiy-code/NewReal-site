@@ -22,7 +22,7 @@ async function setup(count = 49) {
     role: i % 2 ? 'assistant' : 'user', content: i === 0 ? 'Я предлагаю гарантировать вклады до 100000 рублей.'
       : i === count - 1 ? 'Я решил отложить повышение ставки до 6%.' : `Обсуждаем экономический план, ход ${i}.`,
   })), { mirror: false });
-  await db.memory.create({ data: { userId: user.id, characterId: character.id,
+  await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)),
     summary: '## Активные линии\n- Придерживаемся курса.', lastSummarizedAt: rows.at(-1).createdAt, summarizedMessageCount: count } });
   h.session.userId = user.id; provider.reset();
   return { user, character, rows };
@@ -39,8 +39,8 @@ try {
   assert.equal(provider.total, 0);
   const beforeWallet = await db.user.findUnique({ where: { id: first.user.id } });
   assert.ok(Number.isInteger(beforeWallet.verseCoins));
-  await db.coreMemory.create({ data: { userId: first.user.id, characterId: first.character.id, content: '## Пользователь\n- Имя Мирон.' } });
-  const originalEvent = await db.episodicMemory.create({ data: { userId: first.user.id, characterId: first.character.id, event: 'Ручное событие.', importance: 3 } });
+  await db.coreMemory.create({ data: { ...(await helpers.key(first.user.id, first.character.id)), content: '## Пользователь\n- Имя Мирон.' } });
+  const originalEvent = await db.episodicMemory.create({ data: { ...(await helpers.key(first.user.id, first.character.id)), event: 'Ручное событие.', importance: 3 } });
   const result = await (await post(first.character.id, { mode: 'rebuild', confirm: true })).json();
   check('49-message rebuild recovers the original plan despite complete old coverage', () => {
     assert.equal(result.status, 'updated'); assert.equal(result.processed, 49);
@@ -49,7 +49,7 @@ try {
   });
   check('successful rebuild does not charge the user or alter core/episodes', () => {});
   assert.equal((await db.user.findUnique({ where: { id: first.user.id } })).verseCoins, beforeWallet.verseCoins);
-  assert.equal((await db.coreMemory.findUnique({ where: { userId_characterId: { userId: first.user.id, characterId: first.character.id } } })).content, '## Пользователь\n- Имя Мирон.');
+  assert.equal((await db.coreMemory.findUnique({ where: { threadId: (await helpers.thread(first.user.id, first.character.id)).id } })).content, '## Пользователь\n- Имя Мирон.');
   assert.equal((await db.episodicMemory.findUnique({ where: { id: originalEvent.id } })).event, 'Ручное событие.');
   const costs = await db.aiCostEvent.findMany({ where: { purpose: 'summary' } });
   assert.ok(costs.length && costs.every(row => row.actorHash && row.subscriptionType === 'universe' && row.chargedVC === 0));
@@ -60,7 +60,7 @@ try {
     assert.equal(initial.status, 'rebuilding'); assert.equal(initial.processed, 120); assert.ok(initial.continuation);
     assert.equal(provider.calls.filter(row => row.kind === 'summary').length, 1);
   });
-  assert.match((await db.memory.findUnique({ where: { userId_characterId: { userId: many.user.id, characterId: many.character.id } } })).summary, /Придерживаемся курса/);
+  assert.match((await db.memory.findUnique({ where: { threadId: (await helpers.thread(many.user.id, many.character.id)).id } })).summary, /Придерживаемся курса/);
   const firstCalls = provider.total;
   assert.equal((await post(many.character.id, { mode: 'rebuild', confirm: true, continuation: initial.continuation + 'x' })).status, 400);
   check('tampered continuation is rejected without another AI call', () => assert.equal(provider.total, firstCalls));
@@ -80,7 +80,7 @@ try {
     assert.equal(completed.status, 'updated'); assert.equal(completed.processed, 150);
     assert.equal(provider.calls.filter(row => row.kind === 'summary').length, 2);
   });
-  const stored = await db.memory.findUnique({ where: { userId_characterId: { userId: many.user.id, characterId: many.character.id } } });
+  const stored = await db.memory.findUnique({ where: { threadId: (await helpers.thread(many.user.id, many.character.id)).id } });
   assert.equal(stored.summarizedMessageCount, 150);
   assert.equal(stored.lastSummarizedAt.getTime(), many.rows.at(-1).createdAt.getTime());
   const mirrored = await db.memoryEntry.findMany({ where: { userId: many.user.id, characterId: many.character.id, type: 'summary' } });
@@ -88,7 +88,7 @@ try {
 
   const conflict = await setup(150);
   const draft = await (await post(conflict.character.id, { mode: 'rebuild', confirm: true })).json();
-  await advanced.setSummaryContent(conflict.user.id, conflict.character.id, 'Моя ручная сводка о банках.');
+  await advanced.setSummaryContent(await helpers.scope(conflict.user.id, conflict.character.id), 'Моя ручная сводка о банках.');
   const oldCalls = provider.total;
   const lost = await (await post(conflict.character.id, { mode: 'rebuild', confirm: true, continuation: draft.continuation })).json();
   check('manual replacement between steps wins without another model call', () => {
@@ -96,7 +96,7 @@ try {
     assert.equal(provider.total, oldCalls);
   });
   const race = await setup();
-  provider.beforeSummary = () => advanced.setSummaryContent(race.user.id, race.character.id, 'Ручная правка во время модели.');
+  provider.beforeSummary = async () => advanced.setSummaryContent(await helpers.scope(race.user.id, race.character.id), 'Ручная правка во время модели.');
   const raced = await (await post(race.character.id, { mode: 'rebuild', confirm: true })).json();
   check('manual edit during the final call wins and its mirror stays consistent', () => {
     assert.equal(raced.status, 'conflict'); assert.equal(raced.summary.summary, 'Ручная правка во время модели.');
@@ -106,7 +106,7 @@ try {
   const failed = await setup(); provider.summaryFails = true;
   const failure = await post(failed.character.id, { mode: 'rebuild', confirm: true });
   check('provider failure preserves the previous text and coverage', () => assert.equal(failure.status, 500));
-  const kept = await db.memory.findUnique({ where: { userId_characterId: { userId: failed.user.id, characterId: failed.character.id } } });
+  const kept = await db.memory.findUnique({ where: { threadId: (await helpers.thread(failed.user.id, failed.character.id)).id } });
   assert.match(kept.summary, /Придерживаемся курса/); assert.equal(kept.summarizedMessageCount, 49);
 
   const edited = await setup(150);

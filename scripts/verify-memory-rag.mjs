@@ -164,7 +164,7 @@ if (!process.argv.includes('--unit')) {
     await helpers.messages(outsider.id, character.id, [{ role: 'user', content: 'OTHER_USER_NEIGHBOUR', createdAt: new Date(rows[0].createdAt.getTime() + 500) }]);
     await helpers.messages(owner.id, otherCharacter.id, [{ role: 'assistant', content: 'OTHER_CHARACTER_NEIGHBOUR', createdAt: new Date(rows[0].createdAt.getTime() + 600) }]);
     provider.reset();
-    const found = await rag.searchRelevantMessages(owner.id, character.id, 'капитану 300 золотых', 'synthetic_memory_key');
+    const found = await rag.searchRelevantMessages(await helpers.scope(owner.id, character.id), 'капитану 300 золотых', 'synthetic_memory_key');
     await h.settle();
     await check('pgvector anchor includes an unembedded cancellation neighbour', () => {
       const item = found.find(row => row.id === rows[0].id); assert.ok(item);
@@ -178,12 +178,12 @@ if (!process.argv.includes('--unit')) {
       assert.ok(await db.aiCostEvent.count({ where: { purpose: 'embedding' } }) > 0);
     });
     provider.reset();
-    const bounded = await rag.searchRelevantMessages(owner.id, character.id, 'капитану 300 золотых', 'synthetic_memory_key', undefined, 5, .25,
+    const bounded = await rag.searchRelevantMessages(await helpers.scope(owner.id, character.id), 'капитану 300 золотых', 'synthetic_memory_key', undefined, 5, .25,
       { throughMessage: rows[0] });
     await check('snapshot upper bound also excludes future neighbours', () => {
       assert.ok(bounded.some(row => row.id === rows[0].id)); assert.doesNotMatch(JSON.stringify(bounded), /отменяем/);
     });
-    const excluded = await rag.searchRelevantMessages(owner.id, character.id, 'капитану 300 золотых', 'synthetic_memory_key', rows[0].id);
+    const excluded = await rag.searchRelevantMessages(await helpers.scope(owner.id, character.id), 'капитану 300 золотых', 'synthetic_memory_key', rows[0].id);
     await check('explicitly excluded reply cannot return as anchor or neighbour', () => assert.ok(!excluded.flatMap(row => [row.id, ...row.context.map(item => item.id)]).includes(rows[0].id)));
 
     const httpCharacter = await helpers.character(owner.id);
@@ -202,11 +202,11 @@ if (!process.argv.includes('--unit')) {
     });
     const history = await db.message.findMany({ where: { userId: owner.id, characterId: httpCharacter.id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
     provider.reset();
-    await chatHelpers.searchRagContext({ userId: owner.id, characterId: httpCharacter.id, apiKey: 'synthetic_memory_key', ragQueryText: 'Что он обещал?',
+    await chatHelpers.searchRagContext({ scope: await helpers.scope(owner.id, httpCharacter.id), apiKey: 'synthetic_memory_key', ragQueryText: 'Что он обещал?',
       intent: 'question', ragEligible: false, totalHistoryTokens: 10000, historyRows: history });
     await check('forbidden plan makes no query embedding even with contextual history', () => assert.equal(provider.calls.length, 0));
     provider.reset(); provider.embeddingsFail = true;
-    const failed = await chatHelpers.searchRagContext({ userId: owner.id, characterId: httpCharacter.id, apiKey: 'synthetic_memory_key', ragQueryText: 'Что он обещал?',
+    const failed = await chatHelpers.searchRagContext({ scope: await helpers.scope(owner.id, httpCharacter.id), apiKey: 'synthetic_memory_key', ragQueryText: 'Что он обещал?',
       intent: 'question', ragEligible: true, totalHistoryTokens: 10000, historyRows: history });
     await check('embedding provider failure falls back to no quotes', () => assert.deepEqual(failed, []));
     provider.reset();

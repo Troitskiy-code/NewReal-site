@@ -6,6 +6,8 @@ import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
 import { FaComments, FaUser } from "react-icons/fa";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
+import { threadDisplayTitle, withThread, type ChatThreadSummary } from "@/lib/chatThreadShared";
 
 type ChatItem = {
   character: {
@@ -14,18 +16,22 @@ type ChatItem = {
     avatarUrl: string | null;
     updatedAt?: string;
   };
+  /** Null for a new story without messages yet. */
   lastMessage: {
     id: string;
     role: string;
     content: string;
     createdAt: string;
-  };
+  } | null;
+  /** Present when stories are enabled: one row per story. */
+  thread?: ChatThreadSummary;
   count: number;
   lastActivity: string;
 };
 
 type ChatsResponse = {
   data: ChatItem[];
+  threadsEnabled?: boolean;
 };
 
 function formatLastActivity(value: string) {
@@ -49,7 +55,9 @@ function previewMessage(content: string, maxLength = 80) {
 
 function ChatsPageContent() {
   const { status } = useSession();
+  const { t } = useTranslation();
   const [chats, setChats] = useState<ChatItem[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -157,10 +165,13 @@ function ChatsPageContent() {
             </Link>
           </div>
         ) : (
-          chats.map((chat) => (
+          [
+            ...chats.filter((chat) => chat.thread?.status !== "archived"),
+            ...(showArchived ? chats.filter((chat) => chat.thread?.status === "archived") : []),
+          ].map((chat) => (
             <Link
-              key={chat.character.id}
-              href={`/chat/${chat.character.id}`}
+              key={chat.thread?.id ?? chat.character.id}
+              href={withThread(`/chat/${chat.character.id}`, chat.thread?.id)}
               className="flex items-center gap-3 rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] p-3 transition-colors hover:border-wd-secondary/40 md:gap-4 md:p-4"
             >
               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A] md:h-16 md:w-16">
@@ -186,9 +197,21 @@ function ChatsPageContent() {
                     {formatLastActivity(chat.lastActivity)}
                   </span>
                 </div>
+                {chat.thread ? (
+                  <p className="mt-0.5 flex items-center gap-2 truncate text-xs font-semibold text-wd-secondary-text">
+                    <span className="truncate">{threadDisplayTitle(chat.thread, t)}</span>
+                    {chat.thread.status === "archived" ? (
+                      <span className="shrink-0 rounded-wd-pill bg-white/10 px-2 py-0.5 text-[10px] font-normal text-wd-text-secondary">{t("chatThreads.archived")}</span>
+                    ) : null}
+                  </p>
+                ) : null}
                 <p className="mt-1 line-clamp-2 text-xs leading-snug text-gray-400">
-                  {chat.lastMessage.role === "user" ? "Вы: " : ""}
-                  {previewMessage(chat.lastMessage.content)}
+                  {chat.lastMessage ? (
+                    <>
+                      {chat.lastMessage.role === "user" ? "Вы: " : ""}
+                      {previewMessage(chat.lastMessage.content)}
+                    </>
+                  ) : t("chatThreads.empty")}
                 </p>
                 <p className="mt-1 text-[11px] text-wd-text-secondary">
                   {chat.count} {chat.count === 1 ? "сообщение" : chat.count < 5 ? "сообщения" : "сообщений"}
@@ -197,6 +220,16 @@ function ChatsPageContent() {
             </Link>
           ))
         )}
+        {!error && chats.some((chat) => chat.thread?.status === "archived") ? (
+          <button
+            type="button"
+            onClick={() => setShowArchived((value) => !value)}
+            aria-expanded={showArchived}
+            className="self-start rounded-wd-pill border border-wd-border px-4 py-2 text-xs font-bold text-wd-text-secondary transition-colors hover:border-wd-secondary hover:text-white"
+          >
+            {t("chatThreads.archiveSection", { count: chats.filter((chat) => chat.thread?.status === "archived").length })}
+          </button>
+        ) : null}
       </main>
 
       <Footer />

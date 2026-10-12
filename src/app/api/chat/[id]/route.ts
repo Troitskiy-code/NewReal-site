@@ -1,11 +1,22 @@
 import { chatProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
+import { withAiCostContext, setAiCostActor, setAiCostThread, recordChatCostCharge } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOrCreatePromptState, assertPromptStateAvailable, GroupPromptUnavailableError } from "@/lib/promptState";
+import { getOrCreateThreadPromptState, assertPromptStateAvailable, GroupPromptUnavailableError } from "@/lib/promptState";
+import {
+  chatThreadsEnabled,
+  ensureDefaultThread,
+  messageScopeWhere,
+  requestedThreadId,
+  resolveChatScope,
+  scopeFor,
+  toThreadSummary,
+  touchThread,
+  type ChatScope,
+} from "@/lib/chatThreads";
 import { PromptBudgetError } from "@/lib/chatSystemPrompt";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import {
@@ -50,24 +61,26 @@ export const maxDuration = 120;
 
 const KODIKROUTER_KEY = process.env.KODIKROUTER_API_KEY ?? "";
 
-async function createMessageAndBumpTotal(data: {
-  characterId: string;
-  chatId: string;
-  userId: string;
+async function createMessageAndBumpTotal(scope: ChatScope, data: {
   role: string;
   content: string;
   finishReason?: "stop" | "length";
 }) {
+  const now = new Date();
   const [message] = await prisma.$transaction([
-    prisma.message.create({ data }),
+    // chatId keeps its legacy meaning (the character); the story is threadId.
+    prisma.message.create({ data: { ...data, characterId: scope.characterId, chatId: scope.characterId, userId: scope.userId, threadId: scope.threadId } }),
     prisma.character.update({
-      where: { id: data.characterId },
-      data: { totalMessages: { increment: 1 }, lastActive: new Date() },
+      where: { id: scope.characterId },
+      data: { totalMessages: { increment: 1 }, lastActive: now },
     }),
+    touchThread(scope.threadId, now),
   ]);
 
   return message;
 }
+
+const THREAD_NOT_FOUND = "История не найдена";
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   return withAiCostContext(() => handlePost(req, context));
@@ -137,6 +150,16 @@ async function handlePost(
       return NextResponse.json({ error: "Сообщение обязательно" }, { status: 400 });
     }
 
+    // A foreign or deleted story is rejected before anything is charged or written.
+    const resolution = await resolveChatScope(session.user.id, id, requestedThreadId(req));
+    if (resolution.status === "not_found") {
+      return NextResponse.json({ error: THREAD_NOT_FOUND }, { status: 404 });
+    }
+    // Flag off, legacy rows without a story still exist; they join the story created below.
+    if (resolution.status === "none" && !resolution.legacy && (continueChat || retryLast)) {
+      return NextResponse.json({ error: continueChat ? "Нет сообщения ассистента для продолжения" : "Нет сообщения для повтора" }, { status: 400 });
+    }
+
     const resolved = await resolveChatContext(session.user.id);
     if (!resolved) {
       return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
@@ -178,6 +201,11 @@ async function handlePost(
     }
     refundCharge = charge.refund;
 
+    // The first message of a character creates its default story.
+    const thread = resolution.status === "found" ? resolution.thread : await ensureDefaultThread(session.user.id, id);
+    const scope = scopeFor(thread);
+    setAiCostThread(scope.threadId);
+
     const locale = getApiLocale(req);
     const localizedGreeting =
       locale === "en" && character.greeting_en?.trim()
@@ -191,13 +219,12 @@ async function handlePost(
     let continueCutOff = false;
 
     // Pin before inserting the first greeting/user turn, so a new chat is not mistaken for legacy history.
-    assertPromptStateAvailable(await getOrCreatePromptState(`user:${session.user.id}`, id, character), character.rpConfig);
+    assertPromptStateAvailable(await getOrCreateThreadPromptState(scope, character), character.rpConfig);
 
     if (continueChat) {
       lastAssistant = await prisma.message.findFirst({
         where: {
-          characterId: id,
-          userId: session.user.id,
+          ...messageScopeWhere(scope),
           role: "assistant",
         },
         orderBy: { createdAt: "desc" },
@@ -214,8 +241,7 @@ async function handlePost(
     } else if (retryLast) {
       const lastUser = await prisma.message.findFirst({
         where: {
-          characterId: id,
-          userId: session.user.id,
+          ...messageScopeWhere(scope),
           role: "user",
         },
         orderBy: { createdAt: "desc" },
@@ -230,14 +256,12 @@ async function handlePost(
       excludeMessageId = lastUser.id;
     } else {
       const existingMessagesCount = await prisma.message.count({
-        where: { characterId: id, userId: session.user.id },
+        where: messageScopeWhere(scope),
       });
 
+      // Every new story starts like a first visit: the card's greeting comes first.
       if (existingMessagesCount === 0 && localizedGreeting) {
-        greetingMessage = await createMessageAndBumpTotal({
-          characterId: id,
-          chatId: id,
-          userId: session.user.id,
+        greetingMessage = await createMessageAndBumpTotal(scope, {
           role: "assistant",
           content: localizedGreeting,
         });
@@ -250,10 +274,7 @@ async function handlePost(
         );
       }
 
-      userMessage = await createMessageAndBumpTotal({
-        characterId: id,
-        chatId: id,
-        userId: session.user.id,
+      userMessage = await createMessageAndBumpTotal(scope, {
         role: "user",
         content: message,
       });
@@ -265,8 +286,7 @@ async function handlePost(
 
     const ttftStartedAt = Date.now();
     const prepareOptions = {
-      userId: session.user.id,
-      characterId: id,
+      scope,
       character,
       user,
       model,
@@ -293,8 +313,7 @@ async function handlePost(
     })();
     const ragSearch = (intent: UserIntent, totalHistoryTokens: number, ragEligible: boolean, historyRows: ChatHistoryRow[]) =>
       searchRagContext({
-        userId: session.user.id,
-        characterId: id,
+        scope,
         apiKey: KODIKROUTER_KEY,
         ragQueryText,
         excludeMessageId,
@@ -357,8 +376,7 @@ async function handlePost(
         if (turnMemoryScheduled) return;
         turnMemoryScheduled = true;
         void ingestChatTurnMemory({
-          userId: session.user.id,
-          characterId: id,
+          scope,
           userMessage: userText,
           assistantReply,
           intent,
@@ -369,7 +387,7 @@ async function handlePost(
           errorLog("Server", "[ChatTTFT] background memory ingest failed", toSafeDiagnostic(error));
         });
       };
-      void resolveChatMemorySummary(session.user.id, id, KODIKROUTER_KEY, user).catch((error) => {
+      void resolveChatMemorySummary(scope, KODIKROUTER_KEY, user).catch((error) => {
         errorLog("Server", "[ChatTTFT] background summary refresh failed", toSafeDiagnostic(error));
       });
     }
@@ -383,6 +401,8 @@ async function handlePost(
         userMessage: userMessage ?? undefined,
         appendToId:
           continueChat && continueCutOff && lastAssistant ? lastAssistant.id : undefined,
+        // Sending into an archived story makes it active again (touchThread), which the client shows.
+        ...(chatThreadsEnabled() ? { threadId: scope.threadId, thread: { ...toThreadSummary(thread), status: "active" as const } } : {}),
       });
 
       let loggedTtft = false;
@@ -405,17 +425,17 @@ async function handlePost(
       const appendsToCutOff = Boolean(continueChat && continueCutOff && lastAssistant);
       const assistantMessage =
         appendsToCutOff && lastAssistant
-          ? await prisma.message.update({
-              where: { id: lastAssistant.id },
-              data: {
-                content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
-                finishReason: completion.finishReason,
-              },
-            })
-          : await createMessageAndBumpTotal({
-              characterId: id,
-              chatId: id,
-              userId: session.user.id,
+          ? (await prisma.$transaction([
+              prisma.message.update({
+                where: { id: lastAssistant.id },
+                data: {
+                  content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
+                  finishReason: completion.finishReason,
+                },
+              }),
+              touchThread(scope.threadId),
+            ]))[0]
+          : await createMessageAndBumpTotal(scope, {
               role: "assistant",
               content: assistantReply,
               finishReason: completion.finishReason,
@@ -441,6 +461,7 @@ async function handlePost(
           userMessage: userMessage ?? undefined,
           assistantMessage,
         }),
+        ...(chatThreadsEnabled() ? { threadId: scope.threadId } : {}),
       });
     };
 
@@ -527,13 +548,23 @@ export async function GET(
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
 
+    // No story yet: an empty chat that the first message turns into the default story.
+    const resolution = await resolveChatScope(session.user.id, id, requestedThreadId(req));
+    if (resolution.status === "not_found") {
+      return NextResponse.json({ error: THREAD_NOT_FOUND }, { status: 404 });
+    }
     const messages = await prisma.message.findMany({
-      where: { characterId: id, userId: session.user.id },
+      where: resolution.status === "found"
+        ? messageScopeWhere(resolution.scope)
+        // Flag off before the story exists: rows still waiting for the backfill remain visible.
+        : resolution.legacy ? { userId: session.user.id, characterId: id, threadId: null } : { id: { in: [] } },
       orderBy: { createdAt: "asc" },
     });
 
     return NextResponse.json({
       messages,
+      threadsEnabled: chatThreadsEnabled(),
+      thread: resolution.status === "found" && chatThreadsEnabled() ? toThreadSummary(resolution.thread) : null,
       character: {
         id: character.id,
         name: character.name,

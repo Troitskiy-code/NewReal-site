@@ -1,6 +1,7 @@
 import { chatProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { withAiCostContext, setAiCostActor, recordChatCostCharge } from "@/lib/aiCostTelemetry";
+import { withAiCostContext, setAiCostActor, setAiCostThread, recordChatCostCharge } from "@/lib/aiCostTelemetry";
+import { chatThreadsEnabled, messageScopeWhere, requestedThreadId, resolveChatScope, touchThread } from "@/lib/chatThreads";
 import { NextRequest, NextResponse } from "next/server";
 import { GroupPromptUnavailableError } from "@/lib/promptState";
 import { PromptBudgetError } from "@/lib/chatSystemPrompt";
@@ -67,6 +68,7 @@ async function handlePost(
         createdAt: true,
         characterId: true,
         userId: true,
+        threadId: true,
       },
     });
 
@@ -85,6 +87,19 @@ async function handlePost(
     if (assistantMessage.role !== "assistant") {
       return NextResponse.json({ error: "Можно перегенерировать только ответ ассистента" }, { status: 400 });
     }
+
+    // The story is the message's own; a different story in the request is treated as not found.
+    const requested = requestedThreadId(req);
+    if (chatThreadsEnabled() && requested !== null && assistantMessage.threadId && requested !== assistantMessage.threadId) {
+      return NextResponse.json({ error: "История не найдена" }, { status: 404 });
+    }
+    // Flag off, a legacy row may predate its pair's story; the story is created and includes it.
+    const resolution = await resolveChatScope(session.user.id, characterId, assistantMessage.threadId ?? requested,
+      { create: !chatThreadsEnabled() });
+    if (resolution.status !== "found") {
+      return NextResponse.json({ error: "История не найдена" }, { status: 404 });
+    }
+    const { scope } = resolution;
 
     const character = await prisma.character.findUnique({
       where: { id: characterId },
@@ -120,6 +135,7 @@ async function handlePost(
 
     const { user, model, baseModel } = resolved;
     setAiCostActor(session.user.id, user.subscriptionType);
+    setAiCostThread(scope.threadId);
 
     const costResult = calculateRequestCost(user, model, baseModel);
     if (costResult.ok === false) {
@@ -154,8 +170,7 @@ async function handlePost(
 
     const previousUserMessage = await prisma.message.findFirst({
       where: {
-        characterId,
-        userId: session.user.id,
+        ...messageScopeWhere(scope),
         role: "user",
         createdAt: { lt: assistantMessage.createdAt },
       },
@@ -167,8 +182,7 @@ async function handlePost(
       : "general";
 
     const { messages: trimmedMessages } = await prepareChatMessages({
-      userId: session.user.id,
-      characterId,
+      scope,
       character,
       user,
       model,
@@ -198,14 +212,17 @@ async function handlePost(
 
       await recordChatCostCharge(upstream, costVC);
 
-      const updatedMessage = await prisma.message.update({
-        where: { id: assistantMessage.id },
-        data: {
-          content: assistantReply,
-          finishReason: completion.finishReason,
-          createdAt: new Date(),
-        },
-      });
+      const [updatedMessage] = await prisma.$transaction([
+        prisma.message.update({
+          where: { id: assistantMessage.id },
+          data: {
+            content: assistantReply,
+            finishReason: completion.finishReason,
+            createdAt: new Date(),
+          },
+        }),
+        touchThread(scope.threadId),
+      ]);
       scheduleMessageEmbeddingRefresh(
         updatedMessage.id,
         updatedMessage.content,

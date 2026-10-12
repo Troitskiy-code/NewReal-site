@@ -9,6 +9,8 @@ const PAYMENT_DISPLAY_KEYS = new Set(["type", "plan", "culture"]);
 const SECRET_KEYS = new Set([
   "token", "access_token", "refresh_token", "id_token", "password", "secret",
   "userid", "user_id", "email", "code", "state", "session", "sessionid",
+  // Story id in /chat/[id]?thread=: a per-user identifier, never sent to analytics or as Referer.
+  "thread",
 ]);
 
 export function isPaymentQueryKey(key: string): boolean {

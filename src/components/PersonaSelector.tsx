@@ -7,13 +7,17 @@ import { FaUser } from "react-icons/fa";
 import type { ChatPersona } from "@/lib/persona";
 import PersonaForm, { type PersonaFormValues } from "@/components/PersonaForm";
 import LoadErrorBlock from "@/components/LoadErrorBlock";
+import { withThread } from "@/lib/chatThreadShared";
 
 export default function PersonaSelector({
   characterId,
+  threadId = null,
   selectedPersona,
   onChange,
 }: {
   characterId: string;
+  /** Story whose persona is chosen; null = the default story. */
+  threadId?: string | null;
   selectedPersona: ChatPersona | null;
   onChange: (persona: ChatPersona | null) => void;
 }) {
@@ -49,7 +53,7 @@ export default function PersonaSelector({
   const handleSelect = async (persona: ChatPersona) => {
     setSaving(true);
     try {
-      await axios.post(`/api/chat/${characterId}/persona`, { personaId: persona.id });
+      await axios.post(withThread(`/api/chat/${characterId}/persona`, threadId), { personaId: persona.id });
       onChange(persona);
       showSuccess(`Личность «${persona.name}» выбрана`);
     } catch (error) {
@@ -63,7 +67,7 @@ export default function PersonaSelector({
   const handleReset = async () => {
     setSaving(true);
     try {
-      await axios.delete(`/api/chat/${characterId}/persona`);
+      await axios.delete(withThread(`/api/chat/${characterId}/persona`, threadId));
       onChange(null);
       showSuccess("Используется анонимная личность");
     } catch {
@@ -77,7 +81,7 @@ export default function PersonaSelector({
     setSaving(true);
     try {
       const { data } = await axios.post<{ persona: ChatPersona }>(
-        "/api/personas",
+        withThread("/api/personas", values.isGlobal ? null : threadId),
         {
           ...values,
           characterId: values.isGlobal ? undefined : characterId,

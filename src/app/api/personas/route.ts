@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parsePersonaPayload } from "@/lib/persona";
 import { assignPersonaToChat, listUserPersonas, toChatPersona } from "@/lib/personaService";
+import { requestedThreadId, resolveChatScope } from "@/lib/chatThreads";
 
 export async function GET(req: NextRequest) {
   try {
@@ -68,12 +69,12 @@ export async function POST(req: NextRequest) {
 
     let assigned = false;
     if (payload.characterId) {
-      const assignment = await assignPersonaToChat(
-        session.user.id,
-        payload.characterId,
-        persona.id
-      );
-      assigned = !("error" in assignment);
+      // Attached to the story the selector was opened from (?thread=), or the default one.
+      const resolution = await resolveChatScope(session.user.id, payload.characterId, requestedThreadId(req), { create: true });
+      if (resolution.status === "found") {
+        const assignment = await assignPersonaToChat(resolution.scope, persona.id);
+        assigned = !("error" in assignment);
+      }
     }
 
     return NextResponse.json({ persona: toChatPersona(persona), assigned }, { status: 201 });

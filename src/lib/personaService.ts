@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ChatPersona } from "@/lib/persona";
+import type { ChatScope } from "@/lib/chatThreads";
 
 export function toChatPersona(persona: {
   id: string;
@@ -29,20 +30,30 @@ export async function getOwnedPersona(userId: string, personaId: string) {
   });
 }
 
+/**
+ * With a story: the persona of that story. Without one (no story yet): the pair's last choice,
+ * which is what the first story will copy.
+ */
 export async function getSelectedChatPersona(
   userId: string,
-  characterId: string
+  characterId: string,
+  threadId?: string | null
 ): Promise<ChatPersona | null> {
-  const selection = await prisma.personaSelection.findUnique({
-    where: { userId_characterId: { userId, characterId } },
-    include: { persona: true },
-  });
+  const persona = threadId
+    ? (await prisma.chatThread.findFirst({
+        where: { id: threadId, userId, characterId },
+        select: { persona: true },
+      }))?.persona
+    : (await prisma.personaSelection.findUnique({
+        where: { userId_characterId: { userId, characterId } },
+        include: { persona: true },
+      }))?.persona;
 
-  if (!selection?.persona || selection.persona.userId !== userId) {
+  if (!persona || persona.userId !== userId) {
     return null;
   }
 
-  return toChatPersona(selection.persona);
+  return toChatPersona(persona);
 }
 
 export async function listUserPersonas(
@@ -69,11 +80,12 @@ export async function listUserPersonas(
   return personas.map(toChatPersona);
 }
 
+/** Sets the persona of one story; the pair's last choice follows, so a new story copies it. */
 export async function assignPersonaToChat(
-  userId: string,
-  characterId: string,
+  scope: ChatScope,
   personaId: string
 ) {
+  const { userId, characterId } = scope;
   const persona = await getOwnedPersona(userId, personaId);
   if (!persona) {
     return { error: "Личность не найдена", status: 404 as const };
@@ -83,15 +95,25 @@ export async function assignPersonaToChat(
     return { error: "Эта личность доступна только в другом чате", status: 403 as const };
   }
 
-  await prisma.personaSelection.upsert({
-    where: { userId_characterId: { userId, characterId } },
-    create: { userId, characterId, personaId },
-    update: { personaId },
-  });
+  await prisma.$transaction([
+    prisma.chatThread.update({ where: { id: scope.threadId }, data: { personaId } }),
+    prisma.personaSelection.upsert({
+      where: { userId_characterId: { userId, characterId } },
+      create: { userId, characterId, personaId },
+      update: { personaId },
+    }),
+  ]);
 
   console.log(
     `[Persona] attached user=${userId} character=${characterId} persona=${personaId}`
   );
 
   return { persona: toChatPersona(persona) };
+}
+
+export async function clearChatPersona(scope: ChatScope) {
+  await prisma.$transaction([
+    prisma.chatThread.update({ where: { id: scope.threadId }, data: { personaId: null } }),
+    prisma.personaSelection.deleteMany({ where: { userId: scope.userId, characterId: scope.characterId } }),
+  ]);
 }

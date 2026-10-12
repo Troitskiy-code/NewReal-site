@@ -3,12 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
-import { assignPersonaToChat, getSelectedChatPersona } from "@/lib/personaService";
+import { getAuthorizedChatScope } from "@/lib/chatAccess";
+import { requestedThreadId } from "@/lib/chatThreads";
+import { assignPersonaToChat, clearChatPersona, getSelectedChatPersona } from "@/lib/personaService";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, context: RouteContext) {
+export async function GET(req: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -16,12 +17,14 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     }
 
     const { id: characterId } = await context.params;
-    const access = await getAuthorizedCharacterForChat(session.user.id, characterId);
+    const access = await getAuthorizedChatScope(session.user.id, characterId, requestedThreadId(req));
     if ("error" in access) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    const persona = await getSelectedChatPersona(session.user.id, characterId);
+    // Before the first story exists this is the persona it will start with.
+    const threadId = access.resolution.status === "found" ? access.resolution.scope.threadId : null;
+    const persona = await getSelectedChatPersona(session.user.id, characterId, threadId);
     return NextResponse.json({ persona });
   } catch (error) {
     errorLog("Server", "[Persona] get chat persona failed", toSafeDiagnostic(error));
@@ -37,18 +40,19 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     const { id: characterId } = await context.params;
-    const access = await getAuthorizedCharacterForChat(session.user.id, characterId);
-    if ("error" in access) {
-      return NextResponse.json({ error: access.error }, { status: access.status });
-    }
-
     const body = await req.json();
     const personaId = typeof body?.personaId === "string" ? body.personaId.trim() : "";
     if (!personaId) {
       return NextResponse.json({ error: "personaId обязателен" }, { status: 400 });
     }
 
-    const result = await assignPersonaToChat(session.user.id, characterId, personaId);
+    const access = await getAuthorizedChatScope(session.user.id, characterId, requestedThreadId(req), { create: true });
+    if ("error" in access) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+    if (access.resolution.status !== "found") throw new Error("Story was not created");
+
+    const result = await assignPersonaToChat(access.resolution.scope, personaId);
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
 }
 
-export async function DELETE(_req: NextRequest, context: RouteContext) {
+export async function DELETE(req: NextRequest, context: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -68,14 +72,13 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     }
 
     const { id: characterId } = await context.params;
-    const access = await getAuthorizedCharacterForChat(session.user.id, characterId);
+    const access = await getAuthorizedChatScope(session.user.id, characterId, requestedThreadId(req));
     if ("error" in access) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    await prisma.personaSelection.deleteMany({
-      where: { userId: session.user.id, characterId },
-    });
+    if (access.resolution.status === "found") await clearChatPersona(access.resolution.scope);
+    else await prisma.personaSelection.deleteMany({ where: { userId: session.user.id, characterId } });
 
     console.log(`[Persona] detached user=${session.user.id} character=${characterId}`);
     return NextResponse.json({ persona: null, success: true });

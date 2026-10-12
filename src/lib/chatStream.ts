@@ -1,6 +1,7 @@
 import { safeErrorFields } from "./redactSensitive";
 import { ChatCompletionStreamError, ChatCompletionStreamParser, extractChatStreamDelta, hasChatStreamReasoning } from "./chatCompletionStream";
 import type { ChatCompletionFinishReason } from "./chatCompletionStream";
+import type { ChatThreadSummary } from "./chatThreadShared";
 export { extractChatStreamDelta } from "./chatCompletionStream";
 
 export type ChatStreamMessage = {
@@ -16,6 +17,9 @@ export type ChatStreamMetaEvent = {
   greetingMessage?: ChatStreamMessage;
   userMessage?: ChatStreamMessage;
   appendToId?: string;
+  /** Story the turn was stored in; set when stories are enabled. */
+  threadId?: string;
+  thread?: ChatThreadSummary;
 };
 
 export type ChatStreamDeltaEvent = {
@@ -38,6 +42,7 @@ export type ChatStreamEndEvent = {
   model?: { id: string; displayName: string };
   anonymous?: boolean;
   remainingMessages?: number;
+  threadId?: string;
 };
 
 export type ChatStreamErrorEvent = {

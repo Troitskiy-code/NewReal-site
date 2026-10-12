@@ -74,8 +74,7 @@ try {
     const base = Date.now() - 86_400_000;
     for (let i = 1; i <= 12; i += 1) {
       await db.episodicMemory.create({
-        data: {
-          userId: user.id, characterId: character.id, importance: i % 2 === 1 ? 3 : 2,
+        data: { ...(await helpers.key(user.id, character.id)), importance: i % 2 === 1 ? 3 : 2,
           event: `Событие-${String(i).padStart(2, '0')}: шаг сюжета номер ${i}`, timestamp: new Date(base + i * 60_000),
         },
       });
@@ -145,9 +144,9 @@ try {
         { role: 'user', content: `Мой секретный пароль ${secret}, запомни его.` },
         { role: 'assistant', content: `Хорошо, твой секретный пароль ${secret}.` },
       ]);
-      await db.episodicMemory.create({ data: { userId, characterId, importance: 3, event: `Пароль ${secret} назван` } });
-      await db.coreMemory.create({ data: { userId, characterId, content: `## Пользователь\n- Пароль ${secret}` } });
-      await db.memory.create({ data: { userId, characterId, summary: `## Недавние события\n1. Назван пароль ${secret}`, lastSummarizedAt: new Date() } });
+      await db.episodicMemory.create({ data: { ...(await helpers.key(userId, characterId)), importance: 3, event: `Пароль ${secret} назван` } });
+      await db.coreMemory.create({ data: { ...(await helpers.key(userId, characterId)), content: `## Пользователь\n- Пароль ${secret}` } });
+      await db.memory.create({ data: { ...(await helpers.key(userId, characterId)), summary: `## Недавние события\n1. Назван пароль ${secret}`, lastSummarizedAt: new Date() } });
     }
     await helpers.messages(owner.id, character.id, [
       { role: 'user', content: 'Я пришёл к маяку вечером.' },
@@ -169,11 +168,11 @@ try {
     }
     const rows = await helpers.messages(user.id, character.id, items, { mirror: false });
     const coverage = rows[3].createdAt;
-    await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: '## Недавние события\n1. Гость пришёл к маяку.', lastSummarizedAt: coverage, summarizedMessageCount: 4 } });
+    await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)), summary: '## Недавние события\n1. Гость пришёл к маяку.', lastSummarizedAt: coverage, summarizedMessageCount: 4 } });
     provider.reset();
     provider.summaryFails = true;
     const turn = await chat(user.id, character.id, { message: textOfTokens('ХВОСТ-32 текущий вопрос', 40) });
-    const memory = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const memory = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const text = contentOf(turn);
     const windowMarkers = [];
     for (let i = 8; i <= 31; i += 1) windowMarkers.push(`ХВОСТ-${String(i).padStart(2, '0')}`);
@@ -193,11 +192,11 @@ try {
     const items = [];
     for (let i = 1; i <= 40; i += 1) items.push({ role: i % 2 ? 'user' : 'assistant', content: `Реплика ${i} про маяк`, createdAt: new Date(base + i * 1000) });
     const rows = await helpers.messages(user.id, character.id, items, { mirror: false });
-    await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: '## Недавние события\n1. Начало.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
+    await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)), summary: '## Недавние события\n1. Начало.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
     provider.reset();
     const before = Date.now();
     await chat(user.id, character.id, { message: 'Я смотрю на море' });
-    const memory = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const memory = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const at = memory?.lastSummarizedAt?.getTime() ?? 0;
     const allRows = await db.message.findMany({ where: { userId: user.id, characterId: character.id }, orderBy: { createdAt: 'asc' } });
     const isMessageTime = allRows.some((row) => row.createdAt.getTime() === at);
@@ -214,7 +213,7 @@ try {
     for (let i = 1; i <= 40; i += 1) items.push({ role: i % 2 ? 'user' : 'assistant', content: `Ранняя реплика ${String(i).padStart(2, '0')} о маяке`, createdAt: new Date(base + i * 1000) });
     await helpers.messages(user.id, character.id, items, { mirror: false });
     const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
-    await advanced.setSummaryContent(user.id, character.id, '## Активные линии\n- Ручная заметка владельца.');
+    await advanced.setSummaryContent(await helpers.scope(user.id, character.id), '## Активные линии\n- Ручная заметка владельца.');
     provider.reset();
     await chat(user.id, character.id, { message: 'Я осматриваю лампу маяка' });
     const summaryPrompts = provider.calls.filter((c) => c.kind === 'summary').map((c) => c.prompt).join('\n');
@@ -259,7 +258,7 @@ try {
       Array.from({ length: 80 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content: `Ход ${index} про маяк` })),
       { mirror: false });
     const original = '## Недавние события\n1. Начало истории.';
-    await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: original,
+    await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)), summary: original,
       lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
     const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
     const summaryLib = load(join(root, 'src/lib/chatMemory.ts'));
@@ -268,15 +267,15 @@ try {
     const gate = new Promise((resolve) => { unblock = resolve; });
     const started = new Promise((resolve) => { entered = resolve; });
     provider.beforeSummary = async () => { entered(); await gate; };
-    const refresh = summaryLib.forceRefreshMemorySummary(user.id, character.id, 'synthetic_memory_key', user);
+    const refresh = summaryLib.forceRefreshMemorySummary(await helpers.scope(user.id, character.id), 'synthetic_memory_key', user);
     await started;
     const manual = '## Активные линии\n- Ручная правка: герой покинул маяк.';
     try {
-      if (throughEditor) await advanced.setSummaryContent(user.id, character.id, manual);
-      else await db.memory.update({ where: { userId_characterId: { userId: user.id, characterId: character.id } }, data: { summary: manual } });
+      if (throughEditor) await advanced.setSummaryContent(await helpers.scope(user.id, character.id), manual);
+      else await db.memory.update({ where: { threadId: (await helpers.thread(user.id, character.id)).id }, data: { summary: manual } });
     } finally { unblock(); }
     const responseSummary = await refresh;
-    const saved = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const saved = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     record(id, throughEditor ? 'Ручная замена выжимки отзывает покрытие и переживает фоновую запись'
       : 'Фоновая запись не перетирает правку даже при прежнем timestamp',
       saved.summary === manual && responseSummary === manual && (throughEditor ? saved.lastSummarizedAt === null && saved.summarizedMessageCount === 0
@@ -290,7 +289,7 @@ try {
     const rows = await helpers.messages(user.id, character.id,
       Array.from({ length: 80 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content: `Конкурентный ход ${index}` })),
       { mirror: false });
-    await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: '## Недавние события\n1. Начало.',
+    await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)), summary: '## Недавние события\n1. Начало.',
       lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
     const summaryLib = load(join(root, 'src/lib/chatMemory.ts'));
     provider.reset();
@@ -298,12 +297,13 @@ try {
     const gate = new Promise((resolve) => { unblock = resolve; });
     const started = new Promise((resolve) => { entered = resolve; });
     provider.beforeSummary = async () => { if (++workers === 2) entered(); await gate; };
-    const refreshes = Promise.all([1, 2].map(() => summaryLib.forceRefreshMemorySummary(user.id, character.id, 'synthetic_memory_key', user)));
+    const refreshScope = await helpers.scope(user.id, character.id);
+    const refreshes = Promise.all([1, 2].map(() => summaryLib.forceRefreshMemorySummary(refreshScope, 'synthetic_memory_key', user)));
     const writesBefore = h.observedWrites.summaries;
     await started;
     unblock();
     await refreshes;
-    const saved = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const saved = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const entries = await db.memoryEntry.count({ where: { userId: user.id, characterId: character.id, type: 'summary' } });
     const writes = h.observedWrites.summaries - writesBefore;
     record('S12', 'Две фоновые выжимки фиксируют одну главу и одну запись истории',
@@ -408,11 +408,11 @@ try {
     const user = await helpers.user('dialog');
     const character = await helpers.character(user.id);
     const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
-    await advanced.setCoreMemoryContent(user.id, character.id, 'Пользователя зовут Мирон.\nОн боится высоты.');
+    await advanced.setCoreMemoryContent(await helpers.scope(user.id, character.id), 'Пользователя зовут Мирон.\nОн боится высоты.');
     provider.reset();
     provider.coreText = '## Пользователь\nИнтересы: боится высоты.\nЛюбит море и археологию.';
-    await advanced.updateCoreMemory(user.id, character.id, 'Я люблю море и каждый день изучаю морскую археологию.', 'synthetic_memory_key');
-    const row = await db.coreMemory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    await advanced.updateCoreMemory(await helpers.scope(user.id, character.id), 'Я люблю море и каждый день изучаю морскую археологию.', 'synthetic_memory_key');
+    const row = await db.coreMemory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const entries = await db.memoryEntry.findMany({ where: { userId: user.id, characterId: character.id, type: 'core' } });
     record('S15', 'Фоновое извлечение добавляет сведения и сохраняет пропущенное моделью имя',
       row.content.includes('Мирон') && row.content.includes('Он боится высоты.') && row.content.includes('Любит море') && entries.length === 1 && entries[0].content === row.content);
@@ -422,19 +422,19 @@ try {
     const user = await helpers.user('dialog');
     const character = await helpers.character(user.id);
     const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
-    await advanced.setCoreMemoryContent(user.id, character.id, 'Пользователя зовут Мирон.\nОн боится высоты.');
+    await advanced.setCoreMemoryContent(await helpers.scope(user.id, character.id), 'Пользователя зовут Мирон.\nОн боится высоты.');
     provider.reset();
     provider.coreText = '## Пользователь\nЛюбит море и археологию.';
     let entered, unblock;
     const started = new Promise(resolve => { entered = resolve; });
     const gate = new Promise(resolve => { unblock = resolve; });
     provider.beforeCore = async () => { entered(); await gate; };
-    const pending = advanced.updateCoreMemory(user.id, character.id, 'Я люблю море и каждый день изучаю морскую археологию.', 'synthetic_memory_key');
+    const pending = advanced.updateCoreMemory(await helpers.scope(user.id, character.id), 'Я люблю море и каждый день изучаю морскую археологию.', 'synthetic_memory_key');
     await started;
-    const manual = await advanced.setCoreMemoryContent(user.id, character.id, replacement);
+    const manual = await advanced.setCoreMemoryContent(await helpers.scope(user.id, character.id), replacement);
     unblock();
     const returned = await pending;
-    const current = await db.coreMemory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const current = await db.coreMemory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const entries = await db.memoryEntry.findMany({ where: { userId: user.id, characterId: character.id, type: 'core' } });
     record(id, replacement ? 'Правка core выигрывает гонку с фоном' : 'Очистка core не воскрешает прежние факты',
       current.content === manual.content && returned.content === manual.content && !current.content.includes('Мирон') && (replacement ? entries.length === 1 && entries[0].content === manual.content : entries.length === 0));
@@ -444,7 +444,7 @@ try {
     const user = await helpers.user('dialog');
     const character = await helpers.character(user.id);
     const rows = await helpers.messages(user.id, character.id, Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `Ход ${i}: обсуждаем карту маяка.` })), { mirror: false });
-    if (mode !== 'create') await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: '## Недавние события\n- Старая сводка.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
+    if (mode !== 'create') await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)), summary: '## Недавние события\n- Старая сводка.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
     const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
     const route = load(join(root, 'src/app/api/chat/[id]/memory/refresh-summary/route.ts'));
     const { NextRequest } = require('next/server');
@@ -457,11 +457,11 @@ try {
     const previousCostIds = new Set((await db.aiCostEvent.findMany({ select: { id: true } })).map(row => row.id));
     const pending = route.POST(new NextRequest(`http://localhost/api/chat/${character.id}/memory/refresh-summary`, { method: 'POST' }), { params: Promise.resolve({ id: character.id }) });
     await started;
-    await advanced.setSummaryContent(user.id, character.id, mode === 'clear' ? '' : 'РУЧНАЯ-МЕТКА: северная карта.');
+    await advanced.setSummaryContent(await helpers.scope(user.id, character.id), mode === 'clear' ? '' : 'РУЧНАЯ-МЕТКА: северная карта.');
     unblock();
     const response = await pending;
     const payload = await response.json();
-    const current = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const current = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const actual = payload.summary;
     record(id, `Refresh возвращает каноническую сводку после конфликта (${mode})`, response.status === 200 && payload.status === 'conflict' && payload.updated === false
       && (current ? actual?.summary === current.summary && actual.createdAt === current.createdAt.toISOString() : actual === null),
@@ -494,13 +494,13 @@ try {
     const user = await helpers.user('dialog');
     const character = await helpers.character(user.id);
     const rows = await helpers.messages(user.id, character.id, Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `Ход ${i}: ключ не найден.` })), { mirror: false });
-    await db.memory.create({ data: { userId: user.id, characterId: character.id, summary: '## Недавние события\n- Ключ пока не найден.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
+    await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)), summary: '## Недавние события\n- Ключ пока не найден.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
     provider.reset();
     provider.summaryText = '{"activeLines":[],"events":["invented-key-found"]}';
     const summaryLib = load(join(root, 'src/lib/chatMemory.ts'));
     let refused = false;
-    try { await summaryLib.forceRefreshMemorySummary(user.id, character.id, 'synthetic_memory_key', user); } catch { refused = true; }
-    const current = await db.memory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    try { await summaryLib.forceRefreshMemorySummary(await helpers.scope(user.id, character.id), 'synthetic_memory_key', user); } catch { refused = true; }
+    const current = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     record('S19', 'Неподтверждённый выбор модели не записывает выдуманное событие и не продвигает покрытие', refused && current.summary.includes('Ключ пока не найден.') && current.lastSummarizedAt.getTime() === rows[4].createdAt.getTime() && current.summarizedMessageCount === 5);
   }
 
@@ -512,9 +512,9 @@ try {
     const foundAt = new Date('2026-10-08T12:00:00Z');
     const lostAt = new Date('2026-10-08T12:05:00Z');
     // The later turn's background worker finished first.
-    await advanced.addEpisodicMemory(user.id, character.id, 'Потеряли ключ', 3, lostAt);
-    await advanced.addEpisodicMemory(user.id, character.id, 'Нашли ключ', 3, foundAt);
-    const selected = await advanced.getRelevantMemories(user.id, character.id, 'story');
+    await advanced.addEpisodicMemory(await helpers.scope(user.id, character.id), 'Потеряли ключ', 3, lostAt);
+    await advanced.addEpisodicMemory(await helpers.scope(user.id, character.id), 'Нашли ключ', 3, foundAt);
+    const selected = await advanced.getRelevantMemories(await helpers.scope(user.id, character.id), 'story');
     record('S14', 'Эпизоды используют время хода, а не порядок завершения фоновой обработки',
       selected.episodic[0]?.event === 'Нашли ключ' && selected.episodic[1]?.event === 'Потеряли ключ'
         && selected.episodic[0]?.timestamp.getTime() === foundAt.getTime(),
@@ -536,7 +536,7 @@ try {
     const captured = episodic.some((row) => row.event.includes('третьей ступенью') && row.timestamp.getTime() === metaUserTime);
     record('E1', 'Событие из ответа персонажа попадает в эпизоды', captured, { events: episodic.map((row) => row.event) }, metricsOf(turn));
     const coreInputs = provider.calls.filter((c) => c.kind === 'core').map((c) => c.prompt).join('\n');
-    const core = await db.coreMemory.findUnique({ where: { userId_characterId: { userId: user.id, characterId: character.id } } });
+    const core = await db.coreMemory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const attributed = episodic.filter((row) => row.event.includes('третьей ступенью')).every((row) => /персонаж/i.test(row.event));
     record('E2', 'Выдумка персонажа о биографии игрока не становится фактом пользователя',
       !coreInputs.includes('Гаррет') && !(core?.content ?? '').includes('Гаррет') && (!captured || attributed),
