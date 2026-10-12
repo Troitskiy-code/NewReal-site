@@ -1,7 +1,7 @@
 -- Independent stories (ChatThread). Additive and safe to execute again: every step is guarded.
 -- Order: schema -> one default story per user+character -> memory rows get its id ->
 -- only then the memory uniqueness moves from (userId, characterId) to threadId.
--- "Message"."threadId" is filled in batches afterwards by scripts/backfill-chat-threads.mjs;
+-- "Message"."threadId" is filled in batches afterwards by scripts/backfill-chat-threads.mjs,
 -- until then CHAT_THREADS_ENABLED stays off and the legacy read also includes unassigned rows.
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '300s';
@@ -31,36 +31,35 @@ ALTER TABLE "EpisodicMemory" ADD COLUMN IF NOT EXISTS "threadId" TEXT;
 ALTER TABLE "MemoryEntry" ADD COLUMN IF NOT EXISTS "threadId" TEXT;
 ALTER TABLE "AiCostEvent" ADD COLUMN IF NOT EXISTS "threadHash" TEXT;
 
--- Built while every value is NULL; the batched backfill then maintains it.
+-- Built while every value is NULL, the batched backfill then maintains it.
 CREATE INDEX IF NOT EXISTS "Message_threadId_createdAt_idx" ON "Message"("threadId", "createdAt");
 CREATE UNIQUE INDEX IF NOT EXISTS "Memory_threadId_key" ON "Memory"("threadId");
 CREATE UNIQUE INDEX IF NOT EXISTS "CoreMemory_threadId_key" ON "CoreMemory"("threadId");
 CREATE INDEX IF NOT EXISTS "EpisodicMemory_threadId_timestamp_idx" ON "EpisodicMemory"("threadId", "timestamp");
 CREATE INDEX IF NOT EXISTS "MemoryEntry_threadId_type_idx" ON "MemoryEntry"("threadId", "type");
 
-DO $$
-DECLARE item RECORD;
-BEGIN
-  FOR item IN SELECT * FROM (VALUES
-    ('ChatThread', 'ChatThread_userId_fkey', 'userId', 'User', 'CASCADE'),
-    ('ChatThread', 'ChatThread_characterId_fkey', 'characterId', 'Character', 'CASCADE'),
-    ('ChatThread', 'ChatThread_personaId_fkey', 'personaId', 'Persona', 'SET NULL'),
-    ('Message', 'Message_threadId_fkey', 'threadId', 'ChatThread', 'CASCADE'),
-    ('Memory', 'Memory_threadId_fkey', 'threadId', 'ChatThread', 'CASCADE'),
-    ('CoreMemory', 'CoreMemory_threadId_fkey', 'threadId', 'ChatThread', 'CASCADE'),
-    ('EpisodicMemory', 'EpisodicMemory_threadId_fkey', 'threadId', 'ChatThread', 'CASCADE'),
-    ('MemoryEntry', 'MemoryEntry_threadId_fkey', 'threadId', 'ChatThread', 'CASCADE')
-  ) AS fk(child, name, field, parent, action) LOOP
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = item.name) THEN
-      EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES %I("id") ON DELETE %s ON UPDATE CASCADE',
-        item.child, item.name, item.field, item.parent, item.action);
-    END IF;
-  END LOOP;
-END $$;
+-- Plain statements (no DO block), so an SQL console that splits on semicolons runs the file unchanged.
+-- Dropping and re-adding keeps a repeated run idempotent, validation of these keys is cheap.
+ALTER TABLE "ChatThread" DROP CONSTRAINT IF EXISTS "ChatThread_userId_fkey";
+ALTER TABLE "ChatThread" ADD CONSTRAINT "ChatThread_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ChatThread" DROP CONSTRAINT IF EXISTS "ChatThread_characterId_fkey";
+ALTER TABLE "ChatThread" ADD CONSTRAINT "ChatThread_characterId_fkey" FOREIGN KEY ("characterId") REFERENCES "Character"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ChatThread" DROP CONSTRAINT IF EXISTS "ChatThread_personaId_fkey";
+ALTER TABLE "ChatThread" ADD CONSTRAINT "ChatThread_personaId_fkey" FOREIGN KEY ("personaId") REFERENCES "Persona"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Message" DROP CONSTRAINT IF EXISTS "Message_threadId_fkey";
+ALTER TABLE "Message" ADD CONSTRAINT "Message_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "ChatThread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Memory" DROP CONSTRAINT IF EXISTS "Memory_threadId_fkey";
+ALTER TABLE "Memory" ADD CONSTRAINT "Memory_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "ChatThread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CoreMemory" DROP CONSTRAINT IF EXISTS "CoreMemory_threadId_fkey";
+ALTER TABLE "CoreMemory" ADD CONSTRAINT "CoreMemory_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "ChatThread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "EpisodicMemory" DROP CONSTRAINT IF EXISTS "EpisodicMemory_threadId_fkey";
+ALTER TABLE "EpisodicMemory" ADD CONSTRAINT "EpisodicMemory_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "ChatThread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "MemoryEntry" DROP CONSTRAINT IF EXISTS "MemoryEntry_threadId_fkey";
+ALTER TABLE "MemoryEntry" ADD CONSTRAINT "MemoryEntry_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "ChatThread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- One default story for every user+character pair that has messages or memory and no story yet.
 -- The persona selected for the pair becomes the persona of that story. Its activity time is the
--- last message; memory timestamps are used only for a pair that has memory but no messages.
+-- last message, memory timestamps are used only for a pair that has memory but no messages.
 INSERT INTO "ChatThread" ("id", "userId", "characterId", "personaId", "number", "title", "status", "createdAt", "updatedAt", "lastMessageAt")
 SELECT gen_random_uuid()::text, pair."userId", pair."characterId", selection."personaId", 1, NULL, 'active',
   pair."firstAt", CURRENT_TIMESTAMP, pair."lastAt"
@@ -79,7 +78,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM "ChatThread" existing WHERE existing."userId" = pair."userId" AND existing."characterId" = pair."characterId"
 );
 
--- Memory tables are bounded per pair; one statement each. The default story is the most recent one,
+-- Memory tables are bounded per pair, one statement each. The default story is the most recent one,
 -- the same rule the legacy (flag off) read uses. Only the newest unassigned summary/core row is attached.
 WITH story AS (
   SELECT DISTINCT ON ("userId", "characterId") "id", "userId", "characterId" FROM "ChatThread"
@@ -117,14 +116,24 @@ WITH story AS (
 UPDATE "MemoryEntry" target SET "threadId" = story."id" FROM story
 WHERE target."threadId" IS NULL AND story."userId" = target."userId" AND story."characterId" = target."characterId";
 
--- The pinned prompt builder/mode of the old chat moves with it; "user:" rows stay for a code rollback.
-INSERT INTO "ChatPromptState" ("id", "scopeKey", "characterId", "builderVersion", "mode", "createdAt", "updatedAt")
+-- The pinned prompt builder/mode of the old chat moves with it, "user:" rows stay for a code rollback.
+-- A bulk prompt conversion (20261012193000_prompt_bulk_rollout) marks the state and keeps a rollback
+-- snapshot per scope key, both move with the story so an admin rollback also restores it.
+INSERT INTO "ChatPromptState" ("id", "scopeKey", "characterId", "builderVersion", "mode", "promptMigrationId", "createdAt", "updatedAt")
 SELECT gen_random_uuid()::text, 'thread:' || story."id", state."characterId", state."builderVersion", state."mode",
-  state."createdAt", CURRENT_TIMESTAMP
+  state."promptMigrationId", state."createdAt", CURRENT_TIMESTAMP
 FROM "ChatThread" story
 JOIN "ChatPromptState" state ON state."scopeKey" = 'user:' || story."userId" AND state."characterId" = story."characterId"
 WHERE story."number" = 1
 ON CONFLICT ("scopeKey", "characterId") DO NOTHING;
+
+INSERT INTO "PromptMigrationStory" ("id", "entryId", "scopeKey", "builderVersion", "mode", "previousMigrationId")
+SELECT gen_random_uuid()::text, snapshot."entryId", 'thread:' || story."id", snapshot."builderVersion", snapshot."mode", snapshot."previousMigrationId"
+FROM "ChatThread" story
+JOIN "PromptMigrationEntry" entry ON entry."characterId" = story."characterId"
+JOIN "PromptMigrationStory" snapshot ON snapshot."entryId" = entry."id" AND snapshot."scopeKey" = 'user:' || story."userId"
+WHERE story."number" = 1
+ON CONFLICT ("entryId", "scopeKey") DO NOTHING;
 
 -- Uniqueness moves only now, after every existing summary/core row has its story.
 DROP INDEX IF EXISTS "Memory_userId_characterId_key";

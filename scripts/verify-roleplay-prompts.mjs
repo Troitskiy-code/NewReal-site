@@ -6,6 +6,12 @@ import ts from 'typescript';
 import { PGlite } from '@electric-sql/pglite';
 const require = createRequire(import.meta.url);
 const { NextRequest, NextResponse } = require('next/server');
+// Explicit local rollout/provider values; never inherit a real API key or perform network I/O.
+process.env.RP_PROMPT_V2_ENABLED = 'false';
+process.env.CHAT_AI_PROVIDER = 'kodikrouter';
+process.env.KODIKROUTER_API_KEY = 'synthetic_kodik_key';
+process.env.DEEPINFRA_API_KEY = 'synthetic_deepinfra_key';
+globalThis.fetch = async () => { throw new Error('External network is disabled in prompt verification'); };
 let checks = 0;
 function check(value, label) { assert.ok(value, label); checks++; console.log(`PASS ${label}`); }
 function load(file, dependencies = {}) {
@@ -74,6 +80,7 @@ check(!(await db.query(`SELECT to_regclass('"ChatPromptState"') AS name`)).rows[
 await db.exec(`BEGIN; ${migration} COMMIT;`);
 check((await db.query('SELECT * FROM "Character"')).rows[0].systemPrompt === 'LEGACY_PRIVATE_DO_NOT_LOG', 'migration preserves original legacy text and assigns unknown provenance/v1');
 let serial = 0;
+let transactionQueue = Promise.resolve();
 let history = [];
 let guestHistory = [];
 const queryKey = where => where.scopeKey_characterId;
@@ -87,6 +94,9 @@ const stateDelegate = {
   deleteMany: async ({ where }) => { await db.query('DELETE FROM "ChatPromptState" WHERE "scopeKey"=$1 AND "characterId"=$2', [where.scopeKey, where.characterId]); return { count: 1 }; },
 };
 const prisma = {
+  $queryRaw: async () => (await db.query('SELECT * FROM "Character" WHERE id=$1', ['card'])).rows,
+  promptRollout: { findUnique: async () => null },
+  promptMigrationEntry: { findFirst: async () => null },
   chatPromptState: stateDelegate,
   message: { findFirst: async () => history[0] ?? null, findUnique: async ({ where }) => history.find(row => row.id === where.id) ?? null,
     findMany: async ({ where }) => [...history].filter(row => !where.createdAt?.lt || row.createdAt < where.createdAt.lt).reverse(), count: async ({ where }) => history.filter(row => !where.createdAt?.lt || row.createdAt < where.createdAt.lt).length },
@@ -95,9 +105,26 @@ const prisma = {
     findUnique: async () => (await db.query('SELECT * FROM "Character" WHERE id=$1', ['card'])).rows[0],
     update: async ({ data }) => (await db.query('UPDATE "Character" SET "promptBuilderVersion"=$1,"legacyPromptArchive"=COALESCE($2,"legacyPromptArchive") WHERE id=$3 RETURNING *', [data.promptBuilderVersion, data.legacyPromptArchive ?? null, 'card'])).rows[0],
   },
-  $transaction: async work => { await db.exec('BEGIN'); try { const result = await work(prisma); await db.exec('COMMIT'); return result; } catch (error) { await db.exec('ROLLBACK'); throw error; } },
+  $transaction: work => {
+    const result = transactionQueue.then(async () => { await db.exec('BEGIN'); try { const result = await work(prisma); await db.exec('COMMIT'); return result; } catch (error) { await db.exec('ROLLBACK'); throw error; } });
+    transactionQueue = result.catch(() => {}); return result;
+  },
 };
-const states = load('src/lib/promptState.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config });
+// Stories (ChatThread) with the flag off: one story per user+character, "thread-<userId>" here.
+const threadRows = new Map();
+prisma.chatThread = {
+  findFirst: async ({ where }) => { const row = threadRows.get(where.userId); return row && row.characterId === where.characterId && (!where.id || where.id === row.id) ? row : null; },
+  aggregate: async () => ({ _max: { number: null } }),
+  create: async ({ data }) => { const row = { id: `thread-${data.userId}`, number: 1, title: null, status: 'active', personaId: null,
+    createdAt: new Date(), updatedAt: new Date(), lastMessageAt: data.lastMessageAt ?? new Date(), ...data }; threadRows.set(data.userId, row); return row; },
+  update: async ({ where, data }) => Object.assign([...threadRows.values()].find(row => row.id === where.id), data),
+};
+prisma.personaSelection = { findUnique: async () => null };
+prisma.$executeRaw = async () => 0;
+const threads = load('src/lib/chatThreads.ts', { '@/lib/prisma': { prisma }, '@/lib/chatThreadShared': load('src/lib/chatThreadShared.ts'), '@/lib/logger': logger });
+const storyOf = userId => ({ userId, characterId: 'card', threadId: `thread-${userId}`, legacy: true });
+const rolloutPolicy = load('src/lib/promptRolloutPolicy.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config });
+const states = load('src/lib/promptState.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config, './promptRolloutPolicy': rolloutPolicy, './chatThreads': threads });
 check(!states.isPromptV2Enabled(), 'v2 rollout defaults off');
 process.env.RP_PROMPT_V2_ENABLED = 'true';
 // Provider routing rejects an empty key; network calls in this script are stubbed.
@@ -108,7 +135,7 @@ const wires = [];
 const deps = {
   '@/lib/prisma': { prisma }, '@/lib/chatSystemPrompt': builder, '@/lib/chatSystemPromptV1': legacy,
   '@/lib/promptState': states, '@/lib/promptDiagnostics': diagnostics, '@/lib/persona': persona,
-  '@/lib/tokenCount': { countTokens }, '@/lib/testingChatModels': policy, '@/lib/logger': logger,
+  '@/lib/tokenCount': { countTokens }, '@/lib/testingChatModels': policy, '@/lib/logger': logger, '@/lib/chatThreads': threads,
   '@/lib/verseChatEconomy': { ...economy, isSubscriptionActive: () => false },
   '@/lib/advancedMemory': { loadMemoryCandidates: async () => ({ core: null, episodic: [] }), rankEpisodicCandidates: () => [], sortEpisodicChronologically: rows => rows, episodicLimitForIntent: () => 3, formatEpisodicLine: () => '' },
   '@/lib/chatMemory': { readChatMemoryState: async () => ({ summary: null, coveredUntil: null }) },
@@ -153,9 +180,10 @@ check(fit.blocks[0].content === oversized.blocks[0].content, 'fitting does not c
 check((fit.content.match(/\[\[DATA:/g) ?? []).length === (fit.content.match(/\[\[\/DATA:/g) ?? []).length, 'fitting preserves balanced data delimiters');
 const changed = helpers.resolveChatSystemPrompt({ ...card, description: 'Теперь недоверчива к чиновникам' }, 'ru', { builderVersion: 2, mode: 'character' });
 check(changed.includes('Теперь недоверчива') && !changed.includes(card.description), 'editing card changes the next assembly without AI regeneration');
-const pin = await states.getOrCreatePromptState('user:new', 'card', { ...card, roleplayMode: 'world' });
+await db.query('UPDATE "Character" SET "roleplayMode"=$1, "promptBuilderVersion"=2 WHERE id=$2', ['world', 'card']);
+const pin = await states.getOrCreateThreadPromptState(storyOf('new'), { ...card, roleplayMode: 'world' });
 check(pin.builderVersion === 2 && pin.mode === 'world', 'new history adopts current card mode/version');
-check((await states.getOrCreatePromptState('user:new', 'card', { ...card, roleplayMode: 'character' })).mode === 'world', 'editing card type cannot change an existing story');
+check((await states.getOrCreateThreadPromptState(storyOf('new'), { ...card, roleplayMode: 'character' })).mode === 'world', 'editing card type cannot change an existing story');
 history = [{ id: 'old', role: 'user', content: 'old story', createdAt: new Date() }];
 check((await states.getOrCreatePromptState('user:legacy', 'card', card)).builderVersion === 1, 'existing untracked history stays on legacy version');
 history = [];
@@ -163,7 +191,7 @@ check((await states.getOrCreatePromptState('guest:session', 'card', { ...card, r
 const race = await Promise.all([states.getOrCreatePromptState('user:race', 'card', card), states.getOrCreatePromptState('user:race', 'card', { ...card, roleplayMode: 'world' })]);
 check(race[0].mode === race[1].mode, 'concurrent first requests observe one pinned mode');
 history = [{ id: 'm1', role: 'user', content: 'Текущая реплика', createdAt: new Date() }, { id: 'm2', role: 'assistant', content: 'Ответ оборван', createdAt: new Date(Date.now() + 1) }];
-const options = { userId: 'new', characterId: 'card', character: card, user: { subscriptionType: 'start', subscriptionEnd: null }, model: { name: 'aion-labs/aion-3.5-mini', maxContextTokens: 20000 }, apiKey: 'synthetic', locale: 'ru', refreshSummary: false };
+const options = { scope: storyOf('new'), character: card, user: { subscriptionType: 'start', subscriptionEnd: null }, model: { name: 'aion-labs/aion-3.5-mini', maxContextTokens: 20000 }, apiKey: 'synthetic', locale: 'ru', refreshSummary: false };
 for (const locale of ['ru', 'en']) {
   for (const continueMode of [false, true]) {
     const fast = await helpers.prepareFastContext({ ...options, locale, continueMode, continueCutOff: true, continueSourceText: 'DO_NOT_INLINE_CUTOFF_IN_SYSTEM' });
@@ -188,7 +216,7 @@ check(helpers.resolveChatSystemPrompt(card, 'ru', { builderVersion: 2, mode: 'wo
 check(helpers.resolveChatSystemPrompt({ ...card, systemPrompt: 'later accidental edit', legacyPromptArchive: 'exact original' }, 'ru', { builderVersion: 1, mode: 'character' }) === 'exact original', 'rollback prioritizes archived original over a later legacy-field edit');
 process.env.RP_PROMPT_V2_ENABLED = 'true';
 const session = { user: { id: 'stranger' } };
-const apiDeps = { '@/lib/auth': { authOptions: {} }, 'next-auth/next': { getServerSession: async () => session }, '@/lib/prisma': { prisma }, '@/lib/promptState': states, '@/lib/logger': logger };
+const apiDeps = { '@/lib/auth': { authOptions: {} }, 'next-auth/next': { getServerSession: async () => session }, '@/lib/prisma': { prisma }, '@/lib/promptState': states, '@/lib/promptRolloutPolicy': rolloutPolicy, '@/lib/logger': logger, '@/lib/chatThreads': threads };
 const cardApi = load('src/app/api/characters/[id]/prompt-version/route.ts', { ...apiDeps, '@/lib/roleplayConfig': config, '@/lib/publicError': errorType });
 const request = body => new NextRequest('https://example.invalid/api', { method: 'POST', body: JSON.stringify(body) });
 const context = { params: Promise.resolve({ id: 'card' }) };
@@ -201,10 +229,10 @@ check((await cardApi.POST(request({ version: 1, confirmed: true }), context)).st
 await cardApi.POST(request({ version: 2, confirmed: true }), context);
 const chatApi = load('src/app/api/chat/[id]/prompt-version/route.ts', { ...apiDeps, '@/lib/roleplayConfig': config, '@/lib/publicError': errorType });
 session.user.id = 'legacy';
-const before = await states.getOrCreatePromptState('user:legacy', 'card', card);
+const before = await states.getOrCreateThreadPromptState(storyOf('legacy'), card);
 check(before.builderVersion === 1, 'card migration alone does not migrate an existing user story');
 check((await chatApi.POST(request({ version: 2, mode: 'world', confirmed: true }), context)).status === 200, 'story owner explicitly migrates mode/version without deleting history');
-check((await states.getOrCreatePromptState('user:legacy', 'card', card)).mode === 'world' && history.length === 2, 'story migration preserves messages');
+check((await states.getOrCreateThreadPromptState(storyOf('legacy'), card)).mode === 'world' && history.length === 2, 'story migration preserves messages');
 check((await chatApi.POST(request({ version: 1, mode: 'world', confirmed: true }), context)).status === 200, 'story version can be rolled back separately');
 const persistent = load('src/lib/persistentMemory.ts', { './publicError': errorType });
 check(persistent.sanitizeCharacterMemory({ userId: 'owner', systemPrompt: 'private', legacyPromptArchive: 'private', privateMemory: { content: 'private' } }, 'stranger').systemPrompt === null, 'public card response cannot reveal legacy text');
@@ -263,16 +291,18 @@ prisma.message.createMany = async ({ data }) => { history.push(...data); return 
 const updateCard = prisma.character.update;
 prisma.character.update = async args => args.data.promptBuilderVersion !== undefined ? updateCard(args) : {};
 const transfer = load('src/lib/anonymousTransfer.ts', {
+  '@/lib/promptRolloutPolicy': rolloutPolicy, '@/lib/chatThreads': threads,
   '@/lib/prisma': { prisma }, '@/lib/anonymousCookie': { isAnonymousExpired: () => false },
   '@/lib/anonymousChatMap': load('src/lib/anonymousChatMap.ts'),
   '@/lib/guestRequestStore': { assertGuestSchemaReady: async () => {}, lockGuestSession: async () => true, recoverExpiredGuestGenerations: async () => {} },
   '@/lib/guestRequestPolicy': { isLeaseActive: () => false },
 });
 check((await transfer.transferAnonymousChatToUser({ sessionId: 'test-en', userId: 'transferred' })).ok, 'actual guest transfer completes with mode metadata in same transaction');
-check((await states.getOrCreatePromptState('user:transferred', 'card', card)).mode === 'world', 'new user history inherits pinned guest world mode');
+check((await states.getOrCreateThreadPromptState(storyOf('transferred'), card)).mode === 'world', 'new user history inherits pinned guest world mode');
 history = [{ id: 'existing-user-turn', characterId: 'card', role: 'user', content: 'Existing', createdAt: new Date() }];
-await stateDelegate.upsert({ where: { scopeKey_characterId: { scopeKey: 'user:existing', characterId: 'card' } }, create: { scopeKey: 'user:existing', characterId: 'card', builderVersion: 2, mode: 'character' } });
-check((await transfer.transferAnonymousChatToUser({ sessionId: 'test-en', userId: 'existing' })).ok && (await states.getOrCreatePromptState('user:existing', 'card', card)).mode === 'character', 'guest transfer does not override existing user story mode');
+await prisma.chatThread.create({ data: { userId: 'existing', characterId: 'card' } });
+await stateDelegate.upsert({ where: { scopeKey_characterId: { scopeKey: 'thread:thread-existing', characterId: 'card' } }, create: { scopeKey: 'thread:thread-existing', characterId: 'card', builderVersion: 2, mode: 'character' } });
+check((await transfer.transferAnonymousChatToUser({ sessionId: 'test-en', userId: 'existing' })).ok && (await states.getOrCreateThreadPromptState(storyOf('existing'), card)).mode === 'character', 'guest transfer does not override existing user story mode');
 
 // Actual creation/update routes: no generator module is available, translation deliberately fails.
 let createdCard;
@@ -280,8 +310,16 @@ const creationPrisma = { character: {
   create: async ({ data }) => { createdCard = { ...data, id: 'new-card' }; return createdCard; },
   update: async ({ data }) => { createdCard = { ...createdCard, ...data }; return createdCard; },
 } };
+const tags = load('src/lib/characterTags.ts');
+const catalogSearch = load('src/lib/characterCatalogSearch.ts', { './characterTags': tags });
+const recommendationRank = load('src/lib/characterRecommendationRank.ts', { './characterTags': tags });
+const recommendations = load('src/lib/characterRecommendations.ts', {
+  '@/lib/prisma': { prisma: creationPrisma }, './characterRecommendationRank': recommendationRank,
+});
 const characterApiDeps = {
   '@/lib/roleplayConfig': config,
+  '@/lib/characterCatalogSearch': catalogSearch, '@/lib/characterTags': tags,
+  '@/lib/characterRecommendations': recommendations,
   ...apiDeps, '@/lib/publicError': errorType, '@/lib/aiCostTelemetry': { withAiCostContext: fn => fn(), setAiCostActor: () => {} },
   '@/lib/characterFields': fields, '@/lib/characterSort': {},
   '@/lib/translate': { translateCharacterFieldsToEn: async () => { throw new Error('synthetic translator unavailable'); } },
@@ -343,15 +381,15 @@ assert.throws(() => helpers.resolveChatSystemPrompt({ ...groupCard, rpConfig: {}
 check(true, 'pinned ensemble with removed roster fails clearly instead of inventing members');
 check(builder.assembleRoleplayPrompt({ ...card, roleplayMode: 'world', rpConfig: { npcs: 'Мэр: осторожный и недоверчивый.' } }).content.includes('Мэр: осторожный'), 'universe NPC field participates in assembly');
 const groupUser = 'ensemble';
-await stateDelegate.upsert({ where: { scopeKey_characterId: { scopeKey: `user:${groupUser}`, characterId: 'card' } }, create: { scopeKey: `user:${groupUser}`, characterId: 'card', builderVersion: 2, mode: 'group' } });
-check((await states.getOrCreatePromptState(`user:${groupUser}`, 'card', { ...groupCard, roleplayMode: 'world' })).mode === 'group', 'existing ensemble mode stays pinned after card mode edit');
+await stateDelegate.upsert({ where: { scopeKey_characterId: { scopeKey: `thread:thread-${groupUser}`, characterId: 'card' } }, create: { scopeKey: `thread:thread-${groupUser}`, characterId: 'card', builderVersion: 2, mode: 'group' } });
+check((await states.getOrCreateThreadPromptState(storyOf(groupUser), { ...groupCard, roleplayMode: 'world' })).mode === 'group', 'existing ensemble mode stays pinned after card mode edit');
 history = [
   { id: 'm1', characterId: 'card', role: 'user', content: 'Входим в лагерь', createdAt: new Date('2026-10-11T08:00:00Z') },
   { id: 'm2', characterId: 'card', role: 'assistant', content: 'Герой 1 осматривает вход.', createdAt: new Date('2026-10-11T08:01:00Z') },
 ];
 for (const locale of ['ru', 'en']) {
   for (const operation of ['reply', 'continue', 'regenerate']) {
-    const prepared = await helpers.prepareChatMessages({ ...options, userId: groupUser, character: groupCard, locale, continueMode: operation === 'continue', ...(operation === 'regenerate' ? { historyBeforeMessageId: 'm2' } : {}) });
+    const prepared = await helpers.prepareChatMessages({ ...options, scope: storyOf(groupUser), character: groupCard, locale, continueMode: operation === 'continue', ...(operation === 'regenerate' ? { historyBeforeMessageId: 'm2' } : {}) });
     const beforeCalls = wires.length;
     await helpers.streamChatCompletion(options.model.name, prepared.messages, 'synthetic');
     check(wires.length === beforeCalls + 1 && wires.at(-1).messages[0].content.includes(locale === 'en' ? 'Role: ensemble' : 'Роль: несколько') && members.every(member => wires.at(-1).messages[0].content.includes(member.name)), `${locale}/${operation}: real wire sends full ensemble in one call`);
@@ -383,5 +421,92 @@ check(assert.throws(() => helpers.resolveChatSystemPrompt(groupCard, 'ru', { bui
 const disabledGuestResponse = await guest.handleAnonymousChatPost(request({}), 'card', { message: 'Не отправлять', requestId: 'disabled-group' });
 check(disabledGuestResponse.status === 409 && wires.length === priorWires && guestHistory.length === priorGuestRows && recovered === 1, 'disabled guest ensemble restores claim and makes no message or AI call');
 process.env.RP_PROMPT_V2_ENABLED = 'true';
+
+// Current DeepInfra rollout: real budgets, preparation, routing and diagnostic code;
+// only provider responses, auth and persistence are isolated fixtures.
+process.env.CHAT_AI_PROVIDER = 'deepinfra';
+const currentEconomy = load('src/lib/verseChatEconomy.ts', { './chatEconomy': economy });
+const capturedDeepinfra = [];
+const currentHelpers = load('src/lib/chatHelpers.ts', {
+  ...deps, '@/lib/verseChatEconomy': currentEconomy,
+  '@/lib/aiCostTelemetry': {
+    meteredPost: async (_purpose, url, body) => {
+      capturedDeepinfra.push({ url, body });
+      return { data: { choices: [{ message: { content: 'synthetic current-provider reply' } }] } };
+    },
+    meteredChatFetch: async (url, init, _model, _estimatedTokens, stopTimers) => {
+      capturedDeepinfra.push({ url, body: JSON.parse(init.body) });
+      stopTimers();
+      return new Response('synthetic current-provider stream');
+    },
+  },
+});
+const activeModels = deepinfraModels.DEEPINFRA_CHAT_MODELS.filter(model => deepinfraModels.DEEPINFRA_AVAILABLE_MODEL_NAMES.includes(model.name));
+const futureEnd = new Date(Date.now() + 86400000);
+let matrixContexts = 0;
+let minimumBaseTokens = Infinity;
+let maximumBaseTokens = 0;
+let shortenedContexts = 0;
+history = [
+  { id: 'matrix-user', characterId: 'card', role: 'user', content: 'Мы уже нашли ключ. Я спрашиваю, кто видел закрытую дверь.', createdAt: new Date('2026-10-11T08:00:00Z') },
+  { id: 'matrix-reply', characterId: 'card', role: 'assistant', content: 'Последний ответ для проверки продолжения и замены.', createdAt: new Date('2026-10-11T08:01:00Z') },
+];
+for (const mode of config.ROLEPLAY_MODES) {
+  const matrixUserId = `matrix-${mode}`;
+  const matrixCard = { ...card, roleplayMode: mode, rpConfig: {
+    ...card.rpConfig, speechStyle: 'Короткие реплики без навязанных действий пользователя.',
+    ...(mode === 'world' ? { npcs: 'Сторож знает про дверь, но не видел, кто спрятал ключ.' } : {}),
+    ...(mode === 'group' ? { participants: members } : {}),
+  } };
+  await stateDelegate.upsert({ where: { scopeKey_characterId: { scopeKey: `thread:thread-${matrixUserId}`, characterId: 'card' } },
+    create: { scopeKey: `thread:thread-${matrixUserId}`, characterId: 'card', builderVersion: 2, mode } });
+  for (const plan of ['start', 'dialog', 'story', 'universe']) {
+    const user = { subscriptionType: plan, subscriptionEnd: plan === 'start' ? null : futureEnd };
+    for (const locale of ['ru', 'en']) {
+      for (const operation of ['reply', 'continue', 'regenerate']) {
+        const label = `${mode}/${plan}/${locale}/${operation}`;
+        const matrixOptions = { ...options, scope: storyOf(matrixUserId), character: matrixCard, user, locale,
+          model: { name: activeModels[0].name, maxContextTokens: 20000 },
+          continueMode: operation === 'continue',
+          ...(operation === 'regenerate' ? { historyBeforeMessageId: 'matrix-reply' } : {}),
+        };
+        const fast = await currentHelpers.prepareFastContext(matrixOptions);
+        const prepared = currentHelpers.assemblePreparedChatMessages(fast);
+        const expectedLimit = currentEconomy.getContextTokenLimit(user);
+        assert.equal(prepared.maxContextTokens, expectedLimit, `${label}: real plan input limit`);
+        assert.ok(prepared.totalTokens <= expectedLimit, `${label}: context within plan`);
+        const baseTokens = countTokens(fast.systemPromptBase);
+        minimumBaseTokens = Math.min(minimumBaseTokens, baseTokens);
+        maximumBaseTokens = Math.max(maximumBaseTokens, baseTokens);
+        shortenedContexts += Number(fast.systemPromptBase.includes('[…]'));
+        assert.ok(baseTokens <= Math.floor(expectedLimit / 2), `${label}: base leaves room for history and memory`);
+        assert.ok(prepared.messages[0].content.includes(builder.PROMPT_BUILDER_VERSION), `${label}: v2 core reaches system message`);
+        assert.ok(prepared.messages.some(message => message.role === 'user' && message.content === history[0].content), `${label}: current user turn survives`);
+        if (operation === 'regenerate') assert.ok(!prepared.messages.some(message => message.content === history[1].content), `${label}: replaced reply is excluded`);
+        if (mode === 'group') assert.ok(members.every(member => prepared.messages[0].content.includes(member.name)), `${label}: eight identities survive`);
+        for (const model of activeModels) {
+          assert.equal(currentHelpers.resolveContextTokenBudget(user, { name: model.name, maxContextTokens: 20000 }), expectedLimit, `${label}/${model.name}: model output reserve preserves plan`);
+          for (const stream of [false, true]) {
+            if (stream) await (await currentHelpers.streamChatCompletion(model.name, prepared.messages, 'synthetic')).getReader().read();
+            else await currentHelpers.callChatCompletion(model.name, prepared.messages, 'synthetic');
+            const { url, body } = capturedDeepinfra.at(-1);
+            assert.equal(url, 'https://api.deepinfra.com/v1/openai/chat/completions', `${label}: correct provider endpoint`);
+            assert.equal(body.model, model.apiModel, `${label}: provider model ID has no database prefix`);
+            assert.equal(body.max_tokens, 1000, `${label}: current visible output limit`);
+            assert.deepEqual(body.messages, prepared.messages, `${label}: payload keeps prepared context`);
+            assert.equal(body.reasoning_effort, model.reasoning ? 'none' : undefined, `${label}: current reasoning policy`);
+            if (stream) assert.equal(body.stream_options.include_usage, true, `${label}: usage collection survives v2`);
+          }
+        }
+        matrixContexts++;
+        check(true, `DeepInfra ${label}: real context and ${activeModels.length} model payloads pass`);
+      }
+    }
+  }
+}
+const deepinfraDeliveryLogs = logs.filter(args => args[0] === 'PromptDelivery').map(args => JSON.parse(args[1])).filter(row => row.modelName.startsWith('deepinfra:'));
+check(deepinfraDeliveryLogs.length === capturedDeepinfra.length && deepinfraDeliveryLogs.every(row => row.version === builder.PROMPT_BUILDER_VERSION), 'every DeepInfra payload has correct v2 diagnostic attribution');
+check(!JSON.stringify(deepinfraDeliveryLogs).includes(history[0].content) && !JSON.stringify(deepinfraDeliveryLogs).includes('USER_PRIVATE_PERSONA'), 'DeepInfra v2 delivery diagnostics omit conversation and persona text');
+console.log(`DeepInfra matrix: ${matrixContexts} contexts, ${activeModels.length} active models, ${capturedDeepinfra.length} synthetic payloads; base tokens ${minimumBaseTokens}..${maximumBaseTokens}; shortened contexts ${shortenedContexts}.`);
 await db.close(); tokens.free();
 console.log(`\n${checks} checks passed; no live database or paid AI calls.`);

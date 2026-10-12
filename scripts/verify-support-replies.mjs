@@ -57,7 +57,7 @@ try {
   await pg.initialise(); await pg.start(); await pg.createDatabase('support_test');
   const schema = join(directory, 'schema.prisma');
   // Begin with historical schema; apply the actual production SQL afterwards.
-  const source = readFileSync('prisma/schema.prisma', 'utf8').replace('Unsupported("vector(1536)")', 'Bytes')
+  const source = readFileSync('prisma/schema.prisma', 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes')
     .replace('  replies           SupportReply[]', '').replace(/\nmodel SupportReply \{[\s\S]*?\n\}/, '');
   writeFileSync(schema, source);
   const setup = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'db', 'push', '--skip-generate', '--schema', schema], { env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8' });

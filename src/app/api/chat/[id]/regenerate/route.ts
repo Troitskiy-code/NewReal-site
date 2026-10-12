@@ -1,7 +1,7 @@
 import { chatProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { withAiCostContext, setAiCostActor, setAiCostThread, recordChatCostCharge } from "@/lib/aiCostTelemetry";
-import { chatThreadsEnabled, messageScopeWhere, requestedThreadId, resolveChatScope, touchThread } from "@/lib/chatThreads";
+import { withAiCostContext, setAiCostActor, setAiCostThread, recordChatCostCharge, aiCostDiagnosticContext } from "@/lib/aiCostTelemetry";
+import { chatThreadsEnabled, messageScopeWhere, requestedThreadId, resolveChatScope, markThreadActive } from "@/lib/chatThreads";
 import { NextRequest, NextResponse } from "next/server";
 import { GroupPromptUnavailableError } from "@/lib/promptState";
 import { PromptBudgetError } from "@/lib/chatSystemPrompt";
@@ -197,12 +197,14 @@ async function handlePost(
 
     const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
 
+    let responseStage = "deliver_meta";
     const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {
       emit({
         type: "meta",
         appendToId: assistantMessage.id,
       });
 
+      responseStage = "consume_reply";
       const completion = await consumeOpenAIChatCompletion(upstream, (text) => {
         emit({ type: "delta", text });
       }, undefined, () => emit({ type: "thinking" }));
@@ -212,17 +214,17 @@ async function handlePost(
 
       await recordChatCostCharge(upstream, costVC);
 
-      const [updatedMessage] = await prisma.$transaction([
-        prisma.message.update({
-          where: { id: assistantMessage.id },
-          data: {
-            content: assistantReply,
-            finishReason: completion.finishReason,
-            createdAt: new Date(),
-          },
-        }),
-        touchThread(scope.threadId),
-      ]);
+      responseStage = "save_reply";
+      const updatedMessage = await prisma.message.update({
+        where: { id: assistantMessage.id },
+        data: {
+          content: assistantReply,
+          finishReason: completion.finishReason,
+          createdAt: new Date(),
+        },
+      });
+      await markThreadActive(scope.threadId);
+      responseStage = "schedule_memory";
       scheduleMessageEmbeddingRefresh(
         updatedMessage.id,
         updatedMessage.content,
@@ -232,6 +234,7 @@ async function handlePost(
       // The reply is stored, so the debit is final.
       refundCharge = async () => {};
 
+      responseStage = "deliver_end";
       emit({
         type: "end",
         ...buildChatResponsePayload({
@@ -247,6 +250,8 @@ async function handlePost(
       try {
         await streamAndSaveReply(emit);
       } catch (error) {
+        errorLog("ChatDiagnostics", "response failed", { ...aiCostDiagnosticContext(),
+          stage: responseStage, reason: "response_pipeline_error", costVC }, toSafeDiagnostic(error));
         await refundCharge();
         throw error;
       }
@@ -255,7 +260,7 @@ async function handlePost(
     await refundCharge();
     if (error instanceof GroupPromptUnavailableError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof PromptBudgetError) return NextResponse.json({ error: error.message }, { status: 400 });
-    errorLog("Server", "Regenerate error:", toSafeDiagnostic(error));
+    errorLog("ChatDiagnostics", "request failed", { ...aiCostDiagnosticContext(), stage: "prepare_regenerate" }, toSafeDiagnostic(error));
     if (defaultShouldRetry(error)) {
       return NextResponse.json(
         { error: KODIK_RETRY_ERROR_MESSAGE },

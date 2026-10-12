@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       errorLog("KieAvatar", "Unable to start generation", {
         stage,
         withReference,
-        ...(error instanceof KieError ? { kieCode: error.code, rejected: error.rejected } : {}),
+        ...(error instanceof KieError ? { kieCode: error.code, rejected: error.rejected, ...(error.httpStatus ? { status: error.httpStatus } : {}) } : {}),
         ...toSafeDiagnostic(error),
       });
       if (error instanceof AvatarBodyTooLarge) return json({ error: "Референс слишком большой" }, 413);

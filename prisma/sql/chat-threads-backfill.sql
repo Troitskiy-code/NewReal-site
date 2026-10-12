@@ -1,8 +1,8 @@
 -- ChatThread backfill as plain SQL, for an SQL console (Adminer) where the Node script cannot run.
--- Same rules as scripts/lib/chat-thread-backfill.mjs; idempotent, safe to run again at any time.
+-- Same rules as scripts/lib/chat-thread-backfill.mjs, idempotent, safe to run again at any time.
 -- Messages are updated in one statement: use this file for small tables (production had ~19k
--- messages on 2026-10-12); for large tables run `npm run chat-threads:backfill`, which works in batches.
--- Run inside BEGIN ... COMMIT; the final SELECT must show zero in every column.
+-- messages on 2026-10-12), for large tables run `npm run chat-threads:backfill`, which works in batches.
+-- Run inside BEGIN ... COMMIT, the final SELECT must show zero in every column.
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '120s';
 

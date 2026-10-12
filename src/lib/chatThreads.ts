@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ChatThread, Prisma } from "@prisma/client";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { THREAD_QUERY_PARAM, type ChatThreadStatus, type ChatThreadSummary } from "@/lib/chatThreadShared";
 
 /**
@@ -32,9 +33,9 @@ export type ScopeResolution =
 
 type ThreadClient = Prisma.TransactionClient | typeof prisma;
 
-export function requestedThreadId(req: { nextUrl: URL }): string | null {
-  const value = req.nextUrl.searchParams.get(THREAD_QUERY_PARAM);
-  return value === null ? null : value;
+export function requestedThreadId(req: { nextUrl?: URL; url?: string }): string | null {
+  const url = req.nextUrl ?? (req.url ? new URL(req.url) : null);
+  return url?.searchParams.get(THREAD_QUERY_PARAM) ?? null;
 }
 
 export function isValidThreadId(value: unknown): value is string {
@@ -181,4 +182,13 @@ export async function resolveChatScope(
 /** A new message makes the story the latest one and brings an archived story back. */
 export function touchThread(threadId: string, at = new Date()) {
   return prisma.chatThread.update({ where: { id: threadId }, data: { lastMessageAt: at, status: "active" } });
+}
+
+/** After an already stored reply: activity is best effort and must never undo the stored result. */
+export async function markThreadActive(threadId: string) {
+  try {
+    await touchThread(threadId);
+  } catch (error) {
+    errorLog("ChatThreads", "story activity update failed", toSafeDiagnostic(error));
+  }
 }

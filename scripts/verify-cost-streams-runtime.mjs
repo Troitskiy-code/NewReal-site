@@ -10,6 +10,9 @@ import { buildAiCostReport } from './lib/ai-cost-report.mjs';
 const require = createRequire(import.meta.url);
 const { NextRequest } = require('next/server');
 const h = await startHarness({ label: 'cost-streams' });
+const logger = h.load(join(h.root, 'src/lib/logger.ts'));
+const diagnostics = [];
+logger.setDiagnosticSink({ error: line => diagnostics.push(line), info: line => diagnostics.push(line), debug() {} });
 let checks = 0;
 const check = (value, label) => { assert.ok(value, label); checks++; console.log(`PASS ${label}`); };
 const frame = value => `data: ${JSON.stringify(value)}\n\n`;
@@ -63,6 +66,7 @@ try {
   ];
   let nativeOnly;
   for (const [label, fixture] of cases) {
+    diagnostics.length = 0;
     const user = await h.helpers.user('start'), character = await h.helpers.character(user.id);
     payload = fixture; transportError = label === 'transport failure';
     const requests = h.provider.chatRequests.length;
@@ -80,6 +84,13 @@ try {
     check(cost?.outcome === 'failed' && cost.chargedVC === 0 && cost.providerCostNative > 0
       && cost.estimatedCostRub > 0 && cost.providerRequestId === 'kr_req_stream_fixture'
       && cost.providerResponseId === 'gen_stream_fixture', `${label}: failed cost retains known usage/native cost and both IDs`);
+    check(diagnostics.some(line => line.includes('[ChatDiagnostics] attempt failed') && line.includes(cost.id) && line.includes(cost.operationId))
+      && diagnostics.some(line => line.includes('[ChatDiagnostics] response failed') && line.includes(cost.operationId)
+        && line.includes('"stage":"consume_reply"'))
+      && diagnostics.some(line => line.includes('[ChatRefund] refund completed') && line.includes(cost.operationId)),
+    `${label}: real handler correlates upstream failure, response stage and completed refund`);
+    check(!JSON.stringify(diagnostics).includes('secret_provider_response')
+      && !JSON.stringify(diagnostics).includes('synthetic_transport_failure'), `${label}: actual handler diagnostic sink contains no raw provider/transport error`);
     const accounting = buildAiCostReport([cost]);
     check(accounting.coverage.estimatedCost === 1 && accounting.totals.estimatedCostRub > 0
       && accounting.models[0].chargedCompleted === 0, `${label}: expense survives report without successful paid reply`);
@@ -115,6 +126,21 @@ try {
       && await h.db.transaction.count({ where: { userId: user.id, type: 'chat' } }) === 0,
       `${regenerate ? 'regenerate' : 'continue'}: failed reply preserves previous answer and VC`);
   }
+  diagnostics.length = 0;
+  payload = part + finish('stop') + usage + done;
+  const updateMessage = h.db.message.update;
+  h.db.message.update = async () => { throw Object.assign(new Error('private_database_error'), { code: 'P2022' }); };
+  try {
+    const failedSave = await post(user.id, character.id, { messageId: answer.id }, true);
+    check(failedSave.wire.includes('"type":"error"') && !failedSave.wire.includes('"type":"end"')
+      && diagnostics.some(line => line.includes('[ChatDiagnostics] response failed')
+        && line.includes('"stage":"save_reply"') && line.includes('P2022')),
+    'real regenerate handler distinguishes storage failure from upstream stream failure');
+    check(diagnostics.some(line => line.includes('[ChatRefund] refund completed'))
+      && !JSON.stringify(diagnostics).includes('private_database_error')
+      && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins,
+    'storage failure logs a safe code and actual refund completion');
+  } finally { h.db.message.update = updateMessage; }
   waiting = true; payload = part + usage;
   const telemetry = h.load(join(h.root, 'src/lib/aiCostTelemetry.ts'));
   const cancelled = await telemetry.meteredChatFetch('https://api.kodikrouter.ru/v1/chat/completions', {
@@ -141,4 +167,4 @@ try {
     'real read-only SQL report retains failed cost-only usage as well as measured tokens');
   check(!JSON.stringify(await h.db.aiCostEvent.findMany()).includes('secret_provider_response'), 'provider error body never persisted');
   console.log(`Cost stream runtime verification: ${checks} passed`);
-} finally { await h.stop(); }
+} finally { logger.setDiagnosticSink(null); await h.stop(); }

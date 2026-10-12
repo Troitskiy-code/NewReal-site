@@ -5,6 +5,7 @@ import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { logChatTransportFailure } from "./chatDiagnostics";
 import { finiteNonnegative, readCostUsage, readDeepinfraCostUsage, resolveDeepinfraCost, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
 import { deepinfraModel } from "./deepinfraModels";
 import { DEEPINFRA_EMBEDDING_MODEL, DEEPINFRA_EMBEDDING_INPUT_USD_PER_MILLION } from "./embeddingProviders";
@@ -18,6 +19,11 @@ type CostContext = { operationId: string; actorHash: string | null; threadHash: 
 const contexts = new AsyncLocalStorage<CostContext>();
 export function withAiCostContext<T>(fn: () => T): T {
   return contexts.run({ operationId: randomUUID(), actorHash: null, threadHash: null, subscriptionType: null, sequence: 0, audience: "system" }, fn);
+}
+/** Correlation only: do not expose actor hashes or any customer content to logs. */
+export function aiCostDiagnosticContext() {
+  const ctx = contexts.getStore();
+  return { operationId: ctx?.operationId, audience: ctx?.audience ?? "system" };
 }
 export function setAiCostActor(actorId: string, subscriptionType?: string | null) {
   const ctx = contexts.getStore();
@@ -35,7 +41,11 @@ export function setAiCostThread(threadId: string | null) {
   ctx.threadHash = key && threadId ? createHmac("sha256", key).update(`thread:${threadId}`).digest("hex") : null;
 }
 
-type Ticket = { id: string; started: number; requestedModel: string; inputRate: number | null; outputRate: number | null; surface: KodikApiSurface | null; provider: string; fx: number | null };
+type Ticket = { id: string; operationId: string; attempt: number; audience: string; started: number; requestedModel: string; inputRate: number | null; outputRate: number | null; surface: KodikApiSurface | null; provider: string; fx: number | null };
+function ticketDiagnosticContext(ticket: Ticket) {
+  return { operationId: ticket.operationId, costEventId: ticket.id, attempt: ticket.attempt,
+    audience: ticket.audience, provider: ticket.provider, model: ticket.requestedModel };
+}
 function safeModel(model: unknown): string {
   return typeof model === "string" && /^[a-zA-Z0-9._:/-]{1,160}$/.test(model)
     && !/^(https?:|postgres|sk[-_]|crya_|re_|bearer)/i.test(model) ? model : "unknown";
@@ -47,7 +57,8 @@ function requestId(value: unknown): string | null {
 async function begin(model: string, purpose: string, provider = "kodikrouter", imageRub?: number): Promise<Ticket> {
   const ctx = contexts.getStore();
   const surface = provider === "kodikrouter" || provider === "deepinfra" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
-  const ticket: Ticket = { id: randomUUID(), started: Date.now(), requestedModel: model, inputRate: null, outputRate: null, surface, provider, fx: provider === "deepinfra" ? deepinfraUsdRub() : null };
+  const ticket: Ticket = { id: randomUUID(), operationId: ctx?.operationId ?? randomUUID(), attempt: ctx ? ++ctx.sequence : 1,
+    audience: ctx?.audience ?? "system", started: Date.now(), requestedModel: model, inputRate: null, outputRate: null, surface, provider, fx: provider === "deepinfra" ? deepinfraUsdRub() : null };
   try {
     let quotedVC: number | null = null;
     if (provider === "kodikrouter") {
@@ -69,15 +80,15 @@ async function begin(model: string, purpose: string, provider = "kodikrouter", i
       }
     }
     await prisma.aiCostEvent.create({ data: {
-      id: ticket.id, operationId: ctx?.operationId ?? randomUUID(), actorHash: ctx?.actorHash, threadHash: ctx?.threadHash ?? null,
-      subscriptionType: ctx?.subscriptionType, attempt: ctx ? ++ctx.sequence : 1,
+      id: ticket.id, operationId: ticket.operationId, actorHash: ctx?.actorHash, threadHash: ctx?.threadHash ?? null,
+      subscriptionType: ctx?.subscriptionType, attempt: ticket.attempt,
       provider, model, purpose, outcome: "pending", costSource: "unknown",
       apiSurface: surface ?? "other", accountingVersion: 2,
       quotedVC, audience: ctx?.audience ?? "system",
       inputRubPerMillion: ticket.inputRate, outputRubPerMillion: ticket.outputRate,
       estimatedCostRub: imageRub ?? null,
     } });
-  } catch (error) { errorLog("AiCost", "Unable to persist cost attempt", toSafeDiagnostic(error)); }
+  } catch (error) { errorLog("AiCost", "Unable to persist cost attempt", ticketDiagnosticContext(ticket), toSafeDiagnostic(error)); }
   return ticket;
 }
 async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?: number, estimatedInput?: number, estimatedOutput?: number, actualModel?: string, providerRequestId?: unknown, providerResponseId?: unknown) {
@@ -124,7 +135,7 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
       providerResponseId: requestId(providerResponseId),
       inputRubPerMillion: ticket.inputRate, outputRubPerMillion: ticket.outputRate,
     } });
-  } catch (error) { errorLog("AiCost", "Unable to complete cost attempt", toSafeDiagnostic(error)); }
+  } catch (error) { errorLog("AiCost", "Unable to complete cost attempt", ticketDiagnosticContext(ticket), toSafeDiagnostic(error)); }
 }
 const noUsage = () => readCostUsage(null);
 function providerUsage(ticket: Ticket, data: unknown, embedding = false) {
@@ -163,10 +174,19 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   onEnd?: () => void, onChunk?: () => void): Promise<Response> {
   const ticket = await begin(safeModel(model), "chat", textProviderForUrl(url));
   const requestIdHeader = ticket.provider === "deepinfra" ? "x-request-id" : "x-kodikrouter-request-id";
+  // Provider timing starts after local cost bookkeeping, immediately before the request.
+  const started = Date.now();
+  const context = ticketDiagnosticContext(ticket);
   let response: Response;
   try { response = await fetch(url, { ...init, redirect: "error" }); }
-  catch (error) { onEnd?.(); await finish(ticket, "failed", noUsage()); throw error; }
+  catch (error) {
+    logChatTransportFailure({ ...context, stage: "awaiting_headers", durationMs: Date.now() - started }, error, init.signal);
+    onEnd?.(); await finish(ticket, "failed", noUsage()); throw error;
+  }
+  const headersMs = Date.now() - started;
   if (!response.ok || !response.body) {
+    errorLog("ChatDiagnostics", "attempt failed", { ...context, stage: "headers", status: response.status,
+      durationMs: Date.now() - started, headersMs, reason: !response.ok ? "http_error" : "missing_body" });
     await finish(ticket, "failed", noUsage(), response.status, undefined, undefined, undefined,
       response.headers.get(requestIdHeader));
     onEnd?.();
@@ -175,6 +195,7 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let usage = noUsage(), outputChars = 0, ended = false, cancelled = false, actualModel: string | undefined, responseId: string | null = null;
+  let bytesReceived = 0, firstChunkMs: number | null = null, firstTextMs: number | null = null, lastChunkAt: number | null = null;
   const tracked = { ticket, completed: false };
   const parser = new ChatCompletionStreamParser((chunk) => {
     responseId = requestId(chunk.id) ?? responseId;
@@ -189,15 +210,28 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
       cacheWriteInputTokens: next.cacheWriteInputTokens ?? usage.cacheWriteInputTokens,
       reportedCost: next.reportedCost ?? usage.reportedCost,
     };
-    outputChars += extractChatStreamDelta(chunk).length;
+    const delta = extractChatStreamDelta(chunk);
+    if (delta.trim() && firstTextMs === null) firstTextMs = Date.now() - started;
+    outputChars += delta.length;
   });
-  const complete = async (outcome: string) => {
+  const complete = async (outcome: string, error?: unknown) => {
     if (ended) return;
     ended = true;
     onEnd?.();
     const protocolOutcome = parser.end();
     if (outcome === "completed") outcome = protocolOutcome;
     tracked.completed = outcome === "completed";
+    if (!tracked.completed) {
+      const diagnostic = { ...context, stage: firstTextMs === null ? "awaiting_text" : "streaming",
+        outcome, status: response.status, durationMs: Date.now() - started, headersMs, firstChunkMs,
+        firstTextMs, bytesReceived, idleMs: Date.now() - (lastChunkAt ?? started + headersMs), ...parser.diagnostics() };
+      if (error !== undefined || init.signal?.aborted) {
+        logChatTransportFailure(diagnostic, error, init.signal);
+      } else {
+        errorLog("ChatDiagnostics", "attempt failed", { ...diagnostic,
+          reason: outcome === "cancelled" ? "consumer_cancelled" : "invalid_stream" });
+      }
+    }
     await finish(ticket, outcome, usage, response.status, estimatedInput,
       outcome === "completed" ? Math.ceil(outputChars / 4) : undefined, actualModel, response.headers.get("x-deepinfra-request-id") ?? response.headers.get(requestIdHeader), responseId);
   };
@@ -207,10 +241,13 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
         const { done, value } = await reader.read();
         if (cancelled) return;
         if (done) { parser.push(decoder.decode()); await complete("completed"); controller.close(); reader.releaseLock(); return; }
+        bytesReceived += value.byteLength;
+        lastChunkAt = Date.now();
+        firstChunkMs ??= lastChunkAt - started;
         onChunk?.();
         parser.push(decoder.decode(value, { stream: true }));
         controller.enqueue(value);
-      } catch (error) { await complete("failed"); controller.error(error); reader.releaseLock(); }
+      } catch (error) { await complete("failed", error); controller.error(error); reader.releaseLock(); }
     },
     async cancel(reason) { cancelled = true; try { await reader.cancel(reason); } finally { await complete("cancelled"); reader.releaseLock(); } },
   });
@@ -222,7 +259,7 @@ export async function recordChatCostCharge(stream: ReadableStream<Uint8Array>, c
   if (!tracked?.completed) return;
   const { ticket } = tracked;
   try { await prisma.aiCostEvent.update({ where: { id: ticket.id }, data: { chargedVC } }); }
-  catch (error) { errorLog("AiCost", "Unable to record VC charge", toSafeDiagnostic(error)); }
+  catch (error) { errorLog("AiCost", "Unable to record VC charge", ticketDiagnosticContext(ticket), toSafeDiagnostic(error)); }
 }
 
 export async function meteredTranslationFetch(url: string, init: RequestInit, characters: number): Promise<Response> {

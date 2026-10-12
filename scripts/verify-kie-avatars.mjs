@@ -49,6 +49,8 @@ async function providerFetch(url, init = {}) {
     assert.equal(init.redirect, 'error');
     if (createMode === 'lost') throw new Error(marker);
     if (createMode === 'reject') return json({ code: 402, msg: marker });
+    // Kie answers HTTP 200 with a failure code in the body when moderation refuses the input.
+    if (createMode === 'moderated') return json({ code: 501, msg: 'Content flagged as sensitive' });
     if (createMode === 'malformed') return json({ code: 200, msg: marker });
     const taskId = `fixture_task_${creates}`;
     tasks.set(taskId, { model: body.model }); return json({ code: 200, data: { taskId } });
@@ -97,7 +99,7 @@ const get = params => new NextRequest('https://example.test/api/generate-avatar?
 try {
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_kie_test'); await ddl.connect();
   const schema = join(directory, 'schema.prisma');
-  writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace('Unsupported("vector(1536)")', 'Bytes'));
+  writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes'));
   const setup = spawnSync(process.execPath, ['node_modules/prisma/build/index.js','db','push','--skip-generate','--schema',schema],
     { env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl }, encoding: 'utf8', windowsHide: true, timeout: 90000 });
   assert.equal(setup.status, 0, 'private schema setup: ' + setup.stderr);
@@ -185,13 +187,27 @@ try {
   const rejection = await handler.POST(post(bodyFor()));
   check((await rejection.json()).state === 'failed' && (await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 2,
     'explicit create rejection refunds; provider text never returned');
+  createMode = 'moderated';
+  const moderated = await (await handler.POST(post(bodyFor()))).json();
+  check(moderated.state === 'failed' && moderated.error?.includes('правилами') && !moderated.blocked
+    && (await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 2,
+    'moderation refusal in a 200 body fails and refunds instead of blocking as uncertain');
   createMode = 'lost';
   const lostBody = await (await handler.POST(post(bodyFor()))).json();
   check(lostBody.state === 'uncertain' && (await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 3,
     'lost create response retains quota for review');
   const beforeLost = creates;
   await handler.POST(post(bodyFor()));
-  check(creates === beforeLost, 'uncertain task blocks automatic duplicate paid calls');
+  check(creates === beforeLost && lostBody.blocked === true, 'uncertain task blocks automatic duplicate paid calls');
+  check(lostBody.retryAfterSeconds > 0 && lostBody.retryAfterSeconds <= 300 && /через \d+ мин/.test(lostBody.error), 'blocked run tells how long the 5-minute window still lasts');
+  // After the window the user can generate again; the uncertain run keeps its quota for review.
+  await db.avatarGeneration.update({ where: { id: lostBody.jobId }, data: { updatedAt: new Date(Date.now() - 16 * 60_000) } });
+  check((await (await handler.GET(get({ jobId: lostBody.jobId }))).json()).blocked === false, 'expired uncertain run reports it no longer blocks');
+  createMode = 'ok';
+  const beforeExpired = creates;
+  const afterWindow = await (await handler.POST(post(bodyFor()))).json();
+  check(creates === beforeExpired + 1 && afterWindow.jobId !== lostBody.jobId, 'expired uncertain window allows a new paid run');
+  await jobs.finishAvatarJob(await db.avatarGeneration.findUnique({ where: { id: afterWindow.jobId } }), 'failed');
   // Fixture owner resolves the ambiguous run; no production equivalent is called here.
   const lost = await db.avatarGeneration.findUnique({ where: { id: lostBody.jobId } });
   await jobs.finishAvatarJob(lost,'failed'); createMode = 'ok'; state = 'fail';

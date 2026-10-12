@@ -46,7 +46,7 @@ async function request(path, options = {}) {
 try {
   await pg.initialise(); await pg.start(); await pg.createDatabase('nv_seo_test');
   const schema = join(directory, 'schema.prisma');
-  writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace('Unsupported("vector(1536)")', 'Bytes'));
+  writeFileSync(schema, readFileSync('prisma/schema.prisma', 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes'));
   const setup = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'db', 'push', '--skip-generate', '--schema', schema], { env, encoding: 'utf8', timeout: 90000, windowsHide: true });
   if (setup.status !== 0) throw new Error('Private SEO schema setup failed');
   const owner = await db.user.create({ data: { email: 'seo-owner@example.test', name: 'SEO author' } });

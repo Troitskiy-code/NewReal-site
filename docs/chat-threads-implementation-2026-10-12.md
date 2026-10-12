@@ -39,7 +39,7 @@
 
 **Схема и данные**
 - `prisma/schema.prisma`: модель `ChatThread`; `threadId` в `Message`, `Memory` и `CoreMemory` (уникальный вместо `(userId, characterId)`), в `EpisodicMemory` и `MemoryEntry`; `AiCostEvent.threadHash`; связи в `User`, `Character`, `Persona`.
-- `prisma/migrations/20261012120000_chat_threads/migration.sql` — миграция (описание ниже).
+- `prisma/migrations/20261012230000_chat_threads/migration.sql` — миграция (описание ниже).
 - `scripts/lib/chat-thread-backfill.mjs`, `scripts/backfill-chat-threads.mjs` (`npm run chat-threads:backfill`) — идемпотентное пакетное заполнение и режим `--check`.
 - `prisma/sql/chat-threads-rollback.sql` — полный откат схемы, только на крайний случай.
 

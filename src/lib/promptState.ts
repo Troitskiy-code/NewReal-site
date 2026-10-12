@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { roleplayMode, validateGroupConfig, type RoleplayMode } from "./roleplayConfig";
 import { messageScopeWhere, threadPromptScopeKey, type ChatScope } from "./chatThreads";
+import { migratedInitialState, promptRolloutEnabled } from "./promptRolloutPolicy";
 
 export function isPromptV2Enabled(): boolean {
-  return ["1", "true"].includes((process.env['RP_PROMPT_V2_ENABLED'] ?? "").trim().toLowerCase());
+  return promptRolloutEnabled();
 }
 export type PromptState = { builderVersion: number; mode: RoleplayMode };
 export class GroupPromptUnavailableError extends Error {
@@ -21,13 +23,36 @@ export function initialPromptState(card: { promptBuilderVersion?: number; rolepl
     : { builderVersion: card.promptBuilderVersion === 2 ? 2 : 1, mode: roleplayMode(card.roleplayMode) };
 }
 type PromptCard = { promptBuilderVersion?: number; roleplayMode?: string | null };
-export async function getOrCreatePromptState(scopeKey: string, characterId: string, card: PromptCard, hasHistoryProbe?: () => Promise<boolean>): Promise<PromptState> {
+type HistoryClient = Prisma.TransactionClient | typeof prisma;
+/** Does this scope already hold history? A story scope passes its own probe. */
+type HistoryProbe = (db: HistoryClient) => Promise<boolean>;
+function scopeKeyHistory(scopeKey: string, characterId: string): HistoryProbe {
+  return async (db) => scopeKey.startsWith("thread:")
+    ? !!(await db.message.findFirst({ where: { threadId: scopeKey.slice(7), characterId }, select: { id: true } }))
+    : scopeKey.startsWith("user:")
+    ? !!(await db.message.findFirst({ where: { userId: scopeKey.slice(5), characterId }, select: { id: true } }))
+    : !!(await db.anonymousMessage.findFirst({ where: { sessionId: scopeKey.slice(6), characterId }, select: { id: true } }));
+}
+export async function getOrCreatePromptState(scopeKey: string, characterId: string, card: PromptCard, hasHistoryProbe?: HistoryProbe): Promise<PromptState> {
   const where = { scopeKey_characterId: { scopeKey, characterId } };
   const existing = await prisma.chatPromptState.findUnique({ where });
   if (existing) return { builderVersion: existing.builderVersion, mode: roleplayMode(existing.mode) };
-  const hasHistory = hasHistoryProbe ? await hasHistoryProbe() : scopeKey.startsWith("user:")
-    ? !!(await prisma.message.findFirst({ where: { userId: scopeKey.slice(5), characterId }, select: { id: true } }))
-    : !!(await prisma.anonymousMessage.findFirst({ where: { sessionId: scopeKey.slice(6), characterId }, select: { id: true } }));
+  const probe = hasHistoryProbe ?? scopeKeyHistory(scopeKey, characterId);
+  if (isPromptV2Enabled()) {
+    return prisma.$transaction(async tx => {
+      // Serializes first-state creation with admin conversion/rollback of the same card.
+      const cards = await tx.$queryRaw<{ promptBuilderVersion: number; roleplayMode: string }[]>`
+        SELECT "promptBuilderVersion", "roleplayMode" FROM "Character" WHERE "id" = ${characterId} FOR SHARE`;
+      if (!cards[0]) throw new Error("Character not found");
+      const current = await tx.chatPromptState.findUnique({ where });
+      if (current) return { builderVersion: current.builderVersion, mode: roleplayMode(current.mode) };
+      const hasHistory = await probe(tx);
+      const initial = await migratedInitialState(tx, characterId, scopeKey, initialPromptState(cards[0], hasHistory), cards[0], hasHistory);
+      const state = await tx.chatPromptState.upsert({ where, create: { scopeKey, characterId, ...initial }, update: {} });
+      return { builderVersion: state.builderVersion, mode: roleplayMode(state.mode) };
+    });
+  }
+  const hasHistory = await probe(prisma);
   const initial = initialPromptState(card, hasHistory);
   // Empty update makes the first successful insert authoritative across concurrent requests.
   const state = await prisma.chatPromptState.upsert({ where, create: { scopeKey, characterId, ...initial }, update: {} });
@@ -36,5 +61,5 @@ export async function getOrCreatePromptState(scopeKey: string, characterId: stri
 /** Every story pins its own builder version and mode ("thread:<id>"); a new story starts from the card. */
 export async function getOrCreateThreadPromptState(scope: ChatScope, card: PromptCard): Promise<PromptState> {
   return getOrCreatePromptState(threadPromptScopeKey(scope.threadId), scope.characterId, card,
-    async () => !!(await prisma.message.findFirst({ where: messageScopeWhere(scope), select: { id: true } })));
+    async (db) => !!(await db.message.findFirst({ where: messageScopeWhere(scope), select: { id: true } })));
 }

@@ -9,11 +9,14 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export class KieError extends Error {
   readonly code: string;
   readonly rejected: boolean;
-  constructor(code: string, rejected = false) {
+  /** HTTP status of Kie's response, when one arrived; logged to tell gateway errors from API answers. */
+  readonly httpStatus?: number;
+  constructor(code: string, rejected = false, httpStatus?: number) {
     super("Image service request failed");
     this.name = "KieError";
     this.code = code;
     this.rejected = rejected;
+    this.httpStatus = httpStatus;
   }
 }
 export function hasKieKey() { return Boolean(process.env['KIE_API_KEY']?.trim()); }
@@ -45,12 +48,17 @@ async function request(url: string, body?: unknown) {
     throw new KieError("connection");
   }
   let data: Record<string, unknown>;
-  try { data = record(await response.json()); } catch { throw new KieError("invalid_response"); }
+  try { data = record(await response.json()); } catch { throw new KieError("invalid_response", false, response.status); }
   const code = typeof data.code === "number" ? data.code : response.status;
   if (!response.ok || data.code !== 200) {
-    // 5xx/timeouts/malformed responses are uncertain, not proof no paid task exists.
-    throw new KieError(failureCode(data, code), (response.status === 200 || response.status < 500)
-      && [400, 401, 402, 403, 404, 422, 429, 455, 505].includes(code));
+    const category = failureCode(data, code);
+    // Kie returns HTTP 200 with an error code in the body when it refuses a request (including
+    // 500/501 for moderated content): that is a definite "no task was created". Only HTTP 5xx
+    // responses stay uncertain, since a paid task may exist. A content-policy refusal is never billed.
+    const definite = response.ok
+      || (response.status < 500 && [400, 401, 402, 403, 404, 422, 429, 455, 505].includes(code))
+      || category === "safety";
+    throw new KieError(category, definite, response.status);
   }
   return data;
 }
@@ -88,7 +96,8 @@ export async function createKieAvatar(prompt: string, referenceUrl?: string) {
     model: kieAvatarModel(Boolean(referenceUrl)).id, input: kieAvatarInput(prompt, referenceUrl), callBackUrl: kieCallbackUrl(),
   });
   const taskId = record(data.data).taskId;
-  if (!isKieTaskId(taskId)) throw new KieError("invalid_response");
+  // Code 200 without a task ID: Kie accepted the call, so a paid task may still exist.
+  if (!isKieTaskId(taskId)) throw new KieError("missing_task_id", false, 200);
   return taskId;
 }
 export type KieTask = { taskId: string; model: string; state: string; imageUrl: string | null; credits: number | null; errorCode: string | null };

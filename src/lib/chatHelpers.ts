@@ -1,4 +1,4 @@
-import { meteredPost, meteredChatFetch } from "@/lib/aiCostTelemetry";
+import { meteredPost, meteredChatFetch, aiCostDiagnosticContext } from "@/lib/aiCostTelemetry";
 import { availableChatModel, chatModelNameFilter, chatTransport, getChatProvider, AiProviderConfigurationError } from "./aiProviders";
 import { countTokens } from "@/lib/tokenCount";
 import { prisma } from "@/lib/prisma";
@@ -830,10 +830,10 @@ export async function prepareChatMessages(options: PrepareChatMessagesOptions): 
   return assemblePreparedChatMessages(fastContext, intent, ragMessages);
 }
 
-function logKodikRetry(attempt: number, error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  errorLog("Server", "src/lib/chatHelpers.ts", toSafeDiagnostic(`[Chat] KodikRouter retry #${attempt}`), toSafeDiagnostic(message));
-  errorLog("Server", "src/lib/chatHelpers.ts", toSafeDiagnostic(`[Chat] Attempt ${attempt}/3 failed, retrying...`));
+// Provider-neutral: the chat may run on KodikRouter or DeepInfra.
+function logChatRetry(attempt: number, error: unknown) {
+  errorLog("ChatDiagnostics", "retry scheduled", { ...aiCostDiagnosticContext(),
+    stage: "before_stream_retry", retryAttempt: attempt }, toSafeDiagnostic(error));
 }
 
 export async function callChatCompletion(
@@ -870,7 +870,7 @@ export async function callChatCompletion(
     },
     {
       maxAttempts: 3,
-      onRetry: logKodikRetry,
+      onRetry: logChatRetry,
     }
   );
 }
@@ -961,7 +961,7 @@ export async function streamChatCompletion(
         if ((error as { __noRetry?: boolean }).__noRetry) return false;
         return defaultShouldRetry(error);
       },
-      onRetry: logKodikRetry,
+      onRetry: logChatRetry,
     }
   );
 }
@@ -986,6 +986,7 @@ export async function reserveChatCharge({
   characterName: string;
   modelDisplayName: string;
 }): Promise<ChatChargeReservation> {
+  const refundContext = aiCostDiagnosticContext();
   const reserved = await prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<{ verseCoins: number; permanentCoins: number | null }[]>`
       SELECT "verseCoins", "permanentCoins" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
@@ -1044,8 +1045,11 @@ export async function reserveChatCharge({
         prisma.transaction.delete({ where: { id: reserved.transactionId } }),
       ]);
       debugLog("Chat", `Возвращено ${costVC} VC user=${userId}: ответ не сохранён`);
+      infoLog("ChatRefund", "refund completed", { ...refundContext, transactionId: reserved.transactionId,
+        costVC, refundStatus: "completed" });
     } catch (error) {
-      errorLog("Chat", "VC refund failed", toSafeDiagnostic(error), { userId, costVC });
+      errorLog("ChatRefund", "refund failed", toSafeDiagnostic(error), { ...refundContext,
+        transactionId: reserved.transactionId, costVC, refundStatus: "failed" });
     }
   };
 

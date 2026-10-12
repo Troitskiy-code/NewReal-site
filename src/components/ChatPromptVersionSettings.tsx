@@ -4,8 +4,10 @@ import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import { ROLEPLAY_MODES, ROLEPLAY_MODE_LABELS, type RoleplayMode } from "@/lib/roleplayConfig";
 import { withThread } from "@/lib/chatThreadShared";
+import { usePromptRolloutFinalized } from "@/hooks/usePromptRollout";
 
 export default function ChatPromptVersionSettings({ characterId, threadId = null, threadsEnabled = false, disabled }: { characterId: string; threadId?: string | null; threadsEnabled?: boolean; disabled?: boolean }) {
+  const finalized = usePromptRolloutFinalized();
   const [state, setState] = useState<{ builderVersion: number; mode: RoleplayMode; cardVersion: number; rolloutEnabled: boolean } | null>(null);
   const [mode, setMode] = useState<RoleplayMode>("character");
   const [confirmed, setConfirmed] = useState(false);
@@ -23,6 +25,7 @@ export default function ChatPromptVersionSettings({ characterId, threadId = null
     } catch (error) { showError(axios.isAxiosError(error) ? error.response?.data?.error ?? "Не удалось загрузить настройки" : "Не удалось загрузить настройки"); }
     finally { setBusy(false); }
   };
+  if (finalized) return null;
   return <details className="my-4 rounded-xl border border-wd-border p-3"><summary>Правила и тип этой истории</summary>
     <button type="button" className="wd-btn my-3" disabled={busy || disabled} onClick={() => act()}>Проверить настройки</button>
     {state && <div className="space-y-3">

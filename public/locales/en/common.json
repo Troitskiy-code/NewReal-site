@@ -140,11 +140,14 @@
       "anime": "Anime",
       "scifi": "Sci-Fi",
       "mystic": "Mystery",
-      "realistic": "Realistic",
+      "realistic": "Modern world",
       "adventure": "Adventure",
       "horror": "Horror",
       "comedy": "Comedy",
-      "drama": "Drama"
+      "drama": "Drama",
+      "detective": "Detective",
+      "everyday": "Slice of life",
+      "cyberpunk": "Cyberpunk"
     },
     "sectionTitle": {
       "top": "Popular right now",
@@ -162,6 +165,11 @@
       "catalogCount_one": "{{count}} character in the catalog",
       "catalogCount_other": "{{count}} characters in the catalog",
       "languages": "Russian and English"
+    },
+    "recommendations": {
+      "discoveryTitle": "Discover new stories",
+      "personalizedHint": "Based on your favorites and recent chats, with new genres and fewer familiar characters.",
+      "discoveryHint": "A mix of genres, popular stories and new arrivals. Add favorites and chat to personalize these picks."
     }
   },
   "characterCard": {

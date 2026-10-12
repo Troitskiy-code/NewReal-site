@@ -15,6 +15,7 @@ export type CharacterReturnSnapshot = {
   hasMore?: boolean;
   total?: number;
   totalPages?: number;
+  viewerId?: string;
   windowY: number;
   mainY: number;
 };
@@ -28,6 +29,7 @@ type ListState = {
   hasMore: boolean;
   total: number;
   totalPages?: number;
+  viewerId?: string;
 };
 
 let pendingList: ListState | null = null;
@@ -84,8 +86,9 @@ export function captureCharacterReturn() {
   }
 }
 
-export function characterReturnMatches(snapshot: CharacterReturnSnapshot | null, listKey: string, sort: string) {
+export function characterReturnMatches(snapshot: CharacterReturnSnapshot | null, listKey: string, sort: string, viewerId?: string) {
   if (!snapshot || snapshot.listKey !== listKey || snapshot.sort !== sort) return false;
+  if (viewerId !== undefined && snapshot.viewerId !== viewerId) return false;
   if (typeof window === "undefined") return false;
   if (hrefPathname(snapshot.href) !== window.location.pathname) return false;
   const saved = new URL(snapshot.href, window.location.origin).searchParams;

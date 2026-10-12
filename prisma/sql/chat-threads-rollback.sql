@@ -3,10 +3,10 @@
 -- verified backup. It restores the (userId, characterId) uniqueness that the previous code relies on.
 --
 -- Kept: every message (the previous code shows all stories of a pair as one chat), stories, threadId
--- columns (ignored by the previous code; a later redeploy re-runs scripts/backfill-chat-threads.mjs).
+-- columns (ignored by the previous code, a later redeploy re-runs scripts/backfill-chat-threads.mjs).
 -- Lost: summary, core, episodes and memory entries of every story except the most recent one per
 -- user+character (the previous code would otherwise mix them), and those stories' prompt state.
--- The previous build must keep prisma/migrations/20261012120000_chat_threads in its migrations folder,
+-- The previous build must keep prisma/migrations/20261012230000_chat_threads in its migrations folder,
 -- or must not run `prisma migrate deploy`, because this migration stays recorded as applied.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -31,7 +31,7 @@ DELETE FROM "CoreMemory" older USING "CoreMemory" newer
   WHERE older."userId" = newer."userId" AND older."characterId" = newer."characterId"
     AND (older."updatedAt", older."id") < (newer."updatedAt", newer."id");
 
--- The previous code reads "user:<id>" prompt state; restore it from the kept story where missing.
+-- The previous code reads "user:<id>" prompt state, restore it from the kept story where missing.
 INSERT INTO "ChatPromptState" ("id", "scopeKey", "characterId", "builderVersion", "mode", "createdAt", "updatedAt")
 SELECT gen_random_uuid()::text, 'user:' || story."userId", state."characterId", state."builderVersion", state."mode", state."createdAt", CURRENT_TIMESTAMP
 FROM keep_story story

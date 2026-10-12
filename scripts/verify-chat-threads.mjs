@@ -15,7 +15,7 @@ import { backfillChatThreads, countUnassigned } from './lib/chat-thread-backfill
 
 const require = createRequire(import.meta.url);
 const { NextRequest } = require('next/server');
-const MIGRATION = '20261012120000_chat_threads';
+const MIGRATION = '20261012230000_chat_threads';
 
 let passed = 0;
 const check = (name, condition, details) => {
@@ -112,6 +112,11 @@ async function migrationPart() {
     ('ps1', 'user:u1', 'c1', 2, 'gm', NOW()), ('ps2', 'user:u2', 'c1', 1, 'character', NOW()), ('ps3', 'guest:g1', 'c1', 2, 'character', NOW())`);
   await ddl.query(`INSERT INTO "AiCostEvent" ("id", "operationId", "provider", "model", "purpose", "attempt", "outcome", "costSource")
     VALUES ('cost1', 'op1', 'kodikrouter', 'test/model', 'chat', 1, 'completed', 'provider')`);
+  // An applied bulk prompt conversion of c1 with a rollback snapshot for the old pair key.
+  await ddl.query(`INSERT INTO "PromptMigrationEntry" ("id", "characterId", "status", "sourceFingerprint", "before", "proposal")
+    VALUES ('pme1', 'c1', 'applied', 'fp', '{"promptBuilderVersion":1,"roleplayMode":"character"}', '{"roleplayMode":"gm"}')`);
+  await ddl.query(`UPDATE "ChatPromptState" SET "promptMigrationId" = 'pme1' WHERE "id" = 'ps1'`);
+  await ddl.query(`INSERT INTO "PromptMigrationStory" ("id", "entryId", "scopeKey", "builderVersion", "mode") VALUES ('pms1', 'pme1', 'user:u1', 1, 'character')`);
 
   const before = {
     messages: await rows('SELECT "id", "userId", "characterId", "content", "createdAt" FROM "Message" ORDER BY "id"'),
@@ -151,6 +156,11 @@ async function migrationPart() {
     states.some((row) => row.scopeKey === `thread:${byPair['u1:c1'].id}` && row.builderVersion === 2 && row.mode === 'gm')
     && states.some((row) => row.scopeKey === `thread:${byPair['u2:c1'].id}` && row.builderVersion === 1)
     && states.some((row) => row.scopeKey === 'user:u1') && states.length === 5, states);
+  const moved = await rows(`SELECT s."promptMigrationId", snapshot."builderVersion", snapshot."mode" FROM "ChatPromptState" s
+    JOIN "PromptMigrationStory" snapshot ON snapshot."entryId" = s."promptMigrationId" AND snapshot."scopeKey" = s."scopeKey"
+    WHERE s."scopeKey" = $1`, [`thread:${byPair['u1:c1'].id}`]);
+  check('a bulk prompt conversion mark and its rollback snapshot move with the story',
+    moved.length === 1 && moved[0].promptMigrationId === 'pme1' && moved[0].builderVersion === 1 && moved[0].mode === 'character', moved);
   const indexes = (await rows("SELECT indexname FROM pg_indexes WHERE tablename IN ('Memory', 'CoreMemory')")).map((row) => row.indexname);
   check('memory uniqueness moved from the pair to the story',
     !indexes.includes('Memory_userId_characterId_key') && indexes.includes('Memory_threadId_key')
@@ -249,13 +259,26 @@ async function phasedDeployPart() {
     const full = migrationSql(MIGRATION);
     const cut = full.indexOf(UNIQUENESS_MARKER);
     check('the migration has the uniqueness block at its end', cut > 0 && !full.slice(cut).includes('INSERT INTO'));
-    await sql.query(`BEGIN;\n${full.slice(0, cut)}\nCOMMIT;`);
+    // Like the Adminer SQL console: split on semicolons, run one statement at a time on one session.
+    const adminer = async (text) => {
+      const statements = text.split(';').map((part) => part.trim()).filter((part) => part && !/^(--[^\n]*\n?\s*)+$/.test(part + '\n'));
+      let last = null;
+      for (const statement of statements) last = await sql.query(statement);
+      return last;
+    };
+    await adminer(`BEGIN;\n${full.slice(0, cut)}\nCOMMIT;`);
     const indexes = async () => (await q2("SELECT indexname FROM pg_indexes WHERE tablename = 'Memory'")).map((row) => row.indexname);
     check('step 1 keeps the old pair uniqueness the previous code relies on', (await indexes()).includes('Memory_userId_characterId_key') && (await indexes()).includes('Memory_threadId_key'));
     const backfillSql = readFileSync(join(root, 'prisma/sql/chat-threads-backfill.sql'), 'utf8');
     const runBackfill = async () => {
-      const results = await sql.query(`BEGIN;\n${backfillSql}\nCOMMIT;`);
-      return (Array.isArray(results) ? results : [results]).filter((result) => result.command === 'SELECT').at(-1).rows[0];
+      const statements = `BEGIN;\n${backfillSql}`.split(';').map((part) => part.trim()).filter(Boolean);
+      let counts = null;
+      for (const statement of statements) {
+        const result = await sql.query(statement);
+        if (result.command === 'SELECT') counts = result.rows[0];
+      }
+      await sql.query('COMMIT');
+      return counts;
     };
     const first = await runBackfill();
     check('SQL backfill leaves nothing without a story', Object.values(first).every((count) => Number(count) === 0), first);
@@ -269,7 +292,7 @@ async function phasedDeployPart() {
       Object.values(second).every((count) => Number(count) === 0) && JSON.stringify(stories) === JSON.stringify([{ userId: 'pu1', count: 1 }, { userId: 'pu2', count: 1 }, { userId: 'pu3', count: 1 }]), { second, stories });
     const touched = await q2(`SELECT t."lastMessageAt" >= m."createdAt" AS fresh FROM "ChatThread" t JOIN "Message" m ON m."threadId" = t."id" WHERE m."id" = 'late-a'`);
     check('adopted rows move the story activity forward', touched[0]?.fresh === true);
-    await sql.query(`BEGIN;\n${full}\nCOMMIT;`);
+    await adminer(`BEGIN;\n${full}\nCOMMIT;`);
     check('the full file afterwards completes the uniqueness swap', !(await indexes()).includes('Memory_userId_characterId_key') && (await indexes()).includes('Memory_userId_characterId_idx'));
     const third = await runBackfill();
     check('a backfill after everything is a no-op', Object.values(third).every((count) => Number(count) === 0)

@@ -3,7 +3,7 @@
 import { FaSearch, FaTimes } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { CHARACTER_SORT_OPTIONS, type CharacterSort } from "@/lib/characterSort";
-import { FEATURED_GENRES } from "@/lib/characterTags";
+import { FEATURED_GENRES, canonicalCharacterTag } from "@/lib/characterTags";
 
 const SORT_LABEL_KEYS: Record<CharacterSort, string> = {
   top: "home.sortTop",
@@ -34,7 +34,7 @@ export default function CharacterSearchFilters({
   const query = search.trim();
   const hasFilters = query.length > 0;
   const searchPlaceholder = placeholder || t("home.searchPlaceholder");
-  const activeGenre = FEATURED_GENRES.find((genre) => genre.tag.toLowerCase() === query.toLowerCase());
+  const activeGenre = FEATURED_GENRES.find((genre) => genre.tag === canonicalCharacterTag(query));
 
   return (
     <section className="mb-2 w-full shrink-0 px-4 pt-4 md:mb-4 md:px-6">
@@ -46,6 +46,7 @@ export default function CharacterSearchFilters({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
             className="h-11 w-full rounded-full border border-wd-border bg-wd-card py-0 pl-11 pr-11 text-sm text-white outline-none transition-colors placeholder:text-wd-text-secondary focus:border-wd-secondary/60 [&::-webkit-search-cancel-button]:hidden"
           />
           {hasFilters && (
