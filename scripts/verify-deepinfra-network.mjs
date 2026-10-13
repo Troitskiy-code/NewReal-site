@@ -22,6 +22,11 @@ try {
   await network.deepinfraFetch('https://api.deepinfra.com/v1/openai/chat/completions',{body,method:'POST',signal:abort.signal,redirect:'error'});
   check(!calls.at(-1).native && calls.at(-1).init.dispatcher instanceof FetchAgent,'DeepInfra stream uses explicit CONNECT dispatcher');
   check(calls.at(-1).init.signal === abort.signal && calls.at(-1).init.body === body && calls.at(-1).init.redirect === 'error','signal, payload and redirect policy preserved');
+  await network.directDeepinfraFetch('https://api.deepinfra.com/v1/openai/chat/completions',{body,method:'POST',signal:abort.signal});
+  check(!calls.at(-1).native && !calls.at(-1).init.dispatcher && calls.at(-1).init.body === body,'control uses same Undici client without a proxy dispatcher');
+  const {Headers: UndiciHeaders} = await import('undici');
+  const headers=runtime.diagnostics.safeTransportHeaders(new UndiciHeaders({'x-deepinfra-request-id':'proxy_request_123','retry-after':'2','content-type':'text/event-stream'}),'deepinfra');
+  check(headers.providerRequestId === 'proxy_request_123' && headers.retryAfterMs === 2000 && headers.responseContentType === 'text/event-stream','Undici Headers retain safe request ID, content type and retry delay');
   const opts = network.deepinfraAxiosOptions('https://api.deepinfra.com/v1/openai/embeddings');
   check(opts.proxy === false && opts.httpsAgent instanceof HttpAgent && opts.httpsAgent.options.keepAlive,'embeddings and services use CONNECT rather than environment proxy');
   check(Object.keys(network.deepinfraAxiosOptions('https://api.kodikrouter.ru/v1/chat/completions')).length === 0,'other providers retain their route');

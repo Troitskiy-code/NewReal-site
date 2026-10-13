@@ -21,7 +21,8 @@ export function safeProviderRequestId(value: unknown): string | null {
 }
 
 export function safeTransportHeaders(headers: Headers | Record<string, unknown>, provider: string) {
-  const get = (name: string) => headers instanceof Headers ? headers.get(name) : headers?.[name];
+  // Undici's Web Headers are a separate class from Node's global Headers.
+  const get = (name: string) => typeof headers?.get === "function" ? headers.get(name) : headers?.[name];
   const rawRetry = get("retry-after");
   let retryAfterMs: number | null = null;
   if (typeof rawRetry === "string" || typeof rawRetry === "number") {

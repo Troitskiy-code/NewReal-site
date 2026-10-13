@@ -8,7 +8,7 @@ import { chatModelGenerationOptions, chatModelStreamTimeouts } from "./testingCh
 import { safeProviderRequestId, safeTransportHeaders, withChatTransportObserver, chatTransportTraceEnabled } from "./aiTransportDiagnostics";
 import { withInMemoryAiCostContext } from "./aiCostTelemetry";
 import { toSafeDiagnostic } from "./logger";
-import { deepinfraNetworkRoute } from "./deepinfraNetwork";
+import { deepinfraNetworkRoute, directDeepinfraFetch } from "./deepinfraNetwork";
 
 export const ADMIN_DIAGNOSTIC_MODELS = [
   "deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506",
@@ -22,6 +22,7 @@ export type AdminDiagnosticJob = {
   direct: Observation | null; pipeline: { outcome: string; durationMs: number; failure: Record<string, unknown> | null; attempts: Observation[]; observations: Observation[] } | null;
   observation: string | null;
   pipelineRoute: "direct" | "proxy";
+  directClient: "node_fetch" | "undici";
 };
 let current: AdminDiagnosticJob | null = null;
 const RETAIN_MS = 15 * 60_000;
@@ -40,7 +41,7 @@ export function reserveAdminDiagnostic(model: unknown) {
   if (!status.configured) throw new DiagnosticConfigurationError();
   if (current?.state === "running" || status.cooldownRemainingMs > 0) throw new DiagnosticBusyError();
   current = { id: randomUUID(), model, state: "running", phase: "direct", startedAt: Date.now(), finishedAt: null,
-    direct: null, pipeline: null, observation: null, pipelineRoute: deepinfraNetworkRoute() };
+    direct: null, pipeline: null, observation: null, pipelineRoute: deepinfraNetworkRoute(), directClient: deepinfraNetworkRoute() === "proxy" ? "undici" : "node_fetch" };
   return current;
 }
 
@@ -117,7 +118,8 @@ export async function executeAdminDiagnostic(job: AdminDiagnosticJob) {
   try {
     const model = deepinfraModel(job.model)!;
     const key = providerApiKey("deepinfra");
-    job.direct = await directAdminProbe({ model: model.apiModel, messages, ...chatModelGenerationOptions(job.model), stream: true, stream_options: { include_usage: true } }, key);
+    job.direct = await directAdminProbe({ model: model.apiModel, messages, ...chatModelGenerationOptions(job.model), stream: true, stream_options: { include_usage: true } }, key,
+      job.directClient === "undici" ? (url, init) => directDeepinfraFetch(String(url), init ?? {}) : fetch);
     job.phase = "pipeline";
     const attempts = new Map<string, Observation>(), observations: Observation[] = [], started = Date.now();
     let outcome = "failed", failure: Record<string, unknown> | null = null;

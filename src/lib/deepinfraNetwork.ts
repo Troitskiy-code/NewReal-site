@@ -28,6 +28,11 @@ function agents(url: string) {
   return cached;
 }
 export function deepinfraNetworkRoute(): "direct" | "proxy" { return proxyUrl() ? "proxy" : "direct"; }
+// A control request with the same Undici version as the proxy path, but no proxy dispatcher.
+export async function directDeepinfraFetch(url: string, init: RequestInit): Promise<Response> {
+  if (!endpoints.has(url)) throw new DeepinfraNetworkConfigurationError();
+  return await proxyFetch(url, init as UndiciRequestInit) as unknown as Response;
+}
 export async function deepinfraFetch(url: string, init: RequestInit): Promise<Response> {
   const proxy = endpoints.has(url) ? proxyUrl() : null;
   if (!proxy) return fetch(url, init);
