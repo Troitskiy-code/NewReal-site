@@ -438,8 +438,10 @@ body {
 }
 
 /*
-  Portrait crop is locked in pixels by ChatPortraitBackground.
-  These rules are the pre-JS fallback (cover + large viewport).
+  On mobile the portrait crop is locked in pixels by ChatPortraitBackground;
+  these rules are the pre-JS fallback (cover + large viewport).
+  On desktop the portrait is shown whole over a blurred copy of itself:
+  cover on a wide window would cut a 3:4 portrait down to its middle third.
 */
 .nv-chat-portrait {
   position: fixed;
@@ -450,6 +452,7 @@ body {
   height: calc(100vh - 3.5rem);
   height: calc(100lvh - 3.5rem);
   pointer-events: none;
+  background-image: var(--nv-chat-portrait-image);
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
@@ -470,7 +473,35 @@ body {
 
   .nv-chat-portrait {
     top: 5rem;
-    height: calc(100vh - 5rem);
-    height: calc(100lvh - 5rem);
+    left: 80px;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: auto;
+    overflow: hidden;
+    background-image: none;
+  }
+
+  .nv-chat-portrait::before {
+    content: "";
+    position: absolute;
+    inset: -48px;
+    background-image: var(--nv-chat-portrait-image);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    filter: blur(32px);
+  }
+
+  .nv-chat-portrait::after {
+    background:
+      linear-gradient(rgb(0 0 0 / 0.6), rgb(0 0 0 / 0.6)),
+      var(--nv-chat-portrait-image) center top / contain no-repeat;
+  }
+}
+
+@media (min-width: 1024px) {
+  .nv-chat-portrait {
+    left: 232px;
   }
 }

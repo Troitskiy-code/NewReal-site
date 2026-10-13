@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import {
   HEADER_HEIGHT_DESKTOP_PX,
   HEADER_HEIGHT_MOBILE_PX,
@@ -37,6 +37,16 @@ export default function ChatPortraitBackground({ imageUrl }: { imageUrl: string 
     if (!node) return;
 
     const apply = (relock: boolean) => {
+      // Desktop has no on-screen keyboard, so the CSS layout (contained portrait
+      // beside the sidebar) is used as is and follows window resizes.
+      if (window.matchMedia(DESKTOP_MQ).matches) {
+        lockedRef.current = null;
+        for (const prop of ["position", "left", "right", "top", "width", "height", "min-height", "max-height"]) {
+          node.style.removeProperty(prop);
+        }
+        return;
+      }
+
       const header = headerOffsetPx();
       const next = viewportBox();
       const prev = lockedRef.current;
@@ -83,7 +93,7 @@ export default function ChatPortraitBackground({ imageUrl }: { imageUrl: string 
     <div
       ref={nodeRef}
       className="nv-chat-portrait"
-      style={{ backgroundImage: `url("${imageUrl}")` }}
+      style={{ "--nv-chat-portrait-image": `url("${imageUrl}")` } as CSSProperties}
       aria-hidden
     />
   );
