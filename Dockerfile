@@ -1,5 +1,6 @@
 FROM node:22-bookworm-slim AS dependencies
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates openssl && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci
@@ -11,7 +12,7 @@ RUN npm run build
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production PORT=8080 ALLVPN_XRAY_PATH=/opt/xray/xray
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates unzip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates openssl unzip && rm -rf /var/lib/apt/lists/*
 COPY scripts/install-allvpn-xray.mjs ./scripts/install-allvpn-xray.mjs
 RUN node scripts/install-allvpn-xray.mjs /opt/xray
 COPY --from=build --chown=node:node /app/.next ./.next
