@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { reserveAvatarGeneration, getAvatarTokenStatus, getAvatarUsageUser, AvatarRequestConflict } from "@/lib/avatarTokens";
 import { buildAvatarPrompt } from "@/lib/avatarPrompt";
+import { readAvatarCardSnapshot, writeAvatarPrompt } from "@/lib/avatarPromptWriter";
 import { isSafeAvatarReference } from "@/lib/avatarReference";
 import { KieError, hasKieKey, prepareKieReference, uploadKieReference, createKieAvatar } from "@/lib/kieAi";
 import { kieAvatarModel, KIE_CREDIT_RUB } from "@/lib/kieAvatarModels";
@@ -44,10 +45,12 @@ export async function POST(req: NextRequest) {
       stage = "prepare_reference";
       const prepared = reference ? await prepareKieReference(reference) : undefined;
       stage = "reserve";
-      const prompt = buildAvatarPrompt(body);
+      const templatePrompt = buildAvatarPrompt(body);
       // Never accept modelId, resolution or number of images from the client.
       const model = kieAvatarModel(Boolean(reference));
-      const payloadHash = createHash("sha256").update(JSON.stringify([scope, prompt, reference])).digest("hex");
+      // Hash the card fields, not the written prompt: the writer model varies, and a retried request
+      // with the same key must still match its original.
+      const payloadHash = createHash("sha256").update(JSON.stringify([scope, templatePrompt, readAvatarCardSnapshot(body), reference])).digest("hex");
       const reservation = await reserveAvatarGeneration(session.user.id, {
         clientKey, scope, payloadHash, model: model.id, estimatedCredits: model.estimatedCredits, creditRub: KIE_CREDIT_RUB,
       });
@@ -58,11 +61,15 @@ export async function POST(req: NextRequest) {
       if (reservation.isNew) {
         ownsNewJob = true;
         await recordKieAvatarCost(job);
+        // Only a new job reaches the writer, so a retried request never pays for a second prompt.
+        stage = "write_prompt";
+        const written = await writeAvatarPrompt(body, templatePrompt);
+        infoLog("KieAvatar", "Prompt prepared", { jobId: job.id, source: written.source, ...(written.reason ? { reason: written.reason } : {}) });
         stage = "upload_reference";
         const referenceUrl = prepared ? await uploadKieReference(prepared) : undefined;
         stage = "create_task";
         attempted = true;
-        const taskId = await createKieAvatar(prompt, referenceUrl);
+        const taskId = await createKieAvatar(written.prompt, referenceUrl);
         // No prompt/reference/key: operators can recover a task after a DB write failure.
         infoLog("KieAvatar", "Task accepted", { taskId, jobId: job.id, model: model.id });
         stage = "save_task";

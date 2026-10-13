@@ -49,7 +49,11 @@ check(imagePrompt.buildAvatarPrompt({ name: 'Анна' }).includes('character po
   const withReference = imagePrompt.buildAvatarPrompt({ ...card, referenceImage: 'data:image/png;base64,AAAA' });
   check(withReference.includes('reference image') && withReference.includes('rather than editing the photo'), 'reference prompt asks for a new portrait with the same likeness');
   const custom = imagePrompt.buildAvatarPrompt({ ...card, avatarPrompt: 'В полный рост у печи' });
-  check(custom.includes('В полный рост у печи') && custom.includes('Unless described otherwise') && !custom.includes('тёмная коса'), 'custom prompt stays the main description and framing is only a default');
+  check(custom.includes('Requested details, which take priority: В полный рост у печи') && custom.includes('тёмная коса')
+    && custom.includes('Unless the requested details say otherwise'), 'image wishes add to the card with priority; framing becomes a default');
+  check(!/non-explicit|fully clothed|Tasteful/i.test(portrait + custom + imagePrompt.buildAvatarPrompt({ roleplayMode: 'world', name: 'X', description: 'Город' })),
+    'no content-policy wording: Kie moderates input itself');
+  check(imagePrompt.buildAvatarPrompt({ name: 'X', appearance: 'sexy aggressive pose' }).includes('sexy aggressive pose'), 'card words are passed as written, not softened');
   const long = imagePrompt.buildAvatarPrompt({ name: 'X', description: 'слово '.repeat(80) });
   check(/Character context: (слово )*слово\./.test(long), 'long fields are cut at a word boundary');
   check(imagePrompt.buildAvatarPrompt({ ...card, style: 'anime' }).startsWith('Anime illustration'), 'style selector still controls the style line');

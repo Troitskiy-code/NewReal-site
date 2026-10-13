@@ -67,6 +67,18 @@ async function providerFetch(url, init = {}) {
   }
   throw new Error('External network forbidden: ' + parsed.host);
 }
+// Prompt-writer model stub: the avatar route never reaches a real text provider in this suite.
+let writerMode = 'ok';
+const writerCalls = [];
+const WRITTEN_SCENE = 'A weathered innkeeper in a linen apron stands by a stone hearth, warm firelight on her face, dried herbs hanging from dark wooden beams, a calm and welcoming expression.';
+async function writerStub(purpose, url, body) {
+  writerCalls.push({ purpose, body });
+  if (writerMode === 'timeout') throw Object.assign(new Error('timeout'), { code: 'ECONNABORTED' });
+  const content = writerMode === 'garbage' ? 'not json at all'
+    : writerMode === 'refusal' ? JSON.stringify({ description: "I'm sorry, but I can't help with this request because it goes against the content rules of this service." })
+    : '```json\n' + JSON.stringify({ description: WRITTEN_SCENE }) + '\n```';
+  return { data: { choices: [{ message: { content } }] } };
+}
 const cache = new Map();
 function load(file) {
   file = resolve(file); if (cache.has(file)) return cache.get(file);
@@ -79,6 +91,7 @@ function load(file) {
     if (name === 'next-auth/next') return { getServerSession: async () => userId ? { user: { id: userId } } : null };
     if (name === './currencyRates') return { getAccountingUsdRub: async () => null };
     if (name === '@logtail/node') return { Logtail: class { constructor() { throw new Error('No live logger'); } } };
+    if (name === './aiTextClient' || name === '@/lib/aiTextClient') return { serviceChatPost: writerStub };
     if (name.startsWith('@/')) return load(join('src', name.slice(2) + '.ts'));
     if (name.startsWith('.')) {
       const target = resolve(dirname(file), name);
@@ -233,7 +246,45 @@ try {
   check((await cron.GET(new NextRequest('https://example.test/api/cron/reconcile-avatars'))).status === 401, 'recovery cron requires secret');
   check((await cron.GET(new NextRequest('https://example.test/api/cron/reconcile-avatars', { headers: { Authorization: `Bearer ${testEnv.CRON_SECRET}` } }))).status === 200,
     'authenticated recovery cron runs without browser');
-  check(!logs.join('\n').includes(marker) && !logs.join('\n').includes(testEnv.KIE_API_KEY), 'logs omit prompt, provider text and API key');
+  // Prompt writer (AVATAR_PROMPT_LLM_ENABLED) on a fresh user, so earlier quota and job state do not interfere.
+  userId = (await db.user.create({ data: { email: 'writer@example.test', subscriptionType: 'dialog',
+    subscriptionEnd: new Date(Date.now() + 86400000), lastTokenMonth: new Date() } })).id;
+  const finishJob = async body => jobs.finishAvatarJob(await db.avatarGeneration.findUnique({ where: { id: body.jobId } }), 'failed');
+  const writerRun = async (mode, extra = {}) => {
+    writerMode = mode; const before = requests.length;
+    const body = await (await handler.POST(post(bodyFor({ name: 'Лира', appearance: 'тёмная коса', ...extra })))).json();
+    const prompt = requests.length > before ? requests.at(-1).input.prompt : null;
+    await finishJob(body);
+    return prompt;
+  };
+  const templateOnly = await writerRun('ok');
+  check(writerCalls.length === 0 && templateOnly.includes('Requested details'), 'writer stays off by default; the template is used');
+  testEnv.AVATAR_PROMPT_LLM_ENABLED = 'true';
+  const groupPrompt = await writerRun('ok', { roleplayMode: 'group', rpConfig: { participants: [
+    { id: 'a', name: 'Учёный', appearance: 'очки', description: '' }, { id: 'b', name: 'Проводник', appearance: 'шрам на щеке', description: '' }] } });
+  check(writerCalls.at(-1).purpose === 'avatar_prompt' && groupPrompt.includes('weathered innkeeper')
+    && groupPrompt.includes('natural human scale') && groupPrompt.endsWith('logos, watermarks or frames.'),
+    'written scene is wrapped in code-owned composition and no-text rules');
+  const sentCard = JSON.parse(writerCalls.at(-1).body.messages[1].content);
+  check(sentCard.characters?.length === 2 && sentCard.characters[1].appearance === 'шрам на щеке' && sentCard.user_wishes === marker,
+    'writer receives every group member and the image wishes');
+  await writerRun('ok', { referenceImage: reference });
+  check(!JSON.stringify(writerCalls.at(-1).body).includes('base64') && writerCalls.at(-1).body.messages[0].content.includes('do not describe facial features'),
+    'reference image is never sent to the writer, which leaves the face to the reference');
+  for (const mode of ['timeout', 'garbage', 'refusal']) {
+    const fallback = await writerRun(mode);
+    check(fallback?.includes('Appearance: тёмная коса.') && !fallback.includes('weathered innkeeper'), `writer ${mode} falls back to the template`);
+  }
+  writerMode = 'ok';
+  const retried = bodyFor({ name: 'Лира' });
+  const firstRun = await (await handler.POST(post(retried))).json();
+  const writerCallsAfterFirst = writerCalls.length;
+  const secondRun = await (await handler.POST(post(retried))).json();
+  check(secondRun.jobId === firstRun.jobId && writerCalls.length === writerCallsAfterFirst, 'a retried request reuses its job and never calls the writer twice');
+  await finishJob(firstRun);
+  delete testEnv.AVATAR_PROMPT_LLM_ENABLED;
+  check(!logs.join('\n').includes(marker) && !logs.join('\n').includes(testEnv.KIE_API_KEY) && !logs.join('\n').includes('weathered innkeeper'),
+    'logs omit prompt, written scene, provider text and API key');
   console.log(`Kie avatar verification: ${checks} passed. No paid requests or production DB access.`);
 } finally {
   await db.$disconnect(); await ddl.end();

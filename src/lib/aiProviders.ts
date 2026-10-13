@@ -61,6 +61,8 @@ export function serviceTransport(purpose: string, requestedModel: string, legacy
     memory: requestedModel === "google/gemma-4-31b-it" ? "google/gemma-4-31B-it-turbo" : "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     character_event: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     character_prompt: "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    // Fast and multilingual: reads Russian cards, writes the English image description.
+    avatar_prompt: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
   };
   if (!Object.hasOwn(choices, purpose)) throw new AiProviderConfigurationError();
   return { provider, model: provider === "deepinfra" ? choices[purpose] : requestedModel,

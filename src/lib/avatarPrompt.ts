@@ -1,31 +1,12 @@
-const SENSITIVE_CLIENT_MESSAGE =
-  "Ваш запрос был отклонён из-за политики безопасности. Попробуйте изменить описание персонажа или использовать более нейтральные формулировки.";
-
-const WORD_REPLACEMENTS: Array<[RegExp, string]> = [
-  [/\bbeautiful\b/gi, "distinctive"],
-  [/\bhandsome\b/gi, "fine-featured"],
-  [/\bseductive\b/gi, "graceful"],
-  [/\brevealing\b/gi, "modest"],
-  [/\baggressive\b/gi, "determined"],
-  [/\bsexy\b/gi, "stylish"],
-  [/\bsensual\b/gi, "calm"],
-  [/\berotic\b/gi, "artistic"],
-  [/\bprovocative\b/gi, "expressive"],
-  [/\bnude\b/gi, "clothed"],
-  [/\bnaked\b/gi, "clothed"],
-];
-
-const REMOVED_WORDS = /\b(nsfw|explicit|porn|xxx)\b/gi;
+// No content-policy wording or word softening here: Kie moderates input itself (a refusal is a refunded
+// failure), and telling the image model "non-explicit, fully clothed" pushed it into stiff, over-covered results.
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
 function sanitizePromptText(value: string, maxLength = 280): string {
-  let text = value.replace(REMOVED_WORDS, " ").replace(/\s+/g, " ").trim();
-  for (const [pattern, replacement] of WORD_REPLACEMENTS) {
-    text = text.replace(pattern, replacement);
-  }
+  const text = value.replace(/\s+/g, " ").trim();
   if (text.length <= maxLength) return text;
   // Cut at a word boundary so the model never sees a half word.
   const cut = text.slice(0, maxLength);
@@ -40,6 +21,7 @@ function sentence(text: string): string {
 }
 
 export type AvatarStyle = "anime" | "realistic";
+export type AvatarPromptMode = "character" | "world" | "group";
 
 // Natural-language style lines: Seedream 5 and Nano Banana follow descriptions better than SD-era tag lists.
 const STYLE_PROMPT: Record<AvatarStyle, string> = {
@@ -71,9 +53,8 @@ const GROUP_COMPOSITION =
 
 // Names stay out of the prompt: both models render text well and would print them,
 // and a famous name can pull in a real person's face.
-const PORTRAIT_CONSTRAINTS =
-  "Tasteful and non-explicit, fully clothed. Exactly one character. No text, letters, captions, logos, watermarks or frames.";
-const COVER_CONSTRAINTS = "Tasteful and non-explicit. No text, letters, titles, captions, logos, watermarks or frames.";
+const PORTRAIT_CONSTRAINTS = "Exactly one character. No text, letters, captions, logos, watermarks or frames.";
+const COVER_CONSTRAINTS = "No text, letters, titles, captions, logos, watermarks or frames.";
 
 // Without this, the editing model tends to retouch the uploaded photo instead of drawing the character.
 const PORTRAIT_REFERENCE =
@@ -87,6 +68,31 @@ export function resolveAvatarStyle(value: unknown): AvatarStyle {
   return value === "anime" ? "anime" : "realistic";
 }
 
+export function avatarPromptMode(value: unknown): AvatarPromptMode {
+  return value === "world" || value === "group" ? value : "character";
+}
+
+/**
+ * Wraps a written scene description (from the prompt-writer model) in the parts that must never be
+ * left to a model: style, reference handling, composition for the editor type and the no-text rules.
+ */
+export function composeAvatarPrompt({ mode, style, withReference, scene }: {
+  mode: AvatarPromptMode; style: AvatarStyle; withReference: boolean; scene: string;
+}): string {
+  const description = sentence(sanitizePromptText(scene, 1600));
+  if (mode === "world") {
+    return [WORLD_STYLE_PROMPT[style], "An establishing view of a fictional world for a roleplay story.",
+      withReference ? WORLD_REFERENCE : "", description, WORLD_COMPOSITION, COVER_CONSTRAINTS].filter(Boolean).join(" ");
+  }
+  if (mode === "group") {
+    return [GROUP_STYLE_PROMPT[style], "An ensemble illustration for a story with several characters.",
+      withReference ? GROUP_REFERENCE : "", description, GROUP_COMPOSITION, COVER_CONSTRAINTS].filter(Boolean).join(" ");
+  }
+  return [STYLE_PROMPT[style], withReference ? PORTRAIT_REFERENCE : "A single original character.",
+    description, `Framing: ${PORTRAIT_FRAMING}.`, PORTRAIT_CONSTRAINTS].filter(Boolean).join(" ");
+}
+
+/** Deterministic prompt from the editor fields; also the fallback when the prompt writer is off or fails. */
 export function buildAvatarPrompt(body: {
   name?: unknown;
   appearance?: unknown;
@@ -99,19 +105,22 @@ export function buildAvatarPrompt(body: {
 }): string {
   const style = resolveAvatarStyle(body.style);
   const withReference = Boolean(asText(body.referenceImage));
-  const custom = sanitizePromptText(asText(body.customPrompt) || asText(body.avatarPrompt), 1000);
+  // The editor field is "wishes for the image": it adds to the card and wins on conflict, but no longer
+  // replaces the card's description.
+  const wishes = sanitizePromptText(asText(body.customPrompt) || asText(body.avatarPrompt), 1000);
   const appearance = sanitizePromptText(asText(body.appearance), 400);
   const description = sanitizePromptText(asText(body.description), 240);
+  const requested = wishes ? `Requested details, which take priority: ${sentence(wishes)}` : "";
   // Each editor gets its own composition: a portrait, a view of a place, or an ensemble scene.
   if (body.roleplayMode === "world" || body.roleplayMode === "group") {
     const world = body.roleplayMode === "world";
-    const scene = custom || description;
     return [
       (world ? WORLD_STYLE_PROMPT : GROUP_STYLE_PROMPT)[style],
       world ? "An establishing view of a fictional world for a roleplay story." : "An ensemble illustration for a story with several characters.",
       withReference ? (world ? WORLD_REFERENCE : GROUP_REFERENCE) : "",
-      scene ? `${world ? "The world" : "Scene"}: ${sentence(scene)}` : "",
+      description ? `${world ? "The world" : "Scene"}: ${sentence(description)}` : "",
       appearance ? `Visual details: ${sentence(appearance)}` : "",
+      requested,
       world ? WORLD_COMPOSITION : GROUP_COMPOSITION,
       COVER_CONSTRAINTS,
     ].filter(Boolean).join(" ");
@@ -121,35 +130,18 @@ export function buildAvatarPrompt(body: {
   const name = sanitizePromptText(asText(body.name), 80);
   const subject = withReference
     ? PORTRAIT_REFERENCE
-    : custom || appearance || description
+    : wishes || appearance || description
       ? "A single original character."
       : `A single original character named ${name || "without a name"}.`;
 
-  // A user-written prompt stays the main description, as before; framing then applies only by default.
-  const details = custom
-    ? [`Image description: ${sentence(custom)}`, `Unless described otherwise, frame it as ${PORTRAIT_FRAMING}.`]
-    : [
-        appearance ? `Appearance: ${sentence(appearance)}` : "",
-        description ? `Character context: ${sentence(description)}` : "",
-        `Framing: ${PORTRAIT_FRAMING}.`,
-        PORTRAIT_BACKGROUND,
-      ];
+  // With wishes, framing and background are defaults the wishes may override ("full body", "night city").
+  const details = [
+    appearance ? `Appearance: ${sentence(appearance)}` : "",
+    description ? `Character context: ${sentence(description)}` : "",
+    requested,
+    wishes ? `Unless the requested details say otherwise, frame it as ${PORTRAIT_FRAMING}.` : `Framing: ${PORTRAIT_FRAMING}.`,
+    wishes ? "" : PORTRAIT_BACKGROUND,
+  ];
 
   return [STYLE_PROMPT[style], subject, ...details, PORTRAIT_CONSTRAINTS].filter(Boolean).join(" ");
 }
-
-export function isSensitiveGenerationError(error: unknown, extraText = ""): boolean {
-  const parts = [extraText, String(error)];
-  if (error instanceof Error) {
-    parts.push(error.message, error.name);
-  }
-  const text = parts.join(" ").toLowerCase();
-  return (
-    text.includes("flagged as sensitive") ||
-    text.includes("sensitive content") ||
-    text.includes("sensitive") ||
-    text.includes("nsfw")
-  );
-}
-
-export { SENSITIVE_CLIENT_MESSAGE };

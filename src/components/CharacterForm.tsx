@@ -360,6 +360,10 @@ function CharacterFormContent({
         name: values.name.trim(), roleplayMode: values.roleplayMode,
         appearance: values.appearance.trim() || undefined,
         description: values.description.trim() || undefined,
+        // The prompt writer reads the whole card: scene, tags, world, NPCs and group members.
+        scenario: values.scenario.trim() || undefined,
+        tags: values.tags.trim() || undefined,
+        rpConfig: values.rpConfig,
         avatarPrompt: values.avatarPrompt.trim() || undefined,
         referenceImage: referenceImage || undefined, style,
       });
@@ -438,7 +442,7 @@ function CharacterFormContent({
         />
         <div className="space-y-3">
           <label htmlFor="avatarPrompt" className="block text-sm font-medium text-white">
-            {values.roleplayMode === "character" ? "Описание для генерации аватара" : "Описание для генерации обложки"}
+            Пожелания к изображению (необязательно)
           </label>
           <LimitedTextarea
             id="avatarPrompt"
@@ -446,11 +450,11 @@ function CharacterFormContent({
             onChange={(v) => onChange("avatarPrompt", v)}
             maxLength={CHARACTER_LIMITS.avatarPrompt}
             rows={4}
-            placeholder={values.roleplayMode === "character" ? "Опишите образ для генерации аватара..." : "Опишите сцену и композицию обложки..."}
+            placeholder={values.roleplayMode === "character" ? "Например: в полный рост, в красном плаще, на фоне ночного города" : values.roleplayMode === "world" ? "Например: вид с крыши на рассвете, туман над каналами" : "Например: все у костра, вечер, тёплый свет"}
           />
           <p className={HINT_CLASS}>
             {hintWithCounter(
-              "Если заполнено, используется для генерации изображения вместо автоматического описания.",
+              "Изображение строится по всей карточке. Здесь можно уточнить то, что важно именно для картинки: позу, одежду, место, время суток. Пожелания важнее карточки.",
               values.avatarPrompt,
               CHARACTER_LIMITS.avatarPrompt
             )}
