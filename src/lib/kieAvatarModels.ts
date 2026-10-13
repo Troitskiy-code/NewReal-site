@@ -13,7 +13,9 @@ export function uncertainJobBlocks(job: { state: string; updatedAt: Date }, now 
 }
 /** Whole seconds until an uncertain job stops blocking new runs (0 when it no longer blocks). */
 export function uncertainBlockSecondsLeft(job: { updatedAt: Date }, now = Date.now()) {
-  return Math.max(0, Math.ceil((job.updatedAt.getTime() + UNCERTAIN_BLOCK_MS - now) / 1000));
+  // Capped at the window: updatedAt can run a few ms ahead of this clock, which showed "6 min" for a 5-minute block.
+  const seconds = Math.ceil((job.updatedAt.getTime() + UNCERTAIN_BLOCK_MS - now) / 1000);
+  return Math.min(UNCERTAIN_BLOCK_MS / 1000, Math.max(0, seconds));
 }
 export function kieAvatarModel(hasReference: boolean) {
   return hasReference ? KIE_REFERENCE_MODEL : KIE_TEXT_MODEL;
