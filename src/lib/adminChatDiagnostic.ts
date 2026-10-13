@@ -8,7 +8,7 @@ import { chatModelGenerationOptions, chatModelStreamTimeouts } from "./testingCh
 import { safeProviderRequestId, safeTransportHeaders, withChatTransportObserver, chatTransportTraceEnabled } from "./aiTransportDiagnostics";
 import { withInMemoryAiCostContext } from "./aiCostTelemetry";
 import { toSafeDiagnostic } from "./logger";
-import { deepinfraNetworkRoute, directDeepinfraFetch } from "./deepinfraNetwork";
+import { deepinfraNetworkRoute, deepinfraRequestPlan, directDeepinfraFetch } from "./deepinfraNetwork";
 
 export const ADMIN_DIAGNOSTIC_MODELS = [
   "deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506",
@@ -22,6 +22,7 @@ export type AdminDiagnosticJob = {
   direct: Observation | null; pipeline: { outcome: string; durationMs: number; failure: Record<string, unknown> | null; attempts: Observation[]; observations: Observation[] } | null;
   observation: string | null;
   pipelineRoute: "direct" | "proxy";
+  selectedNetworkRoute: "direct" | "proxy" | "allvpn";
   directClient: "node_fetch" | "undici";
 };
 let current: AdminDiagnosticJob | null = null;
@@ -32,7 +33,8 @@ export class DiagnosticConfigurationError extends Error {}
 export function adminDiagnosticStatus() {
   if (current?.finishedAt && Date.now() - current.finishedAt > RETAIN_MS) current = null;
   return { configured: getChatProvider() === "deepinfra" && Boolean(process.env['DEEPINFRA_API_KEY']?.trim()),
-    traceEnabled: chatTransportTraceEnabled(), pipelineRoute: deepinfraNetworkRoute(), nodeVersion: process.version, maxProviderCalls: 3, job: current,
+    traceEnabled: chatTransportTraceEnabled(), pipelineRoute: deepinfraNetworkRoute(), selectedNetworkRoute: deepinfraRequestPlan(DEEPINFRA_CHAT_URL).route,
+    nodeVersion: process.version, maxProviderCalls: 3, job: current,
     cooldownRemainingMs: current?.finishedAt ? Math.max(0, COOLDOWN_MS - (Date.now() - current.finishedAt)) : 0 };
 }
 export function reserveAdminDiagnostic(model: unknown) {
@@ -41,7 +43,8 @@ export function reserveAdminDiagnostic(model: unknown) {
   if (!status.configured) throw new DiagnosticConfigurationError();
   if (current?.state === "running" || status.cooldownRemainingMs > 0) throw new DiagnosticBusyError();
   current = { id: randomUUID(), model, state: "running", phase: "direct", startedAt: Date.now(), finishedAt: null,
-    direct: null, pipeline: null, observation: null, pipelineRoute: deepinfraNetworkRoute(), directClient: deepinfraNetworkRoute() === "proxy" ? "undici" : "node_fetch" };
+    direct: null, pipeline: null, observation: null, pipelineRoute: deepinfraNetworkRoute(), selectedNetworkRoute: status.selectedNetworkRoute,
+    directClient: deepinfraNetworkRoute() === "proxy" ? "undici" : "node_fetch" };
   return current;
 }
 
@@ -49,7 +52,7 @@ export function reserveAdminDiagnostic(model: unknown) {
 const OBSERVATION_KEYS = new Set(["operationId", "costEventId", "attempt", "outcome", "status", "durationMs", "headersMs", "firstChunkMs", "firstTextMs",
   "bytesReceived", "chunkCount", "maxChunkGapMs", "lastReadWaitMs", "maxReadWaitMs", "firstByteLimitMs", "idleLimitMs", "totalLimitMs",
   "providerRequestId", "providerResponseId", "retryAfterMs", "responseContentType", "responseEncoding", "hasDone", "hasText", "hasReasoning", "finishReason", "protocolReason",
-  "stage", "reason", "timeoutStage", "activeProviderAtStart", "activeProviderNow", "activeModelAtStart", "activeModelNow", "processInstanceId"]);
+  "stage", "reason", "timeoutStage", "networkRoute", "activeProviderAtStart", "activeProviderNow", "activeModelAtStart", "activeModelNow", "processInstanceId"]);
 function safeObservation(event: string, fields: Record<string, unknown>): Observation {
   const result: Observation = { event };
   const flat = { ...fields, ...(fields.timings && typeof fields.timings === "object" ? fields.timings : {}) };

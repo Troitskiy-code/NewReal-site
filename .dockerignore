@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env
+.env.*
+.runtime
+logs
+*.mp4
+docs
+.agents
+.codex

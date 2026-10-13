@@ -1,6 +1,6 @@
 // Server-only. Store numbers and allowlisted labels, never prompts, keys or response bodies.
 import { AsyncLocalStorage } from "node:async_hooks";
-import { deepinfraFetch, deepinfraAxiosOptions } from "./deepinfraNetwork";
+import { deepinfraFetch, deepinfraAxiosOptions, deepinfraRequestPlan, markDeepinfraNetworkFailure, markDeepinfraNetworkSuccess } from "./deepinfraNetwork";
 import { createHmac, randomUUID } from "node:crypto";
 import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
@@ -176,10 +176,13 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
   const transport = beginAiTransport(ticket.provider, ticket.requestedModel, purpose);
   const started = Date.now();
   let networkRoute = "unavailable";
+  let networkPlan: ReturnType<typeof deepinfraRequestPlan> | undefined;
   try {
-    const networkOptions = deepinfraAxiosOptions(url);
-    networkRoute = networkOptions.httpsAgent ? "proxy" : "direct";
+    networkPlan = deepinfraRequestPlan(url);
+    const networkOptions = deepinfraAxiosOptions(url, networkPlan);
+    networkRoute = networkPlan.route;
     const response = await axios.post<T>(url, body, { ...config, ...networkOptions, timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
+    if (response.status < 400) markDeepinfraNetworkSuccess(networkPlan);
     transport.release();
     const actualModel = (response.data as { model?: unknown })?.model;
     await finish(ticket, response.status >= 400 ? "failed" : "completed", providerUsage(ticket, response.data, purpose === "embedding"), response.status,
@@ -191,6 +194,7 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
     }
     return response;
   } catch (error) {
+    if (networkPlan) markDeepinfraNetworkFailure(networkPlan, error);
     const response = axios.isAxiosError(error) ? error.response : null;
     errorLog("ChatDiagnostics", "service attempt failed", { ...ticketDiagnosticContext(ticket), ...transport.fields(),
       ...safeTransportHeaders(response?.headers ?? {}, ticket.provider), stage: "service_request",
@@ -214,12 +218,17 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   // Provider timing starts after local cost bookkeeping, immediately before the request.
   const started = Date.now();
   const transport = beginAiTransport(ticket.provider, ticket.requestedModel, "chat");
-  const context = { ...ticketDiagnosticContext(ticket), firstByteLimitMs: limits?.firstByteMs,
+  let networkPlan: ReturnType<typeof deepinfraRequestPlan> | undefined;
+  const context = { ...ticketDiagnosticContext(ticket), networkRoute: "unavailable", firstByteLimitMs: limits?.firstByteMs,
     idleLimitMs: limits?.idleMs, totalLimitMs: limits?.totalMs };
   const metrics = createChatReadMetrics(started);
   traceChatTransport("attempt started", { ...context, ...transport.fields() });
   let response: Response;
-  try { response = await deepinfraFetch(url, { ...init, redirect: "error" }); }
+  try {
+    networkPlan = deepinfraRequestPlan(url);
+    context.networkRoute = networkPlan.route;
+    response = await deepinfraFetch(url, { ...init, redirect: "error" }, networkPlan);
+  }
   catch (error) {
     logChatTransportFailure({ ...context, ...transport.fields(), stage: "awaiting_headers", durationMs: Date.now() - started }, error, init.signal);
     transport.release();
@@ -303,7 +312,10 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
         onChunk?.();
         parser.push(decoder.decode(value, { stream: true }));
         controller.enqueue(value);
-      } catch (error) { metrics.endRead(); await complete("failed", error); controller.error(error); reader.releaseLock(); }
+      } catch (error) {
+        if (networkPlan) markDeepinfraNetworkFailure(networkPlan, error, init.signal);
+        metrics.endRead(); await complete("failed", error); controller.error(error); reader.releaseLock();
+      }
     },
     async cancel(reason) { cancelled = true; try { await reader.cancel(reason); } finally { await complete("cancelled"); reader.releaseLock(); } },
   });

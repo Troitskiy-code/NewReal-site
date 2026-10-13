@@ -26,6 +26,7 @@ yarn-error.log*
 
 # runtime logs that may contain secrets
 /logs/
+/.runtime/
 *.local.log
 
 # CBR daily FX cache
