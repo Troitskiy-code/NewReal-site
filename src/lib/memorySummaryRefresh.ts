@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { isDeferredSummaryFailure } from "./memorySummaryPolicy";
 
 /** Reuse the existing lease store under a disjoint namespace; no schema rollout needed. */
 export const SUMMARY_REFRESH_LEASE_SECONDS = 180;
 export const SUMMARY_REFRESH_COOLDOWN_SECONDS = 120;
+export const SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS = 1800;
 export async function withSummaryRefreshLease<T>(threadId: string, run: () => Promise<T>, skipped: () => Promise<T>): Promise<T> {
   const id = `memory-summary:${createHash("sha256").update(threadId).digest("hex")}`;
   const owner = randomUUID();
@@ -20,9 +22,10 @@ export async function withSummaryRefreshLease<T>(threadId: string, run: () => Pr
     await prisma.$executeRaw`DELETE FROM "EmbeddingBackfillLease" WHERE id = ${id} AND owner = ${owner}`;
     return result;
   } catch (error) {
+    const cooldown = isDeferredSummaryFailure(error) ? SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS : SUMMARY_REFRESH_COOLDOWN_SECONDS;
     // Release only our own claim; a timed-out owner cannot release a successor.
     await prisma.$executeRaw`
-      UPDATE "EmbeddingBackfillLease" SET "leaseUntil" = (NOW() AT TIME ZONE 'UTC') + (${SUMMARY_REFRESH_COOLDOWN_SECONDS} * INTERVAL '1 second')
+      UPDATE "EmbeddingBackfillLease" SET "leaseUntil" = (NOW() AT TIME ZONE 'UTC') + (${cooldown} * INTERVAL '1 second')
       WHERE id = ${id} AND owner = ${owner}
     `;
     throw error;

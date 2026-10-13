@@ -21,11 +21,11 @@ provider.axiosPost = async (url, body) => {
   }
   return response;
 };
-async function setup() {
+async function setup(content = 'Ключ лежит под ступенью.') {
   const user = await helpers.user('start');
   const character = await helpers.character(user.id);
   const rows = await helpers.messages(user.id, character.id, Array.from({ length: 70 }, (_, i) => ({
-    role: i % 2 ? 'assistant' : 'user', content: 'Ключ лежит под ступенью.',
+    role: i % 2 ? 'assistant' : 'user', content,
   })), { embed: false });
   const scope = await helpers.scope(user.id, character.id);
   await db.memory.create({ data: { ...await helpers.key(user.id, character.id), summary: 'Прежняя память.',
@@ -109,6 +109,54 @@ try {
   await check('a single oversized message cannot silently advance coverage', () => {
     assert.throws(() => memory.fitSummaryMessages([{ role: 'user', content: 'Смотритель хранит ключ. '.repeat(9000), createdAt: new Date() }], null),
       { name: 'MemorySummaryInputError' });
+  });
+  await check('a fitting first timestamp group is not lost by midpoint rounding', () => {
+    const first = new Date(1700000000000), next = new Date(1700000001000);
+    const rows = [{ role: 'user', content: 'Ключ лежит под ступенью.', createdAt: first },
+      { role: 'assistant', content: 'Ключ лежит под ступенью.', createdAt: first },
+      { role: 'user', content: 'Смотритель хранит ключ. '.repeat(9000), createdAt: next }];
+    assert.deepEqual(memory.fitSummaryMessages(rows, null), rows.slice(0, 2));
+  });
+  await check('unrepresentable quotes preserve memory/coverage and install a long shared cooldown', async () => {
+    const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
+    const fixture = await setup(long);
+    provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'смотритель хранит ключ возле деревянной ступени.',
+      status: 'reported', sources: ['s2'] }] });
+    const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+    assert.equal(result, 'Прежняя память.');
+    const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
+    assert.equal(saved.summary, result); assert.equal(saved.summarizedMessageCount, 1);
+    assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[0].createdAt.getTime());
+    const { createHash } = await import('node:crypto');
+    const id = 'memory-summary:' + createHash('sha256').update(fixture.scope.threadId).digest('hex');
+    const rows = await db.$queryRaw`SELECT EXTRACT(EPOCH FROM ("leaseUntil" - (NOW() AT TIME ZONE 'UTC'))) AS remaining FROM "EmbeddingBackfillLease" WHERE id = ${id}`;
+    assert.ok(Number(rows[0].remaining) > 1700);
+    const calls = provider.calls.filter(row => row.kind === 'summary').length;
+    assert.equal(await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user), result);
+    assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
+    provider.summaryText = null;
+  });
+  await check('actual refresh rescues oversized selected evidence and persists a bounded sourced summary', async () => {
+    const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
+    const fixture = await setup(long);
+    await db.message.update({ where: { id: fixture.rows[1].id }, data: { content: 'смотритель хранит ключ номер 17 возле деревянной ступени.' } });
+    provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'смотритель хранит ключ возле деревянной ступени.',
+      status: 'reported', sources: ['s3'] }] });
+    const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+    assert.ok(result && countTokens(result) <= 200); assert.match(result, /ключ номер 17/);
+    const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
+    assert.equal(saved.summary, result); assert.ok(saved.summarizedMessageCount > 1 && saved.summarizedMessageCount < fixture.rows.length);
+    assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[saved.summarizedMessageCount - 1].createdAt.getTime());
+    provider.summaryText = null;
+  });
+  await check('oversized single-message input is deferred before any paid request', async () => {
+    const fixture = await setup();
+    await db.message.update({ where: { id: fixture.rows[1].id }, data: { content: 'Смотритель хранит ключ. '.repeat(9000) } });
+    const calls = provider.calls.filter(row => row.kind === 'summary').length;
+    assert.equal(await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user), 'Прежняя память.');
+    assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
+    const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
+    assert.equal(saved.summarizedMessageCount, 1); assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[0].createdAt.getTime());
   });
   await check('independent application processes share one database claim', async () => {
     const independent = createModuleLoader({ prismaFor: () => db }).load(join(root, 'src/lib/memorySummaryRefresh.ts'));

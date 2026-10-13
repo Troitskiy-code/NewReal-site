@@ -8,9 +8,15 @@ export function summaryGenerationLimit(storedLimit: number): number {
 
 export type MemorySummaryFailure = "MEMORY_SUMMARY_TRUNCATED" | "MEMORY_SUMMARY_EMPTY_RESPONSE"
   | "MEMORY_SUMMARY_INVALID_JSON" | "MEMORY_SUMMARY_INVALID_ITEMS" | "MEMORY_SUMMARY_UNSUPPORTED_ITEM"
-  | "MEMORY_SUMMARY_EMPTY_RESULT";
+  | "MEMORY_SUMMARY_EMPTY_RESULT" | "MEMORY_SUMMARY_NO_FITTING_SOURCE";
 export class MemorySummaryError extends Error {
   constructor(readonly code: MemorySummaryFailure) { super(code); this.name = "MemorySummaryError"; }
+}
+
+/** Deterministic size limits need editing/smaller input, not another immediate AI call. */
+export function isDeferredSummaryFailure(error: unknown): boolean {
+  return error instanceof MemorySummaryError && error.code === "MEMORY_SUMMARY_NO_FITTING_SOURCE"
+    || error instanceof Error && error.name === "MemorySummaryInputError";
 }
 
 export function groundedSummaryFormat(sourceIds: string[], storedLimit: number) {

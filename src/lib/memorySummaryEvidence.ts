@@ -1,10 +1,15 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { MemorySummaryError } from "./memorySummaryPolicy";
-import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, safeMemoryParaphrase, sameMemoryMeaning, type MemoryStatus } from "./memoryNarrative";
+import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, memoryOverlap, safeMemoryParaphrase, sameMemoryMeaning, type MemoryStatus } from "./memoryNarrative";
 
 type Author = "user" | "character" | "memory";
 export type SummarySource = { id: string; author: Author; text: string; status?: MemoryStatus };
 const LABELS: Record<Author, string> = { user: "Пользователь", character: "Персонаж", memory: "Из прежней сводки" };
+export type SummaryRenderDiagnostics = {
+  candidateCount: number; sourceCount: number; paraphraseFallbackCount: number;
+  budgetRejectedCount: number; sourceFallbackCount: number; sourcePoolFallbackCount: number;
+  fittedCount: number; renderedUsage: number; storedLimit: number;
+};
 
 export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
 Составь связную краткую сводку сюжета по sources, а не подбор разрозненных цитат.
@@ -23,19 +28,30 @@ export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
 
 /** Sources are checked per request; IDs are not a persistent facts database. */
 export function renderGroundedSummary(raw: string, sources: SummarySource[], maxTokens: number,
-  countTokens: (text: string) => number): string {
+  countTokens: (text: string) => number, diagnose?: (stats: SummaryRenderDiagnostics) => void): string {
   let parsed: unknown;
   try { parsed = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "")); }
   catch { throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_JSON"); }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_ITEMS");
   const result = parsed as Record<string, unknown>;
-  if (Object.keys(result).some((key) => key !== "items") || !Array.isArray(result.items) || result.items.length > 10) {
+  if (Object.keys(result).some((key) => key !== "items") || !Array.isArray(result.items) || !result.items.length || result.items.length > 10) {
     throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_ITEMS");
   }
   const known = new Map(sources.map((source, index) => [source.id, { ...source, index }]));
   const headings = { state: "Текущая ситуация", decisions: "Принятые решения", plans: "Открытые планы", events: "Недавние события" };
   type Section = keyof typeof headings;
-  const rows: Array<{ section: Section; text: string; status: MemoryStatus; author: string; order: number }> = [];
+  type Row = { section: Section; text: string; status: MemoryStatus; author: string; order: number };
+  const rows: Array<{ primary: Row; alternatives: Row[] }> = [];
+  const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
+    paraphraseFallbackCount: 0, budgetRejectedCount: 0, sourceFallbackCount: 0, sourcePoolFallbackCount: 0,
+    fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens };
+  const sectionFor = (status: MemoryStatus, section: Section): Section => status === "proposed" || status === "promised" ? "plans"
+    : status === "decided" ? "decisions" : status === "done" || status === "cancelled" ? "events" : section;
+  const sourceRow = (source: SummarySource & { index: number }, uncertain = false): Row => {
+    const status = uncertain ? "uncertain" : source.status ?? inferMemoryStatus(source.text);
+    return { section: sectionFor(status, "state"), status, author: LABELS[source.author], order: source.index,
+      text: stripMemoryControlInstructions(source.text).replace(/\s+/g, " ").trim() };
+  };
   for (const value of result.items) {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new MemorySummaryError("MEMORY_SUMMARY_UNSUPPORTED_ITEM");
     const item = value as Record<string, unknown>;
@@ -48,6 +64,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     const selected = [...new Set(item.sources as string[])].map((id) => known.get(id)!).sort((a, b) => a.index - b.index);
     const evidence = selected.map((source) => source.text).join(" ");
     const safeText = safeMemoryParaphrase(item.text, evidence);
+    if (safeText !== item.text.replace(/\s+/g, " ").trim()) stats.paraphraseFallbackCount++;
     if (!safeText) continue;
     // A chosen status cannot promote a source to an executed action. Ambiguous multi-source changes stay uncertain.
     const sourceStatuses = new Set(selected.map((source) => source.status ?? inferMemoryStatus(source.text)));
@@ -55,22 +72,50 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     const status: MemoryStatus = asked === "uncertain" || sourceStatuses.size > 1 ? "uncertain"
       : sourceStatuses.has(asked) ? asked : [...sourceStatuses][0];
     const author = [...new Set(selected.map((source) => LABELS[source.author]))].join(" / ");
-    const section: Section = status === "proposed" || status === "promised" ? "plans"
-      : status === "decided" ? "decisions" : status === "done" || status === "cancelled" ? "events" : item.section as Section;
-    if (rows.some((row) => row.author === author && row.status === status && sameMemoryMeaning(row.text, safeText))) continue;
-    rows.push({ section, text: safeText, status, author, order: Math.max(...selected.map((source) => source.index)) });
+    const primary = { section: sectionFor(status, item.section as Section), text: safeText, status, author,
+      order: Math.max(...selected.map((source) => source.index)) };
+    // Never trim a source or reinterpret a rejected paraphrase. Alternatives retain each
+    // source's author/status; conflicting evidence remains explicitly uncertain.
+    rows.push({ primary, alternatives: selected.map(source => sourceRow(source, status === "uncertain")) });
   }
-  const fitted: typeof rows = [];
+  const fitted: Row[] = [];
   const render = () => (Object.keys(headings) as Section[]).map((section) => {
     const lines = fitted.filter((row) => row.section === section).sort((a, b) => a.order - b.order)
       .map((row) => `- [${STATUS_LABELS[row.status]}; ${row.author}] ${row.text}`);
     return lines.length ? `## ${headings[section]}\n${lines.join("\n")}` : "";
   }).filter(Boolean).join("\n\n");
-  for (const row of rows) {
+  const tryFit = (row: Row) => {
+    if (!row.text || fitted.length >= 10) return false;
+    if (fitted.some(existing => existing.author === row.author && existing.status === row.status
+      && sameMemoryMeaning(existing.text, row.text))) return true;
     fitted.push(row);
-    if (countTokens(render()) > maxTokens) fitted.pop();
+    if (countTokens(render()) <= maxTokens) return true;
+    fitted.pop(); stats.budgetRejectedCount++;
+    return false;
+  };
+  for (const { primary, alternatives } of rows) {
+    if (tryFit(primary)) continue;
+    for (const alternative of alternatives) {
+      const before = fitted.length;
+      if (tryFit(alternative) && fitted.length > before) stats.sourceFallbackCount++;
+    }
   }
-  return render();
+  // A valid item may point only at an oversized quote. Use another complete, clean
+  // source rather than erase the memory or retry the same paid generation forever.
+  // Prefer current dialogue to secondary memory; all items have been validated above.
+  if (!fitted.length) {
+    const relevance = (source: SummarySource) => Math.max(0, ...rows.map(row => memoryOverlap(row.primary.text, source.text)));
+    const pool = [...known.values()].map(source => ({ source, score: relevance(source) })).filter(row => row.score > 0)
+      .sort((a, b) => b.score - a.score || Number(a.source.author === "memory") - Number(b.source.author === "memory") || b.source.index - a.source.index);
+    for (const { source } of pool) {
+      const row = sourceRow(source, true);
+      if (tryFit(row)) { stats.sourcePoolFallbackCount++; break; }
+    }
+  }
+  const summary = render();
+  stats.fittedCount = fitted.length; stats.renderedUsage = countTokens(summary);
+  diagnose?.(stats);
+  return summary;
 }
 
 export const EXTRACTIVE_SUMMARY_RULES = `MEMORY_SUMMARY_SELECTION_V1

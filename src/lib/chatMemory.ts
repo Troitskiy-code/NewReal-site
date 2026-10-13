@@ -11,8 +11,8 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { getMemoryProvider } from "./aiProviders";
-import { groundedSummaryFormat, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
-import { withSummaryRefreshLease } from "./memorySummaryRefresh";
+import { groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
+import { SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS, withSummaryRefreshLease } from "./memorySummaryRefresh";
 import {
   fetchEmbeddings,
   hasDistinctKeyTokens,
@@ -514,14 +514,15 @@ async function requestSelectedSummary(
   apiKey: string, prompt: string, sources: SummarySource[], maxTokens: number,
   coreText: string | null
 ): Promise<string> {
-  if (!sources.length) throw new Error("No memory source quotes available");
+  if (!sources.length) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   // One bounded generation; failures are deferred by the background refresh lease.
   const input = JSON.stringify({ sources, core: coreText });
   if (summaryInputTooLarge(input)) throw new MemorySummaryInputError();
   const raw = await requestKodikText(apiKey, prompt,
     input, maxTokens, sources.map(source => source.id));
-  const summary = renderGroundedSummary(raw, sources, maxTokens, countTokens);
-  if (!summary) throw new MemorySummaryError("MEMORY_SUMMARY_EMPTY_RESULT");
+  const summary = renderGroundedSummary(raw, sources, maxTokens, countTokens,
+    stats => infoLog("MemorySummary", "render completed", stats));
+  if (!summary) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   return summary;
 }
 
@@ -536,14 +537,23 @@ function mergeSources(oldSummary: string, messages: DialogMessage[]): SummarySou
 
 /** Oldest-first and whole-message only: never advance coverage over omitted messages. */
 export function fitSummaryMessages(messages: DialogMessage[], coreText: string | null, oldSummary = ""): DialogMessage[] {
-  let end = messages.length;
-  while (end > 0) {
+  // Search actual timestamp-group boundaries: halving an index can cut the first
+  // group and incorrectly reject it even when that complete group fits.
+  const boundaries = messages.map((row, index) => index + 1)
+    .filter(end => end === messages.length || messageTime(messages[end - 1]) !== messageTime(messages[end]));
+  const fits = (end: number) => {
     const chunk = messages.slice(0, end);
     const sources = oldSummary ? mergeSources(oldSummary, chunk) : makeSummarySources(chunk);
-    if (!summaryInputTooLarge(JSON.stringify({ sources, core: coreText }))) return chunk;
-    end = Math.floor(end / 2);
-    while (end > 0 && messageTime(messages[end - 1]) === messageTime(messages[end])) end--;
+    return !summaryInputTooLarge(JSON.stringify({ sources, core: coreText }));
+  };
+  if (messages.length && fits(messages.length)) return messages;
+  let low = 0, high = boundaries.length - 2, best = 0;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (fits(boundaries[middle])) { best = boundaries[middle]; low = middle + 1; }
+    else high = middle - 1;
   }
+  if (best) return messages.slice(0, best);
   throw new MemorySummaryInputError();
 }
 
@@ -762,8 +772,17 @@ async function refreshChatMemorySummary(
 
 export async function resolveChatMemorySummary(scope: ChatScope, apiKey: string,
   user: { subscriptionType?: string | null; subscriptionEnd?: Date | string | null }): Promise<string | null> {
-  return withSummaryRefreshLease(scope.threadId, () => refreshChatMemorySummary(scope, apiKey, user),
-    () => readChatMemorySummary(scope));
+  try {
+    return await withSummaryRefreshLease(scope.threadId, () => refreshChatMemorySummary(scope, apiKey, user),
+      () => readChatMemorySummary(scope));
+  } catch (error) {
+    if (!isDeferredSummaryFailure(error)) throw error;
+    // The lease has already installed the size-limit cooldown. Preserve both the
+    // previous memory and coverage, while keeping this visible in technical logs.
+    infoLog("MemorySummary", "refresh deferred", { ...toSafeDiagnostic(error), stage: "size_limit",
+      retryAfterMs: SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS * 1000 });
+    return readChatMemorySummary(scope);
+  }
 }
 
 export async function readChatMemorySummary(scope: ChatScope): Promise<string | null> {
