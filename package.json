@@ -54,6 +54,7 @@
     "verify:chat:diagnostics": "node scripts/verify-chat-diagnostics.mjs",
     "verify:chat:transport": "node scripts/verify-chat-transport.mjs",
     "verify:chat:admin": "node scripts/verify-admin-chat-diagnostic.mjs",
+    "verify:deepinfra:network": "node scripts/verify-deepinfra-network.mjs",
     "diagnose:chat:stream": "node scripts/diagnose-chat-stream.mjs",
     "verify:chat:mistral": "node scripts/verify-mistral-idle.mjs",
     "verify:chat-threads": "node scripts/verify-chat-threads.mjs",
@@ -85,6 +86,7 @@
     "crc-32": "^1.2.2",
     "dotenv": "^17.4.2",
     "framer-motion": "^12.39.0",
+    "https-proxy-agent": "^9.1.0",
     "i18next": "^26.4.2",
     "i18next-http-backend": "^4.0.2",
     "jimp": "^1.6.1",
@@ -102,7 +104,8 @@
     "stripe": "^22.1.1",
     "tailwind-merge": "^3.6.0",
     "tiktoken": "^1.0.22",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "undici": "^8.11.2"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

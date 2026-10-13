@@ -1,5 +1,6 @@
 // Server-only. Store numbers and allowlisted labels, never prompts, keys or response bodies.
 import { AsyncLocalStorage } from "node:async_hooks";
+import { deepinfraFetch, deepinfraAxiosOptions } from "./deepinfraNetwork";
 import { createHmac, randomUUID } from "node:crypto";
 import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
@@ -175,7 +176,7 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
   const transport = beginAiTransport(ticket.provider, ticket.requestedModel, purpose);
   const started = Date.now();
   try {
-    const response = await axios.post<T>(url, body, { ...config, timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
+    const response = await axios.post<T>(url, body, { ...config, ...deepinfraAxiosOptions(url), timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
     transport.release();
     const actualModel = (response.data as { model?: unknown })?.model;
     await finish(ticket, response.status >= 400 ? "failed" : "completed", providerUsage(ticket, response.data, purpose === "embedding"), response.status,
@@ -211,7 +212,7 @@ export async function meteredChatFetch(url: string, init: RequestInit, model: st
   const metrics = createChatReadMetrics(started);
   traceChatTransport("attempt started", { ...context, ...transport.fields() });
   let response: Response;
-  try { response = await fetch(url, { ...init, redirect: "error" }); }
+  try { response = await deepinfraFetch(url, { ...init, redirect: "error" }); }
   catch (error) {
     logChatTransportFailure({ ...context, ...transport.fields(), stage: "awaiting_headers", durationMs: Date.now() - started }, error, init.signal);
     transport.release();

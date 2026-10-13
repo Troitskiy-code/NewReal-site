@@ -8,6 +8,7 @@ import { chatModelGenerationOptions, chatModelStreamTimeouts } from "./testingCh
 import { safeProviderRequestId, safeTransportHeaders, withChatTransportObserver, chatTransportTraceEnabled } from "./aiTransportDiagnostics";
 import { withInMemoryAiCostContext } from "./aiCostTelemetry";
 import { toSafeDiagnostic } from "./logger";
+import { deepinfraNetworkRoute } from "./deepinfraNetwork";
 
 export const ADMIN_DIAGNOSTIC_MODELS = [
   "deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506",
@@ -20,6 +21,7 @@ export type AdminDiagnosticJob = {
   phase: "direct" | "pipeline" | "done"; startedAt: number; finishedAt: number | null;
   direct: Observation | null; pipeline: { outcome: string; durationMs: number; failure: Record<string, unknown> | null; attempts: Observation[]; observations: Observation[] } | null;
   observation: string | null;
+  pipelineRoute: "direct" | "proxy";
 };
 let current: AdminDiagnosticJob | null = null;
 const RETAIN_MS = 15 * 60_000;
@@ -29,7 +31,7 @@ export class DiagnosticConfigurationError extends Error {}
 export function adminDiagnosticStatus() {
   if (current?.finishedAt && Date.now() - current.finishedAt > RETAIN_MS) current = null;
   return { configured: getChatProvider() === "deepinfra" && Boolean(process.env['DEEPINFRA_API_KEY']?.trim()),
-    traceEnabled: chatTransportTraceEnabled(), nodeVersion: process.version, maxProviderCalls: 3, job: current,
+    traceEnabled: chatTransportTraceEnabled(), pipelineRoute: deepinfraNetworkRoute(), nodeVersion: process.version, maxProviderCalls: 3, job: current,
     cooldownRemainingMs: current?.finishedAt ? Math.max(0, COOLDOWN_MS - (Date.now() - current.finishedAt)) : 0 };
 }
 export function reserveAdminDiagnostic(model: unknown) {
@@ -38,7 +40,7 @@ export function reserveAdminDiagnostic(model: unknown) {
   if (!status.configured) throw new DiagnosticConfigurationError();
   if (current?.state === "running" || status.cooldownRemainingMs > 0) throw new DiagnosticBusyError();
   current = { id: randomUUID(), model, state: "running", phase: "direct", startedAt: Date.now(), finishedAt: null,
-    direct: null, pipeline: null, observation: null };
+    direct: null, pipeline: null, observation: null, pipelineRoute: deepinfraNetworkRoute() };
   return current;
 }
 
@@ -67,6 +69,7 @@ export async function directAdminProbe(body: object, key: string, fetcher: typeo
   let bytesReceived = 0, chunkCount = 0, maxChunkGapMs = 0, lastReadWaitMs = 0;
   let inputTokens: number | null = null, outputTokens: number | null = null;
   let headerFields: ReturnType<typeof safeTransportHeaders> | undefined, outcome = "failed", reason: string | null = null;
+  let errorName: string | null = null, errorCode: string | null = null, causeCode: string | null = null;
   const parser = new ChatCompletionStreamParser(chunk => {
     if (extractChatStreamDelta(chunk).trim()) firstTextMs ??= elapsed();
     providerResponseId = safeProviderRequestId(chunk.id) ?? providerResponseId;
@@ -89,13 +92,20 @@ export async function directAdminProbe(body: object, key: string, fetcher: typeo
       }
       parser.push(decoder.decode()); outcome = parser.end();
     }
-  } catch {
+  } catch (error) {
+    const safe = toSafeDiagnostic(error);
+    errorName = typeof safe.name === "string" ? safe.name : null;
+    errorCode = typeof safe.code === "string" ? safe.code : null;
+    try {
+      const cause = toSafeDiagnostic((error as { cause?: unknown } | null)?.cause);
+      causeCode = typeof cause.code === "string" ? cause.code : null;
+    } catch { /* Hostile exceptions must not interrupt safe diagnostics. */ }
     lastReadWaitMs = reader ? elapsed() - readStarted : 0;
     reason = abort.signal.aborted ? "total_timeout" : "transport_error";
   } finally { clearTimeout(timer); if (reader) { await reader.cancel().catch(() => {}); reader.releaseLock(); } }
   parser.end();
   return { outcome, status, headersMs, firstTextMs, durationMs: elapsed(), bytesReceived, chunkCount, maxChunkGapMs, lastReadWaitMs,
-    ...headerFields, providerResponseId, ...parser.diagnostics(), inputTokens, outputTokens, reason };
+    ...headerFields, providerResponseId, ...parser.diagnostics(), inputTokens, outputTokens, reason, errorName, errorCode, causeCode };
 }
 
 export async function executeAdminDiagnostic(job: AdminDiagnosticJob) {

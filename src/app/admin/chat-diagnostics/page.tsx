@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AdminDiagnosticJob } from "@/lib/adminChatDiagnostic";
 
-type Status = { configured: boolean; traceEnabled: boolean; nodeVersion: string; cooldownRemainingMs: number; job: AdminDiagnosticJob | null };
+type Status = { configured: boolean; traceEnabled: boolean; pipelineRoute: "direct" | "proxy"; nodeVersion: string; cooldownRemainingMs: number; job: AdminDiagnosticJob | null };
 const models = [
   { name: "deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506", label: "Mistral Small 3.2" },
   { name: "deepinfra:Qwen/Qwen3-235B-A22B-Instruct-2507", label: "Qwen 3 235B" },
@@ -26,7 +26,7 @@ export default function ChatDiagnosticsAdmin() {
     const response = await fetch("/api/admin/chat-diagnostics", { method: start ? "POST" : "GET", cache: "no-store",
       headers: { Authorization: `Bearer ${secret}`, ...(start ? { "Content-Type": "application/json" } : {}) },
       ...(start ? { body: JSON.stringify({ model, confirmed }) } : {}) });
-    const result = await response.json();
+    const result = await response.json().catch(() => ({ error: `Сервер временно недоступен (HTTP ${response.status}). Обновите результат после перезапуска.` }));
     if (current !== generation.current) return;
     if (!response.ok) throw new Error(result.error ?? "Не удалось прочитать результат");
     setStatus(result);
@@ -59,6 +59,7 @@ export default function ChatDiagnosticsAdmin() {
         <button className="wd-btn" onClick={() => { generation.current++; setSecret(""); setStatus(null); setConfirmed(false); setNotice(""); setBusy(false); }}>Выйти</button></div>
       <section className="space-y-3 rounded-xl border border-wd-border p-4">
         <p>DeepInfra: {status.configured ? "настроен" : "проверьте настройки"}. Подробная трассировка: {status.traceEnabled ? "включена" : "выключена"}.</p>
+        <p>Маршрут приложения: {status.pipelineRoute === "proxy" ? "через исходящий HTTPS-прокси" : "напрямую"}. Контрольное обращение всегда идёт напрямую.</p>
         <label>Модель<select className={input} disabled={busy || job?.state === "running"} value={model} onChange={event => setModel(event.target.value)}>{models.map(item => <option key={item.name} value={item.name}>{item.label}</option>)}</select></label>
         <p>Один тест делает до трёх обращений. DeepInfra может списать оплату за генерации. Сообщения, память и VC пользователей не меняются.</p>
         <label className="flex gap-2"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />Запустить один тест с оплатой обращений DeepInfra</label>
@@ -67,6 +68,7 @@ export default function ChatDiagnosticsAdmin() {
       </section>
       {job && <section className="space-y-3 rounded-xl border border-wd-border p-4" aria-label="Результат сравнения">
         <h2 className="text-xl font-semibold">{models.find(item => item.name === job.model)?.label}</h2>
+        <p>Маршрут этого теста: {job.pipelineRoute === "proxy" ? "HTTPS-прокси" : "напрямую"}.</p>
         <p role="status">{job.state === "running" ? `Тест идёт: ${job.phase === "direct" ? "прямое обращение" : "обработка приложения"}. Можно закрыть страницу и открыть результат позже.` : observations[job.observation ?? "diagnostic_unavailable"]}</p>
         {job.direct && <p>Напрямую: {outcomes[String(job.direct.outcome)] ?? "Сбой"}. Время: {Number(job.direct.durationMs) / 1000} с. HTTP: {String(job.direct.status ?? "не получен")}. Максимальная пауза: {Number(job.direct.maxChunkGapMs) / 1000} с.</p>}
         {job.pipeline && <p>Через приложение: {outcomes[job.pipeline.outcome] ?? "Сбой"}. Время: {job.pipeline.durationMs / 1000} с. Попыток: {job.pipeline.attempts.length}.</p>}
