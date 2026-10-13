@@ -61,6 +61,7 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "responseContentType", "responseEncoding", "chunkCount", "lastChunkBytes", "lastChunkMs",
   "maxChunkGapMs", "lastReadWaitMs", "maxReadWaitMs", "readPending", "readPendingMs",
   "firstByteLimitMs", "idleLimitMs", "totalLimitMs",
+  "generationLimit", "storedLimit", "outputUsage",
 ]);
 
 const ERROR_PAYLOAD_KEYS = new Set([

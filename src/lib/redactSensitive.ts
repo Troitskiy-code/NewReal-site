@@ -31,6 +31,8 @@ const ALLOWED_ERROR_NAMES = new Set([
   "AbortError",
   "TimeoutError",
   "ChatCompletionStreamError",
+  "MemorySummaryError",
+  "MemorySummaryInputError",
   "PrismaClientKnownRequestError",
   "PrismaClientUnknownRequestError",
   "PrismaClientRustPanicError",
@@ -51,6 +53,12 @@ const ALLOWED_OAUTH_CODES = new Set([
 ]);
 
 const ALLOWED_HTTP_CODES = new Set([
+  "MEMORY_SUMMARY_TRUNCATED",
+  "MEMORY_SUMMARY_EMPTY_RESPONSE",
+  "MEMORY_SUMMARY_INVALID_JSON",
+  "MEMORY_SUMMARY_INVALID_ITEMS",
+  "MEMORY_SUMMARY_UNSUPPORTED_ITEM",
+  "MEMORY_SUMMARY_EMPTY_RESULT",
   "ECONNRESET",
   "ECONNREFUSED",
   "ETIMEDOUT",

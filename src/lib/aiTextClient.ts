@@ -2,6 +2,7 @@ import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { meteredPost } from "./aiCostTelemetry";
 import { KODIK_CHAT_URL, serviceTransport, AiProviderConfigurationError } from "./aiProviders";
 import { deepinfraGenerationOptions } from "./deepinfraModels";
+import { MAX_SUMMARY_GENERATION_TOKENS } from "./memorySummaryPolicy";
 
 /** Service routing is explicit; it must never change an embedding's model/key. */
 export async function serviceChatPost<T = AxiosResponse["data"]>(purpose: string, legacyUrl: string,
@@ -16,8 +17,8 @@ export async function serviceChatPost<T = AxiosResponse["data"]>(purpose: string
   const { reasoning: _reasoning, reasoning_effort: _effort, service_tier: _tier, ...rest } = payload;
   void _reasoning; void _effort; void _tier;
   const requestedMax = Number(rest.max_tokens);
-  // Universe summaries retain their existing 1500-token allowance.
-  const outputLimit = purpose === "summary" ? 1500 : 1000;
+  // JSON generation is bounded independently of the persisted summary allowance.
+  const outputLimit = purpose === "summary" ? MAX_SUMMARY_GENERATION_TOKENS : 1000;
   const options = deepinfraGenerationOptions(route.model);
   return meteredPost<T>(purpose, route.url, { ...rest, ...options, model: route.model,
     max_tokens: Number.isSafeInteger(requestedMax) && requestedMax > 0 ? Math.min(requestedMax, outputLimit) : 1000,

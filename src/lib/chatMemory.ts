@@ -10,6 +10,9 @@ import { GROUNDED_SUMMARY_RULES, makeSummarySources, renderGroundedSummary, sour
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
+import { getMemoryProvider } from "./aiProviders";
+import { groundedSummaryFormat, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
+import { withSummaryRefreshLease } from "./memorySummaryRefresh";
 import {
   fetchEmbeddings,
   hasDistinctKeyTokens,
@@ -468,8 +471,9 @@ async function requestKodikText(
   systemPrompt: string,
   userContent: string,
   maxTokens: number,
-  extraVars: Record<string, string | number> = {}
+  sourceIds: string[]
 ): Promise<string> {
+  const generationLimit = summaryGenerationLimit(maxTokens);
   const response = await meteredPost("summary",
     `${KODIKROUTER_URL}/chat/completions`,
     {
@@ -477,12 +481,14 @@ async function requestKodikText(
       messages: [
         {
           role: "system",
-          content: applyPromptVars(systemPrompt, { maxTokens, ...extraVars }) + "\n\n" + GROUNDED_SUMMARY_RULES
-            + `\nОтвет целиком должен поместиться в ${maxTokens} токенов. Максимум ${Math.min(10, Math.max(1, Math.floor(maxTokens / 120)))} пунктов, коротко, без markdown-обёртки.`,
+          content: applyPromptVars(systemPrompt, { maxTokens }) + "\n\n" + GROUNDED_SUMMARY_RULES
+            + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${Math.min(10, Math.max(1, Math.floor(maxTokens / 120)))} пунктов. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Короткие законченные предложения. JSON полностью закрой; без markdown-обёртки.`,
         },
         { role: "user", content: userContent },
       ],
-      max_tokens: maxTokens,
+      max_tokens: generationLimit,
+      response_format: getMemoryProvider() === "deepinfra"
+        ? groundedSummaryFormat(sourceIds, maxTokens) : { type: "json_object" },
       temperature: 0,
     },
     {
@@ -493,12 +499,15 @@ async function requestKodikText(
     }
   );
 
-  const text = response.data.choices[0]?.message?.content?.trim();
-  if (!text) {
-    throw new Error("Пустая суммаризация от ИИ");
+  try {
+    const result = readSummaryResponse(response.data);
+    infoLog("MemorySummary", "generation completed", { finishReason: result.finishReason, generationLimit,
+      storedLimit: maxTokens, outputUsage: Number(response.data?.usage?.completion_tokens) || 0 });
+    return result.text;
+  } catch (error) {
+    errorLog("MemorySummary", "generation rejected", { ...toSafeDiagnostic(error), stage: "generation", generationLimit, storedLimit: maxTokens });
+    throw error;
   }
-
-  return text;
 }
 
 async function requestSelectedSummary(
@@ -506,13 +515,13 @@ async function requestSelectedSummary(
   coreText: string | null
 ): Promise<string> {
   if (!sources.length) throw new Error("No memory source quotes available");
-  // JSON output overhead uses the existing output allowance, never an unbounded extra call.
+  // One bounded generation; failures are deferred by the background refresh lease.
   const input = JSON.stringify({ sources, core: coreText });
   if (summaryInputTooLarge(input)) throw new MemorySummaryInputError();
   const raw = await requestKodikText(apiKey, prompt,
-    input, maxTokens);
+    input, maxTokens, sources.map(source => source.id));
   const summary = renderGroundedSummary(raw, sources, maxTokens, countTokens);
-  if (!summary) throw new Error("No supported memory quotes selected");
+  if (!summary) throw new MemorySummaryError("MEMORY_SUMMARY_EMPTY_RESULT");
   return summary;
 }
 
@@ -523,6 +532,19 @@ async function requestSummary(apiKey: string, messages: DialogMessage[], maxToke
 function mergeSources(oldSummary: string, messages: DialogMessage[]): SummarySource[] {
   return [...sourcesFromSummaries(oldSummary), ...makeSummarySources(messages)]
     .map((source, index) => ({ ...source, id: `s${index + 1}` }));
+}
+
+/** Oldest-first and whole-message only: never advance coverage over omitted messages. */
+export function fitSummaryMessages(messages: DialogMessage[], coreText: string | null, oldSummary = ""): DialogMessage[] {
+  let end = messages.length;
+  while (end > 0) {
+    const chunk = messages.slice(0, end);
+    const sources = oldSummary ? mergeSources(oldSummary, chunk) : makeSummarySources(chunk);
+    if (!summaryInputTooLarge(JSON.stringify({ sources, core: coreText }))) return chunk;
+    end = Math.floor(end / 2);
+    while (end > 0 && messageTime(messages[end - 1]) === messageTime(messages[end])) end--;
+  }
+  throw new MemorySummaryInputError();
 }
 
 /**
@@ -576,9 +598,10 @@ async function createArcSummary(
     return null;
   }
 
+  const coreText = await loadCoreMemoryText(scope);
+  messagesToSummarize = fitSummaryMessages(messagesToSummarize, coreText);
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
-  const coreText = await loadCoreMemoryText(scope);
   const summary = await requestSummary(apiKey, messagesToSummarize, config.maxTokens, coreText);
   const saved = await persistMemorySummary(
     scope,
@@ -615,6 +638,8 @@ async function updateArcWithChapter(
   plan: string,
   onWrite?: (status: "updated" | "conflict") => void
 ): Promise<string | null> {
+  const coreText = await loadCoreMemoryText(scope);
+  chapterMessages = fitSummaryMessages(chapterMessages, coreText, existingSummary);
   const chapterText = formatDialogForSummary(chapterMessages);
   const chapterTokens = countTokens(chapterText);
   const arcTokens = countTokens(existingSummary);
@@ -624,7 +649,6 @@ async function updateArcWithChapter(
     "Memory",
     `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}) → eventsLimit: ${eventsLimit}`
   );
-  const coreText = await loadCoreMemoryText(scope);
   // One grounded update sees the actual new messages, not a twice-compressed chapter.
   const mergedSummary = await requestSelectedSummary(apiKey, MERGE_PROMPT,
     mergeSources(existingSummary, chapterMessages), config.maxTokens, coreText);
@@ -653,7 +677,7 @@ async function updateArcWithChapter(
   return mergedSummary;
 }
 
-export async function resolveChatMemorySummary(
+async function refreshChatMemorySummary(
   scope: ChatScope,
   apiKey: string,
   user: {
@@ -734,6 +758,12 @@ export async function resolveChatMemorySummary(
   }
 
   return createArcSummary(scope, apiKey, historyToSummarize, config, plan);
+}
+
+export async function resolveChatMemorySummary(scope: ChatScope, apiKey: string,
+  user: { subscriptionType?: string | null; subscriptionEnd?: Date | string | null }): Promise<string | null> {
+  return withSummaryRefreshLease(scope.threadId, () => refreshChatMemorySummary(scope, apiKey, user),
+    () => readChatMemorySummary(scope));
 }
 
 export async function readChatMemorySummary(scope: ChatScope): Promise<string | null> {

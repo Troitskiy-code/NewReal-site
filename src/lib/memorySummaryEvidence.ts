@@ -1,4 +1,5 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
+import { MemorySummaryError } from "./memorySummaryPolicy";
 import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, safeMemoryParaphrase, sameMemoryMeaning, type MemoryStatus } from "./memoryNarrative";
 
 type Author = "user" | "character" | "memory";
@@ -23,25 +24,27 @@ export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
 /** Sources are checked per request; IDs are not a persistent facts database. */
 export function renderGroundedSummary(raw: string, sources: SummarySource[], maxTokens: number,
   countTokens: (text: string) => number): string {
-  const parsed: unknown = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, ""));
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid grounded summary");
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "")); }
+  catch { throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_JSON"); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_ITEMS");
   const result = parsed as Record<string, unknown>;
   if (Object.keys(result).some((key) => key !== "items") || !Array.isArray(result.items) || result.items.length > 10) {
-    throw new Error("Invalid grounded summary items");
+    throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_ITEMS");
   }
   const known = new Map(sources.map((source, index) => [source.id, { ...source, index }]));
   const headings = { state: "Текущая ситуация", decisions: "Принятые решения", plans: "Открытые планы", events: "Недавние события" };
   type Section = keyof typeof headings;
   const rows: Array<{ section: Section; text: string; status: MemoryStatus; author: string; order: number }> = [];
   for (const value of result.items) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid summary item");
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new MemorySummaryError("MEMORY_SUMMARY_UNSUPPORTED_ITEM");
     const item = value as Record<string, unknown>;
     if (Object.keys(item).some((key) => !["section", "text", "status", "sources"].includes(key))
       || typeof item.section !== "string" || !Object.hasOwn(headings, item.section)
       || typeof item.text !== "string" || !item.text.trim() || item.text.length > 1200
       || !MEMORY_STATUSES.includes(item.status as MemoryStatus) || !Array.isArray(item.sources)
       || item.sources.length < 1 || item.sources.length > 4
-      || item.sources.some((id) => typeof id !== "string" || !known.has(id))) throw new Error("Unsupported summary item");
+      || item.sources.some((id) => typeof id !== "string" || !known.has(id))) throw new MemorySummaryError("MEMORY_SUMMARY_UNSUPPORTED_ITEM");
     const selected = [...new Set(item.sources as string[])].map((id) => known.get(id)!).sort((a, b) => a.index - b.index);
     const evidence = selected.map((source) => source.text).join(" ");
     const safeText = safeMemoryParaphrase(item.text, evidence);

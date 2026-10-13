@@ -68,6 +68,7 @@ axios.post = async (url, body, options) => {
   return { status: 200, headers: { 'x-request-id': 'di_embedding_fixture' }, data: response };
 };
 const latestEvent = () => [...events.values()].at(-1);
+const scope = { userId: 'owner', characterId: 'card', threadId: 'story-fixture', legacy: true };
 const settle = async () => { await new Promise(r => setTimeout(r, 60)); };
 const insertMessage = async (id, userId = 'owner', characterId = 'card', content = 'Ключ лежит под ступенью.', role = 'user') => {
   await pg.query('INSERT INTO "Message" (id,"userId","characterId",content,role,"createdAt") VALUES ($1,$2,$3,$4,$5,NOW())', [id, userId, characterId, content, role]);
@@ -75,7 +76,7 @@ const insertMessage = async (id, userId = 'owner', characterId = 'card', content
 try {
   await pg.exec(`CREATE EXTENSION vector;
     CREATE TABLE "User" (id text PRIMARY KEY,"subscriptionType" text,"subscriptionEnd" timestamp);
-    CREATE TABLE "Message" (id text PRIMARY KEY,"userId" text,"characterId" text,content text,role text,"createdAt" timestamp);
+    CREATE TABLE "Message" (id text PRIMARY KEY,"userId" text,"characterId" text,"threadId" text,content text,role text,"createdAt" timestamp);
     CREATE TABLE "MessageEmbedding" (id text PRIMARY KEY,"messageId" text UNIQUE REFERENCES "Message"(id) ON DELETE CASCADE,embedding vector(1536),"createdAt" timestamp);
     INSERT INTO "User" VALUES ('owner','universe',NOW()+INTERVAL '1 day'),('outsider','universe',NOW()+INTERVAL '1 day'),('expired','universe',NOW()-INTERVAL '1 day'),('free','start',NULL);`);
   await insertMessage('legacy');
@@ -101,7 +102,7 @@ try {
     assert.equal(vectors.length, 2); assert.equal(vectors[0].length, 1024);
     const post = posts.at(-1); assert.equal(post.url, config.DEEPINFRA_EMBEDDING_URL);
     assert.equal(post.options.headers.Authorization, 'Bearer synthetic_di_key'); assert.deepEqual(post.body.input, ['Факт один', 'Факт два']);
-    assert.equal(post.options.maxRedirects, 0); assert.ok(post.options.timeout <= 8000); assert.ok(post.options.signal);
+    assert.equal(post.options.maxRedirects, 0); assert.ok(post.options.timeout <= 25000 && post.options.timeout > 20000); assert.ok(post.options.signal);
   });
   await check('embedding accounting uses input tokens, zero output and quoted RUB estimate', async () => {
     const event = latestEvent(); assert.equal(event.provider, 'deepinfra'); assert.equal(event.apiSurface, 'embeddings');
@@ -146,7 +147,7 @@ try {
     assert.equal(latestEvent().outcome, 'failed');
   });
   await check('RAG query has an instruction, document does not; query wait <=3 seconds', async () => {
-    assert.deepEqual(await rag.searchRelevantMessages('owner', 'card', 'Где ключ?', ''), []);
+    await rag.searchRelevantMessages(scope, 'Где ключ?', '');
     assert.match(posts.at(-1).body.input[0], /^Instruct: /); assert.ok(posts.at(-1).options.timeout <= 3000);
     assert.equal(await rag.saveMessageEmbeddingFromContent('legacy', 'Ключ лежит под ступенью.', ''), true);
     assert.deepEqual(posts.at(-1).body.input, ['Ключ лежит под ступенью.']);
@@ -159,12 +160,12 @@ try {
   await rag.saveMessageEmbeddingFromContent('other-user', 'Ключ лежит под ступенью.', ''); await rag.saveMessageEmbeddingFromContent('other-card', 'Ключ лежит под ступенью.', '');
   await pg.query('INSERT INTO "MessageEmbedding" VALUES ($1,$2,$3::vector,NOW())', ['old-only-vector','only-old',`[${makeVector(1536)}]`]);
   await check('retrieval never mixes spaces, users or characters; excluded IDs stay excluded', async () => {
-    const rows = await rag.searchRelevantMessages('owner', 'card', 'Где ключ?', '', undefined, 5, .25, { excludedMessageIds: ['only-old'] });
+    const rows = await rag.searchRelevantMessages(scope, 'Где ключ?', '', undefined, 5, .25, { excludedMessageIds: ['only-old'] });
     assert.ok(rows.some(r => r.id === 'legacy')); assert.ok(rows.every(r => !['other-user','other-card','only-old'].includes(r.id)));
-    assert.deepEqual(await rag.searchRelevantMessages('owner', 'card', 'Где ключ?', '', 'legacy', 5, .25), []);
+    assert.deepEqual(await rag.searchRelevantMessages(scope, 'Где ключ?', '', 'legacy', 5, .25), []);
   });
   await check('provider failure falls back without calling Kodik', async () => {
-    failure = true; assert.deepEqual(await rag.searchRelevantMessages('owner','card','Где ключ?',''), []);
+    failure = true; assert.deepEqual(await rag.searchRelevantMessages(scope,'Где ключ?',''), []);
     assert.equal(await memory.isSemanticDuplicate('Факт',['Другой факт'],''), null); failure = false;
     assert.ok(posts.every(p => p.url === config.DEEPINFRA_EMBEDDING_URL));
   });
@@ -212,7 +213,7 @@ try {
   await check('disabled provider makes no API calls for dedup, RAG or scheduled persistence', async () => {
     process.env.EMBEDDING_AI_PROVIDER = 'disabled'; const n = posts.length;
     assert.equal(await memory.isSemanticDuplicate('Факт',['Другой факт'],''), null);
-    assert.deepEqual(await rag.searchRelevantMessages('owner','card','Где ключ?',''), []);
+    assert.deepEqual(await rag.searchRelevantMessages(scope,'Где ключ?',''), []);
     rag.scheduleMessageEmbedding('retry-message','text','',true); await settle(); assert.equal(posts.length, n);
     await assert.rejects(backfill.backfillDeepinfraEmbeddings());
   });

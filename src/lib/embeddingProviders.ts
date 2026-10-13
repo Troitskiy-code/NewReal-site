@@ -3,7 +3,7 @@ import { AiProviderConfigurationError, getMemoryProvider, providerApiKey, type T
 export const DEEPINFRA_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B";
 export const DEEPINFRA_EMBEDDING_INPUT_USD_PER_MILLION = 0.01;
 export const DEEPINFRA_EMBEDDING_URL = "https://api.deepinfra.com/v1/openai/embeddings";
-export const EMBEDDING_BACKGROUND_TIMEOUT_MS = 8_000;
+export const EMBEDDING_BACKGROUND_TIMEOUT_MS = 25_000;
 export type EmbeddingProvider = TextProvider | "disabled";
 
 /** Separate override permits emergency disable; otherwise follow the memory provider. */
