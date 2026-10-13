@@ -62,6 +62,7 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "maxChunkGapMs", "lastReadWaitMs", "maxReadWaitMs", "readPending", "readPendingMs",
   "firstByteLimitMs", "idleLimitMs", "totalLimitMs",
   "generationLimit", "storedLimit", "outputUsage",
+  "networkRoute",
   "candidateCount", "sourceCount", "paraphraseFallbackCount", "budgetRejectedCount",
   "sourceFallbackCount", "sourcePoolFallbackCount", "fittedCount", "renderedUsage",
 ]);

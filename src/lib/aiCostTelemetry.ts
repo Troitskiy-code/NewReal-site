@@ -5,7 +5,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { prisma } from "@/lib/prisma";
-import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { logChatTransportFailure } from "./chatDiagnostics";
 import { beginAiTransport, createChatReadMetrics, safeTransportHeaders, traceChatTransport } from "./aiTransportDiagnostics";
 import { finiteNonnegative, readCostUsage, readDeepinfraCostUsage, resolveDeepinfraCost, resolveKodikCost, tokenCostRub, type CostUsage, type KodikApiSurface } from "./aiCostMath";
@@ -175,19 +175,26 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
   const ticket = await begin(safeModel(payload?.model), purpose, textProviderForUrl(url));
   const transport = beginAiTransport(ticket.provider, ticket.requestedModel, purpose);
   const started = Date.now();
+  let networkRoute = "unavailable";
   try {
-    const response = await axios.post<T>(url, body, { ...config, ...deepinfraAxiosOptions(url), timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
+    const networkOptions = deepinfraAxiosOptions(url);
+    networkRoute = networkOptions.httpsAgent ? "proxy" : "direct";
+    const response = await axios.post<T>(url, body, { ...config, ...networkOptions, timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
     transport.release();
     const actualModel = (response.data as { model?: unknown })?.model;
     await finish(ticket, response.status >= 400 ? "failed" : "completed", providerUsage(ticket, response.data, purpose === "embedding"), response.status,
       undefined, undefined, typeof actualModel === "string" ? safeModel(actualModel) : undefined,
       responseRequestId(ticket, response.headers), (response.data as { id?: unknown })?.id);
+    if (purpose === "avatar_prompt") {
+      infoLog("AvatarPrompt", "request completed", { ...ticketDiagnosticContext(ticket), purpose, networkRoute,
+        status: response.status, durationMs: Date.now() - started });
+    }
     return response;
   } catch (error) {
     const response = axios.isAxiosError(error) ? error.response : null;
     errorLog("ChatDiagnostics", "service attempt failed", { ...ticketDiagnosticContext(ticket), ...transport.fields(),
       ...safeTransportHeaders(response?.headers ?? {}, ticket.provider), stage: "service_request",
-      status: response?.status, durationMs: Date.now() - started }, toSafeDiagnostic(error));
+      networkRoute, status: response?.status, durationMs: Date.now() - started }, toSafeDiagnostic(error));
     transport.release();
     await finish(ticket, "failed", providerUsage(ticket, response?.data, purpose === "embedding"), response?.status,
       undefined, undefined, undefined, responseRequestId(ticket, response?.headers ?? {}), response?.data?.id);
