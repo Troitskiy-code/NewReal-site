@@ -173,8 +173,6 @@ export type CharacterFormValues = {
   descriptionCard: string;
   tags: string;
   avatarPrompt: string;
-  systemPrompt: string;
-  promptBuilderVersion: number;
   roleplayMode: RoleplayMode;
   roleplayStyle: RoleplayStyle;
   rpConfig: RoleplayConfig;
@@ -193,8 +191,6 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
   descriptionCard: "",
   tags: "",
   avatarPrompt: "",
-  systemPrompt: "",
-  promptBuilderVersion: 2,
   roleplayMode: "character",
   roleplayStyle: "mixed",
   rpConfig: {},

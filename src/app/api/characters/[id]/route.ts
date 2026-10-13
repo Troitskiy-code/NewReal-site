@@ -133,10 +133,11 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
       data.memoryPermissions = parsed.memoryPermissions ?? Prisma.DbNull;
     }
 
-    // Existing prompt text is an immutable legacy source. Switching versions is a separate owner action.
-    if (body.systemPrompt !== undefined && body.systemPrompt !== authResult.character.systemPrompt) {
-      return NextResponse.json({ error: "Старый промпт сохранён для отката. Изменяйте поля карточки." }, { status: 400 });
+    // System instructions are assembled from fields; the stored archive is immutable.
+    if (body.systemPrompt !== undefined && body.systemPrompt !== null && body.systemPrompt !== "") {
+      return NextResponse.json({ error: "Изменяйте описание и настройки карточки вместо готовых системных инструкций." }, { status: 400 });
     }
+    if (Object.keys(data).length || body.roleplayMode !== undefined || body.roleplayStyle !== undefined || body.rpConfig !== undefined) data.promptBuilderVersion = 2;
     if (body.roleplayMode !== undefined) data.roleplayMode = parsed.roleplayMode;
     if (body.roleplayStyle !== undefined) data.roleplayStyle = parsed.roleplayStyle;
     if (body.rpConfig !== undefined) data.rpConfig = parsed.rpConfig;

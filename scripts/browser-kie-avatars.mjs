@@ -21,7 +21,7 @@ for (const name of ['.env', '.env.local', '.env.production', '.env.production.lo
 Object.assign(env, { DATABASE_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/synthetic?connect_timeout=1',
   DIRECT_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/synthetic?connect_timeout=1',
   NEXTAUTH_SECRET: 'synthetic-local-editor-test-secret', NEXTAUTH_URL: base,
-  NEXT_PUBLIC_APP_URL: base, NEXT_PUBLIC_SITE_URL: base, RP_PROMPT_V2_ENABLED: 'true', NODE_ENV: 'production' });
+  NEXT_PUBLIC_APP_URL: base, NEXT_PUBLIC_SITE_URL: base, NODE_ENV: 'production' });
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', data => { serverLog = (serverLog + data).slice(-4000); });

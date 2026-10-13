@@ -13,7 +13,7 @@ export function promptAssemblyDiagnostics(assembly: PromptAssembly) {
 }
 export function logPromptDelivery(modelName: string, messages: { role: string; content: string }[], stream: boolean): void {
   const system = messages.filter(message => message.role === "system").map(message => message.content).join("\n");
-  const version = system.startsWith(`Правила приложения (${PROMPT_BUILDER_VERSION})`) || system.startsWith(`Application rules (${PROMPT_BUILDER_VERSION})`) ? PROMPT_BUILDER_VERSION : "rp-v1";
+  const version = system.startsWith(`Правила приложения (${PROMPT_BUILDER_VERSION})`) || system.startsWith(`Application rules (${PROMPT_BUILDER_VERSION})`) ? PROMPT_BUILDER_VERSION : "unrecognized";
   // Fixed structure, no full private card, history, secrets, error or upstream dump.
   infoLog("PromptDelivery", JSON.stringify({ version, modelName, stream,
     parameters: { ...chatModelGenerationOptions(modelName), ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}) },

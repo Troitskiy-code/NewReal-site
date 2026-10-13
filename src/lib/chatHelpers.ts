@@ -11,11 +11,10 @@ import {
   type EpisodicMemoryItem,
   type MemoryCandidates,
 } from "@/lib/advancedMemory";
-import { appendPersonaToSystemPrompt } from "@/lib/persona";
 import { getSelectedChatPersona } from "@/lib/personaService";
 import { assembleRoleplayPrompt, fitPromptAssembly, type PromptAssemblyOptions, type PromptAssembly } from "@/lib/chatSystemPrompt";
-import { buildChatSystemPrompt as buildLegacyChatSystemPrompt } from "@/lib/chatSystemPromptV1";
-import { getOrCreateThreadPromptState, isPromptV2Enabled, assertPromptStateAvailable, type PromptState } from "@/lib/promptState";
+import { roleplayMode } from "./roleplayConfig";
+import { getOrCreateThreadPromptState, assertPromptStateAvailable, type PromptState } from "@/lib/promptState";
 import { messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { promptAssemblyDiagnostics, logPromptDelivery } from "@/lib/promptDiagnostics";
 import { readChatMemoryState, resolveChatMemorySummary } from "@/lib/chatMemory";
@@ -64,16 +63,13 @@ export type CharacterForChat = {
   greeting_en?: string | null;
   scenario_en?: string | null;
   exampleDialogs_en?: string | null;
-  systemPrompt?: string | null;
-  legacyPromptArchive?: string | null;
-  promptBuilderVersion?: number;
   roleplayMode?: string | null;
   roleplayStyle?: string | null;
   rpConfig?: unknown;
 };
 
 export const promptCharacterSelect = {
-  promptBuilderVersion: true, roleplayMode: true, roleplayStyle: true, rpConfig: true, legacyPromptArchive: true,
+  roleplayMode: true, roleplayStyle: true, rpConfig: true,
 } as const;
 
 export function localizeCharacterForChat(
@@ -103,15 +99,9 @@ export function resolveChatSystemPrompt(
 }
 
 export function resolveChatPromptAssembly(character: CharacterForChat, locale: string | null | undefined, state?: PromptState, options: PromptAssemblyOptions = {}): PromptAssembly {
-  const version = state?.builderVersion ?? character.promptBuilderVersion ?? 1;
-  assertPromptStateAvailable({ builderVersion: version, mode: state?.mode ?? (character.roleplayMode === "group" ? "group" : "character") }, character.rpConfig);
-  if (version === 2 && isPromptV2Enabled()) {
-    const assembly = assembleRoleplayPrompt(localizeCharacterForChat(character, locale), locale, { ...options, ...(state ? { mode: state.mode } : {}) });
-    return options.tokenBudget ? fitPromptAssembly(assembly, options.tokenBudget, countTokens) : assembly;
-  }
-  const stored = (character.legacyPromptArchive ?? character.systemPrompt)?.trim();
-  const content = appendPersonaToSystemPrompt(stored || buildLegacyChatSystemPrompt(localizeCharacterForChat(character, locale), locale ?? "ru"), options.persona ? { name: options.persona.name, description: options.persona.description ?? null } : null, locale ?? "ru");
-  return { version: "rp-v1", mode: state?.mode ?? "character", content, blocks: [{ source: stored ? "legacy.stored" : "legacy.template", content }] };
+  assertPromptStateAvailable({ builderVersion: 2, mode: state?.mode ?? roleplayMode(character.roleplayMode) }, character.rpConfig);
+  const assembly = assembleRoleplayPrompt(localizeCharacterForChat(character, locale), locale, { ...options, ...(state ? { mode: state.mode } : {}) });
+  return options.tokenBudget ? fitPromptAssembly(assembly, options.tokenBudget, countTokens) : assembly;
 }
 
 export type ChatUser = {
@@ -308,7 +298,6 @@ type PrepareChatMessagesOptions = {
   excludeMessageId?: string;
   continueMode?: boolean;
   continueCutOff?: boolean;
-  continueSourceText?: string;
   historyBeforeMessageId?: string;
   intent?: UserIntent;
   locale?: string;
@@ -679,7 +668,6 @@ export async function prepareFastContext({
   apiKey,
   continueMode = false,
   continueCutOff = false,
-  continueSourceText,
   historyBeforeMessageId,
   model,
   locale = "ru",
@@ -705,36 +693,15 @@ export async function prepareFastContext({
   ]);
   const historyRows = history.rows;
 
-  const promptState = await getOrCreateThreadPromptState(scope, character);
+  const promptState = await getOrCreateThreadPromptState(scope);
   const assembly = resolveChatPromptAssembly(character, locale, promptState, {
     persona: selectedPersona, operation: continueMode ? "continue" : historyBeforeMessageId ? "regenerate" : "reply", cutOff: continueCutOff,
     tokenBudget: Math.floor(maxContextTokens * 0.5),
   });
   infoLog("PromptAssembly", JSON.stringify({ characterId, userId, ...promptAssemblyDiagnostics(assembly) }));
-  let systemPromptBase = assembly.content;
+  const systemPromptBase = assembly.content;
   if (selectedPersona) {
     debugLog("Persona", `prompt user=${userId} character=${characterId} persona=${selectedPersona.id}`);
-  }
-
-  if (continueMode && assembly.version === "rp-v1") {
-    const english = locale === "en";
-    if (continueCutOff && continueSourceText?.trim()) {
-      systemPromptBase = english
-        ? `Attention: you must continue the previous assistant message that was cut off. Here is the text to continue:
-"${continueSourceText.trim()}"
-Continue exactly from where it stopped. Do not repeat what was already written, and do not start over. Just write the missing part.
-
-${systemPromptBase}`
-        : `Внимание: ты должен продолжить предыдущее сообщение ассистента, которое было оборвано. Вот текст, который нужно продолжить:
-«${continueSourceText.trim()}»
-Продолжи ровно с того места, где остановился, не повторяй предыдущее, не начинай заново. Просто допиши недостающую часть.
-
-${systemPromptBase}`;
-    } else {
-      systemPromptBase = english
-        ? `${systemPromptBase}\n\nContinue your reply from where you left off.`
-        : `${systemPromptBase}\n\nПродолжи ответ с того места, где остановился.`;
-    }
   }
 
   const windowTokens = historyRows.reduce((sum, msg) => sum + countTokens(msg.content), 0);

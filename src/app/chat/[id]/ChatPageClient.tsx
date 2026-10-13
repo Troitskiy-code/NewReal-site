@@ -11,7 +11,7 @@ import MemoryEditor from "@/components/MemoryEditor";
 import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
 import PersonaSelector from "@/components/PersonaSelector";
-import ChatPromptVersionSettings from "@/components/ChatPromptVersionSettings";
+import ChatStorySettings from "@/components/ChatStorySettings";
 import ChatThreadsPanel from "@/components/ChatThreadsPanel";
 import { THREAD_QUERY_PARAM, threadDisplayTitle, withThread, type ChatThreadSummary } from "@/lib/chatThreadShared";
 import type { ChatPersona } from "@/lib/persona";
@@ -1814,7 +1814,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         </Modal>
 
         <Modal open={promptSettingsOpen} onClose={() => setPromptSettingsOpen(false)} title="Тип и правила истории" wide>
-          {!isAnonymous && <ChatPromptVersionSettings key={`${characterId}:${threadId ?? ""}`} characterId={characterId} threadId={threadId} threadsEnabled={threadsEnabled} disabled={sending || actionLoading || clearingChat} />}
+          {!isAnonymous && <ChatStorySettings key={`${characterId}:${threadId ?? ""}`} characterId={characterId} threadId={threadId} disabled={sending || actionLoading || clearingChat} />}
         </Modal>
 
         {threadsEnabled && !isAnonymous ? (

@@ -154,8 +154,8 @@ export function sanitizeCharacterMemory<T extends {
     privateMemory_en: canReadPrivate ? character.privateMemory_en ?? null : null,
     memoryPermissions: isOwner ? character.memoryPermissions ?? null : null,
     // A legacy prompt may contain private memory even when the card itself is public.
-    systemPrompt: isOwner ? character.systemPrompt ?? null : null,
-    legacyPromptArchive: isOwner ? character.legacyPromptArchive ?? null : null,
-    promptOrigin: isOwner ? character.promptOrigin : undefined,
+    systemPrompt: null,
+    legacyPromptArchive: null,
+    promptOrigin: undefined,
   };
 }

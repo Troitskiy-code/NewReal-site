@@ -58,7 +58,6 @@ check(imagePrompt.buildAvatarPrompt({ name: 'Анна' }).includes('character po
   check(/Character context: (слово )*слово\./.test(long), 'long fields are cut at a word boundary');
   check(imagePrompt.buildAvatarPrompt({ ...card, style: 'anime' }).startsWith('Anime illustration'), 'style selector still controls the style line');
 }
-const legacy = load('src/lib/chatSystemPromptV1.ts');
 const persona = load('src/lib/persona.ts', { './publicError': errorType });
 const economy = load('src/lib/chatEconomy.ts');
 const deepinfraModels = load('src/lib/deepinfraModels.ts', {
@@ -83,6 +82,12 @@ try { await db.exec(`BEGIN; ${migration} SELECT * FROM table_that_does_not_exist
 check(!(await db.query(`SELECT to_regclass('"ChatPromptState"') AS name`)).rows[0].name, 'failed migration transaction leaves schema unchanged');
 await db.exec(`BEGIN; ${migration} COMMIT;`);
 check((await db.query('SELECT * FROM "Character"')).rows[0].systemPrompt === 'LEGACY_PRIVATE_DO_NOT_LOG', 'migration preserves original legacy text and assigns unknown provenance/v1');
+const defaultsMigration = readFileSync('prisma/migrations/20261012220000_prompt_v2_defaults/migration.sql', 'utf8');
+await db.exec(`BEGIN; ${defaultsMigration} COMMIT;`);
+await db.exec(`BEGIN; ${defaultsMigration} COMMIT;`);
+const defaults = (await db.query(`SELECT column_default FROM information_schema.columns WHERE (table_name='Character' AND column_name='promptBuilderVersion') OR (table_name='ChatPromptState' AND column_name='builderVersion')`)).rows;
+check(defaults.length === 2 && defaults.every(row => row.column_default === '2'), 'both SQL defaults become v2 and reapplying SQL is safe');
+check((await db.query('SELECT * FROM "Character"')).rows[0].systemPrompt === 'LEGACY_PRIVATE_DO_NOT_LOG', 'defaults migration leaves existing prompt texts untouched');
 let serial = 0;
 let transactionQueue = Promise.resolve();
 let history = [];
@@ -90,17 +95,16 @@ let guestHistory = [];
 const queryKey = where => where.scopeKey_characterId;
 const stateDelegate = {
   findUnique: async ({ where }) => (await db.query('SELECT * FROM "ChatPromptState" WHERE "scopeKey"=$1 AND "characterId"=$2', Object.values(queryKey(where)))).rows[0] ?? null,
-  upsert: async ({ where, create }) => {
+  upsert: async ({ where, create, update = {} }) => {
     await db.query(`INSERT INTO "ChatPromptState" ("id","scopeKey","characterId","builderVersion","mode","updatedAt") VALUES ($1,$2,$3,$4,$5,NOW()) ON CONFLICT ("scopeKey","characterId") DO NOTHING`, [`state-${++serial}`, create.scopeKey, create.characterId, create.builderVersion, create.mode]);
+    if (Object.keys(update).length) await stateDelegate.update({ where, data: update });
     return stateDelegate.findUnique({ where });
   },
-  update: async ({ where, data }) => (await db.query('UPDATE "ChatPromptState" SET "builderVersion"=$3,"mode"=$4,"updatedAt"=NOW() WHERE "scopeKey"=$1 AND "characterId"=$2 RETURNING *', [...Object.values(queryKey(where)), data.builderVersion, data.mode])).rows[0],
+  update: async ({ where, data }) => (await db.query('UPDATE "ChatPromptState" SET "builderVersion"=COALESCE($3,"builderVersion"),"mode"=COALESCE($4,"mode"),"updatedAt"=NOW() WHERE "scopeKey"=$1 AND "characterId"=$2 RETURNING *', [...Object.values(queryKey(where)), data.builderVersion ?? null, data.mode ?? null])).rows[0],
   deleteMany: async ({ where }) => { await db.query('DELETE FROM "ChatPromptState" WHERE "scopeKey"=$1 AND "characterId"=$2', [where.scopeKey, where.characterId]); return { count: 1 }; },
 };
 const prisma = {
   $queryRaw: async () => (await db.query('SELECT * FROM "Character" WHERE id=$1', ['card'])).rows,
-  promptRollout: { findUnique: async () => null },
-  promptMigrationEntry: { findFirst: async () => null },
   chatPromptState: stateDelegate,
   message: { findFirst: async () => history[0] ?? null, findUnique: async ({ where }) => history.find(row => row.id === where.id) ?? null,
     findMany: async ({ where }) => [...history].filter(row => !where.createdAt?.lt || row.createdAt < where.createdAt.lt).reverse(), count: async ({ where }) => history.filter(row => !where.createdAt?.lt || row.createdAt < where.createdAt.lt).length },
@@ -127,17 +131,13 @@ prisma.personaSelection = { findUnique: async () => null };
 prisma.$executeRaw = async () => 0;
 const threads = load('src/lib/chatThreads.ts', { '@/lib/prisma': { prisma }, '@/lib/chatThreadShared': load('src/lib/chatThreadShared.ts'), '@/lib/logger': logger });
 const storyOf = userId => ({ userId, characterId: 'card', threadId: `thread-${userId}`, legacy: true });
-const rolloutPolicy = load('src/lib/promptRolloutPolicy.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config });
-const states = load('src/lib/promptState.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config, './promptRolloutPolicy': rolloutPolicy, './chatThreads': threads });
-check(!states.isPromptV2Enabled(), 'v2 rollout defaults off');
-process.env.RP_PROMPT_V2_ENABLED = 'true';
+const states = load('src/lib/promptState.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config, './chatThreads': threads });
 // Provider routing rejects an empty key; network calls in this script are stubbed.
 process.env.KODIKROUTER_API_KEY ??= 'synthetic_kodik_key';
-check(states.isPromptV2Enabled(), 'explicit flag enables v2');
 const card = { id: 'card', name: 'Анна', appearance: 'Красный плащ', description: 'Не доверяет незнакомцам', scenario: 'Москва, современный офис', exampleDialogs: 'Анна: Нет.', systemPrompt: 'LEGACY_PRIVATE_DO_NOT_LOG', promptBuilderVersion: 2, roleplayMode: 'character', roleplayStyle: 'mixed', rpConfig: { motivations: 'Защитить сестру', canonicalNotes: 'Сестру зовут Лена.' } };
 const wires = [];
 const deps = {
-  '@/lib/prisma': { prisma }, '@/lib/chatSystemPrompt': builder, '@/lib/chatSystemPromptV1': legacy,
+  './roleplayConfig': config, '@/lib/prisma': { prisma }, '@/lib/chatSystemPrompt': builder,
   '@/lib/promptState': states, '@/lib/promptDiagnostics': diagnostics, '@/lib/persona': persona,
   '@/lib/tokenCount': { countTokens }, '@/lib/testingChatModels': policy, '@/lib/logger': logger, '@/lib/chatThreads': threads,
   '@/lib/verseChatEconomy': { ...economy, isSubscriptionActive: () => false },
@@ -189,7 +189,12 @@ const pin = await states.getOrCreateThreadPromptState(storyOf('new'), { ...card,
 check(pin.builderVersion === 2 && pin.mode === 'world', 'new history adopts current card mode/version');
 check((await states.getOrCreateThreadPromptState(storyOf('new'), { ...card, roleplayMode: 'character' })).mode === 'world', 'editing card type cannot change an existing story');
 history = [{ id: 'old', role: 'user', content: 'old story', createdAt: new Date() }];
-check((await states.getOrCreatePromptState('user:legacy', 'card', card)).builderVersion === 1, 'existing untracked history stays on legacy version');
+check((await states.getOrCreatePromptState('user:legacy', 'card', card)).builderVersion === 2, 'existing untracked history uses the current builder');
+await db.query(`INSERT INTO "ChatPromptState" ("id","scopeKey","characterId","builderVersion","mode","updatedAt") VALUES ('stale-state','user:stale','card',1,'character',NOW())`);
+const oldHistory = JSON.stringify(history);
+const upgraded = await states.getOrCreatePromptState('user:stale', 'card');
+check(upgraded.builderVersion === 2 && upgraded.mode === 'character', 'stale persisted state upgrades without changing the pinned story type');
+check((await stateDelegate.findUnique({ where: { scopeKey_characterId: { scopeKey: 'user:stale', characterId: 'card' } } })).builderVersion === 2 && JSON.stringify(history) === oldHistory, 'upgrade persists v2 and preserves every message');
 history = [];
 check((await states.getOrCreatePromptState('guest:session', 'card', { ...card, roleplayMode: 'world' })).mode === 'world', 'guest history uses same pinned mode policy');
 const race = await Promise.all([states.getOrCreatePromptState('user:race', 'card', card), states.getOrCreatePromptState('user:race', 'card', { ...card, roleplayMode: 'world' })]);
@@ -216,31 +221,41 @@ for (const locale of ['ru', 'en']) {
   check(regenerated.messages[0].content.includes(builder.PROMPT_BUILDER_VERSION) && !regenerated.messages.some(row => row.content === 'Ответ оборван'), `${locale}: real regeneration preparation keeps v2 and excludes replaced assistant`);
 }
 process.env.RP_PROMPT_V2_ENABLED = 'false';
-check(helpers.resolveChatSystemPrompt(card, 'ru', { builderVersion: 2, mode: 'world' }) === card.systemPrompt, 'global flag rolls back to unchanged legacy source');
-check(helpers.resolveChatSystemPrompt({ ...card, systemPrompt: 'later accidental edit', legacyPromptArchive: 'exact original' }, 'ru', { builderVersion: 1, mode: 'character' }) === 'exact original', 'rollback prioritizes archived original over a later legacy-field edit');
+check(helpers.resolveChatSystemPrompt(card, 'ru', { builderVersion: 2, mode: 'world' }).includes(builder.PROMPT_BUILDER_VERSION), 'obsolete flag=false cannot select a different engine');
+check(!helpers.resolveChatSystemPrompt({ ...card, promptBuilderVersion: 1, systemPrompt: 'later accidental edit', legacyPromptArchive: 'exact original' }, 'ru', { builderVersion: 1, mode: 'character' }).includes('exact original'), 'stale card/state versions never execute archived text');
 process.env.RP_PROMPT_V2_ENABLED = 'true';
 const session = { user: { id: 'stranger' } };
-const apiDeps = { '@/lib/auth': { authOptions: {} }, 'next-auth/next': { getServerSession: async () => session }, '@/lib/prisma': { prisma }, '@/lib/promptState': states, '@/lib/promptRolloutPolicy': rolloutPolicy, '@/lib/logger': logger, '@/lib/chatThreads': threads };
-const cardApi = load('src/app/api/characters/[id]/prompt-version/route.ts', { ...apiDeps, '@/lib/roleplayConfig': config, '@/lib/publicError': errorType });
-const request = body => new NextRequest('https://example.invalid/api', { method: 'POST', body: JSON.stringify(body) });
+const apiDeps = { '@/lib/auth': { authOptions: {} }, 'next-auth/next': { getServerSession: async () => session }, '@/lib/prisma': { prisma }, '@/lib/promptState': states, '@/lib/logger': logger, '@/lib/chatThreads': threads };
+const cardApi = load('src/app/api/characters/[id]/prompt-version/route.ts');
+const oldChatApi = load('src/app/api/chat/[id]/prompt-version/route.ts');
+const oldAdminApi = load('src/app/api/admin/prompt-migration/route.ts');
+const oldGenericApi = load('src/app/api/chat/route.js');
+const request = body => new NextRequest('http://localhost/api/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const context = { params: Promise.resolve({ id: 'card' }) };
-check((await cardApi.POST(request({ version: 2, confirmed: true }), context)).status === 403, 'non-owner cannot migrate card or read archive');
-session.user.id = 'owner';
-check((await cardApi.POST(request({ version: 2, confirmed: false }), context)).status === 400, 'unknown legacy text requires explicit owner confirmation');
-check((await cardApi.POST(request({ version: 2, confirmed: true }), context)).status === 200, 'owner enables new card version');
-check((await prisma.character.findUnique()).legacyPromptArchive === card.systemPrompt, 'owner migration archives exact original content without conversion');
-check((await cardApi.POST(request({ version: 1, confirmed: true }), context)).status === 200 && (await prisma.character.findUnique()).systemPrompt === card.systemPrompt, 'card rollback leaves original text intact');
-await cardApi.POST(request({ version: 2, confirmed: true }), context);
-const chatApi = load('src/app/api/chat/[id]/prompt-version/route.ts', { ...apiDeps, '@/lib/roleplayConfig': config, '@/lib/publicError': errorType });
-session.user.id = 'legacy';
-const before = await states.getOrCreateThreadPromptState(storyOf('legacy'), card);
-check(before.builderVersion === 1, 'card migration alone does not migrate an existing user story');
-check((await chatApi.POST(request({ version: 2, mode: 'world', confirmed: true }), context)).status === 200, 'story owner explicitly migrates mode/version without deleting history');
-check((await states.getOrCreateThreadPromptState(storyOf('legacy'), card)).mode === 'world' && history.length === 2, 'story migration preserves messages');
-check((await chatApi.POST(request({ version: 1, mode: 'world', confirmed: true }), context)).status === 200, 'story version can be rolled back separately');
+for (const api of [cardApi, oldChatApi, oldAdminApi]) for(const version of [1,2]) check((await api.POST(request({ version, confirmed: true }),context)).status===410, 'retired mutation cannot change an engine or run rollback');
+check((await oldGenericApi.POST(request({ systemPrompt: 'custom old rules', messages: [{ role: 'user', content: 'hello' }] }))).status === 410, 'unused generic passthrough cannot call a provider or bypass the current builder');
+const chatApi = load('src/app/api/chat/[id]/story-settings/route.ts', { ...apiDeps, '@/lib/roleplayConfig': config, '@/lib/publicError': errorType });
+session.user.id='owner';
+check((await chatApi.POST(request({ mode: 'world', version: 1 }),context)).status===400, 'new story API rejects version input');
+const historyBeforeSwitch=[...history];
+check((await chatApi.POST(request({ mode:'world' }),context)).status===200, 'owner updates story type with no version choice');
+check(history.length===historyBeforeSwitch.length, 'type setting does not rewrite messages');
+check((await chatApi.GET(request({}),context)).status===200, 'story settings remain readable after rollout');
+check(JSON.stringify(await (await chatApi.GET(request({}), context)).json()) === JSON.stringify({ mode: 'world' }), 'story settings disclose only the story type');
+for (const body of [null, [], { mode: 'unknown' }]) check((await chatApi.POST(request(body), context)).status === 400, 'malformed type request is rejected');
+check((await chatApi.POST(new NextRequest('http://localhost/api/test', { method: 'POST', body: '{invalid' }), context)).status === 400, 'broken JSON is rejected');
+session.user = null;
+check((await chatApi.POST(request({ mode: 'character' }), context)).status === 401, 'anonymous callers cannot edit an authenticated story');
+session.user = { id: 'stranger' };
+await db.query('UPDATE "Character" SET "isPublic"=false WHERE id=$1', ['card']);
+check((await chatApi.GET(request({}), context)).status === 403 && (await chatApi.POST(request({ mode: 'character' }), context)).status === 403, 'foreign private cards cannot be read or changed');
+await db.query('UPDATE "Character" SET "isPublic"=true WHERE id=$1', ['card']);
+check((await stateDelegate.findUnique({ where: { scopeKey_characterId: { scopeKey: 'thread:thread-owner', characterId: 'card' } } })).mode === 'world', 'rejected or foreign settings never change the owner story');
+session.user.id='stranger';
 const persistent = load('src/lib/persistentMemory.ts', { './publicError': errorType });
 check(persistent.sanitizeCharacterMemory({ userId: 'owner', systemPrompt: 'private', legacyPromptArchive: 'private', privateMemory: { content: 'private' } }, 'stranger').systemPrompt === null, 'public card response cannot reveal legacy text');
 check(persistent.sanitizeCharacterMemory({ userId: 'owner', legacyPromptArchive: 'private' }, 'stranger').legacyPromptArchive === null, 'public card response cannot reveal archive');
+check(persistent.sanitizeCharacterMemory({ userId: 'owner', systemPrompt: 'private', legacyPromptArchive: 'private' }, 'owner').legacyPromptArchive === null, 'ordinary owner API also omits internal archives');
 check(persistent.sanitizeCharacterMemory({ userId: 'owner', privateMemory_en: 'private' }, 'stranger').privateMemory_en === null, 'public card response cannot reveal translated private memory');
 const fields = load('src/lib/characterFields.ts', { './publicError': errorType, '@/lib/characterTags': { normalizeTagsString: () => '' }, '@/lib/persistentMemory': persistent, '@/lib/i18nConfig': { isEnglishLocale: value => value === 'en' }, './roleplayConfig': config });
 const preview = load('src/app/api/characters/prompt-preview/route.ts', { ...apiDeps, '@/lib/characterFields': fields, '@/lib/chatSystemPrompt': builder, '@/lib/promptDiagnostics': diagnostics, '@/lib/testingChatModels': policy, '@/lib/chatHelpers': { resolveChatPreviewContext: async () => null }, '@/lib/apiI18n': { getApiLocale: () => 'ru' }, '@/lib/publicError': errorType, '@/lib/tokenCount': { countTokens } });
@@ -264,6 +279,8 @@ const guestDeps = {
   '@/lib/chatStream': { consumeOpenAIChatStream: async () => 'synthetic guest answer', createChatNdjsonResponse: work => {
     const done = work(() => {}); return new NextResponse(new ReadableStream({ async start(controller) { await done; controller.close(); } }));
   } },
+  // The guest reply consumer moved into the stream diagnostics module.
+  '@/lib/chatStreamDiagnostics': { consumeOpenAIChatStream: async () => 'synthetic guest answer' },
   '@/lib/retryWithBackoff': { defaultShouldRetry: () => false }, '@/lib/logger': logger, '@/lib/testingChatModels': policy,
   '@/lib/anonymousSession': { resolveAnonymousSessionId: () => ({ sessionId: `test-${guestLocale}` }), attachAnonymousSessionCookie: () => {}, getAnonymousMessageLimit: () => 5 },
   '@/lib/anonymousCookie': { isValidAnonymousRequestId: () => true },
@@ -295,7 +312,7 @@ prisma.message.createMany = async ({ data }) => { history.push(...data); return 
 const updateCard = prisma.character.update;
 prisma.character.update = async args => args.data.promptBuilderVersion !== undefined ? updateCard(args) : {};
 const transfer = load('src/lib/anonymousTransfer.ts', {
-  '@/lib/promptRolloutPolicy': rolloutPolicy, '@/lib/chatThreads': threads,
+  '@/lib/roleplayConfig': config, '@/lib/chatThreads': threads,
   '@/lib/prisma': { prisma }, '@/lib/anonymousCookie': { isAnonymousExpired: () => false },
   '@/lib/anonymousChatMap': load('src/lib/anonymousChatMap.ts'),
   '@/lib/guestRequestStore': { assertGuestSchemaReady: async () => {}, lockGuestSession: async () => true, recoverExpiredGuestGenerations: async () => {} },
@@ -335,9 +352,10 @@ const characterApiDeps = {
 };
 const creation = load('src/app/api/characters/route.ts', { ...characterApiDeps, '@/lib/prisma': { prisma: creationPrisma } });
 session.user.id = 'owner';
-check((await creation.POST(request({ name: 'New hero', roleplayMode: 'world', roleplayStyle: 'narrative', rpConfig: { world: 'Modern city' } }))).status === 201 && createdCard.promptBuilderVersion === 2 && createdCard.systemPrompt === null && createdCard.roleplayMode === 'world', 'actual creation stores v2 fields without AI prompt generation, even with translator offline');
+check((await creation.POST(request({ name: 'New hero', roleplayMode: 'world', roleplayStyle: 'narrative', rpConfig: { world: 'Modern city' } }))).status === 201 && createdCard.promptBuilderVersion === 2 && createdCard.systemPrompt == null && createdCard.roleplayMode === 'world', 'actual creation stores v2 fields without AI prompt generation, even with translator offline');
 const importedText = '  Handwritten legacy text\n';
-check((await creation.POST(request({ name: 'Imported', systemPrompt: importedText }))).status === 201 && createdCard.systemPrompt === importedText && createdCard.legacyPromptArchive === importedText && createdCard.promptBuilderVersion === 1, 'actual compatibility import preserves exact unknown-origin prompt on v1');
+check((await creation.POST(request({ name: 'Imported', systemPrompt: importedText }))).status === 400 && createdCard.promptBuilderVersion === 2, 'creation rejects freeform system instructions and cannot create v1');
+check((await creation.POST(request({ name: 'Injected version', promptBuilderVersion: 1 }))).status === 201 && createdCard.promptBuilderVersion === 2, 'client-supplied version cannot override v2');
 let updatedData;
 const oldCard = { ...card, userId: 'owner', description_en: 'Stale English translation', systemPrompt: card.systemPrompt };
 const updateApi = load('src/app/api/characters/[id]/route.ts', { ...characterApiDeps,
@@ -403,14 +421,12 @@ await db.query('UPDATE "Character" SET "roleplayMode"=$1, "rpConfig"=$2::jsonb W
 assert.deepEqual(config.readRoleplayConfig((await prisma.character.findUnique()).rpConfig).participants, config.parseRoleplayFields(groupCard).rpConfig.participants);
 check(true, 'PostgreSQL JSON round-trip preserves roster and IDs without new SQL schema');
 session.user.id = 'owner';
-check((await cardApi.POST(request({ version: 1, confirmed: true }), context)).status === 400 && (await prisma.character.findUnique()).promptBuilderVersion === 2, 'card API rejects ensemble rollback without changing its version');
+check((await cardApi.POST(request({ version: 1, confirmed: true }), context)).status === 410, 'removed card switch rejects cached clients');
 await db.query('UPDATE "Character" SET "rpConfig"=$1::jsonb WHERE id=$2', [JSON.stringify({ participants: [] }), 'card']);
-check((await cardApi.POST(request({ version: 2, confirmed: true }), context)).status === 400, 'card API rejects enabling an empty ensemble');
+check((await chatApi.POST(request({ mode: 'group' }),context)).status===400, 'type settings reject an empty roster');
 await db.query('UPDATE "Character" SET "rpConfig"=$1::jsonb WHERE id=$2', [JSON.stringify(groupCard.rpConfig), 'card']);
-check((await cardApi.POST(request({ version: 2, confirmed: true }), context)).status === 200, 'card API accepts a complete ensemble on the supported version');
-session.user.id = 'legacy';
-check((await chatApi.POST(request({ version: 1, mode: 'group', confirmed: true }), context)).status === 400, 'story API rejects legacy version for ensemble');
-check((await chatApi.POST(request({ version: 2, mode: 'group', confirmed: true }), context)).status === 200, 'story API explicitly migrates to ensemble without clearing history');
+session.user.id='legacy';
+check((await chatApi.POST(request({ mode: 'group' }), context)).status===200, 'story type switches to ensemble without clearing history');
 guestLocale = 'ru'; guestHistory = [];
 await stateDelegate.deleteMany({ where: { scopeKey: 'guest:test-ru', characterId: 'card' } });
 const groupGuestResponse = await guest.handleAnonymousChatPost(request({}), 'card', { message: 'Добро пожаловать', requestId: 'group-guest' });
@@ -421,10 +437,11 @@ const priorGuestRows = guestHistory.length;
 let recovered = 0;
 guestDeps['@/lib/guestRequestStore'].failGuestGeneration = async () => { recovered++; };
 process.env.RP_PROMPT_V2_ENABLED = 'false';
-check(assert.throws(() => helpers.resolveChatSystemPrompt(groupCard, 'ru', { builderVersion: 2, mode: 'group' }), states.GroupPromptUnavailableError) === undefined, 'flag-off ensemble fails closed instead of using single-character legacy prompt');
+check(helpers.resolveChatSystemPrompt(groupCard, 'ru', { builderVersion: 2, mode: 'group' }).includes('Роль: несколько'), 'obsolete false flag cannot disable ensemble');
+await db.query('UPDATE "Character" SET "rpConfig"=$1::jsonb WHERE id=$2', [JSON.stringify({ participants: [] }), 'card']);
 const disabledGuestResponse = await guest.handleAnonymousChatPost(request({}), 'card', { message: 'Не отправлять', requestId: 'disabled-group' });
-check(disabledGuestResponse.status === 409 && wires.length === priorWires && guestHistory.length === priorGuestRows && recovered === 1, 'disabled guest ensemble restores claim and makes no message or AI call');
-process.env.RP_PROMPT_V2_ENABLED = 'true';
+check(disabledGuestResponse.status === 409 && wires.length === priorWires && guestHistory.length === priorGuestRows && recovered === 1, 'invalid guest roster restores claim and makes no message or AI call');
+await db.query('UPDATE "Character" SET "rpConfig"=$1::jsonb WHERE id=$2', [JSON.stringify(groupCard.rpConfig), 'card']);
 
 // Current DeepInfra rollout: real budgets, preparation, routing and diagnostic code;
 // only provider responses, auth and persistence are isolated fixtures.

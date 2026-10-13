@@ -58,7 +58,6 @@ export default function RoleplayCardFields({ values, onChange, nameError, onClea
       <RoleplayModeCards selected={values.roleplayMode} onSelect={mode => onChange("roleplayMode", mode)} />
     </fieldset>}
     <p className="text-sm text-[#A0A0A0]">Поля со звёздочкой обязательны. Смена типа карточки сохраняет начатые истории и их выбранный режим.</p>
-    {values.promptBuilderVersion === 1 && <p className="rounded-lg border border-wd-secondary/40 p-3 text-sm text-[#A0A0A0]">Карточка использует прежние инструкции. Для применения новых настроек сохраните поля и подключите новую сборку в разделе «Расширенные настройки».</p>}
     <div className="space-y-2"><label htmlFor="name" className="block text-base font-semibold">{single ? "Имя персонажа" : world ? "Название вселенной" : "Название истории"} *</label>
       <input id="name" className={inputClass} value={values.name} required onChange={event => { onChange("name", event.target.value); onClearNameError(); }} />
       {nameError && <p role="alert" className="text-sm text-red-400">{nameError}</p>}

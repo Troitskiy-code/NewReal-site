@@ -286,7 +286,6 @@ export async function handleAnonymousChatPost(
       greeting_en: true,
       scenario_en: true,
       exampleDialogs_en: true,
-      systemPrompt: true,
       ...promptCharacterSelect,
     },
   });
@@ -330,7 +329,7 @@ export async function handleAnonymousChatPost(
   const generation = { sessionId, requestId, attempt: claimed.attempt };
   const stopHeartbeat = startGuestHeartbeat(generation);
   try {
-    const promptState = await getOrCreatePromptState(`guest:${sessionId}`, characterId, character);
+    const promptState = await getOrCreatePromptState(`guest:${sessionId}`, characterId);
     assertPromptStateAvailable(promptState, character.rpConfig);
     const userRow = await persistGuestUserMessage({ ...generation, characterId, message });
     if (!userRow) {

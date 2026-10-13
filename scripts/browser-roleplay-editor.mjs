@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 
 const reservation = createServer();
@@ -21,8 +22,8 @@ for (const name of ['.env', '.env.local', '.env.production', '.env.production.lo
 Object.assign(env, { DATABASE_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/synthetic?connect_timeout=1',
   DIRECT_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/synthetic?connect_timeout=1',
   NEXTAUTH_SECRET: 'synthetic-local-editor-test-secret', NEXTAUTH_URL: base,
-  NEXT_PUBLIC_APP_URL: base, NEXT_PUBLIC_SITE_URL: base, RP_PROMPT_V2_ENABLED: 'true', NODE_ENV: 'production' });
-const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  NEXT_PUBLIC_APP_URL: base, NEXT_PUBLIC_SITE_URL: base, NODE_ENV: 'production' });
+const server = spawn(process.execPath, ['--require', resolve('scripts/lib/roleplay-editor-db-fixture.cjs'), 'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', data => { serverLog = (serverLog + data).slice(-4000); });
 server.stderr.on('data', data => { serverLog = (serverLog + data).slice(-4000); });
@@ -40,9 +41,13 @@ try {
   browser = await chromium.launch({ channel: process.env['EDITOR_TEST_BROWSER_CHANNEL'] || 'msedge', headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   let saved;
+  const writes = [];
   let creations = 0;
   let updates = 0;
   let paidRequests = 0;
+  let storyMode = 'group';
+  const storyWrites = [];
+  const messages = [{ id: 'synthetic-message', role: 'assistant', content: 'История сохранена.', createdAt: '2026-10-12T00:00:00Z' }];
   const pageErrors = [];
   await context.route('**/*', async route => {
     const request = route.request();
@@ -51,16 +56,24 @@ try {
     const json = body => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     if (url.pathname === '/api/auth/session') return json({ user: { id: 'synthetic-editor-owner', name: 'Editor Test', email: 'synthetic@example.invalid', emailVerified: new Date().toISOString() }, expires: '2030-01-01T00:00:00Z' });
     if (url.pathname === '/api/characters' && request.method() === 'POST') {
+      writes.push(request.postDataJSON());
       saved = { ...request.postDataJSON(), id: 'synthetic-card', userId: 'synthetic-editor-owner', promptBuilderVersion: 2 };
       creations++;
       return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(saved) });
     }
     if (url.pathname === '/api/characters/synthetic-card') {
-      if (request.method() === 'PUT') { saved = { ...saved, ...request.postDataJSON() }; updates++; }
-      return json(saved);
+      if (request.method() === 'PUT') { writes.push(request.postDataJSON()); saved = { ...saved, ...request.postDataJSON() }; updates++; }
+      return json({ ...saved, promptBuilderVersion: 1, systemPrompt: 'SYNTHETIC_OLD_ARCHIVE', legacyPromptArchive: 'SYNTHETIC_OLD_ARCHIVE' });
     }
     if (url.pathname === '/api/avatar-tokens') return json({ tokensUsedThisMonth: 0, monthlyLimit: 10, monthlyRemaining: 10 });
     if (url.pathname === '/api/user/balance') return json({ verseCoins: 50, canClaimBonus: false, bonusStreak: 0 });
+    if (url.pathname === '/api/models') return json({ models: [], baseModelId: null, selectedModelId: null });
+    if (url.pathname === '/api/chat/synthetic-card' && request.method() === 'GET') return json({ character: saved, messages });
+    if (url.pathname === '/api/chat/synthetic-card/persona' && request.method() === 'GET') return json({ persona: null });
+    if (url.pathname === '/api/chat/synthetic-card/story-settings') {
+      if (request.method() === 'POST') { storyWrites.push(request.postDataJSON()); storyMode = request.postDataJSON().mode; }
+      return json({ mode: storyMode });
+    }
     if (url.pathname === '/api/currency/rates') return json({ USD: 85, EUR: 95 });
     if (url.pathname === '/api/generate-avatar' && request.method() === 'GET') return json({ state: 'none' });
     if (/^\/api\/(?:generate-avatar|chat\/|payment\/create|generation)/.test(url.pathname)) { paidRequests++; return route.abort(); }
@@ -155,9 +168,8 @@ try {
   check(await page.getByRole('textbox', { name: 'Имя персонажа 8', exact: true }).inputValue() === 'Герой 8', 'edit reload restores participant fields');
   check(await page.getByRole('group', { name: 'Тип карточки' }).getByRole('button', { name: 'Несколько персонажей', exact: true }).getAttribute('aria-pressed') === 'true', 'existing editor displays the selected illustrated type');
   await page.getByRole('button', { name: 'Расширенные настройки', exact: true }).click();
-  await page.getByText('Переход со старых инструкций и откат', { exact: true }).click();
-  await page.getByRole('checkbox', { name: 'Подтверждаю выбор версии после сохранения карточки', exact: true }).check();
-  check(await page.getByRole('button', { name: 'Вернуть прежнюю сборку', exact: true }).isDisabled(), 'group editor cannot roll back to unsupported legacy rules');
+  check(await page.getByRole('button', { name: 'Предпросмотр инструкций', exact: true }).isVisible(), 'advanced editor keeps preview without migration controls');
+  check(await page.getByText(/Переход со старых|Вернуть прежнюю|Подтверждаю выбор версии|SYNTHETIC_OLD_ARCHIVE/).count() === 0, 'editor never displays old instructions, version switches or rollback');
   await page.getByRole('button', { name: 'Расширенные настройки', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await settleLayout();
@@ -176,6 +188,24 @@ try {
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await updatedResponse;
   check(updates === 1 && saved.rpConfig.participants.length === 8 && saved.rpConfig.participants[7].id !== ids[7] && saved.rpConfig.participants.slice(0, 7).every((member, index) => member.id === ids[index]), 'save preserves remaining identities and gives replacement a new ID');
+  check(writes.length === 2 && writes.every(body => !('systemPrompt' in body) && !('legacyPromptArchive' in body) && !('promptBuilderVersion' in body)), 'creation and editing send only current fields even when reading a stale card response');
+  await page.goto(`${base}/ru/chat/synthetic-card`);
+  await page.getByRole('button', { name: 'Настройки чата', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Тип и правила истории', exact: true }).click();
+  await page.getByText('Тип этой истории', { exact: true }).click();
+  await page.getByRole('button', { name: 'Настроить тип истории', exact: true }).click();
+  const select = page.getByRole('combobox', { name: 'Тип истории', exact: true });
+  await select.waitFor();
+  check(await select.inputValue() === 'group' && await select.locator('option').count() === 3, 'chat settings load the pinned type and offer three story types');
+  check(await page.getByRole('checkbox').count() === 0 && await page.getByText(/Выбор версии|Старая версия|Вернуть прежнюю|Переход со старых/).count() === 0, 'chat settings contain no version selectors or migration confirmations');
+  await select.selectOption('world');
+  const storyResponse = page.waitForResponse(response => response.url().endsWith('/story-settings') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Применить', exact: true }).click();
+  await storyResponse;
+  check(storyWrites.length === 1 && JSON.stringify(storyWrites[0]) === JSON.stringify({ mode: 'world' }), 'chat settings send only the selected story type');
+  await page.reload();
+  await page.getByText('История сохранена.', { exact: true }).waitFor();
+  check(await page.getByText('История сохранена.', { exact: true }).isVisible(), 'changing story type keeps the existing messages after reload');
   const invalid = await page.goto(`${base}/ru/create/unknown`);
   check(invalid.status() === 404, 'unknown type route returns 404');
   await page.goto(`${base}/en/create`);

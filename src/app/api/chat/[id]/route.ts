@@ -129,7 +129,6 @@ async function handlePost(
         greeting_en: true,
         scenario_en: true,
         exampleDialogs_en: true,
-        systemPrompt: true,
         ...promptCharacterSelect,
       },
     });
@@ -219,8 +218,8 @@ async function handlePost(
     let excludeMessageId: string | undefined;
     let continueCutOff = false;
 
-    // Pin before inserting the first greeting/user turn, so a new chat is not mistaken for legacy history.
-    assertPromptStateAvailable(await getOrCreateThreadPromptState(scope, character), character.rpConfig);
+    // Pin the story type before inserting the first greeting or user turn.
+    assertPromptStateAvailable(await getOrCreateThreadPromptState(scope), character.rpConfig);
 
     if (continueChat) {
       lastAssistant = await prisma.message.findFirst({
@@ -296,7 +295,6 @@ async function handlePost(
       excludeMessageId,
       continueMode: continueChat,
       continueCutOff,
-      continueSourceText: lastAssistant?.content,
       locale,
       refreshSummary: false,
     };

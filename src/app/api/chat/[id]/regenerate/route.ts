@@ -119,7 +119,6 @@ async function handlePost(
         greeting_en: true,
         scenario_en: true,
         exampleDialogs_en: true,
-        systemPrompt: true,
         ...promptCharacterSelect,
       },
     });

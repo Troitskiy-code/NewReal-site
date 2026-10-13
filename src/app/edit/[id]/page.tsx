@@ -78,8 +78,6 @@ export default function EditCharacterPage() {
           exampleDialogs: data.exampleDialogs || "",
           descriptionCard: data.descriptionCard || "",
           avatarPrompt: data.avatarPrompt || "",
-          systemPrompt: data.systemPrompt || "",
-          promptBuilderVersion: data.promptBuilderVersion ?? 1,
           roleplayMode: roleplayMode(data.roleplayMode),
           roleplayStyle: roleplayStyle(data.roleplayStyle),
           rpConfig: readRoleplayConfig(data.rpConfig),
@@ -155,7 +153,7 @@ export default function EditCharacterPage() {
   const handleClearDraft = () => {
     revokeBlobUrl(avatarPreview);
     revokeBlobUrl(loraPreview);
-    setForm(previous => ({ ...EMPTY_CHARACTER_FORM, promptBuilderVersion: previous.promptBuilderVersion, systemPrompt: previous.systemPrompt }));
+    setForm({ ...EMPTY_CHARACTER_FORM });
     setAvatarFile(null);
     setAvatarPreview(null);
     setLoraFile(null);

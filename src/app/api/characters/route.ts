@@ -21,7 +21,6 @@ import { catalogSearchCondition } from "@/lib/characterCatalogSearch";
 import { characterTagSearchTerms } from "@/lib/characterTags";
 import { getCharacterRecommendationOrder } from "@/lib/characterRecommendations";
 import type { RecommendationMode } from "@/lib/characterRecommendationRank";
-import { promptRolloutFinalized } from "@/lib/promptRolloutPolicy";
 
 export const maxDuration = 60;
 
@@ -40,8 +39,8 @@ async function handlePost(req: NextRequest) {
 
     setAiCostActor(session.user.id);
     const body = await req.json();
-    if (typeof body.systemPrompt === "string" && body.systemPrompt.trim() && await promptRolloutFinalized()) {
-      return NextResponse.json({ error: "Импорт старых инструкций завершён. Перенесите их в поля карточки" }, { status: 409 });
+    if (body.systemPrompt !== undefined && body.systemPrompt !== null && body.systemPrompt !== "") {
+      return NextResponse.json({ error: "Заполните описание и настройки карточки вместо готовых системных инструкций" }, { status: 400 });
     }
 
     let parsed;
@@ -78,11 +77,6 @@ async function handlePost(req: NextRequest) {
       return NextResponse.json({ error: "Имя обязательно" }, { status: 400 });
     }
 
-    // Compatibility imports keep their exact unknown-origin text; no implicit conversion to v2.
-    const importedLegacyText = typeof body.systemPrompt === "string" && body.systemPrompt.trim() ? body.systemPrompt : null;
-    if (importedLegacyText && roleplayMode === "group") return NextResponse.json({ error: "Групповая история использует новую сборку, без импорта старого промпта" }, { status: 400 });
-    if (importedLegacyText && importedLegacyText.length > 8000) return NextResponse.json({ error: "Старый промпт: максимум 8000 символов" }, { status: 400 });
-
     const seededPublicMemory = publicMemory ?? buildInitialPublicMemory(name, description);
     const initialPermissions = memoryPermissions ?? { privateAccessUserIds: [] };
     const { compressAvatarDataUrl } = await import("@/lib/compressAvatar");
@@ -108,9 +102,7 @@ async function handlePost(req: NextRequest) {
         privateMemory: privateMemory ?? undefined,
         memoryPermissions: initialPermissions,
         lastActive: new Date(),
-        systemPrompt: importedLegacyText,
-        legacyPromptArchive: importedLegacyText,
-        promptBuilderVersion: importedLegacyText ? 1 : 2,
+        promptBuilderVersion: 2,
         roleplayMode, roleplayStyle, rpConfig,
       },
     });

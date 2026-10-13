@@ -316,7 +316,7 @@ const routeFile = {
   episodicItem: 'src/app/api/chat/[id]/memory/episodic/[episodicId]/route.ts',
   refresh: 'src/app/api/chat/[id]/memory/refresh-summary/route.ts',
   persona: 'src/app/api/chat/[id]/persona/route.ts',
-  prompt: 'src/app/api/chat/[id]/prompt-version/route.ts',
+  prompt: 'src/app/api/chat/[id]/story-settings/route.ts',
   threads: 'src/app/api/chat/[id]/threads/route.ts',
   thread: 'src/app/api/chat/[id]/threads/[threadId]/route.ts',
   message: 'src/app/api/messages/[id]/route.ts',
@@ -414,7 +414,7 @@ async function appPart() {
   check('memory editor writes into the selected story', editSummary.status === 200
     && (await db.memory.findUnique({ where: { threadId: story2.id } })).summary === 'Экспедиция на Марсе.'
     && (await db.memory.findUnique({ where: { threadId: story1.id } })).summary.includes('Москве'));
-  const prompt2 = await call(a.id, 'prompt', 'GET', `/api/chat/${id}/prompt-version${q(story2.id)}`, { params: { id } });
+  const prompt2 = await call(a.id, 'prompt', 'GET', `/api/chat/${id}/story-settings${q(story2.id)}`, { params: { id } });
   check('a new story pins its own prompt state', prompt2.status === 200
     && !!(await db.chatPromptState.findUnique({ where: { scopeKey_characterId: { scopeKey: `thread:${story2.id}`, characterId: id } } })));
 
@@ -445,8 +445,8 @@ async function appPart() {
     ['persona GET', 'persona', 'GET', `/api/chat/${id}/persona${q(foreign)}`],
     ['persona POST', 'persona', 'POST', `/api/chat/${id}/persona${q(foreign)}`, { personaId: personaMars.id }],
     ['persona DELETE', 'persona', 'DELETE', `/api/chat/${id}/persona${q(foreign)}`],
-    ['prompt GET', 'prompt', 'GET', `/api/chat/${id}/prompt-version${q(foreign)}`],
-    ['prompt POST', 'prompt', 'POST', `/api/chat/${id}/prompt-version${q(foreign)}`, { version: 1, mode: 'character', confirmed: true }],
+    ['prompt GET', 'prompt', 'GET', `/api/chat/${id}/story-settings${q(foreign)}`],
+    ['prompt POST', 'prompt', 'POST', `/api/chat/${id}/story-settings${q(foreign)}`, { mode: 'character' }],
     ['rename', 'thread', 'PATCH', `/api/chat/${id}/threads/${foreign}`, { title: 'Чужое' }, { threadId: foreign }],
     ['archive', 'thread', 'PATCH', `/api/chat/${id}/threads/${foreign}`, { status: 'archived' }, { threadId: foreign }],
     ['delete', 'thread', 'DELETE', `/api/chat/${id}/threads/${foreign}`, { confirmed: true }, { threadId: foreign }],
@@ -498,7 +498,7 @@ async function appPart() {
   await db.coreMemory.create({ data: { userId: a.id, characterId: id, threadId: story3.id, content: 'Соседское ядро' } });
   await db.episodicMemory.create({ data: { userId: a.id, characterId: id, threadId: story3.id, event: 'Соседи познакомились', importance: 3 } });
   await db.memoryEntry.create({ data: { userId: a.id, characterId: id, threadId: story3.id, type: 'summary', content: 'Соседская сводка' } });
-  await call(a.id, 'prompt', 'GET', `/api/chat/${id}/prompt-version${q(story3.id)}`, { params: { id } });
+  await call(a.id, 'prompt', 'GET', `/api/chat/${id}/story-settings${q(story3.id)}`, { params: { id } });
   const totalBefore = (await db.character.findUnique({ where: { id } })).totalMessages;
   const unconfirmed = await call(a.id, 'thread', 'DELETE', `/api/chat/${id}/threads/${story3.id}`, { params: { id, threadId: story3.id }, body: {} });
   check('deleting a story requires explicit confirmation', unconfirmed.status === 400 && !!(await db.chatThread.findUnique({ where: { id: story3.id } })));

@@ -8,7 +8,6 @@ import { countTokens } from "@/lib/tokenCount";
 import { promptAssemblyDiagnostics } from "@/lib/promptDiagnostics";
 import { chatModelGenerationOptions } from "@/lib/testingChatModels";
 import { resolveChatPreviewContext, resolveContextTokenBudget } from "@/lib/chatHelpers";
-import { isPromptV2Enabled } from "@/lib/promptState";
 import { getApiLocale } from "@/lib/apiI18n";
 import { ClientInputError } from "@/lib/publicError";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
@@ -30,7 +29,7 @@ export async function POST(req: NextRequest) {
     const budget = context ? resolveContextTokenBudget(context.user, context.model) : 6000;
     const assembly = fitPromptAssembly(assembleRoleplayPrompt(parsed, getApiLocale(req)), Math.floor(budget * 0.5), countTokens);
     return NextResponse.json({ ...assembly, diagnostics: promptAssemblyDiagnostics(assembly),
-      rolloutEnabled: isPromptV2Enabled(), modelName: context?.model.name ?? null,
+      modelName: context?.model.name ?? null,
       parameters: context ? chatModelGenerationOptions(context.model.name) : null,
       scope: "card-preview-without-conversation-memory-or-history",
     }, { headers: { "Cache-Control": "private, no-store" } });

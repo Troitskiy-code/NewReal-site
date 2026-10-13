@@ -12,7 +12,6 @@ export const CHARACTER_LIMITS = {
   exampleDialogs: 3000,
   descriptionCard: 700,
   avatarPrompt: 1000,
-  systemPrompt: 8000,
 } as const;
 
 export function trimOptionalText(value: unknown, maxLength: number): string | null {
@@ -40,7 +39,6 @@ export function parseCharacterBody(body: Record<string, unknown>) {
     scenario,
     exampleDialogs,
     avatarPrompt,
-    systemPrompt,
   } = body;
 
   const tagsValue = normalizeTagsString(typeof tags === "string" ? tags : null);
@@ -59,7 +57,6 @@ export function parseCharacterBody(body: Record<string, unknown>) {
     scenario: trimOptionalText(scenario, CHARACTER_LIMITS.scenario),
     exampleDialogs: trimOptionalText(exampleDialogs, CHARACTER_LIMITS.exampleDialogs),
     avatarPrompt: trimOptionalText(avatarPrompt, CHARACTER_LIMITS.avatarPrompt),
-    systemPrompt: trimOptionalText(systemPrompt, CHARACTER_LIMITS.systemPrompt),
     publicMemory: parseMemoryInput(body.publicMemory),
     privateMemory: parseMemoryInput(body.privateMemory),
     memoryPermissions: parseMemoryPermissionsInput(body.memoryPermissions),

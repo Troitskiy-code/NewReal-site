@@ -13,29 +13,6 @@ export type ChatPersona = {
   updatedAt?: string | Date;
 };
 
-export function appendPersonaToSystemPrompt(
-  systemPrompt: string,
-  persona: Pick<ChatPersona, "name" | "description"> | null | undefined,
-  locale?: string
-): string {
-  const name = persona?.name?.trim();
-  if (!name) {
-    return systemPrompt;
-  }
-
-  const description = persona.description?.trim();
-  const english = locale === "en";
-  const intro = description
-    ? english
-      ? `You are talking with ${name}. Personality: ${description}. Take this into account in the dialogue.`
-      : `Ты общаешься с ${name}. Описание личности: ${description}. Учитывай это в диалоге.`
-    : english
-      ? `You are talking with ${name}. Take this into account in the dialogue.`
-      : `Ты общаешься с ${name}. Учитывай это в диалоге.`;
-
-  return `${intro}\n\n${systemPrompt}`;
-}
-
 export function parsePersonaPayload(body: Record<string, unknown>) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) {

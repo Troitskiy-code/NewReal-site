@@ -4,7 +4,7 @@ import { mapGuestMessagesToUserMessages } from "@/lib/anonymousChatMap";
 import { assertGuestSchemaReady, GuestSchemaMissingError, lockGuestSession, recoverExpiredGuestGenerations } from "@/lib/guestRequestStore";
 import { isLeaseActive } from "@/lib/guestRequestPolicy";
 import { chatThreadsEnabled, createThreadInTransaction, findDefaultThread, threadPromptScopeKey } from "@/lib/chatThreads";
-import { migratedInitialState, promptRolloutEnabled } from "@/lib/promptRolloutPolicy";
+import { roleplayMode } from "@/lib/roleplayConfig";
 
 export type TransferResult =
   | { ok: true; alreadyTransferred: boolean; copied: number; characterIds: string[]; threads?: Array<{ characterId: string; threadId: string }> }
@@ -104,7 +104,11 @@ export async function transferAnonymousChatToUser(params: {
       const threadByCharacter = new Map<string, string>();
       // Transfer the pinned mode along with the guest history. An existing user story keeps its own mode.
       for (const characterId of [...new Set(mapped.map(copy => copy.characterId))].sort()) {
-        let guestState = await tx.chatPromptState.findUnique({
+        // Locks the card the same way story settings do, so the type read here is current.
+        const card = (await tx.$queryRaw<{ roleplayMode: string }[]>`
+          SELECT "roleplayMode" FROM "Character" WHERE "id" = ${characterId} FOR UPDATE`)[0];
+        if (!card) throw new Error("Character not found");
+        const guestState = await tx.chatPromptState.findUnique({
           where: { scopeKey_characterId: { scopeKey: `guest:${params.sessionId}`, characterId } },
         });
         // Stories on: the guest history always becomes its own story and never mixes into an
@@ -116,38 +120,12 @@ export async function transferAnonymousChatToUser(params: {
         threadByCharacter.set(characterId, thread.id);
         const hasUserHistory = Boolean(existing) && already.some(row => row.characterId === characterId);
         const scopeKey = threadPromptScopeKey(thread.id);
-        let initial: { builderVersion: number; mode: string; promptMigrationId?: string | null } = {
-          builderVersion: hasUserHistory ? 1 : guestState?.builderVersion ?? 1,
-          mode: hasUserHistory ? "character" : guestState?.mode ?? "character",
-        };
-        if (promptRolloutEnabled()) {
-          const card = (await tx.$queryRaw<{ promptBuilderVersion: number; roleplayMode: string }[]>`
-            SELECT "promptBuilderVersion", "roleplayMode" FROM "Character" WHERE "id" = ${characterId} FOR UPDATE`)[0];
-          if (card) {
-            // Rollback may have completed while this transfer was waiting for the card.
-            guestState = await tx.chatPromptState.findUnique({
-              where: { scopeKey_characterId: { scopeKey: `guest:${params.sessionId}`, characterId } },
-            });
-            initial = { builderVersion: hasUserHistory ? 1 : guestState?.builderVersion ?? 1,
-              mode: hasUserHistory ? "character" : guestState?.mode ?? "character" };
-            if (!hasUserHistory && guestState?.promptMigrationId) {
-              const oldGuest = await tx.promptMigrationStory.findUnique({ where: { entryId_scopeKey: {
-                entryId: guestState.promptMigrationId, scopeKey: `guest:${params.sessionId}` } } });
-              if (oldGuest) {
-                await tx.promptMigrationStory.upsert({ where: { entryId_scopeKey: { entryId: oldGuest.entryId, scopeKey } },
-                  create: { entryId: oldGuest.entryId, scopeKey, builderVersion: oldGuest.builderVersion, mode: oldGuest.mode,
-                    previousMigrationId: oldGuest.previousMigrationId }, update: {} });
-                initial.promptMigrationId = oldGuest.entryId;
-              }
-            } else if (hasUserHistory || initial.builderVersion !== 2) {
-              initial = await migratedInitialState(tx, characterId, scopeKey, initial, card, hasUserHistory);
-            }
-          }
-        }
+        const initial = { builderVersion: 2,
+          mode: roleplayMode(hasUserHistory ? card.roleplayMode : guestState?.mode ?? card.roleplayMode) };
         await tx.chatPromptState.upsert({
           where: { scopeKey_characterId: { scopeKey, characterId } },
           create: { scopeKey, characterId, ...initial },
-          update: {},
+          update: { builderVersion: 2 },
         });
       }
       const copies = mapped.map((copy) => ({ ...copy, threadId: threadByCharacter.get(copy.characterId)! }));
