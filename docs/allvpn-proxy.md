@@ -20,7 +20,7 @@ Existing retry and accounting rules remain in force. A failed attempt before the
 
 At startup, nodes are checked in order from `ALLVPN_NODE_INDEX` (default 0). An unauthenticated DeepInfra models request verifies the tunnel without paid generation. An exited Xray process is restarted every 30 seconds. The subscription is refreshed on restart; a running Xray process whose upstream node stops responding requires an application restart or a different preferred node.
 
-The Docker image pins official Xray v26.3.27 and verifies the release SHA-256 checksum. The HTTP listener is not publicly exposed.
+The Docker image pins official Xray v26.3.27 and verifies the release SHA-256 checksum. The HTTP listener is not publicly exposed. Both dependency/build and runtime images install OpenSSL before Prisma generation so the generated database engine matches the Debian runtime.
 
 ## Local checks
 
