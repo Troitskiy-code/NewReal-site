@@ -1,0 +1,7 @@
+{
+  "verifiedAt": "2026-10-14T08:44:27.490Z",
+  "bucket": "newverse-character-media",
+  "checks": 25,
+  "mode": "real Yandex S3 + disposable local PostgreSQL + actual route handlers; fixture authentication, translations and provider image response",
+  "cleanup": "Temporary users, characters and objects removed after verification"
+}

@@ -127,7 +127,7 @@ export function isKieImageUrl(value: string) {
       && ["redpandaai.co", "kie.ai", "aiquickdraw.com"].some(domain => host === domain || host.endsWith(`.${domain}`));
   } catch { return false; }
 }
-export async function saveKieImage(value: string) {
+export async function saveKieImage(value: string, userId: string, jobId: string) {
   if (!isKieImageUrl(value)) throw new KieError("invalid_image");
   const response = await fetch(value, { signal: AbortSignal.timeout(20_000), redirect: "error", cache: "no-store" });
   if (!response.ok || !response.body || Number(response.headers.get("content-length")) > MAX_IMAGE_BYTES) throw new KieError("invalid_image");
@@ -143,7 +143,8 @@ export async function saveKieImage(value: string) {
   } finally { await reader.cancel().catch(() => {}); }
   const image = await sharp(Buffer.concat(chunks), { limitInputPixels: 16_000_000, animated: false })
     .rotate().resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true }).webp({ quality: 90 }).toBuffer();
-  return `data:image/webp;base64,${image.toString("base64")}`;
+  const { storeCharacterImage } = await import("./characterMedia");
+  return storeCharacterImage(image, userId, jobId);
 }
 export function verifyKieWebhook(taskId: unknown, timestamp: string | null, signature: string | null, now = Date.now()) {
   const key = process.env['KIE_WEBHOOK_HMAC_KEY'];

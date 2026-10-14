@@ -27,7 +27,10 @@ const databaseUrl = `postgresql://postgres:synthetic_fixture@127.0.0.1:${port}/n
 const db = new PrismaClient({ datasourceUrl: databaseUrl, log: [] });
 const ddl = new Client({ connectionString: databaseUrl });
 const testEnv = { KIE_API_KEY: 'synthetic_fixture_key', KIE_WEBHOOK_HMAC_KEY: 'synthetic_fixture_hmac',
-  NEXTAUTH_URL: 'https://example.test', NEXTAUTH_SECRET: 'synthetic_fixture_actor', CRON_SECRET: 'synthetic_fixture_cron' };
+  NEXTAUTH_URL: 'https://example.test', NEXTAUTH_SECRET: 'synthetic_fixture_actor', CRON_SECRET: 'synthetic_fixture_cron',
+  S3_ENDPOINT: 'https://storage.yandexcloud.net', S3_REGION: 'ru-central1', S3_BUCKET: 'fixture',
+  S3_ACCESS_KEY_ID: 'synthetic_fixture_key', S3_SECRET_ACCESS_KEY: 'synthetic_fixture_secret' };
+const storedImages = new Map();
 const png = await sharp({ create: { width: 16, height: 16, channels: 3, background: '#789abc' } }).png().toBuffer();
 const reference = `data:image/png;base64,${png.toString('base64')}`;
 const marker = 'SYNTHETIC_PRIVATE_PROMPT';
@@ -86,6 +89,10 @@ function load(file) {
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS,
     target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   const dependency = name => {
+    if (name === '@aws-sdk/client-s3') return {
+      PutObjectCommand: class { constructor(input) { this.input = input; } },
+      S3Client: class { async send(command) { storedImages.set(command.input.Key, command.input.Body); } destroy() {} },
+    };
     if (name === '@/lib/prisma' || name === './prisma') return { prisma: db };
     if (name === '@/lib/auth') return { authOptions: {} };
     if (name === 'next-auth/next') return { getServerSession: async () => userId ? { user: { id: userId } } : null };
@@ -144,7 +151,9 @@ try {
     && !('num_images' in requests[0].input), 'text routing ignores client model/resolution/count');
   check(requests[0].callBackUrl === 'https://example.test/api/webhook/kie', 'callback URL comes from server configuration');
   const finished = await handler.GET(get({ jobId: initialBody.jobId })); const completed = await finished.json();
-  check(completed.state === 'succeeded' && completed.imageUrl.startsWith('data:image/webp;base64,'), 'result validated, converted and persisted beyond temporary URL');
+  check(completed.state === 'succeeded' && completed.imageUrl.startsWith('/api/character-media/')
+    && storedImages.size === 1 && (await sharp([...storedImages.values()][0]).metadata()).format === 'webp',
+    'generated result persisted as WebP in object storage; DB contains a stable app reference');
   const replay = await handler.POST(post(request));
   check((await replay.json()).jobId === initialBody.jobId && creates === 1, 'same request replays without another paid task');
   check((await handler.POST(post({ ...request, avatarPrompt: 'changed' }))).status === 409, 'changed payload cannot reuse an idempotency key');

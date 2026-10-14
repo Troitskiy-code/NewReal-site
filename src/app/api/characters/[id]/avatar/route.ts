@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
+import { characterMediaDownloadUrl, parseCharacterMediaPath } from "@/lib/characterMedia";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -51,6 +52,13 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
     const imageUrl = character.imageUrl;
     const cacheControl = character.isPublic ? YEAR_CACHE : "private, no-store";
+
+    if (parseCharacterMediaPath(imageUrl)) {
+      return new NextResponse(null, { status: 307, headers: {
+        Location: await characterMediaDownloadUrl(imageUrl), "Cache-Control": "private, no-store",
+        "Referrer-Policy": "no-referrer",
+      } });
+    }
 
     if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("/")) {
       const response = NextResponse.redirect(new URL(imageUrl, req.url));

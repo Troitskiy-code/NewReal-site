@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
+import { persistCharacterImage, CharacterMediaUnavailable } from "@/lib/characterMedia";
 import { validateGroupConfig } from "@/lib/roleplayConfig";
 import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
@@ -118,10 +119,9 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
     if (body.appearance !== undefined) data.appearance = parsed.appearance ?? null;
     if (body.tags !== undefined) data.tags = parsed.tags ?? null;
     if (body.imageUrl !== undefined) {
-      const { compressAvatarDataUrl } = await import("@/lib/compressAvatar");
-      data.imageUrl = (await compressAvatarDataUrl(parsed.imageUrl ?? null)) ?? null;
+      data.imageUrl = await persistCharacterImage(parsed.imageUrl, session.user.id, authResult.character.imageUrl);
     }
-    if (body.imageLora !== undefined) data.imageLora = parsed.imageLora ?? null;
+    if (body.imageLora !== undefined) data.imageLora = await persistCharacterImage(parsed.imageLora, session.user.id, authResult.character.imageLora);
     if (body.greeting !== undefined) data.greeting = parsed.greeting ?? null;
     if (body.scenario !== undefined) data.scenario = parsed.scenario ?? null;
     if (body.exampleDialogs !== undefined) data.exampleDialogs = parsed.exampleDialogs ?? null;
@@ -205,6 +205,8 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
       ...ownerModerationFields(character, session.user.id),
     });
   } catch (error) {
+    if (error instanceof ClientInputError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof CharacterMediaUnavailable) return NextResponse.json({ error: "Хранилище изображений временно недоступно. Изменения не сохранены." }, { status: 503 });
     errorLog("Server", "Character update error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }

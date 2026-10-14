@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCharacterBody } from "@/lib/characterFields";
+import { persistCharacterImage, CharacterMediaUnavailable } from "@/lib/characterMedia";
 import { validateGroupConfig } from "@/lib/roleplayConfig";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
 import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
@@ -79,8 +80,8 @@ async function handlePost(req: NextRequest) {
 
     const seededPublicMemory = publicMemory ?? buildInitialPublicMemory(name, description);
     const initialPermissions = memoryPermissions ?? { privateAccessUserIds: [] };
-    const { compressAvatarDataUrl } = await import("@/lib/compressAvatar");
-    const storedImageUrl = (await compressAvatarDataUrl(imageUrl ?? null)) ?? null;
+    const storedImageUrl = await persistCharacterImage(imageUrl, session.user.id);
+    const storedImageLora = await persistCharacterImage(imageLora, session.user.id);
 
     let character = await prisma.character.create({
       data: {
@@ -91,7 +92,7 @@ async function handlePost(req: NextRequest) {
         appearance: appearance ?? null,
         tags: tags ?? null,
         imageUrl: storedImageUrl,
-        imageLora: imageLora ?? null,
+        imageLora: storedImageLora,
         greeting: greeting ?? null,
         scenario: scenario ?? null,
         exampleDialogs: exampleDialogs ?? null,
@@ -147,6 +148,8 @@ async function handlePost(req: NextRequest) {
     // Prompt assembly is deterministic and uses the live card on each request; no AI generation here.
     return NextResponse.json(character, { status: 201 });
   } catch (error) {
+    if (error instanceof ClientInputError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof CharacterMediaUnavailable) return NextResponse.json({ error: "Хранилище изображений временно недоступно. Персонаж не сохранён." }, { status: 503 });
     errorLog("Server", "Character creation error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });
   }

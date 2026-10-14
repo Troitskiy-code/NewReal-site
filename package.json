@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:characters:storage": "node scripts/verify-character-storage.mjs",
     "verify:characters:discovery": "node scripts/verify-character-discovery.mjs",
     "verify:characters:discovery:browser": "node scripts/verify-character-discovery.mjs --browser",
     "verify:avatars:kie": "node scripts/verify-kie-avatars.mjs",
@@ -77,6 +78,8 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
+    "@aws-sdk/client-s3": "3.1151.0",
+    "@aws-sdk/s3-request-presigner": "3.1151.0",
     "@jsquash/webp": "^1.5.0",
     "@logtail/js": "^0.5.8",
     "@logtail/node": "^0.5.8",

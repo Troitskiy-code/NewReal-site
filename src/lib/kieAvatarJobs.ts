@@ -70,8 +70,8 @@ export async function reconcileAvatarJob(id: string) {
     if (result.model !== job.model) throw new Error("Image task model mismatch");
     if (result.state === "fail") return await finishAvatarJob(job, "failed", { errorCode: result.errorCode ?? "provider_error", credits: result.credits }, leaseToken);
     if (result.state === "success" && result.imageUrl) {
-      // Save to our DB as WebP before consuming success; provider links expire.
-      const imageUrl = await saveKieImage(result.imageUrl);
+      // Persist WebP in our bucket before consuming success; provider links expire.
+      const imageUrl = await saveKieImage(result.imageUrl, job.userId, job.id);
       return await finishAvatarJob(job, "succeeded", { imageUrl, credits: result.credits }, leaseToken);
     }
     await prisma.avatarGeneration.updateMany({ where: { id, leaseToken, state: "pending" }, data: {
