@@ -67,6 +67,9 @@ Storage failures retry downloading/saving the existing image, not generating it.
 Closing the page has no effect on the server worker. Pausing finishes an already
 running request and prevents subsequent paid stages; restarting the server restores
 progress and conservatively accounts for interrupted requests.
+Full card requests allow 120 seconds and consistency reviews 60 seconds. The
+loopback request allows 150 seconds, the route declares 180 seconds, and item
+leases last 300 seconds, keeping slow results fenced until their checkpoint.
 
 Draft creation and its job checkpoint share a transaction. The character ID is
 derived from the job ID, making save retries idempotent. Published status changes
