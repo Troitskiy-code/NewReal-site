@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import LocaleLink from "@/components/LocaleLink";
 
 type Item = { id: string; themeKey: string; name: string; state: string; stage: string; inProgress: boolean;
-  characterId: string | null; isPublic: boolean; error: string | null; canRetry: boolean; providerTaskId: string | null };
+  characterId: string | null; isPublic: boolean; error: string | null; canRetry: boolean; canRepair: boolean; providerTaskId: string | null };
 type Batch = { id: string; state: string; budgetRub: number; spentRub: number; reservedRub: number; createdAt: string; items: Item[] };
 type Status = { configured: boolean; missing: string[]; workerEnabled: boolean;
   themes: Array<{ key: string; name: string; theme: string; novelty: string }>; batches: Batch[] };
 const inputClass = "mt-1 w-full rounded-xl border border-wd-border bg-wd-bg p-3 text-wd-text";
-const stages: Record<string, string> = { text: "Создание карточки", review: "Проверка согласованности", image_submit: "Запуск аватара", image_poll: "Ожидание аватара", translate: "Перевод на английский", save: "Сохранение персонажа" };
+const stages: Record<string, string> = { text: "Создание карточки", text_repair: "Пересоздание карточки", review: "Проверка согласованности", review_repair: "Проверка новой карточки", image_submit: "Запуск аватара", image_poll: "Ожидание аватара", translate: "Перевод на английский", save: "Сохранение персонажа" };
 const states: Record<string, string> = { running: "Партия выполняется", paused: "Приостановлена", attention: "Нужно проверить результаты", completed: "Партия завершена" };
 const money = (value: number) => new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" }).format(value);
 
@@ -87,6 +87,8 @@ export default function CharacterGenerationAdmin() {
             {!item.isPublic && <button disabled={busy} className="underline" onClick={() => void act({ action: "publish", batchId: batch.id, itemId: item.id })}>Опубликовать</button>}</div>}
           {item.error && <p className="text-sm" role="status">{item.error}</p>}
           {item.canRetry && <button className="wd-btn" disabled={busy} onClick={() => void act({ action: "retry", batchId: batch.id, itemId: item.id })}>Повторить незавершённый этап</button>}
+          {item.canRepair && <div><button className="wd-btn" disabled={busy} onClick={() => void act({ action: "repair", batchId: batch.id, itemId: item.id })}>Пересоздать карточку</button>
+            <p className="mt-1 text-sm">Одна дополнительная попытка исправления с резервной моделью, до двух запросов текста. Расходы входят в прежний предел партии.</p></div>}
           {item.state === "uncertain" && <form className="flex max-w-xl gap-2" onSubmit={event => { event.preventDefault(); void act({ action: "recover", batchId: batch.id, itemId: item.id, taskId: taskIds[item.id] }); }}>
             <label className="flex-1">ID задания из истории Kie<input className={inputClass} value={taskIds[item.id] ?? ""} onChange={event => setTaskIds(current => ({ ...current, [item.id]: event.target.value }))} required /></label>
             <button className="wd-btn self-end" disabled={busy}>Проверить задание</button></form>}

@@ -10,7 +10,10 @@ The first party uses the ten original themes in
 catalogue and competitor themes. Defaults: ten Russian cards, automatic English
 translations, private drafts, maximum batch budget 200 RUB. A smaller party and
 budget can be selected. Text generation uses Qwen 3 235B on DeepInfra independently
-of the chat/memory model; images use the existing Kie Seedream text model.
+of the chat/memory model. A second text attempt and an explicit manual repair use
+Mistral Small 3.2; consistency reviews also use Mistral Small 3.2. Text output is
+capped at 3200 tokens, with a target card size of 4500–5500 characters. Images use
+the existing Kie Seedream text model.
 
 ## Deployment
 
@@ -60,6 +63,14 @@ WebP in Object Storage → translate and checkpoint each field → save one draf
 The system prompt is assembled by the existing roleplay builder. Text and image
 generation retries are bounded to two attempts per stage; translation retries are
 bounded per field. Failed stages can be retried from the page within those limits.
+Before any image is submitted, an administrator can explicitly request one manual
+repair round for exhausted text/review jobs. It has separate `text_repair` and
+`review_repair` attempt stages, still limited to two requests each. All earlier
+attempts and charges remain in the same party and share its original budget.
+Repair preserves a paused party and is never invoked by the automatic worker.
+The fallback uses the reviewed USD rates 0.075 input / 0.20 output per million
+tokens, frozen for new batches. Older batches use these rates only for new fallback
+requests; their previously settled costs are not recomputed.
 
 A lost image-submit response is never automatically resubmitted. The administrator
 can recover its task ID from Kie history and continue polling the already paid job.

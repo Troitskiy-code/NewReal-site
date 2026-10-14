@@ -66,7 +66,9 @@ export function serviceTransport(purpose: string, requestedModel: string, legacy
     avatar_prompt: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
   };
   if (!Object.hasOwn(choices, purpose)) throw new AiProviderConfigurationError();
-  return { provider, model: provider === "deepinfra" ? choices[purpose] : requestedModel,
+  const serviceModel = purpose === "character_generation" && requestedModel === "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+    ? requestedModel : choices[purpose];
+  return { provider, model: provider === "deepinfra" ? serviceModel : requestedModel,
     url: provider === "deepinfra" ? DEEPINFRA_CHAT_URL : KODIK_CHAT_URL,
     apiKey: providerApiKey(provider, legacyKey) };
 }

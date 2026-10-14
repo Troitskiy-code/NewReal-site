@@ -31,7 +31,7 @@ const env = { DEEPINFRA_API_KEY: 'fixture', DEEPINFRA_USD_RUB: '108.192', KIE_AP
   S3_ACCESS_KEY_ID: 'fixture', S3_SECRET_ACCESS_KEY: 'fixture', ADMIN_SECRET: 'fixture_admin', CRON_SECRET: 'fixture_cron' };
 let ownerId, sessionOwner, textMode = 'ok', imageMode = 'ok', translationFailures = 0, reviewMode = 'ok';
 let textCalls = 0, imageCalls = 0, translationCalls = 0, saves = 0;
-const imageTasks = new Map(), logs = [], cache = new Map();
+const imageTasks = new Map(), logs = [], cache = new Map(), textRequests = [];
 class FixtureKieError extends Error { constructor(code, rejected = false) { super(code); this.code = code; this.rejected = rejected; } }
 const cardFixture = theme => {
   const sentence = 'Персонаж сохраняет самостоятельность, уважает решения собеседника, действует последовательно и постепенно раскрывает свои мотивы в разговоре. ';
@@ -60,6 +60,7 @@ function load(file) {
         return { data: { usage: { prompt_tokens: 1000, completion_tokens: 100 }, choices: [{ message: { content: JSON.stringify({ approved: reviewMode === 'ok', issues: 'Исправьте противоречие внешности и изображения' }) } }] } };
       }
       textCalls++;
+      textRequests.push({ model: body.model, maxTokens: body.max_tokens });
       if (textMode === 'lost') throw new Error('fixture network timeout');
       const theme = JSON.parse(body.messages[1].content).theme;
       return { data: { usage: { prompt_tokens: 1000, completion_tokens: 2000 }, choices: [{ message: { content:
@@ -209,6 +210,32 @@ try {
     && (await db.characterGenerationItem.findFirst({where:{batchId:broken.id}})).state==='failed', 'invalid card retries at most twice');
   check(!(await jobs.generationStatus(brokenOwner.id)).batches[0].items[0].canRetry,
     'exhausted stages do not offer another paid retry');
+  check(textRequests.at(-2).model==='Qwen/Qwen3-235B-A22B-Instruct-2507'
+    && textRequests.at(-1).model==='mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+    && textRequests.at(-1).maxTokens===3200, 'second text attempt switches to a bounded fallback model');
+  const brokenItem=await db.characterGenerationItem.findFirst({where:{batchId:broken.id}});
+  const chargedBeforeRepair=(await db.characterGenerationBatch.findUnique({where:{id:broken.id}})).spentKopecks;
+  await jobs.controlGenerationBatch(brokenOwner.id,broken.id,'pause');
+  const beforeRepairCalls=textCalls;
+  await jobs.controlGenerationBatch(brokenOwner.id,broken.id,'repair',brokenItem.id);
+  check((await db.characterGenerationBatch.findUnique({where:{id:broken.id}})).state==='paused'
+    && textCalls===beforeRepairCalls, 'manual repair preserves pause and starts no paid request itself');
+  await assert.rejects(jobs.controlGenerationBatch(brokenOwner.id,broken.id,'repair',brokenItem.id));
+  await jobs.controlGenerationBatch(brokenOwner.id,broken.id,'resume');await drain(broken);
+  check((await db.characterGenerationItem.findUnique({where:{id:brokenItem.id}})).state==='ready'
+    && await db.characterGenerationAttempt.count({where:{itemId:brokenItem.id,stage:'text'}})===2
+    && await db.characterGenerationAttempt.count({where:{itemId:brokenItem.id,stage:'text_repair'}})===1
+    && (await db.characterGenerationBatch.findUnique({where:{id:broken.id}})).spentKopecks>=chargedBeforeRepair,
+    'manual repair creates a draft without erasing previous paid attempts');
+  await assert.rejects(jobs.controlGenerationBatch(brokenOwner.id,broken.id,'repair',brokenItem.id));
+  const repairOwner=await db.user.create({data:{email:'repair-exhaustion@example.test'}});
+  const exhaustedRepair=await jobs.createGenerationBatch(repairOwner.id,randomUUID(),1,200);textMode='invalid';await drain(exhaustedRepair);
+  const repairItem=await db.characterGenerationItem.findFirst({where:{batchId:exhaustedRepair.id}});
+  await jobs.controlGenerationBatch(repairOwner.id,exhaustedRepair.id,'repair',repairItem.id);await drain(exhaustedRepair);textMode='ok';
+  check(await db.characterGenerationAttempt.count({where:{itemId:repairItem.id,stage:'text_repair'}})===2
+    && !(await jobs.generationStatus(repairOwner.id)).batches[0].items[0].canRepair,
+    'one manual repair round is bounded to two requests');
+  await assert.rejects(jobs.controlGenerationBatch(repairOwner.id,exhaustedRepair.id,'repair',repairItem.id));
   const translateOwner=await db.user.create({data:{email:'translation@example.test'}});
   const partial=await jobs.createGenerationBatch(translateOwner.id,randomUUID(),1,200);
   for(let i=0;i<6;i++){await accelerate();await jobs.processGenerationStep();}
