@@ -50,7 +50,8 @@ export function generationConfiguration() {
   if (!process.env.YANDEX_API_KEY || !process.env.YANDEX_FOLDER_ID) missing.push("Яндекс Перевод");
   if (process.env.S3_ENDPOINT !== "https://storage.yandexcloud.net" || !process.env.S3_REGION || !process.env.S3_BUCKET
     || !process.env.S3_ACCESS_KEY_ID || !process.env.S3_SECRET_ACCESS_KEY) missing.push("хранилище изображений");
-  const translateRub = Number(process.env.YANDEX_TRANSLATE_COST_RUB_PER_MILLION_CHARS || 500.4);
+  // Optional settings must stay optional on RelaxDev (dot-access gets generated stubs).
+  const translateRub = Number(process.env["YANDEX_TRANSLATE_COST_RUB_PER_MILLION_CHARS"] || 500.4);
   if (!Number.isFinite(translateRub) || translateRub <= 0) missing.push("тариф перевода");
   return { configured: missing.length === 0, missing,
     prices: { usdRub, inputUsd: 0.09, outputUsd: 0.55, translateRub, creditRub: KIE_CREDIT_RUB } as Prices };
@@ -81,8 +82,8 @@ export async function generationStatus(ownerId: string) {
       attempts: { select: { stage: true, number: true, state: true, chargedKopecks: true } } } } } });
   const config = generationConfiguration();
   return { configured: config.configured, missing: config.missing, maxBudgetRub: GENERATION_BUDGET_RUB,
-    workerEnabled: Boolean(process.env.CRON_SECRET) && (process.env.CHARACTER_GENERATION_WORKER_ACTIVE === "1"
-      || process.env.CHARACTER_GENERATION_EXTERNAL_WORKER_ENABLED === "1"),
+    workerEnabled: Boolean(process.env.CRON_SECRET) && (process.env["CHARACTER_GENERATION_WORKER_ACTIVE"] === "1"
+      || process.env["CHARACTER_GENERATION_EXTERNAL_WORKER_ENABLED"] === "1"),
     themes: GENERATION_THEMES.map(({ key, name, theme, novelty }) => ({ key, name, theme, novelty })),
     batches: batches.map(batch => ({ id: batch.id, state: batch.state, budgetRub: batch.budgetKopecks / 100,
       spentRub: batch.spentKopecks / 100, reservedRub: batch.reservedKopecks / 100, createdAt: batch.createdAt,
