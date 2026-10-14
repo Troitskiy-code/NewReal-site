@@ -18,7 +18,7 @@ export async function serviceChatPost<T = AxiosResponse["data"]>(purpose: string
   void _reasoning; void _effort; void _tier;
   const requestedMax = Number(rest.max_tokens);
   // JSON generation is bounded independently of the persisted summary allowance.
-  const outputLimit = purpose === "summary" ? MAX_SUMMARY_GENERATION_TOKENS : 1000;
+  const outputLimit = purpose === "character_generation" ? 6000 : purpose === "summary" ? MAX_SUMMARY_GENERATION_TOKENS : 1000;
   const options = deepinfraGenerationOptions(route.model);
   return meteredPost<T>(purpose, route.url, { ...rest, ...options, model: route.model,
     max_tokens: Number.isSafeInteger(requestedMax) && requestedMax > 0 ? Math.min(requestedMax, outputLimit) : 1000,

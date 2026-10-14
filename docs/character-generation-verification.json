@@ -1,0 +1,7 @@
+{
+  "verifiedAt": "2026-10-14T09:45:54.123Z",
+  "checks": 31,
+  "mode": "Disposable PostgreSQL; actual worker/admin routes; simulated paid providers and storage",
+  "paidCalls": 0,
+  "productionDatabaseAccess": false
+}

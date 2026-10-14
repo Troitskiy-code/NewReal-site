@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "verify:characters:generation": "node scripts/verify-character-generation.mjs",
     "verify:characters:storage": "node scripts/verify-character-storage.mjs",
     "verify:characters:discovery": "node scripts/verify-character-discovery.mjs",
     "verify:characters:discovery:browser": "node scripts/verify-character-discovery.mjs --browser",

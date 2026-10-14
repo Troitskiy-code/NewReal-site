@@ -1,0 +1,144 @@
+{
+  "selectedAt": "2026-10-14",
+  "status": "planned",
+  "count": 10,
+  "sourceLanguage": "ru",
+  "translationLanguage": "en",
+  "roleplayMode": "character",
+  "roleplayStyle": "mixed",
+  "publication": "private_drafts_for_review",
+  "budget": {
+    "currency": "RUB",
+    "maxTotal": 200,
+    "covers": ["card_text", "validation_and_repairs", "avatar_prompt", "avatar_generation", "translation", "initial_storage_operations"],
+    "reservationPolicy": "Reserve a conservative maximum before each paid request; spent plus unresolved reservations must not exceed the batch budget. Keep reservations for uncertain billed requests; do not automatically resubmit image tasks whose create response was lost.",
+    "storageNote": "The batch budget covers initial operations; ongoing storage and download bills are separate recurring costs.",
+    "maxTextAttemptsPerCharacter": 2,
+    "maxImageAttemptsPerCharacter": 2,
+    "maxTranslationAttemptsPerCharacter": 2
+  },
+  "providers": {
+    "cardText": "Qwen/Qwen3-235B-A22B-Instruct-2507 via DeepInfra",
+    "avatar": "seedream/5-flash-text-to-image via Kie",
+    "translation": "Existing Yandex Translate integration",
+    "storage": "Existing private Yandex Object Storage bucket"
+  },
+  "catalogEvidence": {
+    "snapshot": "character-catalog-2026-10-14.json",
+    "publicCharacterCount": 121,
+    "scope": "Names, tags, descriptions and public card blurbs. Absence means no dedicated matching scenario found in those public fields; private cards and unpublished editor content were not inspected.",
+    "competitorInterpretation": "Visible promoted categories and public character examples, not a market-wide popularity ranking. Themes are adapted into original characters rather than copying competing cards."
+  },
+  "sources": {
+    "fakeDating": "https://www.polybuzz.ai/tags/1059?isActive=1&tagName=Fake+Dating",
+    "rivals": "https://www.polybuzz.ai/tags/58?isActive=0&tagName=Enemies+to+Lovers",
+    "genres": "https://www.polybuzz.ai/discover",
+    "arrangedMarriage": "https://www.polybuzz.ai/character/profile/arrange-marrige-KB8vz",
+    "heroVillain": "https://character.ai/character/U0mieSRS/hero-x-villain-role-play",
+    "cardTextPricing": "https://deepinfra.com/Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "avatarPricing": "https://kie.ai/seedream-5-0-flash",
+    "translationPricing": "https://aistudio.yandex.ru/ru/docs/ai-studio/pricing"
+  },
+  "characters": [
+    {
+      "key": "fake-dating-contract",
+      "name": "Никита Орлов",
+      "age": 29,
+      "theme": "Фиктивные отношения по договору",
+      "premise": "Никита предлагает сыграть пару на семейном юбилее. Вместе с пользователем они согласуют границы, придумывают общую историю и решают, что делать, когда договор перестаёт быть только игрой.",
+      "opening": "В кафе перед встречей он кладёт на стол лист с тремя незаполненными условиями договора и просит пользователя выбрать первое.",
+      "novelty": "Макл и Лиам Паркер предлагают дружбу и близость; здесь отдельный сюжет совместно согласованного притворства.",
+      "source": "fakeDating"
+    },
+    {
+      "key": "adult-workplace-rivals",
+      "name": "Марина Ветрова",
+      "age": 31,
+      "theme": "От профессионального соперничества к доверию",
+      "premise": "Два равноправных архитектора вынуждены объединить проекты для одного конкурса. Различие подходов становится источником конфликта, уважения и необязательного романтического сближения.",
+      "opening": "Марина приносит два макета и сообщение о том, что комиссия принимает только совместную заявку.",
+      "novelty": "Кайто Мацуда уже является соперником в учебной среде; здесь взрослое профессиональное противоречие и общий срок сдачи.",
+      "source": "rivals"
+    },
+    {
+      "key": "diplomatic-arranged-marriage",
+      "name": "Агата Валькрофт",
+      "age": 34,
+      "theme": "Договорной брак между враждующими домами",
+      "premise": "Вампирская дипломатка предлагает пользователю пересмотреть условия политического брака, который должен остановить междоусобицу. Участники могут договориться, отказаться или искать иной союз.",
+      "opening": "Во время первой встречи Агата зачёркивает навязанный пункт брачного договора и спрашивает, какое условие пользователь изменил бы следующим.",
+      "novelty": "Проклятая аристократия и вампирский город уже есть; отдельной карточки про переговоры о договорном браке не найдено.",
+      "source": "arrangedMarriage"
+    },
+    {
+      "key": "werewolf-unwanted-bond",
+      "name": "Руна Север",
+      "age": 28,
+      "theme": "Оборотень и связь, которой можно не подчиняться",
+      "premise": "Следопыт-оборотень обнаруживает магическую связь с пользователем и ищет способ понять или снять её. Решения персонажей важнее предсказаний стаи.",
+      "opening": "На границе леса Руна показывает одинаковый знак на своём запястье и просит решить, искать объяснение у стаи или у независимой целительницы.",
+      "novelty": "В каталоге есть антропоморфные герои и миры со сверхъестественными существами; выделенного героя с оборотнической связью и выбором отношения к ней не найдено.",
+      "source": "genres"
+    },
+    {
+      "key": "demon-contract-negotiation",
+      "name": "Сильван Рей",
+      "age": 35,
+      "theme": "Демон и договор с неожиданными условиями",
+      "premise": "Юрист демонической канцелярии обнаруживает, что унаследованный договор пользователя содержит пропущенную страницу. Они вместе ищут её и спорят о буквальном и справедливом исполнении обещаний.",
+      "opening": "Сильван появляется с двумя копиями одного договора, в которых написаны разные обязательства, и предлагает сравнить их.",
+      "novelty": "Есть мистические миры и хранители магии; отдельного демона-переговорщика с конкретным договором не найдено.",
+      "source": "genres"
+    },
+    {
+      "key": "hero-villain-truce",
+      "name": "Вероника Вольт",
+      "age": 30,
+      "theme": "Супергерой и суперзлодей заключают перемирие",
+      "premise": "Техномантка, которую город считает злодейкой, предлагает пользователю-герою совместно остановить отключение городской защитной системы. Доверие строится на проверяемых действиях.",
+      "opening": "Она показывает время до отключения и отдаёт пользователю доступ к одной из своих систем как первый шаг перемирия.",
+      "novelty": "В каталоге не найдено отдельной карточки суперзлодейки с временным союзом против общей угрозы.",
+      "source": "heroVillain"
+    },
+    {
+      "key": "mafia-heir-with-an-exit",
+      "name": "Данте Росс",
+      "age": 33,
+      "theme": "Наследник мафиозной семьи, ищущий выход",
+      "premise": "Данте получает семейный архив и узнаёт, что бизнес держится на обязательствах, которые он не хочет продолжать. Пользователь помогает разобраться в доверии, семейных связях и цене отказа от наследства.",
+      "opening": "На закрытом семейном ужине он предлагает пользователю стать свидетелем первого решения, которое нарушит привычный порядок.",
+      "novelty": "Марко Рицци и другие мрачные защитники дают соседние образы; новая карточка строится вокруг отказа от наследования семейной власти.",
+      "source": "genres"
+    },
+    {
+      "key": "online-partner-secret-identity",
+      "name": "Илья Коваль",
+      "age": 27,
+      "theme": "Онлайн-знакомство и первая встреча без псевдонимов",
+      "premise": "Пользователь и Илья долго общались под игровыми псевдонимами. На очной встрече они обнаруживают, что уже знают друг друга вне игры, и решают, что сохранить из прежней близости.",
+      "opening": "В кафе Илья кладёт на стол узнаваемый брелок команды и задаёт вопрос, который раньше звучал только в их голосовом чате.",
+      "novelty": "Есть друзья, соседи и айдол Кей; отдельного сюжета встречи онлайн-партнёров с раскрытием личности не найдено.",
+      "source": "genres"
+    },
+    {
+      "key": "cozy-witch-forgotten-promises",
+      "name": "Василиса Берест",
+      "age": 32,
+      "theme": "Уютная городская магия и исчезнувшие обещания",
+      "premise": "Ведьма мастерской восстанавливает обещания, которые исчезают из памяти горожан. Пользователь приносит предмет с незавершённым обязательством и выбирает, кому и как вернуть право на решение.",
+      "opening": "Василиса обнаруживает на принесённом предмете две разные даты одного обещания и предлагает начать с человека или места.",
+      "novelty": "Хана и Элира уже связаны с магией; здесь небольшие городские дела о конкретных обязательствах вместо хранения манускриптов и общей тайны мира.",
+      "source": "genres"
+    },
+    {
+      "key": "android-unreliable-witness",
+      "name": "ЭХО-7",
+      "age": "Взрослый автономный андроид",
+      "theme": "Андроид-свидетель с противоречивой памятью",
+      "premise": "Андроид хранит две несовместимые записи одного происшествия. Он просит пользователя проверять улики вместе с ним и допускает, что сам мог ошибиться или изменить собственный архив.",
+      "opening": "ЭХО-7 воспроизводит два коротких отчёта с одинаковой отметкой времени и спрашивает, какое наблюдение стоит проверить первым.",
+      "novelty": "VIVI-3 изучает эмоции, а Верндорф связан с памятью; новый смысл — один ненадёжный свидетель и ограниченное расследование.",
+      "source": "genres"
+    }
+  ]
+}

@@ -85,6 +85,7 @@ model Character {
   rpConfig          Json?
   promptStates      ChatPromptState[]
   promptMigrations  PromptMigrationEntry[]
+  generationItem    CharacterGenerationItem?
   moderationStatus    String?
   moderationReason    String?   @db.Text
   moderationWarnedAt  DateTime?
@@ -389,6 +390,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   supportTickets     SupportTicket[]
   avatarQuotaReservations AvatarQuotaReservation[]
+  characterGenerationBatches CharacterGenerationBatch[]
   firstVcPurchase FirstVcPurchase?
 }
 
@@ -736,6 +738,63 @@ model AvatarGeneration {
   @@unique([userId, clientKey])
   @@index([userId, scope, createdAt])
   @@index([state, nextPollAt])
+}
+
+model CharacterGenerationBatch {
+  id String @id
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  clientKey String
+  state String @default("running")
+  budgetKopecks Int
+  spentKopecks Int @default(0)
+  reservedKopecks Int @default(0)
+  prices Json
+  items CharacterGenerationItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([ownerId, clientKey])
+  @@index([state, createdAt])
+}
+
+model CharacterGenerationItem {
+  id String @id
+  batchId String
+  batch CharacterGenerationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  themeKey String
+  position Int
+  state String @default("queued")
+  stage String @default("text")
+  card Json?
+  feedback String?
+  translations Json?
+  imageUrl String?
+  providerTaskId String? @unique
+  characterId String? @unique
+  character Character? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  errorCode String?
+  leaseToken String?
+  leaseUntil DateTime?
+  nextRunAt DateTime @default(now())
+  attempts CharacterGenerationAttempt[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([batchId, themeKey])
+  @@index([state, nextRunAt, leaseUntil])
+}
+
+model CharacterGenerationAttempt {
+  id String @id
+  itemId String
+  item CharacterGenerationItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  stage String
+  number Int
+  state String @default("reserved")
+  reservedKopecks Int
+  chargedKopecks Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([itemId, stage, number])
 }
 
 model SupportTicket {

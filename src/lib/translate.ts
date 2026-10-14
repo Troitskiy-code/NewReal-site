@@ -55,7 +55,7 @@ function getTranslateConfig() {
   return { apiKey, folderId };
 }
 
-export async function translateText(text: string, targetLang: TranslateTargetLang): Promise<string> {
+export async function translateText(text: string, targetLang: TranslateTargetLang, timeoutMs?: number): Promise<string> {
   if (!text.trim()) {
     console.log("[Translate] Empty text, skipping request", { targetLang, textLength: 0 });
     return text;
@@ -95,6 +95,7 @@ export async function translateText(text: string, targetLang: TranslateTargetLan
   try {
     const response = await meteredTranslationFetch(YANDEX_TRANSLATE_URL, {
       method: "POST",
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
       headers: {
         Authorization: `Api-Key ${apiKey}`,
         "Content-Type": "application/json",

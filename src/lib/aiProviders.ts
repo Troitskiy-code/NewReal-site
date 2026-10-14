@@ -54,13 +54,14 @@ export function textProviderForUrl(url: string): TextProvider {
   throw new AiProviderConfigurationError();
 }
 export function serviceTransport(purpose: string, requestedModel: string, legacyKey?: string) {
-  const provider = getMemoryProvider();
+  const provider = purpose === "character_generation" ? "deepinfra" : getMemoryProvider();
   const choices: Record<string, string> = {
     summary: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     intent: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     memory: requestedModel === "google/gemma-4-31b-it" ? "google/gemma-4-31B-it-turbo" : "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     character_event: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     character_prompt: "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    character_generation: "Qwen/Qwen3-235B-A22B-Instruct-2507",
     // Fast and multilingual: reads Russian cards, writes the English image description.
     avatar_prompt: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
   };
