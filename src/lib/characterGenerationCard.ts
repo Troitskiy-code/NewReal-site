@@ -39,7 +39,10 @@ export function cardRequest(themeKey: string, existing: Array<{ name: string; de
 
 export function validateGenerationCard(raw: unknown, themeKey?: string) {
   if (typeof raw !== "string" || raw.length > 60_000) throw new ClientInputError("Некорректная карточка");
-  const body = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, ""));
+  let body;
+  // Broken JSON is a format problem the model can fix, not a lost request for the fallback.
+  try { body = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "")); }
+  catch { throw new ClientInputError("Ответ не является корректным JSON. Верни один JSON-объект без текста вокруг и без обрыва."); }
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new ClientInputError("Некорректная карточка");
   const parsed = parseCharacterBody({ ...body, tags: null, isPublic: false, roleplayMode: "character", roleplayStyle: "mixed",
     imageUrl: null, imageLora: null, publicMemory: null, privateMemory: null, memoryPermissions: null });

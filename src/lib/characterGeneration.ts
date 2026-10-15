@@ -109,6 +109,8 @@ export async function generationStatus(ownerId: string) {
           && item.attempts.filter(attempt => attempt.stage === (item.stage === "image_submit" ? "image"
             : item.stage === "translate" ? translationInputs(item.card as GenerationCard).find(input => !(item.translations as Record<string, string> | null)?.[input.key])?.key
             : item.stage)).length < 2, providerTaskId: item.providerTaskId,
+        // The last validator or review correction, so the operator sees why a card was rejected.
+        feedback: item.state === "failed" ? item.feedback : null,
         canRepair: item.state === "failed" && ["text", "review"].includes(item.stage) && !item.imageUrl && !item.providerTaskId
           && !item.characterId && !item.attempts.some(attempt => attempt.stage === "text_repair" || attempt.stage === "review_repair"),
         attempts: item.attempts,

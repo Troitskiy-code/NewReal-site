@@ -33,6 +33,10 @@ words, missing `{{user}}:`/`{{char}}:` lines, a theme age missing from the appea
 or from the first `Возраст:` line of `canonicalNotes`, different eye or hair colours
 in the appearance and `avatarPrompt`, and gendered address to the user.
 
+Malformed or truncated JSON is a format correction for the primary model, not a lost
+request. A failed card shows its last validator or review correction under
+«Причина отказа» on the admin page.
+
 English fields reuse the `name_en` spelling of the name. Ready drafts show
 non-blocking translation warnings on the admin page: numbers lost from the source,
 pronouns that contradict the character's gender tag, and changed speaker markers.

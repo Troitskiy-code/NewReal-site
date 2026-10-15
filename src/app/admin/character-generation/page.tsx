@@ -4,7 +4,7 @@ import LocaleLink from "@/components/LocaleLink";
 
 type Item = { id: string; themeKey: string; name: string; state: string; stage: string; inProgress: boolean;
   characterId: string | null; isPublic: boolean; error: string | null; canRetry: boolean; canRepair: boolean; providerTaskId: string | null;
-  warnings?: string[] };
+  warnings?: string[]; feedback?: string | null };
 type Batch = { id: string; state: string; budgetRub: number; spentRub: number; reservedRub: number; createdAt: string; items: Item[] };
 type Status = { configured: boolean; missing: string[]; workerEnabled: boolean;
   themes: Array<{ key: string; name: string; theme: string; novelty: string }>; batches: Batch[] };
@@ -87,6 +87,8 @@ export default function CharacterGenerationAdmin() {
           {item.characterId && <div className="flex gap-4"><LocaleLink className="underline" href={`/edit/${item.characterId}`}>Открыть в редакторе</LocaleLink>
             {!item.isPublic && <button disabled={busy} className="underline" onClick={() => void act({ action: "publish", batchId: batch.id, itemId: item.id })}>Опубликовать</button>}</div>}
           {item.error && <p className="text-sm" role="status">{item.error}</p>}
+          {item.feedback && <details className="text-sm"><summary>Причина отказа</summary>
+            <p className="mt-1 whitespace-pre-wrap">{item.feedback}</p></details>}
           {item.warnings?.length ? <details className="text-sm"><summary>Проверьте английский перевод ({item.warnings.length})</summary>
             <ul className="mt-1 list-disc pl-5">{item.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul></details> : null}
           {item.canRetry && <button className="wd-btn" disabled={busy} onClick={() => void act({ action: "retry", batchId: batch.id, itemId: item.id })}>Повторить незавершённый этап</button>}

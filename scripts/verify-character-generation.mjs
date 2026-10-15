@@ -110,6 +110,9 @@ async function validatorChecks() {
   const theme = JSON.parse(readFileSync('src/lib/data/character-generation-themes.json','utf8')).find(t => t.key === 'mafia-heir-with-an-exit');
   const valid = cardFixture(theme), run = card => { try { return cardLib.validateGenerationCard(JSON.stringify(card), theme.key); } catch (error) { return error.message; } };
   check(typeof run(valid) === 'object', 'complete fixture card passes the stricter validator');
+  let brokenJson; try { cardLib.validateGenerationCard('{"name": "Обрыв', theme.key); } catch (error) { brokenJson = error; }
+  check(brokenJson?.constructor?.name === 'ClientInputError' && brokenJson.message.includes('JSON'),
+    'truncated JSON becomes a format correction for the primary model');
   const repaired = run({ ...valid, tags: ['Романтика', 'Магия', 'Romance', 'Драма', 'Средневековье', 'Мужской персонаж'],
     description: valid.description + ' После перестрелки он прячет архив.',
     exampleDialogs: '{{user}} — Почему?\n{{char}} — ' + 'Потому что так безопаснее для всех. '.repeat(3) + '\n{{user}}: Что дальше?\n' + theme.name + ': Решать вам.' });
@@ -310,6 +313,9 @@ try {
   const rejectedItem=await db.characterGenerationItem.findFirst({where:{batchId:rejected.id}});
   check(imageCalls===priorImages && rejectedItem.state==='failed' && rejectedItem.feedback.startsWith('Не выполнено: userAgency'),
     'semantic rejection names the failed checklist item and repairs text before paying for an avatar');
+  check((await jobs.generationStatus(reviewOwner.id)).batches[0].items[0].feedback === rejectedItem.feedback
+    && (await jobs.generationStatus(ownerId)).batches.every(b => b.items.every(i => i.state === 'failed' || i.feedback === null)),
+    'admin status shows the rejection reason only for failed cards');
   check(reviewRequests.length>0 && reviewRequests.every(r=>r.model==='Qwen/Qwen3-235B-A22B-Instruct-2507' && r.system.includes('userGender') && r.system.includes('timeline')),
     'consistency review uses the primary model with the full checklist');
   const legacyOwner=await db.user.create({data:{email:'legacy-review@example.test'}});
