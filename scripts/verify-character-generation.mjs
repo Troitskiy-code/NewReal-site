@@ -31,17 +31,20 @@ const env = { DEEPINFRA_API_KEY: 'fixture', DEEPINFRA_USD_RUB: '108.192', KIE_AP
   S3_ACCESS_KEY_ID: 'fixture', S3_SECRET_ACCESS_KEY: 'fixture', ADMIN_SECRET: 'fixture_admin', CRON_SECRET: 'fixture_cron' };
 let ownerId, sessionOwner, textMode = 'ok', imageMode = 'ok', translationFailures = 0, reviewMode = 'ok';
 let textCalls = 0, imageCalls = 0, translationCalls = 0, saves = 0;
-const imageTasks = new Map(), logs = [], cache = new Map(), textRequests = [];
+const imageTasks = new Map(), logs = [], cache = new Map(), textRequests = [], reviewRequests = [];
+let lostOnceAt = 0;
 class FixtureKieError extends Error { constructor(code, rejected = false) { super(code); this.code = code; this.rejected = rejected; } }
 const cardFixture = theme => {
   const sentence = 'Персонаж сохраняет самостоятельность, уважает решения собеседника, действует последовательно и постепенно раскрывает свои мотивы в разговоре. ';
+  const age = typeof theme.age === 'number' ? theme.age + ' лет' : 'взрослый андроид';
   return { name: theme.name, descriptionCard: theme.premise, description: theme.premise + sentence.repeat(3),
-    appearance: 'Взрослый персонаж, аккуратная одежда, выразительный взгляд, спокойная уверенная поза. ' + sentence,
+    appearance: `Взрослый персонаж, ${age}, аккуратная одежда, серые глаза, спокойная уверенная поза. ` + sentence,
     greeting: theme.opening + ' «С какого условия начнём? Я готов выслушать твой вариант и объяснить свой».',
     scenario: theme.premise, exampleDialogs: '{{user}}: Почему ты выбрал меня?\n{{char}}: ' + sentence + '\n{{user}}: Я хочу другой вариант.\n{{char}}: ' + sentence,
-    avatarPrompt: 'Взрослый персонаж в аккуратной одежде, спокойный уверенный взгляд, соответствующее сюжету окружение, мягкое освещение, портрет. ',
+    avatarPrompt: 'Adult character in neat clothes, calm grey eyes, setting that matches the story, soft light, portrait.',
     tags: 'Романтика, Партнёр, Медленное развитие отношений',
-    rpConfig: Object.fromEntries(['motivations','speechStyle','relationships','world','narrativeRules','canonicalNotes'].map(key => [key, sentence])) };
+    rpConfig: { ...Object.fromEntries(['motivations','speechStyle','relationships','world','narrativeRules'].map(key => [key, sentence])),
+      canonicalNotes: `Возраст: ${age}. ` + sentence } };
 };
 function load(file) {
   file = resolve(file); if (cache.has(file)) return cache.get(file);
@@ -56,12 +59,16 @@ function load(file) {
     if (name === './logger' || name === '@/lib/logger') return { errorLog: (...args) => logs.push(args), toSafeDiagnostic: () => ({}) };
     if (name === './aiCostTelemetry') return { withAiCostContext: fn => fn() };
     if (name === './aiTextClient') return { serviceChatPost: async (_purpose, _url, body) => {
-      if (body.messages[0].content.startsWith('Ты проверяешь')) {
-        return { data: { usage: { prompt_tokens: 1000, completion_tokens: 100 }, choices: [{ message: { content: JSON.stringify({ approved: reviewMode === 'ok', issues: 'Исправьте противоречие внешности и изображения' }) } }] } };
+      if (body.messages[0].content.startsWith('Ты редактор')) {
+        reviewRequests.push({ model: body.model, system: body.messages[0].content });
+        const checks = Object.fromEntries(['age','timeline','canon','scene','userAgency','userGender','tags','appearance','text'].map(key => [key, true]));
+        if (reviewMode === 'reject') checks.userAgency = false;
+        const content = reviewMode === 'legacy' ? JSON.stringify({ approved: true }) : JSON.stringify({ checks, issues: 'Не назначайте пользователю признание' });
+        return { data: { usage: { prompt_tokens: 1000, completion_tokens: 100 }, choices: [{ message: { content } }] } };
       }
       textCalls++;
       textRequests.push({ model: body.model, maxTokens: body.max_tokens });
-      if (textMode === 'lost') throw new Error('fixture network timeout');
+      if (textMode === 'lost' || textMode === 'lostOnce' && textCalls === lostOnceAt) throw new Error('fixture network timeout');
       const theme = JSON.parse(body.messages[1].content).theme;
       return { data: { usage: { prompt_tokens: 1000, completion_tokens: 2000 }, choices: [{ message: { content:
         textMode === 'invalid' ? '{}' : JSON.stringify(cardFixture(theme)) } }] } };
@@ -97,6 +104,37 @@ function load(file) {
   return mod.exports;
 }
 let checks = 0;
+// Defects found by hand in the 2026-10-14 paid batch, reduced to minimal inputs.
+async function validatorChecks() {
+  const cardLib = load('src/lib/characterGenerationCard.ts'), lib = load('src/lib/characterGenerationChecks.ts');
+  const theme = JSON.parse(readFileSync('src/lib/data/character-generation-themes.json','utf8')).find(t => t.key === 'mafia-heir-with-an-exit');
+  const valid = cardFixture(theme), run = card => { try { return cardLib.validateGenerationCard(JSON.stringify(card), theme.key); } catch (error) { return error.message; } };
+  check(typeof run(valid) === 'object', 'complete fixture card passes the stricter validator');
+  const repaired = run({ ...valid, tags: ['Романтика', 'Магия', 'Romance', 'Драма', 'Средневековье', 'Мужской персонаж'],
+    description: valid.description + ' После перестрелки он прячет архив.',
+    exampleDialogs: '{{user}} — Почему?\n{{char}} — ' + 'Потому что так безопаснее для всех. '.repeat(3) + '\n{{user}}: Что дальше?\n' + theme.name + ': Решать вам.' });
+  check(repaired.tags === 'Романтика, Драма, Мужской персонаж'
+    && repaired.exampleDialogs.split('\n').every(line => /^\{\{(user|char)\}\}: /.test(line)),
+    'array, legacy, alias and unsupported setting tags and speaker labels are repaired without a paid retry');
+  const reject = (patch, needle, label) => { const message = run({ ...valid, ...patch });
+    check(typeof message === 'string' && message.includes(needle), label); };
+  reject({ greeting: valid.greeting + ' Подпись: [Имя].' }, '[Имя]', 'placeholder is rejected with its fragment');
+  reject({ description: valid.description + ' Высококачественная детализация.' }, 'качестве изображения', 'image-quality jargon outside avatarPrompt is rejected');
+  reject({ rpConfig: { ...valid.rpConfig, speechStyle: valid.rpConfig.speechStyle + ' Говорит намёками, намёками.' } }, 'намёками, намёками', 'repeated word is rejected');
+  reject({ avatarPrompt: 'Adult man, dark brown eyes, short beard, black suit, dim library with antique shelves, portrait.' }, 'Цвет глаз', 'eye colour mismatch with avatarPrompt is rejected');
+  reject({ appearance: valid.appearance.replace('33 лет', 'лет тридцати') }, '33 года', 'theme age must be written in digits in appearance');
+  reject({ rpConfig: { ...valid.rpConfig, canonicalNotes: 'Отец жив. ' + valid.rpConfig.canonicalNotes } }, 'Возраст: N', 'canonical notes must open with the age');
+  reject({ exampleDialogs: valid.exampleDialogs.replace('{{char}}: ', '{{char}}: Я скажу, что ты ворвалась в мою жизнь. ') }, 'ты … ворвалась', 'gendered address to the user is rejected');
+  reject({ exampleDialogs: valid.exampleDialogs.replace('{{user}}: Почему', '{{user}}: Я просто нашёл его. Почему') }, 'я … нашёл', 'gendered user line is rejected');
+  check(!lib.userGenderFragments({ greeting: 'Вы пришли вовремя.', exampleDialogs: '{{user}}: Ты знал, кто я, когда писал?\n{{char}}: Знал. Вы уверены?' }).length,
+    "neutral address and the character's own past tense are not flagged");
+  check(lib.alignNameTranslation('Silvan Rey opened the door. Say nothing, Ray.', 'Sylvan Ray') === 'Sylvan Ray opened the door. Say nothing, Ray.',
+    'English name variants follow name_en without touching other words');
+  const warnings = lib.translationWarnings({ ...valid, tags: 'Мужской персонаж' }, { appearance_en: 'An adult of thirty. Her movements are calm.',
+    exampleDialogs_en: 'user: Why?' });
+  check(warnings.some(w => w.includes('33')) && warnings.some(w => w.includes('женские местоимения')) && warnings.some(w => w.includes('маркеры')),
+    'translation warnings flag lost ages, wrong pronouns and lost speaker markers');
+}
 const check = (value, label) => { assert.ok(value, label); checks++; console.log('PASS ' + label); };
 const req = (body, secret = 'fixture_admin') => new NextRequest('https://example.test/api/admin/character-generation', {
   method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + secret }, ...(body ? { body: JSON.stringify(body) } : {}) });
@@ -171,8 +209,14 @@ try {
   await assert.rejects(jobs.controlGenerationBatch(other.id,first.id,'publish',ready[1].id));
   check(true, 'another owner cannot publish or control a batch');
   await db.character.update({where:{id:ready[0].characterId},data:{isPublic:false}});
-  // Same themes now duplicate the public/owner catalogue and must fail before images.
+  // The next party takes the first unused theme; its name is already public and must fail before images.
+  const allThemes = JSON.parse(readFileSync('src/lib/data/character-generation-themes.json','utf8'));
+  await db.character.create({ data: { name: allThemes[10].name, userId: other.id, isPublic: true } });
+  const nextTheme = (await jobs.generationStatus(ownerId)).themes[0].key;
   const duplicates = await jobs.createGenerationBatch(ownerId,randomUUID(),1,200);
+  check(nextTheme === allThemes[10].key && (await db.characterGenerationItem.findFirst({where:{batchId:duplicates.id}})).themeKey === nextTheme
+    && (await jobs.generationStatus(ownerId)).themes[0].key === allThemes[11].key,
+    'a new party skips themes that already produced drafts or are queued');
   const beforeDuplicateImages=imageCalls; await drain(duplicates);
   check(imageCalls === beforeDuplicateImages && (await db.characterGenerationItem.findFirst({where:{batchId:duplicates.id}})).state === 'failed',
     'duplicate name/card is rejected before avatar payment');
@@ -211,8 +255,15 @@ try {
   check(!(await jobs.generationStatus(brokenOwner.id)).batches[0].items[0].canRetry,
     'exhausted stages do not offer another paid retry');
   check(textRequests.at(-2).model==='Qwen/Qwen3-235B-A22B-Instruct-2507'
-    && textRequests.at(-1).model==='mistralai/Mistral-Small-3.2-24B-Instruct-2506'
-    && textRequests.at(-1).maxTokens===3200, 'second text attempt switches to a bounded fallback model');
+    && textRequests.at(-1).model==='Qwen/Qwen3-235B-A22B-Instruct-2507',
+    'validation feedback retries the primary model instead of the weaker fallback');
+  const lostOwner=await db.user.create({data:{email:'lost-text@example.test'}});
+  const lostText=await jobs.createGenerationBatch(lostOwner.id,randomUUID(),1,200); textMode='lostOnce'; lostOnceAt=textCalls+1;
+  await drain(lostText); textMode='ok';
+  check(textRequests.at(-2).model==='Qwen/Qwen3-235B-A22B-Instruct-2507'
+    && textRequests.at(-1).model==='mistralai/Mistral-Small-3.2-24B-Instruct-2506' && textRequests.at(-1).maxTokens===3200
+    && (await db.characterGenerationItem.findFirst({where:{batchId:lostText.id}})).state==='ready',
+    'a failed text request switches to the bounded fallback model');
   const brokenItem=await db.characterGenerationItem.findFirst({where:{batchId:broken.id}});
   const chargedBeforeRepair=(await db.characterGenerationBatch.findUnique({where:{id:broken.id}})).spentKopecks;
   await jobs.controlGenerationBatch(brokenOwner.id,broken.id,'pause');
@@ -256,7 +307,17 @@ try {
   const reviewOwner=await db.user.create({data:{email:'review@example.test'}});
   const rejected=await jobs.createGenerationBatch(reviewOwner.id,randomUUID(),1,200); reviewMode='reject';
   const priorImages=imageCalls; await drain(rejected); reviewMode='ok';
-  check(imageCalls===priorImages && (await db.characterGenerationItem.findFirst({where:{batchId:rejected.id}})).state==='failed', 'semantic rejection repairs text before paying for an avatar');
+  const rejectedItem=await db.characterGenerationItem.findFirst({where:{batchId:rejected.id}});
+  check(imageCalls===priorImages && rejectedItem.state==='failed' && rejectedItem.feedback.startsWith('Не выполнено: userAgency'),
+    'semantic rejection names the failed checklist item and repairs text before paying for an avatar');
+  check(reviewRequests.length>0 && reviewRequests.every(r=>r.model==='Qwen/Qwen3-235B-A22B-Instruct-2507' && r.system.includes('userGender') && r.system.includes('timeline')),
+    'consistency review uses the primary model with the full checklist');
+  const legacyOwner=await db.user.create({data:{email:'legacy-review@example.test'}});
+  const legacy=await jobs.createGenerationBatch(legacyOwner.id,randomUUID(),1,200); reviewMode='legacy';
+  const legacyImages=imageCalls; await drain(legacy); reviewMode='ok';
+  check(imageCalls===legacyImages && (await db.characterGenerationItem.findFirst({where:{batchId:legacy.id}})).errorCode==='review_failed',
+    'a bare approval without checklist is not accepted');
+  await validatorChecks();
   let ticks=0, seenAuth;
   const worker=startCharacterGenerationWorker({port:'3456',secret:'fixture_cron',intervalMs:2,fetchImpl:async(url,init)=>{
     assert.equal(url,'http://127.0.0.1:3456/api/cron/generate-characters'); ticks++;seenAuth=init.headers.Authorization; return Response.json({processed:false}); }});

@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import LocaleLink from "@/components/LocaleLink";
 
 type Item = { id: string; themeKey: string; name: string; state: string; stage: string; inProgress: boolean;
-  characterId: string | null; isPublic: boolean; error: string | null; canRetry: boolean; canRepair: boolean; providerTaskId: string | null };
+  characterId: string | null; isPublic: boolean; error: string | null; canRetry: boolean; canRepair: boolean; providerTaskId: string | null;
+  warnings?: string[] };
 type Batch = { id: string; state: string; budgetRub: number; spentRub: number; reservedRub: number; createdAt: string; items: Item[] };
 type Status = { configured: boolean; missing: string[]; workerEnabled: boolean;
   themes: Array<{ key: string; name: string; theme: string; novelty: string }>; batches: Batch[] };
@@ -61,16 +62,16 @@ export default function CharacterGenerationAdmin() {
       {!status.configured && <p role="alert">Для запуска настройте: {status.missing.join(", ")}.</p>}
       {!status.workerEnabled && <p role="alert">Фоновый обработчик выключен. Настройте его на сервере перед запуском.</p>}
       <section className="space-y-4 rounded-xl border border-wd-border p-4">
-        <h2 className="text-xl font-semibold">Первая партия</h2>
+        <h2 className="text-xl font-semibold">Новая партия</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <label>Количество персонажей<input type="number" className={inputClass} min={1} max={10} value={count} disabled={busy || Boolean(active)} onChange={event => { startKey.current = null; setCount(Number(event.target.value)); }} /></label>
           <label>Предел расходов, ₽<input type="number" className={inputClass} min={1} max={200} step={1} value={budget} disabled={busy || Boolean(active)} onChange={event => { startKey.current = null; setBudget(Number(event.target.value)); }} /></label>
         </div>
         <p className="text-sm">В предел входят тексты, переводы, аватары и повторные попытки. Оплата неподтверждённых запросов учитывается с запасом. Последующее хранение файлов оплачивается отдельно.</p>
         <button className="wd-btn disabled:opacity-50" disabled={busy || Boolean(active) || !status.configured || !status.workerEnabled}
-          onClick={() => void start()}>Создать первую партию</button>
+          onClick={() => void start()}>Создать партию</button>
         {status.batches.length > 0 && !active && <button className="ml-3 underline" onClick={() => { startKey.current = null; setNotice("Можно запустить новую партию. Имена и похожие карточки будут проверены повторно."); }}>Подготовить новую партию</button>}
-        <details><summary>Темы и отличия от существующего каталога</summary><ol className="mt-3 space-y-3">{status.themes.slice(0, count).map(theme => <li key={theme.key}><strong>{theme.name}: {theme.theme}</strong><p className="text-sm">{theme.novelty}</p></li>)}</ol></details>
+        <details><summary>Темы следующей партии (свободно {status.themes.length}) и отличия от каталога</summary><ol className="mt-3 space-y-3">{status.themes.slice(0, count).map(theme => <li key={theme.key}><strong>{theme.name}: {theme.theme}</strong><p className="text-sm">{theme.novelty}</p></li>)}</ol></details>
       </section>
       {status.batches.map(batch => <section key={batch.id} className="space-y-4" aria-label="Партия персонажей">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-wd-border pb-3">
@@ -86,6 +87,8 @@ export default function CharacterGenerationAdmin() {
           {item.characterId && <div className="flex gap-4"><LocaleLink className="underline" href={`/edit/${item.characterId}`}>Открыть в редакторе</LocaleLink>
             {!item.isPublic && <button disabled={busy} className="underline" onClick={() => void act({ action: "publish", batchId: batch.id, itemId: item.id })}>Опубликовать</button>}</div>}
           {item.error && <p className="text-sm" role="status">{item.error}</p>}
+          {item.warnings?.length ? <details className="text-sm"><summary>Проверьте английский перевод ({item.warnings.length})</summary>
+            <ul className="mt-1 list-disc pl-5">{item.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul></details> : null}
           {item.canRetry && <button className="wd-btn" disabled={busy} onClick={() => void act({ action: "retry", batchId: batch.id, itemId: item.id })}>Повторить незавершённый этап</button>}
           {item.canRepair && <div><button className="wd-btn" disabled={busy} onClick={() => void act({ action: "repair", batchId: batch.id, itemId: item.id })}>Пересоздать карточку</button>
             <p className="mt-1 text-sm">Одна дополнительная попытка исправления с резервной моделью, до двух запросов текста. Расходы входят в прежний предел партии.</p></div>}

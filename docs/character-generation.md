@@ -5,15 +5,37 @@ locale prefix). Sign in as the owner of the drafts, then enter `ADMIN_SECRET`.
 The secret stays in page memory, never local storage or a URL. Every administrative
 request verifies both the secret and the logged-in owner. The page is not indexed.
 
-The first party uses the ten original themes in
-`src/lib/data/character-generation-themes.json`, selected from the reviewed public
-catalogue and competitor themes. Defaults: ten Russian cards, automatic English
+Themes live in `src/lib/data/character-generation-themes.json`: the ten original
+themes of the first party, then 30 themes added on 2026-10-15 for catalogue gaps
+(male characters, comedy, thriller, horror, space, post-apocalypse, historical,
+villain, rival) and the unused concepts from `character-strategy-2026-10-07.md`.
+Each party takes the first themes this owner has not used yet; themes whose job
+failed return to the pool, queued or uncertain ones do not. Defaults: ten Russian cards, automatic English
 translations, private drafts, maximum batch budget 200 RUB. A smaller party and
 budget can be selected. Text generation uses Qwen 3 235B on DeepInfra independently
-of the chat/memory model. A second text attempt and an explicit manual repair use
-Mistral Small 3.2; consistency reviews also use Mistral Small 3.2. Text output is
+of the chat/memory model. A second text attempt after a failed or lost request and an
+explicit manual repair use Mistral Small 3.2; a second attempt after validation or
+review feedback stays on Qwen. Consistency reviews use Qwen with a fixed checklist
+(age, timeline, canon, scene, user agency, user gender, tags, appearance, text); every
+item must be `true`, and the failed item names go back to the text attempt. Text output is
 capped at 3200 tokens, with a target card size of 4500–5500 characters. Images use
 the existing Kie Seedream text model.
+
+## Deterministic card checks
+
+`src/lib/characterGenerationChecks.ts` encodes the defects found in the 2026-10-14
+paid batch. Repaired in place, without another paid request: tags given as an array,
+aliases, legacy tags, more than eight tags, «Средневековье» next to modern details,
+«Магическая академия» without a school, and dialogue labels such as `{{char}} —` or
+the character's name. Rejected with a specific correction for the next text attempt:
+placeholders like `[Имя]`, image-quality words outside `avatarPrompt`, repeated
+words, missing `{{user}}:`/`{{char}}:` lines, a theme age missing from the appearance
+or from the first `Возраст:` line of `canonicalNotes`, different eye or hair colours
+in the appearance and `avatarPrompt`, and gendered address to the user.
+
+English fields reuse the `name_en` spelling of the name. Ready drafts show
+non-blocking translation warnings on the admin page: numbers lost from the source,
+pronouns that contradict the character's gender tag, and changed speaker markers.
 
 ## Deployment
 
