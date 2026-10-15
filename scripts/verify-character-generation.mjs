@@ -334,7 +334,8 @@ try {
   check((await jobs.generationStatus(reviewOwner.id)).batches[0].items[0].feedback === rejectedItem.feedback
     && (await jobs.generationStatus(ownerId)).batches.every(b => b.items.every(i => i.state === 'failed' || i.feedback === null)),
     'admin status shows the rejection reason only for failed cards');
-  check(reviewRequests.length>0 && reviewRequests.every(r=>r.model==='Qwen/Qwen3-235B-A22B-Instruct-2507' && r.system.includes('userGender') && r.system.includes('timeline')),
+  check(reviewRequests.length>0 && reviewRequests.every(r=>r.model==='Qwen/Qwen3-235B-A22B-Instruct-2507' && r.system.includes('userGender') && r.system.includes('timeline')
+    && r.system.includes('Многоточие') && r.system.includes('допустимы в avatarPrompt')),
     'consistency review uses the primary model with the full checklist');
   const legacyOwner=await db.user.create({data:{email:'legacy-review@example.test'}});
   const legacy=await jobs.createGenerationBatch(legacyOwner.id,randomUUID(),1,200); reviewMode='legacy';
