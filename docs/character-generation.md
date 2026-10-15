@@ -6,9 +6,13 @@ The secret stays in page memory, never local storage or a URL. Every administrat
 request verifies both the secret and the logged-in owner. The page is not indexed.
 
 Themes live in `src/lib/data/character-generation-themes.json`: the ten original
-themes of the first party, then 30 themes added on 2026-10-15 for catalogue gaps
-(male characters, comedy, thriller, horror, space, post-apocalypse, historical,
-villain, rival) and the unused concepts from `character-strategy-2026-10-07.md`.
+themes of the first party; then ten competitor-gap themes added on 2026-10-15 evening
+(anime male leads — a captain, a tournament rival, a kitsune; an isekai summoner; a
+male vampire; non-human comedy — a gargoyle, a merman; an elf mercenary; practical
+helpers — an interview coach and a study buddy), placed first so the next party
+takes them; then 30 themes added earlier that day for catalogue gaps (male
+characters, comedy, thriller, horror, space, post-apocalypse, historical, villain,
+rival) and the unused concepts from `character-strategy-2026-10-07.md`.
 Each party takes the first themes this owner has not used yet; themes whose job
 failed return to the pool, queued or uncertain ones do not. Defaults: ten Russian cards, automatic English
 translations, private drafts, maximum batch budget 200 RUB. A smaller party and

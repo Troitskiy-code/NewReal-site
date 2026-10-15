@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-10-15T18:29:57.288Z",
+  "verifiedAt": "2026-10-15T19:31:58.158Z",
   "checks": 70,
   "mode": "Disposable PostgreSQL; actual worker/admin routes; simulated paid providers and storage",
   "paidCalls": 0,
