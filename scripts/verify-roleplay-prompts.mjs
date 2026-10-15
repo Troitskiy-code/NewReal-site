@@ -257,7 +257,8 @@ check(persistent.sanitizeCharacterMemory({ userId: 'owner', systemPrompt: 'priva
 check(persistent.sanitizeCharacterMemory({ userId: 'owner', legacyPromptArchive: 'private' }, 'stranger').legacyPromptArchive === null, 'public card response cannot reveal archive');
 check(persistent.sanitizeCharacterMemory({ userId: 'owner', systemPrompt: 'private', legacyPromptArchive: 'private' }, 'owner').legacyPromptArchive === null, 'ordinary owner API also omits internal archives');
 check(persistent.sanitizeCharacterMemory({ userId: 'owner', privateMemory_en: 'private' }, 'stranger').privateMemory_en === null, 'public card response cannot reveal translated private memory');
-const fields = load('src/lib/characterFields.ts', { './publicError': errorType, '@/lib/characterTags': { normalizeTagsString: () => '' }, '@/lib/persistentMemory': persistent, '@/lib/i18nConfig': { isEnglishLocale: value => value === 'en' }, './roleplayConfig': config });
+const fields = load('src/lib/characterFields.ts', { './publicError': errorType, '@/lib/characterTags': { normalizeTagsString: () => '' }, '@/lib/persistentMemory': persistent, '@/lib/i18nConfig': { isEnglishLocale: value => value === 'en' }, './roleplayConfig': config,
+  './onboarding': { parseArtStyle: value => value === 'anime' || value === 'realistic' ? value : null } });
 const preview = load('src/app/api/characters/prompt-preview/route.ts', { ...apiDeps, '@/lib/characterFields': fields, '@/lib/chatSystemPrompt': builder, '@/lib/promptDiagnostics': diagnostics, '@/lib/testingChatModels': policy, '@/lib/chatHelpers': { resolveChatPreviewContext: async () => null }, '@/lib/apiI18n': { getApiLocale: () => 'ru' }, '@/lib/publicError': errorType, '@/lib/tokenCount': { countTokens } });
 check((await preview.POST(request({ ...card, characterId: 'card' }))).status === 403, 'private assembly preview forbidden to another user');
 session.user.id = 'owner';
@@ -272,7 +273,10 @@ const guestModel = { id: 'guest-model', name: 'google/gemma-4-31b-it', displayNa
 prisma.model = { findFirst: async () => guestModel };
 prisma.anonymousMessage.findMany = async () => guestHistory;
 let guestLocale = 'ru';
+// The Telegram Mini App flag is off in these tests: every card is allowed and no catalogue filter applies.
+const telegramCatalogOff = { isCharacterAllowedInTelegram: async () => true, telegramCharacterWhere: async () => null };
 const guestDeps = {
+  '@/lib/telegram/catalog': telegramCatalogOff,
   '@/lib/chatSystemPrompt': builder,
   '@/lib/aiCostTelemetry': { setAiCostActor: () => {} }, '@/lib/prisma': { prisma }, '@/lib/ensureCharacterSlug': {}, '@/lib/characterCardImage': {},
   '@/lib/apiI18n': { getApiLocale: () => guestLocale }, '@/lib/chatHelpers': helpers, '@/lib/promptState': states,
@@ -333,11 +337,17 @@ const creationPrisma = { character: {
 } };
 const tags = load('src/lib/characterTags.ts');
 const catalogSearch = load('src/lib/characterCatalogSearch.ts', { './characterTags': tags });
-const recommendationRank = load('src/lib/characterRecommendationRank.ts', { './characterTags': tags });
+const onboarding = load('src/lib/onboarding.ts', { './characterTags': tags });
+const recommendationRank = load('src/lib/characterRecommendationRank.ts', { './characterTags': tags, './onboarding': onboarding });
 const recommendations = load('src/lib/characterRecommendations.ts', {
   '@/lib/prisma': { prisma: creationPrisma }, './characterRecommendationRank': recommendationRank,
+  './onboarding': onboarding, './characterTags': tags,
 });
 const characterApiDeps = {
+  '@/lib/telegram/catalog': telegramCatalogOff,
+  // Images are not part of these checks; stored values pass through unchanged.
+  '@/lib/characterMedia': { persistCharacterImage: async value => value ?? null, CharacterMediaUnavailable: class extends Error {} },
+  '@/lib/onboardingServer': { readOnboardingPrefs: async () => null },
   '@/lib/roleplayConfig': config,
   '@/lib/characterCatalogSearch': catalogSearch, '@/lib/characterTags': tags,
   '@/lib/characterRecommendations': recommendations,
@@ -364,6 +374,12 @@ const updateApi = load('src/app/api/characters/[id]/route.ts', { ...characterApi
 });
 check((await updateApi.PUT(request({ description: 'Fresh biography' }), context)).status === 200 && updatedData.description_en === null && updatedData.description === 'Fresh biography', 'actual update clears stale EN data when translator fails');
 check((await updateApi.PUT(request({ systemPrompt: 'Overwrite unknown legacy' }), context)).status === 400, 'actual PUT cannot overwrite original legacy prompt');
+check((await updateApi.PUT(request({ appearance: 'Высокий мужчина', appearance_en: 'A tall man. His eyes are grey.' }), context)).status === 200
+  && updatedData.appearance === 'Высокий мужчина' && updatedData.appearance_en === 'A tall man. His eyes are grey.', 'editor-supplied English text is kept instead of a machine translation');
+check((await updateApi.PUT(request({ name_en: '  Keiji Arase ' }), context)).status === 200 && updatedData.name_en === 'Keiji Arase' && updatedData.name === undefined,
+  'an English-only correction updates just that field');
+check((await updateApi.PUT(request({ name_en: 42 }), context)).status === 400 && (await updateApi.PUT(request({ name_en: 'x'.repeat(81) }), context)).status === 400,
+  'English overrides must be strings within the field limit');
 
 // Group roster validation, persistence, pinned mode and actual provider wire paths.
 const members = Array.from({ length: 8 }, (_, index) => ({ id: `member-${index + 1}`, name: `Герой ${index + 1}`, description: 'Упрямый исследователь. '.repeat(35), appearance: 'Синий шарф', speechStyle: 'Короткие реплики' }));

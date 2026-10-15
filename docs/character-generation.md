@@ -51,7 +51,12 @@ request. A failed card shows its last validator or review correction under
 «Причина отказа» on the admin page.
 
 `name_en` is a local transliteration, not a translation (Yandex turned «Руна Север»
-into "The North Rune"). Before each field is translated, every inflected form of the
+into "The North Rune"). Japanese names written in the Russian Polivanov system are
+converted to Hepburn (Кэйдзи Арасэ → Keiji Arase, Камидзё → Kamijo), and Russian
+endings use common English spellings (Арсений → Arseny, Ксения → Ksenia).
+Editors can correct English text directly: `PUT /api/characters/<id>` accepts
+`<field>_en` (for example `name_en`, `appearance_en`); such a field is saved as given
+and not sent to the translator. Before each field is translated, every inflected form of the
 name is replaced with a Latin token and restored as the transliteration; if the
 translator drops a token, the field is translated again without protection. In
 `appearance_en`, pronouns follow the character's gender tag when the source describes

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { parseCharacterBody } from "@/lib/characterFields";
+import { CHARACTER_LIMITS, parseCharacterBody } from "@/lib/characterFields";
 import { persistCharacterImage, CharacterMediaUnavailable } from "@/lib/characterMedia";
 import { validateGroupConfig } from "@/lib/roleplayConfig";
 import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
@@ -148,9 +148,23 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
     if (body.rpConfig !== undefined) data.rpConfig = parsed.rpConfig;
 
     // A failed/empty translation must never make an old EN card override a fresh edit.
-    for (const field of ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt"] as const) {
+    const enFields = ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt"] as const;
+    for (const field of enFields) {
       if (body[field] !== undefined) Object.assign(data, { [`${field}_en`]: null });
     }
+    // An editor may supply the English text itself (machine translation confuses pronouns and names);
+    // such a field is not sent to the translator.
+    const enOverrides: Partial<Record<(typeof enFields)[number], string | null>> = {};
+    for (const field of enFields) {
+      const value = body[`${field}_en`];
+      if (value === undefined) continue;
+      if (value !== null && typeof value !== "string") return NextResponse.json({ error: `Поле ${field}_en должно быть строкой` }, { status: 400 });
+      const limit = field === "name" ? 80 : CHARACTER_LIMITS[field];
+      if (typeof value === "string" && value.trim().length > limit) return NextResponse.json({ error: `Поле ${field}_en: максимум ${limit} символов` }, { status: 400 });
+      enOverrides[field] = typeof value === "string" ? value.trim() || null : null;
+      Object.assign(data, { [`${field}_en`]: enOverrides[field] });
+    }
+    const translate = (field: (typeof enFields)[number]) => body[field] !== undefined && !(field in enOverrides);
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
@@ -158,18 +172,18 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
 
     try {
       const translations = await translateCharacterFieldsToEn({
-        ...(body.name !== undefined ? { name: parsed.name } : {}),
-        ...(body.description !== undefined ? { description: parsed.description ?? undefined } : {}),
-        ...(body.descriptionCard !== undefined
+        ...(translate("name") ? { name: parsed.name } : {}),
+        ...(translate("description") ? { description: parsed.description ?? undefined } : {}),
+        ...(translate("descriptionCard")
           ? { descriptionCard: parsed.descriptionCard ?? undefined }
           : {}),
-        ...(body.appearance !== undefined ? { appearance: parsed.appearance ?? undefined } : {}),
-        ...(body.greeting !== undefined ? { greeting: parsed.greeting ?? undefined } : {}),
-        ...(body.scenario !== undefined ? { scenario: parsed.scenario ?? undefined } : {}),
-        ...(body.exampleDialogs !== undefined
+        ...(translate("appearance") ? { appearance: parsed.appearance ?? undefined } : {}),
+        ...(translate("greeting") ? { greeting: parsed.greeting ?? undefined } : {}),
+        ...(translate("scenario") ? { scenario: parsed.scenario ?? undefined } : {}),
+        ...(translate("exampleDialogs")
           ? { exampleDialogs: parsed.exampleDialogs ?? undefined }
           : {}),
-        ...(body.avatarPrompt !== undefined ? { avatarPrompt: parsed.avatarPrompt ?? undefined } : {}),
+        ...(translate("avatarPrompt") ? { avatarPrompt: parsed.avatarPrompt ?? undefined } : {}),
       });
       Object.assign(data, translations);
 

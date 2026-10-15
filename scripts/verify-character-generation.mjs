@@ -148,6 +148,10 @@ async function validatorChecks() {
   check(lib.transliterateName('Руна Север') === 'Runa Sever' && lib.transliterateName('Демьян Лесной') === 'Demyan Lesnoy'
     && lib.transliterateName('Артём Серов') === 'Artyom Serov' && lib.transliterateName('ЭХО-7') === 'EKHO-7',
     'names are transliterated, not translated');
+  check(lib.transliterateName('Кэйдзи Арасэ') === 'Keiji Arase' && lib.transliterateName('Рё Камидзё') === 'Ryo Kamijo'
+    && lib.transliterateName('Кайто Мацуда') === 'Kaito Matsuda' && lib.transliterateName('Арсений Вельский') === 'Arseny Velsky'
+    && lib.transliterateName('Ксения Лаврова') === 'Ksenia Lavrova' && lib.transliterateName('Василиса Берест') === 'Vasilisa Berest',
+    'Japanese names use Hepburn and Russian endings use common English spellings');
   const guard = lib.protectName('Глаза Руны светятся. Стая ждёт Руну Север. Северный ветер.', 'Руна Север');
   check(guard.text === 'Глаза ZXQ0 светятся. Стая ждёт ZXQ0 ZXQ1. Северный ветер.'
     && guard.intact('The eyes of the ZXQ0 glow. The pack is waiting for zxq0 ZXQ1. The northern wind.')

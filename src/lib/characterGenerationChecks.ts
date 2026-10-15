@@ -152,12 +152,24 @@ const TRANSLIT: Record<string, string> = { а: "a", б: "b", в: "v", г: "g", �
   к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts", ч: "ch", ш: "sh",
   щ: "shch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya" };
 
+// Russian spells Japanese names in the Polivanov system (Кэйдзи, Камидзё); English readers expect
+// Hepburn (Keiji, Kamijo). Longest sequences first.
+const JAPANESE: Array<[string, string]> = [["дзи", "ji"], ["дзё", "jo"], ["дзю", "ju"], ["дзя", "ja"], ["дзу", "zu"], ["дз", "z"],
+  ["си", "shi"], ["сё", "sho"], ["сю", "shu"], ["ся", "sha"], ["ти", "chi"], ["тё", "cho"], ["тю", "chu"], ["тя", "cha"],
+  ["цу", "tsu"], ["эй", "ei"], ["ё", "yo"], ["ю", "yu"], ["я", "ya"], ["э", "e"], ["х", "h"], ["в", "w"], ["й", "i"]];
+const JAPANESE_MARKER = /дз|цу|[кгсзтднхбпмрв]э|эй|(?<!\p{L})(?:рё|кё|рю|кю)/u;
+
 /** Names are transliterated, never translated: Yandex turned «Руна Север» into "The North Rune". */
 export function transliterateName(name: string) {
+  const japanese = JAPANESE_MARKER.test(name.toLocaleLowerCase("ru"));
   return name.replace(/\p{L}+/gu, word => {
     const upper = word.length > 1 && word === word.toLocaleUpperCase("ru");
-    const latin = Array.from(word.toLocaleLowerCase("ru")).map((char, index, chars) =>
-      char === "е" && (chars[index - 1] === "ь" || chars[index - 1] === "ъ") ? "ye" : TRANSLIT[char] ?? char).join("");
+    let lower = word.toLocaleLowerCase("ru");
+    if (japanese) for (const [from, to] of JAPANESE) lower = lower.split(from).join(to);
+    // Common English spellings: Арсений → Arseny, Вельский → Velsky, Ксения → Ksenia.
+    else lower = lower.replace(/[иы]й$/u, "\u0000y").replace(/ия$/u, "\u0000ia");
+    const latin = Array.from(lower).map((char, index, chars) =>
+      char === "е" && (chars[index - 1] === "ь" || chars[index - 1] === "ъ") ? "ye" : TRANSLIT[char] ?? char).join("").replace(/\u0000/g, "");
     return upper ? latin.toUpperCase() : word[0] === word[0].toLocaleLowerCase("ru") ? latin : latin.charAt(0).toUpperCase() + latin.slice(1);
   });
 }
