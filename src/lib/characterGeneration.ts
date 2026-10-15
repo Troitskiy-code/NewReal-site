@@ -19,7 +19,7 @@ type Prices = { usdRub: number; inputUsd: number; outputUsd: number; translateRu
   fallbackInputUsd?: number; fallbackOutputUsd?: number };
 type Work = CharacterGenerationItem & { batch: CharacterGenerationBatch };
 const TERMINAL_ITEMS = ["ready", "failed", "uncertain"];
-const LEASE_MS = 300_000;
+const LEASE_MS = 420_000;
 export const GENERATION_BUDGET_RUB = 200;
 export const GENERATION_ERRORS: Record<string, string> = {
   budget: "Предел расходов достигнут. Уже полученные результаты сохранены.",
@@ -215,9 +215,10 @@ async function textStep(work: Work) {
   if (fallback) body.model = GENERATION_FALLBACK_MODEL;
   let charged: number | null = null;
   try {
-    // Full structured cards are much longer than chat replies. Keep this below
-    // the loopback deadline and lease so a slow response can still be saved once.
-    const response = await serviceChatPost("character_generation", KODIK_CHAT_URL, body, { timeout: 120_000 });
+    // Full structured cards are much longer than chat replies: on 2026-10-15 Qwen decoded
+    // ~14 tok/s, so a 1832-token card took 131 s and 3200 tokens need ~230 s. Keep this
+    // below the loopback deadline and lease so a slow response can still be saved once.
+    const response = await serviceChatPost("character_generation", KODIK_CHAT_URL, body, { timeout: 270_000 });
     charged = priceText(response.data?.usage, fallback ? fallbackPrices(prices) : prices);
     const card = validateGenerationCard(response.data?.choices?.[0]?.message?.content, work.themeKey);
     const duplicate = await prisma.character.findFirst({ where: {
@@ -268,7 +269,7 @@ async function reviewStep(work: Work) {
   const attempt = await reserve(work, work.stage, quote); if (!attempt) return;
   let charged: number | null = null;
   try {
-    const response = await serviceChatPost("character_generation", KODIK_CHAT_URL, body, { timeout: 60_000 });
+    const response = await serviceChatPost("character_generation", KODIK_CHAT_URL, body, { timeout: 120_000 });
     charged = priceText(response.data?.usage, prices);
     const raw = response.data?.choices?.[0]?.message?.content;
     if (typeof raw !== "string" || raw.length > 5000) throw new Error("Review format");

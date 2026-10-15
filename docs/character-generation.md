@@ -100,9 +100,13 @@ Storage failures retry downloading/saving the existing image, not generating it.
 Closing the page has no effect on the server worker. Pausing finishes an already
 running request and prevents subsequent paid stages; restarting the server restores
 progress and conservatively accounts for interrupted requests.
-Full card requests allow 120 seconds and consistency reviews 60 seconds. The
-loopback request allows 150 seconds, the route declares 180 seconds, and item
-leases last 300 seconds, keeping slow results fenced until their checkpoint.
+Full card requests allow 270 seconds and consistency reviews 120 seconds. The
+loopback request allows 300 seconds, the route declares 300 seconds, and item
+leases last 420 seconds, keeping slow results fenced until their checkpoint.
+A direct streamed measurement on 2026-10-15 gave Qwen 3.5 s to the first token
+and ~14 tokens/s: a 1832-token card took 131 s, so the earlier 120-second limit
+timed out every card and fell back to Mistral. The allvpn xray proxy has no policy
+block, so its default 300-second idle limit stays above the text deadline.
 
 Draft creation and its job checkpoint share a transaction. The character ID is
 derived from the job ID, making save retries idempotent. Published status changes

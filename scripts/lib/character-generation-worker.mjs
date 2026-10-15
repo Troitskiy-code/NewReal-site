@@ -8,7 +8,7 @@ export function startCharacterGenerationWorker({ port = process.env.PORT || '300
   async function tick() {
     if (stopped) return;
     controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 150_000); timeout.unref?.();
+    const timeout = setTimeout(() => controller.abort(), 300_000); timeout.unref?.();
     try {
       const response = await fetchImpl(url, { method: 'POST', headers: { Authorization: `Bearer ${secret}` },
         redirect: 'error', signal: controller.signal });
