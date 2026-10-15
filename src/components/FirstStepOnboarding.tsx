@@ -10,7 +10,7 @@ import { characterTagLabel } from "@/lib/characterTags";
 import { getLocalizedCardDescription, pickLocalizedText, stripLeadingName } from "@/lib/characterFields";
 import {
   MAX_ONBOARDING_INTERESTS, ONBOARDING_COMPLETED_MAX_AGE, ONBOARDING_COOKIE, ONBOARDING_INTERESTS, ONBOARDING_SKIPPED_MAX_AGE,
-  hasOnboardingSignals, onboardingInterestTags, serializeOnboardingPrefs,
+  hasOnboardingSignals, onboardingInterestTags, parseOnboardingStyle, serializeOnboardingPrefs,
   type ArtStyle, type OnboardingGender, type OnboardingInterest, type OnboardingPrefs, type OnboardingStatus, type OnboardingStyle,
 } from "@/lib/onboarding";
 import type { OnboardingPicks } from "@/lib/onboardingPicks";
@@ -19,6 +19,15 @@ export type OnboardingSource = "organic" | "reopen" | "hero";
 type Step = 1 | 2 | 3;
 type Pick = OnboardingPicks["characters"][number];
 type Results = { state: "loading" } | { state: "error" } | { state: "ready"; characters: Pick[] };
+
+type EarlyTapWindow = Window & { __nvOnboardingTap?: string | null; __nvOnboardingReady?: boolean };
+/**
+ * The picker arrives in the HTML seconds before React can handle a tap (9–11 s on slow 4G). This inline
+ * listener remembers a style tapped in that window and marks it; the component replays it after hydration.
+ */
+const EARLY_TAP_SCRIPT = `(function(){var w=window;if(w.__nvOnboardingTap!==undefined)return;w.__nvOnboardingTap=null;
+document.addEventListener("click",function(e){if(w.__nvOnboardingReady)return;var b=e.target&&e.target.closest&&e.target.closest("[data-onboarding-style]");
+if(!b)return;w.__nvOnboardingTap=b.getAttribute("data-onboarding-style");b.setAttribute("data-early-tap","")},true)})();`;
 
 export function writeOnboardingCookie(prefs: OnboardingPrefs) {
   const maxAge = prefs.status === "completed" ? ONBOARDING_COMPLETED_MAX_AGE : ONBOARDING_SKIPPED_MAX_AGE;
@@ -122,11 +131,20 @@ export default function FirstStepOnboarding({ source, initialPrefs, onClose }: {
     return () => controller.abort();
   }, [step, style, interests, gender, page, attempt]);
 
-  const chooseStyle = (value: OnboardingStyle) => {
+  const chooseStyle = useCallback((value: OnboardingStyle) => {
     setStyle(value);
     reachGoal(METRIKA_GOALS.onboardingStyle, { style: value });
     window.setTimeout(() => setStep(2), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220);
-  };
+  }, []);
+  useEffect(() => {
+    const w = window as EarlyTapWindow;
+    w.__nvOnboardingReady = true;
+    const early = parseOnboardingStyle(w.__nvOnboardingTap);
+    w.__nvOnboardingTap = null;
+    if (!early) return;
+    const timer = window.setTimeout(() => chooseStyle(early), 0);
+    return () => window.clearTimeout(timer);
+  }, [chooseStyle]);
   const toggleInterest = (id: OnboardingInterest) => {
     setLimitHint(false);
     if (interests.includes(id)) setInterests(interests.filter(item => item !== id));
@@ -156,8 +174,8 @@ export default function FirstStepOnboarding({ source, initialPrefs, onClose }: {
       </header>
       <div className="mx-auto grid w-full max-w-[500px] grid-cols-2 gap-3 md:gap-4">
         {(["anime", "realistic"] as const).map(value => (
-          <button key={value} type="button" aria-pressed={style === value} onClick={() => chooseStyle(value)}
-            className={`group relative isolate aspect-[3/4] overflow-hidden rounded-[20px] border-2 bg-[#1f1f1f] text-left transition-[transform,border-color] duration-200 hover:-translate-y-0.5 motion-reduce:transform-none ${style === value ? "border-wd-primary" : "border-transparent hover:border-wd-primary/60"}`}>
+          <button key={value} type="button" aria-pressed={style === value} onClick={() => chooseStyle(value)} data-onboarding-style={value}
+            className={`group relative isolate aspect-[3/4] overflow-hidden rounded-[20px] border-2 bg-[#1f1f1f] text-left transition-[transform,border-color] duration-200 hover:-translate-y-0.5 motion-reduce:transform-none data-[early-tap]:border-wd-primary ${style === value ? "border-wd-primary" : "border-transparent hover:border-wd-primary/60"}`}>
             <img src={`/images/onboarding/cover-${value}.webp`} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
             <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgba(8,8,10,0.95)_0%,rgba(8,8,10,0.55)_30%,transparent_55%)]" />
             {style === value && <Tick />}
@@ -168,10 +186,11 @@ export default function FirstStepOnboarding({ source, initialPrefs, onClose }: {
           </button>
         ))}
       </div>
-      <button type="button" aria-pressed={style === "any"} onClick={() => chooseStyle("any")}
-        className={`self-center rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors ${style === "any" ? "border-wd-primary text-white" : "border-white/20 text-wd-text-secondary hover:border-wd-primary hover:text-white"}`}>
+      <button type="button" aria-pressed={style === "any"} onClick={() => chooseStyle("any")} data-onboarding-style="any"
+        className={`self-center rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors data-[early-tap]:border-wd-primary data-[early-tap]:text-white ${style === "any" ? "border-wd-primary text-white" : "border-white/20 text-wd-text-secondary hover:border-wd-primary hover:text-white"}`}>
         {t("onboarding.style.any")}
       </button>
+      {source === "organic" && <script dangerouslySetInnerHTML={{ __html: EARLY_TAP_SCRIPT }} />}
     </>;
   } else if (step === 2) {
     const n = interests.length;

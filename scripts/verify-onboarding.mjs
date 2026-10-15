@@ -246,6 +246,8 @@ try {
       check(await noOverflow(page), `step 2 fits ${viewport.width}px`);
       await dialog.getByRole('button', { name: 'Показать персонажей' }).click();
       await dialog.getByRole('button', { name: 'Начать разговор' }).first().waitFor();
+      // Three cards use the Russian "few" plural form; a missing form shows the raw key.
+      check(await dialog.getByRole('heading', { name: 'Вот с кем можно начать' }).isVisible(), 'results heading is translated');
       const names = await dialog.locator('article h3').allTextContents();
       equal(names[0], 'anime-romance-top', 'first pick is the best anime romance card');
       check(!names.includes('real-romance'), 'browser picks respect the style');
@@ -267,6 +269,20 @@ try {
       check(await page.getByRole('dialog').count() === 0, 'a completed picker is not shown again');
       await context.close();
     }
+
+    // A tap while the JS is still loading must not be lost.
+    const early = await newPage({ width: 390, height: 844 });
+    // Only JavaScript is slow: real browsers do not paint (or run inline scripts) before the CSS arrives.
+    await early.context.route(/\/_next\/static\/chunks\/.*\.js(\?|$)/, async route => { await new Promise(done => setTimeout(done, 2500)); await route.continue(); });
+    await early.page.goto(base + '/ru', { waitUntil: 'commit' });
+    const earlyButton = early.page.getByRole('dialog').getByRole('button', { name: /^Аниме/ });
+    await earlyButton.waitFor();
+    check(await early.page.evaluate(() => !window.__nvOnboardingReady), 'tap happens before hydration');
+    await earlyButton.click();
+    check(await earlyButton.getAttribute('data-early-tap') === '', 'early tap is marked at once');
+    await early.page.getByRole('dialog').getByRole('heading', { name: 'Какие истории вам интересны?' }).waitFor({ timeout: 20000 });
+    check(true, 'early tap is replayed after hydration');
+    await early.context.close();
 
     const skipper = await newPage({ width: 390, height: 844 });
     await skipper.page.goto(base + '/ru');
