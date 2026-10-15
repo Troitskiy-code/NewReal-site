@@ -25,6 +25,7 @@ import { useAvatarGeneration } from "@/lib/useAvatarGeneration";
 import CharacterTagPicker from "@/components/CharacterTagPicker";
 import RoleplayPromptSettings from "@/components/RoleplayPromptSettings";
 import RoleplayCardFields from "@/components/RoleplayCardFields";
+import { useTelegramMode } from "@/components/TelegramProvider";
 import type { RoleplayConfig, RoleplayMode, RoleplayStyle } from "@/lib/roleplayConfig";
 
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
@@ -300,6 +301,7 @@ function CharacterFormContent({
   moderationReason,
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const telegram = useTelegramMode();
   const isWarned = moderationStatus === "warning";
   // Until the owner picks, follow the card's saved style (the edit page fills it after the first render).
   const [styleChoice, setStyle] = useState<"anime" | "realistic" | null>(null);
@@ -478,7 +480,7 @@ function CharacterFormContent({
               {usesSd ? "Генерация по референсу" : "Генерация по описанию"}
             </p>
             {tokenStatus.monthlyLimit === 0 && (
-              <p className="text-red-400">Генерация доступна по подписке Диалог, История или Вселенная.</p>
+              <p className="text-red-400">{telegram ? "Генерация аватара сейчас недоступна." : "Генерация доступна по подписке Диалог, История или Вселенная."}</p>
             )}
             {tokenStatus.monthlyLimit > 0 && tokenStatus.monthlyRemaining === 0 && (
               <p className="text-red-400">Достигнут месячный лимит бесплатных генераций.</p>

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { characterAvatarPath } from "@/lib/characterCardImage";
+import { telegramVisibleCharacterIds } from "@/lib/telegram/catalog";
 import { isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { chatThreadsEnabled, toThreadSummary } from "@/lib/chatThreads";
 
@@ -70,7 +71,8 @@ async function listThreadRows(userId: string) {
   });
   if (threads.length === 0) return [];
   const threadIds = threads.map((thread) => thread.id);
-  const characterIds = [...new Set<string>(threads.map((thread) => thread.characterId))];
+  // In Telegram, stories with characters outside the Telegram catalog are not listed.
+  const characterIds = await telegramVisibleCharacterIds([...new Set<string>(threads.map((thread) => thread.characterId))], userId);
   const [characters, groups] = await Promise.all([
     loadCharacters(characterIds),
     prisma.message.groupBy({
@@ -142,7 +144,7 @@ export async function GET() {
       return NextResponse.json({ data: [] });
     }
 
-    const characterIds = groups.map((group) => group.characterId);
+    const characterIds = await telegramVisibleCharacterIds(groups.map((group) => group.characterId), userId);
     const lastMessageOr = groups
       .filter((group) => group._max.createdAt)
       .map((group) => ({

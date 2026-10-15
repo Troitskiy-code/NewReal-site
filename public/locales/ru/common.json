@@ -13,7 +13,8 @@
       "chats": "Чаты",
       "create": "Создать",
       "coins": "Монеты",
-      "profile": "Профиль"
+      "profile": "Профиль",
+      "favorites": "Избранное"
     },
     "menu": {
       "home": "Главная",
@@ -707,5 +708,43 @@
             "pick": "Подобрать персонажа",
             "pickAgain": "Подобрать заново"
         }
-    }
+    },
+  "telegram": {
+    "entryTitle": "вход через Telegram",
+    "signingIn": "Входим через Telegram…",
+    "welcomeTitle": "Добро пожаловать в NewVerse",
+    "welcomeText": "Аккаунт создаётся по вашему профилю Telegram. Если у вас уже есть аккаунт newvers.ai, привяжите Telegram в профиле на сайте: тогда здесь будет тот же аккаунт и баланс VC.",
+    "adultNotice": "NewVerse предназначен для пользователей старше 18 лет.",
+    "continue": "Продолжить",
+    "loginDisabledTitle": "Вход через Telegram отключён",
+    "loginDisabledText": "Telegram отвязан от аккаунта NewVerse. Чтобы снова входить через Telegram, привяжите его в профиле на сайте.",
+    "outsideTitle": "Откройте NewVerse в Telegram",
+    "outsideText": "Эта страница работает только внутри приложения в Telegram.",
+    "errorTitle": "Не удалось войти",
+    "errorText": "Закройте и снова откройте приложение. Если ошибка повторится, напишите в поддержку.",
+    "unavailableAppText": "Приложение временно недоступно. Попробуйте позже.",
+    "toCatalog": "К персонажам",
+    "balanceTitle": "Баланс VC",
+    "balanceText": "VC расходуются на ответы персонажей. Заходите каждый день за ежедневным бонусом.",
+    "unavailableTitle": "Раздел недоступен",
+    "unavailableText": "Этот раздел недоступен в Telegram.",
+    "documentText": "Документ откроется в браузере.",
+    "openInBrowser": "Открыть в браузере",
+    "balanceExhausted": "Баланс VC исчерпан",
+    "coinRulesActions": "Новый ответ, повтор и продолжение — отдельные запросы. Стоимость в VC видна перед отправкой, VC списываются после ответа модели.",
+    "bonusTomorrow": "Завтра +{{amount}} VC",
+    "link": "Привязать Telegram",
+    "linkHint": "Привяжите Telegram, чтобы открывать NewVerse в Telegram с этим же аккаунтом и балансом VC.",
+    "linkedSince": "Telegram привязан с {{date}}",
+    "onlyLoginMethod": "Отвязать нельзя: Telegram — единственный способ входа в этот аккаунт.",
+    "linkPending": "Подтвердите привязку в Telegram: нажмите «Запустить» в чате с ботом. Ссылка одноразовая и действует 10 минут.",
+    "linkOpenAgain": "Открыть ссылку снова",
+    "linkDone": "Telegram привязан",
+    "linkError": "Не удалось выполнить действие. Повторите позже.",
+    "linkRateLimited": "Слишком много попыток. Повторите через час.",
+    "unlink": "Отвязать",
+    "unlinkTitle": "Отвязать Telegram?",
+    "unlinkText": "Аккаунт останется, но вход через этот Telegram будет отключён до новой привязки.",
+    "unlinkDone": "Telegram отвязан"
+  }
 }

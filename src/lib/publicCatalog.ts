@@ -10,6 +10,7 @@ import { catalogSearchCondition } from "./characterCatalogSearch";
 import { getCharacterRecommendationOrder } from "./characterRecommendations";
 import type { RecommendationMode } from "./characterRecommendationRank";
 import { readOnboardingPrefs } from "./onboardingServer";
+import { withTelegramCharacterWhere } from "./telegram/catalog";
 
 export function parseCatalogQuery(params: SeoSearchParams) {
   const first = (key: string) => { const value = params[key]; return (Array.isArray(value) ? value[0] : value) ?? ""; };
@@ -22,17 +23,18 @@ export function parseCatalogQuery(params: SeoSearchParams) {
 // React cache is per render/request, not a shared cache of personalized favorites.
 export const getPublicCatalog = cache(async (sort: string, page: number, search: string) => {
   try {
-    const where = {
+    const viewerId = await getViewerId();
+    // In Telegram: only the approved catalog (and the viewer's own characters).
+    const where = await withTelegramCharacterWhere({
       isPublic: true, slug: { not: null },
       ...catalogSearchCondition(search),
-    };
+    }, viewerId);
     const limit = CHARACTERS_PAGE_LIMIT;
     const total = await prisma.character.count({ where });
     const select = {
       id: true, slug: true, name: true, name_en: true, description: true, description_en: true,
       descriptionCard: true, descriptionCard_en: true, tags: true, totalMessages: true, updatedAt: true,
     } as const;
-    const viewerId = await getViewerId();
     let recommendationMode: RecommendationMode | null = null;
     let rows;
     if (sort === "for-you") {

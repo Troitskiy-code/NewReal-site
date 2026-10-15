@@ -1,3 +1,4 @@
+import { telegramVisibleCharacterIds } from "@/lib/telegram/catalog";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -65,7 +66,9 @@ export async function GET() {
       favorites = await loadFavorites(characterSelectNoSlug);
     }
 
-    const data = favorites.map((favorite) => ({
+    // In Telegram only characters of the Telegram catalog (or the viewer's own) are listed.
+    const visible = new Set(await telegramVisibleCharacterIds(favorites.map((favorite) => favorite.character.id), session.user.id));
+    const data = favorites.filter((favorite) => visible.has(favorite.character.id)).map((favorite) => ({
       ...favorite.character,
       imageUrl: characterAvatarPath(favorite.character.id, favorite.character.updatedAt),
       user: favorite.character.user

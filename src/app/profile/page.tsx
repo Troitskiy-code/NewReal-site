@@ -23,6 +23,9 @@ import { characterAvatarPath } from "@/lib/characterCardImage";
 import FavoriteButton from "@/components/FavoriteButton";
 import PersonaManager from "@/components/PersonaManager";
 import VerseCoinsBalance from "@/components/VerseCoinsBalance";
+import DailyBonusCard from "@/components/DailyBonusCard";
+import TelegramLinkCard from "@/components/TelegramLinkCard";
+import { useTelegramMode } from "@/components/TelegramProvider";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "@/lib/i18nConfig";
@@ -111,6 +114,7 @@ export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const telegram = useTelegramMode();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionBalance | null>(null);
@@ -298,7 +302,11 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {subscription && (
+        {/* Telegram: no plans or subscription management, only the daily bonus. */}
+        {telegram && <DailyBonusCard showBalance={false} />}
+        {!telegram && <TelegramLinkCard />}
+
+        {subscription && !telegram && (
           <section className="wd-card flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-6">
             <div className="flex items-start gap-3">
               <FaCrown className="mt-1 shrink-0 text-wd-secondary-text" />

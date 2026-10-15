@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
 import { characterMediaDownloadUrl, parseCharacterMediaPath } from "@/lib/characterMedia";
+import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
+import { isTelegramContext } from "@/lib/telegram/context";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -36,33 +38,39 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const character = await prisma.character.findUnique({
       where: { id },
-      select: { imageUrl: true, isPublic: true, userId: true, updatedAt: true },
+      select: { id: true, imageUrl: true, isPublic: true, userId: true, updatedAt: true },
     });
 
     if (!character?.imageUrl) {
-      return new NextResponse(null, { status: 404 });
+      return new NextResponse(null, { status: 404, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
+    }
+
+    const telegram = await isTelegramContext();
+    const session = !character.isPublic || telegram ? await getServerSession(authOptions) : null;
+    if (!(await isCharacterAllowedInTelegram(character, session?.user?.id))) {
+      return new NextResponse(null, { status: 404, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
     }
 
     if (!character.isPublic) {
-      const session = await getServerSession(authOptions);
       if (!session?.user?.id || session.user.id !== character.userId) {
-        return new NextResponse(null, { status: 404 });
+        return new NextResponse(null, { status: 404, headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } });
       }
     }
 
     const imageUrl = character.imageUrl;
-    const cacheControl = character.isPublic ? YEAR_CACHE : "private, no-store";
+    const cacheControl = character.isPublic && !telegram ? YEAR_CACHE : "private, no-store";
 
     if (parseCharacterMediaPath(imageUrl)) {
       return new NextResponse(null, { status: 307, headers: {
         Location: await characterMediaDownloadUrl(imageUrl), "Cache-Control": "private, no-store",
-        "Referrer-Policy": "no-referrer",
+        "Referrer-Policy": "no-referrer", Vary: "Cookie",
       } });
     }
 
     if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("/")) {
       const response = NextResponse.redirect(new URL(imageUrl, req.url));
       response.headers.set("Cache-Control", cacheControl);
+      response.headers.set("Vary", "Cookie");
       return response;
     }
 
@@ -78,6 +86,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": cacheControl,
         "CDN-Cache-Control": cacheControl,
+        Vary: "Cookie",
       },
     });
   } catch (error) {

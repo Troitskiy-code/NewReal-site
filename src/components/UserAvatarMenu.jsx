@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import VerseCoinsBalance from "./VerseCoinsBalance";
 import { withLocale } from "@/lib/i18nConfig";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useTelegramMode } from "./TelegramProvider";
 
 function getInitials(name, email) {
   const source = (name || email || "U").trim();
@@ -32,6 +33,7 @@ export default function UserAvatarMenu() {
   const pathname = useLocalizedPathname();
   const locale = useCurrentLocale();
   const { t } = useTranslation();
+  const telegram = useTelegramMode();
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -117,7 +119,8 @@ export default function UserAvatarMenu() {
 
           <MobileLanguageRow />
 
-          <div className="border-t border-[#2A2A2A] py-1">
+          {/* Inside Telegram the account is the Telegram one; the next launch would sign in again. */}
+          {!telegram && <div className="border-t border-[#2A2A2A] py-1">
             <button
               type="button"
               onClick={() => {
@@ -129,7 +132,7 @@ export default function UserAvatarMenu() {
               <FaSignOutAlt size={16} />
               {t("profile.logout")}
             </button>
-          </div>
+          </div>}
         </div>
       )}
     </div>

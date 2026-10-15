@@ -513,3 +513,67 @@ body {
     left: 232px;
   }
 }
+
+/*
+  Telegram Mini App (html[data-telegram], set by the server only in the Telegram context).
+  The chat shell follows the visible height above the on-screen keyboard (--nv-tg-vvh from
+  TelegramProvider): iOS webviews do not shrink 100dvh when the keyboard opens.
+*/
+html[data-telegram] {
+  overscroll-behavior: none;
+  --nv-tg-top: max(env(safe-area-inset-top, 0px), var(--nv-tg-safe-top, 0px));
+  --nv-tg-bottom: max(env(safe-area-inset-bottom, 0px), var(--nv-tg-safe-bottom, 0px));
+  --nv-tg-left: max(env(safe-area-inset-left, 0px), var(--nv-tg-safe-left, 0px));
+  --nv-tg-right: max(env(safe-area-inset-right, 0px), var(--nv-tg-safe-right, 0px));
+  --nv-tg-header: 3.5rem;
+}
+
+html[data-telegram] body {
+  padding-top: calc(var(--nv-tg-header) + var(--nv-tg-top));
+  padding-bottom: var(--nv-tg-bottom);
+  padding-left: var(--nv-tg-left);
+  padding-right: var(--nv-tg-right);
+}
+
+html[data-telegram] .nv-app-header {
+  height: calc(var(--nv-tg-header) + var(--nv-tg-top));
+  padding-top: var(--nv-tg-top);
+  padding-left: var(--nv-tg-left);
+  padding-right: var(--nv-tg-right);
+}
+
+html[data-telegram] .nv-bottom-nav {
+  padding-bottom: var(--nv-tg-bottom);
+  padding-left: var(--nv-tg-left);
+  padding-right: var(--nv-tg-right);
+}
+
+html[data-telegram] .nv-bottom-nav-spacer {
+  height: calc(64px + var(--nv-tg-bottom));
+}
+
+html[data-telegram] .nv-mobile-drawer,
+html[data-telegram] .nv-mobile-nav-overlay,
+html[data-telegram] .nv-desktop-sidebar,
+html[data-telegram] .nv-chat-portrait {
+  top: calc(var(--nv-tg-header) + var(--nv-tg-top));
+}
+
+html[data-telegram] .nv-mobile-drawer,
+html[data-telegram] .nv-desktop-sidebar {
+  height: calc(var(--nv-tg-vvh, 100dvh) - var(--nv-tg-header) - var(--nv-tg-top) - var(--nv-tg-bottom));
+}
+
+html[data-telegram] .nv-chat-shell {
+  height: calc(var(--nv-tg-vvh, 100dvh) - var(--nv-tg-header) - var(--nv-tg-top) - var(--nv-tg-bottom));
+  max-height: calc(var(--nv-tg-vvh, 100dvh) - var(--nv-tg-header) - var(--nv-tg-top) - var(--nv-tg-bottom));
+}
+
+@media (min-width: 768px) {
+  html[data-telegram] { --nv-tg-header: 5rem; }
+  html[data-telegram] body { padding-left: calc(80px + var(--nv-tg-left)); }
+}
+
+@media (min-width: 1024px) {
+  html[data-telegram] body { padding-left: calc(232px + var(--nv-tg-left)); }
+}

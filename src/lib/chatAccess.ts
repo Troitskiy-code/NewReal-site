@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { resolveChatScope, type ScopeResolution } from "@/lib/chatThreads";
+import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 
 export async function getAuthorizedCharacterForChat(userId: string, characterId: string) {
   const character = await prisma.character.findUnique({
@@ -13,6 +14,11 @@ export async function getAuthorizedCharacterForChat(userId: string, characterId:
 
   if (!character.isPublic && character.userId !== userId) {
     return { error: "Доступ запрещён", status: 403 as const };
+  }
+
+  // Outside the Telegram catalog a character does not exist in the Mini App.
+  if (!(await isCharacterAllowedInTelegram(character, userId))) {
+    return { error: "Персонаж не найден", status: 404 as const };
   }
 
   return { character };

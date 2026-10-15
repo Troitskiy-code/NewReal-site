@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isTelegramContext } from "@/lib/telegram/context";
+import { telegramBotUsername } from "@/lib/telegram/config";
 
 async function generateUniqueReferralCode(): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -45,10 +47,12 @@ export async function GET() {
       where: { referredBy: session.user.id },
     });
 
+    const bot = (await isTelegramContext()) ? telegramBotUsername() : null;
     return NextResponse.json({
       count,
       referralCode: user.referralCode,
-    });
+      ...(bot ? { telegramReferralUrl: `https://t.me/${bot}?startapp=ref_${user.referralCode}` } : {}),
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     errorLog("Server", "Referral stats error:", toSafeDiagnostic(error));
     return NextResponse.json({ error: "Внутренняя ошибка сервера" }, { status: 500 });

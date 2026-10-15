@@ -34,6 +34,7 @@ import { captureCharacterReturn } from "@/lib/characterReturn";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
 import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT, ANONYMOUS_TTL_DAYS, createAnonymousRequestId } from "@/lib/anonymousCookie";
 import ConfirmModal from "@/components/ConfirmModal";
+import { useTelegramMode } from "@/components/TelegramProvider";
 import { useConfirm } from "@/components/useConfirm";
 import { KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 import { GuestTransferPendingError, waitForGuestTransfer } from "@/lib/guestTransferRetry";
@@ -875,6 +876,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const { data: session, status } = useSession();
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
+  const telegram = useTelegramMode();
   const router = useRouter();
   const searchParams = useSearchParams();
   // The story chosen in the address; without it the server opens the latest active story.
@@ -1198,7 +1200,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
   const ensureCanPerformPaidAction = (): boolean => {
     if (insufficientBalance) {
-      showError(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+      showError(telegram ? t("telegram.balanceExhausted") : `Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
       return false;
     }
 
@@ -1222,7 +1224,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
 
       if (statusCode === 402) {
-        showError(message || "Недостаточно VerseCoins");
+        showError(telegram ? t("telegram.balanceExhausted") : message || "Недостаточно VerseCoins");
       } else {
         showError(message || fallback);
       }
@@ -1244,7 +1246,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
 
       if (statusCode === 402) {
-        showError(message || "Недостаточно VerseCoins");
+        showError(telegram ? t("telegram.balanceExhausted") : message || "Недостаточно VerseCoins");
       } else {
         showError(message || fallback);
       }
@@ -1518,7 +1520,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
     } else {
       if (insufficientBalance) {
-        showError(`Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+        showError(telegram ? t("telegram.balanceExhausted") : `Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
         return;
       }
     }
@@ -1736,7 +1738,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     <>
     {characterAvatarUrl ? <ChatPortraitBackground imageUrl={characterAvatarUrl} /> : null}
     <div
-      className={`relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
+      className={`nv-chat-shell relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
         characterAvatarUrl ? "" : "bg-bg-page"
       }`}
     >
@@ -1991,7 +1993,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               disabled={sending || actionLoading || clearingChat || historyLoading || transferState !== "idle"}
               canSend={canSend && !historyLoading && transferState === "idle"}
             />
-            {!isAnonymous ? <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-secondary-text">{t("pricing.coinRulesActions")}</p> : null}
+            {!isAnonymous ? <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-secondary-text">{t(telegram ? "telegram.coinRulesActions" : "pricing.coinRulesActions")}</p> : null}
           </div>
         </main>
       </div>

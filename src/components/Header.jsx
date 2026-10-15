@@ -15,7 +15,7 @@ export default function Header() {
   const { t } = useTranslation();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[60] m-0 h-14 border-b border-wd-border bg-[#0d0d0d]/90 px-0 backdrop-blur-md md:h-20">
+    <header className="nv-app-header fixed top-0 left-0 right-0 z-[60] m-0 h-14 border-b border-wd-border bg-[#0d0d0d]/90 px-0 backdrop-blur-md md:h-20">
       <div className="relative flex h-full w-full items-center">
         <button
           type="button"

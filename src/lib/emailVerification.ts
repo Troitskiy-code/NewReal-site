@@ -8,6 +8,7 @@ import { ensureEmailVerificationTable } from "@/lib/ensureEmailVerification";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18nConfig";
 import { emailDomain } from "@/lib/redactSensitive";
+import { isTelegramMiniAppEnabled } from "@/lib/telegram/config";
 
 export const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -81,7 +82,8 @@ export async function createAndSendVerificationEmail(
 export async function rejectUnverifiedEmail(
   req: NextRequest,
   userId: string,
-  messageKey: string
+  messageKey: string,
+  { allowTelegramIdentity = false }: { allowTelegramIdentity?: boolean } = {}
 ): Promise<NextResponse | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -98,6 +100,15 @@ export async function rejectUnverifiedEmail(
 
   if (isEmailVerified(user)) {
     return null;
+  }
+
+  // A linked Telegram account is a verified identity (one per phone number). Accounts created in
+  // the Mini App have no email, so for non-purchase rewards it replaces the email confirmation.
+  if (allowTelegramIdentity && isTelegramMiniAppEnabled()) {
+    const telegram = await prisma.telegramAccount
+      .findUnique({ where: { userId }, select: { id: true } })
+      .catch(() => null);
+    if (telegram) return null;
   }
 
   return NextResponse.json({ error: apiT(req, messageKey) }, { status: 403 });

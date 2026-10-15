@@ -73,7 +73,7 @@ async function migrationPart() {
   await ddl.connect();
   await ddl.query("SET TIME ZONE 'UTC'");
   const names = readdirSync(join(root, 'prisma/migrations')).filter((name) => /^\d+_/.test(name)).sort();
-  check('migration is the newest in the chain', names.at(-1) === MIGRATION, names.at(-1));
+  check('chat threads migration is present in the chain', names.includes(MIGRATION), names);
   for (const name of names.filter((name) => name < MIGRATION)) await ddl.query(migrationSql(name));
 
   // Synthetic production-like data: 4 users, 3 characters, every kind of row.

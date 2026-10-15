@@ -11,6 +11,7 @@ import { FaUserFriends, FaCopy, FaCoins } from "react-icons/fa";
 type ReferralStats = {
   count: number;
   referralCode: string;
+  telegramReferralUrl?: string;
 };
 
 const REFERRAL_REWARD = 100;
@@ -28,7 +29,7 @@ export default function ReferralPage() {
     try {
       const { data } = await axios.get<ReferralStats>("/api/referral/stats");
       setStats(data);
-      setReferralLink(`${window.location.origin}/register?ref=${data.referralCode}`);
+      setReferralLink(data.telegramReferralUrl ?? `${window.location.origin}/register?ref=${data.referralCode}`);
     } catch (err) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.error

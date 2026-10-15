@@ -1,3 +1,4 @@
+import { telegramCharacterWhere } from "@/lib/telegram/catalog";
 import { ClientInputError } from "@/lib/publicError";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
@@ -229,6 +230,10 @@ export async function GET(req: NextRequest) {
         })),
       });
     }
+
+    // Telegram Mini App: only the approved Telegram catalog and the viewer's own characters.
+    const telegramWhere = await telegramCharacterWhere(session?.user?.id);
+    if (telegramWhere) andConditions.push(telegramWhere as Record<string, unknown>);
 
     const queryWhere = andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 

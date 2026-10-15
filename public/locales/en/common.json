@@ -13,7 +13,8 @@
       "chats": "Chats",
       "create": "Create",
       "coins": "Coins",
-      "profile": "Profile"
+      "profile": "Profile",
+      "favorites": "Favorites"
     },
     "menu": {
       "home": "Home",
@@ -695,5 +696,43 @@
             "pick": "Find a character",
             "pickAgain": "Pick again"
         }
-    }
+    },
+  "telegram": {
+    "entryTitle": "sign in with Telegram",
+    "signingIn": "Signing in with Telegram…",
+    "welcomeTitle": "Welcome to NewVerse",
+    "welcomeText": "Your account is created from your Telegram profile. If you already have a newvers.ai account, link Telegram in your profile on the website to use the same account and VC balance here.",
+    "adultNotice": "NewVerse is intended for users aged 18 and over.",
+    "continue": "Continue",
+    "loginDisabledTitle": "Telegram sign-in is off",
+    "loginDisabledText": "Telegram was unlinked from the NewVerse account. Link it again in your profile on the website to sign in with Telegram.",
+    "outsideTitle": "Open NewVerse in Telegram",
+    "outsideText": "This page works only inside the Telegram app.",
+    "errorTitle": "Could not sign in",
+    "errorText": "Close and reopen the app. If it happens again, contact support.",
+    "unavailableAppText": "The app is temporarily unavailable. Please try again later.",
+    "toCatalog": "Browse characters",
+    "balanceTitle": "VC balance",
+    "balanceText": "VC are spent on character replies. Come back every day for the daily bonus.",
+    "unavailableTitle": "Section unavailable",
+    "unavailableText": "This section is not available in Telegram.",
+    "documentText": "The document opens in your browser.",
+    "openInBrowser": "Open in browser",
+    "balanceExhausted": "Your VC balance is used up",
+    "coinRulesActions": "A new reply, a retry and a continuation are separate requests. The VC cost is shown before sending; VC are deducted after the model replies.",
+    "bonusTomorrow": "Tomorrow +{{amount}} VC",
+    "link": "Link Telegram",
+    "linkHint": "Link Telegram to open NewVerse in Telegram with this account and VC balance.",
+    "linkedSince": "Telegram linked since {{date}}",
+    "onlyLoginMethod": "Cannot unlink: Telegram is the only way to sign in to this account.",
+    "linkPending": "Confirm in Telegram: press Start in the chat with the bot. The link works once and for 10 minutes.",
+    "linkOpenAgain": "Open the link again",
+    "linkDone": "Telegram linked",
+    "linkError": "Something went wrong. Please try again later.",
+    "linkRateLimited": "Too many attempts. Try again in an hour.",
+    "unlink": "Unlink",
+    "unlinkTitle": "Unlink Telegram?",
+    "unlinkText": "The account stays, but signing in with this Telegram is disabled until you link it again.",
+    "unlinkDone": "Telegram unlinked"
+  }
 }

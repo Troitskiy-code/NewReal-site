@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import ChatPageClient from "./ChatPageClient";
+import { getViewerId } from "@/lib/characterPublic";
+import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -18,10 +20,13 @@ export default async function ChatPage({ params }: PageProps) {
       name: true,
       name_en: true,
       updatedAt: true,
+      userId: true,
     },
   });
 
   if (!character) notFound();
+  // Telegram shows only the approved catalog (and the viewer's own characters).
+  if (!(await isCharacterAllowedInTelegram(character, await getViewerId()))) notFound();
 
   return (
     <ChatPageClient

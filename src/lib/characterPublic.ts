@@ -7,6 +7,7 @@ import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModeratio
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ownerModerationFields } from "@/lib/characterModeration";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 
 export const publicCharacterSelect = {
   id: true,
@@ -109,6 +110,7 @@ export async function findCharacterBySlugForViewer(
   const isOwner = Boolean(viewerId && viewerId === character.userId);
   if (!character.isPublic && !isOwner) return null;
   if (!character.slug) return null;
+  if (!(await isCharacterAllowedInTelegram(character, viewerId))) return null;
 
   return {
     id: character.id,

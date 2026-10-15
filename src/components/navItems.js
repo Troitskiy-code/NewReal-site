@@ -20,7 +20,7 @@ export const NAV_SECTIONS = [
       matchPaths: ["/chats", "/chat"],
       prefetch: true,
     },
-    { nameKey: "header.menu.favorites", path: "/favorites", icon: LuHeart },
+    { nameKey: "header.menu.favorites", shortKey: "header.menuShort.favorites", path: "/favorites", icon: LuHeart },
     {
       nameKey: "header.menu.create",
       shortKey: "header.menuShort.create",
@@ -36,6 +36,7 @@ export const NAV_SECTIONS = [
       path: "/coins",
       icon: LuCoins,
       prefetch: true,
+      purchase: true,
     },
     {
       nameKey: "header.menu.pricing",
@@ -43,6 +44,7 @@ export const NAV_SECTIONS = [
       icon: LuCrown,
       matchPaths: ["/pricing", "/subscription"],
       prefetch: true,
+      purchase: true,
     },
     { nameKey: "header.menu.profile", shortKey: "header.menuShort.profile", path: "/profile", icon: LuUser },
     { nameKey: "header.menu.support", path: "/support", icon: LuCircleHelp },
@@ -54,6 +56,15 @@ const ALL_ITEMS = NAV_SECTIONS.flat();
 export const BOTTOM_NAV_ITEMS = ["/", "/chats", "/create", "/coins", "/profile"].map((path) =>
   ALL_ITEMS.find((item) => item.path === path)
 );
+
+// Telegram Mini App: no shop entries (Telegram rules allow digital goods only for Stars).
+export const TELEGRAM_BOTTOM_NAV_ITEMS = ["/", "/chats", "/create", "/favorites", "/profile"].map((path) =>
+  ALL_ITEMS.find((item) => item.path === path)
+);
+
+export function navSectionsFor(telegram) {
+  return telegram ? NAV_SECTIONS.map((section) => section.filter((item) => !item.purchase)) : NAV_SECTIONS;
+}
 
 export function isNavItemActive(item, pathname) {
   const paths = item.matchPaths ?? [item.path];

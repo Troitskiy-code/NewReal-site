@@ -6,12 +6,15 @@ const MAX_KEYS = 40;
 const MAX_ARRAY = 32;
 
 const SENSITIVE_KEY =
-  /pass(word)?|secret|token|authorization|cookie|set-cookie|database_url|datasource|api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|private[_-]?key|credit.?card|cvv|nnextauth|session/i;
+  /pass(word)?|secret|token|authorization|cookie|set-cookie|database_url|datasource|api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|private[_-]?key|credit.?card|cvv|nnextauth|session|init.?data|tgwebapp/i;
 
 const CONNECTION_STRING =
   /(?:postgres(?:ql)?|mysql|mongodb|redis|amqp|[a-z][a-z0-9+.-]*):\/\/[^\s/'"]+:[^\s/'"]+@[^\s'"\s]+/gi;
 
 const BEARER = /\bBearer\s+\S+/gi;
+// Telegram Mini App launch data (signed user data) in a URL fragment, query, form or JSON body.
+const TELEGRAM_INIT_DATA = /\b(tgWebAppData|initData)(=)[^\s&#'"]+/gi;
+const TELEGRAM_INIT_DATA_JSON = /("(?:tgWebAppData|initData)"\s*:\s*)"(?:\\.|[^"\\])*"/gi;
 const COOKIE_HEADER = /\b(?:Cookie|Set-Cookie)\s*:\s*[^\r\n]+/gi;
 const ASSIGNED_SECRET =
   /((?:password|passwd|pwd|secret|token|api[_-]?key|authorization)\s*[=:]\s*)(?:"([^"]*)"|'([^']*)'|([^\s'",}]+))/gi;
@@ -96,6 +99,8 @@ export function redactText(value: string): string {
   let out = value;
   out = out.replace(CONNECTION_STRING, REDACTED);
   out = out.replace(BEARER, `Bearer ${REDACTED}`);
+  out = out.replace(TELEGRAM_INIT_DATA, `$1$2${REDACTED}`);
+  out = out.replace(TELEGRAM_INIT_DATA_JSON, `$1"${REDACTED}"`);
   out = out.replace(COOKIE_HEADER, (match) => {
     const name = match.split(":")[0];
     return `${name}: ${REDACTED}`;

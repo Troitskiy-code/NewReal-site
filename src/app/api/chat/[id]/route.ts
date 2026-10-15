@@ -1,3 +1,5 @@
+import { insufficientBalanceMessage } from "@/lib/telegram/context";
+import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 import { chatProviderConfigured } from "@/lib/aiProviders";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor, setAiCostThread, recordChatCostCharge, aiCostDiagnosticContext } from "@/lib/aiCostTelemetry";
@@ -140,6 +142,10 @@ async function handlePost(
     if (!character.isPublic && character.userId !== session.user.id) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
     }
+    // Telegram Mini App: only the Telegram catalog (and the viewer's own characters).
+    if (!(await isCharacterAllowedInTelegram(character, session.user.id))) {
+      return NextResponse.json({ error: "Персонаж не найден" }, { status: 404 });
+    }
 
     const body = await req.json();
     const continueChat = body?.continue === true;
@@ -174,7 +180,7 @@ async function handlePost(
     if (costResult.ok === false) {
       return NextResponse.json(
         {
-          error: costResult.error || "Недостаточно средств",
+          error: await insufficientBalanceMessage(costResult.error || "Недостаточно средств"),
           ...costResult.details,
         },
         { status: costResult.status || 402 }
@@ -192,7 +198,7 @@ async function handlePost(
     if (charge.ok === false) {
       return NextResponse.json(
         {
-          error: "Недостаточно VerseCoins",
+          error: await insufficientBalanceMessage("Недостаточно VerseCoins"),
           requiredVC: costVC,
           balance: charge.balance,
         },
@@ -550,6 +556,10 @@ export async function GET(
 
     if (!character.isPublic && character.userId !== session.user.id) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
+    }
+    // Telegram Mini App: only the Telegram catalog (and the viewer's own characters).
+    if (!(await isCharacterAllowedInTelegram(character, session.user.id))) {
+      return NextResponse.json({ error: "Персонаж не найден" }, { status: 404 });
     }
 
     // No story yet: an empty chat that the first message turns into the default story.

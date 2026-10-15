@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { characterAvatarPath } from "@/lib/characterCardImage";
+import { getViewerId } from "@/lib/characterPublic";
+import { withTelegramCharacterWhere } from "@/lib/telegram/catalog";
 import { recommendationTags } from "@/lib/characterTags";
 import {
   ONBOARDING_GENDER_TAGS, matchedOnboardingInterests, resolveArtStyle,
@@ -69,7 +71,7 @@ export function rankOnboardingCandidates(cards: OnboardingCandidate[], query: Om
 export async function getOnboardingPicks(query: OnboardingQuery, now = new Date()) {
   const cards: OnboardingCandidate[] = await prisma.character.findMany({
     // Only cards a newcomer can open right away: public, with a page, an avatar and no moderation warning.
-    where: { isPublic: true, slug: { not: null }, imageUrl: { not: null }, OR: [{ moderationStatus: null }, { moderationStatus: { not: "warning" } }] },
+    where: await withTelegramCharacterWhere({ isPublic: true, slug: { not: null }, imageUrl: { not: null }, OR: [{ moderationStatus: null }, { moderationStatus: { not: "warning" } }] }, await getViewerId()),
     select: {
       id: true, slug: true, name: true, name_en: true, descriptionCard: true, descriptionCard_en: true, description: true, description_en: true,
       greeting: true, greeting_en: true, tags: true, artStyle: true, totalMessages: true, createdAt: true, updatedAt: true,

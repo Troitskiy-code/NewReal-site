@@ -4,7 +4,10 @@ import { infoLog } from "@/lib/logger";
 
 export const REFERRAL_BONUS = 100;
 
-export async function grantReferralBonusIfEligible(userId: string): Promise<void> {
+export async function grantReferralBonusIfEligible(
+  userId: string,
+  { allowTelegramIdentity = false }: { allowTelegramIdentity?: boolean } = {}
+): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -16,8 +19,12 @@ export async function grantReferralBonusIfEligible(userId: string): Promise<void
     },
   });
 
-  if (!user?.referredBy || !isEmailVerified(user)) {
-    return;
+  if (!user?.referredBy) return;
+  if (!isEmailVerified(user)) {
+    const telegram = allowTelegramIdentity
+      ? await prisma.telegramAccount.findUnique({ where: { userId }, select: { id: true } })
+      : null;
+    if (!telegram) return;
   }
 
   const alreadyPaid = await prisma.transaction.findFirst({

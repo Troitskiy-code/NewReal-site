@@ -1,3 +1,4 @@
+import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 import { ClientInputError } from "@/lib/publicError";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
@@ -53,6 +54,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
     if (!isOwner && !character.isPublic) {
       return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
+    }
+    if (!(await isCharacterAllowedInTelegram(character, session?.user?.id))) {
+      return NextResponse.json({ error: "Персонаж не найден" }, { status: 404 });
     }
 
     const sanitized = stripModerationFields(

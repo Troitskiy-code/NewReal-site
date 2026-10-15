@@ -5,15 +5,17 @@ import { useTranslation } from "react-i18next";
 import { Fragment, useEffect, useLayoutEffect, useState } from "react";
 import { useSidebar } from "./SidebarContext";
 import LanguageSwitcher from "./LanguageSwitcher";
-import { NAV_SECTIONS, isNavItemActive } from "./navItems";
+import { navSectionsFor, isNavItemActive } from "./navItems";
+import { useTelegramMode } from "./TelegramProvider";
 
 function NavMenuList({ pathname, variant, onItemClick }) {
   const { t } = useTranslation();
   const isRail = variant === "rail";
+  const telegram = useTelegramMode();
 
   return (
     <ul className={`flex flex-col gap-1 ${isRail ? "items-center px-2 lg:items-stretch lg:px-3" : "px-3"}`}>
-      {NAV_SECTIONS.map((section, index) => (
+      {navSectionsFor(telegram).map((section, index) => (
         <Fragment key={index}>
           {index > 0 && <li aria-hidden className="mx-3 my-2 h-px self-stretch bg-wd-border" />}
           {section.map((item) => {
@@ -112,7 +114,7 @@ export default function Navbar() {
       </aside>
 
       {/* Desktop persistent sidebar: icon rail on md, labelled sidebar from lg (widths mirror body padding). */}
-      <aside className="fixed left-0 top-20 z-[210] hidden h-[calc(100vh-5rem)] w-20 flex-col overflow-hidden border-r border-wd-border bg-[#0d0d0d] text-white md:flex lg:w-[232px]">
+      <aside className="nv-desktop-sidebar fixed left-0 top-20 z-[210] hidden h-[calc(100vh-5rem)] w-20 flex-col overflow-hidden border-r border-wd-border bg-[#0d0d0d] text-white md:flex lg:w-[232px]">
         <nav aria-label={t("header.mainNav")} className="w-full flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-subtle">
           <NavMenuList pathname={pathname} variant="rail" onItemClick={handleNavClick} />
         </nav>

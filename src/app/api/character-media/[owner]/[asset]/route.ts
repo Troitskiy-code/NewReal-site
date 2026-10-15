@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { characterMediaDownloadUrl, parseCharacterMediaPath } from "@/lib/characterMedia";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { withTelegramCharacterWhere } from "@/lib/telegram/catalog";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,8 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ owner:
     const session = await getServerSession(authOptions);
     if (session?.user?.id !== owner) {
       const published = await prisma.character.findFirst({
-        where: { userId: owner, isPublic: true, OR: [{ imageUrl: path }, { imageLora: path }] }, select: { id: true },
+        where: await withTelegramCharacterWhere({ userId: owner, isPublic: true, OR: [{ imageUrl: path }, { imageLora: path }] }, session?.user?.id),
+        select: { id: true },
       });
       if (!published) return new NextResponse(null, { status: 404, headers });
     }

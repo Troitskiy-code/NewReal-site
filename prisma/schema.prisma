@@ -54,6 +54,7 @@ model Character {
   personaSelections    PersonaSelection[]
   scopedPersonas       Persona[]
   chatThreads          ChatThread[]
+  telegramCatalogEntry TelegramCatalogEntry?
 
   // Новые поля для редактора WetDreams
   greeting          String?   // Первое сообщение
@@ -394,6 +395,8 @@ model User {
   avatarQuotaReservations AvatarQuotaReservation[]
   characterGenerationBatches CharacterGenerationBatch[]
   firstVcPurchase FirstVcPurchase?
+  telegramAccount TelegramAccount?
+  telegramLinkTokens TelegramLinkToken[]
 }
 
 model Transaction {
@@ -842,4 +845,54 @@ model SupportReply {
   createdAt DateTime @default(now())
   @@index([ticketId, createdAt])
   @@index([status, nextAttemptAt])
+}
+
+// Telegram Mini App. Separate tables only: existing tables are not altered, so the
+// application keeps working before the SQL is applied and with TELEGRAM_MINIAPP_ENABLED off.
+
+/// Telegram identity of a NewVerse user. userId is null after unlinking: the row stays, so the
+/// same Telegram account can neither sign in nor create a second user until it is linked again.
+model TelegramAccount {
+  id          String    @id @default(cuid())
+  /// Telegram numeric user id as a decimal string (it exceeds 2^31).
+  telegramId  String    @unique
+  userId      String?   @unique
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// "telegram" when the Mini App created the user, "site" when linked from the profile.
+  origin      String    @default("telegram")
+  linkedAt    DateTime?
+  unlinkedAt  DateTime?
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// One-time token behind t.me/<bot>?start=link_<token>; only its SHA-256 is stored.
+model TelegramLinkToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Replay protection: one signed initData issues a session at most once.
+model TelegramInitDataReceipt {
+  hash      String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+/// Characters the owner approved for the Telegram catalog; everything else is hidden there.
+model TelegramCatalogEntry {
+  characterId String    @id
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  addedById   String?
+  createdAt   DateTime  @default(now())
 }

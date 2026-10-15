@@ -25,6 +25,7 @@ import {
 import type { JWT } from "next-auth/jwt";
 import { consumeIpRateLimit, consumeRateLimit } from "./rateLimit";
 import { LOGIN_RATE_LIMITED } from "./authErrors";
+import { isTelegramSessionActive } from "./telegram/accounts";
 
 export { isGoogleAuthEnabled };
 
@@ -288,7 +289,10 @@ export const authOptions: AuthOptions = {
         });
         token.id = user.id;
         token.oauthLoginEventId = account?.provider === "google" ? crypto.randomUUID() : undefined;
-        token.oauthRegistrationUserId = account?.provider === "google" && isNewUser === true ? user.id : undefined;
+        // Telegram Mini App registrations count as registrations too (register_success goal).
+        token.oauthRegistrationUserId =
+          (account?.provider === "google" || account?.provider === "telegram") && isNewUser === true ? user.id : undefined;
+        token.telegramAccountId = account?.provider === "telegram" ? account.providerAccountId : undefined;
         token.oauthRegistrationAt = token.oauthRegistrationUserId ? Date.now() : undefined;
         token.email = user.email;
         token.name = user.name;
@@ -312,6 +316,10 @@ export const authOptions: AuthOptions = {
       }
 
       const userId = String(token.id || token.sub || "");
+      // Unlinking Telegram ends sessions issued by a Mini App launch (the error clears the session).
+      if (token.telegramAccountId && userId && !(await isTelegramSessionActive(token.telegramAccountId, userId))) {
+        throw new Error("Telegram session revoked");
+      }
       if (token.oauthRegistrationUserId && (!token.oauthRegistrationAt || Date.now() - token.oauthRegistrationAt >= 30 * 60 * 1000)) {
         token.oauthRegistrationUserId = undefined;
         token.oauthRegistrationAt = undefined;

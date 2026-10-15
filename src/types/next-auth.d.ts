@@ -26,5 +26,7 @@ declare module "next-auth/jwt" {
     createdAt?: string | null;
     emailVerified?: Date | string | boolean | null;
     emailVerifiedChecked?: number;
+    /** TelegramAccount id of a session issued by a Mini App launch; revoked by unlinking. */
+    telegramAccountId?: string;
   }
 }

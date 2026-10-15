@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import LocaleLink, { useLocalizedPathname } from "./LocaleLink";
 import { useSidebar } from "./SidebarContext";
-import { BOTTOM_NAV_ITEMS, isNavItemActive } from "./navItems";
+import { BOTTOM_NAV_ITEMS, TELEGRAM_BOTTOM_NAV_ITEMS, isNavItemActive } from "./navItems";
+import { useTelegramMode } from "./TelegramProvider";
 import { MOBILE_BOTTOM_NAV_HEIGHT_PX } from "@/lib/layoutConstants";
 
 // Full-height screens with their own bottom composer or sticky actions.
@@ -15,6 +16,7 @@ export default function MobileBottomNav() {
   const visible = !HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const { t } = useTranslation();
   const { collapse } = useSidebar();
+  const items = useTelegramMode() ? TELEGRAM_BOTTOM_NAV_ITEMS : BOTTOM_NAV_ITEMS;
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -36,13 +38,13 @@ export default function MobileBottomNav() {
 
   return (
     <>
-      <div aria-hidden className="h-[calc(64px+env(safe-area-inset-bottom))] md:hidden" />
+      <div aria-hidden className="nv-bottom-nav-spacer h-[calc(64px+env(safe-area-inset-bottom))] md:hidden" />
       <nav
         aria-label={t("header.bottomNav")}
-        className="fixed inset-x-0 bottom-0 z-[45] border-t border-wd-border bg-[#0d0d0d]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        className="nv-bottom-nav fixed inset-x-0 bottom-0 z-[45] border-t border-wd-border bg-[#0d0d0d]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
       >
         <ul className="grid h-16 grid-cols-5">
-          {BOTTOM_NAV_ITEMS.map((item) => {
+          {items.map((item) => {
             const isActive = isNavItemActive(item, pathname);
             const isCreate = item.path === "/create";
             const Icon = item.icon;

@@ -4,9 +4,12 @@ import { AuthCard } from "@/components/AuthCard";
 import RegisterForm from "./RegisterForm";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { translate } from "@/lib/getDictionary";
+import { isTelegramContext } from "@/lib/telegram/context";
 
 export default async function RegisterPage() {
   const locale = await getRequestLocale();
+  // Google OAuth does not work in Telegram's built-in browser.
+  const googleAuthEnabled = isGoogleAuthEnabled() && !(await isTelegramContext());
 
   return (
     <Suspense
@@ -16,7 +19,7 @@ export default async function RegisterPage() {
         </AuthCard>
       }
     >
-      <RegisterForm googleAuthEnabled={isGoogleAuthEnabled()} />
+      <RegisterForm googleAuthEnabled={googleAuthEnabled} />
     </Suspense>
   );
 }

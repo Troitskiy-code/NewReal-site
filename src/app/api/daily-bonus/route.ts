@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
-    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToClaimBonus");
+    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToClaimBonus", { allowTelegramIdentity: true });
     if (unverified) return unverified;
 
     const user = await prisma.user.findUnique({

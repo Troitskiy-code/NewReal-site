@@ -1,3 +1,4 @@
+import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 import { setAiCostActor } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -171,6 +172,10 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
   if (!character.isPublic) {
     return withCookie(NextResponse.json({ error: "Не авторизован" }, { status: 401 }), sessionId);
   }
+  // A guest in Telegram sees only the Telegram catalog.
+  if (!(await isCharacterAllowedInTelegram({ id: character.id, userId: "" }, null))) {
+    return withCookie(NextResponse.json({ error: "Персонаж не найден" }, { status: 404 }), sessionId);
+  }
 
   const messages = await loadStoredMessages(sessionId, characterId);
   return withCookie(
@@ -294,6 +299,10 @@ export async function handleAnonymousChatPost(
   }
   if (!character.isPublic) {
     return withCookie(NextResponse.json({ error: "Не авторизован" }, { status: 401 }), sessionId);
+  }
+  // A guest in Telegram sees only the Telegram catalog.
+  if (!(await isCharacterAllowedInTelegram({ id: character.id, userId: "" }, null))) {
+    return withCookie(NextResponse.json({ error: "Персонаж не найден" }, { status: 404 }), sessionId);
   }
 
   const claimed = await claimGuestGeneration({

@@ -16,7 +16,8 @@ export default function EmailVerificationBanner() {
 
   const isVerified = Boolean(session?.user?.emailVerified);
 
-  if (status !== "authenticated" || isVerified) {
+  // Accounts created in the Telegram Mini App have no email to confirm.
+  if (status !== "authenticated" || isVerified || !session?.user?.email) {
     return null;
   }
 
