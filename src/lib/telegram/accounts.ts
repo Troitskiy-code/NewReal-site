@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { applySignupBenefits } from "@/lib/provisionNewUser";
+import { applySignupBenefits, SIGNUP_VC_GRANT } from "@/lib/provisionNewUser";
 import { grantReferralBonusIfEligible } from "@/lib/referralBonus";
 import { normalizeTelegramReferralCode } from "./shared";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
@@ -9,6 +9,7 @@ import type { TelegramLaunchUser } from "./initData";
 
 export const LINK_TOKEN_TTL_MS = 10 * 60 * 1000;
 export const LINK_START_PREFIX = "link_";
+export const LINK_CONFIRM_PREFIX = "link_confirm_";
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -119,33 +120,96 @@ export async function createLinkToken(userId: string): Promise<{ token: string; 
   return { token, expiresAt };
 }
 
-export type LinkResult = "linked" | "already_linked" | "invalid" | "telegram_taken" | "user_has_other_telegram";
+export type LinkResult = "linked" | "already_linked" | "invalid" | "telegram_taken" | "user_has_other_telegram"
+  | "confirmation_required" | "profile_not_empty";
+type LinkDecision = { result: LinkResult; confirmationToken?: string; siteLabel?: string };
+type LinkAccount = { id: string; userId: string | null; origin: string };
+
+// Only an unused Mini App registration can be replaced. Keep its User and signup ledger intact;
+// neither starter VC nor other benefits are copied to the destination account.
+async function isUnusedTelegramProfile(tx: Prisma.TransactionClient, account: LinkAccount): Promise<boolean> {
+  if (account.origin !== "telegram" || !account.userId) return false;
+  const user = await tx.user.findUnique({
+    where: { id: account.userId },
+    include: {
+      firstVcPurchase: true,
+      transactions: true,
+      _count: { select: {
+        accounts: true, sessions: true, creations: true, instances: true, characters: true, messages: true,
+        favorites: true, memories: true, coreMemories: true, episodicMemories: true, memoryEntries: true,
+        personas: true, personaSelections: true, chatThreads: true, notifications: true,
+        passwordResetTokens: true, emailVerificationTokens: true, supportTickets: true,
+        avatarQuotaReservations: true, characterGenerationBatches: true, telegramLinkTokens: true,
+      } },
+    },
+  });
+  if (!user || user.email || user.password || user.customApiKey || user.firstVcPurchase
+    || user.subscriptionType !== "start" || user.subscriptionEnd || user.pendingSubscriptionType
+    || user.pendingSubscriptionEnd || user.robokassaRecurringId || user.isSubscribed
+    || user.verseCoins !== SIGNUP_VC_GRANT || user.permanentCoins !== SIGNUP_VC_GRANT
+    || user.realCoins !== 0 || user.credits !== 0 || user.avatarTokens !== 10 || user.tokensUsedThisMonth !== 0
+    || user.bonusStreak !== 0 || user.lastBonusDate || user.lastDailyBonus || user.dailyRequests !== 0
+    || Object.values(user._count).some((count) => count !== 0)
+    || user.transactions.length !== 1 || user.transactions[0].type !== "signup_bonus"
+    || user.transactions[0].amount !== SIGNUP_VC_GRANT) return false;
+  const [payments, orders, referrals] = await Promise.all([
+    tx.paymentEvent.count({ where: { userId: user.id } }),
+    tx.paymentOrder.count({ where: { userId: user.id } }),
+    tx.user.count({ where: { referredBy: user.id } }),
+  ]);
+  return payments === 0 && orders === 0 && referrals === 0;
+}
+
+function confirmationHash(token: string, telegramId: string, accountId: string): string {
+  return hashLinkToken(`confirm:${telegramId}:${accountId}:${token}`);
+}
+
+function siteAccountLabel(user: { name: string | null; email: string | null }): string {
+  const name = user.name?.replace(/[\r\n\t]/g, " ").trim().slice(0, 64);
+  const [local, domain] = user.email?.split("@") ?? [];
+  const email = local && domain ? `${local.slice(0, 2)}***@${domain}` : null;
+  return [name, email].filter(Boolean).join(" · ") || "NewVerse";
+}
 
 /**
  * Consumes link_<token> from the bot. The token is single-use (an atomic update marks it used
  * before anything else), bound to the user that created it and short-lived. A Telegram account
- * that already belongs to another user is never moved: accounts are not merged.
+ * that already belongs to another user requires a second, Telegram-bound confirmation, and only
+ * an unused Mini App registration is eligible. Existing site accounts are never moved.
  */
-export async function consumeLinkToken(token: string, telegramId: string): Promise<LinkResult> {
-  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token) || !/^[1-9]\d{0,19}$/.test(telegramId)) return "invalid";
+export async function consumeLinkToken(token: string, telegramId: string): Promise<LinkDecision> {
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token) || !/^[1-9]\d{0,19}$/.test(telegramId)) return { result: "invalid" };
   const tokenHash = hashLinkToken(token);
   const now = new Date();
   const claimed = await prisma.telegramLinkToken.updateMany({
     where: { tokenHash, usedAt: null, expiresAt: { gt: now } },
     data: { usedAt: now },
   });
-  if (claimed.count !== 1) return "invalid";
+  if (claimed.count !== 1) return { result: "invalid" };
   const row = await prisma.telegramLinkToken.findUnique({ where: { tokenHash }, select: { userId: true } });
-  if (!row) return "invalid";
+  if (!row) return { result: "invalid" };
   try {
     return await prisma.$transaction(async (tx) => {
       const [byTelegram, byUser] = await Promise.all([
-        tx.telegramAccount.findUnique({ where: { telegramId }, select: { id: true, userId: true } }),
+        tx.telegramAccount.findUnique({ where: { telegramId }, select: { id: true, userId: true, origin: true } }),
         tx.telegramAccount.findUnique({ where: { userId: row.userId }, select: { id: true, telegramId: true } }),
       ]);
-      if (byTelegram?.userId === row.userId) return "already_linked" as const;
-      if (byTelegram?.userId) return "telegram_taken" as const;
-      if (byUser && byUser.telegramId !== telegramId) return "user_has_other_telegram" as const;
+      if (byTelegram?.userId === row.userId) return { result: "already_linked" as const };
+      if (byUser && byUser.telegramId !== telegramId) return { result: "user_has_other_telegram" as const };
+      if (byTelegram?.userId) {
+        if (byTelegram.origin !== "telegram") return { result: "telegram_taken" as const };
+        if (!(await isUnusedTelegramProfile(tx, byTelegram))) return { result: "profile_not_empty" as const };
+        const target = await tx.user.findUnique({ where: { id: row.userId }, select: { name: true, email: true } });
+        if (!target) return { result: "invalid" as const };
+        const confirmationToken = randomBytes(24).toString("base64url");
+        const source = await tx.telegramLinkToken.findUnique({ where: { tokenHash }, select: { expiresAt: true } });
+        if (!source || source.expiresAt <= new Date()) return { result: "invalid" as const };
+        await tx.telegramLinkToken.create({ data: {
+          tokenHash: confirmationHash(confirmationToken, telegramId, byTelegram.id),
+          userId: row.userId, expiresAt: source.expiresAt,
+        } });
+        return { result: "confirmation_required" as const, confirmationToken, siteLabel: siteAccountLabel(target) };
+      }
       if (byTelegram) {
         await tx.telegramAccount.update({
           where: { id: byTelegram.id },
@@ -155,14 +219,44 @@ export async function consumeLinkToken(token: string, telegramId: string): Promi
       } else {
         await tx.telegramAccount.create({ data: { telegramId, userId: row.userId, origin: "site", linkedAt: now } });
       }
-      return "linked" as const;
-    });
+      return { result: "linked" as const };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   } catch (error) {
-    if (isUniqueViolation(error)) return "telegram_taken";
+    if (isUniqueViolation(error)) return { result: "telegram_taken" };
     throw error;
   } finally {
     forgetTelegramSessionCache();
     infoLog("Telegram", "link token consumed", { userId: row.userId });
+  }
+}
+
+/** Explicit second action from the same Telegram user, tied to the exact previous identity. */
+export async function confirmTelegramLink(token: string, telegramId: string): Promise<LinkResult> {
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token) || !/^[1-9]\d{0,19}$/.test(telegramId)) return "invalid";
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const account = await tx.telegramAccount.findUnique({ where: { telegramId } });
+      if (!account?.userId || account.origin !== "telegram") return "invalid";
+      const tokenHash = confirmationHash(token, telegramId, account.id);
+      const claimed = await tx.telegramLinkToken.updateMany({
+        where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() },
+      });
+      if (claimed.count !== 1) return "invalid";
+      const row = await tx.telegramLinkToken.findUnique({ where: { tokenHash } });
+      if (!row || row.userId === account.userId) return "invalid";
+      if (await tx.telegramAccount.findUnique({ where: { userId: row.userId } })) return "user_has_other_telegram";
+      // Recheck at confirmation: a chat, bonus, purchase or new login created since the prompt blocks it.
+      if (!(await isUnusedTelegramProfile(tx, account))) return "profile_not_empty";
+      await tx.telegramAccount.update({ where: { id: account.id }, data: {
+        id: randomUUID(), userId: row.userId, origin: "site", linkedAt: new Date(), unlinkedAt: null,
+      } });
+      return "linked";
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    if (isUniqueViolation(error) || (error as { code?: string }).code === "P2034") return "invalid";
+    throw error;
+  } finally {
+    forgetTelegramSessionCache();
   }
 }
 

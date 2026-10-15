@@ -714,6 +714,7 @@
     "signingIn": "Входим через Telegram…",
     "welcomeTitle": "Добро пожаловать в NewVerse",
     "welcomeText": "Аккаунт создаётся по вашему профилю Telegram. Если у вас уже есть аккаунт newvers.ai, привяжите Telegram в профиле на сайте: тогда здесь будет тот же аккаунт и баланс VC.",
+    "linkExistingAccount": "У меня уже есть аккаунт на сайте",
     "adultNotice": "NewVerse предназначен для пользователей старше 18 лет.",
     "continue": "Продолжить",
     "loginDisabledTitle": "Вход через Telegram отключён",

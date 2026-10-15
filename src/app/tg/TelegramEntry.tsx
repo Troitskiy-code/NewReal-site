@@ -90,6 +90,9 @@ export default function TelegramEntry() {
         <section className="wd-card space-y-4 p-5">
           <h1 className="text-xl font-black text-white">{t("telegram.welcomeTitle")}</h1>
           <p className="text-sm text-wd-text-secondary">{t("telegram.welcomeText")}</p>
+          <button type="button" onClick={() => openOutsideTelegram(`/${locale}/profile`)} className="w-full rounded-xl border border-wd-border px-4 py-3 text-sm font-bold text-wd-secondary-text">
+            {t("telegram.linkExistingAccount")}
+          </button>
           <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-wd-text-secondary">
             <input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} className="mt-0.5" />
             <span>

@@ -337,7 +337,7 @@ try {
     check('3.9 an expired token is rejected', /недействительна/.test(expired.body.text) && !(await db.telegramAccount.findUnique({ where: { telegramId: '6660003' } })));
     const takenToken = (await linkCall('POST', other.id)).body.url.split('link_')[1];
     const taken = await webhook(startUpdate(TG_NEW, `/start link_${takenToken}`));
-    check('3.10 a Telegram that already created its own user is not merged: clear message, nothing changes', /другим аккаунтом/.test(taken.body.text)
+    check('3.10 an unused Telegram profile is not moved without explicit confirmation', /Подтвердите переход/.test(taken.body.text)
       && (await db.telegramAccount.findUnique({ where: { telegramId: TG_NEW } })).userId === newUserId);
     const secondToken = (await linkCall('POST', site.id));
     check('3.11 an already linked account cannot create another link', secondToken.status === 409);
@@ -372,6 +372,94 @@ try {
     accounts.forgetTelegramSessionCache();
     check('old sessions stay revoked after relinking, including after the session cache is cleared', newAccount.id !== sessionAccountId
       && !(await accounts.isTelegramSessionActive(sessionAccountId, site.id)) && await accounts.isTelegramSessionActive(newAccount.id, site.id));
+  }
+
+  // A first Mini App registration must not trap an existing website customer in a second account.
+  {
+    const TG_UNUSED = '6661001';
+    await auth({ initData: launch(TG_UNUSED), consent: true });
+    const before = await db.telegramAccount.findUnique({ where: { telegramId: TG_UNUSED } });
+    const sourceId = before.userId;
+    const site = await db.user.create({ data: { email: 'existing-owner@example.test', password: 'hash', name: 'Владелец сайта', verseCoins: 777 } });
+    const token = (await linkCall('POST', site.id)).body.url.split('link_')[1];
+    const prompt = await webhook(startUpdate(TG_UNUSED, `/start link_${token}`));
+    const confirmation = prompt.body.reply_markup?.inline_keyboard[0][0].url?.split('start=link_confirm_')[1];
+    check('empty Telegram profile requires a separate confirmation naming the website account', Boolean(confirmation)
+      && /Владелец сайта/.test(prompt.body.text) && /ex\*\*\*@example.test/.test(prompt.body.text)
+      && /не переносятся/.test(prompt.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: TG_UNUSED } })).userId === sourceId, prompt.body.text);
+    check('confirmation fits Telegram start payload and is not stored in plaintext', `link_confirm_${confirmation}`.length <= 64
+      && !(await db.telegramLinkToken.findFirst({ where: { tokenHash: confirmation } })));
+    const stolen = await webhook(startUpdate('6661999', `/start link_confirm_${confirmation}`));
+    check('another Telegram user cannot confirm the transfer or consume its confirmation', /недействительна/.test(stolen.body.text)
+      && !(await db.telegramAccount.findUnique({ where: { telegramId: '6661999' } })));
+    const linked = await webhook(startUpdate(TG_UNUSED, `/start link_confirm_${confirmation}`));
+    const after = await db.telegramAccount.findUnique({ where: { telegramId: TG_UNUSED } });
+    check('confirmed empty profile switches to the existing website account', /привязан/.test(linked.body.text)
+      && after.userId === site.id && after.origin === 'site' && after.id !== before.id);
+    check('the website balance is unchanged and the empty source user is retained', (await db.user.findUnique({ where: { id: site.id } })).verseCoins === 777
+      && (await db.user.findUnique({ where: { id: sourceId } })).verseCoins === SIGNUP_VC_GRANT
+      && (await db.transaction.count({ where: { userId: site.id, type: 'signup_bonus' } })) === 0);
+    check('sessions of the replaced Telegram profile stay revoked', !(await accounts.isTelegramSessionActive(before.id, sourceId)));
+    const reused = await webhook(startUpdate(TG_UNUSED, `/start link_confirm_${confirmation}`));
+    check('the confirmation is single use', /недействительна/.test(reused.body.text));
+    const viaApp = await auth({ initData: launch(TG_UNUSED) });
+    const sessionCookie = viaApp.cookies.find((c) => c.startsWith('nv-tg.session-token='));
+    check('the next genuine launch signs in to the website account', viaApp.body.status === 'ok'
+      && (await decode({ token: sessionCookie.split(';')[0].split('=').slice(1).join('='), secret: process.env.NEXTAUTH_SECRET })).sub === site.id);
+
+    const blockedToken = (await linkCall('POST', (await db.user.create({ data: { email: 'unrelated@example.test', password: 'hash' } })).id)).body.url.split('link_')[1];
+    const blocked = await webhook(startUpdate(TG_UNUSED, `/start link_${blockedToken}`));
+    check('a Telegram identity linked to an existing website account cannot be taken over', /другим аккаунтом/.test(blocked.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: TG_UNUSED } })).userId === site.id);
+
+    async function pendingTransfer(id) {
+      await auth({ initData: launch(id), consent: true });
+      const account = await db.telegramAccount.findUnique({ where: { telegramId: id } });
+      const target = await db.user.create({ data: { email: `transfer-${id}@example.test`, password: 'hash' } });
+      const token = (await linkCall('POST', target.id)).body.url.split('link_')[1];
+      const prompt = await webhook(startUpdate(id, `/start link_${token}`));
+      return { account, target, confirmation: prompt.body.reply_markup?.inline_keyboard[0][0].url?.split('start=link_confirm_')[1] };
+    }
+    const raced = await pendingTransfer('6661002');
+    const ownCharacter = await db.character.create({ data: { userId: raced.account.userId, name: 'Сохранить персонажа' } });
+    const protectedReply = await webhook(startUpdate('6661002', `/start link_confirm_${raced.confirmation}`));
+    check('data created after the prompt blocks transfer and remains accessible to the original profile', /данные/.test(protectedReply.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: '6661002' } })).userId === raced.account.userId
+      && (await db.character.findUnique({ where: { id: ownCharacter.id } })).userId === raced.account.userId);
+    const expired = await pendingTransfer('6661003');
+    await db.telegramLinkToken.updateMany({ where: { userId: expired.target.id, usedAt: null }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    const expiredReply = await webhook(startUpdate('6661003', `/start link_confirm_${expired.confirmation}`));
+    check('an expired confirmation cannot move an account', /недействительна/.test(expiredReply.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: '6661003' } })).userId === expired.account.userId);
+    const replaced = await pendingTransfer('6661004');
+    await linkCall('POST', replaced.target.id);
+    const replacedReply = await webhook(startUpdate('6661004', `/start link_confirm_${replaced.confirmation}`));
+    check('creating a new website link revokes an older confirmation', /недействительна/.test(replacedReply.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: '6661004' } })).userId === replaced.account.userId);
+    const changedBalance = await pendingTransfer('6661005');
+    await db.user.update({ where: { id: changedBalance.account.userId }, data: { verseCoins: { increment: 1 }, permanentCoins: { increment: 1 } } });
+    const balanceReply = await webhook(startUpdate('6661005', `/start link_confirm_${changedBalance.confirmation}`));
+    check('a balance change after the prompt blocks transfer', /изменения баланса/.test(balanceReply.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: '6661005' } })).userId === changedBalance.account.userId);
+    const otherLogin = await pendingTransfer('6661006');
+    await db.user.update({ where: { id: otherLogin.account.userId }, data: { email: 'telegram-now-has-email@example.test', password: 'hash' } });
+    const otherLoginReply = await webhook(startUpdate('6661006', `/start link_confirm_${otherLogin.confirmation}`));
+    check('adding a website login to the Telegram profile makes it ineligible for replacement', /данные/.test(otherLoginReply.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: '6661006' } })).userId === otherLogin.account.userId);
+    const targetTaken = await pendingTransfer('6661007');
+    await db.telegramAccount.create({ data: { telegramId: '6661998', userId: targetTaken.target.id, origin: 'site' } });
+    const targetTakenReply = await webhook(startUpdate('6661007', `/start link_confirm_${targetTaken.confirmation}`));
+    check('a destination linked to another Telegram after the prompt cannot be overwritten', /другой Telegram/.test(targetTakenReply.body.text)
+      && (await db.telegramAccount.findUnique({ where: { telegramId: '6661007' } })).userId === targetTaken.account.userId);
+    const concurrent = await pendingTransfer('6661008');
+    const competingReplies = await Promise.all([
+      webhook(startUpdate('6661008', `/start link_confirm_${concurrent.confirmation}`)),
+      webhook(startUpdate('6661008', `/start link_confirm_${concurrent.confirmation}`)),
+    ]);
+    check('concurrent confirmations transfer once and keep both user records', competingReplies.filter((r) => /Telegram привязан/.test(r.body.text)).length === 1
+      && (await db.telegramAccount.findUnique({ where: { telegramId: '6661008' } })).userId === concurrent.target.id
+      && Boolean(await db.user.findUnique({ where: { id: concurrent.account.userId } })));
   }
 
   // Referral registration belongs to the first account creation, never to a later sign-in.
