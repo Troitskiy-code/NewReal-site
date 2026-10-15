@@ -1,8 +1,8 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { Prisma, type CharacterGenerationItem, type CharacterGenerationBatch } from "@prisma/client";
 import { prisma } from "./prisma";
-import { GENERATION_THEMES, GENERATION_MODEL, GENERATION_FALLBACK_MODEL, TRANSLATION_FIELDS, cardRequest, validateGenerationCard, cardsTooSimilar, type GenerationCard } from "./characterGenerationCard";
-import { alignNameTranslation, translationWarnings } from "./characterGenerationChecks";
+import { GENERATION_THEMES, GENERATION_MODEL, GENERATION_FALLBACK_MODEL, TRANSLATION_FIELDS, cardRequest, validateGenerationCard, cardsTooSimilar, themeArtStyle, type GenerationCard } from "./characterGenerationCard";
+import { alignNameTranslation, characterGender, cleanAvatarPrompt, fixAppearancePronouns, protectName, transliterateName, translationWarnings } from "./characterGenerationChecks";
 import { serviceChatPost } from "./aiTextClient";
 import { KODIK_CHAT_URL } from "./aiProviders";
 import { translateText } from "./translate";
@@ -219,7 +219,7 @@ async function textStep(work: Work) {
     return siblings.some(other => sameName((other.card as GenerationCard).name, name)) ? name : null;
   };
   const suggested = GENERATION_THEMES.find(theme => theme.key === work.themeKey)?.name;
-  const body = cardRequest(work.themeKey, catalog, Boolean(suggested && await nameOwner(suggested))), prices = work.batch.prices as Prices;
+  const body = cardRequest(work.themeKey, catalog, Boolean(suggested && await nameOwner(suggested)), work.id), prices = work.batch.prices as Prices;
   if (work.feedback) body.messages.push({ role: "user", content: JSON.stringify({ correction: work.feedback.slice(0, 1000) }) });
   // UTF-8 bytes conservatively bound input token count; reserve twice the published price.
   const quote = Math.max(100, Math.ceil(((Buffer.byteLength(JSON.stringify(body)) + 2048) * prices.inputUsd
@@ -303,12 +303,25 @@ async function reviewStep(work: Work) {
   }
 }
 
+// Batch-only: the shared user avatar flow keeps its own wording.
+const BATCH_AVATAR_MOOD = "Lively, engaged facial expression that fits the character, the face clearly and pleasantly lit; daylight or warm light unless the scene is explicitly at night.";
+
+export function batchAvatarPrompt(card: GenerationCard, themeKey: string) {
+  return buildAvatarPrompt({ ...card, avatarPrompt: `${cleanAvatarPrompt(card.avatarPrompt)} ${BATCH_AVATAR_MOOD}`,
+    style: themeArtStyle(themeKey), roleplayMode: "character" });
+}
+
+export function withStyleTag(tags: string, themeKey: string) {
+  const list = tags.split(",").map(tag => tag.trim()).filter(Boolean);
+  return themeArtStyle(themeKey) === "anime" && !list.includes("Аниме") && list.length < 8 ? [...list, "Аниме"].join(", ") : tags;
+}
+
 async function imageSubmitStep(work: Work) {
   const prices = work.batch.prices as Prices;
   const attempt = await reserve(work, "image", Math.ceil(10 * prices.creditRub * 100)); if (!attempt) return;
   try {
     const card = work.card as GenerationCard;
-    const taskId = await createKieAvatar(buildAvatarPrompt({ ...card, roleplayMode: "character" }));
+    const taskId = await createKieAvatar(batchAvatarPrompt(card, work.themeKey));
     // Retain the reserve while the provider runs. Polling never creates another task.
     await patchWork(work, { providerTaskId: taskId, stage: "image_poll", nextRunAt: new Date(Date.now() + 5_000), errorCode: null });
     await prisma.aiCostEvent.create({ data: { id: attempt.id, operationId: work.batchId, provider: "kie",
@@ -356,17 +369,26 @@ function translationInputs(card: GenerationCard) {
 
 async function translationStep(work: Work) {
   const translations = (work.translations ?? {}) as Record<string, string>;
-  const input = translationInputs(work.card as GenerationCard).find(value => !translations[value.key]);
+  const card = work.card as GenerationCard;
+  const input = translationInputs(card).find(value => !translations[value.key]);
   if (!input) { await patchWork(work, { stage: "save" }); return; }
+  // Names are transliterated locally: no paid request, and no "North Rune" for «Руна Север».
+  if (input.key === "name_en") { await patchWork(work, { translations: { ...translations, name_en: transliterateName(card.name) } }); return; }
   const cost = Math.max(1, Math.ceil(Array.from(input.text).length / 1_000_000 * (work.batch.prices as Prices).translateRub * 100));
-  const attempt = await reserve(work, input.key, Math.ceil(cost * 1.5)); if (!attempt) return;
+  // Reserve room for a second plain request when the translator mangles a name token.
+  const attempt = await reserve(work, input.key, Math.ceil(cost * 3)); if (!attempt) return;
+  let charged = cost;
   try {
-    const translated = await translateText(input.text, "en", 20_000);
-    // name_en is translated first; later fields reuse its spelling of the name.
-    const text = input.key === "name_en" ? translated : alignNameTranslation(translated, translations.name_en);
+    const guarded = protectName(input.text, card.name);
+    let translated = await translateText(guarded.text, "en", 20_000);
+    if (guarded.intact(translated)) translated = guarded.restore(translated);
+    else { charged += cost; translated = await translateText(input.text, "en", 20_000); }
+    // name_en comes first; later fields reuse its spelling for any name form the guard missed.
+    let text = alignNameTranslation(translated, translations.name_en);
+    if (input.key === "appearance_en") text = fixAppearancePronouns(text, card.appearance, characterGender(card));
     if (!text.trim() || ((text.match(/[А-Яа-яЁё]/g)?.length ?? 0) > 20 && (text.match(/[А-Яа-яЁё]/g)?.length ?? 0) > text.length * 0.3))
       throw new Error("Translation missing");
-    await settle(work, attempt.id, cost, { translations: { ...translations, [input.key]: text }, state: "queued" });
+    await settle(work, attempt.id, charged, { translations: { ...translations, [input.key]: text }, state: "queued" });
   } catch {
     await settle(work, attempt.id, null, { state: attempt.number < 2 ? "queued" : "failed", errorCode: "translation_failed",
       nextRunAt: new Date(Date.now() + 20_000) }, true);
@@ -382,8 +404,8 @@ async function saveStep(work: Work) {
     if (current.leaseToken !== work.leaseToken) return;
     const character = await tx.character.upsert({ where: { id: work.id }, update: {}, create: {
       id: work.id, userId: work.batch.ownerId, ...card, roleplayMode: "character", roleplayStyle: "mixed", promptBuilderVersion: 2,
-      // buildAvatarPrompt has no style input, so batch avatars are always photorealistic.
-      artStyle: "realistic", isPublic: false, imageUrl: work.imageUrl, publicMemory: publicMemory ?? undefined, memoryPermissions: { privateAccessUserIds: [] },
+      // The avatar was drawn in the theme's style; anime cards also carry the tag the catalogue filters by.
+      artStyle: themeArtStyle(work.themeKey), tags: withStyleTag(card.tags, work.themeKey), isPublic: false, imageUrl: work.imageUrl, publicMemory: publicMemory ?? undefined, memoryPermissions: { privateAccessUserIds: [] },
       slug: buildCharacterSlug(card.name, work.id),
       ...Object.fromEntries(TRANSLATION_FIELDS.map(field => [`${field}_en`, translations[`${field}_en`]])),
       ...(translations.publicMemory_en ? { publicMemory_en: { content: translations.publicMemory_en } } : {}),

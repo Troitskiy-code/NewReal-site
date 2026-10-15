@@ -1,6 +1,6 @@
 {
-  "verifiedAt": "2026-10-15T17:38:32.483Z",
-  "checks": 60,
+  "verifiedAt": "2026-10-15T17:48:50.584Z",
+  "checks": 67,
   "mode": "Disposable PostgreSQL; actual worker/admin routes; simulated paid providers and storage",
   "paidCalls": 0,
   "productionDatabaseAccess": false

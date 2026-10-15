@@ -46,6 +46,21 @@ Malformed or truncated JSON is a format correction for the primary model, not a 
 request. A failed card shows its last validator or review correction under
 «Причина отказа» on the admin page.
 
+`name_en` is a local transliteration, not a translation (Yandex turned «Руна Север»
+into "The North Rune"). Before each field is translated, every inflected form of the
+name is replaced with a Latin token and restored as the transliteration; if the
+translator drops a token, the field is translated again without protection. In
+`appearance_en`, pronouns follow the character's gender tag when the source describes
+nobody else ("Her eyes" → "His eyes", "your left arm" → "his left arm").
+
+Avatars: themes carry `artStyle` (`anime` for 10 of 40, otherwise realistic). The
+avatar is drawn in that style, the card saves it, and anime cards get the «Аниме»
+tag. Style and gloom words (photorealistic, 8k, dimly lit, muted tones…) are removed
+from the card's `avatarPrompt` before it reaches the image model, and batch avatars
+ask for a lively, well-lit face. Each job also asks the text model for its own stable
+set of distinctive features (face, hair, one detail), so men with "short dark-blond
+hair" no longer share one stock face.
+
 English fields reuse the `name_en` spelling of the name. Ready drafts show
 non-blocking translation warnings on the admin page: numbers lost from the source,
 pronouns that contradict the character's gender tag, and changed speaker markers.

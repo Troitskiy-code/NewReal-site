@@ -145,6 +145,32 @@ async function validatorChecks() {
     "neutral address and the character's own past tense are not flagged");
   check(lib.alignNameTranslation('Silvan Rey opened the door. Say nothing, Ray.', 'Sylvan Ray') === 'Sylvan Ray opened the door. Say nothing, Ray.',
     'English name variants follow name_en without touching other words');
+  check(lib.transliterateName('Руна Север') === 'Runa Sever' && lib.transliterateName('Демьян Лесной') === 'Demyan Lesnoy'
+    && lib.transliterateName('Артём Серов') === 'Artyom Serov' && lib.transliterateName('ЭХО-7') === 'EKHO-7',
+    'names are transliterated, not translated');
+  const guard = lib.protectName('Глаза Руны светятся. Стая ждёт Руну Север. Северный ветер.', 'Руна Север');
+  check(guard.text === 'Глаза ZXQ0 светятся. Стая ждёт ZXQ0 ZXQ1. Северный ветер.'
+    && guard.intact('The eyes of the ZXQ0 glow. The pack is waiting for zxq0 ZXQ1. The northern wind.')
+    && guard.restore('The eyes of the ZXQ0 glow. The pack is waiting for zxq0 ZXQ1. The northern wind.') === 'The eyes of Runa glow. The pack is waiting for Runa Sever. The northern wind.'
+    && !guard.intact('The eyes of the rune glow. The pack is waiting for ZXQ0 ZXQ1.'),
+    'inflected name forms are kept out of translation and a dropped token is detected');
+  check(lib.fixAppearancePronouns('Her eyes are grey. On her feet are boots. A mark on your left arm. I always have a notebook.',
+    'Мужчина 32 лет. Глаза серые. На ногах ботинки. Метка на левой руке, светится при приближении к вам. Всегда с собой блокнот.', 'male')
+    === 'His eyes are grey. On his feet are boots. A mark on his left arm. He always has a notebook.'
+    && lib.fixAppearancePronouns('His eyes are grey. He wears a shirt.', '30 лет. Глаза серые. Носит рубашку.', 'female') === 'Her eyes are grey. She wears a shirt.'
+    && lib.fixAppearancePronouns('Her father looks at her.', 'Её отец смотрит на неё.', 'female') === 'Her father looks at her.',
+    'appearance pronouns follow the character gender unless another person is described');
+  const anime = jobs.batchAvatarPrompt({ ...valid, avatarPrompt: 'A man in a dimly lit corridor, photorealistic, cinematic lighting, 8k resolution.' }, 'building-mage-missing-floor');
+  const real = jobs.batchAvatarPrompt({ ...valid, avatarPrompt: 'A man in a dimly lit corridor, muted tones, hyperrealistic, 8k.' }, theme.key);
+  check(anime.startsWith('Anime illustration') && real.startsWith('Photorealistic portrait')
+    && ![anime, real].some(p => /photorealistic,|8k|dimly lit|muted tones|hyperrealistic/i.test(p)) && [anime, real].every(p => p.includes('Lively, engaged')),
+    'batch avatars use the theme style, drop style and gloom words and ask for a lively, lit face');
+  check(jobs.withStyleTag('Фэнтези, Комедия, Сосед', 'building-mage-missing-floor') === 'Фэнтези, Комедия, Сосед, Аниме'
+    && jobs.withStyleTag('Фэнтези, Комедия, Сосед', theme.key) === 'Фэнтези, Комедия, Сосед',
+    'anime cards get the catalogue style tag');
+  check(textRequests.some(r => r.prompt.includes('Чтобы лица в каталоге различались')) && cardLib.lookTraits('a').join() === cardLib.lookTraits('a').join()
+    && new Set(['a', 'b', 'c', 'd', 'e', 'f'].map(seed => cardLib.lookTraits(seed).join())).size > 3,
+    'each job asks for its own stable set of distinctive features');
   const warnings = lib.translationWarnings({ ...valid, tags: 'Мужской персонаж' }, { appearance_en: 'An adult of thirty. Her movements are calm.',
     exampleDialogs_en: 'user: Why?' });
   check(warnings.some(w => w.includes('33')) && warnings.some(w => w.includes('женские местоимения')) && warnings.some(w => w.includes('маркеры')),
@@ -210,6 +236,10 @@ try {
   const cards = await db.character.findMany({where:{id:{in:ready.map(i=>i.characterId)}}});
   check(cards.length === 10 && cards.every(c=>!c.isPublic && c.imageUrl.startsWith('/api/character-media/') && c.name_en && c.greeting_en),
     'ten private drafts contain storage links and complete English fields');
+  const translit = load('src/lib/characterGenerationChecks.ts').transliterateName;
+  check(cards.every(c => c.name_en === translit(c.name) && c.artStyle === 'realistic')
+    && [...imageTasks.values()].slice(0, 10).every(task => task.prompt.startsWith('Photorealistic portrait') && task.prompt.includes('Lively, engaged')),
+    'drafts get transliterated English names and realistic themes keep the realistic style');
   check(imageCalls === 10 && saves === 10 && await db.avatarQuotaReservation.count() === 0
     && (await db.user.findUnique({where:{id:ownerId}})).tokensUsedThisMonth === 3, 'catalog generation does not consume user avatar quota');
   check(golden.spentKopecks + golden.reservedKopecks <= 20000 && golden.reservedKopecks === 0, 'settled costs stay within batch ceiling');

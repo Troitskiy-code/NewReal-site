@@ -134,6 +134,98 @@ export function cardQualityIssues(card: Card, theme?: { age?: unknown }) {
   return issues;
 }
 
+// ---- Avatar prompt -------------------------------------------------------------
+
+// The card's avatarPrompt is passed as "requested details, which take priority": a leftover
+// "photorealistic" would override an anime theme, and "dimly lit, muted tones" made the 2026-10-14/15
+// avatars gloomy. The style line comes from the theme instead.
+const STYLE_AND_GLOOM = /\b(?:hyper-?realistic|photo-?realistic|realistic(?:\s+(?:fantasy\s+)?style|\s+textures?)?|dark(?=\s*(?:,|\.|$))|(?:professional\s+)?photograph(?:y|ic)|cinematic(?:\s+lighting)?|anime(?:\s+style)?|manga\s+style|cel[- ]shad\w*|\d+k(?:\s+(?:resolution|detail))?|ultra[- ]detailed|hyper-detailed(?:\s+textures)?|high\s+detail|muted\s+tones|dim(?:ly)?\s+lit|dim\s+light(?:ing)?|gloomy|moody|melancholic)\b/gi;
+
+export function cleanAvatarPrompt(prompt: string) {
+  return prompt.replace(STYLE_AND_GLOOM, "").replace(/\s+([,.])/g, "$1").replace(/([,.])(?:\s*[,.])+/g, "$1")
+    .replace(/\s{2,}/g, " ").replace(/^[\s,.]+|[\s,]+$/g, "").trim();
+}
+
+// ---- English translation -------------------------------------------------------
+
+const TRANSLIT: Record<string, string> = { а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo", ж: "zh", з: "z", и: "i", й: "y",
+  к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts", ч: "ch", ш: "sh",
+  щ: "shch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya" };
+
+/** Names are transliterated, never translated: Yandex turned «Руна Север» into "The North Rune". */
+export function transliterateName(name: string) {
+  return name.replace(/\p{L}+/gu, word => {
+    const upper = word.length > 1 && word === word.toLocaleUpperCase("ru");
+    const latin = Array.from(word.toLocaleLowerCase("ru")).map((char, index, chars) =>
+      char === "е" && (chars[index - 1] === "ь" || chars[index - 1] === "ъ") ? "ye" : TRANSLIT[char] ?? char).join("");
+    return upper ? latin.toUpperCase() : word[0] === word[0].toLocaleLowerCase("ru") ? latin : latin.charAt(0).toUpperCase() + latin.slice(1);
+  });
+}
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Replaces every inflected form of the name with a Latin token before translation and puts the
+ * transliterated name back afterwards, so a name that is also a word (Руна, Север, Лесной) survives.
+ */
+export function protectName(text: string, name: string) {
+  const parts = [...new Set(name.match(/\p{L}{3,}/gu) ?? [])].filter(part => /[А-Яа-яЁё]/.test(part));
+  let protectedText = text, inserted = 0;
+  const tokens = parts.map((part, index) => {
+    // Case endings of names are at most two letters (Руны, Лесного, Костровым); a longer tail is
+    // another word with the same root (Северный).
+    const stem = part.length >= 4 ? part.replace(/[аеёиоуыэюяйь]$/iu, "") : part;
+    const pattern = new RegExp(`(?<!\\p{L})${escapeRegExp(stem)}\\p{Ll}{0,2}(?!\\p{L})`, "gu");
+    protectedText = protectedText.replace(pattern, () => { inserted++; return `ZXQ${index}`; });
+    return transliterateName(part);
+  });
+  return {
+    text: protectedText,
+    /** False when the translator dropped or mangled a token; the caller then translates the plain text. */
+    intact: (translated: string) => (translated.match(/zxq\s*\d/gi)?.length ?? 0) === inserted,
+    restore: (translated: string) => translated
+      .replace(/\b(?:the|a|an)\s+(?=zxq\s*\d)/gi, "")
+      .replace(/zxq\s*(\d)/gi, (match, digit: string) => tokens[Number(digit)] ?? match),
+  };
+}
+
+const PRONOUNS = {
+  male: { She: "He", she: "he", Her: "His", her: "his", hers: "his", herself: "himself", Herself: "Himself" },
+  female: { He: "She", he: "she", His: "Her", his: "her", him: "her", himself: "herself", Himself: "Herself" },
+} as const;
+
+export function characterGender(card: Pick<Card, "tags" | "appearance">): "male" | "female" | null {
+  const tags = card.tags ?? "";
+  if (tags.includes("Мужской персонаж")) return "male";
+  if (tags.includes("Женский персонаж")) return "female";
+  const first = card.appearance.slice(0, 120);
+  if (/(?<!\p{L})(мужчин|парен|юнош|старик)/iu.test(first)) return "male";
+  if (/(?<!\p{L})(женщин|девушк|старушк)/iu.test(first)) return "female";
+  return null;
+}
+
+/**
+ * The appearance describes only the character, but Russian drops the subject and Yandex guesses it
+ * ("Her eyes", "your left arm", "I always have"). Without another person in the source, fix the guess.
+ */
+export function fixAppearancePronouns(english: string, source: string, gender: "male" | "female" | null) {
+  if (!gender) return english;
+  const other = gender === "male" ? FEMALE_RU : MALE_RU;
+  let text = english;
+  if (!other.test(source)) {
+    const map: Record<string, string> = PRONOUNS[gender];
+    text = text.replace(new RegExp(`\\b(${Object.keys(map).join("|")})\\b`, "g"), word => map[word]);
+  }
+  const subject = gender === "male" ? "He" : "She", possessive = gender === "male" ? "his" : "her";
+  // "your" only comes from a possessive (ваш, твой); «к вам» legitimately gives "you".
+  if (!/(?<!\p{L})(ваш\p{L}*|тво\p{L}*)(?!\p{L})/iu.test(source))
+    text = text.replace(/\bYour\b/g, possessive[0].toUpperCase() + possessive.slice(1)).replace(/\byour\b/g, possessive);
+  if (!/(?<!\p{L})(я|мне|меня|мой|моя|моё|мои)(?!\p{L})/iu.test(source))
+    text = text.replace(/\bI (always |usually |often )?(have|carry|wear|keep)\b/g, (_match, adverb: string | undefined, verb: string) =>
+      `${subject} ${adverb ?? ""}${verb === "have" ? "has" : `${verb}s`}`);
+  return text;
+}
+
 // ---- English translation checks -------------------------------------------------
 
 function distance(a: string, b: string) {
@@ -167,8 +259,7 @@ const FEMALE_EN = /\b(she|her|hers|herself)\b/i, MALE_EN = /\b(he|him|his|himsel
 export function translationWarnings(card: Card | null, translations: Record<string, string> | null) {
   if (!card || !translations) return [];
   const warnings: string[] = [];
-  const tags = card.tags ?? "";
-  const gender = tags.includes("Мужской персонаж") ? "male" : tags.includes("Женский персонаж") ? "female" : null;
+  const gender = characterGender(card);
   for (const field of ["description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs"] as const) {
     const source = card[field], english = translations[`${field}_en`];
     if (!source || !english) continue;

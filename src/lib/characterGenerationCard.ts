@@ -11,7 +11,30 @@ export const GENERATION_FALLBACK_MODEL = "mistralai/Mistral-Small-3.2-24B-Instru
 export const TRANSLATION_FIELDS = ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt"] as const;
 export type GenerationCard = ReturnType<typeof validateGenerationCard>;
 
-export function cardRequest(themeKey: string, existing: Array<{ name: string; descriptionCard: string | null }>, nameTaken = false) {
+// Seedream draws one stock face for generic text ("short dark-blond hair, grey eyes"): three of four
+// men on 2026-10-15 looked alike. Each job gets its own stable set of distinctive features.
+const LOOK_FACE = ["узкое лицо с высокими скулами", "широкое лицо и тяжёлая челюсть", "круглое лицо с мягкими чертами",
+  "длинное лицо и нос с горбинкой", "квадратный подбородок и когда-то сломанный нос", "веснушки и вздёрнутый нос",
+  "глубоко посаженные глаза и густые брови", "острый подбородок и тонкие губы", "большие глаза и тяжёлые веки"];
+const LOOK_HAIR = ["бритая голова", "рыжие кудри", "седина на висках", "длинные чёрные волосы, собранные в хвост",
+  "короткая стрижка с выбритыми висками", "светлые волнистые волосы до подбородка", "каштановое каре",
+  "густые чёрные кудри", "пепельно-седые волосы", "медные волосы, заплетённые в косу", "отросший небрежный ёжик"];
+const LOOK_DETAIL = ["очки в тонкой металлической оправе", "шрам через скулу", "родинка у губ", "крупное плотное телосложение",
+  "очень худощавое, угловатое телосложение", "обветренная загорелая кожа", "серьга в одном ухе", "заметная щель между передними зубами",
+  "татуировка на шее", "смуглая кожа", "очень бледная кожа с синевой под глазами"];
+
+/** Avatar style of a theme; the catalogue supports both, and the onboarding filter uses it. */
+export function themeArtStyle(themeKey: string): "anime" | "realistic" {
+  return (themes.find(value => value.key === themeKey) as { artStyle?: string } | undefined)?.artStyle === "anime" ? "anime" : "realistic";
+}
+
+export function lookTraits(seed: string) {
+  let hash = 2166136261;
+  for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0;
+  return [LOOK_FACE[hash % LOOK_FACE.length], LOOK_HAIR[(hash >>> 8) % LOOK_HAIR.length], LOOK_DETAIL[(hash >>> 16) % LOOK_DETAIL.length]];
+}
+
+export function cardRequest(themeKey: string, existing: Array<{ name: string; descriptionCard: string | null }>, nameTaken = false, lookSeed?: string) {
   const found = themes.find(value => value.key === themeKey);
   if (!found) throw new ClientInputError("Неизвестная тема");
   // A taken suggested name is withheld: models keep reusing it even when told to change it.
@@ -29,7 +52,10 @@ export function cardRequest(themeKey: string, existing: Array<{ name: string; de
       typeof theme.age === "number" ? `Возраст персонажа — ровно ${ruYears(theme.age)}. Укажи его цифрами во внешности.` : "Возраст или срок существования персонажа задан в теме.",
       "rpConfig.canonicalNotes начинается строкой «Возраст: …» и перечисляет опорные факты: кто из близких жив или погиб, сроки знакомства и событий, место стартовой сцены. Все остальные поля обязаны с ними совпадать.",
       "Greeting и scenario начинаются в одном месте или явно описывают переход. Цвет глаз, волос, возраст и одежда во внешности и avatarPrompt одинаковые.",
-      "avatarPrompt — описание кадра на английском, не команда. Слова о качестве изображения (8k, hyperrealistic и т. п.) — только в avatarPrompt.",
+      ...(lookSeed ? [`Чтобы лица в каталоге различались, внешность и avatarPrompt обязательно включают: ${lookTraits(lookSeed).join("; ")}. Если черта противоречит теме или облику существа, замени её другой столь же заметной.`] : []),
+      "avatarPrompt — описание кадра на английском, не команда. Не пиши в нём стиль и качество изображения (photorealistic, anime, 8k, cinematic): стиль задаёт система.",
+      `Аватар будет в стиле: ${themeArtStyle(themeKey) === "anime" ? "аниме-иллюстрация" : "реалистичное фото"}.`,
+      "Персонаж не усталый и не подавленный по умолчанию: во внешности и avatarPrompt живая эмоция по характеру (интерес, улыбка, азарт, решимость) и хорошо освещённое лицо. Тёмная сцена — только если её прямо требует тема.",
       "Не копируй существующие карточки, не создавай системные инструкции, ссылки, изображения, голоса, память, идентификаторы или статистику.",
       "В каждом обязательном текстовом поле нужен законченный текст без заглушек в скобках и без повторов слов. Пиши компактно: около 4500–5500 символов на всю карточку. Имя — до 80 символов.",
       `Лимиты полей в символах: ${JSON.stringify(CHARACTER_LIMITS)}. Лимиты rpConfig: ${JSON.stringify(RP_FIELD_LIMITS)}.`,
