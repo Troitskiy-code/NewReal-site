@@ -1,6 +1,7 @@
 import { recommendationTags, CHARACTER_TAG_GROUPS } from "./characterTags";
+import { resolveArtStyle, type ArtStyle } from "./onboarding";
 
-export type RecommendationCard = { id: string; tags: string | null; roleplayMode: string | null; totalMessages: number; createdAt: Date };
+export type RecommendationCard = { id: string; tags: string | null; roleplayMode: string | null; totalMessages: number; createdAt: Date; artStyle?: string | null };
 export type RecommendationSignal = { characterId: string; tags: string | null; roleplayMode: string | null; weight: number };
 export type RecommendationMode = "personalized" | "discovery";
 
@@ -12,7 +13,9 @@ function seedHash(value: string): number {
 const genreTags = new Set<string>(CHARACTER_TAG_GROUPS[0].tags);
 
 /** Deterministic within a day: diversity is applied before slicing, not once per page. */
-export function rankRecommendedCharacters(cards: RecommendationCard[], signals: RecommendationSignal[], seed: string, now: Date) {
+export function rankRecommendedCharacters(cards: RecommendationCard[], signals: RecommendationSignal[], seed: string, now: Date,
+  options: { preferredStyle?: ArtStyle | null } = {}) {
+  const preferredStyle = options.preferredStyle ?? null;
   const preferences = new Map<string, number>(), modes = new Map<string, number>(), familiar = new Set<string>();
   for (const signal of signals) {
     if (!(signal.weight > 0) || !Number.isFinite(signal.weight)) continue;
@@ -21,7 +24,7 @@ export function rankRecommendedCharacters(cards: RecommendationCard[], signals: 
     if (signal.roleplayMode) modes.set(signal.roleplayMode, (modes.get(signal.roleplayMode) ?? 0) + signal.weight);
   }
   const maxPreference = Math.max(1, ...preferences.values()), maxMode = Math.max(1, ...modes.values());
-  const mode: RecommendationMode = preferences.size || modes.size ? "personalized" : "discovery";
+  const mode: RecommendationMode = preferences.size || modes.size || preferredStyle ? "personalized" : "discovery";
   const maxPopularity = Math.max(1, ...cards.map(card => Math.log1p(Math.max(0, card.totalMessages))));
   const pool = cards.map(card => {
     const tags = recommendationTags(card.tags);
@@ -30,8 +33,11 @@ export function rankRecommendedCharacters(cards: RecommendationCard[], signals: 
     const modeMatch = (modes.get(card.roleplayMode ?? "") ?? 0) / maxMode;
     const ageDays = Math.max(0, (now.getTime() - card.createdAt.getTime()) / 86400000);
     const quality = Math.log1p(Math.max(0, card.totalMessages)) / maxPopularity;
+    // Unclassified cards stay neutral so the order is not reshuffled before the style backfill.
+    const style = preferredStyle ? resolveArtStyle(card.artStyle, card.tags) : null;
+    const styleMatch = !preferredStyle || !style ? 0 : style === preferredStyle ? 1.2 : -1.5;
     return { card, tags, score: 4 * relevance + 0.6 * modeMatch + 0.65 * quality + 0.45 * Math.exp(-ageDays / 30)
-      + 0.5 * seedHash(`${seed}:${card.id}`) - (familiar.has(card.id) ? 3 : 0) };
+      + 0.5 * seedHash(`${seed}:${card.id}`) + styleMatch - (familiar.has(card.id) ? 3 : 0) };
   });
   const ordered: string[] = [], recentGenres: string[] = [];
   while (pool.length) {

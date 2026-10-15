@@ -10,7 +10,7 @@ const COLLAGE_POSITIONS = [
   "right-[4%] top-10 rotate-6",
 ];
 
-export default function HomeHero({ total, characters }) {
+export default function HomeHero({ total, characters, onStart }) {
   const { t } = useTranslation();
   const collage = characters.slice(0, 3);
 
@@ -32,6 +32,7 @@ export default function HomeHero({ total, characters }) {
           <div className="mt-5 flex flex-wrap gap-3 md:mt-6">
             <a
               href="#catalog"
+              onClick={onStart ? (event) => { event.preventDefault(); onStart(); } : undefined}
               className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full bg-wd-primary px-6 text-[15px] font-semibold text-white transition-colors hover:bg-wd-primary-hover sm:flex-none"
             >
               {t("home.hero.start")}

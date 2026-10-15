@@ -3,6 +3,7 @@ import { normalizeTagsString } from "@/lib/characterTags";
 import { parseMemoryInput, parseMemoryPermissionsInput, memoryToText } from "@/lib/persistentMemory";
 import { isEnglishLocale } from "@/lib/i18nConfig";
 import { parseRoleplayFields } from "./roleplayConfig";
+import { parseArtStyle } from "./onboarding";
 
 export const CHARACTER_LIMITS = {
   appearance: 2000,
@@ -57,6 +58,7 @@ export function parseCharacterBody(body: Record<string, unknown>) {
     scenario: trimOptionalText(scenario, CHARACTER_LIMITS.scenario),
     exampleDialogs: trimOptionalText(exampleDialogs, CHARACTER_LIMITS.exampleDialogs),
     avatarPrompt: trimOptionalText(avatarPrompt, CHARACTER_LIMITS.avatarPrompt),
+    artStyle: parseArtStyle(body.artStyle),
     publicMemory: parseMemoryInput(body.publicMemory),
     privateMemory: parseMemoryInput(body.privateMemory),
     memoryPermissions: parseMemoryPermissionsInput(body.memoryPermissions),

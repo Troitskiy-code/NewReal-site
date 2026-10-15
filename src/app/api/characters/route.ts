@@ -21,6 +21,7 @@ import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
 import { catalogSearchCondition } from "@/lib/characterCatalogSearch";
 import { characterTagSearchTerms } from "@/lib/characterTags";
 import { getCharacterRecommendationOrder } from "@/lib/characterRecommendations";
+import { readOnboardingPrefs } from "@/lib/onboardingServer";
 import type { RecommendationMode } from "@/lib/characterRecommendationRank";
 
 export const maxDuration = 60;
@@ -71,7 +72,7 @@ async function handlePost(req: NextRequest) {
       publicMemory,
       privateMemory,
       memoryPermissions,
-      roleplayMode, roleplayStyle, rpConfig,
+      roleplayMode, roleplayStyle, rpConfig, artStyle,
     } = parsed;
 
     if (!name) {
@@ -104,7 +105,7 @@ async function handlePost(req: NextRequest) {
         memoryPermissions: initialPermissions,
         lastActive: new Date(),
         promptBuilderVersion: 2,
-        roleplayMode, roleplayStyle, rpConfig,
+        roleplayMode, roleplayStyle, rpConfig, artStyle,
       },
     });
 
@@ -267,7 +268,7 @@ export async function GET(req: NextRequest) {
       cardSelect: typeof characterCardSelect | typeof characterCardSelectNoSlug
     ) => {
       if (sort === "for-you") {
-        const recommendations = await getCharacterRecommendationOrder(queryWhere, session?.user?.id ?? null);
+        const recommendations = await getCharacterRecommendationOrder(queryWhere, session?.user?.id ?? null, new Date(), await readOnboardingPrefs());
         recommendationMode = recommendations.mode;
         total = recommendations.ids.length;
         const ids = recommendations.ids.slice(skip, skip + limit);

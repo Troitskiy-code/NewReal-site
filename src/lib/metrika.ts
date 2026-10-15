@@ -28,6 +28,13 @@ export const METRIKA_GOALS = {
   characterPageView: "character_page_view",
   guestChatTransferred: "guest_chat_transferred",
   supportSubmit: "support_submit",
+  onboardingShown: "onboarding_shown",
+  onboardingStyle: "onboarding_style",
+  onboardingGenres: "onboarding_genres",
+  onboardingResults: "onboarding_results",
+  onboardingReroll: "onboarding_reroll",
+  onboardingSkip: "onboarding_skip",
+  onboardingChatStarted: "onboarding_chat_started",
 } as const;
 
 export type MetrikaGoal = (typeof METRIKA_GOALS)[keyof typeof METRIKA_GOALS];

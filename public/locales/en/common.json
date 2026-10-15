@@ -602,5 +602,98 @@
     "confirmEmailToPurchase": "Confirm your email to make a purchase",
     "confirmEmailToClaimBonus": "Confirm your email to claim bonuses",
     "rateLimited": "Too many requests. Please wait a moment."
-  }
+  },
+    "onboarding": {
+        "eyebrow": "Welcome to NewVerse",
+        "stepLabel": "Step {{step}} of 3",
+        "back": "Back",
+        "skip": "Skip",
+        "close": "Close the picker",
+        "style": {
+            "title": "Which characters do you prefer?",
+            "text": "Answer two questions and we will show you who to start talking to. You can change this any time.",
+            "anime": "Anime",
+            "animeHint": "Vivid art, big emotions, fantasy worlds",
+            "realistic": "Realistic",
+            "realisticHint": "Lifelike faces, like in a film",
+            "any": "I like both"
+        },
+        "styleLabel": {
+            "anime": "Anime",
+            "realistic": "Realistic",
+            "any": "Both styles"
+        },
+        "interests": {
+            "title": "What stories interest you?",
+            "text": "Pick up to three. We will show the characters that fit best.",
+            "show": "Show characters",
+            "pickOne": "Pick at least one interest",
+            "limit": "You can pick up to three. Remove one to choose another.",
+            "matches_one": "{{count}} character fits · {{selected}} of 3 selected",
+            "matches_other": "{{count}} characters fit · {{selected}} of 3 selected",
+            "noMatches": "No exact matches, we will show popular ones · {{selected}} of 3 selected",
+            "genderLabel": "Show me",
+            "genderAny": "Everyone",
+            "genderMale": "Male characters",
+            "genderFemale": "Female characters"
+        },
+        "interest": {
+            "romance": {
+                "label": "Romance",
+                "hint": "Flirting, feelings, slow burn"
+            },
+            "fantasy": {
+                "label": "Fantasy and magic",
+                "hint": "Mages, elves, academies"
+            },
+            "adventure": {
+                "label": "Adventure",
+                "hint": "Journeys, ruins, action"
+            },
+            "mystic": {
+                "label": "Mystery and horror",
+                "hint": "Ghosts, secrets, gothic"
+            },
+            "detective": {
+                "label": "Detective",
+                "hint": "Investigations and thrillers"
+            },
+            "scifi": {
+                "label": "Sci-fi and cyberpunk",
+                "hint": "Space, androids, neon"
+            },
+            "everyday": {
+                "label": "Slice of life",
+                "hint": "Neighbors, friends, comfort"
+            },
+            "drama": {
+                "label": "Drama",
+                "hint": "Strong emotions and choices"
+            },
+            "comedy": {
+                "label": "Comedy",
+                "hint": "Light and funny stories"
+            }
+        },
+        "results": {
+            "loading": "Finding characters…",
+            "title_one": "Here is who to start with",
+            "title_other": "Here is who you can start with",
+            "text": "Tap “Start talking”: the character writes first.",
+            "matched": "Matches: {{list}}",
+            "popular": "Popular",
+            "start": "Start talking",
+            "more": "Show others",
+            "catalog": "Full catalog",
+            "error": "Could not load the picks.",
+            "retry": "Retry",
+            "empty": "No matching characters yet. Open the catalog: there are over a hundred stories."
+        },
+        "catalog": {
+            "applied": "Using your answers",
+            "remove": "Remove “{{label}}”",
+            "pick": "Find a character",
+            "pickAgain": "Pick again"
+        }
+    }
 }

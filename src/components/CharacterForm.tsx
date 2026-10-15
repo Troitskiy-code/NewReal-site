@@ -173,6 +173,8 @@ export type CharacterFormValues = {
   descriptionCard: string;
   tags: string;
   avatarPrompt: string;
+  /** Set from the avatar style the owner generated with; "" while unknown. */
+  artStyle: "" | "anime" | "realistic";
   roleplayMode: RoleplayMode;
   roleplayStyle: RoleplayStyle;
   rpConfig: RoleplayConfig;
@@ -191,6 +193,7 @@ export const EMPTY_CHARACTER_FORM: CharacterFormValues = {
   descriptionCard: "",
   tags: "",
   avatarPrompt: "",
+  artStyle: "",
   roleplayMode: "character",
   roleplayStyle: "mixed",
   rpConfig: {},
@@ -298,7 +301,9 @@ function CharacterFormContent({
 }: CharacterFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const isWarned = moderationStatus === "warning";
-  const [style, setStyle] = useState<"anime" | "realistic">("realistic");
+  // Until the owner picks, follow the card's saved style (the edit page fills it after the first render).
+  const [styleChoice, setStyle] = useState<"anime" | "realistic" | null>(null);
+  const style = styleChoice ?? (values.artStyle || "realistic");
   const [tokenStatus, setTokenStatus] = useState<AvatarLimitStatus | null>(null);
   const [localErrors, setLocalErrors] = useState<{ name?: string; lora?: string; prompt?: string }>({});
 
@@ -363,6 +368,7 @@ function CharacterFormContent({
         avatarPrompt: values.avatarPrompt.trim() || undefined,
         referenceImage: referenceImage || undefined, style,
       });
+      onChange("artStyle", style);
     } catch {
       showError("Не удалось прочитать референс. Загрузите другое изображение.");
     }

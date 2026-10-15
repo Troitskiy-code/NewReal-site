@@ -7,6 +7,8 @@
     "verify:characters:storage": "node scripts/verify-character-storage.mjs",
     "verify:characters:discovery": "node scripts/verify-character-discovery.mjs",
     "verify:characters:discovery:browser": "node scripts/verify-character-discovery.mjs --browser",
+    "verify:onboarding": "node scripts/verify-onboarding.mjs",
+    "verify:onboarding:browser": "node scripts/verify-onboarding.mjs --browser",
     "verify:avatars:kie": "node scripts/verify-kie-avatars.mjs",
     "verify:avatars:proxy": "node scripts/verify-avatar-prompt-proxy.mjs",
     "verify:avatars:kie:browser": "node scripts/browser-kie-avatars.mjs",

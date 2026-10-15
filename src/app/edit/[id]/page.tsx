@@ -15,6 +15,7 @@ import { FaUser } from "react-icons/fa";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { memoryToText } from "@/lib/persistentMemory";
 import { roleplayMode, roleplayStyle, readRoleplayConfig, validateGroupConfig } from "@/lib/roleplayConfig";
+import { parseArtStyle } from "@/lib/onboarding";
 
 type Character = CharacterFormValues & {
   id: string;
@@ -78,6 +79,7 @@ export default function EditCharacterPage() {
           exampleDialogs: data.exampleDialogs || "",
           descriptionCard: data.descriptionCard || "",
           avatarPrompt: data.avatarPrompt || "",
+          artStyle: parseArtStyle(data.artStyle) ?? "",
           roleplayMode: roleplayMode(data.roleplayMode),
           roleplayStyle: roleplayStyle(data.roleplayStyle),
           rpConfig: readRoleplayConfig(data.rpConfig),
@@ -192,6 +194,8 @@ export default function EditCharacterPage() {
         exampleDialogs: form.exampleDialogs.trim() || null,
         descriptionCard: form.descriptionCard.trim() || null,
         avatarPrompt: form.avatarPrompt.trim() || null,
+        // Unknown stays unknown: never overwrite a backfilled style with null.
+        artStyle: form.artStyle || undefined,
         roleplayMode: form.roleplayMode,
         roleplayStyle: form.roleplayStyle,
         rpConfig: form.rpConfig,

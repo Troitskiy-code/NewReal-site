@@ -82,6 +82,8 @@ model Character {
   promptBuilderVersion Int    @default(2)
   roleplayMode      String    @default("character")
   roleplayStyle     String    @default("mixed")
+  // Visual style of the card for the onboarding picker: "anime" | "realistic"; null until known.
+  artStyle          String?
   rpConfig          Json?
   promptStates      ChatPromptState[]
   promptMigrations  PromptMigrationEntry[]

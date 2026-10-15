@@ -9,6 +9,7 @@ import type { SeoSearchParams } from "@/lib/seoIndexing";
 import { catalogSearchCondition } from "./characterCatalogSearch";
 import { getCharacterRecommendationOrder } from "./characterRecommendations";
 import type { RecommendationMode } from "./characterRecommendationRank";
+import { readOnboardingPrefs } from "./onboardingServer";
 
 export function parseCatalogQuery(params: SeoSearchParams) {
   const first = (key: string) => { const value = params[key]; return (Array.isArray(value) ? value[0] : value) ?? ""; };
@@ -35,7 +36,7 @@ export const getPublicCatalog = cache(async (sort: string, page: number, search:
     let recommendationMode: RecommendationMode | null = null;
     let rows;
     if (sort === "for-you") {
-      const recommendations = await getCharacterRecommendationOrder(where, viewerId);
+      const recommendations = await getCharacterRecommendationOrder(where, viewerId, new Date(), await readOnboardingPrefs());
       recommendationMode = recommendations.mode;
       const ids = recommendations.ids.slice((page - 1) * limit, page * limit);
       const data = ids.length ? await prisma.character.findMany({ where: { ...where, id: { in: ids } }, select }) : [];

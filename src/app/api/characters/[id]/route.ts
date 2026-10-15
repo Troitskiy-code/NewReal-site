@@ -126,6 +126,7 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
     if (body.scenario !== undefined) data.scenario = parsed.scenario ?? null;
     if (body.exampleDialogs !== undefined) data.exampleDialogs = parsed.exampleDialogs ?? null;
     if (body.avatarPrompt !== undefined) data.avatarPrompt = parsed.avatarPrompt ?? null;
+    if (body.artStyle !== undefined) data.artStyle = parsed.artStyle;
     if (body.isPublic !== undefined) data.isPublic = parsed.isPublic;
     if (body.publicMemory !== undefined) data.publicMemory = parsed.publicMemory ?? Prisma.DbNull;
     if (body.privateMemory !== undefined) data.privateMemory = parsed.privateMemory ?? Prisma.DbNull;

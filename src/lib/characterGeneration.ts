@@ -330,7 +330,8 @@ async function saveStep(work: Work) {
     if (current.leaseToken !== work.leaseToken) return;
     const character = await tx.character.upsert({ where: { id: work.id }, update: {}, create: {
       id: work.id, userId: work.batch.ownerId, ...card, roleplayMode: "character", roleplayStyle: "mixed", promptBuilderVersion: 2,
-      isPublic: false, imageUrl: work.imageUrl, publicMemory: publicMemory ?? undefined, memoryPermissions: { privateAccessUserIds: [] },
+      // buildAvatarPrompt has no style input, so batch avatars are always photorealistic.
+      artStyle: "realistic", isPublic: false, imageUrl: work.imageUrl, publicMemory: publicMemory ?? undefined, memoryPermissions: { privateAccessUserIds: [] },
       slug: buildCharacterSlug(card.name, work.id),
       ...Object.fromEntries(TRANSLATION_FIELDS.map(field => [`${field}_en`, translations[`${field}_en`]])),
       ...(translations.publicMemory_en ? { publicMemory_en: { content: translations.publicMemory_en } } : {}),

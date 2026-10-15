@@ -1,14 +1,20 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { rankRecommendedCharacters, type RecommendationSignal } from "./characterRecommendationRank";
+import { ONBOARDING_GENDER_TAGS, onboardingInterestTags, type OnboardingPrefs } from "./onboarding";
+import { joinTagsString } from "./characterTags";
 
 /** No message text, prompts or private memory are read. No cross-request personalized cache. */
-export async function getCharacterRecommendationOrder(where: Prisma.CharacterWhereInput, viewerId: string | null, now = new Date()) {
+export async function getCharacterRecommendationOrder(where: Prisma.CharacterWhereInput, viewerId: string | null, now = new Date(),
+  onboarding: OnboardingPrefs | null = null) {
   const publicWhere: Prisma.CharacterWhereInput = { AND: [where, { isPublic: true, slug: { not: null } }] };
   const candidates = await prisma.character.findMany({ where: publicWhere, select: {
-    id: true, tags: true, roleplayMode: true, totalMessages: true, createdAt: true,
+    id: true, tags: true, roleplayMode: true, totalMessages: true, createdAt: true, artStyle: true,
   } });
   const signals: RecommendationSignal[] = [];
+  // "Первый шаг" answers weigh like one favorite: a cold start, soon outweighed by real chats.
+  const onboardingTags = onboarding ? [...onboardingInterestTags(onboarding.interests), ...(onboarding.gender ? [ONBOARDING_GENDER_TAGS[onboarding.gender]] : [])] : [];
+  if (onboardingTags.length) signals.push({ characterId: "onboarding", tags: joinTagsString(onboardingTags), roleplayMode: null, weight: 3 });
   if (viewerId) {
     const [favorites, activity] = await Promise.all([
       prisma.favorite.findMany({ where: { userId: viewerId, character: { isPublic: true, slug: { not: null } } },
@@ -33,5 +39,6 @@ export async function getCharacterRecommendationOrder(where: Prisma.CharacterWhe
     }
   }
   // Day bucket changes discovery without shuffling between pages/SSR and API requests.
-  return rankRecommendedCharacters(candidates, signals, `${viewerId ?? "guest"}:${now.toISOString().slice(0, 10)}`, now);
+  const preferredStyle = onboarding?.style && onboarding.style !== "any" ? onboarding.style : null;
+  return rankRecommendedCharacters(candidates, signals, `${viewerId ?? "guest"}:${now.toISOString().slice(0, 10)}`, now, { preferredStyle });
 }

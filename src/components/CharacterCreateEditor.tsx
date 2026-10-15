@@ -114,6 +114,7 @@ export default function CharacterCreateEditor({ initialMode }: { initialMode: Ro
         exampleDialogs: form.exampleDialogs.trim() || null,
         descriptionCard: form.descriptionCard.trim() || null,
         avatarPrompt: form.avatarPrompt.trim() || null,
+        artStyle: form.artStyle || null,
         roleplayMode: form.roleplayMode,
         roleplayStyle: form.roleplayStyle,
         rpConfig: form.rpConfig,
@@ -177,7 +178,7 @@ export default function CharacterCreateEditor({ initialMode }: { initialMode: Ro
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 md:gap-8">
           <header className="space-y-1 border-b border-[#2A2A2A] pb-4 md:pb-5">
             <button type="button" className="mb-3 text-sm text-[#A0A0A0] underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-wd-secondary" onClick={async () => {
-              const hasDraft = Object.entries(form).some(([key, value]) => typeof value === "string" && !["roleplayMode", "roleplayStyle"].includes(key) && value.trim()) || Object.values(form.rpConfig).some(value => Array.isArray(value) ? value.length > 0 : Boolean(value)) || avatarPreview || loraPreview;
+              const hasDraft = Object.entries(form).some(([key, value]) => typeof value === "string" && !["roleplayMode", "roleplayStyle", "artStyle"].includes(key) && value.trim()) || Object.values(form.rpConfig).some(value => Array.isArray(value) ? value.length > 0 : Boolean(value)) || avatarPreview || loraPreview;
               if (hasDraft && !(await confirm({ title: "Вернуться к выбору типа?", description: "Несохранённый черновик будет потерян.", confirmLabel: "Вернуться", cancelLabel: "Остаться", danger: true }))) return;
               router.push(withLocale("/create", locale));
             }}>← Выбрать другой тип</button>

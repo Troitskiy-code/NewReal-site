@@ -6,17 +6,25 @@ import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
 import CharacterPagination from "@/components/CharacterPagination";
 import HomeHero from "@/components/HomeHero";
+import FirstStepOnboarding, { writeOnboardingCookie } from "@/components/FirstStepOnboarding";
+import { hasOnboardingSignals } from "@/lib/onboarding";
+import { useState } from "react";
 import { FaUser } from "react-icons/fa";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
 import { useTranslation } from "react-i18next";
 import { withLocale } from "@/lib/i18nConfig";
 
-export default function HomePageContent({ initialData, showHero = false }) {
+export default function HomePageContent({ initialData, showHero = false, onboarding = null }) {
   const { t, i18n } = useTranslation();
   const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
   const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload, recommendationMode } =
     usePaginatedCharacters({ sort, page, setPage, listKey: "home", initialData, onSearchChange: setSearchQuery });
+
+  const [onboardingSource, setOnboardingSource] = useState(onboarding?.show ? "organic" : null);
+  const [onboardingPrefs, setOnboardingPrefs] = useState(onboarding?.prefs ?? null);
+  const openOnboarding = onboarding?.enabled ? (source) => setOnboardingSource(source) : undefined;
+  const updatePrefs = (prefs) => { writeOnboardingCookie(prefs); setOnboardingPrefs(prefs); reload(); };
 
   const hasFilters = search.trim().length > 0;
   const sectionTitle = t(hasFilters ? "home.sectionTitle.search" : sort === "for-you" && recommendationMode !== "personalized" ? "home.recommendations.discoveryTitle" : `home.sectionTitle.${sort}`);
@@ -24,7 +32,8 @@ export default function HomePageContent({ initialData, showHero = false }) {
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
       {showHero ? (
-        <HomeHero total={initialData?.meta.total ?? total} characters={initialData?.data ?? []} />
+        <HomeHero total={initialData?.meta.total ?? total} characters={initialData?.data ?? []}
+          onStart={openOnboarding ? () => openOnboarding("hero") : undefined} />
       ) : (
         <h1 className="px-4 pt-5 text-xl font-bold text-white md:px-6 md:text-2xl">{t("meta.home.title")}</h1>
       )}
@@ -49,6 +58,15 @@ export default function HomePageContent({ initialData, showHero = false }) {
             </p>
           )}
         </div>
+
+        {onboarding?.enabled && sort === "for-you" && hasOnboardingSignals(onboardingPrefs) ? (
+          <OnboardingPrefsBar prefs={onboardingPrefs} onChange={updatePrefs} onPickAgain={() => openOnboarding("reopen")} />
+        ) : onboarding?.enabled && !hasFilters && (
+          <button type="button" onClick={() => openOnboarding("reopen")}
+            className="inline-flex items-center gap-1.5 self-start rounded-full border border-wd-secondary/60 bg-wd-secondary/15 px-3.5 py-2 text-[13px] font-semibold text-wd-secondary-text transition-colors hover:bg-wd-secondary/25">
+            <span aria-hidden>✦</span>{t("onboarding.catalog.pick")}
+          </button>
+        )}
 
         {sort === "for-you" && !loading && !error && <p className="text-sm leading-relaxed text-wd-text-secondary">
           {t(recommendationMode === "personalized" ? "home.recommendations.personalizedHint" : "home.recommendations.discoveryHint")}
@@ -100,6 +118,40 @@ export default function HomePageContent({ initialData, showHero = false }) {
       </main>
 
       <Footer />
+
+      {onboardingSource && (
+        <FirstStepOnboarding source={onboardingSource} initialPrefs={onboardingSource === "organic" ? null : onboardingPrefs}
+          onClose={(prefs) => {
+            setOnboardingSource(null);
+            setOnboardingPrefs(prefs);
+            if (sort === "for-you") reload();
+          }} />
+      )}
+    </div>
+  );
+}
+
+function OnboardingPrefsBar({ prefs, onChange, onPickAgain }) {
+  const { t } = useTranslation();
+  const chips = [
+    ...(prefs.style === "anime" || prefs.style === "realistic"
+      ? [{ key: "style", label: t(`onboarding.styleLabel.${prefs.style}`), next: { ...prefs, style: null } }] : []),
+    ...prefs.interests.map((id) => ({ key: id, label: t(`onboarding.interest.${id}.label`), next: { ...prefs, interests: prefs.interests.filter((item) => item !== id) } })),
+    ...(prefs.gender ? [{ key: "gender", label: t(prefs.gender === "male" ? "onboarding.interests.genderMale" : "onboarding.interests.genderFemale"), next: { ...prefs, gender: null } }] : []),
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[13px] text-wd-text-secondary">{t("onboarding.catalog.applied")}:</span>
+      {chips.map((chip) => (
+        <span key={chip.key} className="inline-flex items-center gap-1 rounded-full border border-wd-primary/50 bg-wd-primary/15 py-1 pl-3 pr-1 text-[12.5px] font-semibold text-rose-100">
+          {chip.label}
+          <button type="button" onClick={() => onChange(chip.next)} aria-label={t("onboarding.catalog.remove", { label: chip.label })}
+            className="grid h-6 w-6 place-items-center rounded-full text-sm leading-none text-rose-100/70 hover:bg-white/10 hover:text-white">×</button>
+        </span>
+      ))}
+      <button type="button" onClick={onPickAgain} className="rounded-full px-2 py-1 text-[13px] font-semibold text-wd-secondary-text hover:underline">
+        {t("onboarding.catalog.pickAgain")}
+      </button>
     </div>
   );
 }
