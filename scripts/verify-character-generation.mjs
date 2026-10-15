@@ -37,12 +37,12 @@ class FixtureKieError extends Error { constructor(code, rejected = false) { supe
 const cardFixture = theme => {
   const sentence = 'Персонаж сохраняет самостоятельность, уважает решения собеседника, действует последовательно и постепенно раскрывает свои мотивы в разговоре. ';
   const age = typeof theme.age === 'number' ? theme.age + ' лет' : 'взрослый андроид';
-  return { name: theme.name, descriptionCard: theme.premise, description: theme.premise + sentence.repeat(3),
+  return { name: theme.name ?? 'Новое имя ' + theme.key, descriptionCard: theme.premise, description: theme.premise + sentence.repeat(3),
     appearance: `Взрослый персонаж, ${age}, аккуратная одежда, серые глаза, спокойная уверенная поза. ` + sentence,
     greeting: theme.opening + ' «С какого условия начнём? Я готов выслушать твой вариант и объяснить свой».',
     scenario: theme.premise, exampleDialogs: '{{user}}: Почему ты выбрал меня?\n{{char}}: ' + sentence + '\n{{user}}: Я хочу другой вариант.\n{{char}}: ' + sentence,
     avatarPrompt: 'Adult character in neat clothes, calm grey eyes, setting that matches the story, soft light, portrait.',
-    tags: 'Романтика, Партнёр, Медленное развитие отношений',
+    tags: 'Романтика, Партнёр, Драма, Медленное развитие отношений',
     rpConfig: { ...Object.fromEntries(['motivations','speechStyle','relationships','world','narrativeRules'].map(key => [key, sentence])),
       canonicalNotes: `Возраст: ${age}. ` + sentence } };
 };
@@ -63,11 +63,12 @@ function load(file) {
         reviewRequests.push({ model: body.model, system: body.messages[0].content });
         const checks = Object.fromEntries(['age','timeline','canon','scene','userAgency','userGender','tags','appearance','text'].map(key => [key, true]));
         if (reviewMode === 'reject') checks.userAgency = false;
-        const content = reviewMode === 'legacy' ? JSON.stringify({ approved: true }) : JSON.stringify({ checks, issues: 'Не назначайте пользователю признание' });
+        const unsupportedTags = reviewMode === 'dropTag' ? ['Драма'] : reviewMode === 'dropMany' ? ['Драма', 'Партнёр'] : [];
+        const content = reviewMode === 'legacy' ? JSON.stringify({ approved: true }) : JSON.stringify({ checks, unsupportedTags, issues: 'Не назначайте пользователю признание' });
         return { data: { usage: { prompt_tokens: 1000, completion_tokens: 100 }, choices: [{ message: { content } }] } };
       }
       textCalls++;
-      textRequests.push({ model: body.model, maxTokens: body.max_tokens });
+      textRequests.push({ model: body.model, maxTokens: body.max_tokens, prompt: body.messages.map(m => m.content).join('\n') });
       if (textMode === 'lost' || textMode === 'lostOnce' && textCalls === lostOnceAt) throw new Error('fixture network timeout');
       const theme = JSON.parse(body.messages[1].content).theme;
       return { data: { usage: { prompt_tokens: 1000, completion_tokens: 2000 }, choices: [{ message: { content:
@@ -110,6 +111,17 @@ async function validatorChecks() {
   const theme = JSON.parse(readFileSync('src/lib/data/character-generation-themes.json','utf8')).find(t => t.key === 'mafia-heir-with-an-exit');
   const valid = cardFixture(theme), run = card => { try { return cardLib.validateGenerationCard(JSON.stringify(card), theme.key); } catch (error) { return error.message; } };
   check(typeof run(valid) === 'object', 'complete fixture card passes the stricter validator');
+  const thin = run({ ...valid, scenario: 'Коротко.', rpConfig: { ...valid.rpConfig, world: 'Город.' } });
+  check(typeof thin === 'string' && thin.includes('scenario (от 80 символов)') && !thin.includes('greeting'),
+    'validator names the fields that are missing or too short');
+  const thinRp = run({ ...valid, rpConfig: { ...valid.rpConfig, world: 'Город.', motivations: '' } });
+  check(typeof thinRp === 'string' && thinRp.includes('rpConfig.world') && thinRp.includes('rpConfig.motivations') && !thinRp.includes('rpConfig.speechStyle'),
+    'validator lists every thin roleplay setting by name');
+  const directions = run({ ...valid, exampleDialogs: '{{user}}: Привет.\n' + theme.name.split(' ')[0]
+    + ' (поднимает взгляд): Здравствуйте, рада видеть.\nОна откладывает карту.\n{{user}} (тихо): Что дальше?\n{{char}} (улыбается): Решать вам, я подожду ответа.' });
+  check(typeof directions === 'object' && directions.exampleDialogs.split('\n').filter(line => /^\{\{(user|char)\}\}: /.test(line)).length === 4
+    && directions.exampleDialogs.includes('{{char}}: (поднимает взгляд) Здравствуйте'),
+    'labels with stage directions become markers and continuation lines are kept');
   let brokenJson; try { cardLib.validateGenerationCard('{"name": "Обрыв', theme.key); } catch (error) { brokenJson = error; }
   check(brokenJson?.constructor?.name === 'ClientInputError' && brokenJson.message.includes('JSON'),
     'truncated JSON becomes a format correction for the primary model');
@@ -214,15 +226,21 @@ try {
   await db.character.update({where:{id:ready[0].characterId},data:{isPublic:false}});
   // The next party takes the first unused theme; its name is already public and must fail before images.
   const allThemes = JSON.parse(readFileSync('src/lib/data/character-generation-themes.json','utf8'));
-  await db.character.create({ data: { name: allThemes[10].name, userId: other.id, isPublic: true } });
+  await db.character.create({ data: { name: allThemes[10].name, descriptionCard: allThemes[10].premise, userId: other.id, isPublic: true } });
   const nextTheme = (await jobs.generationStatus(ownerId)).themes[0].key;
   const duplicates = await jobs.createGenerationBatch(ownerId,randomUUID(),1,200);
   check(nextTheme === allThemes[10].key && (await db.characterGenerationItem.findFirst({where:{batchId:duplicates.id}})).themeKey === nextTheme
     && (await jobs.generationStatus(ownerId)).themes[0].key === allThemes[11].key,
     'a new party skips themes that already produced drafts or are queued');
-  const beforeDuplicateImages=imageCalls; await drain(duplicates);
-  check(imageCalls === beforeDuplicateImages && (await db.characterGenerationItem.findFirst({where:{batchId:duplicates.id}})).state === 'failed',
-    'duplicate name/card is rejected before avatar payment');
+  const beforeDuplicateImages=imageCalls, beforeDuplicateTexts=textRequests.length; await drain(duplicates);
+  const duplicateItem = await db.characterGenerationItem.findFirst({where:{batchId:duplicates.id}});
+  check(imageCalls === beforeDuplicateImages && duplicateItem.state === 'failed' && duplicateItem.errorCode === 'duplicate'
+    && duplicateItem.feedback.includes(`«${allThemes[10].name}»`),
+    'a similar card is rejected before avatar payment and the reason names the existing character');
+  const duplicatePrompts = textRequests.slice(beforeDuplicateTexts);
+  check(duplicatePrompts.length === 2 && duplicatePrompts.every(r => r.prompt.includes(`Имя «${allThemes[10].name}»`)
+    && !JSON.parse(r.prompt.split('\n').find(line => line.startsWith('{"theme"'))).theme.name),
+    'a taken theme name is withheld from the prompt and named as forbidden');
   // Use a separate owner to avoid interference from deliberately duplicated concepts.
   ownerId = sessionOwner = other.id;
   const low = await jobs.createGenerationBatch(ownerId,randomUUID(),1,1);
@@ -323,6 +341,16 @@ try {
   const legacyImages=imageCalls; await drain(legacy); reviewMode='ok';
   check(imageCalls===legacyImages && (await db.characterGenerationItem.findFirst({where:{batchId:legacy.id}})).errorCode==='review_failed',
     'a bare approval without checklist is not accepted');
+  for (const [mode, expected] of [['dropTag', 'ready'], ['dropMany', 'failed']]) {
+    const tagOwner = await db.user.create({ data: { email: `tags-${mode}@example.test` } });
+    const tagBatch = await jobs.createGenerationBatch(tagOwner.id, randomUUID(), 1, 200); reviewMode = mode;
+    await drain(tagBatch); reviewMode = 'ok';
+    const tagItem = await db.characterGenerationItem.findFirst({ where: { batchId: tagBatch.id }, include: { character: true } });
+    check(tagItem.state === expected && (expected === 'ready'
+      ? tagItem.character.tags === 'Романтика, Партнёр, Медленное развитие отношений'
+      : tagItem.feedback.startsWith('Не выполнено: tags') && tagItem.feedback.includes('меньше 3 тегов')),
+      mode === 'dropTag' ? 'an unsupported tag is removed instead of rejecting the card' : 'a card left with fewer than three supported tags is sent back for repair');
+  }
   await validatorChecks();
   let ticks=0, seenAuth;
   const worker=startCharacterGenerationWorker({port:'3456',secret:'fixture_cron',intervalMs:2,fetchImpl:async(url,init)=>{

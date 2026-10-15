@@ -30,7 +30,10 @@ export function normalizeGeneratedTags(raw: unknown, card: Pick<Card, "descripti
 export function normalizeDialogMarkers(dialogs: string, name: string) {
   const names = [...new Set([name.trim(), name.trim().split(/\s+/)[0]])].filter(Boolean)
     .map(value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  // "Софья (смотрит): …" and "{{char}} (тихо): …" keep the stage direction after the label.
   return dialogs.replace(/^(\s*)\{\{(user|char)\}\}\s*[—–-]\s*/gimu, "$1{{$2}}: ")
+    .replace(new RegExp(`^(\\s*)(?:${names.join("|")}|\\{\\{(?:char)\\}\\})\\s*(\\([^)\\n]{1,80}\\))\\s*:\\s*`, "gimu"), "$1{{char}}: $2 ")
+    .replace(/^(\s*)\{\{user\}\}\s*(\([^)\n]{1,80}\))\s*:\s*/gimu, "$1{{user}}: $2 ")
     .replace(new RegExp(`^(\\s*)(?:${names.join("|")})\\s*:\\s*`, "gimu"), "$1{{char}}: ");
 }
 

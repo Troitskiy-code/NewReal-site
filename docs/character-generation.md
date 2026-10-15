@@ -16,8 +16,17 @@ budget can be selected. Text generation uses Qwen 3 235B on DeepInfra independen
 of the chat/memory model. A second text attempt after a failed or lost request and an
 explicit manual repair use Mistral Small 3.2; a second attempt after validation or
 review feedback stays on Qwen. Consistency reviews use Qwen with a fixed checklist
-(age, timeline, canon, scene, user agency, user gender, tags, appearance, text); every
-item must be `true`, and the failed item names go back to the text attempt. Text output is
+(age, timeline, canon, scene, user agency, user gender, appearance, text); every
+item must be `true`, and the failed item names go back to the text attempt. The
+checklist fails only explicit violations: `avatarPrompt` must not contradict the
+appearance (missing minor details are fine), image-quality words are allowed there,
+and a dialogue reply may continue on following lines without a marker. Tags are not
+a pass/fail item: the review lists unsupported tags, they are removed, and the card
+is sent back only when fewer than three remain.
+
+A suggested theme name that is already taken (public, owner's or a batch sibling) is
+withheld from the prompt and named as forbidden. Duplicate feedback says whether the
+name or the short description collided and with which character. Text output is
 capped at 3200 tokens, with a target card size of 4500–5500 characters. Images use
 the existing Kie Seedream text model.
 
