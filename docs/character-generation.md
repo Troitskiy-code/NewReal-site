@@ -57,7 +57,9 @@ Avatars: themes carry `artStyle` (`anime` for 10 of 40, otherwise realistic). Th
 avatar is drawn in that style, the card saves it, and anime cards get the «Аниме»
 tag. Style and gloom words (photorealistic, 8k, dimly lit, muted tones…) are removed
 from the card's `avatarPrompt` before it reaches the image model, and batch avatars
-ask for a lively, well-lit face. Each job also asks the text model for its own stable
+ask for a lively, well-lit face; realistic ones also ask for bright daylight, because
+the realistic style line alone kept the 2026-10-15 photos dark and stern. Without a
+gender tag, the gender for pronoun fixes comes from the Russian appearance pronouns. Each job also asks the text model for its own stable
 set of distinctive features (face, hair, one detail), so men with "short dark-blond
 hair" no longer share one stock face.
 

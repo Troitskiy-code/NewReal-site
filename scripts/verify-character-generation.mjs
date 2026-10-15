@@ -165,6 +165,17 @@ async function validatorChecks() {
   check(anime.startsWith('Anime illustration') && real.startsWith('Photorealistic portrait')
     && ![anime, real].some(p => /photorealistic,|8k|dimly lit|muted tones|hyperrealistic/i.test(p)) && [anime, real].every(p => p.includes('Lively, engaged')),
     'batch avatars use the theme style, drop style and gloom words and ask for a lively, lit face');
+  check(real.includes('Bright natural daylight') && !anime.includes('Bright natural daylight')
+    && !/long shadows|low-light/i.test(jobs.batchAvatarPrompt({ ...valid, avatarPrompt: 'A room in low-light, a lamp casts long shadows on the desk and the wall.' }, theme.key)),
+    'realistic batch avatars ask for daylight and lose shadowy scene words');
+  check(lib.characterGender({ tags: 'Фэнтези, Наставник', appearance: 'Рэн Асаи, 41 год. Длинные чёрные волосы. На нём простая куртка. Он держится прямо.' }) === 'male'
+    && lib.characterGender({ tags: 'Фэнтези', appearance: 'Высокая, коротко стриженная. На ней кремовая блуза, её взгляд пристальный.' }) === 'female'
+    && lib.characterGender({ tags: 'Фэнтези', appearance: 'Высокий рост. Его сестра держит её за руку.' }) === null
+    && lib.fixAppearancePronouns('Her long black hair is tied up. He wears a jacket.', 'Длинные чёрные волосы. На нём простая куртка. Он держится прямо.',
+      lib.characterGender({ tags: '', appearance: 'Длинные чёрные волосы. На нём простая куртка. Он держится прямо.' })) === 'His long black hair is tied up. He wears a jacket.',
+    'gender comes from Russian pronouns when the card has no gender tag');
+  check(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'].every(seed => !/синевой под глазами|тяжёлые веки/.test(cardLib.lookTraits(seed).join())),
+    'distinctive features never ask for a tired or sickly face');
   check(jobs.withStyleTag('Фэнтези, Комедия, Сосед', 'building-mage-missing-floor') === 'Фэнтези, Комедия, Сосед, Аниме'
     && jobs.withStyleTag('Фэнтези, Комедия, Сосед', theme.key) === 'Фэнтези, Комедия, Сосед',
     'anime cards get the catalogue style tag');

@@ -139,7 +139,7 @@ export function cardQualityIssues(card: Card, theme?: { age?: unknown }) {
 // The card's avatarPrompt is passed as "requested details, which take priority": a leftover
 // "photorealistic" would override an anime theme, and "dimly lit, muted tones" made the 2026-10-14/15
 // avatars gloomy. The style line comes from the theme instead.
-const STYLE_AND_GLOOM = /\b(?:hyper-?realistic|photo-?realistic|realistic(?:\s+(?:fantasy\s+)?style|\s+textures?)?|dark(?=\s*(?:,|\.|$))|(?:professional\s+)?photograph(?:y|ic)|cinematic(?:\s+lighting)?|anime(?:\s+style)?|manga\s+style|cel[- ]shad\w*|\d+k(?:\s+(?:resolution|detail))?|ultra[- ]detailed|hyper-detailed(?:\s+textures)?|high\s+detail|muted\s+tones|dim(?:ly)?\s+lit|dim\s+light(?:ing)?|gloomy|moody|melancholic)\b/gi;
+const STYLE_AND_GLOOM = /\b(?:hyper-?realistic|photo-?realistic|realistic(?:\s+(?:fantasy\s+)?style|\s+textures?)?|dark(?=\s*(?:,|\.|$))|(?:professional\s+)?photograph(?:y|ic)|cinematic(?:\s+lighting)?|anime(?:\s+style)?|manga\s+style|cel[- ]shad\w*|\d+k(?:\s+(?:resolution|detail))?|ultra[- ]detailed|hyper-detailed(?:\s+textures)?|high\s+detail|muted\s+tones|dim(?:ly)?\s+lit|dim\s+light(?:ing)?|low[- ]light|darkened|shadowy|(?:casts?\s+)?long\s+shadows|gloomy|moody|melancholic)\b/gi;
 
 export function cleanAvatarPrompt(prompt: string) {
   return prompt.replace(STYLE_AND_GLOOM, "").replace(/\s+([,.])/g, "$1").replace(/([,.])(?:\s*[,.])+/g, "$1")
@@ -201,6 +201,12 @@ export function characterGender(card: Pick<Card, "tags" | "appearance">): "male"
   const first = card.appearance.slice(0, 120);
   if (/(?<!\p{L})(мужчин|парен|юнош|старик)/iu.test(first)) return "male";
   if (/(?<!\p{L})(женщин|девушк|старушк)/iu.test(first)) return "female";
+  // No tag and no noun («Рэн Асаи, 41 год…»): the appearance speaks about the character, so its
+  // pronouns decide («На нём…», «Он держится…»), unless both genders appear.
+  const count = (pattern: RegExp) => card.appearance.match(new RegExp(pattern.source, "giu"))?.length ?? 0;
+  const male = count(MALE_RU), female = count(FEMALE_RU);
+  if (male > 0 && female === 0 || male >= 2 && male >= female * 3) return "male";
+  if (female > 0 && male === 0 || female >= 2 && female >= male * 3) return "female";
   return null;
 }
 
@@ -252,7 +258,7 @@ export function alignNameTranslation(text: string, nameEn: string | undefined) {
   });
 }
 
-const FEMALE_RU = /(?<!\p{L})(она|её|ее|ей|неё|нее|ней)(?!\p{L})/iu, MALE_RU = /(?<!\p{L})(он|его|ему|него|нему|ним)(?!\p{L})/iu;
+const FEMALE_RU = /(?<!\p{L})(она|её|ее|ей|неё|нее|ней)(?!\p{L})/iu, MALE_RU = /(?<!\p{L})(он|его|ему|него|нему|ним|нём|нем)(?!\p{L})/iu;
 const FEMALE_EN = /\b(she|her|hers|herself)\b/i, MALE_EN = /\b(he|him|his|himself)\b/i;
 
 /** Non-blocking warnings for the editor: draft text is saved, a person decides. */

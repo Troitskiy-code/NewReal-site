@@ -305,10 +305,14 @@ async function reviewStep(work: Work) {
 
 // Batch-only: the shared user avatar flow keeps its own wording.
 const BATCH_AVATAR_MOOD = "Lively, engaged facial expression that fits the character, the face clearly and pleasantly lit; daylight or warm light unless the scene is explicitly at night.";
+// The anime style line already asks for vibrant colours; the realistic one ("soft cinematic lighting")
+// kept the 2026-10-15 photos dark and stern even with the mood line.
+const BATCH_REALISTIC_LIGHT = "Bright natural daylight, clean vivid colours and an airy, well-lit setting; no dark or gloomy scene and no deep shadows on the face.";
 
 export function batchAvatarPrompt(card: GenerationCard, themeKey: string) {
-  return buildAvatarPrompt({ ...card, avatarPrompt: `${cleanAvatarPrompt(card.avatarPrompt)} ${BATCH_AVATAR_MOOD}`,
-    style: themeArtStyle(themeKey), roleplayMode: "character" });
+  const style = themeArtStyle(themeKey);
+  return buildAvatarPrompt({ ...card, style, roleplayMode: "character",
+    avatarPrompt: [cleanAvatarPrompt(card.avatarPrompt), BATCH_AVATAR_MOOD, style === "realistic" ? BATCH_REALISTIC_LIGHT : ""].filter(Boolean).join(" ") });
 }
 
 export function withStyleTag(tags: string, themeKey: string) {
