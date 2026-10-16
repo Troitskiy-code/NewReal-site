@@ -41,7 +41,7 @@ export default function MobileBottomNav() {
       <div aria-hidden className="nv-bottom-nav-spacer h-[calc(64px+env(safe-area-inset-bottom))] md:hidden" />
       <nav
         aria-label={t("header.bottomNav")}
-        className="nv-bottom-nav fixed inset-x-0 bottom-0 z-[45] border-t border-wd-border bg-[#0d0d0d]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        className="nv-bottom-nav fixed inset-x-0 bottom-0 z-[45] border-t border-wd-border bg-wd-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
       >
         <ul className="grid h-16 grid-cols-5">
           {items.map((item) => {
@@ -57,7 +57,7 @@ export default function MobileBottomNav() {
                   onClick={collapse}
                   aria-current={isActive ? "page" : undefined}
                   className={`flex h-full flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-wd-secondary ${
-                    isActive ? "text-wd-primary-soft" : "text-wd-text-secondary"
+                    isActive ? "text-wd-text" : "text-wd-text-secondary"
                   }`}
                 >
                   {isCreate ? (

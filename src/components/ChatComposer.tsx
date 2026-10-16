@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
+import { LuInfo } from "react-icons/lu";
 
 const COMPOSER_MAX_LINES = 5;
 const DESKTOP_MQ = "(min-width: 768px)";
@@ -22,18 +23,69 @@ function resizeComposer(el: HTMLTextAreaElement | null) {
   el.style.overflowY = el.scrollHeight > maxHeight + 1 ? "auto" : "hidden";
 }
 
+/** Billing note behind an info button next to send, so it does not take four lines under the composer. */
+function ComposerNote({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const noteId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-controls={noteId}
+        aria-label="Как списываются VC"
+        title="Как списываются VC"
+        className={`flex h-11 w-8 items-center justify-center rounded-full transition-colors hover:text-white ${
+          open ? "text-white" : "text-secondary-text"
+        }`}
+      >
+        <LuInfo size={18} aria-hidden />
+      </button>
+      <p
+        id={noteId}
+        hidden={!open}
+        className="absolute bottom-full right-0 z-30 mb-2 w-full max-w-xs rounded-xl border border-divider bg-bg-card px-3 py-2 text-xs leading-relaxed text-secondary-text shadow-xl"
+      >
+        {text}
+      </p>
+    </div>
+  );
+}
+
 export default function ChatComposer({
   value,
   onChange,
   onSubmit,
   disabled,
   canSend,
+  note,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSubmit: (event: React.FormEvent) => void;
   disabled: boolean;
   canSend: boolean;
+  /** Billing rules, shown on demand from the info button. */
+  note?: string;
 }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -53,7 +105,7 @@ export default function ChatComposer({
   return (
     <form
       onSubmit={onSubmit}
-      className="chat-form mx-auto flex w-full max-w-3xl items-end gap-2"
+      className="chat-form relative mx-auto flex w-full max-w-3xl items-end gap-2"
       data-metrika="chat-form"
     >
       <div className="min-w-0 flex-1">
@@ -72,8 +124,8 @@ export default function ChatComposer({
                 }
               }
             }}
-            placeholder="Напишите сообщение..."
-            className={`block max-h-[7.625rem] min-h-[44px] w-full resize-none overflow-hidden rounded-2xl border border-divider bg-bg-card py-2.5 pl-4 text-sm leading-5 outline-none transition-colors focus:border-primary/60 ${
+            placeholder="Ваш ход…"
+            className={`block max-h-[7.625rem] min-h-[44px] w-full resize-none overflow-hidden rounded-[22px] border border-divider bg-bg-card py-2.5 pl-4 text-sm leading-5 outline-none transition-colors focus:border-primary/60 ${
               isDesktop ? "pr-4" : "pr-12"
             }`}
             disabled={disabled}
@@ -99,6 +151,7 @@ export default function ChatComposer({
           )}
         </div>
       </div>
+      {note ? <ComposerNote text={note} /> : null}
       {isDesktop ? (
         <button
           type="submit"

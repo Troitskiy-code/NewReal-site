@@ -11,7 +11,7 @@ export const OG_IMAGE = "/logo.png";
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
 export const OG_IMAGE_ALT = "NewVerse — ролевые игры с ИИ-персонажами";
-export const THEME_COLOR = "#0A0A0A";
+export const THEME_COLOR = "#0c0b12";
 
 export type MetaPageKey =
   | "home"

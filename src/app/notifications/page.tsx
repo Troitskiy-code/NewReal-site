@@ -153,7 +153,7 @@ export default function NotificationsPage() {
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                       filter === item.id
                         ? "border-wd-secondary/60 bg-wd-secondary/15 text-white"
-                        : "border-[#2A2A2A] text-[#A0A0A0] hover:border-wd-secondary/40 hover:text-white"
+                        : "border-[#2a2638] text-[#a9a4b8] hover:border-wd-secondary/40 hover:text-white"
                     }`}
                   >
                     {t(item.labelKey)}
@@ -164,7 +164,7 @@ export default function NotificationsPage() {
                 type="button"
                 onClick={markAllRead}
                 disabled={unreadCount === 0 || marking}
-                className="text-sm text-wd-secondary-text transition-colors hover:text-white disabled:cursor-default disabled:text-[#A0A0A0]"
+                className="text-sm text-wd-secondary-text transition-colors hover:text-white disabled:cursor-default disabled:text-[#a9a4b8]"
               >
                 {t("notifications.markAllRead")}
               </button>
@@ -187,17 +187,17 @@ export default function NotificationsPage() {
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
-                          <Icon size={14} className={notification.read ? "text-[#A0A0A0]" : "text-wd-secondary-text"} />
+                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#2a2638] bg-[#0c0b12]">
+                          <Icon size={14} className={notification.read ? "text-[#a9a4b8]" : "text-wd-secondary-text"} />
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <p className="text-sm font-bold text-white">{notification.title}</p>
-                            <p className="shrink-0 text-xs text-[#A0A0A0]">
+                            <p className="shrink-0 text-xs text-[#a9a4b8]">
                               {formatRelativeTime(notification.createdAt, t, locale)}
                             </p>
                           </div>
-                          <p className="mt-1 text-sm text-[#A0A0A0]">{notification.message}</p>
+                          <p className="mt-1 text-sm text-[#a9a4b8]">{notification.message}</p>
                         </div>
                       </div>
                     </li>

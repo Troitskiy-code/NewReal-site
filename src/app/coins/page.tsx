@@ -224,8 +224,8 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
             <span>{t("coins.streakDay", { day: bonusDay })}</span>
             <span>{balance.canClaimBonus ? text("Сегодня", "Today") : text("Завтра", "Tomorrow")} <strong className="text-white">+{balance.canClaimBonus ? balance.currentBonusAmount : balance.nextBonus} VC</strong></span>
           </div>
-          <div role="progressbar" aria-labelledby="coins-daily-bonus-title" aria-valuemin={0} aria-valuemax={7} aria-valuenow={completedBonusDays} className="h-3 overflow-hidden rounded-full bg-[#0A0A0A]">
-            <div className="h-full rounded-full bg-gradient-to-r from-wd-primary to-wd-secondary transition-all motion-reduce:transition-none" style={{ width: `${completedBonusDays / 7 * 100}%` }} />
+          <div role="progressbar" aria-labelledby="coins-daily-bonus-title" aria-valuemin={0} aria-valuemax={7} aria-valuenow={completedBonusDays} className="h-3 overflow-hidden rounded-full bg-[#0c0b12]">
+            <div className="h-full rounded-full bg-wd-secondary transition-all motion-reduce:transition-none" style={{ width: `${completedBonusDays / 7 * 100}%` }} />
           </div>
           <div className="flex justify-between text-[10px] text-wd-text-secondary sm:text-xs">{bonusScale.map((amount, index) => <span key={index} className={index < completedBonusDays ? "font-semibold text-wd-primary-soft" : ""}>{amount}</span>)}</div>
         </div>

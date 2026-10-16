@@ -13,17 +13,14 @@ import {
   FaTrash,
   FaPlus,
   FaImages,
-  FaComments,
-  FaEnvelope,
-  FaRobot,
   FaCrown,
 } from "react-icons/fa";
 import { LuLock, LuTriangleAlert } from "react-icons/lu";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import FavoriteButton from "@/components/FavoriteButton";
 import PersonaManager from "@/components/PersonaManager";
-import VerseCoinsBalance from "@/components/VerseCoinsBalance";
 import DailyBonusCard from "@/components/DailyBonusCard";
+import { LogoMark } from "@/components/Logo";
 import TelegramLinkCard from "@/components/TelegramLinkCard";
 import { useTelegramMode } from "@/components/TelegramProvider";
 import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
@@ -72,6 +69,7 @@ type UserStats = {
 };
 
 type SubscriptionBalance = {
+  verseCoins?: number;
   subscriptionLabel: string | null;
   subscriptionActive: boolean;
   subscriptionEnd: string | null;
@@ -250,7 +248,6 @@ export default function ProfilePage() {
   }
 
   const userName = session?.user?.name || session?.user?.email || t("common.user");
-  const userEmail = session?.user?.email || "";
   const userImage = session?.user?.image;
   const initials = getInitials(session?.user?.name, session?.user?.email);
   const registeredAt =
@@ -260,30 +257,31 @@ export default function ProfilePage() {
     <div className="min-h-dvh flex flex-col bg-wd-bg text-wd-text overflow-hidden">
       <main data-character-list-scroll className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:gap-6 md:px-6 md:py-8 lg:px-8">
         {/* Profile header */}
-        <section className="wd-card p-4 md:p-6">
+        {/* The e-mail is not shown here: the profile is often on screen in public, the address lives in settings mail. */}
+        <section className="px-2 pt-2 md:px-0">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 md:gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-wd-border bg-[#0A0A0A] md:h-20 md:w-20">
+            <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-wd-elevated md:h-20 md:w-20">
                 {userImage ? (
                   <img src={userImage} alt={userName} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-xl font-black text-wd-primary-soft">{initials}</span>
+                  <span className="font-display text-xl font-semibold text-wd-text">{initials}</span>
                 )}
               </div>
-              <div className="space-y-1">
-                <h1 className="truncate text-xl font-black tracking-tight text-white sm:text-2xl md:text-3xl">{userName}</h1>
-                {userEmail && (
-                  <p className="text-sm text-wd-text-secondary flex items-center gap-2">
-                    <FaEnvelope className="text-wd-primary-soft text-xs" />
-                    {userEmail}
-                  </p>
-                )}
+              <div className="min-w-0 space-y-1">
+                <h1 className="truncate font-display text-xl font-semibold tracking-tight text-white sm:text-2xl md:text-3xl">{userName}</h1>
+                <p className="text-[13px] text-wd-text-secondary">
+                  {statsLoading ? "…" : [
+                    `${stats?.charactersCount ?? 0} ${t("profile.characters").toLowerCase()}`,
+                    `${stats?.chatsCount ?? 0} ${t("profile.chats").toLowerCase()}`,
+                    `${stats?.messagesCount ?? 0} ${t("profile.messages").toLowerCase()}`,
+                  ].join(" · ")}
+                </p>
                 <p className="text-xs text-wd-text-secondary">
                   {t("profile.registeredAt")}{" "}
                   <span className="font-semibold text-white">{formatRegistrationDate(registeredAt, i18n.language)}</span>
                 </p>
               </div>
-              <VerseCoinsBalance size="md" className="ml-auto lg:ml-0" />
             </div>
 
             <div className="flex flex-wrap gap-3 lg:ml-auto">
@@ -293,7 +291,7 @@ export default function ProfilePage() {
               </LocaleLink>
               <LocaleLink
                 href="/"
-                className="inline-flex items-center gap-2 rounded-[50px] border border-wd-border bg-[#0A0A0A] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:border-wd-secondary"
+                className="inline-flex items-center gap-2 rounded-[50px] border border-wd-border bg-[#0c0b12] px-5 py-2.5 text-xs font-bold text-white transition-colors hover:border-wd-secondary"
               >
                 <FaImages className="text-[10px] text-wd-secondary-text" />
                 {t("profile.catalog")}
@@ -301,6 +299,28 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        {typeof subscription?.verseCoins === "number" ? (
+          <section className="relative overflow-hidden rounded-3xl border border-wd-secondary/25 bg-wd-card p-5 md:max-w-xl md:p-6">
+            <LogoMark className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 text-wd-secondary opacity-[0.07] [&_circle]:hidden" />
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-wd-secondary">{t("profile.wallet.title")}</p>
+            <p className="mt-3 flex items-baseline gap-2">
+              <span className="font-display text-4xl font-semibold leading-none text-wd-text">
+                {subscription.verseCoins.toLocaleString(dateLocale(i18n.language))}
+              </span>
+              <span className="text-base font-semibold text-wd-secondary">VC</span>
+            </p>
+            {/* Telegram: the balance is shown, but there is no shop. */}
+            {telegram ? null : (
+              <LocaleLink
+                href="/coins"
+                className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-wd-secondary px-7 text-[15px] font-bold text-wd-on-secondary transition-colors hover:bg-wd-secondary-hover"
+              >
+                {t("profile.wallet.topUp")}
+              </LocaleLink>
+            )}
+          </section>
+        ) : null}
 
         {/* Telegram: no plans or subscription management, only the daily bonus. */}
         {telegram && <DailyBonusCard showBalance={false} />}
@@ -346,37 +366,6 @@ export default function ProfilePage() {
           </section>
         )}
 
-        {/* Stats */}
-        <section className="grid grid-cols-3 gap-2 md:gap-4">
-          <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
-            <FaRobot className="mx-auto text-base text-wd-primary-soft md:text-lg" />
-            <p className="text-[11px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-xs md:tracking-widest">
-              {t("profile.characters")}
-            </p>
-            <p className="text-xl font-black text-white md:text-3xl">
-              {statsLoading ? "—" : (stats?.charactersCount ?? 0)}
-            </p>
-          </div>
-          <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
-            <FaComments className="mx-auto text-base text-wd-secondary-text md:text-lg" />
-            <p className="text-[11px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-xs md:tracking-widest">
-              {t("profile.chats")}
-            </p>
-            <p className="text-xl font-black text-white md:text-3xl">
-              {statsLoading ? "—" : (stats?.chatsCount ?? 0)}
-            </p>
-          </div>
-          <div className="wd-card space-y-1 p-3 text-center md:space-y-2 md:p-5">
-            <FaEnvelope className="mx-auto text-base text-wd-primary-soft md:text-lg" />
-            <p className="text-[11px] font-bold uppercase tracking-wider text-wd-text-secondary md:text-xs md:tracking-widest">
-              {t("profile.messages")}
-            </p>
-            <p className="text-xl font-black text-white md:text-3xl">
-              {statsLoading ? "—" : (stats?.messagesCount ?? 0)}
-            </p>
-          </div>
-        </section>
-
         <PersonaManager />
 
         {/* Characters */}
@@ -413,7 +402,7 @@ export default function ProfilePage() {
                 const name = pickLocalizedText(character.name, character.name_en, i18n.language) ?? character.name;
                 return (
                   <article key={character.id} className="wd-card overflow-hidden flex flex-col transition-transform hover:-translate-y-1">
-                    <div className="aspect-square bg-[#0A0A0A] overflow-hidden relative">
+                    <div className="aspect-square bg-[#0c0b12] overflow-hidden relative">
                       {character.id ? (
                         <img
                           src={characterAvatarPath(character.id, character.updatedAt)}
@@ -438,7 +427,7 @@ export default function ProfilePage() {
                         <span className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold backdrop-blur-sm ${
                           character.moderationStatus === "warning"
                             ? "bg-orange-500/20 text-orange-200 border-orange-500/40"
-                            : "bg-[#0A0A0A]/90 text-wd-text-secondary border-wd-border"
+                            : "bg-[#0c0b12]/90 text-wd-text-secondary border-wd-border"
                         }`}>
                           {character.moderationStatus === "warning" ? (
                             <>
@@ -479,7 +468,7 @@ export default function ProfilePage() {
                           <LocaleLink
                             href={`/character/${character.slug}`}
                             onClick={captureCharacterReturn}
-                            className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-wd-secondary"
+                            className="flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0c0b12] text-white transition-all hover:border-wd-secondary"
                           >
                             {t("characterPage.about")}
                           </LocaleLink>
@@ -494,7 +483,7 @@ export default function ProfilePage() {
                           <button
                             type="button"
                             onClick={() => handleEdit(character.id)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0A0A0A] text-white transition-all hover:border-wd-secondary"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[50px] text-[10px] font-bold border border-wd-border bg-[#0c0b12] text-white transition-all hover:border-wd-secondary"
                           >
                             <FaEdit className="text-[9px]" />
                             {t("common.edit")}

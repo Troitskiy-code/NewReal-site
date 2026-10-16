@@ -93,7 +93,7 @@ export default function CharacterSearchFilters({
           onClick={() => onSearchChange("")}
           aria-pressed={!hasFilters}
           className={`${chipClassName} ${
-            !hasFilters ? "border-transparent bg-wd-primary text-white" : "border-wd-border bg-wd-card text-wd-text-secondary hover:text-white"
+            !hasFilters ? "border-transparent bg-wd-text text-wd-bg" : "border-transparent bg-wd-card text-wd-text-secondary hover:text-white"
           }`}
         >
           {t("home.allGenres")}
@@ -107,7 +107,7 @@ export default function CharacterSearchFilters({
               onClick={() => onSearchChange(active ? "" : genre.tag)}
               aria-pressed={active}
               className={`${chipClassName} ${
-                active ? "border-transparent bg-wd-primary text-white" : "border-wd-border bg-wd-card text-wd-text-secondary hover:text-white"
+                active ? "border-transparent bg-wd-text text-wd-bg" : "border-transparent bg-wd-card text-wd-text-secondary hover:text-white"
               }`}
             >
               {t(`home.genres.${genre.id}`)}

@@ -20,7 +20,7 @@ export default function ErrorState({
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-20 text-center">
         <p
           aria-hidden
-          className="bg-gradient-to-r from-wd-primary to-wd-secondary bg-clip-text text-7xl font-black leading-none tracking-tight text-transparent sm:text-8xl"
+          className="font-display text-7xl font-bold leading-none tracking-tight text-white sm:text-8xl"
         >
           {code}
         </p>

@@ -117,8 +117,10 @@ export default function CharacterPublicView({ character }: { character: Characte
       >
         <FaTimes size={16} />
       </button>
-      <div className="overflow-hidden rounded-wd border border-wd-border bg-wd-card shadow-wd">
-        <div className="relative aspect-[4/3] bg-[#0A0A0A] sm:aspect-[16/9]">
+      {/* No overflow-hidden here: it would make the card the scroll box of the sticky action bar. */}
+      <div className="rounded-wd border border-wd-border bg-wd-card shadow-wd max-sm:-mx-4 max-sm:-mt-8 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none">
+        {/* Phones: the portrait runs edge to edge and fades into the page under the name. */}
+        <div className="relative aspect-[4/5] max-h-[64svh] w-full overflow-hidden bg-wd-bg sm:aspect-[16/9] sm:max-h-none sm:rounded-t-wd">
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -134,50 +136,56 @@ export default function CharacterPublicView({ character }: { character: Characte
               <FaUser className="text-6xl text-wd-text-secondary/30" />
             </div>
           )}
+          <span aria-hidden className="absolute inset-0 bg-[linear-gradient(to_top,var(--color-wd-bg)_0%,rgba(12,11,18,0.4)_30%,transparent_55%)] sm:hidden" />
         </div>
 
-        <div className="space-y-4 p-5 sm:p-6">
+        <div className="relative space-y-4 p-5 max-sm:-mt-16 max-sm:px-4 sm:p-6">
           {character.moderationStatus === "warning" && (
             <ModerationWarning reason={character.moderationReason} />
           )}
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">{name}</h1>
+              <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-white sm:text-3xl">{name}</h1>
               <p className="mt-1 text-xs text-wd-text-secondary">
                 {t("characterPage.author")}: {author}
                 {" · "}
                 {createdAt}
               </p>
             </div>
-            <p className="flex items-center gap-1.5 rounded-wd-pill border border-wd-border bg-[#0A0A0A] px-3 py-1.5 text-xs font-bold text-white">
+            <p className="flex items-center gap-1.5 rounded-wd-pill bg-wd-card px-3 py-1.5 text-xs font-bold text-white">
               <FaComments className="text-wd-text-secondary" />
               {t("characterPage.messages", { count: (character.totalMessages ?? 0).toLocaleString(dateLocale(locale)) })}
             </p>
           </div>
 
           {description ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-wd-text-secondary">{description}</p>
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-wd-text/85">{description}</p>
           ) : null}
 
           {publicMemory ? (
-            <div className="rounded-wd border border-wd-border bg-[#0A0A0A] p-4">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-wd-secondary-text">
+            <div className="rounded-2xl bg-wd-elevated p-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-wd-secondary">
                 {t("characterPage.knownAbout")}
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-gray-200">{publicMemory}</p>
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-2 sm:flex-row">
+          {/* Phones: a bar that sticks above the bottom nav (globals.css), secondary actions shrink to icons. */}
+          <div className="nv-sticky-cta flex gap-2 max-md:-mx-5 max-md:-mb-5 max-md:rounded-b-wd max-md:border-t max-md:border-wd-border max-md:bg-wd-card/95 max-md:px-5 max-md:py-3 max-md:backdrop-blur-md max-sm:-mx-4 max-sm:rounded-none max-sm:bg-wd-bg/95 max-sm:px-4 sm:max-md:-mx-6 sm:max-md:-mb-6 sm:max-md:px-6">
             {latestThread ? (
               <>
                 <LocaleLink href={withThread(chatHref, latestThread.id)} className="wd-button flex min-w-0 flex-1 items-center justify-center gap-2 py-3 text-sm">
                   <FaComments className="shrink-0" />
                   <span className="truncate">{t("chatThreads.continueNamed", { title: threadDisplayTitle(latestThread, t) })}</span>
                 </LocaleLink>
-                <LocaleLink href={`${chatHref}?new=1`} className="flex flex-1 items-center justify-center gap-2 rounded-wd-pill border border-wd-primary/40 bg-wd-primary/10 px-4 py-3 text-sm font-bold text-wd-primary-soft transition-colors hover:bg-wd-primary/20">
-                  <LuPlus aria-hidden />
-                  {t("chatThreads.newStory")}
+                <LocaleLink
+                  href={`${chatHref}?new=1`}
+                  title={t("chatThreads.newStory")}
+                  className="flex shrink-0 items-center justify-center gap-2 rounded-wd-pill border border-wd-primary/40 bg-wd-primary/10 px-4 py-3 text-sm font-bold text-wd-primary-soft transition-colors hover:bg-wd-primary/20 max-sm:w-12 max-sm:px-0 sm:flex-1"
+                >
+                  <LuPlus aria-hidden className="shrink-0" />
+                  <span className="max-sm:sr-only">{t("chatThreads.newStory")}</span>
                 </LocaleLink>
               </>
             ) : (
@@ -189,10 +197,11 @@ export default function CharacterPublicView({ character }: { character: Characte
             <button
               type="button"
               onClick={handleShare}
-              className="flex flex-1 items-center justify-center gap-2 rounded-wd-pill border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm font-bold text-white transition-colors hover:border-wd-secondary"
+              title={t("characterPage.share")}
+              className="flex shrink-0 items-center justify-center gap-2 rounded-wd-pill border border-wd-border bg-wd-card px-4 py-3 text-sm font-bold text-white transition-colors hover:border-wd-secondary max-sm:w-12 max-sm:px-0 sm:flex-1"
             >
-              <FaShareAlt />
-              {copied ? t("characterPage.copied") : t("characterPage.share")}
+              <FaShareAlt aria-hidden className="shrink-0" />
+              <span className="max-sm:sr-only">{copied ? t("characterPage.copied") : t("characterPage.share")}</span>
             </button>
           </div>
         </div>

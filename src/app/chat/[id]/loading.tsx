@@ -1,6 +1,6 @@
 export default function ChatLoading() {
   return (
-    <div className="relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none bg-bg-page text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)]">
+    <div className="nv-chat-shell relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none bg-bg-page text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)]">
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-3 px-4 py-2">

@@ -31,7 +31,7 @@ import type { RoleplayConfig, RoleplayMode, RoleplayStyle } from "@/lib/roleplay
 const ICON_CLASS = "mr-2 shrink-0 text-[18px] text-gray-400";
 const HINT_CLASS = "text-sm text-gray-400 leading-relaxed";
 const INPUT_CLASS =
-  "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-base text-white outline-none transition-colors placeholder:text-gray-400 focus:border-wd-secondary";
+  "w-full rounded-lg border border-[#2a2638] bg-[#0c0b12] p-3 text-base text-white outline-none transition-colors placeholder:text-gray-400 focus:border-wd-secondary";
 
 type FormBlockProps = {
   title: string;
@@ -105,7 +105,7 @@ function ImageUploadField({ preview, onChange, onRemove, footerHint, error }: Im
   return (
     <div className="space-y-3">
       <div
-        className={`relative flex min-h-[160px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-[#0A0A0A] p-6 transition-colors hover:border-wd-secondary/50 ${
+        className={`relative flex min-h-[160px] flex-col items-center justify-center rounded-lg border-2 border-dashed bg-[#0c0b12] p-6 transition-colors hover:border-wd-secondary/50 ${
           error ? "border-red-500" : "border-gray-500"
         }`}
       >
@@ -141,7 +141,7 @@ type VisibilityToggleProps = {
 
 function VisibilityToggle({ isPublic, onChange }: VisibilityToggleProps) {
   const base = "flex-1 rounded-lg border px-6 py-3 text-base font-bold transition-colors";
-  const active = "border-wd-secondary bg-wd-secondary text-white";
+  const active = "border-wd-secondary bg-wd-secondary text-wd-on-secondary";
   const inactive = "border-gray-500 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-300";
 
   return (
@@ -383,11 +383,11 @@ function CharacterFormContent({
         setLocalErrors(current => ({ ...current, name: undefined })); onClearError?.("name");
       }} />
 
-      <section className="overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#0A0A0A]">
+      <section className="overflow-hidden rounded-lg border border-[#2a2638] bg-[#0c0b12]">
         <button
           type="button"
           onClick={() => setAdvancedOpen((open) => !open)}
-          className="flex w-full items-center gap-2 px-4 py-4 text-left transition-colors hover:bg-[#1A1A1A]"
+          className="flex w-full items-center gap-2 px-4 py-4 text-left transition-colors hover:bg-[#15131d]"
           aria-expanded={advancedOpen}
         >
           <FaCog className={ICON_CLASS} aria-hidden />
@@ -400,7 +400,7 @@ function CharacterFormContent({
         </button>
 
         {advancedOpen && (
-          <div className="space-y-4 border-t border-[#2A2A2A] p-3 md:space-y-8 md:p-4">
+          <div className="space-y-4 border-t border-[#2a2638] p-3 md:space-y-8 md:p-4">
             <RoleplayPromptSettings characterId={characterId} values={values} onChange={onChange} />
 
             <FormBlock
@@ -464,7 +464,7 @@ function CharacterFormContent({
             )}
           </p>
         </div>
-        <details className="rounded-lg border border-[#2A2A2A] p-3">
+        <details className="rounded-lg border border-[#2a2638] p-3">
           <summary className="cursor-pointer text-sm font-medium text-white">Изображение-референс (необязательно)</summary>
           <div className="mt-3 space-y-3">
             <p className={HINT_CLASS}>Загрузите образец, чтобы сохранить внешность персонажа или композицию обложки. Без образца изображение создаётся по текстовому описанию.</p>
@@ -472,7 +472,7 @@ function CharacterFormContent({
           </div>
         </details>
         {tokenStatus && (
-          <div className="space-y-2 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-gray-300">
+          <div className="space-y-2 rounded-lg border border-[#2a2638] bg-[#0c0b12] p-3 text-sm text-gray-300">
             <p>
               Месячный лимит: осталось {tokenStatus.monthlyRemaining} из {tokenStatus.monthlyLimit} генераций
             </p>
@@ -513,7 +513,7 @@ function CharacterFormContent({
                   onClick={() => setStyle(option.value)}
                   className={`flex-1 rounded-lg border px-4 py-3 text-sm font-bold transition-colors sm:flex-none ${
                     active
-                      ? "border-wd-secondary bg-wd-secondary text-white"
+                      ? "border-wd-secondary bg-wd-secondary text-wd-on-secondary"
                       : "border-gray-500 bg-transparent text-gray-400 hover:border-gray-400 hover:text-gray-300"
                   }`}
                 >
@@ -540,7 +540,7 @@ function CharacterFormContent({
         </div>
       </FormBlock>
 
-      <details className="rounded-lg border border-[#2A2A2A] p-4">
+      <details className="rounded-lg border border-[#2a2638] p-4">
         <summary className="cursor-pointer font-semibold">Начальные сведения и секреты — необязательно</summary>
         <FormBlock
           title="Память истории — необязательно"

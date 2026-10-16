@@ -65,6 +65,7 @@
     "diagnose:chat:stream": "node scripts/diagnose-chat-stream.mjs",
     "verify:chat:mistral": "node scripts/verify-mistral-idle.mjs",
     "verify:chat-threads": "node scripts/verify-chat-threads.mjs",
+    "verify:story-choices": "node --experimental-strip-types scripts/verify-story-choices.ts",
     "verify:chat-threads:browser": "node scripts/browser-chat-threads.mjs",
     "chat-threads:backfill": "node scripts/backfill-chat-threads.mjs",
     "verify:economy:inputs": "node scripts/verify-cost-inputs.mjs",

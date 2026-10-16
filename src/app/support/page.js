@@ -118,7 +118,7 @@ export default function SupportPage() {
                 id="support-topic"
                 value={topic}
                 onChange={(event) => setTopic(event.target.value)}
-                className="w-full rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
+                className="w-full rounded-wd border border-wd-border bg-[#0c0b12] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
               >
                 {TOPIC_KEYS.map((item) => (
                   <option key={item} value={item}>
@@ -139,7 +139,7 @@ export default function SupportPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="example@mail.com"
-                className="w-full rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
+                className="w-full rounded-wd border border-wd-border bg-[#0c0b12] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
               />
             </div>
 
@@ -156,7 +156,7 @@ export default function SupportPage() {
                 autoCapitalize="none"
                 spellCheck={false}
                 aria-describedby="support-reference-hint"
-                className="w-full rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
+                className="w-full rounded-wd border border-wd-border bg-[#0c0b12] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
               />
               <p id="support-reference-hint" className="text-xs leading-relaxed text-wd-text-secondary">{t("support.referenceHint")}</p>
             </div>
@@ -174,7 +174,7 @@ export default function SupportPage() {
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder={t("support.messagePlaceholder")}
-                className="w-full resize-y rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
+                className="w-full resize-y rounded-wd border border-wd-border bg-[#0c0b12] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-wd-secondary/60"
               />
             </div>
 

@@ -117,7 +117,7 @@ export default function Navbar() {
       </aside>
 
       {/* Desktop persistent sidebar: icon rail on md, labelled sidebar from lg (widths mirror body padding). */}
-      <aside className="nv-desktop-sidebar fixed left-0 top-20 z-[210] hidden h-[calc(100vh-5rem)] w-20 flex-col overflow-hidden border-r border-wd-border bg-[#0d0d0d] text-white md:flex lg:w-[232px]">
+      <aside className="nv-desktop-sidebar fixed left-0 top-20 z-[210] hidden h-[calc(100vh-5rem)] w-20 flex-col overflow-hidden border-r border-wd-border bg-[#0c0b12] text-white md:flex lg:w-[232px]">
         <nav aria-label={t("header.mainNav")} className="w-full flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-subtle">
           <NavMenuList pathname={pathname} variant="rail" onItemClick={handleNavClick} />
         </nav>

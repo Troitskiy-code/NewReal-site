@@ -176,7 +176,7 @@ export default function PersonaManager() {
                   ) : (
                     <>
                       <div className="flex items-start gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-wd-border bg-[#0A0A0A]">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-wd-border bg-[#0c0b12]">
                           {persona.avatarUrl ? (
                             <img
                               src={persona.avatarUrl}
@@ -206,7 +206,7 @@ export default function PersonaManager() {
                             setCreating(false);
                             setEditingId(persona.id);
                           }}
-                          className="flex-1 rounded-[50px] border border-wd-border bg-[#0A0A0A] py-2 text-[10px] font-bold text-white hover:border-wd-secondary"
+                          className="flex-1 rounded-[50px] border border-wd-border bg-[#0c0b12] py-2 text-[10px] font-bold text-white hover:border-wd-secondary"
                         >
                           <span className="inline-flex items-center justify-center gap-1.5">
                             <FaEdit className="text-[9px]" />

@@ -266,17 +266,17 @@ export default function EditCharacterPage() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col overflow-hidden bg-[#121212] text-white select-none">
+    <div className="min-h-dvh flex flex-col overflow-hidden bg-[#0c0b12] text-white select-none">
       <main className="flex w-full flex-1 flex-col overflow-y-auto px-2 py-6 scrollbar-subtle sm:px-4 md:py-8 lg:px-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 md:gap-8">
-          <header className="space-y-1 border-b border-[#2A2A2A] pb-4 md:pb-5">
+          <header className="space-y-1 border-b border-[#2a2638] pb-4 md:pb-5">
             <h1 className="text-xl font-bold text-white md:text-2xl">Редактировать карточку</h1>
-            <p className="text-sm text-[#A0A0A0]">Измените данные истории и сохраните изменения.</p>
+            <p className="text-sm text-[#a9a4b8]">Измените данные истории и сохраните изменения.</p>
           </header>
 
           <form
             onSubmit={handleSubmit}
-            className="w-full space-y-4 rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] p-4 text-base md:space-y-8 md:p-6"
+            className="w-full space-y-4 rounded-2xl border border-[#2a2638] bg-[#15131d] p-4 text-base md:space-y-8 md:p-6"
           >
             <CharacterForm
               characterId={id}
@@ -302,7 +302,7 @@ export default function EditCharacterPage() {
               onLoraRemove={handleRemoveLora}
             />
 
-            <div className="flex flex-col gap-4 border-t border-[#2A2A2A] pt-4 md:pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 border-t border-[#2a2638] pt-4 md:pt-6 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={handleClearDraft}
@@ -323,7 +323,7 @@ export default function EditCharacterPage() {
                   id="character-save-submit"
                   data-metrika="character-save"
                   disabled={submitting}
-                  className="w-full rounded-lg bg-wd-secondary px-8 py-3 text-base font-bold text-white transition-colors hover:bg-wd-secondary-hover disabled:opacity-50 sm:w-auto"
+                  className="w-full rounded-lg bg-wd-primary px-8 py-3 text-base font-bold text-white transition-colors hover:bg-wd-primary-hover disabled:opacity-50 sm:w-auto"
                 >
                   {submitting ? (
                     <span className="inline-flex items-center gap-2">

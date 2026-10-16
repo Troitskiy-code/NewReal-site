@@ -31,7 +31,7 @@ export default function PaymentChargeSummary({
   }, [amountRub, context, currency, equivalent, rates, ratesReady]);
 
   return (
-    <div className="rounded-wd border border-wd-border bg-[#0A0A0A] px-4 py-3">
+    <div className="rounded-wd border border-wd-border bg-[#0c0b12] px-4 py-3">
       <p className="text-[10px] font-bold uppercase tracking-wider text-wd-text-secondary">
         {t("payment.chargeLabel")}
       </p>

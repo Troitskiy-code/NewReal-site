@@ -10,6 +10,9 @@ const DESKTOP_MQ = "(min-width: 768px)";
 const ROTATION_WIDTH_DELTA = 64;
 
 function headerOffsetPx() {
+  // globals.css hides the site header on mobile chat; the portrait then starts at the top.
+  const header = document.querySelector(".nv-app-header");
+  if (header && window.getComputedStyle(header).display === "none") return 0;
   return window.matchMedia(DESKTOP_MQ).matches
     ? HEADER_HEIGHT_DESKTOP_PX
     : HEADER_HEIGHT_MOBILE_PX;

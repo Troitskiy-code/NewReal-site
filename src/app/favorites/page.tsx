@@ -66,7 +66,7 @@ function FavoritesPageContent() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-[#121212]">
+      <div className="flex min-h-dvh items-center justify-center bg-[#0c0b12]">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
       </div>
     );
@@ -74,7 +74,7 @@ function FavoritesPageContent() {
 
   if (status === "unauthenticated") {
     return (
-      <div className="flex min-h-dvh flex-col bg-[#121212] text-wd-text">
+      <div className="flex min-h-dvh flex-col bg-[#0c0b12] text-wd-text">
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <FaHeart className="text-4xl text-wd-primary-soft opacity-30" />
           <h1 className="text-xl font-bold tracking-tight text-white">Избранное</h1>
@@ -91,9 +91,9 @@ function FavoritesPageContent() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col overflow-hidden bg-[#121212] text-wd-text">
+    <div className="flex min-h-dvh flex-col overflow-hidden bg-[#0c0b12] text-wd-text">
 
-      <div className="mb-2 w-full border-b border-[#2A2A2A] px-4 py-3 md:py-4">
+      <div className="mb-2 w-full border-b border-[#2a2638] px-4 py-3 md:py-4">
         <div className="space-y-1">
           <h1 className="text-xl font-bold tracking-tight text-white md:text-2xl">Избранное</h1>
           <p className="text-xs text-wd-text-secondary">
@@ -145,7 +145,7 @@ export default function FavoritesPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-dvh items-center justify-center bg-[#121212]">
+        <div className="flex min-h-dvh items-center justify-center bg-[#0c0b12]">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-wd-primary border-t-transparent" />
         </div>
       }

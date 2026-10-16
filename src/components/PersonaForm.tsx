@@ -10,7 +10,7 @@ import {
 } from "@/lib/persona";
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-sm text-white outline-none transition-colors placeholder:text-gray-400 focus:border-wd-secondary";
+  "w-full rounded-lg border border-[#2a2638] bg-[#0c0b12] p-3 text-sm text-white outline-none transition-colors placeholder:text-gray-400 focus:border-wd-secondary";
 
 export type PersonaFormValues = {
   name: string;
@@ -96,7 +96,7 @@ export default function PersonaForm({
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <div className="flex items-center gap-3">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#2A2A2A] bg-[#0A0A0A]">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#2a2638] bg-[#0c0b12]">
             {form.avatarUrl ? (
               <img src={form.avatarUrl} alt="" className="h-full w-full object-cover" />
             ) : (

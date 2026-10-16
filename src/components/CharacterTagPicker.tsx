@@ -45,7 +45,7 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
           {selectedTags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1.5 rounded-full bg-wd-secondary px-3 py-1 text-xs text-white"
+              className="inline-flex items-center gap-1.5 rounded-full bg-wd-secondary px-3 py-1 text-xs text-wd-on-secondary"
             >
               {label(tag)}{LEGACY_CHARACTER_TAGS.includes(tag) ? (en ? " (legacy)" : " (прежний)") : ""}
               <button
@@ -83,7 +83,7 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
                   disabled={!isActive && selected.size >= MAX_SELECTED_CHARACTER_TAGS}
                   className={`min-h-9 rounded-full px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary disabled:cursor-not-allowed disabled:opacity-40 ${
                     isActive
-                      ? "bg-wd-secondary text-white"
+                      ? "bg-wd-secondary text-wd-on-secondary"
                       : "border border-wd-border bg-wd-bg text-wd-text-secondary hover:text-white"
                   }`}
                 >

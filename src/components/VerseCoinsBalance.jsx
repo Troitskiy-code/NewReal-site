@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { FaCoins } from "react-icons/fa";
+import { LogoMark } from "./Logo";
 import axios from "axios";
 import { usePathname } from "next/navigation";
 import { coinsHrefFromChat } from "@/lib/coinsReturn";
@@ -31,14 +31,14 @@ export default function VerseCoinsBalance({ className = "", size = "sm" }) {
   if (status !== "authenticated" || verseCoins === null) return null;
   const sizeClasses = size === "md" ? "gap-2 px-4 py-2 text-sm" : "gap-1.5 px-2.5 py-1 text-xs md:px-3 md:py-1.5 md:text-sm";
   const content = <>
-    <FaCoins className="shrink-0 text-wd-secondary-text" size={size === "md" ? "16" : "14"} />
+    <LogoMark className={`shrink-0 text-wd-secondary ${size === "md" ? "h-4 w-4" : "h-3.5 w-3.5"} [&_circle]:hidden`} />
     <span>{verseCoins.toLocaleString("ru-RU")} VC</span>
   </>;
   // In Telegram the balance is shown, but it does not lead to the shop.
   if (telegram) return <span data-testid="vc-balance"
-    className={`inline-flex items-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A]/80 font-bold text-white ${sizeClasses} ${className}`} title="VerseCoins">{content}</span>;
+    className={`inline-flex items-center rounded-full border border-wd-secondary/25 bg-wd-secondary/10 font-bold text-wd-secondary ${sizeClasses} ${className}`} title="VerseCoins">{content}</span>;
   return <Link href={coinsHrefFromChat(pathname)}
-    className={`inline-flex items-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A]/80 font-bold text-white transition-colors hover:border-wd-secondary/50 ${sizeClasses} ${className}`} title="VerseCoins">
+    className={`inline-flex items-center rounded-full border border-wd-secondary/25 bg-wd-secondary/10 font-bold text-wd-secondary transition-colors hover:border-wd-secondary/50 ${sizeClasses} ${className}`} title="VerseCoins">
     {content}
   </Link>;
 }

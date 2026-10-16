@@ -32,7 +32,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
     <html lang={locale}>
       <body className="flex min-h-dvh flex-col items-center justify-center bg-wd-bg px-4 text-center font-sans text-wd-text antialiased">
         <title>{`${t.errorTitle} — NewVerse`}</title>
-        <p aria-hidden className="bg-gradient-to-r from-wd-primary to-wd-secondary bg-clip-text text-7xl font-black leading-none tracking-tight text-transparent">
+        <p aria-hidden className="font-display text-7xl font-bold leading-none tracking-tight text-white">
           500
         </p>
         <h1 className="mt-6 text-2xl font-bold tracking-tight text-white">{t.errorTitle}</h1>

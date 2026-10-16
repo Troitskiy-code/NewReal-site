@@ -42,7 +42,7 @@ declare global {
 
 // Palette tokens of the dark NewVerse theme (globals.css): Telegram's own header, background
 // and bottom bar are painted in them, so the app looks the same in light and dark Telegram themes.
-const PALETTE = { header: "#0d0d0d", background: "#0a0a0a" };
+const PALETTE = { header: "#0c0b12", background: "#0c0b12" };
 // Top-level sections: Telegram's back button is hidden there.
 const ROOT_PATHS = new Set(["/", "/chats", "/create", "/profile", "/favorites", "/tg", "/tg/unavailable", "/tg/signed-out"]);
 

@@ -118,6 +118,7 @@
     "user": "User"
   },
   "home": {
+    "continue": { "label": "Continue", "you": "You" },
     "searchPlaceholder": "Search by name or tag...",
     "sort": "Sort",
     "sortTop": "Top",
@@ -232,6 +233,7 @@
     }
   },
   "profile": {
+    "wallet": { "title": "VerseCoins wallet", "topUp": "Top up" },
     "title": "My profile",
     "loginPrompt": "Sign in to view your profile and characters.",
     "registeredAt": "Registered:",

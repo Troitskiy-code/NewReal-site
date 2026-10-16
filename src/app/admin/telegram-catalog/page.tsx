@@ -80,7 +80,7 @@ export default function TelegramCatalogAdmin() {
             <p className="truncate text-xs text-wd-text-secondary">{row.tags || "—"} · сообщений: {row.totalMessages}{row.slug ? <> · <LocaleLink href={`/character/${row.slug}`} className="underline" target="_blank">открыть</LocaleLink></> : null}</p>
           </div>
           <button type="button" disabled={busy} onClick={() => void toggle(row)} aria-pressed={row.listed}
-            className={`shrink-0 rounded-[50px] px-4 py-2 text-xs font-bold disabled:opacity-50 ${row.listed ? "bg-wd-secondary text-white" : "border border-wd-border text-white"}`}>
+            className={`shrink-0 rounded-[50px] px-4 py-2 text-xs font-bold disabled:opacity-50 ${row.listed ? "bg-wd-secondary text-wd-on-secondary" : "border border-wd-border text-white"}`}>
             {row.listed ? "В подборке" : "Добавить"}
           </button>
         </li>)}

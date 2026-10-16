@@ -1,9 +1,8 @@
 "use client";
 
 import LocaleLink from "./LocaleLink";
-import Image from "next/image";
 import { LuMenu, LuX } from "react-icons/lu";
-import Logo from "./Logo";
+import Logo, { LogoMark } from "./Logo";
 import UserAvatarMenu from "./UserAvatarMenu";
 import NotificationBell from "./NotificationBell";
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -15,7 +14,7 @@ export default function Header() {
   const { t } = useTranslation();
 
   return (
-    <header className="nv-app-header fixed top-0 left-0 right-0 z-[60] m-0 h-14 border-b border-wd-border bg-[#0d0d0d]/90 px-0 backdrop-blur-md md:h-20">
+    <header className="nv-app-header fixed top-0 left-0 right-0 z-[60] m-0 h-14 border-b border-wd-border bg-wd-bg/90 px-0 backdrop-blur-md md:h-20">
       <div className="relative flex h-full w-full items-center">
         <button
           type="button"
@@ -29,15 +28,12 @@ export default function Header() {
 
         <div className="flex w-full items-center justify-between gap-3 pr-3 md:pr-6">
           <LocaleLink href="/" className="ml-[4.25rem] flex min-w-0 items-center gap-2 md:ml-6 md:gap-3">
-            <Image
-              src="/logo.png"
-              alt="NewVerse"
-              width={45}
-              height={45}
-              className="h-7 w-7 shrink-0 md:h-10 md:w-10"
-              priority
-            />
-            <Logo size="sm" className="truncate text-lg md:text-2xl" />
+            <LogoMark className="h-6 w-6 shrink-0 text-wd-text md:h-8 md:w-8" />
+            <span className="sr-only">NewVerse</span>
+            {/* Icon only on narrow phones: next to the sign-in button the wordmark truncated to "NEW…". */}
+            <span aria-hidden className="hidden min-w-0 min-[400px]:inline">
+              <Logo size="sm" className="truncate text-lg md:text-2xl" />
+            </span>
           </LocaleLink>
 
           <div className="flex shrink-0 items-center gap-2 md:gap-3">

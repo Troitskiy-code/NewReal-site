@@ -1,36 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-inter), sans-serif;
-  --font-outfit: var(--font-inter), sans-serif;
+  --font-sans: var(--font-onest), sans-serif;
+  --font-outfit: var(--font-onest), sans-serif;
+  /* Headings and numbers (font-display) and story text in chats (font-story). */
+  --font-display: var(--font-unbounded), var(--font-onest), sans-serif;
+  --font-story: var(--font-literata), Georgia, serif;
 
   /*
-    Brand palette. Fills (buttons, chips) use primary/secondary with white text
-    (>= 4.5:1). Text on dark surfaces uses the *-soft / *-text shades, because
-    the fill shades are too dark to read as small text on #0a0a0a–#1a1a1a.
+    "Созвездие" palette: a warm night ground, one red for actions and starlight gold
+    for VerseCoins and accents. Primary fills take white text (>= 4.5:1); the gold
+    fill takes dark text (--color-wd-on-secondary), never white.
   */
-  --color-wd-bg: #0a0a0a;
-  --color-wd-card: #1a1a1a;
-  --color-wd-border: #2a2a2a;
+  --color-wd-bg: #0c0b12;
+  --color-wd-card: #15131d;
+  --color-wd-elevated: #1c1926;
+  --color-wd-border: #2a2638;
   --color-wd-primary: #e11d48;
   --color-wd-primary-hover: #be123c;
   --color-wd-primary-soft: #fb7185;
-  --color-wd-secondary: #5b54e6;
-  --color-wd-secondary-hover: #4c45d1;
-  --color-wd-secondary-text: #a5a0ff;
-  --color-wd-text: #ffffff;
-  --color-wd-text-secondary: #a0a0a0;
+  --color-wd-secondary: #f2c46d;
+  --color-wd-secondary-hover: #e0ae52;
+  --color-wd-secondary-text: #f2c46d;
+  --color-wd-on-secondary: #1a1408;
+  --color-wd-text: #f3f1f8;
+  --color-wd-text-secondary: #a9a4b8;
+  /* Narration (*действие*) in story text. */
+  --color-wd-story-muted: #c9c3d9;
 
-  --color-bg-page: var(--bg-page, #0a0a0a);
-  --color-bg-card: var(--bg-card, #1a1a1a);
-  --color-bg-card-hover: var(--bg-card-hover, #242424);
-  --color-bg-elevated: var(--bg-elevated, #1f1f1f);
-  --color-divider: var(--divider, #2a2a2a);
+  --color-bg-page: var(--bg-page, #0c0b12);
+  --color-bg-card: var(--bg-card, #15131d);
+  --color-bg-card-hover: var(--bg-card-hover, #221f2e);
+  --color-bg-elevated: var(--bg-elevated, #1c1926);
+  --color-divider: var(--divider, #2a2638);
   --color-primary: var(--primary, #e11d48);
   --color-primary-hover: var(--primary-hover, #be123c);
   --color-primary-soft: var(--primary-soft, #fb7185);
-  --color-primary-text: var(--primary-text, #ffffff);
-  --color-secondary-text: var(--secondary-text, #a0a0a0);
+  --color-primary-text: var(--primary-text, #f3f1f8);
+  --color-secondary-text: var(--secondary-text, #a9a4b8);
   --color-primary-btn-text: var(--primary-btn-text, #ffffff);
 
   --radius-wd: 16px;
@@ -41,16 +48,16 @@
 /* WetDreams — основная тема проекта */
 [data-theme="wetdreams"],
 :root {
-  --bg-page: #0a0a0a;
-  --bg-card: #1a1a1a;
-  --bg-card-hover: #242424;
-  --bg-elevated: #1f1f1f;
-  --divider: #2a2a2a;
+  --bg-page: #0c0b12;
+  --bg-card: #15131d;
+  --bg-card-hover: #221f2e;
+  --bg-elevated: #1c1926;
+  --divider: #2a2638;
   --primary: #e11d48;
   --primary-hover: #be123c;
   --primary-soft: #fb7185;
-  --primary-text: #ffffff;
-  --secondary-text: #a0a0a0;
+  --primary-text: #f3f1f8;
+  --secondary-text: #a9a4b8;
   --primary-btn-text: #ffffff;
 }
 
@@ -118,7 +125,7 @@
 @layer base {
   html,
   body {
-    background-color: #0a0a0a;
+    background-color: #0c0b12;
     color: #ffffff;
     font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     height: 100%;
@@ -140,7 +147,7 @@
     margin: 0;
     border: 1.5px solid #52525b;
     border-radius: 0.375rem;
-    background-color: #0a0a0a;
+    background-color: #0c0b12;
     background-position: center;
     background-repeat: no-repeat;
     background-size: 0.75rem;
@@ -176,7 +183,7 @@
     margin: 0;
     border: 1.5px solid #52525b;
     border-radius: 9999px;
-    background-color: #0a0a0a;
+    background-color: #0c0b12;
     cursor: pointer;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
@@ -188,7 +195,7 @@
   /* Inner dot drawn with an inset shadow, so no pseudo-element is needed on the input. */
   input[type="radio"]:not(.sr-only):checked {
     border-color: var(--color-wd-secondary);
-    box-shadow: inset 0 0 0 3px #0a0a0a;
+    box-shadow: inset 0 0 0 3px #0c0b12;
     background-color: var(--color-wd-secondary);
   }
 
@@ -215,7 +222,7 @@ html {
 select:not([multiple]) {
   appearance: none;
   padding-right: 2.25rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a0a0a0' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a9a4b8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
   background-position: right 0.75rem center;
   background-repeat: no-repeat;
   background-size: 1rem;
@@ -223,7 +230,7 @@ select:not([multiple]) {
 }
 
 select option {
-  background-color: #1a1a1a;
+  background-color: #15131d;
   color: #ffffff;
 }
 
@@ -247,8 +254,8 @@ body {
 
 /* WetDreams UI utilities */
 .wd-card {
-  background-color: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background-color: #15131d;
+  border: 1px solid #2a2638;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
@@ -306,8 +313,8 @@ body {
 }
 
 .wd-input {
-  background-color: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background-color: #15131d;
+  border: 1px solid #2a2638;
   color: #ffffff;
   border-radius: 12px;
   outline: none;
@@ -315,7 +322,7 @@ body {
 }
 
 .wd-input::placeholder {
-  color: #a0a0a0;
+  color: #a9a4b8;
 }
 
 .wd-input:focus {
@@ -324,17 +331,17 @@ body {
 
 /* Glassmorphism Utilities */
 .glass-panel {
-  background: rgba(26, 26, 26, 0.75);
+  background: rgba(21, 19, 29, 0.75);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(42, 38, 56, 0.8);
 }
 
 .glass-dropdown {
-  background: rgba(10, 10, 10, 0.95);
+  background: rgba(12, 11, 18, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(42, 42, 42, 0.9);
+  border: 1px solid rgba(42, 38, 56, 0.9);
 }
 
 /* Premium Scrollbars */
@@ -466,6 +473,42 @@ body {
   background: rgb(0 0 0 / 0.6);
 }
 
+/*
+  Mobile chat: the site header (and the email banner pinned under it) would stack on top of the
+  chat header, so the chat takes the full screen and its header carries the way back.
+  Telegram keeps its header: it also holds the safe-area inset.
+*/
+@media (max-width: 767px) {
+  html:not([data-telegram]):has(.nv-chat-shell) .nv-app-header,
+  html:not([data-telegram]):has(.nv-chat-shell) .nv-email-banner {
+    display: none;
+  }
+
+  html:not([data-telegram]):has(.nv-chat-shell) body {
+    padding-top: 0;
+  }
+
+  html:not([data-telegram]) .nv-chat-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  html:not([data-telegram]) .nv-chat-portrait {
+    top: 0;
+    height: 100vh;
+    height: 100lvh;
+  }
+}
+
+/* Primary page action that stays above the mobile bottom nav (MOBILE_BOTTOM_NAV_HEIGHT_PX). */
+@media (max-width: 767px) {
+  .nv-sticky-cta {
+    position: sticky;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    z-index: 10;
+  }
+}
+
 @media (min-width: 768px) {
   .nv-mobile-drawer,
   .nv-mobile-nav-overlay {
@@ -550,6 +593,12 @@ html[data-telegram] .nv-bottom-nav {
 
 html[data-telegram] .nv-bottom-nav-spacer {
   height: calc(64px + var(--nv-tg-bottom));
+}
+
+@media (max-width: 767px) {
+  html[data-telegram] .nv-sticky-cta {
+    bottom: calc(64px + var(--nv-tg-bottom));
+  }
 }
 
 html[data-telegram] .nv-mobile-drawer,

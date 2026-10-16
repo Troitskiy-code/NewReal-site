@@ -277,7 +277,7 @@ export default function SubscriptionPlans({
             onClick={() => setIsYearly(false)}
             className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
               !isYearly
-                ? "bg-wd-secondary text-white shadow"
+                ? "bg-wd-secondary text-wd-on-secondary shadow"
                 : "text-wd-text-secondary hover:text-white"
             }`}
           >
@@ -288,7 +288,7 @@ export default function SubscriptionPlans({
             onClick={() => setIsYearly(true)}
             className={`rounded-wd-pill px-5 py-2 text-sm font-bold transition-all ${
               isYearly
-                ? "bg-wd-secondary text-white shadow"
+                ? "bg-wd-secondary text-wd-on-secondary shadow"
                 : "text-wd-text-secondary hover:text-white"
             }`}
           >
@@ -314,13 +314,13 @@ export default function SubscriptionPlans({
               }`}
             >
               {isPopular ? (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[11px] font-bold tracking-wide text-wd-on-secondary shadow">
                   {t("pricing.popular")}
                 </span>
               ) : null}
 
               <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-wd bg-[#0A0A0A] text-wd-secondary-text">
+                <div className="flex h-11 w-11 items-center justify-center rounded-wd bg-[#0c0b12] text-wd-secondary-text">
                   <Icon />
                 </div>
                 <div>
@@ -340,7 +340,7 @@ export default function SubscriptionPlans({
                 </p>
               </div>
 
-              <div className="mb-5 rounded-wd border border-wd-border bg-[#0A0A0A] p-4 text-sm">
+              <div className="mb-5 rounded-wd border border-wd-border bg-[#0c0b12] p-4 text-sm">
                 <p className="font-black text-white">
                   {t("pricing.vcPerMonth", { count: formatNumber(plan.vcPerMonth, i18n.language) })}
                 </p>
@@ -422,7 +422,7 @@ export default function SubscriptionPlans({
               context="subscription"
             />
             <div className="space-y-3 text-sm text-wd-text-secondary">
-              <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0c0b12] p-3">
                 <input
                   type="radio"
                   name="applyMode"
@@ -437,7 +437,7 @@ export default function SubscriptionPlans({
                 </span>
               </label>
               {hasActiveSubscription ? (
-                <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
+                <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0c0b12] p-3">
                   <input
                     type="radio"
                     name="applyMode"
@@ -454,7 +454,7 @@ export default function SubscriptionPlans({
               ) : null}
             </div>
             <div className="space-y-2">
-              <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
+              <label className="flex cursor-pointer items-start gap-3 rounded-wd border border-wd-border bg-[#0c0b12] p-3 text-sm text-wd-text-secondary">
                 <input
                   type="checkbox"
                   checked={recurringConsent}

@@ -6,6 +6,7 @@ import CharacterCard from "@/components/CharacterCard";
 import CharacterSearchFilters from "@/components/CharacterSearchFilters";
 import CharacterPagination from "@/components/CharacterPagination";
 import HomeHero from "@/components/HomeHero";
+import ContinueStoryCard from "@/components/ContinueStoryCard";
 import FirstStepOnboarding, { writeOnboardingCookie } from "@/components/FirstStepOnboarding";
 import { hasOnboardingSignals } from "@/lib/onboarding";
 import { useState } from "react";
@@ -35,7 +36,11 @@ export default function HomePageContent({ initialData, showHero = false, onboard
         <HomeHero total={initialData?.meta.total ?? total} characters={initialData?.data ?? []}
           onStart={openOnboarding ? () => openOnboarding("hero") : undefined} />
       ) : (
-        <h1 className="px-4 pt-5 text-xl font-bold text-white md:px-6 md:text-2xl">{t("meta.home.title")}</h1>
+        <>
+          {/* Signed-in visitors land on their latest story; the catalog title stays as a quiet h1. */}
+          <ContinueStoryCard />
+          <h1 className="px-4 pt-5 text-[13px] font-semibold text-wd-text-secondary md:px-6">{t("meta.home.title")}</h1>
+        </>
       )}
 
       <CharacterSearchFilters
@@ -51,7 +56,7 @@ export default function HomePageContent({ initialData, showHero = false, onboard
         className="flex min-h-0 flex-1 scroll-mt-24 flex-col gap-4 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-5 md:px-6"
       >
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-lg font-bold text-white md:text-xl">{sectionTitle}</h2>
+          <h2 className="font-display text-lg font-semibold text-wd-text md:text-xl">{sectionTitle}</h2>
           {!loading && total > 0 && (
             <p className="shrink-0 text-[13px] text-wd-text-secondary">
               {t("home.found")}<span className="font-semibold text-white">{total}</span>

@@ -126,7 +126,7 @@ export default function ChatThreadsPanel({
     const busy = busyId === thread.id || disabled;
     const count = thread.messageCount ?? 0;
     return (
-      <li key={thread.id} className={`rounded-xl border p-3 ${isCurrent ? "border-wd-primary/50 bg-wd-primary/10" : "border-wd-border bg-[#0A0A0A]"}`}>
+      <li key={thread.id} className={`rounded-xl border p-3 ${isCurrent ? "border-wd-primary/50 bg-wd-primary/10" : "border-wd-border bg-[#0c0b12]"}`}>
         {renamingId === thread.id ? (
           <form
             className="flex flex-col gap-2"

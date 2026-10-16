@@ -63,7 +63,7 @@ export default function EmailVerificationBanner() {
   };
 
   return (
-    <div className="fixed left-0 right-0 top-14 z-[55] border-b border-[#2A2A2A] bg-[#1A1A1A] px-4 py-2 md:top-20">
+    <div className="nv-email-banner fixed left-0 right-0 top-14 z-[55] border-b border-[#2a2638] bg-[#15131d] px-4 py-2 md:top-20">
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-center gap-2 text-center sm:flex-row sm:gap-4">
         <p className="text-sm text-wd-text">{t("auth.verifyBanner")}</p>
         <div className="flex flex-wrap items-center justify-center gap-2">

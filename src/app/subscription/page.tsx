@@ -219,12 +219,12 @@ export default function SubscriptionPage() {
               <p className="text-sm text-wd-text-secondary">Подписка не оформлена</p>
             )}
             {balance.pendingSubscriptionLabel && (
-              <p className="rounded-wd border border-wd-border bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
+              <p className="rounded-wd border border-wd-border bg-[#0c0b12] p-3 text-sm text-wd-text-secondary">
                 Отложенная подписка: «{balance.pendingSubscriptionLabel}». Дата активации:{" "}
                 {formatDate(balance.pendingSubscriptionEnd)}.
               </p>
             )}
-            <div className="space-y-2 rounded-wd border border-wd-border bg-[#0A0A0A] p-3">
+            <div className="space-y-2 rounded-wd border border-wd-border bg-[#0c0b12] p-3">
               {balance.recurringEnabled ? (
                 <>
                   <p className="text-sm text-wd-text-secondary">Автопродление включено</p>
@@ -246,7 +246,7 @@ export default function SubscriptionPage() {
               {recurringError && <p className="text-xs text-red-400">{recurringError}</p>}
             </div>
             {balance.recurringSetupRequired && (
-              <p className="rounded-wd border border-wd-primary/40 bg-[#0A0A0A] p-3 text-sm text-wd-text-secondary">
+              <p className="rounded-wd border border-wd-primary/40 bg-[#0c0b12] p-3 text-sm text-wd-text-secondary">
                 Автопродление для нового тарифа не настроено. Чтобы списания продолжались автоматически,
                 оформите подписку ещё раз на странице{" "}
                 <Link href="/pricing" className="font-bold text-wd-secondary-text hover:text-white">
@@ -271,7 +271,7 @@ export default function SubscriptionPage() {
               return (
                 <article key={plan.id} className="wd-card flex flex-col gap-4 p-5">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-wd bg-[#0A0A0A] text-wd-secondary-text">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-wd bg-[#0c0b12] text-wd-secondary-text">
                       <Icon />
                     </div>
                     <div>
@@ -335,7 +335,7 @@ export default function SubscriptionPage() {
                 type="button"
                 disabled={changing || !canDefer}
                 onClick={() => handleChange("afterExpiry")}
-                className="w-full rounded-wd-pill border border-wd-border bg-[#0A0A0A] px-4 py-3 text-sm font-bold text-white transition-colors hover:border-wd-secondary disabled:opacity-50"
+                className="w-full rounded-wd-pill border border-wd-border bg-[#0c0b12] px-4 py-3 text-sm font-bold text-white transition-colors hover:border-wd-secondary disabled:opacity-50"
               >
                 После окончания
               </button>

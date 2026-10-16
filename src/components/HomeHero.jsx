@@ -16,13 +16,13 @@ export default function HomeHero({ total, characters, onStart }) {
 
   return (
     <section className="px-4 pt-4 md:px-6 md:pt-6">
-      <div className="relative grid overflow-hidden rounded-3xl border border-white/10 bg-[#111] bg-[radial-gradient(700px_280px_at_85%_0%,rgba(91,84,230,0.3),transparent_60%),radial-gradient(560px_280px_at_0%_100%,rgba(225,29,72,0.22),transparent_60%)] px-5 py-6 md:px-10 md:py-9 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-6">
+      <div className="relative grid overflow-hidden rounded-3xl border border-white/10 bg-[#100e17] bg-[radial-gradient(700px_280px_at_85%_0%,rgba(242,196,109,0.14),transparent_60%),radial-gradient(560px_280px_at_0%_100%,rgba(225,29,72,0.18),transparent_60%)] px-5 py-6 md:px-10 md:py-9 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-6">
         <div>
           <h1>
             <span className="mb-3 block text-xs font-bold uppercase tracking-[0.08em] text-wd-secondary-text">
               {t("home.hero.eyebrow")}
             </span>
-            <span className="block text-balance text-[26px] font-extrabold leading-[1.1] tracking-tight text-white md:text-[40px]">
+            <span className="block text-balance font-display text-[26px] font-semibold leading-[1.12] tracking-tight text-white md:text-[40px]">
               {t("home.hero.title")}
             </span>
           </h1>

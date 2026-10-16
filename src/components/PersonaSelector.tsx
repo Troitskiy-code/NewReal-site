@@ -113,11 +113,11 @@ export default function PersonaSelector({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3">
+      <section className="rounded-lg border border-[#2a2638] bg-[#0c0b12] p-3">
         <p className="mb-2 text-xs text-gray-500">Сейчас в этом чате</p>
         {selectedPersona ? (
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1A1A1A]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#15131d]">
               {selectedPersona.avatarUrl ? (
                 <img
                   src={selectedPersona.avatarUrl}
@@ -185,10 +185,10 @@ export default function PersonaSelector({
                     className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                       active
                         ? "border-wd-secondary/60 bg-wd-secondary/10"
-                        : "border-[#2A2A2A] bg-[#0A0A0A] hover:border-wd-secondary/40"
+                        : "border-[#2a2638] bg-[#0c0b12] hover:border-wd-secondary/40"
                     } disabled:opacity-70`}
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1A1A1A]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#15131d]">
                       {persona.avatarUrl ? (
                         <img src={persona.avatarUrl} alt="" className="h-full w-full object-cover" />
                       ) : (

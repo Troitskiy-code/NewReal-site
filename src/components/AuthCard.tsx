@@ -1,7 +1,7 @@
 import type { MouseEventHandler, ReactNode } from "react";
 
 export const AUTH_INPUT_CLASS =
-  "w-full rounded-xl border border-wd-border bg-[#0A0A0A] px-4 py-3 text-white placeholder:text-wd-text-secondary/70 outline-none transition-colors focus:border-wd-secondary/70 focus:ring-2 focus:ring-wd-secondary/20";
+  "w-full rounded-xl border border-wd-border bg-[#0c0b12] px-4 py-3 text-white placeholder:text-wd-text-secondary/70 outline-none transition-colors focus:border-wd-secondary/70 focus:ring-2 focus:ring-wd-secondary/20";
 
 /** Visible label above an auth input; the label stays when the user starts typing, unlike a placeholder. */
 export function AuthField({ label, children }: { label: string; children: ReactNode }) {

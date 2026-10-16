@@ -1,7 +1,7 @@
 import toast from "react-hot-toast";
 
 const BASE_STYLE = {
-  background: "#1A1A1A",
+  background: "#15131d",
   borderRadius: "12px",
   padding: "12px 20px",
 } as const;

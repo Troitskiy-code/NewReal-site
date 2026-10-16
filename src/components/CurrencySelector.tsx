@@ -37,7 +37,7 @@ export default function CurrencySelector({
             aria-pressed={active}
             className={`rounded-wd-pill px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all ${
               active
-                ? "bg-wd-secondary text-white shadow"
+                ? "bg-wd-secondary text-wd-on-secondary shadow"
                 : "text-wd-text-secondary hover:text-white"
             }`}
           >

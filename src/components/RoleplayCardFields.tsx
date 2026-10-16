@@ -13,15 +13,15 @@ type Props = {
   onClearNameError: () => void;
   showModePicker?: boolean;
 };
-const inputClass = "w-full rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-base text-white outline-none focus:border-wd-secondary";
+const inputClass = "w-full rounded-lg border border-[#2a2638] bg-[#0c0b12] p-3 text-base text-white outline-none focus:border-wd-secondary";
 function TextField({ id, label, value, onChange, maxLength, hint, required = false, rows = 4 }: {
   id: string; label: string; value: string; onChange: (value: string) => void;
   maxLength: number; hint: string; required?: boolean; rows?: number;
 }) {
   return <div className="space-y-2">
-    <label htmlFor={id} className="block text-base font-semibold text-white">{label} {required ? <span className="text-[#A0A0A0]">*</span> : <span className="text-sm font-normal text-[#A0A0A0]">— необязательно</span>}</label>
+    <label htmlFor={id} className="block text-base font-semibold text-white">{label} {required ? <span className="text-[#a9a4b8]">*</span> : <span className="text-sm font-normal text-[#a9a4b8]">— необязательно</span>}</label>
     <textarea id={id} className={inputClass} value={value} onChange={event => onChange(event.target.value)} maxLength={maxLength} required={required} rows={rows} />
-    <p className="text-sm leading-relaxed text-[#A0A0A0]">{hint} <span>{value.length}/{maxLength}</span></p>
+    <p className="text-sm leading-relaxed text-[#a9a4b8]">{hint} <span>{value.length}/{maxLength}</span></p>
   </div>;
 }
 function GroupMembers({ values, onChange }: Pick<Props, "values" | "onChange">) {
@@ -31,8 +31,8 @@ function GroupMembers({ values, onChange }: Pick<Props, "values" | "onChange">) 
   const update = (id: string, field: keyof typeof GROUP_FIELD_LIMITS, text: string) => setMembers(participants.map(member => member.id === id ? { ...member, [field]: text } : member));
   return <section className="space-y-4" aria-label="Участники истории">
     <div><h2 className="text-lg font-bold">Персонажи истории · {participants.length}/{MAX_GROUP_PARTICIPANTS}</h2>
-      <p className="mt-1 text-sm text-[#A0A0A0]">Начните с одного и добавляйте остальных позже. Выбранная модель играет весь состав; ваш герой остаётся под вашим управлением.</p></div>
-    {participants.map((member, index) => <details key={member.id} open={index === participants.length - 1} onInvalidCapture={event => { event.currentTarget.open = true; }} className="rounded-xl border border-[#2A2A2A] bg-[#121212] p-4">
+      <p className="mt-1 text-sm text-[#a9a4b8]">Начните с одного и добавляйте остальных позже. Выбранная модель играет весь состав; ваш герой остаётся под вашим управлением.</p></div>
+    {participants.map((member, index) => <details key={member.id} open={index === participants.length - 1} onInvalidCapture={event => { event.currentTarget.open = true; }} className="rounded-xl border border-[#2a2638] bg-[#0c0b12] p-4">
       <summary className="cursor-pointer font-semibold">{member.name || `Персонаж ${index + 1}`}</summary>
       <div className="mt-4 space-y-4">
         <label className="block space-y-2"><span className="font-semibold">Имя *</span><input className={inputClass} aria-label={`Имя персонажа ${index + 1}`} required maxLength={GROUP_FIELD_LIMITS.name} value={member.name} onChange={event => update(member.id, "name", event.target.value)} /></label>
@@ -44,9 +44,9 @@ function GroupMembers({ values, onChange }: Pick<Props, "values" | "onChange">) 
         }}>Убрать персонажа</button>
       </div>
     </details>)}
-    {!participants.length && <p className="text-sm text-[#A0A0A0]">Добавьте первого персонажа, чтобы сохранить групповую историю.</p>}
+    {!participants.length && <p className="text-sm text-[#a9a4b8]">Добавьте первого персонажа, чтобы сохранить групповую историю.</p>}
     <button type="button" className="wd-btn" disabled={participants.length >= MAX_GROUP_PARTICIPANTS} onClick={() => setMembers([...participants, { id: crypto.randomUUID(), name: "", description: "", appearance: "", speechStyle: "" }])}>Добавить персонажа</button>
-    <p className="text-sm text-[#A0A0A0]">Все участники делят контекст выбранной модели. Добавление в состав не делает героя свидетелем прошлых событий.</p>
+    <p className="text-sm text-[#a9a4b8]">Все участники делят контекст выбранной модели. Добавление в состав не делает героя свидетелем прошлых событий.</p>
     {confirmModal}
   </section>;
 }
@@ -57,7 +57,7 @@ export default function RoleplayCardFields({ values, onChange, nameError, onClea
     {showModePicker && <fieldset><legend className="mb-3 text-lg font-semibold">Тип карточки</legend>
       <RoleplayModeCards selected={values.roleplayMode} onSelect={mode => onChange("roleplayMode", mode)} />
     </fieldset>}
-    <p className="text-sm text-[#A0A0A0]">Поля со звёздочкой обязательны. Смена типа карточки сохраняет начатые истории и их выбранный режим.</p>
+    <p className="text-sm text-[#a9a4b8]">Поля со звёздочкой обязательны. Смена типа карточки сохраняет начатые истории и их выбранный режим.</p>
     <div className="space-y-2"><label htmlFor="name" className="block text-base font-semibold">{single ? "Имя персонажа" : world ? "Название вселенной" : "Название истории"} *</label>
       <input id="name" className={inputClass} value={values.name} required onChange={event => { onChange("name", event.target.value); onClearNameError(); }} />
       {nameError && <p role="alert" className="text-sm text-red-400">{nameError}</p>}

@@ -1,4 +1,4 @@
-import { Inter } from "next/font/google";
+import { Literata, Onest, Unbounded } from "next/font/google";
 import { Providers } from "./providers";
 import AppShell from "@/components/AppShell";
 import AppToaster from "@/components/AppToaster";
@@ -9,9 +9,25 @@ import { isTelegramContext } from "@/lib/telegram/context";
 import { TELEGRAM_LAUNCH_SCRIPT } from "@/lib/telegram/launchScript";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+// "Созвездие" type system: Onest for the interface, Unbounded for headings,
+// Literata for story text in chats (it reads like a book, not a messenger).
+const onest = Onest({
+  variable: "--font-onest",
   subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+
+const unbounded = Unbounded({
+  variable: "--font-unbounded",
+  subsets: ["latin", "cyrillic"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+});
+
+const literata = Literata({
+  variable: "--font-literata",
+  subsets: ["latin", "cyrillic"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -36,14 +52,14 @@ export default async function RootLayout({ children }) {
   const telegram = await isTelegramContext();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full`} data-theme="wetdreams" data-telegram={telegram ? "1" : undefined}>
+    <html lang={locale} className={`${onest.variable} ${unbounded.variable} ${literata.variable} h-full`} data-theme="wetdreams" data-telegram={telegram ? "1" : undefined}>
       {telegram ? (
         <head>
           {/* Must run before Metrika and the app: removes #tgWebAppData from the address. */}
           <script id="nv-tg-launch" dangerouslySetInnerHTML={{ __html: TELEGRAM_LAUNCH_SCRIPT }} />
         </head>
       ) : null}
-      <body className={`${inter.className} h-full antialiased bg-wd-bg text-wd-text`}>
+      <body className={`${onest.className} h-full antialiased bg-wd-bg text-wd-text`}>
         <YandexMetrika />
         <Providers locale={locale} telegram={telegram}>
           <AppToaster />

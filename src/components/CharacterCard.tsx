@@ -50,7 +50,7 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
         onClick={captureCharacterReturn}
         className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary focus-visible:ring-offset-2 focus-visible:ring-offset-wd-bg"
       >
-        <article className="relative isolate aspect-[2/3] min-w-0 overflow-hidden rounded-2xl bg-[#1f1f1f] shadow-wd ring-1 ring-white/5 transition-[transform,box-shadow] duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_14px_36px_rgba(0,0,0,0.55)] group-hover:ring-wd-primary/60 motion-reduce:transform-none">
+        <article className="relative isolate aspect-[2/3] min-w-0 overflow-hidden rounded-2xl bg-[#1c1926] shadow-wd ring-1 ring-white/5 transition-[transform,box-shadow] duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_14px_36px_rgba(0,0,0,0.55)] group-hover:ring-wd-primary/60 motion-reduce:transform-none">
           {avatarUrl ? (
             <img
               src={avatarUrl}

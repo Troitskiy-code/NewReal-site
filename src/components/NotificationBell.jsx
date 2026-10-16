@@ -108,11 +108,11 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={openDropdown}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#2A2A2A] bg-[#0A0A0A] text-white transition-colors hover:border-wd-secondary/50 hover:text-white md:h-10 md:w-10"
+        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#2a2638] bg-[#0c0b12] text-white transition-colors hover:border-wd-secondary/50 hover:text-white md:h-10 md:w-10"
         aria-label={t("notifications.open")}
         aria-expanded={open}
       >
-        <FaBell size={16} className="text-[#A0A0A0]" />
+        <FaBell size={16} className="text-[#a9a4b8]" />
         {unreadCount > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-wd-primary px-1 text-[10px] font-bold leading-none text-white">
             {badgeLabel}
@@ -121,21 +121,21 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] shadow-xl">
-          <div className="flex items-center justify-between gap-2 border-b border-[#2A2A2A] px-4 py-2.5">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-[#2a2638] bg-[#15131d] shadow-xl">
+          <div className="flex items-center justify-between gap-2 border-b border-[#2a2638] px-4 py-2.5">
             <p className="text-sm font-bold text-white">{t("notifications.title")}</p>
             <button
               type="button"
               onClick={markAllRead}
               disabled={unreadCount === 0}
-              className="text-xs text-wd-secondary-text transition-colors hover:text-white disabled:cursor-default disabled:text-[#A0A0A0]"
+              className="text-xs text-wd-secondary-text transition-colors hover:text-white disabled:cursor-default disabled:text-[#a9a4b8]"
             >
               {t("notifications.markAllRead")}
             </button>
           </div>
 
           {preview.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-[#A0A0A0]">{t("notifications.empty")}</p>
+            <p className="px-4 py-6 text-center text-sm text-[#a9a4b8]">{t("notifications.empty")}</p>
           ) : (
             <ul className="max-h-[22rem] overflow-y-auto py-1">
               {preview.map((notification) => {
@@ -150,12 +150,12 @@ export default function NotificationBell() {
                     <div className="flex items-start gap-3">
                       <Icon
                         size={14}
-                        className={`mt-0.5 shrink-0 ${notification.read ? "text-[#A0A0A0]" : "text-wd-secondary-text"}`}
+                        className={`mt-0.5 shrink-0 ${notification.read ? "text-[#a9a4b8]" : "text-wd-secondary-text"}`}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-white">{notification.title}</p>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-[#A0A0A0]">{notification.message}</p>
-                        <p className="mt-1 text-[11px] text-[#A0A0A0]">
+                        <p className="mt-0.5 line-clamp-2 text-xs text-[#a9a4b8]">{notification.message}</p>
+                        <p className="mt-1 text-[11px] text-[#a9a4b8]">
                           {formatRelativeTime(notification.createdAt, t, locale)}
                         </p>
                       </div>
@@ -166,10 +166,10 @@ export default function NotificationBell() {
             </ul>
           )}
 
-          <div className="border-t border-[#2A2A2A] py-1">
+          <div className="border-t border-[#2a2638] py-1">
             <LocaleLink
               href="/notifications"
-              className="block px-4 py-2.5 text-center text-sm text-wd-secondary-text transition-colors hover:bg-[#2A2A2A] hover:text-white"
+              className="block px-4 py-2.5 text-center text-sm text-wd-secondary-text transition-colors hover:bg-[#2a2638] hover:text-white"
               onClick={() => setOpen(false)}
             >
               {t("notifications.showAll")}

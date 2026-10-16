@@ -6,10 +6,11 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy, FaInfoCircle } from "react-icons/fa";
-import { LuPencil, LuTrash2 } from "react-icons/lu";
+import { LuArrowLeft, LuPencil, LuTrash2 } from "react-icons/lu";
 import MemoryEditor from "@/components/MemoryEditor";
 import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
+import { choiceNumeral, splitStoryChoices, type StoryChoicesSplit } from "@/lib/storyChoices";
 import PersonaSelector from "@/components/PersonaSelector";
 import ChatStorySettings from "@/components/ChatStorySettings";
 import ChatThreadsPanel from "@/components/ChatThreadsPanel";
@@ -201,7 +202,7 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
   }
 
   const menuItemClass =
-    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A] disabled:opacity-40";
+    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-[#2a2638] disabled:opacity-40";
 
   const menuButtonClass =
     "flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40";
@@ -224,7 +225,7 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
       {open && (
         <div
           role="menu"
-          className={`absolute top-full z-20 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] py-1 shadow-xl ${
+          className={`absolute top-full z-20 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-[#2a2638] bg-[#15131d] py-1 shadow-xl ${
             align === "left" ? "left-0" : "right-0"
           }`}
         >
@@ -375,7 +376,7 @@ function MessageAvatar({ name, imageUrl }: { name: string; imageUrl: string | nu
 
   const initials = getInitials(name);
   return (
-    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2A2A2A] text-[9px] font-semibold text-gray-300">
+    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2a2638] text-[9px] font-semibold text-gray-300">
       {initials || <FaUser size={10} className="text-gray-400" />}
     </div>
   );
@@ -399,6 +400,9 @@ type ChatMessageItemProps = {
   onDelete: (messageId: string) => void;
   onEdit: (messageId: string) => void;
   onCopy: (content: string) => void;
+  /** Numbered options of the last reply, shown as buttons. */
+  storyChoices?: StoryChoicesSplit | null;
+  onChoose?: (choice: string) => void;
 };
 
 function ChatMessageItem({
@@ -419,6 +423,8 @@ function ChatMessageItem({
   onDelete,
   onEdit,
   onCopy,
+  storyChoices = null,
+  onChoose,
 }: ChatMessageItemProps) {
   const isUser = message.role === "user";
 
@@ -475,7 +481,7 @@ function ChatMessageItem({
             value={editingDraft}
             onChange={(e) => onEditDraftChange(e.target.value)}
             rows={3}
-            className={`w-full resize-y rounded-md border bg-[#121212] px-3 py-2 text-sm text-white outline-none focus:border-primary/60 ${
+            className={`w-full resize-y rounded-md border bg-[#0c0b12] px-3 py-2 text-sm text-white outline-none focus:border-primary/60 ${
               editError ? "border-red-500" : "border-divider"
             }`}
             disabled={actionDisabled}
@@ -503,15 +509,35 @@ function ChatMessageItem({
           </div>
         </div>
       ) : (
+        // Replies read like a book page (Literata, no frame); the player's lines are compact bubbles.
         <div
-          className={`w-full break-words rounded-lg border px-4 py-2 text-sm ${
+          className={`break-words ${
             isUser
-              ? "border-wd-primary/60 bg-black/50 text-white backdrop-blur-sm"
-              : "border-wd-secondary/40 bg-black/40 text-white backdrop-blur-sm"
+              ? "rounded-[18px_18px_6px_18px] bg-wd-border/90 px-3.5 py-2.5 text-[15px] leading-relaxed text-wd-text backdrop-blur-sm"
+              : "w-full rounded-2xl bg-wd-bg/60 px-4 py-3 font-story text-[16px] leading-[1.65] text-wd-text backdrop-blur-sm"
           }`}
         >
           {isStreaming && !message.content ? (
-            <span className="animate-pulse text-gray-400">{isThinking ? "Думает..." : "Печатает..."}</span>
+            <span className="animate-pulse font-sans text-sm text-wd-text-secondary">{isThinking ? "Думает..." : "Печатает..."}</span>
+          ) : storyChoices ? (
+            <>
+              {storyChoices.before ? <span dangerouslySetInnerHTML={{ __html: formatMessageContent(storyChoices.before) }} /> : null}
+              <span role="group" aria-label="Варианты действий" className={`flex flex-col gap-2 ${storyChoices.before ? "mt-3" : ""} ${storyChoices.after ? "mb-3" : ""}`}>
+                {storyChoices.choices.map((choice, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => onChoose?.(choice)}
+                    disabled={actionDisabled}
+                    className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/12 bg-wd-card/85 px-3.5 py-2.5 text-left text-[15px] leading-snug text-wd-text transition-colors hover:border-wd-primary/70 hover:bg-wd-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary disabled:opacity-50"
+                  >
+                    <span aria-hidden className="w-6 shrink-0 font-display text-[12px] text-wd-secondary">{choiceNumeral(index)}</span>
+                    <span>{choice}</span>
+                  </button>
+                ))}
+              </span>
+              {storyChoices.after ? <span dangerouslySetInnerHTML={{ __html: formatMessageContent(storyChoices.after) }} /> : null}
+            </>
           ) : (
             <span
               dangerouslySetInnerHTML={{
@@ -531,16 +557,17 @@ function formatMessageContent(content: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  return escaped.replace(/\*(.*?)\*/g, '<span class="text-wd-secondary-text">$1</span>').replace(/\n/g, "<br />");
+  // *действие* is narration: italic and quieter than spoken lines.
+  return escaped.replace(/\*(.*?)\*/g, '<em class="text-wd-story-muted">$1</em>').replace(/\n/g, "<br />");
 }
 
 function CharacterDescriptionCard({ description }: { description: string }) {
   return (
-    <section className="w-full rounded-xl border border-wd-secondary/40 bg-wd-secondary/10 px-4 py-3 text-center">
-      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-wd-secondary-text">
+    <section className="w-full rounded-2xl bg-wd-bg/60 px-4 py-3 text-center backdrop-blur-sm">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-wd-secondary">
         Описание персонажа
       </p>
-      <p className="whitespace-pre-wrap text-sm italic leading-relaxed text-gray-200">
+      <p className="whitespace-pre-wrap font-story text-[15px] italic leading-relaxed text-wd-story-muted">
         {description}
       </p>
     </section>
@@ -609,7 +636,7 @@ function ChatSettingsMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-2 min-w-[180px] overflow-hidden rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] py-1 shadow-xl"
+          className="absolute right-0 top-full z-30 mt-2 min-w-[180px] overflow-hidden rounded-lg border border-[#2a2638] bg-[#15131d] py-1 shadow-xl"
         >
           <button
             type="button"
@@ -618,7 +645,7 @@ function ChatSettingsMenu({
               onClose();
               onOpenModels();
             }}
-            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]"
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
           >
             Модели чата
           </button>
@@ -629,7 +656,7 @@ function ChatSettingsMenu({
               onClose();
               onOpenMemory();
             }}
-            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]"
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
           >
             Редактировать память
           </button>
@@ -640,21 +667,21 @@ function ChatSettingsMenu({
               onClose();
               onOpenPersona();
             }}
-            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]"
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
           >
             Моя личность
           </button>
-          <button type="button" role="menuitem" onClick={() => { onClose(); onOpenPrompt(); }} className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]">
+          <button type="button" role="menuitem" onClick={() => { onClose(); onOpenPrompt(); }} className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]">
             Тип и правила истории
           </button>
           {threadsEnabled ? (
             <>
               <button type="button" role="menuitem" onClick={() => { onClose(); onOpenThreads?.(); }}
-                className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2A2A2A]">
+                className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]">
                 {t("chatThreads.openList")}
               </button>
               <button type="button" role="menuitem" disabled={disabled} onClick={() => { onClose(); onNewThread?.(); }}
-                className="block w-full px-4 py-2.5 text-left text-sm text-wd-primary-soft transition-colors hover:bg-[#2A2A2A] disabled:opacity-50">
+                className="block w-full px-4 py-2.5 text-left text-sm text-wd-primary-soft transition-colors hover:bg-[#2a2638] disabled:opacity-50">
                 {t("chatThreads.newStory")}
               </button>
             </>
@@ -667,7 +694,7 @@ function ChatSettingsMenu({
                 onClearChat();
               }}
               disabled={disabled}
-              className="block w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-[#2A2A2A] disabled:opacity-50"
+              className="block w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-[#2a2638] disabled:opacity-50"
             >
               Начать новый чат
             </button>
@@ -713,7 +740,7 @@ function Modal({ open, onClose, title, wide = false, dismissible = true, childre
       role="presentation"
     >
       <div
-        className={`relative mx-auto flex max-h-[80vh] w-full flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] shadow-xl ${
+        className={`relative mx-auto flex max-h-[80vh] w-full flex-col overflow-hidden rounded-xl border border-[#2a2638] bg-[#15131d] shadow-xl ${
           wide ? "max-w-lg md:max-w-2xl" : "max-w-sm md:max-w-md"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -734,7 +761,7 @@ function Modal({ open, onClose, title, wide = false, dismissible = true, childre
           </button>
         )}
 
-        <div className={`shrink-0 border-b border-[#2A2A2A] p-4 md:p-6 ${dismissible ? "pr-16 md:pr-20" : ""}`}>
+        <div className={`shrink-0 border-b border-[#2a2638] p-4 md:p-6 ${dismissible ? "pr-16 md:pr-20" : ""}`}>
           <h2 id="chat-modal-title" className="text-base font-black text-white md:text-lg">
             {title}
           </h2>
@@ -804,7 +831,7 @@ function ModelSettingsList({
           <div key={model.id} className="group border-b border-gray-700/50 last:border-b-0">
             <label
               className={`flex cursor-pointer items-center justify-between px-4 py-3 transition-colors md:px-6 ${
-                selectedModelId === model.id ? "bg-wd-secondary/10" : "hover:bg-[#0A0A0A]"
+                selectedModelId === model.id ? "bg-wd-secondary/10" : "hover:bg-[#0c0b12]"
               } ${changingModel ? "pointer-events-none opacity-60" : ""}`}
               title={description}
             >
@@ -835,7 +862,7 @@ function ModelSettingsList({
                     event.stopPropagation();
                     toggleDescription(model.id);
                   }}
-                  className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#0A0A0A] hover:text-white md:hidden"
+                  className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#0c0b12] hover:text-white md:hidden"
                   aria-label={isExpanded ? "Скрыть описание" : "Показать описание"}
                   aria-expanded={isExpanded}
                 >
@@ -1509,6 +1536,16 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     }
   };
 
+  // A story option goes into the composer, not straight to the model: every send costs VC.
+  const handleChooseStoryOption = (choice: string) => {
+    setInput(choice);
+    requestAnimationFrame(() => {
+      const field = document.querySelector<HTMLTextAreaElement>('[data-metrika="chat-form"] textarea');
+      field?.focus();
+      field?.setSelectionRange(choice.length, choice.length);
+    });
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || sending) return;
@@ -1763,7 +1800,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               </LocaleLink>
               <LocaleLink
                 href={`/login?${authQuery}`}
-                className="flex-1 rounded-full border border-[#2A2A2A] px-6 py-2.5 text-center text-sm font-bold text-white transition-all hover:bg-[#2A2A2A]"
+                className="flex-1 rounded-full border border-[#2a2638] px-6 py-2.5 text-center text-sm font-bold text-white transition-all hover:bg-[#2a2638]"
               >
                 {t("guestChat.login")}
               </LocaleLink>
@@ -1841,44 +1878,19 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           </Modal>
         ) : null}
 
-        {/* Настройки: мобиль — правый угол, десктоп — у баланса */}
-        {(character?.slug || !isAnonymous) && (
-          <aside className="fixed right-2 top-16 z-20 flex w-10 flex-col items-center gap-2 bg-transparent md:right-[120px] md:top-20 md:w-[60px]">
-            {character?.slug ? (
-              <LocaleLink
-                href={`/character/${character.slug}`}
-                onClick={captureCharacterReturn}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text md:bg-transparent md:backdrop-blur-none"
-                title="О персонаже"
-                aria-label="О персонаже"
-              >
-                <FaInfoCircle size={18} />
-              </LocaleLink>
-            ) : null}
-            {!isAnonymous && (
-              <ChatSettingsMenu
-                open={settingsMenuOpen}
-                onToggle={() => setSettingsMenuOpen((current) => !current)}
-                onClose={() => setSettingsMenuOpen(false)}
-                onOpenModels={() => setSettingsOpen(true)}
-                onOpenMemory={() => setMemoryEditorOpen(true)}
-                onOpenPersona={() => setPersonaSelectorOpen(true)}
-                onOpenPrompt={() => setPromptSettingsOpen(true)}
-                onClearChat={() => {
-                  setSettingsMenuOpen(false);
-                  setConfirmClearChat(true);
-                }}
-                threadsEnabled={threadsEnabled}
-                onOpenThreads={() => setThreadsOpen(true)}
-                onNewThread={() => void handleNewThread()}
-                disabled={sending || actionLoading || clearingChat || creatingThread}
-              />
-            )}
-          </aside>
-        )}
-
         <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-3 px-4 py-2">
+            {/* The site header is hidden on mobile chat (globals.css), so this is the way out. */}
+            {telegram ? null : (
+              <LocaleLink
+                href={isAnonymous ? "/" : "/chats"}
+                className="-ml-2 flex h-10 w-8 shrink-0 items-center justify-center text-white transition-colors hover:text-wd-secondary-text md:hidden"
+                aria-label={t(isAnonymous ? "header.menu.home" : "header.menu.chats")}
+                title={t(isAnonymous ? "header.menu.home" : "header.menu.chats")}
+              >
+                <LuArrowLeft size={20} aria-hidden />
+              </LocaleLink>
+            )}
             {characterAvatarUrl ? (
               <img
                 src={characterAvatarUrl}
@@ -1886,11 +1898,11 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                 className="h-10 w-10 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2A2A2A]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2a2638]">
                 <FaUser className="text-wd-text-secondary/40" size={16} />
               </div>
             )}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="truncate text-sm font-bold text-white md:text-base">{characterDisplayName}</h1>
               {threadsEnabled && !isAnonymous ? (
                 <button
@@ -1906,6 +1918,41 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                 </button>
               ) : null}
             </div>
+            {/* Character info and chat settings live in the chat header instead of floating over the messages. */}
+            {(character?.slug || !isAnonymous) && (
+              <div className="-mr-2 flex shrink-0 items-center gap-1">
+                {character?.slug ? (
+                  <LocaleLink
+                    href={`/character/${character.slug}`}
+                    onClick={captureCharacterReturn}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text md:bg-transparent md:backdrop-blur-none"
+                    title="О персонаже"
+                    aria-label="О персонаже"
+                  >
+                    <FaInfoCircle size={18} />
+                  </LocaleLink>
+                ) : null}
+                {!isAnonymous && (
+                  <ChatSettingsMenu
+                    open={settingsMenuOpen}
+                    onToggle={() => setSettingsMenuOpen((current) => !current)}
+                    onClose={() => setSettingsMenuOpen(false)}
+                    onOpenModels={() => setSettingsOpen(true)}
+                    onOpenMemory={() => setMemoryEditorOpen(true)}
+                    onOpenPersona={() => setPersonaSelectorOpen(true)}
+                    onOpenPrompt={() => setPromptSettingsOpen(true)}
+                    onClearChat={() => {
+                      setSettingsMenuOpen(false);
+                      setConfirmClearChat(true);
+                    }}
+                    threadsEnabled={threadsEnabled}
+                    onOpenThreads={() => setThreadsOpen(true)}
+                    onNewThread={() => void handleNewThread()}
+                    disabled={sending || actionLoading || clearingChat || creatingThread}
+                  />
+                )}
+              </div>
+            )}
           </div>
           {threadsEnabled && currentThread?.status === "archived" ? (
             <p role="status" className="mx-4 mb-1 rounded-lg border border-wd-border bg-black/40 px-3 py-2 text-xs text-wd-text-secondary">
@@ -1936,10 +1983,16 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                 Начните диалог с персонажем. Напишите что-нибудь!
               </div>
             ) : (
-              messages.map((msg) => (
+              messages.map((msg, index) => (
                 <ChatMessageItem
                   key={msg.id}
                   message={msg}
+                  storyChoices={
+                    index === messages.length - 1 && msg.role === "assistant" && streamingMessageId !== msg.id && editingMessageId !== msg.id
+                      ? splitStoryChoices(msg.content)
+                      : null
+                  }
+                  onChoose={handleChooseStoryOption}
                   displayName={msg.role === "user" ? userDisplayName : characterDisplayName}
                   avatarUrl={msg.role === "user" ? userAvatarUrl : characterAvatarUrl}
                   isEditing={editingMessageId === msg.id}
@@ -1992,8 +2045,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               onSubmit={sendMessage}
               disabled={sending || actionLoading || clearingChat || historyLoading || transferState !== "idle"}
               canSend={canSend && !historyLoading && transferState === "idle"}
+              note={isAnonymous ? undefined : t(telegram ? "telegram.coinRulesActions" : "pricing.coinRulesActions")}
             />
-            {!isAnonymous ? <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-secondary-text">{t(telegram ? "telegram.coinRulesActions" : "pricing.coinRulesActions")}</p> : null}
           </div>
         </main>
       </div>
