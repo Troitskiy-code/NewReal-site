@@ -24,7 +24,8 @@
       "create": "Создать персонажа",
       "profile": "Профиль",
       "favorites": "Избранное",
-      "support": "Поддержка"
+      "support": "Поддержка",
+      "updates": "Обновления"
     }
   },
   "footer": {
@@ -34,6 +35,7 @@
     "refund": "Политика возврата",
     "rules": "Правила платформы",
     "support": "Поддержка",
+    "updates": "Обновления в Telegram",
     "copyright": "© {{year}} NewVerse — Твоя вселенная персонажей"
   },
   "language": {

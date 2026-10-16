@@ -7,7 +7,9 @@ import {
   LuCrown,
   LuUser,
   LuCircleHelp,
+  LuMegaphone,
 } from "react-icons/lu";
+import { PROJECT_UPDATES_URL } from "@/lib/community";
 
 export const NAV_SECTIONS = [
   [
@@ -48,6 +50,7 @@ export const NAV_SECTIONS = [
     },
     { nameKey: "header.menu.profile", shortKey: "header.menuShort.profile", path: "/profile", icon: LuUser },
     { nameKey: "header.menu.support", path: "/support", icon: LuCircleHelp },
+    { nameKey: "header.menu.updates", path: PROJECT_UPDATES_URL, icon: LuMegaphone, external: true },
   ],
 ];
 

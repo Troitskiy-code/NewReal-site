@@ -24,7 +24,8 @@
       "create": "Create character",
       "profile": "Profile",
       "favorites": "Favorites",
-      "support": "Support"
+      "support": "Support",
+      "updates": "Updates"
     }
   },
   "footer": {
@@ -34,6 +35,7 @@
     "refund": "Refund policy",
     "rules": "Platform rules",
     "support": "Support",
+    "updates": "Updates on Telegram",
     "copyright": "© {{year}} NewVerse — Your universe of characters"
   },
   "language": {

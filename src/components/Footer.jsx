@@ -6,6 +6,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import { openOutsideTelegram, useTelegramMode } from "./TelegramProvider";
 import { useCurrentLocale } from "./LocaleLink";
+import { PROJECT_UPDATES_URL } from "@/lib/community";
 
 const LINK_CLASS = "text-wd-text-secondary transition-colors hover:text-white";
 
@@ -31,6 +32,9 @@ export default function Footer() {
     <footer className="border-t border-wd-border bg-wd-bg px-4 py-6 text-center">
       <Logo size="md" className="mb-2 inline-block" />
       <nav className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
+        <a href={PROJECT_UPDATES_URL} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+          {t("footer.updates")}
+        </a>
         {telegram ? <TelegramFooterLinks /> : <>
         <LocaleLink href="/offer" className="text-wd-text-secondary transition-colors hover:text-white">
           {t("footer.offer")}

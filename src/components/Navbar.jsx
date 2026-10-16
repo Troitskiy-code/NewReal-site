@@ -22,12 +22,15 @@ function NavMenuList({ pathname, variant, onItemClick }) {
             const isActive = isNavItemActive(item, pathname);
             const name = t(item.nameKey);
             const Icon = item.icon;
+            const ItemLink = item.external ? "a" : LocaleLink;
 
             return (
               <li key={item.nameKey} className={isRail ? "w-full" : undefined}>
-                <LocaleLink
+                <ItemLink
                   href={item.path}
-                  prefetch={item.prefetch === true ? true : undefined}
+                  {...(item.external
+                    ? { target: "_blank", rel: "noopener noreferrer" }
+                    : { prefetch: item.prefetch === true ? true : undefined })}
                   onClick={onItemClick}
                   title={isRail ? name : undefined}
                   aria-current={isActive ? "page" : undefined}
@@ -41,7 +44,7 @@ function NavMenuList({ pathname, variant, onItemClick }) {
                 >
                   <Icon size={20} aria-hidden className="shrink-0" />
                   <span className={isRail ? "sr-only lg:not-sr-only lg:truncate" : "truncate"}>{name}</span>
-                </LocaleLink>
+                </ItemLink>
               </li>
             );
           })}
