@@ -180,9 +180,25 @@ type MessageMenuProps = {
   onDelete: (messageId: string) => void;
 };
 
+// Height of the open menu (two items) plus a margin; below that much free space it opens upward.
+const MESSAGE_MENU_SPACE_PX = 110;
+
 function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenuProps) {
   const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const toggle = () => {
+    if (!open && menuRef.current) {
+      // The last message's menu would open below the visible part of the chat (under the composer),
+      // where nobody sees it without scrolling: there it opens upward instead.
+      const trigger = menuRef.current.getBoundingClientRect();
+      const scroller = menuRef.current.closest("[data-character-list-scroll]");
+      const bottom = scroller ? scroller.getBoundingClientRect().bottom : window.innerHeight;
+      setOpenUp(bottom - trigger.bottom < MESSAGE_MENU_SPACE_PX);
+    }
+    setOpen((current) => !current);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -193,8 +209,16 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   if (!isPersistedMessage(message)) {
@@ -211,7 +235,7 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
     <div ref={menuRef} className="relative shrink-0">
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggle}
         disabled={disabled}
         className={menuButtonClass}
         title="Действия"
@@ -225,7 +249,9 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
       {open && (
         <div
           role="menu"
-          className={`absolute top-full z-20 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-[#2a2638] bg-[#15131d] py-1 shadow-xl ${
+          className={`absolute z-20 min-w-[160px] overflow-hidden rounded-lg border border-[#2a2638] bg-[#15131d] py-1 shadow-xl ${
+            openUp ? "bottom-full mb-1" : "top-full mt-1"
+          } ${
             align === "left" ? "left-0" : "right-0"
           }`}
         >
