@@ -73,12 +73,13 @@ try {
   const user = await h.helpers.user('universe');
   await h.db.user.update({ where: { id: user.id }, data: { selectedModelId: legacy.id } });
   const character = await h.helpers.character(user.id);
-  const sql = readFileSync(join(h.root, 'prisma/migrations/20261011210000_deepinfra_chat_catalog/migration.sql'), 'utf8');
+  const sql = ['20261011210000_deepinfra_chat_catalog', '20261016120000_deepinfra_pilot_models']
+    .map(name => readFileSync(join(h.root, 'prisma/migrations', name, 'migration.sql'), 'utf8')).join('\n');
   const { Client } = require('pg');
   const pg = new Client({ connectionString: h.databaseUrl });
   await pg.connect();
   try { await pg.query('BEGIN'); await pg.query(sql); await pg.query('COMMIT'); } finally { await pg.end(); }
-  check(await h.db.model.count({ where: { name: { startsWith: 'deepinfra:' } } }) === 11, 'exact SQL adds the eleven agreed models; GLM is not added');
+  check(await h.db.model.count({ where: { name: { startsWith: 'deepinfra:' } } }) === 18, 'exact SQL adds the eleven original and seven pilot models');
   const ids = (await h.db.model.findMany({ where: { name: { startsWith: 'deepinfra:' } }, orderBy: { name: 'asc' } })).map(m => m.id);
   const pg2 = new Client({ connectionString: h.databaseUrl });
   await pg2.connect();
@@ -101,9 +102,10 @@ try {
     && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins, 'missing key fails before charge or upstream');
   process.env['DEEPINFRA_API_KEY'] = 'synthetic_deepinfra_key';
   const list = await (await modelsRoute.GET()).json();
-  check(list.models.length === 9 && list.baseModelId === ids.find(id => id === 'di_chat_20261011_01'), 'switched API exposes nine models and the Mistral default');
+  check(list.models.length === 16 && list.baseModelId === ids.find(id => id === 'di_chat_20261011_01'), 'switched API exposes sixteen models and the Mistral default');
   check(models.DISABLED_DEEPINFRA_MODEL_NAMES.every(name => !list.models.some(m => m.name === name)), 'models that produced no tokens in 60 s stay hidden');
-  check(list.selectedModelId === null && list.models.filter(m => m.isTesting).length === 2, 'old selection is safely ignored; only DeepSeek V4 and MiMo are testing');
+  check(list.selectedModelId === null && list.models.filter(m => m.isTesting).length === 9, 'old selection is safely ignored; DeepSeek V4, MiMo Flash and the seven pilot models are testing');
+  check(list.models.filter(m => m.id.startsWith('di_chat_20261016_')).every(m => m.isTesting), 'every 2026-10-16 pilot model is marked testing');
   for (const item of models.DEEPINFRA_CHAT_MODELS.filter(m => !models.DISABLED_DEEPINFRA_MODEL_NAMES.includes(m.name))) {
     const row = list.models.find(m => m.name === item.name);
     check(row?.priceVC === item.priceVC && row.maxContextTokens === 20000, `${item.displayName}: agreed price and full product context`);

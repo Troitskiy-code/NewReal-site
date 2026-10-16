@@ -130,5 +130,89 @@
     "testing": false,
     "reasoning": false,
     "description": "Ролевая модель для диалогов и совместного повествования."
+  },
+  {
+    "name": "deepinfra:Qwen/Qwen3-Next-80B-A3B-Instruct",
+    "apiModel": "Qwen/Qwen3-Next-80B-A3B-Instruct",
+    "displayName": "Qwen3-Next 80B Instruct",
+    "priceVC": 6,
+    "inputUsdPerMillion": 0.09,
+    "outputUsdPerMillion": 1.1,
+    "providerContextWindow": 262144,
+    "testing": true,
+    "reasoning": false,
+    "description": "Яркая образная проза для коротких сцен. Новая модель проходит проверку."
+  },
+  {
+    "name": "deepinfra:deepseek-ai/DeepSeek-V4.1-Flash",
+    "apiModel": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "displayName": "DeepSeek V4.1 Flash",
+    "priceVC": 8,
+    "inputUsdPerMillion": 0.2,
+    "outputUsdPerMillion": 0.6,
+    "providerContextWindow": 1048576,
+    "testing": true,
+    "reasoning": true,
+    "description": "Быстрые живые ответы. Новая версия DeepSeek проходит проверку."
+  },
+  {
+    "name": "deepinfra:google/gemma-4-31B-it-Ultra",
+    "apiModel": "google/gemma-4-31B-it-Ultra",
+    "displayName": "Gemma 4 31B Ultra",
+    "priceVC": 10,
+    "inputUsdPerMillion": 0.27,
+    "outputUsdPerMillion": 0.76,
+    "providerContextWindow": 131072,
+    "testing": true,
+    "reasoning": true,
+    "description": "Ровные ответы для длинных историй на стабильном маршруте Gemma 4. Проходит проверку."
+  },
+  {
+    "name": "deepinfra:meta-models/Muse-Glimmer-30B",
+    "apiModel": "meta-models/Muse-Glimmer-30B",
+    "displayName": "Muse Glimmer 30B",
+    "priceVC": 12,
+    "inputUsdPerMillion": 0.3,
+    "outputUsdPerMillion": 1.2,
+    "providerContextWindow": 131072,
+    "testing": true,
+    "reasoning": true,
+    "description": "Очень быстрые ответы и точный тон персонажа. Новая модель проходит проверку."
+  },
+  {
+    "name": "deepinfra:XiaomiMiMo/MiMo-V2.6-Pro",
+    "apiModel": "XiaomiMiMo/MiMo-V2.6-Pro",
+    "displayName": "MiMo V2.6 Pro",
+    "priceVC": 15,
+    "inputUsdPerMillion": 0.43,
+    "outputUsdPerMillion": 0.87,
+    "providerContextWindow": 1048576,
+    "testing": true,
+    "reasoning": true,
+    "description": "Хорошо помнит детали истории; ответ может занять до 15 секунд. Проходит проверку."
+  },
+  {
+    "name": "deepinfra:zai-org/GLM-5.2",
+    "apiModel": "zai-org/GLM-5.2",
+    "displayName": "GLM-5.2",
+    "priceVC": 26,
+    "inputUsdPerMillion": 0.75,
+    "outputUsdPerMillion": 2.4,
+    "providerContextWindow": 1048576,
+    "testing": true,
+    "reasoning": true,
+    "description": "Естественная речь и строгое следование договорённостям сюжета. Проходит проверку."
+  },
+  {
+    "name": "deepinfra:moonshotai/Kimi-K2.6",
+    "apiModel": "moonshotai/Kimi-K2.6",
+    "displayName": "Kimi K2.6",
+    "priceVC": 27,
+    "inputUsdPerMillion": 0.75,
+    "outputUsdPerMillion": 3.5,
+    "providerContextWindow": 262144,
+    "testing": true,
+    "reasoning": true,
+    "description": "Для длинных историй: лучше всех помнит детали и держит характер. Проходит проверку."
   }
 ]
