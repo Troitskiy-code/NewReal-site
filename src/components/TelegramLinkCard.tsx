@@ -6,6 +6,7 @@ import { FaTelegramPlane } from "react-icons/fa";
 import { showError, showSuccess } from "@/lib/toast";
 import { dateLocale } from "@/lib/i18nConfig";
 import { useConfirm } from "@/components/useConfirm";
+import { useTelegramMode, openOutsideTelegram } from "@/components/TelegramProvider";
 
 // Profile on the website: link the account to Telegram with a one-time t.me link, or unlink it.
 // Hidden while the Mini App is switched off (the API answers 404).
@@ -18,6 +19,7 @@ async function fetchStatus(): Promise<Status | null> {
 
 export default function TelegramLinkCard() {
   const { t, i18n } = useTranslation();
+  const telegram = useTelegramMode();
   const [confirm, confirmModal] = useConfirm();
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,6 +57,12 @@ export default function TelegramLinkCard() {
   }, [pendingUntil, load, t]);
 
   if (!status?.enabled) return null;
+  if (telegram) return <section data-testid="telegram-account-card" className="wd-card space-y-3 p-4 md:p-6">
+    <p className="text-xs font-bold uppercase tracking-widest text-wd-text-secondary">Telegram</p>
+    <p className="text-sm text-white">{t("telegram.accountHint")}</p>
+    <p className="text-sm text-wd-text-secondary">{t("telegram.manageAccountHint")}</p>
+    <button type="button" onClick={() => openOutsideTelegram(`/${i18n.language === "en" ? "en" : "ru"}/profile`)} className="rounded-[50px] border border-wd-border px-5 py-2.5 text-xs font-bold text-white">{t("telegram.openWebsiteAccount")}</button>
+  </section>;
 
   const link = async () => {
     setBusy(true);

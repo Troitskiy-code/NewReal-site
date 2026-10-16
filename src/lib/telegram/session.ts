@@ -16,15 +16,17 @@ export async function issueTelegramSessionToken(input: {
   userId: string;
   accountId: string;
   name: string | null;
+  email?: string | null;
+  emailVerified?: Date | null;
   createdAt: Date;
   isNew: boolean;
 }): Promise<string> {
-  const base: JWT = { id: input.userId, sub: input.userId, name: input.name, email: null, picture: null };
+  const base: JWT = { id: input.userId, sub: input.userId, name: input.name, email: input.email ?? null, picture: null };
   const jwtCallback = authOptions.callbacks?.jwt;
   const token = jwtCallback
     ? await jwtCallback({
         token: base,
-        user: { id: input.userId, name: input.name, email: null, createdAt: input.createdAt, emailVerified: null },
+        user: { id: input.userId, name: input.name, email: input.email ?? null, createdAt: input.createdAt, emailVerified: input.emailVerified ?? null },
         account: { provider: "telegram", type: "credentials", providerAccountId: input.accountId },
         isNewUser: input.isNew,
         trigger: input.isNew ? "signUp" : "signIn",

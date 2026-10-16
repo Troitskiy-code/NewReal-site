@@ -6,10 +6,12 @@ import { grantReferralBonusIfEligible } from "@/lib/referralBonus";
 import { normalizeTelegramReferralCode } from "./shared";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import type { TelegramLaunchUser } from "./initData";
+import { mergeTelegramProfile, telegramMergePreview } from "./merge";
 
 export const LINK_TOKEN_TTL_MS = 10 * 60 * 1000;
 export const LINK_START_PREFIX = "link_";
 export const LINK_CONFIRM_PREFIX = "link_confirm_";
+export const MERGE_CONFIRM_PREFIX = "merge_confirm_";
 
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -115,14 +117,15 @@ export async function createLinkToken(userId: string): Promise<{ token: string; 
   const expiresAt = new Date(Date.now() + LINK_TOKEN_TTL_MS);
   await prisma.$transaction([
     prisma.telegramLinkToken.deleteMany({ where: { userId, usedAt: null } }),
+    prisma.verificationToken.deleteMany({ where: { token: { startsWith: "tg-merge:" }, expires: { lt: new Date() } } }),
     prisma.telegramLinkToken.create({ data: { tokenHash: hashLinkToken(token), userId, expiresAt } }),
   ]);
   return { token, expiresAt };
 }
 
 export type LinkResult = "linked" | "already_linked" | "invalid" | "telegram_taken" | "user_has_other_telegram"
-  | "confirmation_required" | "profile_not_empty";
-type LinkDecision = { result: LinkResult; confirmationToken?: string; siteLabel?: string };
+  | "confirmation_required" | "profile_not_empty" | "merge_confirmation_required" | "merge_busy" | "merged";
+type LinkDecision = { result: LinkResult; confirmationToken?: string; siteLabel?: string; mergeSummary?: { characters: number; stories: number; messages: number; vc: number } };
 type LinkAccount = { id: string; userId: string | null; origin: string };
 
 // Only an unused Mini App registration can be replaced. Keep its User and signup ledger intact;
@@ -175,7 +178,8 @@ function siteAccountLabel(user: { name: string | null; email: string | null }): 
  * Consumes link_<token> from the bot. The token is single-use (an atomic update marks it used
  * before anything else), bound to the user that created it and short-lived. A Telegram account
  * that already belongs to another user requires a second, Telegram-bound confirmation, and only
- * an unused Mini App registration is eligible. Existing site accounts are never moved.
+ * an unused registration is replaced directly. Eligible populated Telegram-only profiles instead
+ * require a separate merge confirmation. Existing independent site accounts are never moved.
  */
 export async function consumeLinkToken(token: string, telegramId: string): Promise<LinkDecision> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token) || !/^[1-9]\d{0,19}$/.test(telegramId)) return { result: "invalid" };
@@ -198,16 +202,28 @@ export async function consumeLinkToken(token: string, telegramId: string): Promi
       if (byUser && byUser.telegramId !== telegramId) return { result: "user_has_other_telegram" as const };
       if (byTelegram?.userId) {
         if (byTelegram.origin !== "telegram") return { result: "telegram_taken" as const };
-        if (!(await isUnusedTelegramProfile(tx, byTelegram))) return { result: "profile_not_empty" as const };
+        const unused = await isUnusedTelegramProfile(tx, byTelegram);
+        const merge = unused ? null : await telegramMergePreview(tx, byTelegram.userId, row.userId);
+        if (merge?.status === "busy") return { result: "merge_busy" as const };
+        if (merge && merge.status !== "ready") return { result: "profile_not_empty" as const };
         const target = await tx.user.findUnique({ where: { id: row.userId }, select: { name: true, email: true } });
         if (!target) return { result: "invalid" as const };
         const confirmationToken = randomBytes(24).toString("base64url");
         const source = await tx.telegramLinkToken.findUnique({ where: { tokenHash }, select: { expiresAt: true } });
         if (!source || source.expiresAt <= new Date()) return { result: "invalid" as const };
+        const pendingHash = merge?.status === "ready"
+          ? hashLinkToken(`merge:${telegramId}:${byTelegram.id}:${confirmationToken}`)
+          : confirmationHash(confirmationToken, telegramId, byTelegram.id);
         await tx.telegramLinkToken.create({ data: {
-          tokenHash: confirmationHash(confirmationToken, telegramId, byTelegram.id),
+          tokenHash: pendingHash,
           userId: row.userId, expiresAt: source.expiresAt,
         } });
+        if (merge?.status === "ready") {
+          await tx.verificationToken.create({ data: { token: `tg-merge:${pendingHash}`, identifier: merge.fingerprint, expires: source.expiresAt } });
+          return { result: "merge_confirmation_required" as const, confirmationToken, siteLabel: siteAccountLabel(target),
+            mergeSummary: { characters: merge.source._count.characters, stories: merge.source._count.chatThreads,
+              messages: merge.source._count.messages, vc: merge.transferableVC } };
+        }
         return { result: "confirmation_required" as const, confirmationToken, siteLabel: siteAccountLabel(target) };
       }
       if (byTelegram) {
@@ -228,6 +244,36 @@ export async function consumeLinkToken(token: string, telegramId: string): Promi
     forgetTelegramSessionCache();
     infoLog("Telegram", "link token consumed", { userId: row.userId });
   }
+}
+
+/** A populated Telegram-only profile requires its own explicit data-transfer consent. */
+export async function confirmTelegramMerge(token: string, telegramId: string): Promise<LinkResult> {
+  if (!/^[A-Za-z0-9_-]{32}$/.test(token) || !/^[1-9]\d{0,19}$/.test(telegramId)) return "invalid";
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const account = await tx.telegramAccount.findUnique({ where: { telegramId } });
+      if (!account?.userId || account.origin !== "telegram") return "invalid";
+      const tokenHash = hashLinkToken(`merge:${telegramId}:${account.id}:${token}`);
+      const row = await tx.telegramLinkToken.findUnique({ where: { tokenHash } });
+      if (!row || row.usedAt || row.expiresAt <= new Date() || row.userId === account.userId) return "invalid";
+      if (await tx.telegramAccount.findUnique({ where: { userId: row.userId } })) return "user_has_other_telegram";
+      const snapshot = await tx.verificationToken.findUnique({ where: { token: `tg-merge:${tokenHash}` } });
+      const preview = await telegramMergePreview(tx, account.userId, row.userId);
+      if (preview.status === "busy") return "merge_busy";
+      if (preview.status !== "ready") return "profile_not_empty";
+      if (!snapshot || snapshot.expires <= new Date() || snapshot.identifier !== preview.fingerprint) return "invalid";
+      const claimed = await tx.telegramLinkToken.updateMany({ where: { tokenHash, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
+      if (claimed.count !== 1) return "invalid";
+      const outcome = await mergeTelegramProfile(tx, account.userId, row.userId);
+      if (outcome !== "merged") throw new Error("Telegram merge changed during transaction");
+      await tx.telegramAccount.update({ where: { id: account.id }, data: { id: randomUUID(), userId: row.userId, origin: "site", linkedAt: new Date(), unlinkedAt: null } });
+      await tx.verificationToken.delete({ where: { token: snapshot.token } });
+      return "merged";
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 });
+  } catch (error) {
+    if (isUniqueViolation(error) || (error as { code?: string }).code === "P2034") return "invalid";
+    throw error;
+  } finally { forgetTelegramSessionCache(); }
 }
 
 /** Explicit second action from the same Telegram user, tied to the exact previous identity. */
@@ -288,20 +334,26 @@ export async function unlinkTelegram(userId: string): Promise<"unlinked" | "not_
   return result.count > 0 ? "unlinked" : "not_linked";
 }
 
-// Sessions issued by a Telegram launch carry the account id. A short cache keeps the per-request
-// check cheap; an unlink takes effect on this instance at once and elsewhere within the TTL.
-const SESSION_CACHE_TTL_MS = 60 * 1000;
-const sessionCache = new Map<string, { userId: string | null; at: number }>();
-
+// Kept for compatibility with callers/tests from the earlier cached implementation.
+// Revocation now reads the database directly, so nothing is cached across requests.
 export function forgetTelegramSessionCache(): void {
-  sessionCache.clear();
+  // No cache to clear.
 }
 
 export async function isTelegramSessionActive(accountId: string, userId: string): Promise<boolean> {
-  const cached = sessionCache.get(accountId);
-  if (cached && Date.now() - cached.at < SESSION_CACHE_TTL_MS) return cached.userId === userId;
-  const account = await prisma.telegramAccount.findUnique({ where: { id: accountId }, select: { userId: true } });
-  if (sessionCache.size > 5000) sessionCache.clear();
-  sessionCache.set(accountId, { userId: account?.userId ?? null, at: Date.now() });
-  return account?.userId === userId;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      // Link check and activity touch share one snapshot: authentication cannot race a transfer.
+      return await prisma.$transaction(async (tx) => {
+        const account = await tx.telegramAccount.findUnique({ where: { id: accountId }, select: { userId: true } });
+        if (account?.userId !== userId) return false;
+        await tx.user.updateMany({ where: { id: userId, lastSeen: { lt: new Date(Date.now() - 30_000) } }, data: { lastSeen: new Date() } });
+        return true;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if ((error as { code?: string }).code !== "P2034") throw error;
+      // Concurrent activity touches should retry, while a completed merge fails the fresh check.
+    }
+  }
+  return false;
 }

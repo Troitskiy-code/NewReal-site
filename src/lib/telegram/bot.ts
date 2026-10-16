@@ -1,6 +1,7 @@
-import { consumeLinkToken, confirmTelegramLink, LINK_START_PREFIX, LINK_CONFIRM_PREFIX, type LinkResult } from "./accounts";
+import { consumeLinkToken, confirmTelegramLink, confirmTelegramMerge, LINK_START_PREFIX, LINK_CONFIRM_PREFIX, MERGE_CONFIRM_PREFIX, type LinkResult } from "./accounts";
 import { telegramBotUsername, telegramSiteOrigin } from "./config";
 import { parseTelegramStartParam, telegramReferralFromStartParam, TELEGRAM_ENTRY_PATH } from "./shared";
+import { approveWebLogin, prepareWebLogin, webLoginCode, WEB_LOGIN_START, WEB_LOGIN_CONFIRM } from "./webLogin";
 
 // Bot commands. Replies are returned in the webhook response body (Bot API "reply to webhook"),
 // so the server makes no outbound call and needs the token only to verify Mini App launches.
@@ -31,7 +32,11 @@ const TEXT = {
     telegram_taken: "Этот Telegram уже связан с другим аккаунтом NewVerse, например созданным в приложении. Аккаунты не объединяются автоматически. Чтобы привязать Telegram к аккаунту сайта, используйте другой Telegram или напишите в поддержку.",
     confirmation_required: "В Telegram у вас отдельный пустой профиль со стартовыми 50 VC. Подтвердите переход на аккаунт сайта: {{account}}. В приложении будут баланс, персонажи и истории этого аккаунта сайта. Стартовые 50 VC из пустого профиля не переносятся. Если это не ваш аккаунт, не подтверждайте привязку.",
     confirmLink: "Подтвердить привязку аккаунта сайта",
-    profile_not_empty: "В профиле Telegram уже есть данные или изменения баланса. Автоматическая привязка остановлена, чтобы сохранить их. Для переноса обратитесь в поддержку NewVerse.",
+    merge_confirmation_required: "Объединить профиль Telegram с аккаунтом сайта {{account}}? Будут перенесены персонажи: {{characters}}, истории: {{stories}}, сообщения: {{messages}} и заработанные VC: {{vc}}. Повторные стартовые 50 VC не начисляются. Истории и персонажи сайта сохранятся. Старые Telegram-сессии завершатся. Подтверждайте только для своего аккаунта.",
+    confirmMerge: "Перенести данные и объединить аккаунты",
+    merge_busy: "Закройте Mini App, дождитесь завершения генераций и подождите 3 минуты. Затем создайте новую ссылку в профиле сайта. Перенос начнётся только после отдельного подтверждения.",
+    merged: "Данные перенесены, аккаунты объединены. Закройте и заново откройте Mini App: в нём будут истории, персонажи и баланс общего аккаунта.",
+    profile_not_empty: "Привязка остановлена: в профиле есть новые данные или изменения баланса, отдельный способ входа, покупки, подписка либо конфликт реферальных настроек. Создайте новую ссылку в профиле сайта. Если перенос снова недоступен, обратитесь в поддержку — данные сохранятся.",
     user_has_other_telegram: "К этому аккаунту NewVerse уже привязан другой Telegram. Сначала отвяжите его в профиле на сайте.",
     unknown: "Используйте /start, чтобы открыть NewVerse, или /help для справки.",
   },
@@ -49,7 +54,11 @@ const TEXT = {
     telegram_taken: "This Telegram is already connected to another NewVerse account, for example one created in the app. Accounts are not merged automatically. Use another Telegram account or contact support.",
     confirmation_required: "You have a separate unused Telegram profile with 50 starter VC. Confirm switching to the website account: {{account}}. The app will use that website account's balance, characters and stories. The 50 starter VC from the unused profile will not be transferred. If this is not your account, do not confirm the link.",
     confirmLink: "Confirm linking the website account",
-    profile_not_empty: "Your Telegram profile already has data or balance changes. Automatic linking has been stopped to preserve them. Contact NewVerse support to arrange a transfer.",
+    merge_confirmation_required: "Merge your Telegram profile into website account {{account}}? Characters: {{characters}}, stories: {{stories}}, messages: {{messages}}, earned VC: {{vc}} will be transferred. The duplicate starter 50 VC are excluded. Existing website stories and characters are kept. Old Telegram sessions will end. Confirm only for your own account.",
+    confirmMerge: "Transfer data and merge accounts",
+    merge_busy: "Close the Mini App, let all generations finish, and wait 3 minutes. Then create a new link in your website profile. A separate confirmation is required before any data moves.",
+    merged: "Your data has been transferred and accounts merged. Close and reopen the Mini App to see the shared stories, characters and balance.",
+    profile_not_empty: "Linking was stopped because the profile has changed, has independent sign-in credentials, purchases, a subscription, or conflicting referral settings. Create a fresh website link. If transfer is still unavailable, contact support; your data is kept.",
     user_has_other_telegram: "Another Telegram is already linked to this NewVerse account. Unlink it in your profile on the website first.",
     unknown: "Use /start to open NewVerse or /help for help.",
   },
@@ -108,6 +117,30 @@ export async function handleBotUpdate(update: unknown): Promise<BotOutcome> {
   const origin = telegramSiteOrigin();
 
   if (command === "/start") {
+    if (payload.startsWith(MERGE_CONFIRM_PREFIX)) {
+      const result = await confirmTelegramMerge(payload.slice(MERGE_CONFIRM_PREFIX.length), String(fromId));
+      return { command: "start_merge_confirm", link: result, reply: reply(chatId, TEXT[l][result], result === "merged" ? [openButton(l)] : undefined) };
+    }
+    if (payload.startsWith(WEB_LOGIN_CONFIRM)) {
+      const approved = await approveWebLogin(payload.slice(WEB_LOGIN_CONFIRM.length), String(fromId));
+      return { command: "website_login_confirm", reply: reply(chatId, l === "ru"
+        ? approved ? "Вход подтверждён. Вернитесь в тот браузер, где начали вход, и нажмите «Войти в этот аккаунт»." : "Запрос недействителен или истёк. Начните вход заново на сайте."
+        : approved ? "Approved. Return to the browser where you started and choose “Sign in to this account”." : "This request is invalid or expired. Start again on the website.") };
+    }
+    if (payload.startsWith(WEB_LOGIN_START)) {
+      const key = payload.slice(WEB_LOGIN_START.length);
+      const state = await prepareWebLogin(key, String(fromId));
+      const bot = telegramBotUsername();
+      const text = state === "confirm" && bot
+        ? l === "ru"
+          ? `Вход на сайт NewVerse. Код запроса: ${webLoginCode(key)}.\n\nСверьте код с браузером. Подтверждайте только если вы сами начали вход на newvers.ai. Этот браузер получит доступ к вашим историям, персонажам и балансу. Никому не пересылайте эту ссылку.`
+          : `NewVerse website sign-in. Request code: ${webLoginCode(key)}.\n\nMatch this code with your browser. Approve only if you started signing in on newvers.ai. That browser will access your stories, characters and balance. Do not forward this link.`
+        : state === "no_account"
+          ? l === "ru" ? "Сначала откройте Mini App и создайте аккаунт или привяжите существующий в профиле сайта." : "First create an account in the Mini App or link your existing website account."
+          : l === "ru" ? "Запрос недействителен или истёк. Начните вход заново на сайте." : "This request is invalid or expired. Start again on the website.";
+      return { command: "website_login", reply: reply(chatId, text, state === "confirm" && bot
+        ? [[{ text: l === "ru" ? "Подтвердить вход на сайт" : "Approve website sign-in", url: `https://t.me/${bot}?start=${WEB_LOGIN_CONFIRM}${key}` }]] : [openButton(l)]) };
+    }
     if (payload.startsWith(LINK_CONFIRM_PREFIX)) {
       const result = await confirmTelegramLink(payload.slice(LINK_CONFIRM_PREFIX.length), String(fromId));
       return { command: "start_link_confirm", link: result, reply: reply(chatId, TEXT[l][result], result === "linked" ? [openButton(l)] : undefined) };
@@ -115,6 +148,14 @@ export async function handleBotUpdate(update: unknown): Promise<BotOutcome> {
     if (payload.startsWith(LINK_START_PREFIX)) {
       const decision = await consumeLinkToken(payload.slice(LINK_START_PREFIX.length), String(fromId));
       const result = decision.result;
+      if (result === "merge_confirmation_required" && decision.confirmationToken && decision.mergeSummary) {
+        const bot = telegramBotUsername();
+        if (!bot) return { command: "start_link", link: "invalid", reply: reply(chatId, TEXT[l].invalid) };
+        const values = { account: decision.siteLabel ?? "NewVerse", ...decision.mergeSummary };
+        const text = TEXT[l].merge_confirmation_required.replace(/\{\{(account|characters|stories|messages|vc)\}\}/g, (_, key: keyof typeof values) => String(values[key]));
+        return { command: "start_link", link: result, reply: reply(chatId, text,
+          [[{ text: TEXT[l].confirmMerge, url: `https://t.me/${bot}?start=${MERGE_CONFIRM_PREFIX}${decision.confirmationToken}` }]]) };
+      }
       if (result === "confirmation_required" && decision.confirmationToken) {
         const bot = telegramBotUsername();
         if (!bot) return { command: "start_link", link: "invalid", reply: reply(chatId, TEXT[l].invalid) };

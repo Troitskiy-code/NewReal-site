@@ -9,6 +9,7 @@ import VerseCoinsBalance from "./VerseCoinsBalance";
 import { withLocale } from "@/lib/i18nConfig";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTelegramMode } from "./TelegramProvider";
+import { showError } from "@/lib/toast";
 
 function getInitials(name, email) {
   const source = (name || email || "U").trim();
@@ -35,6 +36,7 @@ export default function UserAvatarMenu() {
   const { t } = useTranslation();
   const telegram = useTelegramMode();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -119,20 +121,31 @@ export default function UserAvatarMenu() {
 
           <MobileLanguageRow />
 
-          {/* Inside Telegram the account is the Telegram one; the next launch would sign in again. */}
-          {!telegram && <div className="border-t border-[#2A2A2A] py-1">
+          <div className="border-t border-[#2A2A2A] py-1">
             <button
               type="button"
-              onClick={() => {
+              disabled={signingOut}
+              onClick={async () => {
                 setOpen(false);
-                signOut({ callbackUrl: withLocale("/login", locale) });
+                if (telegram) {
+                  setSigningOut(true);
+                  try {
+                    const response = await fetch("/api/telegram/auth", { method: "DELETE" });
+                    if (response.ok) window.location.replace("/tg/signed-out");
+                    else showError(t("telegram.linkError"));
+                  } catch {
+                    showError(t("telegram.linkError"));
+                  } finally { setSigningOut(false); }
+                } else {
+                  void signOut({ callbackUrl: withLocale("/login", locale) });
+                }
               }}
               className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-wd-primary-soft transition-colors hover:bg-[#2A2A2A]"
             >
               <FaSignOutAlt size={16} />
               {t("profile.logout")}
             </button>
-          </div>}
+          </div>
         </div>
       )}
     </div>

@@ -76,7 +76,7 @@ export function parseTelegramStartParam(raw: unknown): { campaign: string | null
     if (part.startsWith("c_")) {
       const slug = part.slice(2);
       if (SLUG.test(slug)) result.characterSlug = slug.toLowerCase();
-    } else if (part.startsWith("link_") || part.startsWith("ref_")) {
+    } else if (part.startsWith("link_") || part.startsWith("ref_") || part.startsWith("login_") || part.startsWith("merge_confirm_")) {
       continue;
     } else if (LABEL.test(part) && !result.campaign) {
       result.campaign = part;

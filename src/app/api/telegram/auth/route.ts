@@ -10,6 +10,7 @@ import { consumeInitDataReceipt, resolveTelegramUser, telegramAccountState } fro
 import { clearTelegramCookies, issueTelegramSessionToken, setTelegramContextCookie, setTelegramSessionCookie } from "@/lib/telegram/session";
 import { isSameOriginRequest, readLimitedJson, telegramJson } from "@/lib/telegram/http";
 import { normalizeTelegramReferralCode, parseTelegramStartParam, telegramReferralFromStartParam } from "@/lib/telegram/shared";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,9 +104,10 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    const name = [strict.user.firstName, strict.user.lastName].filter(Boolean).join(" ").trim().slice(0, 64) || null;
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: result.userId }, select: { name: true, email: true, emailVerified: true } });
     const token = await issueTelegramSessionToken({
-      userId: result.userId, accountId: result.accountId, name, createdAt: result.createdAt, isNew: result.isNew,
+      userId: result.userId, accountId: result.accountId, name: user.name, email: user.email, emailVerified: user.emailVerified,
+      createdAt: result.createdAt, isNew: result.isNew,
     });
     const response = telegramJson({ status: "ok", redirect, isNew: result.isNew });
     setTelegramContextCookie(response);

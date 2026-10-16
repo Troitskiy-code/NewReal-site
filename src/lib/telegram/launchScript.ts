@@ -20,7 +20,7 @@ var start="";try{start=new URLSearchParams(data).get("start_param")||"";}catch(e
 if(!start)start=init.tgWebAppStartParam||"";
 var label="";
 if(start.length<=512&&/^[A-Za-z0-9_-]+$/.test(start)){start.split("__").some(function(p){
-if(p.indexOf("c_")!==0&&p.indexOf("link_")!==0&&p.indexOf("ref_")!==0&&/^[A-Za-z0-9_-]{1,64}$/.test(p)){label=p;return true;}return false;});}
+if(p.indexOf("c_")!==0&&p.indexOf("link_")!==0&&p.indexOf("ref_")!==0&&p.indexOf("login_")!==0&&p.indexOf("merge_confirm_")!==0&&/^[A-Za-z0-9_-]{1,64}$/.test(p)){label=p;return true;}return false;});}
 var src=qp.get("tgsrc")||"";
 if(!label&&/^[A-Za-z0-9_-]{1,64}$/.test(src))label=src;
 var keep=new URLSearchParams();

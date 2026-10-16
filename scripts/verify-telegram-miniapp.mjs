@@ -168,7 +168,7 @@ try {
     check('6.5 a launch on another path is cleaned first and sent to /tg', elsewhere.url.href === `${SITE}/ru/chats` && elsewhere.replaced?.startsWith('/tg?utm_source=telegram_miniapp'));
     const plain = runLaunchScript(`${SITE}/ru/chats#section`);
     check('6.6 without launch data the script changes nothing', plain.url.href === `${SITE}/ru/chats#section` && plain.storage.size === 0);
-    const cases = ['', 'promo', 'c_leo', 'promo__c_leo', 'c_leo__promo', 'link_abc', 'ref_ABC123', 'promo__ref_ABC123__c_leo', 'bad!value', 'a'.repeat(65), 'x__y', 'c_Leo-1__ad_2'];
+    const cases = ['', 'promo', 'c_leo', 'promo__c_leo', 'c_leo__promo', 'link_abc', 'login_secret', 'login_ok_secret', 'merge_confirm_secret', 'ref_ABC123', 'promo__ref_ABC123__c_leo', 'bad!value', 'a'.repeat(65), 'x__y', 'c_Leo-1__ad_2'];
     const agree = cases.every((value) => {
       const script = runLaunchScript(`${SITE}/tg#tgWebAppData=${encodeURIComponent(launch('77', value ? { startParam: value } : {}))}`).url.searchParams.get('utm_campaign');
       return (script ?? null) === shared.parseTelegramStartParam(value).campaign;

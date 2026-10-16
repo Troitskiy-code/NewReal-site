@@ -304,7 +304,7 @@ export default function ProfilePage() {
 
         {/* Telegram: no plans or subscription management, only the daily bonus. */}
         {telegram && <DailyBonusCard showBalance={false} />}
-        {!telegram && <TelegramLinkCard />}
+        <TelegramLinkCard />
 
         {subscription && !telegram && (
           <section className="wd-card flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-6">

@@ -16,12 +16,14 @@ import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
 import { callbackUrlFromSearchParam } from "@/lib/safeCallbackUrl";
 import { LOGIN_RATE_LIMITED } from "@/lib/authErrors";
+import TelegramWebsiteLogin from "@/components/TelegramWebsiteLogin";
 
 type LoginFormProps = {
   googleAuthEnabled: boolean;
+  telegramAuthEnabled?: boolean;
 };
 
-export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
+export default function LoginForm({ googleAuthEnabled, telegramAuthEnabled = false }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useTranslation();
@@ -63,6 +65,7 @@ export default function LoginForm({ googleAuthEnabled }: LoginFormProps) {
 
   return (
     <AuthCard title={t("auth.loginTitle")}>
+      {telegramAuthEnabled && <TelegramWebsiteLogin callbackUrl={localizedCallback} />}
       {googleAuthEnabled && (
         <>
           <GoogleAuthButton onClick={handleGoogleSignIn}>

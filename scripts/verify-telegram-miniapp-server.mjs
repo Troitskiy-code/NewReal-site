@@ -384,6 +384,20 @@ try {
     const opened = await page.evaluate(() => JSON.parse(sessionStorage.getItem('test:tg') || '[]').filter((call) => call.startsWith('openLink:')));
     check('5.20 documents with payment terms open only outside the app (Telegram openLink)', opened.some((call) => call.endsWith('/ru/terms')), opened);
     check('11.1 no page or console errors (dark, RU, mobile)', errors.length === 0, errors);
+    await page.goto(`${base}/ru/profile`);
+    await page.locator('[data-testid="telegram-account-card"]').waitFor();
+    check('Telegram profile explains shared website sign-in and account management', await page.getByText('Открыть сайт', { exact: true }).count() === 1);
+    await page.getByRole('button', { name: 'Меню профиля' }).click();
+    await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+    await page.waitForURL(`${base}/tg/signed-out`);
+    await page.locator('[data-testid="telegram-signed-out"]').waitFor();
+    const signedOutSession = await context.request.get(`${base}/api/auth/session`);
+    check('Telegram logout clears session and stays on an explicit signed-out screen', !(await signedOutSession.json())?.user
+      && await page.getByText('Вы вышли из аккаунта', { exact: true }).count() === 1);
+    await page.reload();
+    await page.locator('[data-testid="telegram-signed-out"]').waitFor();
+    check('reload after logout does not silently sign back in', !(await (await context.request.get(`${base}/api/auth/session`)).json())?.user);
+    await page.screenshot({ path: join(shots, 'signed-out.png') });
     await context.close();
   }
 
@@ -495,6 +509,37 @@ try {
     await page.locator('[data-testid="telegram-link-card"]').waitFor();
     check('3.20 website profile shows the "Link Telegram" card', await page.getByRole('button', { name: 'Привязать Telegram' }).count() === 1);
     check('4.8 the website never loads the Telegram SDK and has no Telegram mode', sdkRequests.length === 0 && await page.locator('html[data-telegram]').count() === 0, sdkRequests);
+    await context.close();
+  }
+
+  // B6. A Telegram-only account can use the same profile in an ordinary browser.
+  {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
+    const page = await context.newPage();
+    page.setDefaultTimeout(90_000);
+    await page.goto(`${base}/ru/login`);
+    await page.getByRole('button', { name: 'Войти через Telegram', exact: true }).click();
+    const botLink = page.getByRole('link', { name: 'Открыть бота для подтверждения' });
+    await botLink.waitFor();
+    const payload = new URL(await botLink.getAttribute('href')).searchParams.get('start');
+    const usersBefore = await db.user.count();
+    const botCommand = async text => request('/api/telegram/webhook', { method: 'POST', headers: { 'content-type': 'application/json', 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+      body: JSON.stringify({ message: { text: `/start ${text}`, chat: { id: Number(TG_HTTP), type: 'private' }, from: { id: Number(TG_HTTP), language_code: 'ru' } } }) });
+    const ask = await (await botCommand(payload)).json();
+    const confirmation = new URL(ask.reply_markup.inline_keyboard[0][0].url).searchParams.get('start');
+    check('website login starts with a browser-bound request and bot consent', /Код запроса/.test(ask.text)
+      && await page.getByRole('button', { name: 'Войти в этот аккаунт' }).count() === 0);
+    await botCommand(confirmation);
+    const complete = page.getByRole('button', { name: 'Войти в этот аккаунт' });
+    await complete.waitFor();
+    await page.screenshot({ path: join(shots, 'website-telegram-login.png') });
+    await complete.click();
+    await page.waitForURL(`${base}/ru`);
+    const session = await (await context.request.get(`${base}/api/auth/session`)).json();
+    check('real NextAuth callback signs browser into the existing Telegram user', session.user?.id === httpUser.id && !session.user?.oauthRegistrationUserId);
+    check('browser sign-in creates neither a second user nor a Mini App context cookie', await db.user.count() === usersBefore
+      && !(await context.cookies()).some(c => /nv-tg.ctx/.test(c.name)));
     await context.close();
   }
 

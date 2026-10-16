@@ -20,6 +20,7 @@ export type TelegramWebApp = {
   contentSafeAreaInset?: TelegramInsets;
   ready(): void;
   expand(): void;
+  close?(): void;
   isVersionAtLeast(version: string): boolean;
   setHeaderColor(color: string): void;
   setBackgroundColor(color: string): void;
@@ -43,7 +44,7 @@ declare global {
 // and bottom bar are painted in them, so the app looks the same in light and dark Telegram themes.
 const PALETTE = { header: "#0d0d0d", background: "#0a0a0a" };
 // Top-level sections: Telegram's back button is hidden there.
-const ROOT_PATHS = new Set(["/", "/chats", "/create", "/profile", "/favorites", "/tg", "/tg/unavailable"]);
+const ROOT_PATHS = new Set(["/", "/chats", "/create", "/profile", "/favorites", "/tg", "/tg/unavailable", "/tg/signed-out"]);
 
 const TelegramModeContext = createContext(false);
 const TelegramAppContext = createContext<TelegramWebApp | null>(null);

@@ -5,11 +5,15 @@ import LoginForm from "./LoginForm";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { translate } from "@/lib/getDictionary";
 import { isTelegramContext } from "@/lib/telegram/context";
+import { isTelegramMiniAppEnabled, telegramBotUsername } from "@/lib/telegram/config";
+import TelegramSignedOut from "@/components/TelegramSignedOut";
 
 export default async function LoginPage() {
   const locale = await getRequestLocale();
   // Google OAuth does not work in Telegram's built-in browser.
-  const googleAuthEnabled = isGoogleAuthEnabled() && !(await isTelegramContext());
+  const telegram = await isTelegramContext();
+  if (telegram) return <TelegramSignedOut />;
+  const googleAuthEnabled = isGoogleAuthEnabled();
 
   return (
     <Suspense
@@ -19,7 +23,7 @@ export default async function LoginPage() {
         </AuthCard>
       }
     >
-      <LoginForm googleAuthEnabled={googleAuthEnabled} />
+      <LoginForm googleAuthEnabled={googleAuthEnabled} telegramAuthEnabled={isTelegramMiniAppEnabled() && Boolean(telegramBotUsername())} />
     </Suspense>
   );
 }

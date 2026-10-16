@@ -79,6 +79,7 @@
     "verify:deepinfra": "node scripts/verify-deepinfra.mjs",
     "verify:deepinfra:embeddings": "node scripts/verify-deepinfra-embeddings.mjs",
     "verify:telegram": "node scripts/verify-telegram-miniapp.mjs",
+    "verify:telegram:accounts": "node scripts/verify-telegram-accounts.mjs",
     "verify:telegram:server": "node scripts/verify-telegram-miniapp-server.mjs",
     "telegram:bot-setup": "node scripts/telegram-bot-setup.mjs"
   },
