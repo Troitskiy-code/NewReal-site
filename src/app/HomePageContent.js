@@ -56,7 +56,7 @@ export default function HomePageContent({ initialData, showHero = false, onboard
         className="flex min-h-0 flex-1 scroll-mt-24 flex-col gap-4 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-5 md:px-6"
       >
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold text-wd-text md:text-xl">{sectionTitle}</h2>
+          <h2 className="font-display text-base font-semibold text-wd-text md:text-xl">{sectionTitle}</h2>
           {!loading && total > 0 && (
             <p className="shrink-0 text-[13px] text-wd-text-secondary">
               {t("home.found")}<span className="font-semibold text-white">{total}</span>

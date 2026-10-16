@@ -272,9 +272,9 @@ export default function ProfilePage() {
                 <h1 className="truncate font-display text-xl font-semibold tracking-tight text-white sm:text-2xl md:text-3xl">{userName}</h1>
                 <p className="text-[13px] text-wd-text-secondary">
                   {statsLoading ? "…" : [
-                    `${stats?.charactersCount ?? 0} ${t("profile.characters").toLowerCase()}`,
-                    `${stats?.chatsCount ?? 0} ${t("profile.chats").toLowerCase()}`,
-                    `${stats?.messagesCount ?? 0} ${t("profile.messages").toLowerCase()}`,
+                    `${t("profile.characters")}: ${stats?.charactersCount ?? 0}`,
+                    `${t("profile.chats")}: ${stats?.chatsCount ?? 0}`,
+                    `${t("profile.messages")}: ${stats?.messagesCount ?? 0}`,
                   ].join(" · ")}
                 </p>
                 <p className="text-xs text-wd-text-secondary">
