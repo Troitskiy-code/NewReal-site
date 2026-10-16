@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import LocaleLink from "./LocaleLink";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { LogoMark } from "./Logo";
@@ -37,8 +37,9 @@ export default function VerseCoinsBalance({ className = "", size = "sm" }) {
   // In Telegram the balance is shown, but it does not lead to the shop.
   if (telegram) return <span data-testid="vc-balance"
     className={`inline-flex items-center rounded-full border border-wd-secondary/25 bg-wd-secondary/10 font-bold text-wd-secondary ${sizeClasses} ${className}`} title="VerseCoins">{content}</span>;
-  return <Link href={coinsHrefFromChat(pathname)}
+  // LocaleLink adds /ru or /en: a bare /coins went through the locale redirect, and its RSC prefetch looped.
+  return <LocaleLink href={coinsHrefFromChat(pathname)}
     className={`inline-flex items-center rounded-full border border-wd-secondary/25 bg-wd-secondary/10 font-bold text-wd-secondary transition-colors hover:border-wd-secondary/50 ${sizeClasses} ${className}`} title="VerseCoins">
     {content}
-  </Link>;
+  </LocaleLink>;
 }
