@@ -1,0 +1,21 @@
+/** The curled story ribbon, used only in the header while the new mark is tested. */
+export default function HeaderLogoMark({ className = "" }) {
+  return (
+    <svg viewBox="64 112 480 480" aria-hidden="true" focusable="false" className={className}>
+      {/* Back of the ribbon: the red end curls upward at the right. */}
+      <path
+        d="M304 440C362 454 410 459 447 449C473 442 481 433 488 417C494 401 505 406 514 419C543 459 530 507 501 542C480 567 455 580 437 582C427 539 371 485 304 440Z"
+        className="fill-wd-primary"
+      />
+      <path
+        d="M201 121C204 119 210 118 216 120C306 135 393 151 456 174C500 190 520 219 512 261C505 334 451 387 326 444C382 404 405 362 386 320C366 279 302 252 240 235C195 223 142 206 99 187C89 183 90 177 97 172Z"
+        fill="currentColor"
+      />
+      {/* The front fold crosses the red return, leaving one generous opening. */}
+      <path
+        d="M239 234C174 258 113 302 85 350C50 409 84 460 139 491C212 533 322 563 425 582C435 584 440 581 439 576C426 532 373 485 305 440C247 403 190 370 191 325C190 284 211 252 239 234Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
