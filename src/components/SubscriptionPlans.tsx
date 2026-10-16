@@ -313,22 +313,22 @@ export default function SubscriptionPlans({
                 isPopular ? "md:-mt-2 md:mb-2 md:scale-[1.02]" : ""
               }`}
             >
-              {isPopular ? (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-wd-pill bg-wd-secondary px-3 py-1 text-[11px] font-bold tracking-wide text-wd-on-secondary shadow">
-                  {t("pricing.popular")}
-                </span>
-              ) : null}
-
               <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-wd bg-[#0c0b12] text-wd-secondary-text">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-wd bg-[#0c0b12] text-wd-secondary-text">
                   <Icon />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-lg font-black text-white">{plan.name}</h2>
                   <p className="text-xs text-wd-text-secondary">
                     {isYearly ? t("pricing.yearlyPlan") : t("pricing.monthlyPlan")}
                   </p>
                 </div>
+                {/* In the card's own header row: hanging above the card it ran into the Месяц/Год switch. */}
+                {isPopular ? (
+                  <span className="ml-auto shrink-0 self-start rounded-wd-pill bg-wd-secondary px-2.5 py-1 text-[11px] font-bold tracking-wide text-wd-on-secondary">
+                    {t("pricing.popular")}
+                  </span>
+                ) : null}
               </div>
 
               <div className="mb-5 space-y-1">

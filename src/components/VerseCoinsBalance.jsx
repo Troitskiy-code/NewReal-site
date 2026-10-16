@@ -32,7 +32,7 @@ export default function VerseCoinsBalance({ className = "", size = "sm" }) {
   const sizeClasses = size === "md" ? "gap-2 px-4 py-2 text-sm" : "gap-1.5 px-2.5 py-1 text-xs md:px-3 md:py-1.5 md:text-sm";
   const content = <>
     <LogoMark className={`shrink-0 text-wd-secondary ${size === "md" ? "h-4 w-4" : "h-3.5 w-3.5"} [&_circle]:hidden`} />
-    <span>{verseCoins.toLocaleString("ru-RU")} VC</span>
+    <span>{verseCoins.toLocaleString("ru-RU")}<span className="max-[399px]:hidden"> VC</span></span>
   </>;
   // In Telegram the balance is shown, but it does not lead to the shop.
   if (telegram) return <span data-testid="vc-balance"

@@ -74,7 +74,7 @@ export default function UserAvatarMenu() {
   ];
 
   return (
-    <div ref={menuRef} className="relative flex items-center gap-2 md:gap-3">
+    <div ref={menuRef} className="relative flex items-center gap-1.5 md:gap-3">
       <VerseCoinsBalance />
       <button
         type="button"

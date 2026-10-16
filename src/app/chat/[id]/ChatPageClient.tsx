@@ -296,7 +296,7 @@ function MessageToolbar({
         <MessageMenu
           message={message}
           disabled={disabled}
-          align="left"
+          align="right"
           onEdit={onEdit}
           onDelete={onDelete}
         />
@@ -348,7 +348,7 @@ function MessageToolbar({
       <MessageMenu
         message={message}
         disabled={disabled}
-        align="right"
+        align="left"
         onEdit={onEdit}
         onDelete={onDelete}
       />
@@ -428,46 +428,20 @@ function ChatMessageItem({
 }: ChatMessageItemProps) {
   const isUser = message.role === "user";
 
-  const avatarBlock = (
-    <div className={`flex shrink-0 min-w-0 items-center gap-1 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-      <MessageAvatar name={displayName} imageUrl={avatarUrl} />
-      <span className="hidden truncate text-[11px] font-semibold text-gray-400 md:inline">{displayName}</span>
-    </div>
-  );
-
-  const actionsBlock = !isEditing ? (
-    <MessageToolbar
-      message={message}
-      disabled={actionDisabled}
-      onRegenerate={onRegenerate}
-      onContinue={onContinue}
-      onDelete={onDelete}
-      onEdit={onEdit}
-      onCopy={onCopy}
-    />
-  ) : (
-    <div className="h-7 w-7 shrink-0" aria-hidden />
-  );
-
+  // The character's name sits above its reply; the player's bubble needs no label.
+  // Actions go right under the message they act on, at its edge, so they never float between two messages.
   return (
     <div
-      className={`flex w-full max-w-[90%] flex-col gap-0.5 md:max-w-[85%] ${
+      className={`flex w-full max-w-[90%] flex-col gap-1 md:max-w-[85%] ${
         isUser ? "ml-auto items-end" : "items-start"
       }`}
     >
-      <div className="flex w-full flex-nowrap items-center justify-between gap-1">
-        {isUser ? (
-          <>
-            {actionsBlock}
-            {avatarBlock}
-          </>
-        ) : (
-          <>
-            {avatarBlock}
-            {actionsBlock}
-          </>
-        )}
-      </div>
+      {isUser ? null : (
+        <div className="flex min-w-0 items-center gap-1.5 px-1">
+          <MessageAvatar name={displayName} imageUrl={avatarUrl} />
+          <span className="truncate text-[12px] font-semibold text-wd-text-secondary">{displayName}</span>
+        </div>
+      )}
 
       {isEditing ? (
         <div
@@ -545,6 +519,20 @@ function ChatMessageItem({
               }}
             />
           )}
+        </div>
+      )}
+
+      {isEditing ? null : (
+        <div className={`-mt-0.5 flex px-1 ${isUser ? "justify-end" : "justify-start"}`}>
+          <MessageToolbar
+            message={message}
+            disabled={actionDisabled}
+            onRegenerate={onRegenerate}
+            onContinue={onContinue}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            onCopy={onCopy}
+          />
         </div>
       )}
     </div>
