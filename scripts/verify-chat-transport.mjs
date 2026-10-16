@@ -10,7 +10,7 @@ process.env.CHAT_AI_PROVIDER = 'deepinfra'; process.env.CHAT_TRANSPORT_TRACE = '
 process.env.DEEPINFRA_API_KEY = 'private_probe_key';
 const runtime = createChatDiagnosticRuntime();
 const axios = createRequire(import.meta.url)('axios');
-const modelName = 'deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506';
+const modelName = 'deepinfra:google/gemma-4-31B-it-turbo';
 const apiModel = modelName.slice('deepinfra:'.length);
 const messages = [{ role: 'user', content: 'private_probe_prompt' }];
 const body = { model: apiModel, messages, ...runtime.policy.chatModelGenerationOptions(modelName), stream: true, stream_options: { include_usage: true } };

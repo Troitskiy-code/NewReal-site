@@ -75,7 +75,7 @@ try {
 
 process.env.DEEPINFRA_NETWORK_MODE = 'auto';
 failPrimary = true;
-const input = { modelName: 'deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506', key: 'synthetic_key', runtime,
+const input = { modelName: 'deepinfra:google/gemma-4-31B-it-turbo', key: 'synthetic_key', runtime,
   messages: [{ role: 'user', content: 'Synthetic test' }] };
 const result = await probePipelineStream(input);
 check(result.outcome === 'completed' && result.attempts.length === 2 && result.attempts[0].outcome === 'failed' && result.attempts[1].outcome === 'completed', 'real chat retry uses reserve with separate per-attempt accounting');

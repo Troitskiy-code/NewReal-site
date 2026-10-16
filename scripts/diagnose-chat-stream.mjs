@@ -6,7 +6,7 @@ import { probeDirectStream, probePipelineStream } from './lib/chat-stream-probe.
 
 const help = `Chat transport diagnostic
   node scripts/diagnose-chat-stream.mjs [options]
-  --model <API or deepinfra:catalog name>    Default: Mistral Small 3.2
+  --model <API or deepinfra:catalog name>    Default: the catalog base model
   --mode direct|pipeline|both               Default: both; sequential independent requests
   --runs 1..3                              Default: 1
   --context-repeats 0..1000                 Synthetic context size; default: 80
@@ -38,7 +38,7 @@ async function main() {
   process.env.CHAT_AI_PROVIDER = 'deepinfra'; process.env.CHAT_TRANSPORT_TRACE = '1';
   const runtime = createChatDiagnosticRuntime();
   const catalog = runtime.load(fileURLToPath(new URL('../src/lib/deepinfraModels.ts', import.meta.url)));
-  const model = catalog.deepinfraModel(opts.model ?? 'mistralai/Mistral-Small-3.2-24B-Instruct-2506');
+  const model = catalog.deepinfraModel(opts.model ?? catalog.DEEPINFRA_BASE_MODEL);
   if (!model || !catalog.DEEPINFRA_AVAILABLE_MODEL_NAMES.includes(model.name)) throw new Error('Choose an available DeepInfra model from the application catalog.');
   const mode = opts.mode ?? 'both', runs = Number(opts.runs ?? 1), repeats = Number(opts['context-repeats'] ?? 80);
   if (!['direct', 'pipeline', 'both'].includes(mode) || !Number.isInteger(runs) || runs < 1 || runs > 3

@@ -74,9 +74,17 @@ function modules(baseline = false) {
     },
   };
   const { root, load } = createModuleLoader({ prismaFor: () => db,
-    // Replay the old policy using precisely the same consumer and metering code.
-    sourceTransform: (file, source) => baseline && file.endsWith('testingChatModels.ts')
-      ? source.replace('reasoning || mistral ? 45_000 : 20_000', 'reasoning ? 45_000 : 20_000') : source,
+    sourceTransform: (file, source) => {
+      // Mistral has been hidden from chat since 2026-10-16; keep its stream policy covered in case it returns.
+      if (file.endsWith('deepinfraModels.ts')) {
+        const visible = source.replace(/\n\s*"deepinfra:mistralai\/Mistral-Small-3\.2-24B-Instruct-2506",/, '');
+        assert.notEqual(visible, source, 'fixture re-enables the hidden Mistral route');
+        return visible;
+      }
+      // Replay the old policy using precisely the same consumer and metering code.
+      return baseline && file.endsWith('testingChatModels.ts')
+        ? source.replace('reasoning || mistral ? 45_000 : 20_000', 'reasoning ? 45_000 : 20_000') : source;
+    },
   });
   return { helpers: load(join(root, 'src/lib/chatHelpers.ts')), stream: load(join(root, 'src/lib/chatStream.ts')),
     telemetry: load(join(root, 'src/lib/aiCostTelemetry.ts')), policy: load(join(root, 'src/lib/testingChatModels.ts')),

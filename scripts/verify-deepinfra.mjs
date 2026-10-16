@@ -73,13 +73,15 @@ try {
   const user = await h.helpers.user('universe');
   await h.db.user.update({ where: { id: user.id }, data: { selectedModelId: legacy.id } });
   const character = await h.helpers.character(user.id);
-  const sql = ['20261011210000_deepinfra_chat_catalog', '20261016120000_deepinfra_pilot_models']
+  const sql = ['20261011210000_deepinfra_chat_catalog', '20261016120000_deepinfra_pilot_models', '20261016150000_deepinfra_hide_unapproved']
     .map(name => readFileSync(join(h.root, 'prisma/migrations', name, 'migration.sql'), 'utf8')).join('\n');
   const { Client } = require('pg');
   const pg = new Client({ connectionString: h.databaseUrl });
   await pg.connect();
   try { await pg.query('BEGIN'); await pg.query(sql); await pg.query('COMMIT'); } finally { await pg.end(); }
   check(await h.db.model.count({ where: { name: { startsWith: 'deepinfra:' } } }) === 18, 'exact SQL adds the eleven original and seven pilot models');
+  check(await h.db.model.count({ where: { name: { in: models.DISABLED_DEEPINFRA_MODEL_NAMES.slice(2) }, isActive: false } }) === 6
+    && (await h.db.model.findUnique({ where: { name: models.DEEPINFRA_BASE_MODEL } })).isActive, 'SQL deactivates the six unapproved models and keeps the Gemma 4 Turbo base active');
   const ids = (await h.db.model.findMany({ where: { name: { startsWith: 'deepinfra:' } }, orderBy: { name: 'asc' } })).map(m => m.id);
   const pg2 = new Client({ connectionString: h.databaseUrl });
   await pg2.connect();
@@ -102,9 +104,9 @@ try {
     && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins, 'missing key fails before charge or upstream');
   process.env['DEEPINFRA_API_KEY'] = 'synthetic_deepinfra_key';
   const list = await (await modelsRoute.GET()).json();
-  check(list.models.length === 16 && list.baseModelId === ids.find(id => id === 'di_chat_20261011_01'), 'switched API exposes sixteen models and the Mistral default');
+  check(list.models.length === 10 && list.baseModelId === ids.find(id => id === 'di_chat_20261011_02'), 'switched API exposes the ten approved models and the Gemma 4 Turbo default');
   check(models.DISABLED_DEEPINFRA_MODEL_NAMES.every(name => !list.models.some(m => m.name === name)), 'models that produced no tokens in 60 s stay hidden');
-  check(list.selectedModelId === null && list.models.filter(m => m.isTesting).length === 9, 'old selection is safely ignored; DeepSeek V4, MiMo Flash and the seven pilot models are testing');
+  check(list.selectedModelId === null && list.models.filter(m => m.isTesting).length === 8, 'old selection is safely ignored; DeepSeek V4 and the seven pilot models are testing');
   check(list.models.filter(m => m.id.startsWith('di_chat_20261016_')).every(m => m.isTesting), 'every 2026-10-16 pilot model is marked testing');
   for (const item of models.DEEPINFRA_CHAT_MODELS.filter(m => !models.DISABLED_DEEPINFRA_MODEL_NAMES.includes(m.name))) {
     const row = list.models.find(m => m.name === item.name);
@@ -113,19 +115,19 @@ try {
   const select = load('src/app/api/user/select-model/route.ts');
   const request = id => new NextRequest('http://localhost/api/user/select-model', { method: 'POST', body: JSON.stringify({ modelId: id }) });
   check((await select.POST(request(legacy.id))).status === 400, 'selection API cannot choose an inactive provider');
-  const middle = list.models.find(m => m.name === 'deepinfra:NousResearch/Hermes-3-Llama-3.1-70B');
-  check((await select.POST(request(middle.id))).status === 200, 'new 24 VC middle-tier model is selectable');
+  const middle = list.models.find(m => m.name === 'deepinfra:moonshotai/Kimi-K2.6');
+  check((await select.POST(request(middle.id))).status === 200, 'premium 27 VC pilot model is selectable');
   const reply = await h.chat(user.id, character.id, { message: 'Я открываю дверь маяка и продолжаю нашу историю.' });
   check(reply.status === 200 && reply.events.some(e => e.type === 'end'), 'real chat handler completes a DeepInfra reply');
   const wireCall = routes.at(-1);
   check(wireCall.url === 'https://api.deepinfra.com/v1/openai/chat/completions'
-    && wireCall.body.model === 'NousResearch/Hermes-3-Llama-3.1-70B'
+    && wireCall.body.model === 'moonshotai/Kimi-K2.6'
     && wireCall.headers.Authorization === 'Bearer synthetic_deepinfra_key', 'request uses exact API ID and exclusively the DeepInfra key');
   check(wireCall.body.max_tokens === 1000 && wireCall.body.stream_options.include_usage === true
     && wireCall.redirect === 'error', 'stream requests usage, caps total output, and refuses authenticated redirects');
-  check((await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 24
-    && await h.db.transaction.count({ where: { userId: user.id, type: 'chat' } }) === 1, 'successful reply deducts 24 VC exactly once');
-  const cost = await h.db.aiCostEvent.findFirst({ where: { provider: 'deepinfra', purpose: 'chat', chargedVC: 24 } });
+  check((await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 27
+    && await h.db.transaction.count({ where: { userId: user.id, type: 'chat' } }) === 1, 'successful reply deducts 27 VC exactly once');
+  const cost = await h.db.aiCostEvent.findFirst({ where: { provider: 'deepinfra', purpose: 'chat', chargedVC: 27 } });
   check(cost?.providerCostNative === 0.002 && cost.providerCostCurrency === 'USD'
     && cost.providerCostSemantics === 'provider_estimated_usd' && cost.outputTokens === 10, 'estimated_cost is USD; cost is ignored; reasoning is not added twice');
   check(Math.abs(cost.estimatedCostRub - 0.216384) < 1e-12 && cost.usdRub === 108.192 && cost.reportedCostRub === null, 'cost uses funded-dollar FX and remains an estimate');
@@ -134,7 +136,7 @@ try {
   const previousReply = await h.db.message.findFirst({ where: { userId: user.id, characterId: character.id, role: 'assistant' } });
   const regenerated = await postRoute('src/app/api/chat/[id]/regenerate/route.ts', user.id, character.id, { messageId: previousReply.id });
   check(regenerated.wire.includes('"type":"end"')
-    && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 48,
+    && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 54,
     'actual regenerate handler uses the selected DeepInfra model and charges once');
   const guest = load('src/lib/anonymousChat.ts');
   h.session.userId = null;
@@ -144,7 +146,7 @@ try {
   const guestWire = await guestResponse.text();
   await h.settle();
   check(guestResponse.status === 200 && guestWire.includes('"type":"end"')
-    && routes.at(-1).body.model === models.DEEPINFRA_CHAT_MODELS[0].apiModel,
+    && routes.at(-1).body.model === models.deepinfraModel(models.DEEPINFRA_BASE_MODEL).apiModel,
     'guest generation uses the inexpensive DeepInfra default');
   check(await h.db.aiCostEvent.count({ where: { provider: 'deepinfra', audience: 'guest', chargedVC: 0, outcome: 'completed' } }) === 1,
     'guest costs are tracked without a user VC deduction');
@@ -214,7 +216,7 @@ try {
   const attempts = routes.length;
   const success = await postRoute('src/app/api/chat/[id]/route.ts', u.id, c.id, { message: 'Повтор только до начала потока.' });
   check(success.wire.includes('"type":"end"') && routes.length === attempts + 2
-    && (await h.db.user.findUnique({ where: { id: u.id } })).verseCoins === u.verseCoins - 4, '429 before streaming permits a retry and one final charge');
+    && (await h.db.user.findUnique({ where: { id: u.id } })).verseCoins === u.verseCoins - 5, '429 before streaming permits a retry and one final charge');
   for (const model of models.DEEPINFRA_CHAT_MODELS.filter(m => m.reasoning)) {
     check(policy.chatModelGenerationOptions(model.name).reasoning_effort === 'none', `${model.displayName}: requested non-thinking mode and fixed total cap`);
   }
@@ -232,7 +234,7 @@ try {
       'timeout remains active after headers: stalled partial stream terminates, refunds, and never retries');
     check(await h.db.transaction.count({ where: { userId: stalledUser.id, type: 'chat' } }) === 0
       && await h.db.message.count({ where: { userId: stalledUser.id, role: 'assistant' } }) === 0,
-      'Mistral idle failure removes the reserved chat charge and saves no assistant message');
+      'base-model idle failure removes the reserved chat charge and saves no assistant message');
     h.session.userId = null;
     const guestRequestId = randomUUID();
     const guestStall = await telemetry.withAiCostContext(() => guest.handleAnonymousChatPost(new NextRequest('http://localhost/api/chat/guest', {
@@ -243,9 +245,9 @@ try {
     const request = await h.db.anonymousChatRequest.findFirst({ where: { requestId: guestRequestId } });
     check(guestStallWire.includes('"type":"error"') && !guestStallWire.includes('"type":"end"')
       && request?.status === 'failed' && request.refundedAt !== null,
-      'guest Mistral idle failure returns the reserved anonymous message quota');
+      'guest base-model idle failure returns the reserved anonymous message quota');
     check(await h.db.anonymousMessage.count({ where: { sessionId: request.sessionId, role: 'assistant' } }) === 0,
-      'guest Mistral idle failure does not save a partial assistant message');
+      'guest base-model idle failure does not save a partial assistant message');
   } finally { policy.chatModelStreamTimeouts = normalTimeouts; }
   process.env['CHAT_AI_PROVIDER'] = 'invalid';
   assert.throws(() => provider.getChatProvider());
