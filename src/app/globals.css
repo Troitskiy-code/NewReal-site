@@ -344,6 +344,51 @@ body {
   border: 1px solid rgba(42, 38, 56, 0.9);
 }
 
+/*
+  One quiet scrollbar for the window and every scroll area: thin, no arrow buttons, a soft
+  thumb on a transparent track (the native dark one was a 15px grey bar with arrows, also
+  over the chat artwork). Chromium and Safari use the ::-webkit-scrollbar rules; the standard
+  scrollbar-* properties stay Firefox-only, because Chromium ignores the webkit rules on an
+  element once they are set. Areas that hide their bar with scrollbar-width: none keep it hidden.
+*/
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-primary-text) 16%, transparent);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--color-primary-text) 32%, transparent);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: color-mix(in srgb, var(--color-primary-text) 20%, transparent) transparent;
+  }
+
+  /* scrollbar-width is not inherited; a class such as [scrollbar-width:none] still wins. */
+  * {
+    scrollbar-width: thin;
+  }
+}
+
 /* Premium Scrollbars */
 .scrollbar-subtle::-webkit-scrollbar {
   width: 6px;
