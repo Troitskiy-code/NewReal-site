@@ -56,6 +56,7 @@ import {
   isSubscriptionActive,
 } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
+import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 import { getAnonymousChatPayload, handleAnonymousChatPost } from "@/lib/anonymousChat";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 import { characterAvatarPath } from "@/lib/characterCardImage";
@@ -176,7 +177,7 @@ async function handlePost(
     const subscriptionActive = isSubscriptionActive(user);
     const persistEmbeddings = shouldPersistEmbeddings(user.subscriptionType, subscriptionActive);
 
-    const costResult = calculateRequestCost(user, model, baseModel);
+    const costResult = calculateRequestCost(user, model, baseModel, { freeQuotaEnabled: isFreeDailyQuotaEnabled() });
     if (costResult.ok === false) {
       return NextResponse.json(
         {
@@ -187,11 +188,10 @@ async function handlePost(
       );
     }
 
-    const { costVC } = costResult;
-
     const charge = await reserveChatCharge({
       userId: session.user.id,
-      costVC,
+      costVC: costResult.priceVC,
+      freeQuotaEligible: costResult.freeQuotaEligible,
       characterName: character.name,
       modelDisplayName: model.displayName,
     });
@@ -199,13 +199,15 @@ async function handlePost(
       return NextResponse.json(
         {
           error: await insufficientBalanceMessage("Недостаточно VerseCoins"),
-          requiredVC: costVC,
+          requiredVC: costResult.priceVC,
           balance: charge.balance,
+          ...(charge.freeQuota ? { freeQuota: charge.freeQuota } : {}),
         },
         { status: 402 }
       );
     }
     refundCharge = charge.refund;
+    const costVC = charge.chargedVC;
 
     // The first message of a character creates its default story.
     const thread = resolution.status === "found" ? resolution.thread : await ensureDefaultThread(session.user.id, id);
@@ -464,6 +466,7 @@ async function handlePost(
         ...buildChatResponsePayload({
           costVC,
           remainingVC: charge.remainingVC,
+          freeQuota: charge.freeQuota,
           model,
           greetingMessage: greetingMessage ?? undefined,
           userMessage: userMessage ?? undefined,

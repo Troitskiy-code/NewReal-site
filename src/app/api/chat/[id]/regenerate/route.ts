@@ -28,6 +28,7 @@ import { consumeOpenAIChatCompletion } from "@/lib/chatStreamDiagnostics";
 import { calculateRequestCost, isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { scheduleMessageEmbeddingRefresh, shouldPersistEmbeddings } from "@/lib/messageEmbeddings";
 import { getApiLocale } from "@/lib/apiI18n";
+import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 
 export const maxDuration = 120;
@@ -142,7 +143,7 @@ async function handlePost(
     setAiCostActor(session.user.id, user.subscriptionType);
     setAiCostThread(scope.threadId);
 
-    const costResult = calculateRequestCost(user, model, baseModel);
+    const costResult = calculateRequestCost(user, model, baseModel, { freeQuotaEnabled: isFreeDailyQuotaEnabled() });
     if (costResult.ok === false) {
       return NextResponse.json(
         {
@@ -153,11 +154,10 @@ async function handlePost(
       );
     }
 
-    const { costVC } = costResult;
-
     const charge = await reserveChatCharge({
       userId: session.user.id,
-      costVC,
+      costVC: costResult.priceVC,
+      freeQuotaEligible: costResult.freeQuotaEligible,
       characterName: character.name,
       modelDisplayName: model.displayName,
     });
@@ -165,13 +165,15 @@ async function handlePost(
       return NextResponse.json(
         {
           error: await insufficientBalanceMessage("Недостаточно VerseCoins"),
-          requiredVC: costVC,
+          requiredVC: costResult.priceVC,
           balance: charge.balance,
+          ...(charge.freeQuota ? { freeQuota: charge.freeQuota } : {}),
         },
         { status: 402 }
       );
     }
     refundCharge = charge.refund;
+    const costVC = charge.chargedVC;
 
     const previousUserMessage = await prisma.message.findFirst({
       where: {
@@ -245,6 +247,7 @@ async function handlePost(
         ...buildChatResponsePayload({
           costVC,
           remainingVC: charge.remainingVC,
+          freeQuota: charge.freeQuota,
           model,
           assistantMessage: updatedMessage,
         }),

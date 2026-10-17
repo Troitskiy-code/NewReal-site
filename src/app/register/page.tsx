@@ -5,6 +5,7 @@ import RegisterForm from "./RegisterForm";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { translate } from "@/lib/getDictionary";
 import { isTelegramContext } from "@/lib/telegram/context";
+import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 
 export default async function RegisterPage() {
   const locale = await getRequestLocale();
@@ -19,7 +20,7 @@ export default async function RegisterPage() {
         </AuthCard>
       }
     >
-      <RegisterForm googleAuthEnabled={googleAuthEnabled} />
+      <RegisterForm googleAuthEnabled={googleAuthEnabled} freeQuotaOffer={isFreeDailyQuotaEnabled()} />
     </Suspense>
   );
 }

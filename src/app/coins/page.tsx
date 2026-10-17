@@ -17,6 +17,7 @@ import { PurchaseStatusBanner, usePurchaseConfirmation } from "@/components/Purc
 import { useCurrency } from "@/components/CurrencyContext";
 import { FIRST_VC_PACKAGE, VC_PACKAGES, type VcPackage } from "@/lib/vcPackages";
 import { DAILY_BONUS_AMOUNTS, getBonusMultiplier } from "@/lib/dailyBonus";
+import { FREE_DAILY_REPLIES, FREE_DAILY_REPLIES_ONBOARDING } from "@/lib/freeDailyQuota";
 import { coinsCharacterId, coinsChatHref } from "@/lib/coinsReturn";
 import { redirectToRobokassa } from "@/lib/robokassaRedirect";
 import { getCheckoutAttribution } from "@/lib/checkoutAttributionClient";
@@ -28,6 +29,7 @@ type Balance = {
   currentBonusAmount: number; nextBonus: number; subscriptionActive: boolean;
   subscriptionLabel: string | null;
   bonusStreak: number; subscriptionType: string | null;
+  freeQuota?: { limit: number; remaining: number } | null;
 };
 type Offer = { available: boolean; reserved: boolean };
 type Character = { id: string; name: string; name_en?: string | null; imageUrl?: string | null };
@@ -197,6 +199,7 @@ function CoinsShop({ characterId }: { characterId: string | null }) {
             <span className="inline-flex items-center gap-2"><FaCheck className="text-wd-secondary-text" /> {text("VC не сгорают", "VC never expire")}</span>
             <span className="inline-flex items-center gap-2"><FaLock className="text-wd-secondary-text" /> {text("Оплата через Robokassa", "Payment via Robokassa")}</span>
           </div>
+          {balance?.freeQuota && <p className="inline-flex max-w-lg items-start gap-2 text-xs leading-relaxed text-wd-text-secondary sm:text-sm"><FaGift className="mt-0.5 shrink-0 text-wd-secondary-text" /> {t("freeQuota.coinsNote", { onboarding: FREE_DAILY_REPLIES_ONBOARDING, daily: FREE_DAILY_REPLIES })}</p>}
         </div>
         <div data-testid="coins-hero-offer" className="relative overflow-hidden rounded-3xl border border-wd-secondary/40 bg-wd-card p-5 sm:p-8">
           <div className="flex items-center justify-between gap-3"><span className="rounded-full bg-wd-secondary/15 px-3 py-1 text-xs font-bold text-wd-secondary-text">{firstVisible ? text("Первое знакомство", "First introduction") : text("Разовое пополнение", "One-time top-up")}</span><FaCoins className="text-2xl text-wd-secondary-text" /></div>

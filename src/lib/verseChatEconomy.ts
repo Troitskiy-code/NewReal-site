@@ -1,3 +1,5 @@
+import { getFreeQuotaState, type FreeQuotaState } from "./freeDailyQuota";
+
 export const BASE_MODEL_COST_VC = 2;
 
 export {
@@ -16,6 +18,8 @@ export type EconomyUser = {
   subscriptionEnd: Date | null;
   dailyRequests: number;
   dailyRequestsDate: Date;
+  /** Needed for the free daily quota; without it the quota never applies. */
+  createdAt?: Date;
 };
 
 export type EconomyModel = {
@@ -34,8 +38,19 @@ export type NormalizedCounters = {
 };
 
 export type RequestCostResult =
-  | { ok: true; costVC: number }
+  | {
+      ok: true;
+      /** What this request costs the user now: 0 while the free daily quota covers it. */
+      costVC: number;
+      /** The model price, charged once the free quota is used up. */
+      priceVC: number;
+      /** Whether the free quota applies to this model at all (base model, quota switched on). */
+      freeQuotaEligible: boolean;
+      freeQuota: FreeQuotaState | null;
+    }
   | { ok: false; error: string; status: number; details?: Record<string, unknown> };
+
+export type RequestCostOptions = { freeQuotaEnabled?: boolean; now?: Date };
 
 export function isSubscriptionActive(
   user: Pick<EconomyUser, "subscriptionType" | "subscriptionEnd">
@@ -78,14 +93,28 @@ export function getEffectiveModelPriceVC(
   return Math.max(0, model.priceVC);
 }
 
+/**
+ * A preview: the authoritative free-or-paid decision is made under the row lock in
+ * reserveChatCharge, so parallel requests cannot share the last free reply.
+ */
 export function calculateRequestCost(
   user: EconomyUser,
   model: EconomyModel,
-  baseModel: EconomyModel
+  baseModel: EconomyModel,
+  options: RequestCostOptions = {}
 ): RequestCostResult {
+  const priceVC = getEffectiveModelPriceVC(user, model, baseModel);
+  const freeQuota =
+    options.freeQuotaEnabled && user.createdAt
+      ? getFreeQuotaState({ createdAt: user.createdAt, dailyRequests: user.dailyRequests, dailyRequestsDate: user.dailyRequestsDate }, options.now)
+      : null;
+  const freeQuotaEligible = Boolean(freeQuota && priceVC > 0 && isBaseModel(model, baseModel));
   return {
     ok: true,
-    costVC: getEffectiveModelPriceVC(user, model, baseModel),
+    costVC: freeQuotaEligible && freeQuota!.remaining > 0 ? 0 : priceVC,
+    priceVC,
+    freeQuotaEligible,
+    freeQuota,
   };
 }
 

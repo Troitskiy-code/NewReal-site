@@ -18,6 +18,7 @@ import { consumeOpenAIChatStream } from "@/lib/chatStreamDiagnostics";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 import { chatModelNameFilter, getChatProvider } from "./aiProviders";
 import { DEEPINFRA_BASE_MODEL } from "./deepinfraModels";
+import { isFreeDailyQuotaEnabled } from "./freeDailyQuotaServer";
 import {
   ANONYMOUS_LIMIT_CODE,
   ANONYMOUS_LIMIT_MESSAGE,
@@ -196,6 +197,8 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
       },
       anonymous: true,
       remainingMessages,
+      // Lets the limit dialog promise the registered free daily replies only when they exist.
+      freeQuotaOffer: isFreeDailyQuotaEnabled(),
       retentionDays: ANONYMOUS_TTL_DAYS,
       expiresAt: session.expiresAt,
     }),

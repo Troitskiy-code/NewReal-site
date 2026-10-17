@@ -16,6 +16,8 @@ import { replenishAvatarTokens } from "@/lib/avatarTokens";
 import { activatePendingSubscriptionIfNeeded } from "@/lib/subscription";
 import { serializeSubscriptionState } from "@/lib/subscriptionState";
 import { serializeCoinBalances } from "@/lib/verseCoins";
+import { getFreeQuotaState } from "@/lib/freeDailyQuota";
+import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 
 export async function GET() {
   try {
@@ -40,6 +42,7 @@ export async function GET() {
         robokassaRecurringId: true,
         dailyRequests: true,
         dailyRequestsDate: true,
+        createdAt: true,
       },
     });
 
@@ -107,6 +110,9 @@ export async function GET() {
       robokassaRecurringId: synced.robokassaRecurringId ?? null,
       dailyRequests: user.dailyRequests,
       dailyRequestsDate: user.dailyRequestsDate,
+      createdAt: user.createdAt,
+      // null while FREE_DAILY_QUOTA_ENABLED is off; the chat client treats that as "no quota".
+      freeQuota: isFreeDailyQuotaEnabled() ? getFreeQuotaState(user, now) : null,
     });
   } catch (error) {
     errorLog("Server", "Balance fetch error:", toSafeDiagnostic(error));

@@ -5,6 +5,7 @@ import HomePageContent from "./HomePageContent";
 import { getLocalizedPageMetadata } from "@/lib/seo";
 import { getPublicCatalog, parseCatalogQuery } from "@/lib/publicCatalog";
 import { getViewerId } from "@/lib/characterPublic";
+import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 import { isOnboardingEnabled, readOnboardingPrefs, shouldShowOnboarding } from "@/lib/onboardingServer";
 
 export async function generateMetadata({ searchParams }) {
@@ -34,6 +35,7 @@ export default async function HomePage({ searchParams }) {
         initialData={initialData}
         showHero={showHero}
         onboarding={onboarding}
+        freeQuotaOffer={isFreeDailyQuotaEnabled()}
       />
     </>
   );

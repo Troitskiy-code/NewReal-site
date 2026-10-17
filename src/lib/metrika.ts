@@ -35,6 +35,9 @@ export const METRIKA_GOALS = {
   onboardingReroll: "onboarding_reroll",
   onboardingSkip: "onboarding_skip",
   onboardingChatStarted: "onboarding_chat_started",
+  freeQuotaUsedFirst: "free_quota_used_first",
+  freeQuotaExhausted: "free_quota_exhausted",
+  freeQuotaUpsellClick: "free_quota_upsell_click",
 } as const;
 
 export type MetrikaGoal = (typeof METRIKA_GOALS)[keyof typeof METRIKA_GOALS];

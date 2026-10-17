@@ -16,7 +16,7 @@ import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
 import { useTranslation } from "react-i18next";
 import { withLocale } from "@/lib/i18nConfig";
 
-export default function HomePageContent({ initialData, showHero = false, onboarding = null }) {
+export default function HomePageContent({ initialData, showHero = false, onboarding = null, freeQuotaOffer = false }) {
   const { t, i18n } = useTranslation();
   const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
   const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload, recommendationMode } =
@@ -34,7 +34,7 @@ export default function HomePageContent({ initialData, showHero = false, onboard
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
       {showHero ? (
         <HomeHero total={initialData?.meta.total ?? total} characters={initialData?.data ?? []}
-          onStart={openOnboarding ? () => openOnboarding("hero") : undefined} />
+          onStart={openOnboarding ? () => openOnboarding("hero") : undefined} freeQuotaOffer={freeQuotaOffer} />
       ) : (
         <>
           {/* Signed-in visitors land on their latest story; the catalog title stays as a quiet h1. */}

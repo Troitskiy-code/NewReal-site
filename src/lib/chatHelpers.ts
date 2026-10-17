@@ -35,6 +35,7 @@ import {
 } from "@/lib/verseChatEconomy";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { getPermanentCoins, spendCoins } from "@/lib/verseCoins";
+import { FREE_CHAT_TRANSACTION_TYPE, getFreeQuotaState, isSameMoscowDay, type FreeQuotaState } from "@/lib/freeDailyQuota";
 import { debugLog, infoLog, errorLog , toSafeDiagnostic} from "@/lib/logger";
 import { retryWithBackoff, defaultShouldRetry } from "@/lib/retryWithBackoff";
 import { chatModelGenerationOptions, chatModelRequestTimeoutMs, chatModelStreamTimeouts } from "@/lib/testingChatModels";
@@ -111,6 +112,7 @@ export type ChatUser = {
   subscriptionEnd: Date | null;
   dailyRequests: number;
   dailyRequestsDate: Date;
+  createdAt: Date;
 };
 
 export const modelSelect = {
@@ -262,6 +264,7 @@ export async function resolveChatContext(userId: string) {
       subscriptionEnd: true,
       dailyRequests: true,
       dailyRequestsDate: true,
+      createdAt: true,
       selectedModel: { select: modelSelect },
     },
   });
@@ -934,38 +937,80 @@ export async function streamChatCompletion(
 }
 
 export type ChatChargeReservation =
-  | { ok: false; balance: number }
-  | { ok: true; remainingVC: number; refund: () => Promise<void> };
+  | { ok: false; balance: number; freeQuota: FreeQuotaState | null }
+  | {
+      ok: true;
+      /** VC actually debited: 0 when the free daily quota covered the reply. */
+      chargedVC: number;
+      remainingVC: number;
+      freeQuota: FreeQuotaState | null;
+      refund: () => Promise<void>;
+    };
 
 /**
  * Debits the request cost before generation. The user row is locked, so parallel
- * requests cannot each pass the balance check and a concurrent grant is never overwritten.
- * Callers must refund() if the reply is not stored.
+ * requests cannot each pass the balance check (or share the last free reply) and a
+ * concurrent grant is never overwritten. Callers must refund() if the reply is not stored.
  */
 export async function reserveChatCharge({
   userId,
   costVC,
+  freeQuotaEligible = false,
   characterName,
   modelDisplayName,
 }: {
   userId: string;
+  /** The model price; the free quota, when eligible and not used up, replaces it with 0. */
   costVC: number;
+  freeQuotaEligible?: boolean;
   characterName: string;
   modelDisplayName: string;
 }): Promise<ChatChargeReservation> {
   const refundContext = aiCostDiagnosticContext();
+  const reservedAt = new Date();
   const reserved = await prisma.$transaction(async (tx) => {
-    const rows = await tx.$queryRaw<{ verseCoins: number; permanentCoins: number | null }[]>`
-      SELECT "verseCoins", "permanentCoins" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const rows = await tx.$queryRaw<{
+      verseCoins: number;
+      permanentCoins: number | null;
+      dailyRequests: number;
+      dailyRequestsDate: Date;
+      createdAt: Date;
+    }[]>`
+      SELECT "verseCoins", "permanentCoins", "dailyRequests", "dailyRequestsDate", "createdAt"
+      FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const current = rows[0];
     if (!current) {
       throw new Error("Пользователь не найден");
     }
+    const quota = freeQuotaEligible && costVC > 0 ? getFreeQuotaState(current, reservedAt) : null;
+    if (quota && quota.remaining > 0) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { dailyRequests: quota.used + 1, dailyRequestsDate: reservedAt },
+      });
+      const transaction = await tx.transaction.create({
+        data: {
+          userId,
+          amount: 0,
+          type: FREE_CHAT_TRANSACTION_TYPE,
+          description: `Чат: ${characterName}, модель ${modelDisplayName} (бесплатно)`,
+        },
+        select: { id: true },
+      });
+      return {
+        ok: true as const,
+        chargedVC: 0,
+        remainingVC: current.verseCoins,
+        fromPermanent: 0,
+        transactionId: transaction.id,
+        freeQuota: { ...quota, used: quota.used + 1, remaining: quota.remaining - 1 },
+      };
+    }
     if (costVC <= 0) {
-      return { ok: true as const, remainingVC: current.verseCoins, fromPermanent: 0, transactionId: null };
+      return { ok: true as const, chargedVC: 0, remainingVC: current.verseCoins, fromPermanent: 0, transactionId: null, freeQuota: quota };
     }
     if (current.verseCoins < costVC) {
-      return { ok: false as const, balance: current.verseCoins };
+      return { ok: false as const, balance: current.verseCoins, freeQuota: quota };
     }
 
     const nextCoins = spendCoins(current, costVC);
@@ -984,9 +1029,11 @@ export async function reserveChatCharge({
     });
     return {
       ok: true as const,
+      chargedVC: costVC,
       remainingVC: nextCoins.verseCoins,
       fromPermanent: getPermanentCoins(current) - nextCoins.permanentCoins,
       transactionId: transaction.id,
+      freeQuota: quota,
     };
   });
 
@@ -994,38 +1041,58 @@ export async function reserveChatCharge({
     return reserved;
   }
 
-  debugLog("Chat", `Зарезервировано ${costVC} VC user=${userId}, осталось ${reserved.remainingVC} VC`);
+  const { chargedVC, transactionId } = reserved;
+  const freeReply = chargedVC === 0 && reserved.freeQuota !== null && transactionId !== null;
+  debugLog("Chat", freeReply
+    ? `Бесплатный ответ ${reserved.freeQuota!.used}/${reserved.freeQuota!.limit} user=${userId}`
+    : `Зарезервировано ${chargedVC} VC user=${userId}, осталось ${reserved.remainingVC} VC`);
 
   let refunded = false;
   const refund = async () => {
-    if (refunded || !reserved.transactionId) return;
+    if (refunded || !transactionId) return;
     refunded = true;
     try {
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: userId },
-          data: {
-            verseCoins: { increment: costVC },
-            permanentCoins: { increment: reserved.fromPermanent },
-          },
-        }),
-        prisma.transaction.delete({ where: { id: reserved.transactionId } }),
-      ]);
-      debugLog("Chat", `Возвращено ${costVC} VC user=${userId}: ответ не сохранён`);
-      infoLog("ChatRefund", "refund completed", { ...refundContext, transactionId: reserved.transactionId,
-        costVC, refundStatus: "completed" });
+      if (freeReply) {
+        await prisma.$transaction(async (tx) => {
+          const rows = await tx.$queryRaw<{ dailyRequests: number; dailyRequestsDate: Date }[]>`
+            SELECT "dailyRequests", "dailyRequestsDate" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+          const current = rows[0];
+          // After Moscow midnight the counter already restarted; there is nothing to give back.
+          if (current && current.dailyRequests > 0 && isSameMoscowDay(current.dailyRequestsDate, reservedAt)) {
+            await tx.user.update({ where: { id: userId }, data: { dailyRequests: { decrement: 1 } } });
+          }
+          await tx.transaction.delete({ where: { id: transactionId } });
+        });
+      } else {
+        await prisma.$transaction([
+          prisma.user.update({
+            where: { id: userId },
+            data: {
+              verseCoins: { increment: chargedVC },
+              permanentCoins: { increment: reserved.fromPermanent },
+            },
+          }),
+          prisma.transaction.delete({ where: { id: transactionId } }),
+        ]);
+      }
+      debugLog("Chat", freeReply
+        ? `Возвращён бесплатный ответ user=${userId}: ответ не сохранён`
+        : `Возвращено ${chargedVC} VC user=${userId}: ответ не сохранён`);
+      infoLog("ChatRefund", "refund completed", { ...refundContext, transactionId,
+        costVC: chargedVC, freeReply, refundStatus: "completed" });
     } catch (error) {
       errorLog("ChatRefund", "refund failed", toSafeDiagnostic(error), { ...refundContext,
-        transactionId: reserved.transactionId, costVC, refundStatus: "failed" });
+        transactionId, costVC: chargedVC, freeReply, refundStatus: "failed" });
     }
   };
 
-  return { ok: true, remainingVC: reserved.remainingVC, refund };
+  return { ok: true, chargedVC, remainingVC: reserved.remainingVC, freeQuota: reserved.freeQuota, refund };
 }
 
 export function buildChatResponsePayload({
   costVC,
   remainingVC,
+  freeQuota = null,
   model,
   greetingMessage,
   userMessage,
@@ -1033,6 +1100,7 @@ export function buildChatResponsePayload({
 }: {
   costVC: number;
   remainingVC: number;
+  freeQuota?: FreeQuotaState | null;
   model: EconomyModel;
   greetingMessage?: { id: string; role: string; content: string; createdAt: Date };
   userMessage?: { id: string; role: string; content: string; createdAt: Date };
@@ -1051,5 +1119,6 @@ export function buildChatResponsePayload({
     isFree: costVC === 0,
     chargedCoins: costVC,
     remainingCoins: remainingVC,
+    ...(freeQuota ? { freeQuota } : {}),
   };
 }

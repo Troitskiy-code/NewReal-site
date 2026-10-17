@@ -28,6 +28,7 @@ import {
   type ChatStreamMessage,
 } from "@/lib/chatStream";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
+import { FREE_DAILY_REPLIES_ONBOARDING, moscowDayKey, type FreeQuotaState } from "@/lib/freeDailyQuota";
 import { trackSuccessfulChatTurn } from "@/lib/acquisitionGoals";
 import { useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
@@ -71,9 +72,22 @@ type BalanceData = {
   subscriptionActive: boolean;
   dailyRequests: number;
   dailyRequestsDate: string;
+  createdAt?: string;
+  /** null while the free daily quota is switched off on the server. */
+  freeQuota?: FreeQuotaState | null;
   subscriptionType: string | null;
   subscriptionEnd: string | null;
 };
+
+/** Fires a quota goal at most once per Moscow day in this browser. */
+function reachDailyQuotaGoal(goal: string) {
+  const key = `nv:${goal}:${moscowDayKey(Date.now())}`;
+  try {
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+  } catch {}
+  reachGoal(goal);
+}
 
 type ChatCharacter = {
   id?: string;
@@ -103,6 +117,7 @@ type ChatHistoryResponse = {
   thread?: ChatThreadSummary | null;
   anonymous?: boolean;
   remainingMessages?: number;
+  freeQuotaOffer?: boolean;
   retentionDays?: number;
   expiresAt?: string | null;
 };
@@ -969,6 +984,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   // A reasoning model is thinking before its first visible token.
   const [thinking, setThinking] = useState(false);
   const [anonymousRemaining, setAnonymousRemaining] = useState<number | null>(null);
+  const [guestFreeQuotaOffer, setGuestFreeQuotaOffer] = useState(false);
   const [showAnonymousLimitModal, setShowAnonymousLimitModal] = useState(false);
   const [confirmClearChat, setConfirmClearChat] = useState(false);
   const chatUrl = (suffix = "") => withThread(`/api/chat/${characterId}${suffix}`, threadId);
@@ -1008,10 +1024,13 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       subscriptionEnd: balance.subscriptionEnd ? new Date(balance.subscriptionEnd) : null,
       dailyRequests: balance.dailyRequests,
       dailyRequestsDate: new Date(balance.dailyRequestsDate),
+      ...(balance.createdAt ? { createdAt: new Date(balance.createdAt) } : {}),
     };
 
-    return calculateRequestCost(economyUser, selectedModel, baseModel);
+    return calculateRequestCost(economyUser, selectedModel, baseModel, { freeQuotaEnabled: Boolean(balance.freeQuota) });
   }, [selectedModel, baseModel, balance]);
+  const freeQuota = costPreview?.ok ? costPreview.freeQuota : null;
+  const freeQuotaEligible = Boolean(costPreview?.ok && costPreview.freeQuotaEligible);
 
   const requestCostVC = costPreview?.ok ? costPreview.costVC : 0;
   const insufficientBalance =
@@ -1106,6 +1125,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           signal.throwIfAborted();
           applyChatPayload(chatRes.data);
           setThreadsEnabled(false);
+          setGuestFreeQuotaOffer(chatRes.data.freeQuotaOffer === true);
           const remaining = chatRes.data.remainingMessages ?? 0;
           setAnonymousRemaining(remaining);
           if (remaining <= 0) {
@@ -1220,8 +1240,19 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     }
   };
 
+  /** The server's quota state replaces the local counters, so the next preview matches the debit. */
+  const applyFreeQuota = (quota: FreeQuotaState | undefined) => {
+    if (!quota) return;
+    setBalance((prev) =>
+      prev ? { ...prev, freeQuota: quota, dailyRequests: quota.used, dailyRequestsDate: new Date().toISOString() } : prev
+    );
+    if (quota.remaining <= 0) reachDailyQuotaGoal(METRIKA_GOALS.freeQuotaExhausted);
+  };
+
   const updateBalanceFromResponse = (data: {
     remainingVC?: number;
+    chargedVC?: number;
+    freeQuota?: FreeQuotaState;
   }) => {
     setBalance((prev) =>
       prev
@@ -1231,6 +1262,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           }
         : prev
     );
+    if (data.freeQuota && data.chargedVC === 0) reachDailyQuotaGoal(METRIKA_GOALS.freeQuotaUsedFirst);
+    applyFreeQuota(data.freeQuota);
 
     if (typeof data.remainingVC === "number") {
       window.dispatchEvent(
@@ -1239,9 +1272,15 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     }
   };
 
+  const insufficientBalanceText = () => {
+    if (telegram) return t("telegram.balanceExhausted");
+    const coins = t("freeQuota.needCoins", { cost: requestCostVC, balance: balance?.verseCoins ?? 0 });
+    return freeQuotaEligible && freeQuota?.remaining === 0 ? `${t("freeQuota.exhausted")} ${coins}` : coins;
+  };
+
   const ensureCanPerformPaidAction = (): boolean => {
     if (insufficientBalance) {
-      showError(telegram ? t("telegram.balanceExhausted") : `Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+      showError(insufficientBalanceText());
       return false;
     }
 
@@ -1258,6 +1297,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     if (error instanceof ChatStreamRequestError) {
       const statusCode = error.status;
       const message = error.payload.error || error.message;
+      if (statusCode === 402) applyFreeQuota(error.payload.freeQuota);
 
       if (statusCode === 503) {
         showError(KODIK_RETRY_ERROR_MESSAGE, 12000);
@@ -1280,6 +1320,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
       const statusCode = error.response?.status;
       const message = error.response?.data?.error;
+      if (statusCode === 402) applyFreeQuota(error.response?.data?.freeQuota);
 
       if (statusCode === 503) {
         showError(KODIK_RETRY_ERROR_MESSAGE, 12000);
@@ -1571,7 +1612,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
     } else {
       if (insufficientBalance) {
-        showError(telegram ? t("telegram.balanceExhausted") : `Недостаточно VC. Нужно ${requestCostVC}, на балансе ${balance?.verseCoins ?? 0}`);
+        showError(insufficientBalanceText());
         return;
       }
     }
@@ -1805,6 +1846,11 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             <p className="text-sm leading-relaxed text-secondary-text">
               {t("guestChat.limitBody")}
             </p>
+            {guestFreeQuotaOffer && (
+              <p className="text-sm font-semibold text-primary-text">
+                {t("freeQuota.guestOffer", { onboarding: FREE_DAILY_REPLIES_ONBOARDING })}
+              </p>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row">
               <LocaleLink
                 href={`/register?${authQuery}`}
@@ -2052,6 +2098,27 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                 <p>{t("guestChat.remaining", { remaining: anonymousRemaining, limit: ANONYMOUS_MESSAGE_LIMIT })}</p>
                 <p>{t("guestChat.retention", { days: ANONYMOUS_TTL_DAYS })}</p>
               </div>
+            )}
+            {!isAnonymous && freeQuota && baseModel && (freeQuotaEligible || freeQuota.remaining > 0) && (
+              <p className="mx-auto mb-2 w-full max-w-3xl text-center text-xs text-secondary-text" aria-live="polite">
+                {!freeQuotaEligible
+                  ? t("freeQuota.otherModel", { remaining: freeQuota.remaining, model: baseModel.displayName })
+                  : freeQuota.remaining > 0
+                    ? t("freeQuota.remaining", { remaining: freeQuota.remaining, limit: freeQuota.limit })
+                    : t("freeQuota.exhausted")}
+                {freeQuotaEligible && freeQuota.remaining === 0 && insufficientBalance && !telegram && (
+                  <>
+                    {" "}
+                    <LocaleLink
+                      href={`/coins?characterId=${encodeURIComponent(characterId)}`}
+                      onClick={() => reachGoal(METRIKA_GOALS.freeQuotaUpsellClick)}
+                      className="font-semibold text-primary underline-offset-2 hover:underline"
+                    >
+                      {t("freeQuota.topUp")}
+                    </LocaleLink>
+                  </>
+                )}
+              </p>
             )}
             <ChatComposer
               value={input}

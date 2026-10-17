@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { SIGNUP_VC_GRANT } from "@/lib/provisionNewUser";
+import { isSameMoscowDay } from "@/lib/freeDailyQuota";
 import { createThreadInTransaction, threadPromptScopeKey } from "@/lib/chatThreads";
 
 // A content transfer is deliberately narrower than moving payment contracts or login credentials.
@@ -91,7 +92,8 @@ export async function mergeTelegramProfile(tx: Prisma.TransactionClient, sourceI
   await tx.user.updateMany({ where: { referredBy: sourceId, id: { not: targetId } }, data: { referredBy: targetId } });
 
   const later = (a: Date | null, b: Date | null) => !a ? b : !b ? a : a > b ? a : b;
-  const sameDay = source.dailyRequestsDate.toISOString().slice(0, 10) === target.dailyRequestsDate.toISOString().slice(0, 10);
+  // dailyRequests counts free replies per Moscow day (src/lib/freeDailyQuota.ts); a same-day merge sums them.
+  const sameDay = isSameMoscowDay(source.dailyRequestsDate, target.dailyRequestsDate);
   const sameMonth = source.lastTokenMonth.toISOString().slice(0, 7) === target.lastTokenMonth.toISOString().slice(0, 7);
   if (source.referralCode) await tx.user.update({ where: { id: sourceId }, data: { referralCode: null } });
   await tx.user.update({ where: { id: targetId }, data: {

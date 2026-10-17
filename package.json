@@ -31,6 +31,7 @@
     "verify:allvpn": "node scripts/verify-allvpn.mjs",
     "diagnose:allvpn": "node scripts/diagnose-allvpn-stream.mjs",
     "lint": "eslint",
+    "verify:quota:db": "node scripts/verify-free-daily-quota-db.mjs",
     "verify:economy": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-economy.ts",
     "verify:intent": "node --experimental-strip-types scripts/verify-intent.ts",
     "verify:p0-p1": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-p0-p1.ts",

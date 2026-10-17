@@ -22,6 +22,15 @@ import {
   getSubscriptionPlan,
   SUBSCRIPTION_PLANS,
 } from "../src/lib/chatEconomy.ts";
+import {
+  FREE_DAILY_REPLIES,
+  FREE_DAILY_REPLIES_ONBOARDING,
+  freeDailyLimit,
+  getFreeQuotaState,
+  isSameMoscowDay,
+  moscowDayKey,
+  nextMoscowMidnight,
+} from "../src/lib/freeDailyQuota.ts";
 
 let passed = 0;
 let failed = 0;
@@ -169,6 +178,56 @@ console.log("\n7. RAG для платных подписок");
   assert(getSubscriptionPlan("story").ragEnabled, "История: RAG включён");
   assert(getSubscriptionPlan("history").ragEnabled, "history: RAG включён");
   assert(getSubscriptionPlan("universe").ragEnabled, "Вселенная: RAG включён");
+}
+
+console.log("\n8. Бесплатная дневная квота на базовой модели");
+{
+  // 2026-10-17 12:00 MSK = 09:00 UTC; Moscow midnight is 21:00 UTC.
+  const at = (iso: string) => new Date(iso);
+  const signup = at("2026-10-17T09:00:00Z");
+  const quotaUser = (overrides: Partial<EconomyUser> = {}) =>
+    makeUser({ verseCoins: 0, createdAt: signup, dailyRequests: 0, dailyRequestsDate: signup, ...overrides });
+  const on = (now: Date) => ({ freeQuotaEnabled: true, now });
+
+  const off = calculateRequestCost(quotaUser(), baseModel, baseModel, { now: signup });
+  assert(off.ok && off.costVC === 4 && off.freeQuota === null && !off.freeQuotaEligible, "флаг выключен: базовая модель по priceVC");
+
+  const first = calculateRequestCost(quotaUser(), baseModel, baseModel, on(signup));
+  assert(first.ok && first.costVC === 0 && first.priceVC === 4 && first.freeQuota?.limit === 20, "день регистрации: 20 бесплатных, ответ за 0 VC");
+
+  const paid = calculateRequestCost(quotaUser(), paidModel, baseModel, on(signup));
+  assert(paid.ok && paid.costVC === 15 && !paid.freeQuotaEligible && paid.freeQuota?.remaining === 20, "другая модель: платно, квота не тратится");
+
+  const noCreatedAt = calculateRequestCost(makeUser(), baseModel, baseModel, on(signup));
+  assert(noCreatedAt.ok && noCreatedAt.costVC === 4 && noCreatedAt.freeQuota === null, "без createdAt квота не применяется");
+
+  const used19 = calculateRequestCost(quotaUser({ dailyRequests: 19 }), baseModel, baseModel, on(signup));
+  assert(used19.ok && used19.costVC === 0 && used19.freeQuota?.remaining === 1, "19 из 20: последний бесплатный");
+  const used20 = calculateRequestCost(quotaUser({ dailyRequests: 20 }), baseModel, baseModel, on(signup));
+  assert(used20.ok && used20.costVC === 4 && used20.freeQuota?.remaining === 0, "20 из 20: дальше по priceVC");
+
+  const beforeMidnight = at("2026-10-17T20:59:59Z");
+  const afterMidnight = at("2026-10-17T21:00:00Z");
+  assert(isSameMoscowDay(signup, beforeMidnight), "23:59:59 МСК — тот же день");
+  assert(!isSameMoscowDay(signup, afterMidnight), "00:00 МСК — новый день");
+  assert(moscowDayKey(afterMidnight) === "2026-10-18", "ключ дня по Москве, не по UTC");
+  const reset = calculateRequestCost(quotaUser({ dailyRequests: 20 }), baseModel, baseModel, on(afterMidnight));
+  assert(reset.ok && reset.costVC === 0 && reset.freeQuota?.used === 0, "после полуночи МСК счётчик обнулился");
+  assert(nextMoscowMidnight(signup).toISOString() === "2026-10-17T21:00:00.000Z", "сброс в 00:00 МСК");
+
+  assert(freeDailyLimit(signup, at("2026-10-23T20:59:59Z")) === FREE_DAILY_REPLIES_ONBOARDING, "7-й день (23.10 МСК): ещё 20");
+  assert(freeDailyLimit(signup, at("2026-10-23T21:00:00Z")) === FREE_DAILY_REPLIES, "8-й день (24.10 МСК): 5");
+  const lateSignup = at("2026-10-17T20:30:00Z"); // 23:30 MSK
+  assert(freeDailyLimit(lateSignup, at("2026-10-23T20:00:00Z")) === 20 && freeDailyLimit(lateSignup, at("2026-10-23T21:00:00Z")) === 5, "регистрация в 23:30 МСК — неделя считается по календарю");
+
+  const week2 = calculateRequestCost(quotaUser({ dailyRequests: 5, dailyRequestsDate: at("2026-10-25T09:00:00Z") }), baseModel, baseModel, on(at("2026-10-25T10:00:00Z")));
+  assert(week2.ok && week2.costVC === 4 && week2.freeQuota?.limit === 5, "вторая неделя: 5 из 5 использованы — платно");
+
+  const subscriber = calculateRequestCost(quotaUser({ subscriptionType: "dialog", subscriptionEnd: at("2026-11-17T00:00:00Z") }), baseModel, baseModel, on(signup));
+  assert(subscriber.ok && subscriber.costVC === 0, "подписчик тоже получает квоту");
+
+  const state = getFreeQuotaState({ createdAt: signup, dailyRequests: -3, dailyRequestsDate: signup }, signup);
+  assert(state.used === 0 && state.remaining === 20, "отрицательный счётчик не даёт лишних ответов");
 }
 
 console.log(`\nИтого: ${passed} passed, ${failed} failed\n`);

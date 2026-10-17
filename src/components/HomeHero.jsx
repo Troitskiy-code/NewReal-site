@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 import LocaleLink from "./LocaleLink";
 import { characterAvatarPath } from "@/lib/characterCardImage";
+import { FREE_DAILY_REPLIES_ONBOARDING } from "@/lib/freeDailyQuota";
 
 const COLLAGE_POSITIONS = [
   "left-[4%] top-9 -rotate-6",
@@ -10,7 +11,7 @@ const COLLAGE_POSITIONS = [
   "right-[4%] top-10 rotate-6",
 ];
 
-export default function HomeHero({ total, characters, onStart }) {
+export default function HomeHero({ total, characters, onStart, freeQuotaOffer = false }) {
   const { t } = useTranslation();
   const collage = characters.slice(0, 3);
 
@@ -44,6 +45,11 @@ export default function HomeHero({ total, characters, onStart }) {
               {t("home.hero.create")}
             </LocaleLink>
           </div>
+          {freeQuotaOffer && (
+            <p className="mt-3 text-[13px] font-semibold text-wd-secondary-text">
+              {t("freeQuota.heroBadge", { onboarding: FREE_DAILY_REPLIES_ONBOARDING })}
+            </p>
+          )}
           <p className="mt-5 hidden gap-5 text-[13px] text-wd-text-secondary md:flex">
             <span>{t("home.hero.catalogCount", { count: total })}</span>
             <span>{t("home.hero.languages")}</span>

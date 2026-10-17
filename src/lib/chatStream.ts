@@ -2,6 +2,7 @@ import { safeErrorFields } from "./redactSensitive";
 import { ChatCompletionStreamError, ChatCompletionStreamParser, extractChatStreamDelta, hasChatStreamReasoning } from "./chatCompletionStream";
 import type { ChatCompletionFinishReason } from "./chatCompletionStream";
 import type { ChatThreadSummary } from "./chatThreadShared";
+import type { FreeQuotaState } from "./freeDailyQuota";
 export { extractChatStreamDelta } from "./chatCompletionStream";
 
 export type ChatStreamMessage = {
@@ -39,6 +40,7 @@ export type ChatStreamEndEvent = {
   userMessage?: ChatStreamMessage;
   remainingVC?: number;
   chargedVC?: number;
+  freeQuota?: FreeQuotaState;
   model?: { id: string; displayName: string };
   anonymous?: boolean;
   remainingMessages?: number;
@@ -59,9 +61,9 @@ export type ChatStreamEvent =
 
 export class ChatStreamRequestError extends Error {
   status: number;
-  payload: { error?: string; code?: string };
+  payload: { error?: string; code?: string; freeQuota?: FreeQuotaState };
 
-  constructor(message: string, status = 500, payload: { error?: string; code?: string } = {}) {
+  constructor(message: string, status = 500, payload: { error?: string; code?: string; freeQuota?: FreeQuotaState } = {}) {
     super(message);
     this.name = "ChatStreamRequestError";
     this.status = status;
@@ -268,7 +270,7 @@ export async function fetchChatNdjsonStream(url: string, body: unknown): Promise
   const isStream = contentType.includes("ndjson") || contentType.includes("event-stream");
 
   if (!response.ok || !isStream) {
-    const payload = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
+    const payload = (await response.json().catch(() => ({}))) as { error?: string; code?: string; freeQuota?: FreeQuotaState };
     throw new ChatStreamRequestError(
       payload.error || "Не удалось отправить сообщение",
       response.status,

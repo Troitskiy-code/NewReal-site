@@ -753,5 +753,15 @@
     "unlinkTitle": "Unlink Telegram?",
     "unlinkText": "The account stays, but signing in with this Telegram is disabled until you link it again.",
     "unlinkDone": "Telegram unlinked"
+  },
+  "freeQuota": {
+    "remaining": "Free today: {{remaining}} of {{limit}} left",
+    "exhausted": "Free replies for today are used up; new ones arrive at 00:00 Moscow time.",
+    "otherModel": "Free replies today: {{remaining}}, on the {{model}} model.",
+    "needCoins": "Not enough VC: {{cost}} needed, {{balance}} on balance.",
+    "topUp": "Top up",
+    "coinsNote": "Free every day: {{onboarding}} replies a day for the first week after sign-up, then {{daily}}, on the base model.",
+    "heroBadge": "{{onboarding}} free replies a day for your first week",
+    "guestOffer": "After sign-up you get {{onboarding}} free replies a day for the first week."
   }
 }

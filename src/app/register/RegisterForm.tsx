@@ -16,9 +16,12 @@ import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
 import { withLocale } from "@/lib/i18nConfig";
 import { REGISTER_CONSENT_COOKIE } from "@/lib/consentCookie";
 import { callbackUrlFromSearchParam } from "@/lib/safeCallbackUrl";
+import { FREE_DAILY_REPLIES_ONBOARDING } from "@/lib/freeDailyQuota";
 
 type RegisterFormProps = {
   googleAuthEnabled: boolean;
+  /** FREE_DAILY_QUOTA_ENABLED on the server: promise the free daily replies. */
+  freeQuotaOffer?: boolean;
 };
 
 function ConsentLink({ href, children }: { href: string; children?: React.ReactNode }) {
@@ -34,7 +37,7 @@ function ConsentLink({ href, children }: { href: string; children?: React.ReactN
   );
 }
 
-export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
+export default function RegisterForm({ googleAuthEnabled, freeQuotaOffer = false }: RegisterFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t, i18n } = useTranslation();
@@ -119,6 +122,11 @@ export default function RegisterForm({ googleAuthEnabled }: RegisterFormProps) {
 
   return (
     <AuthCard title={t("auth.registerTitle")}>
+      {freeQuotaOffer && (
+        <p className="mb-4 text-sm font-semibold text-wd-secondary-text">
+          {t("freeQuota.guestOffer", { onboarding: FREE_DAILY_REPLIES_ONBOARDING })}
+        </p>
+      )}
       <div className="space-y-3">
         <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-wd-text-secondary">
           <input
