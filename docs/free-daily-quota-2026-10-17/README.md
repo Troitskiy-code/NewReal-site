@@ -164,7 +164,7 @@
 
 - `src/lib/freeDailyQuota.ts` — общие правила (московский день, лимит, состояние); `src/lib/freeDailyQuotaServer.ts` — флаг.
 - `calculateRequestCost` возвращает `costVC` (0 пока квота есть), `priceVC`, `freeQuotaEligible`, `freeQuota`.
-- `reserveChatCharge` решает «бесплатно или за VC» под `FOR UPDATE`: бесплатный ответ увеличивает `dailyRequests` и пишет `Transaction` `chat_free` на 0 VC; возврат при сбое уменьшает счётчик, если день не сменился. В `AiCostEvent` такие ответы видны как `chargedVC = 0` при `quotedVC > 0`.
+- `reserveChatCharge` решает «бесплатно или за VC» под `FOR UPDATE`: бесплатный ответ увеличивает `dailyRequests` и пишет `Transaction` `chat_free` на 0 VC; возврат при сбое уменьшает счётчик, если день не сменился. В `AiCostEvent` такие ответы видны как `audience = 'user'`, `chargedVC = 0` и `quotedVC > 0`; гостевые ответы тоже идут с `chargedVC = 0`, но с `audience = 'guest'`.
 - Оба маршрута чата, `/api/user/balance` (`freeQuota`), гостевой ответ (`freeQuotaOffer`), объединение Telegram по московскому дню.
 - Интерфейс: строка квоты над полем ввода, ссылка «Пополнить» с возвратом в чат, предложение в окне лимита гостя, плашка на главной, строки на `/register` и `/coins` (RU/EN). Страница `/subscription` не менялась.
 - Метрика: `free_quota_used_first` и `free_quota_exhausted` (не чаще раза в московский день на браузер), `free_quota_upsell_click`. Цели нужно создать в Метрике.
@@ -176,3 +176,9 @@
 - `tsc` и `eslint` без новых замечаний.
 
 Включение: `FREE_DAILY_QUOTA_ENABLED=true` на Relaxdev и редеплой. Откат — `false`.
+
+### Прод после включения флага (17.10.2026, ~18:20 МСК)
+- Гостевой API отдаёт `freeQuotaOffer: true`; плашка на главной и строка на регистрации видны в RU и EN.
+- За первые минуты 5 бесплатных ответов (`chat_free`) у 2 пользователей (подписчик «Диалога» и бесплатный); счётчики 3 и 2, совпадают с транзакциями.
+- 19 событий расходов с `chargedVC = 0`: 14 гостевых (`audience = 'guest'`) и 5 из квоты (`audience = 'user'`).
+- Интерфейс залогиненного пользователя на проде не смотрели: во встроенном браузере не было входа.
