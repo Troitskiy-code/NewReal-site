@@ -24,7 +24,7 @@
     "seo:audit-urls": "node scripts/audit-seo-urls.mjs",
     "preinstall": "node prisma/preinstall.cjs",
     "dev": "node scripts/start-app.mjs --dev",
-    "build": "node scripts/prisma-generate.cjs && next build",
+    "build": "node scripts/prisma-generate.cjs && next build --webpack",
     "start": "node scripts/start-app.mjs",
     "verify:startup": "node scripts/verify-app-startup.mjs",
     "lint": "eslint",
