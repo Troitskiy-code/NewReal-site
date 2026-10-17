@@ -841,7 +841,13 @@ function ModelSettingsList({
           </p>}
       {section.items.map((model) => {
         const isExpanded = expandedModelId === model.id;
-        const description = model.description ?? MODEL_DESCRIPTIONS[model.displayName];
+        // The free daily quota only covers the base model; while it lasts the price is struck through.
+        const quota = balance?.freeQuota && baseModel?.id === model.id && model.priceVC > 0 ? balance.freeQuota : null;
+        const quotaNote = quota
+          ? english ? "Free replies refresh every day at 00:00 Moscow time." : "Бесплатные ответы обновляются каждый день в 00:00 МСК."
+          : null;
+        const baseDescription = model.description ?? MODEL_DESCRIPTIONS[model.displayName];
+        const description = quotaNote ? [baseDescription, quotaNote].filter(Boolean).join(" ") : baseDescription;
         const priceLabel =
           balance && baseModel
             ? `${getEffectiveModelPriceVC(
@@ -873,12 +879,25 @@ function ModelSettingsList({
                   onChange={() => onModelChange(model.id)}
                   className="shrink-0 accent-wd-secondary"
                 />
-                <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                  <span className="truncate text-base font-bold text-white md:text-lg">
+                <div className={`flex min-w-0 flex-1 justify-between ${
+                  quota && quota.remaining > 0
+                    ? "flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-3"
+                    : "items-center gap-3"
+                }`}>
+                  <span className="max-w-full truncate text-base font-bold text-white md:text-lg">
                     {model.displayName}
                   </span>
                   <div className="flex shrink-0 items-end">
-                    <span className="text-sm text-gray-400">{priceLabel}</span>
+                    {quota && quota.remaining > 0 ? (
+                      <span className="text-sm">
+                        <s className="text-gray-500">{model.priceVC} VC</s>{" "}
+                        <span className="font-semibold text-wd-secondary-text">
+                          {english ? `Free · ${quota.remaining} left` : `Бесплатно · ещё ${quota.remaining}`}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">{priceLabel}</span>
+                    )}
                   </div>
                 </div>
               </div>
