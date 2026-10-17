@@ -762,6 +762,7 @@
     "topUp": "Top up",
     "coinsNote": "Free every day: {{onboarding}} replies a day for the first week after sign-up, then {{daily}}, on the base model.",
     "heroBadge": "{{onboarding}} free replies a day for your first week",
+    "planFeature": "{{count}} free replies a day on {{model}}, no VC spent",
     "guestOffer": "After sign-up you get {{onboarding}} free replies a day for the first week."
   }
 }

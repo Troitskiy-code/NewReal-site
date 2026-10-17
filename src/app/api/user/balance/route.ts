@@ -112,7 +112,9 @@ export async function GET() {
       dailyRequestsDate: user.dailyRequestsDate,
       createdAt: user.createdAt,
       // null while FREE_DAILY_QUOTA_ENABLED is off; the chat client treats that as "no quota".
-      freeQuota: isFreeDailyQuotaEnabled() ? getFreeQuotaState(user, now) : null,
+      freeQuota: isFreeDailyQuotaEnabled()
+        ? getFreeQuotaState({ ...user, subscriptionType: synced.subscriptionType, subscriptionEnd: synced.subscriptionEnd }, now)
+        : null,
     });
   } catch (error) {
     errorLog("Server", "Balance fetch error:", toSafeDiagnostic(error));

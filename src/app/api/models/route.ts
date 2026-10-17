@@ -7,6 +7,7 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { isTestingChatModel } from "@/lib/testingChatModels";
 import { chatModelNameFilter, getChatProvider } from "@/lib/aiProviders";
 import { DEEPINFRA_BASE_MODEL } from "@/lib/deepinfraModels";
+import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 
 export async function GET() {
   try {
@@ -54,6 +55,8 @@ export async function GET() {
       selectedModelId,
       subscriptionActive,
       baseModelId: baseModel?.id ?? null,
+      // Lets public plan cards mention the free daily replies only while the quota is switched on.
+      freeQuota: isFreeDailyQuotaEnabled() && baseModel ? { modelName: baseModel.displayName } : null,
     });
   } catch (error) {
     errorLog("Server", "Models fetch error:", toSafeDiagnostic(error));

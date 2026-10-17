@@ -80,6 +80,7 @@ export default function SubscriptionPlans({
   const [cancellingPending, setCancellingPending] = useState(false);
   const [confirmCancelPending, setConfirmCancelPending] = useState(false);
   const [pricedModels, setPricedModels] = useState<PricedModel[]>([]);
+  const [freeQuotaModelName, setFreeQuotaModelName] = useState<string | null>(null);
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -111,6 +112,7 @@ export default function SubscriptionPlans({
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled || !data?.models) return;
+        setFreeQuotaModelName(typeof data.freeQuota?.modelName === "string" ? data.freeQuota.modelName : null);
         setPricedModels(
           data.models.map((model: { id: string; displayName: string; priceVC: number; isActive?: boolean }) => ({
             id: model.id,
@@ -357,6 +359,12 @@ export default function SubscriptionPlans({
                   <FaCheck className="mt-1 shrink-0 text-wd-primary-soft" />
                   <span>{i18n.language.startsWith("en") ? `Up to ${avatarMonthlyAllowance(plan.id)} avatars per calendar month; every model uses one generation` : `До ${avatarMonthlyAllowance(plan.id)} аватаров в календарный месяц; любая модель расходует одну генерацию`}</span>
                 </li>
+                {freeQuotaModelName && plan.freeDailyReplies > 0 && (
+                  <li className="flex items-start gap-3 text-sm text-wd-text">
+                    <FaCheck className="mt-1 shrink-0 text-wd-primary-soft" />
+                    <span>{t("freeQuota.planFeature", { count: plan.freeDailyReplies, model: freeQuotaModelName })}</span>
+                  </li>
+                )}
                 {features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
                     <FaCheck className="mt-0.5 shrink-0 text-[10px] text-wd-primary-soft" />

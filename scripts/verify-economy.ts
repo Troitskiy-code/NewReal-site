@@ -230,5 +230,25 @@ console.log("\n8. Бесплатная дневная квота на базов
   assert(state.used === 0 && state.remaining === 20, "отрицательный счётчик не даёт лишних ответов");
 }
 
+console.log("\n9. Бесплатные ответы в тарифах");
+{
+  const signup = new Date("2026-10-01T09:00:00Z");
+  const now = new Date("2026-10-17T09:00:00Z"); // third week: no onboarding bonus
+  const active = new Date("2026-11-17T00:00:00Z");
+  const expired = new Date("2026-10-16T00:00:00Z");
+  assert(getSubscriptionPlan("dialog").freeDailyReplies === 30, "Диалог: 30 в день");
+  assert(getSubscriptionPlan("story").freeDailyReplies === 60 && getSubscriptionPlan("history").freeDailyReplies === 60, "История (и history): 60 в день");
+  assert(getSubscriptionPlan("universe").freeDailyReplies === 100, "Вселенная: 100 в день");
+  assert(getSubscriptionPlan("start").freeDailyReplies === 0, "без подписки план не добавляет ответов");
+  assert(freeDailyLimit(signup, now, { subscriptionType: "dialog", subscriptionEnd: active }) === 30, "активный Диалог: лимит 30");
+  assert(freeDailyLimit(signup, now, { subscriptionType: "universe", subscriptionEnd: active }) === 100, "активная Вселенная: лимит 100");
+  assert(freeDailyLimit(signup, now, { subscriptionType: "dialog", subscriptionEnd: expired }) === FREE_DAILY_REPLIES, "истёкшая подписка: обычные 5");
+  assert(freeDailyLimit(signup, now, { subscriptionType: "dialog", subscriptionEnd: null }) === FREE_DAILY_REPLIES, "подписка без даты окончания не считается активной");
+  assert(freeDailyLimit(now, now, { subscriptionType: "dialog", subscriptionEnd: active }) === 30, "новичок с Диалогом: max(20, 30) = 30");
+  const user = makeUser({ verseCoins: 0, createdAt: signup, dailyRequests: 29, dailyRequestsDate: now, subscriptionType: "story", subscriptionEnd: active });
+  const story = calculateRequestCost(user, baseModel, baseModel, { freeQuotaEnabled: true, now });
+  assert(story.ok && story.costVC === 0 && story.freeQuota?.limit === 60 && story.freeQuota.remaining === 31, "История: 29 из 60 — ответ бесплатный, осталось 31");
+}
+
 console.log(`\nИтого: ${passed} passed, ${failed} failed\n`);
 process.exit(failed > 0 ? 1 : 0);

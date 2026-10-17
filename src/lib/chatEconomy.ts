@@ -18,6 +18,8 @@ export type SubscriptionPlan = {
   contextMultiplier: number;
   priority: boolean;
   ragEnabled: boolean;
+  /** Free replies a day on the base model while the plan is active (src/lib/freeDailyQuota.ts). */
+  freeDailyReplies: number;
   features: string[];
 };
 
@@ -32,6 +34,7 @@ const FREE_PLAN: SubscriptionPlan = {
   contextMultiplier: 1,
   priority: false,
   ragEnabled: false,
+  freeDailyReplies: 0,
   features: [],
 };
 
@@ -42,6 +45,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 499,
     yearlyPrice: 4_990,
     vcPerMonth: 2_500,
+    freeDailyReplies: 30,
     contextTokens: 6_000,
     contextMultiplier: 1.5,
     priority: false,
@@ -58,6 +62,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 1_299,
     yearlyPrice: 12_990,
     vcPerMonth: 10_000,
+    freeDailyReplies: 60,
     contextTokens: 10_000,
     contextMultiplier: 2,
     priority: true,
@@ -74,6 +79,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyPrice: 3_499,
     yearlyPrice: 37_990,
     vcPerMonth: 30_000,
+    freeDailyReplies: 100,
     contextTokens: 16_000,
     contextMultiplier: 2.5,
     priority: true,

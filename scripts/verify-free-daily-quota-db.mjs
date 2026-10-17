@@ -110,6 +110,20 @@ try {
   const after6 = await db.user.findUnique({ where: { id: u6.id } });
   check(r6.ok && r6.chargedVC === 0 && after6.dailyRequests === 1, 'new Moscow day: counter restarts at 1');
 
+  // 7. An active plan raises the limit: Dialog gives 30 a day after the first week.
+  const u7 = await user({ verseCoins: 10, createdAt: new Date(Date.now() - 10 * 86400000), dailyRequests: 29, dailyRequestsDate: new Date(),
+    subscriptionType: 'dialog', subscriptionEnd: new Date(Date.now() + 20 * 86400000) });
+  const r7a = await reserve(u7.id);
+  const r7b = await reserve(u7.id);
+  check(r7a.ok && r7a.chargedVC === 0 && r7a.freeQuota.limit === 30 && r7a.freeQuota.remaining === 0, 'Dialog: 30th reply of the day is free');
+  check(r7b.ok && r7b.chargedVC === 4, 'Dialog: 31st reply is paid at model price');
+
+  // 8. An expired plan falls back to 5.
+  const u8 = await user({ verseCoins: 10, createdAt: new Date(Date.now() - 10 * 86400000), dailyRequests: 5, dailyRequestsDate: new Date(),
+    subscriptionType: 'universe', subscriptionEnd: new Date(Date.now() - 86400000) });
+  const r8 = await reserve(u8.id);
+  check(r8.ok && r8.chargedVC === 4 && r8.freeQuota.limit === 5, 'expired plan: back to 5 a day');
+
   console.log(`\nQuota DB verification: ${checks} passed`);
 } finally {
   await db.$disconnect().catch(() => {});

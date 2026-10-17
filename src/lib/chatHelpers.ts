@@ -975,8 +975,10 @@ export async function reserveChatCharge({
       dailyRequests: number;
       dailyRequestsDate: Date;
       createdAt: Date;
+      subscriptionType: string | null;
+      subscriptionEnd: Date | null;
     }[]>`
-      SELECT "verseCoins", "permanentCoins", "dailyRequests", "dailyRequestsDate", "createdAt"
+      SELECT "verseCoins", "permanentCoins", "dailyRequests", "dailyRequestsDate", "createdAt", "subscriptionType", "subscriptionEnd"
       FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const current = rows[0];
     if (!current) {

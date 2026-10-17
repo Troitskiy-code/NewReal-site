@@ -106,7 +106,7 @@ export function calculateRequestCost(
   const priceVC = getEffectiveModelPriceVC(user, model, baseModel);
   const freeQuota =
     options.freeQuotaEnabled && user.createdAt
-      ? getFreeQuotaState({ createdAt: user.createdAt, dailyRequests: user.dailyRequests, dailyRequestsDate: user.dailyRequestsDate }, options.now)
+      ? getFreeQuotaState({ createdAt: user.createdAt, dailyRequests: user.dailyRequests, dailyRequestsDate: user.dailyRequestsDate, subscriptionType: user.subscriptionType, subscriptionEnd: user.subscriptionEnd }, options.now)
       : null;
   const freeQuotaEligible = Boolean(freeQuota && priceVC > 0 && isBaseModel(model, baseModel));
   return {
