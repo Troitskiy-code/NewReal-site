@@ -302,7 +302,7 @@ export default function ProfilePage() {
 
         {typeof subscription?.verseCoins === "number" ? (
           <section className="relative overflow-hidden rounded-3xl border border-wd-secondary/25 bg-wd-card p-5 md:max-w-xl md:p-6">
-            <LogoMark className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 text-wd-secondary opacity-[0.07] [&_circle]:hidden" />
+            <LogoMark monochrome className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 text-wd-secondary opacity-[0.07]" />
             <p className="text-xs font-semibold uppercase tracking-[0.1em] text-wd-secondary">{t("profile.wallet.title")}</p>
             <p className="mt-3 flex items-baseline gap-2">
               <span className="font-display text-4xl font-semibold leading-none text-wd-text">

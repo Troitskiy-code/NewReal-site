@@ -1,15 +1,18 @@
 import { dateLocale, withLocale, type Locale } from "@/lib/i18nConfig";
 import { SITE_URL } from "@/lib/seo";
+import { brandAssetUrl } from "@/lib/brand.mjs";
+
+const DEFAULT_BRAND_IMAGE = `${SITE_URL}${brandAssetUrl("/logo.png")}`;
 
 export function absoluteSiteUrl(pathname: string, locale: Locale): string {
   return `${SITE_URL}${withLocale(pathname, locale)}`;
 }
 
 export function absoluteAssetUrl(path: string | null | undefined): string {
-  if (!path || path.startsWith("data:")) return `${SITE_URL}/logo.png`;
+  if (!path || path.startsWith("data:")) return DEFAULT_BRAND_IMAGE;
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   if (path.startsWith("/")) return `${SITE_URL}${path}`;
-  return `${SITE_URL}/logo.png`;
+  return DEFAULT_BRAND_IMAGE;
 }
 
 type CharacterJsonLdInput = {

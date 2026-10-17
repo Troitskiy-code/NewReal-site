@@ -1,88 +1,78 @@
-const { Jimp } = require("jimp");
-const { writeFileSync } = require("fs");
-const path = require("path");
-
+const sharp = require("sharp");
+const { writeFileSync } = require("node:fs");
+const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
-const LOGO = path.join(ROOT, "public", "logo.png");
-const APPLE_BG = 0x121212ff;
-const PAD = 0.08;
-
-async function makeSquare(source, size, { background } = {}) {
-  const srcW = source.bitmap.width;
-  const srcH = source.bitmap.height;
-  const inner = Math.max(1, Math.round(size * (1 - PAD * 2)));
-  const scale = inner / Math.max(srcW, srcH);
-  const nw = Math.max(1, Math.round(srcW * scale));
-  const nh = Math.max(1, Math.round(srcH * scale));
-  const fitted = source.clone().resize({ w: nw, h: nh });
-  const canvas = new Jimp({ width: size, height: size, color: background ?? 0x00000000 });
-  const x = Math.round((size - fitted.bitmap.width) / 2);
-  const y = Math.round((size - fitted.bitmap.height) / 2);
-  canvas.blit({ src: fitted, x, y });
-  return canvas;
+const PUBLIC = path.join(ROOT, "public");
+const FONT = path.join(__dirname, "brand-assets", "Unbounded.ttf");
+function write(file, buffer) {
+  writeFileSync(path.join(PUBLIC, file), buffer);
+  console.log("wrote", file);
 }
-
-async function writePng(image, file) {
-  const dest = path.join(ROOT, "public", file);
-  await image.write(dest);
-  console.log("wrote", file, image.bitmap.width);
-}
-
-function writePngIco(entries, file) {
-  const count = entries.length;
-  const headerSize = 6 + 16 * count;
-  let offset = headerSize;
-  const header = Buffer.alloc(headerSize);
-  header.writeUInt16LE(0, 0);
+function writePngIco(entries) {
+  const header = Buffer.alloc(6 + 16 * entries.length);
   header.writeUInt16LE(1, 2);
-  header.writeUInt16LE(count, 4);
-
-  const chunks = [header];
-  entries.forEach((entry, index) => {
+  header.writeUInt16LE(entries.length, 4);
+  let offset = header.length;
+  entries.forEach(({ width, buffer }, index) => {
     const dir = 6 + index * 16;
-    const size = entry.width >= 256 ? 0 : entry.width;
-    header.writeUInt8(size, dir);
-    header.writeUInt8(size, dir + 1);
-    header.writeUInt8(0, dir + 2);
-    header.writeUInt8(0, dir + 3);
+    header.writeUInt8(width >= 256 ? 0 : width, dir);
+    header.writeUInt8(width >= 256 ? 0 : width, dir + 1);
     header.writeUInt16LE(1, dir + 4);
     header.writeUInt16LE(32, dir + 6);
-    header.writeUInt32LE(entry.buffer.length, dir + 8);
+    header.writeUInt32LE(buffer.length, dir + 8);
     header.writeUInt32LE(offset, dir + 12);
-    offset += entry.buffer.length;
-    chunks.push(entry.buffer);
+    offset += buffer.length;
   });
-
-  const dest = path.join(ROOT, "public", file);
-  writeFileSync(dest, Buffer.concat(chunks));
-  console.log("wrote", file, entries.map((entry) => `${entry.width}x${entry.width}`).join("+"));
+  const ico = Buffer.concat([header, ...entries.map(entry => entry.buffer)]);
+  write("favicon.ico", ico);
+  // Keep the automatically served App Router favicon in sync with public.
+  writeFileSync(path.join(ROOT, "src", "app", "favicon.ico"), ico);
 }
-
 (async () => {
-  const source = await Jimp.read(LOGO);
-  console.log("logo", source.bitmap.width, source.bitmap.height);
-
-  const favicon32 = await makeSquare(source, 32);
-  const favicon48 = await makeSquare(source, 48);
-  const favicon96 = await makeSquare(source, 96);
-
-  await writePng(favicon32, "favicon.png");
-  await writePng(favicon48, "favicon-48x48.png");
-  await writePng(favicon96, "favicon-96x96.png");
-
-  writePngIco(
-    [
-      { width: 32, buffer: Buffer.from(await favicon32.getBuffer("image/png")) },
-      { width: 48, buffer: Buffer.from(await favicon48.getBuffer("image/png")) },
-      { width: 96, buffer: Buffer.from(await favicon96.getBuffer("image/png")) },
-    ],
-    "favicon.ico"
-  );
-
-  await writePng(await makeSquare(source, 180, { background: APPLE_BG }), "apple-touch-icon.png");
-  await writePng(await makeSquare(source, 192), "icon-192x192.png");
-  await writePng(await makeSquare(source, 512), "icon-512x512.png");
-})().catch((error) => {
+  const { BRAND_PATHS, BRAND_VIEW_BOX, BRAND_COLORS: colors } = await import("../src/lib/brand.mjs");
+  const paths = BRAND_PATHS.map(({ d, accent }) => `<path d="${d}" fill="${accent ? colors.accent : colors.foreground}"/>`).join("");
+  const glyph = (x, y, size) => `<svg x="${x}" y="${y}" width="${size}" height="${size}" viewBox="${BRAND_VIEW_BOX}">${paths}</svg>`;
+  const symbol = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="${BRAND_VIEW_BOX}">${paths}</svg>`;
+  const icon = (maskable = false) => `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="${maskable ? 0 : 112}" fill="${colors.background}"/>${glyph(maskable ? 82 : 51, maskable ? 82 : 51, maskable ? 348 : 410)}</svg>`;
+  const square = (size, opaque = false, maskable = false) => {
+    const image = sharp(Buffer.from(icon(maskable)), { density: 144 }).resize(size, size);
+    if (opaque) image.flatten({ background: colors.background });
+    return image.png().toBuffer();
+  };
+  write("logo.svg", symbol);
+  write("logo.png", await sharp(Buffer.from(symbol), { density: 144 }).resize(512, 512).png().toBuffer());
+  write("favicon.svg", icon());
+  const entries = [];
+  for (const size of [16, 32, 48, 96, 256]) {
+    const buffer = await square(size);
+    entries.push({ width: size, buffer });
+    if (size === 32) write("favicon.png", buffer);
+    if (size === 48 || size === 96) write(`favicon-${size}x${size}.png`, buffer);
+  }
+  writePngIco(entries);
+  write("apple-touch-icon.png", await square(180, true));
+  write("icon-192x192.png", await square(192));
+  write("icon-512x512.png", await square(512));
+  write("icon-maskable-512x512.png", await square(512, true, true));
+  // The bundled OFL font makes regeneration independent of system fonts.
+  const text = async (value, size, color, bold = false) => sharp({ text: {
+    text: `<span foreground="${color}">${value}</span>`,
+    font: `Unbounded ${bold ? "Bold " : ""}${size}`,
+    fontfile: FONT, dpi: 72, rgba: true,
+  } }).png().toBuffer();
+  const wordmark = await text("newverse", 36, colors.foreground, true);
+  const heading = await text("Твоя вселенная\nперсонажей", 48, colors.foreground, true);
+  const headingMeta = await sharp(heading).metadata();
+  if (headingMeta.width > 790) throw new Error("Social cover heading is too wide");
+  const cover = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="${colors.background}"/>${glyph(60, 44, 48)}${glyph(880, 208, 260)}</svg>`);
+  write("og-newverse.png", await sharp(cover).composite([
+    { input: wordmark, left: 124, top: 51 },
+    { input: await text("newvers.ai", 13, "#a9a4b8"), left: 1010, top: 62 },
+    { input: heading, left: 60, top: 221 },
+    { input: await text("Ролевые игры с ИИ", 20, colors.gold), left: 60, top: 386 },
+    { input: await text("Каждый диалог — новая история", 13, "#a9a4b8"), left: 60, top: 566 },
+  ]).png().toBuffer());
+})().catch(error => {
   console.error(error);
-  process.exit(1);
+  process.exitCode = 1;
 });

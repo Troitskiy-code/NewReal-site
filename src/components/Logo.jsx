@@ -1,9 +1,21 @@
-/** Four-point star with a red "satellite": the NewVerse mark. Inherits the text color. */
-export function LogoMark({ className = "" }) {
+import { BRAND_PATHS, BRAND_VIEW_BOX } from "@/lib/brand.mjs";
+
+/** The approved story ribbon; monochrome is useful for decorative watermarks. */
+export function LogoMark({ className = "", monochrome = false }) {
+  return (
+    <svg viewBox={BRAND_VIEW_BOX} aria-hidden="true" focusable="false" className={className}>
+      {BRAND_PATHS.map(({ d, accent }, index) => (
+        <path key={index} d={d} fill="currentColor" className={accent && !monochrome ? "fill-wd-primary" : undefined} />
+      ))}
+    </svg>
+  );
+}
+
+/** VerseCoins keep their currency symbol independently of the NewVerse brand. */
+export function VerseCoinMark({ className = "" }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden className={className}>
       <path d="M12 1.5 L13.9 10.1 L22.5 12 L13.9 13.9 L12 22.5 L10.1 13.9 L1.5 12 L10.1 10.1 Z" fill="currentColor" />
-      <circle cx="19.5" cy="4.5" r="1.6" className="fill-wd-primary" />
     </svg>
   );
 }

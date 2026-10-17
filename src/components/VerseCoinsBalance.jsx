@@ -3,7 +3,7 @@
 import LocaleLink from "./LocaleLink";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { LogoMark } from "./Logo";
+import { VerseCoinMark } from "./Logo";
 import axios from "axios";
 import { usePathname } from "next/navigation";
 import { coinsHrefFromChat } from "@/lib/coinsReturn";
@@ -31,7 +31,7 @@ export default function VerseCoinsBalance({ className = "", size = "sm" }) {
   if (status !== "authenticated" || verseCoins === null) return null;
   const sizeClasses = size === "md" ? "gap-2 px-4 py-2 text-sm" : "gap-1.5 px-2.5 py-1 text-xs md:px-3 md:py-1.5 md:text-sm";
   const content = <>
-    <LogoMark className={`shrink-0 text-wd-secondary ${size === "md" ? "h-4 w-4" : "h-3.5 w-3.5"} [&_circle]:hidden`} />
+    <VerseCoinMark className={`shrink-0 text-wd-secondary ${size === "md" ? "h-4 w-4" : "h-3.5 w-3.5"}`} />
     <span>{verseCoins.toLocaleString("ru-RU")}<span className="max-[399px]:hidden"> VC</span></span>
   </>;
   // In Telegram the balance is shown, but it does not lead to the shop.

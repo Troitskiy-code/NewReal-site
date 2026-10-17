@@ -5,9 +5,10 @@ import { translate } from "@/lib/getDictionary";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { DEFAULT_LOCALE } from "@/lib/i18nConfig";
 import { pageIndexingMetadata, type SeoSearchParams } from "@/lib/seoIndexing";
+import { brandAssetUrl } from "@/lib/brand.mjs";
 
 export const SITE_URL = "https://newvers.ai";
-export const OG_IMAGE = "/logo.png";
+export const OG_IMAGE = "/og-newverse.png";
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
 export const OG_IMAGE_ALT = "NewVerse — ролевые игры с ИИ-персонажами";
@@ -59,13 +60,14 @@ export function createPageMetadata(title: string, description: string, image: st
     },
     icons: {
       icon: [
-        { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
-        { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
-        { url: "/favicon.ico", sizes: "any" },
-        { url: "/icon-192x192.png", type: "image/png", sizes: "192x192" },
-        { url: "/icon-512x512.png", type: "image/png", sizes: "512x512" },
+        { url: brandAssetUrl("/favicon.ico"), sizes: "any" },
+        { url: brandAssetUrl("/favicon-48x48.png"), type: "image/png", sizes: "48x48" },
+        { url: brandAssetUrl("/favicon-96x96.png"), type: "image/png", sizes: "96x96" },
+        { url: brandAssetUrl("/icon-192x192.png"), type: "image/png", sizes: "192x192" },
+        { url: brandAssetUrl("/icon-512x512.png"), type: "image/png", sizes: "512x512" },
+        { url: brandAssetUrl("/favicon.svg"), type: "image/svg+xml", sizes: "any" },
       ],
-      apple: "/apple-touch-icon.png",
+      apple: brandAssetUrl("/apple-touch-icon.png"),
     },
     manifest: "/manifest.json",
   };

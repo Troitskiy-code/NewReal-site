@@ -2,8 +2,7 @@
 
 import LocaleLink from "./LocaleLink";
 import { LuMenu, LuX } from "react-icons/lu";
-import Logo from "./Logo";
-import HeaderLogoMark from "./HeaderLogoMark";
+import Logo, { LogoMark } from "./Logo";
 import UserAvatarMenu from "./UserAvatarMenu";
 import NotificationBell from "./NotificationBell";
 import LanguageSwitcher from "./LanguageSwitcher";
@@ -29,7 +28,7 @@ export default function Header() {
 
         <div className="flex w-full items-center justify-between gap-3 pr-3 md:pr-6">
           <LocaleLink href="/" className="ml-16 flex min-w-0 items-center gap-1.5 md:ml-6 md:gap-3">
-            <HeaderLogoMark className="h-6 w-6 shrink-0 text-wd-text md:h-8 md:w-8" />
+            <LogoMark className="h-6 w-6 shrink-0 text-wd-text md:h-8 md:w-8" />
             <span className="sr-only">NewVerse</span>
             {/* The lowercase wordmark fits next to the balance on 350px+ phones; only the smallest screens show the mark alone. */}
             <span aria-hidden className="hidden min-w-0 min-[350px]:inline">
