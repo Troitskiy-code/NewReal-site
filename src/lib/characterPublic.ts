@@ -20,6 +20,7 @@ export const publicCharacterSelect = {
   descriptionCard_en: true,
   publicMemory: true,
   publicMemory_en: true,
+  tags: true,
   totalMessages: true,
   createdAt: true,
   updatedAt: true,
@@ -48,6 +49,7 @@ export type PublicCharacterRecord = {
   imageUrl: string | null;
   publicMemory: unknown;
   publicMemory_en: unknown;
+  tags: string | null;
   totalMessages: number;
   createdAt: Date;
   updatedAt: Date;
@@ -124,6 +126,7 @@ export async function findCharacterBySlugForViewer(
     imageUrl: characterAvatarPath(character.id, character.updatedAt),
     publicMemory: character.publicMemory,
     publicMemory_en: character.publicMemory_en,
+    tags: character.tags,
     totalMessages: character.totalMessages,
     createdAt: character.createdAt,
     updatedAt: character.updatedAt,
@@ -163,6 +166,7 @@ export function toPublicCharacterPayload(character: PublicCharacterRecord, viewe
     imageUrl: character.imageUrl,
     publicMemory: character.publicMemory,
     publicMemory_en: character.publicMemory_en,
+    tags: character.tags,
     totalMessages: character.totalMessages,
     createdAt: character.createdAt,
     updatedAt: character.updatedAt,

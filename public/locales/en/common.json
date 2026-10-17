@@ -187,6 +187,7 @@
     "unknownAuthor": "NewVerse",
     "messages": "Messages: {{count}}",
     "knownAbout": "Known about the character",
+    "tags": "Character tags",
     "startChat": "Start chat",
     "share": "Share",
     "copied": "Link copied",
@@ -488,6 +489,79 @@
     "rules": {
       "title": "Platform rules — NewVerse",
       "description": "Character publishing rules and consequences of violations on NewVerse."
+    },
+    "genres": {
+      "title": "Character genres for AI roleplay — NewVerse",
+      "description": "Fantasy, romance, anime, detective, horror and more: choose the kind of story you want to live and find a character for your AI roleplay."
+    },
+    "genre": {
+      "title": "{{h1}} — NewVerse",
+      "titlePage": "{{h1}}, page {{page}} — NewVerse"
+    }
+  },
+  "genrePage": {
+    "home": "Home",
+    "hub": "Genres",
+    "breadcrumbs": "Breadcrumbs",
+    "count": "Characters in this genre: {{count}}",
+    "otherGenres": "Other genres",
+    "empty": "This genre has only a few characters so far. Browse the full catalog or create your own.",
+    "toCatalog": "Full catalog",
+    "hubH1": "Character genres for AI roleplay",
+    "hubIntro": "Pick a genre to see characters with that tag, from fantasy quests and deep-space voyages to calm slice of life and tangled investigations. Each genre shows its most popular public characters first.",
+    "items": {
+      "fantasy": {
+        "h1": "Fantasy characters for AI roleplay",
+        "description": "AI roleplay in fantasy worlds: mages, elves, mercenaries and dragon riders. Pick a character and begin your own adventure on NewVerse."
+      },
+      "romance": {
+        "h1": "Romance characters for AI roleplay",
+        "description": "Romance AI roleplay: flirting, slow-burn relationships and stories about feelings. Pick a character and start chatting on NewVerse."
+      },
+      "anime": {
+        "h1": "Anime characters for AI roleplay",
+        "description": "AI roleplay with anime characters: school life, isekai, magic academies and romance. Pick your character on NewVerse."
+      },
+      "scifi": {
+        "h1": "Sci-fi characters for AI roleplay",
+        "description": "Sci-fi AI roleplay: starship captains, androids and scientists on distant stations. Pick a character on NewVerse."
+      },
+      "mystic": {
+        "h1": "Mystery and supernatural characters for AI roleplay",
+        "description": "Mystery and supernatural AI roleplay: mediums, witches, cursed manors and secrets in no hurry to reveal themselves. Pick a character on NewVerse."
+      },
+      "realistic": {
+        "h1": "Modern-day characters for AI roleplay",
+        "description": "AI roleplay with modern-day characters: colleagues, neighbours, students and stars. Natural dialogue and relationships on NewVerse."
+      },
+      "adventure": {
+        "h1": "Adventure characters for AI roleplay",
+        "description": "Adventure AI roleplay: treasure hunters, pirates, trackers and travellers. Choose a companion and set off on NewVerse."
+      },
+      "detective": {
+        "h1": "Detective characters for AI roleplay",
+        "description": "Detective AI roleplay: investigators, witnesses and suspects. Look for clues and solve cases with NewVerse characters."
+      },
+      "everyday": {
+        "h1": "Slice-of-life characters for AI roleplay",
+        "description": "Slice-of-life AI roleplay: friends, roommates and colleagues for calm, natural conversation. Pick a character on NewVerse."
+      },
+      "cyberpunk": {
+        "h1": "Cyberpunk characters for AI roleplay",
+        "description": "Cyberpunk AI roleplay: hackers, augmented mercenaries and androids in a neon megacity. Pick a character on NewVerse."
+      },
+      "horror": {
+        "h1": "Horror characters for AI roleplay",
+        "description": "Horror AI roleplay: monsters, monster hunters and abandoned houses. Pick a character and test your nerves on NewVerse."
+      },
+      "comedy": {
+        "h1": "Comedy characters for AI roleplay",
+        "description": "Comedy AI roleplay: witty sidekicks, clumsy wizards and absurd situations. Pick a character on NewVerse."
+      },
+      "drama": {
+        "h1": "Drama characters for AI roleplay",
+        "description": "Drama AI roleplay: stories of choice, loss and forgiveness with characters who carry a difficult past. Pick one on NewVerse."
+      }
     }
   },
   "moderation": {

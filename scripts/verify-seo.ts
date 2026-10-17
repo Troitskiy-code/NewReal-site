@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { pageIndexingMetadata, PUBLIC_PAGE_PATHS } from "@/lib/seoIndexing";
+import { FEATURED_GENRES } from "@/lib/characterTags";
+import { GENRE_INTROS } from "@/lib/genreIntros";
+import {
+  findFeaturedGenre, GENRE_INDEX_MIN_CHARACTERS, genreIndexingMetadata, indexableGenreIds, parseGenrePage,
+} from "@/lib/genreSeo";
 
 let checks = 0;
 function check(condition: unknown, label: string) { assert.ok(condition, label); checks++; }
@@ -31,6 +36,37 @@ for (const page of ["home"]) {
 const robots = readFileSync("src/app/robots.txt", "utf8");
 check(/Clean-param: etext&ybaip&yclid \/\s/.test(robots), "Clean-param present");
 check(!/^Disallow:.*(?:login|chat|_next|gallery)/m.test(robots), "crawlers can read noindex and render public content");
+
+// Genre landing pages: canonical/hreflang per page number, one threshold for noindex and the sitemap.
+check(GENRE_INDEX_MIN_CHARACTERS === 8, "genre threshold is 8 public characters");
+const dictionaries = Object.fromEntries((["ru", "en"] as const).map((locale) =>
+  [locale, JSON.parse(readFileSync(`public/locales/${locale}/common.json`, "utf8"))]));
+for (const genre of FEATURED_GENRES) {
+  check(findFeaturedGenre(genre.id) === genre, `${genre.id}: route id resolves`);
+  for (const locale of ["ru", "en"] as const) {
+    const first = genreIndexingMetadata(genre.id, locale, origin, { page: 1, publicCount: GENRE_INDEX_MIN_CHARACTERS });
+    check(first.alternates?.canonical === `${origin}/${locale}/genres/${genre.id}`, `${genre.id}: canonical ${locale}`);
+    check(first.alternates?.languages?.ru === `${origin}/ru/genres/${genre.id}` && first.alternates?.languages?.en === `${origin}/en/genres/${genre.id}`, `${genre.id}: hreflang ru/en`);
+    check((first.robots as { index: boolean }).index, `${genre.id}: indexable at the threshold`);
+    const second = genreIndexingMetadata(genre.id, locale, origin, { page: 2, publicCount: 30 });
+    check(second.alternates?.canonical === `${origin}/${locale}/genres/${genre.id}?page=2`, `${genre.id}: page 2 canonical to itself`);
+    check(second.alternates?.languages?.en === `${origin}/en/genres/${genre.id}?page=2`, `${genre.id}: page 2 hreflang keeps page`);
+    const thin = genreIndexingMetadata(genre.id, locale, origin, { page: 1, publicCount: GENRE_INDEX_MIN_CHARACTERS - 1 });
+    const thinRobots = thin.robots as { index: boolean; follow: boolean };
+    check(thinRobots.index === false && thinRobots.follow === true, `${genre.id}: thin genre noindex,follow`);
+    const text = dictionaries[locale].genrePage.items[genre.id];
+    check(text?.h1 && text.description && text.description.length <= 160, `${genre.id}: ${locale} H1 and description <= 160`);
+    const words = GENRE_INTROS[genre.id][locale].join(" ").split(/\s+/).filter((word) => /[\p{L}\d]/u.test(word)).length;
+    check(words >= 100 && words <= 200, `${genre.id}: ${locale} intro is 100-200 words (${words})`);
+  }
+}
+check(parseGenrePage(undefined) === 1 && parseGenrePage("1") === 1 && parseGenrePage("abc") === 1 && parseGenrePage("-3") === 1, "genre ?page= falls back to 1");
+check(parseGenrePage("2") === 2 && parseGenrePage(["3", "4"]) === 3, "genre ?page= parsed");
+// Public counts on prod, 2026-10-17: three thin genres stay out of the sitemap.
+const prodCounts = { fantasy: 21, romance: 49, anime: 48, scifi: 5, mystic: 9, realistic: 55, adventure: 29, detective: 8, everyday: 49, cyberpunk: 8, horror: 5, comedy: 2, drama: 10 };
+check(indexableGenreIds(prodCounts).join() === "fantasy,romance,anime,mystic,realistic,adventure,detective,everyday,cyberpunk,drama", "sitemap genres at prod counts");
+check(indexableGenreIds({ ...prodCounts, comedy: GENRE_INDEX_MIN_CHARACTERS }).includes("comedy"), "a filled genre enters the sitemap without code changes");
+check(indexableGenreIds({}).length === 0, "genres without counts stay out of the sitemap");
 
 if (process.argv.includes("--http")) {
   const result = spawnSync(process.execPath, ["scripts/verify-seo-runtime.mjs"], { stdio: "inherit", windowsHide: true });

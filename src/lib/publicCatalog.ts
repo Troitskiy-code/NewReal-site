@@ -6,7 +6,7 @@ import { DEFAULT_CHARACTER_SORT, isCharacterSort } from "@/lib/characterSort";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import type { SeoSearchParams } from "@/lib/seoIndexing";
-import { catalogSearchCondition } from "./characterCatalogSearch";
+import { catalogSearchCondition, catalogTagCondition } from "./characterCatalogSearch";
 import { getCharacterRecommendationOrder } from "./characterRecommendations";
 import type { RecommendationMode } from "./characterRecommendationRank";
 import { readOnboardingPrefs } from "./onboardingServer";
@@ -21,13 +21,14 @@ export function parseCatalogQuery(params: SeoSearchParams) {
 }
 
 // React cache is per render/request, not a shared cache of personalized favorites.
-export const getPublicCatalog = cache(async (sort: string, page: number, search: string) => {
+// Genre pages pass a genre tag instead of a search: tags only, names are not matched.
+export const getPublicCatalog = cache(async (sort: string, page: number, search: string, genreTag = "") => {
   try {
     const viewerId = await getViewerId();
     // In Telegram: only the approved catalog (and the viewer's own characters).
     const where = await withTelegramCharacterWhere({
       isPublic: true, slug: { not: null },
-      ...catalogSearchCondition(search),
+      ...(genreTag ? catalogTagCondition(genreTag) : catalogSearchCondition(search)),
     }, viewerId);
     const limit = CHARACTERS_PAGE_LIMIT;
     const total = await prisma.character.count({ where });

@@ -4,7 +4,7 @@ import { LOCALES, withLocale, type Locale } from "@/lib/i18nConfig";
 export const PUBLIC_PAGE_PATHS = {
   home: "/", pricing: "/pricing", coins: "/coins",
   support: "/support", offer: "/offer", refund: "/refund", terms: "/terms",
-  privacy: "/privacy", rules: "/rules",
+  privacy: "/privacy", rules: "/rules", genres: "/genres",
 } as const;
 
 export type SeoSearchParams = Record<string, string | string[] | undefined>;

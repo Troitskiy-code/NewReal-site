@@ -59,8 +59,10 @@ try {
     privateMemory: 'PRIVATE_MEMORY_SENTINEL', systemPrompt: 'SYSTEM_PROMPT_SENTINEL',
     moderationReason: 'MODERATION_SENTINEL', userId: owner.id, isPublic: true,
     totalMessages: 100 - i, updatedAt,
+    // Genres: 25 romance (two pages of 24), comedy thin with 2 (one stored under the English alias).
+    tags: i === 25 ? 'Comedy' : i === 13 ? 'Романтика, Комедия' : 'Романтика, Аниме',
   } });
-  await db.character.create({ data: { id: 'seo-private-id', slug: 'seo-private-slug',
+  await db.character.create({ data: { id: 'seo-private-id', slug: 'seo-private-slug', tags: 'Комедия',
     name: 'PRIVATE_NAME_SENTINEL', descriptionCard: 'Private owner card', isPublic: false,
     userId: owner.id, privateMemory: 'PRIVATE_MEMORY_SENTINEL', systemPrompt: 'SYSTEM_PROMPT_SENTINEL' } });
   child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(appPort)], { env, stdio: 'ignore', windowsHide: true });
@@ -134,6 +136,68 @@ try {
   const staticEntry = sitemap.body.match(/<url>\s*<loc>https:\/\/newvers.ai\/ru<\/loc>(.*?)<\/url>/s)?.[1];
   check(staticEntry !== undefined && !staticEntry.includes('<lastmod>'), 'static entries have no artificial lastmod');
 
+  // Genre landing pages.
+  const robotsMeta = body => body.match(/<meta name="robots" content="([^"]+)"/)?.[1];
+  const hreflang = (body, lang) => body.match(new RegExp(`<link rel="alternate" hreflang="${lang}" href="([^"]+)"`, 'i'))?.[1];
+  const h1 = body => body.match(/<h1[^>]*>(.*?)<\/h1>/s)?.[1];
+  for (const locale of ['ru', 'en']) {
+    const romance = await request(`/${locale}/genres/romance`);
+    check(romance.status === 200, `${locale}/genres/romance: 200`);
+    check(h1(romance.body) === (locale === 'ru' ? 'Романтические персонажи для ролевых игр с ИИ' : 'Romance characters for AI roleplay'), `${locale}/genres/romance: SSR H1`);
+    check(romance.body.includes(`<title>${locale === 'ru' ? 'Романтические персонажи для ролевых игр с ИИ' : 'Romance characters for AI roleplay'} — NewVerse</title>`), `${locale}/genres/romance: title`);
+    check(/<meta name="description" content="[^"]{60,160}"/.test(romance.body), `${locale}/genres/romance: description`);
+    check(romance.body.includes(`rel="canonical" href="https://newvers.ai/${locale}/genres/romance"`), `${locale}/genres/romance: canonical`);
+    check(hreflang(romance.body, 'ru') === 'https://newvers.ai/ru/genres/romance' && hreflang(romance.body, 'en') === 'https://newvers.ai/en/genres/romance', `${locale}/genres/romance: hreflang`);
+    check(robotsMeta(romance.body) === 'index, follow', `${locale}/genres/romance: indexable (25 >= 8)`);
+    check(/<meta property="og:image" content="https:\/\/newvers.ai\/api\/characters\/seo-public-1\/avatar/.test(romance.body), `${locale}/genres/romance: OG image is the top character avatar`);
+    check(romance.body.includes(`href="/${locale}/character/seo-hero-1"`) && romance.body.includes(`href="/${locale}/character/seo-hero-24"`), `${locale}/genres/romance: SSR cards by popularity`);
+    check(!romance.body.includes(`href="/${locale}/character/seo-hero-25"`) && !romance.body.includes(`href="/${locale}/character/seo-hero-26"`), `${locale}/genres/romance: other genres and page 2 absent`);
+    check(romance.body.includes(`href="/${locale}/genres/romance?page=2"`), `${locale}/genres/romance: crawlable pagination`);
+    check(romance.body.includes(`href="/${locale}/genres/comedy"`) && romance.body.includes(`href="/${locale}/genres"`), `${locale}/genres/romance: links to other genres and the hub`);
+    const ld = [...romance.body.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(match => JSON.parse(match[1]));
+    const graph = ld.flatMap(item => item['@graph'] ?? [item]);
+    const list = graph.find(item => item['@type'] === 'ItemList');
+    const crumbs = graph.find(item => item['@type'] === 'BreadcrumbList');
+    check(graph.some(item => item['@type'] === 'CollectionPage' && item.url === `https://newvers.ai/${locale}/genres/romance`), `${locale}/genres/romance: CollectionPage JSON-LD`);
+    check(list?.itemListElement.length === 24 && list.itemListElement[0].url === `https://newvers.ai/${locale}/character/seo-hero-1` && list.itemListElement[0].position === 1, `${locale}/genres/romance: ItemList of the page`);
+    check(crumbs?.itemListElement.map(item => item.item).join() === `https://newvers.ai/${locale},https://newvers.ai/${locale}/genres,https://newvers.ai/${locale}/genres/romance`, `${locale}/genres/romance: BreadcrumbList home > genres > genre`);
+    const page2 = await request(`/${locale}/genres/romance?page=2&utm_source=test`);
+    check(page2.status === 200 && page2.body.includes(`href="/${locale}/character/seo-hero-26"`) && !page2.body.includes(`href="/${locale}/character/seo-hero-1"`), `${locale}/genres/romance?page=2: next page`);
+    check(page2.body.includes(`rel="canonical" href="https://newvers.ai/${locale}/genres/romance?page=2"`) && robotsMeta(page2.body) === 'index, follow', `${locale}/genres/romance?page=2: self canonical, indexable`);
+    check(/"position":25/.test(page2.body), `${locale}/genres/romance?page=2: ItemList continues numbering`);
+    const page1 = await request(`/${locale}/genres/romance?page=1&etext=test`);
+    check(page1.body.includes(`rel="canonical" href="https://newvers.ai/${locale}/genres/romance"`), `${locale}/genres/romance?page=1: canonical clean`);
+    check((await request(`/${locale}/genres/romance?page=3`)).status === 404, `${locale}/genres/romance?page=3: empty page is 404`);
+    const comedy = await request(`/${locale}/genres/comedy`);
+    check(comedy.status === 200 && h1(comedy.body) === (locale === 'ru' ? 'Комедийные персонажи для ролевых игр с ИИ' : 'Comedy characters for AI roleplay'), `${locale}/genres/comedy: renders for users`);
+    check(robotsMeta(comedy.body) === 'noindex, follow', `${locale}/genres/comedy: thin genre noindex,follow`);
+    check(comedy.body.includes(`href="/${locale}/character/seo-hero-13"`) && comedy.body.includes(`href="/${locale}/character/seo-hero-25"`), `${locale}/genres/comedy: alias tag matched`);
+    check(!comedy.body.includes('PRIVATE_NAME_SENTINEL'), `${locale}/genres/comedy: private characters absent`);
+    const empty = await request(`/${locale}/genres/horror`);
+    check(empty.status === 200 && robotsMeta(empty.body) === 'noindex, follow' && empty.body.includes(`href="/${locale}/create"`), `${locale}/genres/horror: empty genre renders noindex with a way out`);
+    const unknown = await request(`/${locale}/genres/not-a-genre`);
+    check(unknown.status === 404 && unknown.body.includes('noindex'), `${locale}/genres/not-a-genre: 404`);
+    const hub = await request(`/${locale}/genres`);
+    check(hub.status === 200 && hub.body.includes(`rel="canonical" href="https://newvers.ai/${locale}/genres"`) && robotsMeta(hub.body) === 'index, follow', `/${locale}/genres: indexable hub`);
+    for (const id of ['fantasy', 'romance', 'anime', 'scifi', 'mystic', 'realistic', 'adventure', 'detective', 'everyday', 'cyberpunk', 'horror', 'comedy', 'drama']) {
+      check(hub.body.includes(`href="/${locale}/genres/${id}"`), `/${locale}/genres: links ${id}`);
+    }
+    const home = await request(`/${locale}`);
+    check(/<a[^>]+href="\/(?:ru|en)\/genres\/romance"[^>]*>/.test(home.body.split('<footer')[0]), `/${locale}: genre chips are crawlable links`);
+    check(home.body.split('<footer')[1]?.includes(`href="/${locale}/genres/fantasy"`) && home.body.split('<footer')[1].includes(`href="/${locale}/genres"`), `/${locale}: footer genre block`);
+    const character = await request(`/${locale}/character/seo-hero-1`);
+    check(character.body.split('<footer')[0].includes(`href="/${locale}/genres/romance"`) && character.body.split('<footer')[0].includes(`href="/${locale}/genres/anime"`), `${locale}: character tags link to genre pages`);
+  }
+  check(sitemap.body.includes('/ru/genres/romance</loc>') && sitemap.body.includes('/en/genres/romance</loc>') && sitemap.body.includes('/ru/genres</loc>'), 'sitemap filled genres and hub');
+  check(!sitemap.body.includes('/genres/comedy</loc>') && !sitemap.body.includes('/genres/horror</loc>') && !sitemap.body.includes('genres/romance?page'), 'sitemap excludes thin genres and pagination');
+  check(sitemap.body.match(/<loc>https:\/\/newvers.ai\/ru\/genres\/romance<\/loc>\s*<lastmod>([^<]+)/)?.[1] === updatedAt.toISOString(), 'genre lastmod is its latest character');
+  // Filling a thin genre flips it to indexable and into the sitemap with no code change.
+  await db.character.updateMany({ where: { id: { in: [14, 15, 16, 17, 18, 19].map(i => `seo-public-${i}`) } }, data: { tags: 'Романтика, Комедия' } });
+  const filled = await request('/ru/genres/comedy');
+  check(robotsMeta(filled.body) === 'index, follow', 'comedy indexable at 8 public characters');
+  const refreshed = await request('/sitemap.xml');
+  check(refreshed.body.includes('/ru/genres/comedy</loc>') && refreshed.body.includes('/en/genres/comedy</loc>'), 'filled genre enters the sitemap');
+
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   const noJs = await browser.newContext({ javaScriptEnabled: false });
   let page = await noJs.newPage();
@@ -158,6 +222,16 @@ try {
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.locator('a[href="/en/character/seo-hero-25"]:visible').waitFor();
   check(page.url().includes('page=2'), 'return from character retains list page');
+  await page.goto(base + '/en');
+  const chip = page.getByRole('group', { name: 'Genres', exact: true }).getByRole('link', { name: 'Comedy', exact: true });
+  check(await chip.getAttribute('href') === '/en/genres/comedy', 'home genre chip is a link to its page');
+  await chip.click();
+  await page.locator('a[href="/en/character/seo-hero-25"]:visible').waitFor();
+  check(new URL(page.url()).pathname === '/en' && await page.locator('a[href="/en/character/seo-hero-1"]:visible').count() === 0, 'chip click still filters the catalog in place');
+  await page.goto(base + '/en/genres/romance');
+  await page.getByRole('link', { name: 'Page 2 of 2', exact: true }).click();
+  await page.locator('a[href="/en/character/seo-hero-26"]:visible').waitFor();
+  check(page.url().endsWith('/en/genres/romance?page=2'), 'genre pagination navigates to ?page=2');
   check(errors.length === 0, 'no browser hydration/runtime errors');
   await page.setViewportSize({ width: 1280, height: 900 });
   const desktopResponse = page.waitForResponse(response => {

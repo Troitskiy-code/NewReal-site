@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { SITE_URL } from "@/lib/seo";
 import { LOCALES, withLocale } from "@/lib/i18nConfig";
+import { getGenreStats } from "@/lib/genreCatalog";
+import { genrePath, indexableGenreIds } from "@/lib/genreSeo";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,20 @@ const STATIC_PAGES: Array<{
   { path: "/terms", changeFrequency: "monthly", priority: 0.3 },
   { path: "/privacy", changeFrequency: "monthly", priority: 0.3 },
   { path: "/rules", changeFrequency: "monthly", priority: 0.3 },
+  { path: "/genres", changeFrequency: "weekly", priority: 0.6 },
 ];
+
+/** Thin genres (noindex) stay out until they fill up; failures propagate like the character query. */
+async function getGenreEntries(): Promise<MetadataRoute.Sitemap> {
+  const stats = await getGenreStats();
+  const counts = Object.fromEntries(Object.entries(stats).map(([id, value]) => [id, value.count]));
+  return indexableGenreIds(counts).flatMap((id) => LOCALES.map((locale) => ({
+    url: `${SITE_URL}${withLocale(genrePath(id), locale)}`,
+    lastModified: stats[id].updatedAt ?? undefined,
+    changeFrequency: "daily" as const,
+    priority: 0.7,
+  })));
+}
 
 async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
   try {
@@ -56,6 +71,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
   );
 
-  const characterEntries = await getPublicCharacterEntries();
-  return [...staticEntries, ...characterEntries];
+  const [genreEntries, characterEntries] = await Promise.all([getGenreEntries(), getPublicCharacterEntries()]);
+  return [...staticEntries, ...genreEntries, ...characterEntries];
 }

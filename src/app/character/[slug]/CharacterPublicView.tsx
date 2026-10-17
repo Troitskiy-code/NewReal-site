@@ -16,6 +16,8 @@ import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { closeCharacterPage } from "@/lib/characterReturn";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import ModerationWarning from "@/components/ModerationWarning";
+import { characterTagLabel, FEATURED_GENRES, recommendationTags } from "@/lib/characterTags";
+import { genrePath } from "@/lib/genreSeo";
 
 export type CharacterPublicViewData = {
   id: string;
@@ -29,6 +31,7 @@ export type CharacterPublicViewData = {
   imageUrl: string | null;
   publicMemory: unknown;
   publicMemory_en: unknown;
+  tags?: string | null;
   totalMessages: number;
   createdAt: string;
   updatedAt?: string | null;
@@ -60,6 +63,7 @@ export default function CharacterPublicView({ character }: { character: Characte
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description = getLocalizedCardDescription(character, locale) || "";
   const publicMemory = pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale);
+  const tags = recommendationTags(character.tags).map((tag) => ({ tag, genre: FEATURED_GENRES.find((item) => item.tag === tag) }));
   const author = character.user?.name?.trim() || t("characterPage.unknownAuthor");
   const createdAt = new Date(character.createdAt).toLocaleDateString(dateLocale(locale), {
     day: "numeric",
@@ -161,6 +165,26 @@ export default function CharacterPublicView({ character }: { character: Characte
           {description ? (
             <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-wd-text/85">{description}</p>
           ) : null}
+
+          {/* Featured genres link to their landing page; other tags are plain labels. */}
+          {tags.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label={t("characterPage.tags")}>
+              {tags.map(({ tag, genre }) => (
+                <li key={tag}>
+                  {genre ? (
+                    <LocaleLink href={genrePath(genre.id)}
+                      className="inline-flex min-h-8 items-center rounded-full border border-wd-border bg-wd-elevated px-3 text-xs font-semibold text-white transition-colors hover:border-wd-secondary">
+                      {characterTagLabel(tag, locale)}
+                    </LocaleLink>
+                  ) : (
+                    <span className="inline-flex min-h-8 items-center rounded-full bg-wd-elevated px-3 text-xs font-semibold text-wd-text-secondary">
+                      {characterTagLabel(tag, locale)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
 
           {publicMemory ? (
             <div className="rounded-2xl bg-wd-elevated p-4">

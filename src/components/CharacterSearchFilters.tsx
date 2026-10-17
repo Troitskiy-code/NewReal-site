@@ -4,6 +4,9 @@ import { FaSearch, FaTimes } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { CHARACTER_SORT_OPTIONS, type CharacterSort } from "@/lib/characterSort";
 import { FEATURED_GENRES, canonicalCharacterTag } from "@/lib/characterTags";
+import { genrePath } from "@/lib/genreSeo";
+import { withLocale } from "@/lib/i18nConfig";
+import { useCurrentLocale } from "@/components/LocaleLink";
 
 const SORT_LABEL_KEYS: Record<CharacterSort, string> = {
   top: "home.sortTop",
@@ -31,6 +34,7 @@ export default function CharacterSearchFilters({
   placeholder,
 }: CharacterSearchFiltersProps) {
   const { t } = useTranslation();
+  const locale = useCurrentLocale();
   const query = search.trim();
   const hasFilters = query.length > 0;
   const searchPlaceholder = placeholder || t("home.searchPlaceholder");
@@ -100,18 +104,23 @@ export default function CharacterSearchFilters({
         </button>
         {FEATURED_GENRES.map((genre) => {
           const active = activeGenre?.id === genre.id;
+          // Crawlers follow the href to the genre page; a plain click keeps filtering in place.
           return (
-            <button
+            <a
               key={genre.id}
-              type="button"
-              onClick={() => onSearchChange(active ? "" : genre.tag)}
-              aria-pressed={active}
+              href={withLocale(genrePath(genre.id), locale)}
+              onClick={(event) => {
+                if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                onSearchChange(active ? "" : genre.tag);
+              }}
+              aria-current={active ? "true" : undefined}
               className={`${chipClassName} ${
                 active ? "border-transparent bg-wd-text text-wd-bg" : "border-transparent bg-wd-card text-wd-text-secondary hover:text-white"
               }`}
             >
               {t(`home.genres.${genre.id}`)}
-            </button>
+            </a>
           );
         })}
       </div>

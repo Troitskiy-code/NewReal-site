@@ -107,3 +107,56 @@ export function buildWebsiteJsonLd(locale: Locale) {
     },
   };
 }
+
+type GenreJsonLdInput = {
+  /** First-page URL (breadcrumb) and this page's URL (CollectionPage). */
+  genreUrl: string;
+  pageUrl: string;
+  name: string;
+  description: string;
+  hubName: string;
+  /** Position of the first character on this page in the whole genre list. */
+  offset: number;
+  characters: Array<{ slug: string | null; name: string }>;
+};
+
+export function buildGenreJsonLd(input: GenreJsonLdInput, locale: Locale) {
+  const items = input.characters.filter((character) => character.slug);
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": input.pageUrl,
+        url: input.pageUrl,
+        name: input.name,
+        description: input.description,
+        inLanguage: dateLocale(locale),
+        isPartOf: { "@type": "WebSite", "@id": SITE_URL, name: "NewVerse", url: SITE_URL },
+        mainEntity: { "@id": `${input.pageUrl}#characters` },
+        breadcrumb: { "@id": `${input.pageUrl}#breadcrumb` },
+      },
+      {
+        "@type": "ItemList",
+        "@id": `${input.pageUrl}#characters`,
+        itemListOrder: "https://schema.org/ItemListOrderDescending",
+        numberOfItems: items.length,
+        itemListElement: items.map((character, index) => ({
+          "@type": "ListItem",
+          position: input.offset + index + 1,
+          name: character.name,
+          url: absoluteSiteUrl(`/character/${character.slug}`, locale),
+        })),
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${input.pageUrl}#breadcrumb`,
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: locale === "en" ? "Home" : "Главная", item: absoluteSiteUrl("/", locale) },
+          { "@type": "ListItem", position: 2, name: input.hubName, item: absoluteSiteUrl("/genres", locale) },
+          { "@type": "ListItem", position: 3, name: input.name, item: input.genreUrl },
+        ],
+      },
+    ],
+  };
+}
