@@ -28,10 +28,12 @@ type CharacterCardProps = {
     moderationStatus?: string | null;
   };
   className?: string;
+  /** First row of a grid: load at once. Every other card waits until it nears the viewport. */
+  eager?: boolean;
   onFavoriteChange?: (characterId: string, isFavorited: boolean) => void;
 };
 
-export default function CharacterCard({ character, className = "", onFavoriteChange }: CharacterCardProps) {
+export default function CharacterCard({ character, className = "", eager = false, onFavoriteChange }: CharacterCardProps) {
   const { i18n, t } = useTranslation();
   const locale = i18n.language;
   const totalMessages = character.totalMessages ?? 0;
@@ -55,6 +57,8 @@ export default function CharacterCard({ character, className = "", onFavoriteCha
             <img
               src={avatarUrl}
               alt={name}
+              loading={eager ? "eager" : "lazy"}
+              decoding="async"
               className="absolute inset-0 -z-20 h-full w-full object-cover object-[center_25%] transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none"
               onError={(event) => {
                 event.currentTarget.style.display = "none";

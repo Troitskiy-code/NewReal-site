@@ -473,6 +473,7 @@ function ChatMessageItem({
   // Actions go right under the message they act on, at its edge, so they never float between two messages.
   return (
     <div
+      data-chat-message
       className={`flex w-full max-w-[90%] flex-col gap-1 md:max-w-[85%] ${
         isUser ? "ml-auto items-end" : "items-start"
       }`}
@@ -1203,7 +1204,22 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   }, [characterId, status, session?.user?.id, historyReload, locale, t, urlThreadId, newThreadRequested]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const end = messagesEndRef.current;
+    // A story that holds only the greeting opens at its first line: a long greeting would
+    // otherwise land the reader at its end. Replies (and "continue" on the greeting) follow the end.
+    if (messages.length === 1 && messages[0].role === "assistant" && !streamingMessageId) {
+      const scroller = end?.closest("[data-character-list-scroll]");
+      const greeting = scroller?.querySelector("[data-chat-message]");
+      if (scroller && greeting) {
+        // The card above the greeting stays in view while the greeting starts in the upper half.
+        const start = scroller.scrollTop + greeting.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16;
+        scroller.scrollTop = start > scroller.clientHeight / 2 ? start : 0;
+        return;
+      }
+    }
+    end?.scrollIntoView({ behavior: "smooth" });
+    // streamingMessageId is set before the streamed text changes `messages`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   useEffect(() => {

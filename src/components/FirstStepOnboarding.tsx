@@ -176,7 +176,7 @@ export default function FirstStepOnboarding({ source, initialPrefs, onClose }: {
         {(["anime", "realistic"] as const).map(value => (
           <button key={value} type="button" aria-pressed={style === value} onClick={() => chooseStyle(value)} data-onboarding-style={value}
             className={`group relative isolate aspect-[16/10] overflow-hidden rounded-[22px] min-[480px]:aspect-[3/4] border-2 bg-[#1c1926] text-left transition-[transform,border-color] duration-200 hover:-translate-y-0.5 motion-reduce:transform-none data-[early-tap]:border-wd-primary ${style === value ? "border-wd-primary" : "border-transparent hover:border-wd-primary/60"}`}>
-            <img src={`/images/onboarding/cover-${value}.webp`} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover object-[center_30%]" />
+            <img src={`/images/onboarding/cover-${value}.webp`} alt="" fetchPriority="high" className="absolute inset-0 -z-20 h-full w-full object-cover object-[center_30%]" />
             <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgba(8,8,10,0.95)_0%,rgba(8,8,10,0.55)_30%,transparent_55%)]" />
             {style === value && <Tick />}
             <span className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 p-3 md:p-4">
@@ -325,9 +325,10 @@ export default function FirstStepOnboarding({ source, initialPrefs, onClose }: {
     </>;
   }
 
+  // Same layer as the site's other modals: above the desktop sidebar (z-[210]) and the header.
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="onboarding-title"
-      className="fixed inset-0 z-[200] grid place-items-center bg-black/70 backdrop-blur-md md:p-7">
+      className="fixed inset-0 z-[10050] grid place-items-center bg-black/70 backdrop-blur-md md:p-7">
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#13111a] md:h-auto md:max-h-full md:max-w-[780px] md:rounded-3xl md:border md:border-white/12 md:shadow-[0_30px_90px_rgba(0,0,0,0.7)]">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(520px_240px_at_90%_-10%,rgba(242,196,109,0.14),transparent_60%),radial-gradient(440px_240px_at_0%_110%,rgba(225,29,72,0.18),transparent_60%)]" />
         <div className="relative grid grid-cols-[44px_1fr_auto] items-center gap-3 px-3 pt-[max(12px,env(safe-area-inset-top))] md:px-5 md:pt-4">

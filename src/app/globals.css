@@ -571,14 +571,16 @@ body {
     background: var(--color-bg-page);
   }
 
+  /* The sharp portrait, dimmed for the text in front of it. */
   .nv-chat-portrait::before {
     content: "";
     position: absolute;
     top: 0;
     right: 0;
+    z-index: 1;
     height: 100%;
     aspect-ratio: 3 / 4;
-    background-image: var(--nv-chat-portrait-image);
+    background-image: linear-gradient(rgb(0 0 0 / 0.4), rgb(0 0 0 / 0.4)), var(--nv-chat-portrait-image);
     background-repeat: no-repeat;
     background-position: center top;
     background-size: cover;
@@ -586,13 +588,15 @@ body {
     mask-image: linear-gradient(to right, transparent 0%, #000 50%);
   }
 
+  /*
+    Under it, the same art blurred and darkened covers the whole chat area, so the part left of
+    the portrait is not plain black. The negative inset hides the blur's soft edges.
+  */
   .nv-chat-portrait::after {
-    background: linear-gradient(
-      to right,
-      rgb(0 0 0 / 0.6) 0%,
-      rgb(0 0 0 / 0.5) 50%,
-      rgb(0 0 0 / 0.3) 100%
-    );
+    inset: -48px;
+    z-index: 0;
+    background: var(--nv-chat-portrait-image) center 20% / cover no-repeat;
+    filter: blur(40px) brightness(0.4);
   }
 }
 

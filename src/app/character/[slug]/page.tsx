@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
+import JsonLd from "@/components/JsonLd";
 import CharacterPublicView from "./CharacterPublicView";
 import { getCharacterPageData } from "@/lib/characterPageData";
 import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL } from "@/lib/seo";
 import { translate } from "@/lib/getDictionary";
 import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
-import { absoluteAssetUrl, absoluteSiteUrl } from "@/lib/jsonLd";
+import { absoluteAssetUrl, absoluteSiteUrl, buildCharacterJsonLd } from "@/lib/jsonLd";
 import { withLocale } from "@/lib/i18nConfig";
 
 type PageProps = {
@@ -78,10 +79,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CharacterPage({ params }: PageProps) {
   const { slug } = await params;
-  const { view } = await getCharacterPageData(slug);
+  const { character, locale, view } = await getCharacterPageData(slug);
+  const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
+  const description = truncateDescription(
+    getLocalizedCardDescription(character, locale) ||
+    pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) ||
+    ""
+  );
 
   return (
     <div className="flex min-h-dvh flex-col bg-wd-bg text-wd-text">
+      {character.isPublic ? (
+        <JsonLd
+          data={buildCharacterJsonLd(
+            {
+              slug: character.slug,
+              name,
+              description,
+              // The avatar route path, never inline image data.
+              imageUrl: character.imageUrl,
+              createdAt: character.createdAt,
+              totalMessages: character.totalMessages,
+              authorName: character.user?.name ?? null,
+            },
+            locale
+          )}
+        />
+      ) : null}
       <main className="flex-1 px-4 py-8 sm:px-6">
         <CharacterPublicView character={view} />
       </main>

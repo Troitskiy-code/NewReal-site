@@ -11,6 +11,7 @@ import "./globals.css";
 
 // "Созвездие" type system: Onest for the interface, Unbounded for headings,
 // Literata for story text in chats (it reads like a book, not a messenger).
+// Only Onest and Unbounded are on the first screen of every page, so only they are preloaded.
 const onest = Onest({
   variable: "--font-onest",
   subsets: ["latin", "cyrillic"],
@@ -29,6 +30,8 @@ const literata = Literata({
   subsets: ["latin", "cyrillic"],
   style: ["normal", "italic"],
   display: "swap",
+  // Four files (two styles × two subsets): the browser fetches them when chat text uses them.
+  preload: false,
 });
 
 export const dynamic = "force-dynamic";

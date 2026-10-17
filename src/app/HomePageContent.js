@@ -16,6 +16,9 @@ import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
 import { useTranslation } from "react-i18next";
 import { withLocale } from "@/lib/i18nConfig";
 
+// The widest grid row up to lg (4 columns); on xl the fifth card is in view and loads at once anyway.
+const FIRST_ROW_CARDS = 4;
+
 export default function HomePageContent({ initialData, showHero = false, onboarding = null, freeQuotaOffer = false }) {
   const { t, i18n } = useTranslation();
   const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
@@ -105,8 +108,8 @@ export default function HomePageContent({ initialData, showHero = false, onboard
         ) : (
           <>
             <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5 xl:gap-5">
-              {characters.map((character) => (
-                <CharacterCard key={character.id} character={character}
+              {characters.map((character, index) => (
+                <CharacterCard key={character.id} character={character} eager={index < FIRST_ROW_CARDS}
                   onFavoriteChange={sort === "for-you" ? reload : undefined} />
               ))}
             </div>
