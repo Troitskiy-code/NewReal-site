@@ -1,35 +1,15 @@
-# AllVPN reserve for DeepInfra
+# External reserve: deployment status
 
-The server runs Xray and Next.js in one container. Xray reads the HTTPS subscription at runtime and exposes an HTTP CONNECT proxy on `127.0.0.1:18080`. The supplied subscription contains VLESS REALITY nodes; Happ itself is not installed on the server.
+The embedded AllVPN gateway was removed from the application on 2026-10-17 after Relaxdev blocked builds containing its VPN/proxy component. Do not restore that integration on Relaxdev or move it to another product of that platform.
 
-Only DeepInfra chat, memory and embeddings use this route. Other providers retain their existing connections. TLS verification remains enabled. Xray has no direct outbound and neither its credentials nor generated content appear in its logs. `.env.local` and temporary runtime files are excluded from Git and the Docker build context.
+The production Docker image installs no VPN binary. npm start launches Next.js and the existing authenticated character-generation worker through scripts/start-app.mjs. The worker's enable/disable flags and loopback endpoint are unchanged.
 
-## Relaxdev configuration
+For Relaxdev, use DEEPINFRA_NETWORK_MODE=primary with the existing DEEPINFRA_PROXY_URL. Disable ALLVPN_ENABLED on the old running image before replacing it, and remove the private subscription and obsolete local gateway settings from the platform. The new application image needs no VPN process or subscription.
 
-Choose the project stack **Docker / own Dockerfile**. Keep all existing application variables and add:
+A private local transfer backup is retained outside Git under .runtime/allvpn-transfer-2026-10-17/, with a ZIP copy under logs/. It preserves the original integration, source checksums, a standalone loopback gateway client and the private subscription. It contains no application API keys, database credentials, or admin/cron secrets. Keep this archive private. It is excluded from the Docker context and is not part of the deployed repository.
 
-```dotenv
-ALLVPN_ENABLED=1
-ALLVPN_SUBSCRIPTION_URL=<private HTTPS subscription>
-DEEPINFRA_NETWORK_MODE=allvpn
-```
+Use that backup only on a separate server where the operator permits it. Its listener remains local to that server; authenticated, access-restricted HTTPS CONNECT access from the application must be configured separately before any remote connection. That setup is deferred, rather than exposing an open proxy.
 
-`allvpn` forces DeepInfra through the reserve and fails if it is unavailable. After the test, set `DEEPINFRA_NETWORK_MODE=auto` and redeploy. `auto` starts with the existing `DEEPINFRA_PROXY_URL`, opens a 60-second reserve window after a network error, and then tries the primary again. Authentication, HTTP rate limits, certificate errors and caller cancellations do not trigger switching. `primary` disables the reserve.
+The application retains the external-reserve routing interface (ALLVPN_PROXY_URL with DEEPINFRA_NETWORK_MODE=auto) for a future permitted external endpoint. Do not set that URL to the former 127.0.0.1:18080 listener on Relaxdev: it no longer exists. Do not enable external failover until the new endpoint is configured and tested.
 
-Existing retry and accounting rules remain in force. A failed attempt before the stream starts may use the reserve on the existing retry. A partially delivered stream is never regenerated; the next request can use the reserve. Service calls without their own retry use the reserve on their following request.
-
-At startup, nodes are checked in order from `ALLVPN_NODE_INDEX` (default 0). An unauthenticated DeepInfra models request verifies the tunnel without paid generation. An exited Xray process is restarted every 30 seconds. The subscription is refreshed on restart; a running Xray process whose upstream node stops responding requires an application restart or a different preferred node.
-
-The Docker image pins official Xray v26.3.27 and verifies the release SHA-256 checksum. The HTTP listener is not publicly exposed. Both dependency/build and runtime images install OpenSSL before Prisma generation so the generated database engine matches the Debian runtime.
-
-## Local checks
-
-```sh
-npm run setup:allvpn
-npm run verify:allvpn
-npm run diagnose:allvpn -- --live --network-only
-```
-
-For a short synthetic stream, configure `DEEPINFRA_API_KEY` privately and run `npm run diagnose:allvpn -- --live`. This allows up to two billed attempts, each capped at 128 output tokens, and uses an in-memory accounting store. The report is written under ignored `logs/`. The production admin chat diagnostics also display the selected route and per-attempt route, completion marker and transport timings.
-
-Verified locally: 24 AllVPN behavior checks, 23 admin diagnostic checks, 10 existing DeepInfra network checks, 18 avatar proxy checks, TypeScript for application sources, and a real AllVPN tunnel to DeepInfra (HTTP 200, no billed requests). Server rollout and an authenticated stream must be confirmed separately.
+Relaxdev's published rules allow an application's outgoing API requests through an external proxy (section 2.4). A project/build block may still require a support review after the prohibited component is removed: https://relaxdev.ru/rules .
