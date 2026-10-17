@@ -3,9 +3,10 @@ import { Prisma } from "@prisma/client";
 import { PAYMENT_PROVIDER } from "./paymentEvent";
 import { normalizeCheckoutAttribution } from "./paymentAttribution";
 import { METRIKA_COUNTER_ID } from "./metrika";
+import { isRobokassaTestMode } from "./robokassaConfig";
 
 export function isDeclaredTestPayment(userId: string): boolean {
-  return process.env["ROBOKASSA_TEST_MODE"] === "true" || process.env["ROBOKASSA_TEST_MODE"] === "1"
+  return isRobokassaTestMode()
     || (process.env["PAYMENT_TEST_USER_IDS"] ?? "").split(",").map(s => s.trim()).filter(Boolean).includes(userId);
 }
 export async function registerPaymentOrder(input: {

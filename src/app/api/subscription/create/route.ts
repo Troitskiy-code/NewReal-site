@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
     const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToPurchase");
     if (unverified) return unverified;
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Некорректный запрос платежа" }, { status: 400 });
+    }
     const planId = typeof body?.planId === "string" ? body.planId.trim() : "";
     const period = body?.period === "year" ? "year" : body?.period === "month" ? "month" : "";
     const applyMode =

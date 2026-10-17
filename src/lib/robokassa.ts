@@ -1,13 +1,14 @@
 import crypto from "crypto";
 import { debugLog, errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { withLocale, type Locale } from "@/lib/i18nConfig";
+import { isRobokassaTestMode } from "./robokassaConfig";
 
 const SITE_URL = "https://newvers.ai";
 
 const MERCHANT_ID = process.env.ROBOKASSA_MERCHANT_ID ?? "";
 const PASSWORD = process.env.ROBOKASSA_PASSWORD ?? "";
 const PASSWORD2 = process.env.ROBOKASSA_PASSWORD2 ?? "";
-export const ROBOKASSA_TEST_MODE = process.env.ROBOKASSA_TEST_MODE === "1";
+export const ROBOKASSA_TEST_MODE = isRobokassaTestMode();
 
 type ShpParams = Record<string, string>;
 
@@ -99,9 +100,10 @@ export type RobokassaRecurringOptions = {
 };
 
 function nextInvId(): string {
-  return String(
-    Math.max(1, (Date.now() % 1_000_000_000) * 2 + (Math.floor(Math.random() * 1000) % 2))
-  );
+  // Robokassa accepts positive signed 64-bit IDs. Keep them as strings: JS numbers
+  // lose precision here. Randomness works across instances without a repeating clock.
+  const id = crypto.randomBytes(8).readBigUInt64BE() & BigInt("9223372036854775807");
+  return (id || BigInt(1)).toString();
 }
 
 function buildPaymentSignature(
@@ -149,8 +151,8 @@ export function createRobokassaCheckout(options: {
   locale?: Locale;
   invoiceId?: string;
 }): RobokassaCheckout {
-  if (!MERCHANT_ID || !PASSWORD) {
-    errorLog("Robokassa", "Payment error: merchant or password is not configured");
+  if (!MERCHANT_ID || !PASSWORD || !PASSWORD2) {
+    errorLog("Robokassa", "Payment error: merchant, Password1 or Password2 is not configured");
     throw new Error("Robokassa is not configured");
   }
 
@@ -251,7 +253,7 @@ export async function chargeRobokassaRecurring(options: {
   receipt?: RobokassaReceipt;
   email?: string | null;
 }): Promise<{ invId: string }> {
-  if (!MERCHANT_ID || !PASSWORD) {
+  if (!MERCHANT_ID || !PASSWORD || !PASSWORD2) {
     throw new Error("Robokassa is not configured");
   }
 

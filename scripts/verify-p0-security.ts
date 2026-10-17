@@ -494,9 +494,11 @@ try {
       "crc-32": require("crc-32"),
       "@/lib/logger": { errorLog, infoLog, debugLog: errorLog, toSafeDiagnostic },
       "@/lib/i18nConfig": { withLocale: (_locale: string, url: string) => url },
+      "./robokassaConfig": { isRobokassaTestMode: () => true },
     },
     {
-      process: { env: { ROBOKASSA_MERCHANT_ID: "synthetic", ROBOKASSA_PASSWORD: "synthetic", ROBOKASSA_TEST_MODE: "1" } } as NodeJS.Process,
+      // Password2 is required too, so the call reaches the HTTP 400 path instead of the config guard.
+      process: { env: { ROBOKASSA_MERCHANT_ID: "synthetic", ROBOKASSA_PASSWORD: "synthetic", ROBOKASSA_PASSWORD2: "synthetic", ROBOKASSA_TEST_MODE: "1" } } as NodeJS.Process,
       fetch: (async () => ({
         ok: false,
         status: 400,

@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
     const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToPurchase");
     if (unverified) return unverified;
 
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Некорректный запрос платежа" }, { status: 400 });
+    }
     const packageId = Number(body?.packageId);
     const pkg = Number.isFinite(packageId) ? getVcPackage(packageId) : undefined;
 

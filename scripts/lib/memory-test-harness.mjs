@@ -192,7 +192,8 @@ export function createModuleLoader({ prismaFor, session = { userId: null }, sour
     }
     const code = ts.transpileModule(sourceTransform(file, source), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX },
-      fileName: file,
+      // TypeScript keeps ESM syntax for .mjs (e.g. src/lib/brand.mjs); this loader needs CommonJS.
+      fileName: file.replace(/\.mjs$/i, '.js'),
     }).outputText;
     const dependency = (name) => {
       if (name === '@/lib/prisma') return { prisma: prismaFor(file) };
