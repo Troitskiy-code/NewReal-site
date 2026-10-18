@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { pageIndexingMetadata, PUBLIC_PAGE_PATHS } from "@/lib/seoIndexing";
 import { FEATURED_GENRES } from "@/lib/characterTags";
 import { GENRE_INTROS } from "@/lib/genreIntros";
+import { catalogVariantText } from "@/lib/catalogMeta";
 import {
   findFeaturedGenre, GENRE_INDEX_MIN_CHARACTERS, genreIndexingMetadata, indexableGenreIds, parseGenrePage,
 } from "@/lib/genreSeo";
@@ -34,7 +35,8 @@ for (const page of ["home"]) {
   }
 }
 const robots = readFileSync("src/app/robots.txt", "utf8");
-check(/Clean-param: etext&ybaip&yclid \/\s/.test(robots), "Clean-param present");
+check(/Clean-param: etext&ybaip&yclid&utm_source&utm_medium&utm_campaign&utm_content&utm_term&gclid&_openstat \/\s/.test(robots), "Clean-param present");
+check(!/Clean-param:[^\n]*\b(?:sort|page|q|invoice|InvId)\b/.test(robots), "Clean-param keeps catalog, search and payment parameters");
 check(!/^Disallow:.*(?:login|chat|_next|gallery)/m.test(robots), "crawlers can read noindex and render public content");
 
 // Genre landing pages: canonical/hreflang per page number, one threshold for noindex and the sitemap.
@@ -67,6 +69,24 @@ const prodCounts = { fantasy: 21, romance: 49, anime: 48, scifi: 5, mystic: 9, r
 check(indexableGenreIds(prodCounts).join() === "fantasy,romance,anime,mystic,realistic,adventure,detective,everyday,cyberpunk,drama", "sitemap genres at prod counts");
 check(indexableGenreIds({ ...prodCounts, comedy: GENRE_INDEX_MIN_CHARACTERS }).includes("comedy"), "a filled genre enters the sitemap without code changes");
 check(indexableGenreIds({}).length === 0, "genres without counts stay out of the sitemap");
+
+// Catalog variants are noindex but must not reuse the home title and description.
+const translate = (locale: string, key: string, vars: Record<string, string | number> = {}) => {
+  const value = key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], dictionaries[locale as "ru" | "en"]);
+  if (typeof value !== "string") throw new Error(`Missing ${locale} key ${key}`);
+  return Object.entries(vars).reduce((text, [name, replacement]) => text.replaceAll(`{{${name}}}`, String(replacement)), value);
+};
+const homeText = { title: translate("ru", "meta.home.title"), description: translate("ru", "meta.home.description") };
+const variant = (params: Record<string, string>, locale = "ru") => catalogVariantText((key, vars) => translate(locale, key, vars), params, homeText);
+check(variant({}) === homeText && variant({ sort: "top" }) === homeText && variant({ page: "1" }) === homeText, "home and its canonical variants keep the home text");
+check(variant({ utm_source: "x", yclid: "1" }) === homeText, "tracking parameters do not change the home text");
+const variants = [variant({ page: "2" }), variant({ page: "3" }), variant({ sort: "new" }), variant({ sort: "random" }), variant({ sort: "for-you" }), variant({ q: "Аниме" }), variant({ sort: "new", page: "2" })];
+check(new Set(variants.map(v => v.title)).size === variants.length && variants.every(v => v.title !== homeText.title), "catalog variant titles are unique");
+check(new Set(variants.map(v => v.description)).size === variants.length && variants.every(v => v.description !== homeText.description), "catalog variant descriptions are unique");
+check(variant({ page: "2" }).title.includes("страница 2") && variant({ q: "Аниме" }).title.includes("Аниме"), "page number and query appear in the title");
+check(variant({ sort: "new" }, "en").title.startsWith("New AI characters"), "English variant titles are localized");
+check(translate("ru", "meta.character.title", { name: "Сэм" }) !== translate("en", "meta.character.title", { name: "Сэм" }), "character title templates differ between RU and EN");
+check(translate("ru", "meta.genre.descriptionPage", { description: "D", page: 2 }).includes("2"), "genre pages 2+ carry the page number in the description");
 
 if (process.argv.includes("--http")) {
   const result = spawnSync(process.execPath, ["scripts/verify-seo-runtime.mjs"], { stdio: "inherit", windowsHide: true });

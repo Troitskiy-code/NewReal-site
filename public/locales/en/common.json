@@ -481,7 +481,7 @@
       "description": "Roleplay with {{name}}. Dive into the story and keep the plot going."
     },
     "character": {
-      "title": "{{name}} — NewVerse",
+      "title": "{{name}} — AI roleplay character | NewVerse",
       "description": "{{name}} on NewVerse. Start a roleplay and learn their story.",
       "fallbackTitle": "Character — NewVerse",
       "fallbackDescription": "Public character page on NewVerse."
@@ -496,7 +496,27 @@
     },
     "genre": {
       "title": "{{h1}} — NewVerse",
-      "titlePage": "{{h1}}, page {{page}} — NewVerse"
+      "titlePage": "{{h1}}, page {{page}} — NewVerse",
+      "descriptionPage": "{{description}} Page {{page}}."
+    },
+    "catalog": {
+      "title": "{{name}} — NewVerse",
+      "all": "AI character catalog",
+      "search": "Search “{{query}}” among characters",
+      "pageSuffix": ", page {{page}}",
+      "pageSentence": "Page {{page}}.",
+      "description": "NewVerse catalog of AI characters for roleplay in English and Russian.",
+      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in English and Russian.",
+      "sort": {
+        "new": "New AI characters",
+        "random": "Random AI characters",
+        "for-you": "Characters picked for you"
+      },
+      "sortDescription": {
+        "new": "New on NewVerse: recently added characters and worlds for AI roleplay.",
+        "random": "A random pick of NewVerse characters — discover an unexpected AI story.",
+        "for-you": "NewVerse characters picked for your interests, for AI roleplay."
+      }
     }
   },
   "genrePage": {

@@ -5,6 +5,7 @@ import { translate } from "@/lib/getDictionary";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { DEFAULT_LOCALE } from "@/lib/i18nConfig";
 import { pageIndexingMetadata, type SeoSearchParams } from "@/lib/seoIndexing";
+import { catalogVariantText } from "@/lib/catalogMeta";
 import { brandAssetUrl } from "@/lib/brand.mjs";
 
 export const SITE_URL = "https://newvers.ai";
@@ -110,10 +111,11 @@ export async function getLocalizedPageMetadata(
   options: { inheritOnly?: boolean; searchParams?: SeoSearchParams } = {},
 ): Promise<Metadata> {
   const locale = await getRequestLocale();
-  const metadata = createPageMetadata(
-    translate(locale, `meta.${page}.title`),
-    translate(locale, `meta.${page}.description`)
-  );
+  const base = { title: translate(locale, `meta.${page}.title`), description: translate(locale, `meta.${page}.description`) };
+  const text = page === "home" && options.searchParams
+    ? catalogVariantText((key, vars) => translate(locale, key, vars), options.searchParams, base)
+    : base;
+  const metadata = createPageMetadata(text.title, text.description);
   const privateUrl = (await headers()).get(PRIVATE_URL_HEADER) === "1";
   metadata.referrer = privateUrl ? "no-referrer" : "strict-origin";
   // Root defaults must not give every descendant the homepage canonical.

@@ -485,7 +485,7 @@
       "description": "Ролевая игра с персонажем {{name}}. Погрузитесь в историю и развивайте сюжет."
     },
     "character": {
-      "title": "{{name}} — NewVerse",
+      "title": "{{name}} — ролевая игра с ИИ-персонажем | NewVerse",
       "description": "Персонаж {{name}} в NewVerse. Начните ролевую игру и узнайте его историю.",
       "fallbackTitle": "Персонаж — NewVerse",
       "fallbackDescription": "Публичная страница персонажа NewVerse."
@@ -500,7 +500,27 @@
     },
     "genre": {
       "title": "{{h1}} — NewVerse",
-      "titlePage": "{{h1}}, страница {{page}} — NewVerse"
+      "titlePage": "{{h1}}, страница {{page}} — NewVerse",
+      "descriptionPage": "{{description}} Страница {{page}}."
+    },
+    "catalog": {
+      "title": "{{name}} — NewVerse",
+      "all": "Каталог ИИ-персонажей",
+      "search": "Поиск «{{query}}» среди персонажей",
+      "pageSuffix": ", страница {{page}}",
+      "pageSentence": "Страница {{page}}.",
+      "description": "Каталог ИИ-персонажей NewVerse для ролевых игр на русском и английском.",
+      "searchDescription": "Персонажи NewVerse по запросу «{{query}}»: ролевые истории с ИИ на русском и английском.",
+      "sort": {
+        "new": "Новые ИИ-персонажи",
+        "random": "Случайные ИИ-персонажи",
+        "for-you": "Подборка персонажей для вас"
+      },
+      "sortDescription": {
+        "new": "Новые персонажи NewVerse: недавно добавленные герои и миры для ролевых игр с ИИ.",
+        "random": "Случайная подборка персонажей NewVerse — откройте неожиданную историю с ИИ.",
+        "for-you": "Персонажи NewVerse, подобранные под ваши интересы, для ролевых игр с ИИ."
+      }
     }
   },
   "genrePage": {

@@ -2,8 +2,9 @@ User-agent: *
 Allow: /
 Disallow: /api/admin/
 
-# Yandex ignores these advertising parameters without changing browser URLs.
+# Yandex ignores these advertising and campaign parameters without changing browser URLs,
+# so ad links do not become duplicate copies of the page (checkout attribution reads them client-side).
 # Do not add sort, page, q, invoice or authentication parameters here.
-Clean-param: etext&ybaip&yclid /
+Clean-param: etext&ybaip&yclid&utm_source&utm_medium&utm_campaign&utm_content&utm_term&gclid&_openstat /
 
 Sitemap: https://newvers.ai/sitemap.xml

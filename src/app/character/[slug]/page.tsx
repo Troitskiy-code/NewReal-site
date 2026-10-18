@@ -7,7 +7,7 @@ import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL
 import { translate } from "@/lib/getDictionary";
 import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
 import { absoluteAssetUrl, absoluteSiteUrl, buildCharacterJsonLd } from "@/lib/jsonLd";
-import { withLocale } from "@/lib/i18nConfig";
+import { isEnglishLocale, withLocale } from "@/lib/i18nConfig";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -32,9 +32,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const { character, locale } = await getCharacterPageData(slug);
 
     const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name ?? "";
+    // Without its own English text the EN page would repeat the Russian description; the
+    // template keeps the two language versions distinct for search engines.
+    const hasOwnText = !isEnglishLocale(locale) || Boolean(character.descriptionCard_en?.trim() || character.description_en?.trim());
     const description =
-      getLocalizedCardDescription(character, locale) ||
-      pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) ||
+      (hasOwnText ? getLocalizedCardDescription(character, locale) : null) ||
+      (hasOwnText ? pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) : null) ||
       translate(locale, "meta.character.description", { name: name || "Character" });
     const truncatedDescription = truncateDescription(description || "");
     const image = characterOgImage(character.imageUrl);

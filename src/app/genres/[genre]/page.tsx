@@ -48,7 +48,9 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
     : translate(locale, "meta.genre.title", { h1 });
   const first = data.data[0];
   const image = first ? absoluteAssetUrl(first.imageUrl) : OG_IMAGE;
-  const metadata = createPageMetadata(title, description, image);
+  // Every page number gets its own description, not only its own title.
+  const pageDescription = page > 1 ? translate(locale, "meta.genre.descriptionPage", { description, page }) : description;
+  const metadata = createPageMetadata(title, pageDescription, image);
   const indexing = genreIndexingMetadata(genre.id, locale, SITE_URL, { page, publicCount: data.publicCount });
 
   return {
