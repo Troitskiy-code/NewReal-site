@@ -1,0 +1,171 @@
+{
+  "provider": "deepinfra",
+  "model": "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+  "report": [
+    {
+      "turn": {
+        "user": "Меня зовут Артём. Я живу в Казани.",
+        "reply": "Меня зовут Лира. Я люблю музыку."
+      },
+      "status": "succeeded",
+      "errorCode": null,
+      "active": [
+        {
+          "subject": "character",
+          "key": "likes",
+          "value": "музыка"
+        },
+        {
+          "subject": "character",
+          "key": "name",
+          "value": "Лира"
+        },
+        {
+          "subject": "user",
+          "key": "city",
+          "value": "Казань"
+        },
+        {
+          "subject": "user",
+          "key": "name",
+          "value": "Артём"
+        }
+      ]
+    },
+    {
+      "turn": {
+        "user": "Моё настоящее имя — Никита. Я работаю врачом.",
+        "reply": "Рада знакомству, Никита."
+      },
+      "status": "succeeded",
+      "errorCode": null,
+      "active": [
+        {
+          "subject": "character",
+          "key": "likes",
+          "value": "музыка"
+        },
+        {
+          "subject": "character",
+          "key": "name",
+          "value": "Лира"
+        },
+        {
+          "subject": "user",
+          "key": "city",
+          "value": "Казань"
+        },
+        {
+          "subject": "user",
+          "key": "name",
+          "value": "Никита"
+        },
+        {
+          "subject": "user",
+          "key": "occupation",
+          "value": "врач"
+        }
+      ]
+    },
+    {
+      "turn": {
+        "user": "Я больше не работаю врачом.",
+        "reply": "Поняла тебя."
+      },
+      "status": "succeeded",
+      "errorCode": null,
+      "active": [
+        {
+          "subject": "character",
+          "key": "likes",
+          "value": "музыка"
+        },
+        {
+          "subject": "character",
+          "key": "name",
+          "value": "Лира"
+        },
+        {
+          "subject": "user",
+          "key": "city",
+          "value": "Казань"
+        },
+        {
+          "subject": "user",
+          "key": "name",
+          "value": "Никита"
+        }
+      ]
+    }
+  ],
+  "sourceHistory": [
+    {
+      "subject": "character",
+      "key": "likes",
+      "value": "музыка",
+      "status": "active"
+    },
+    {
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "status": "active"
+    },
+    {
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "status": "active"
+    },
+    {
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "status": "superseded"
+    },
+    {
+      "subject": "user",
+      "key": "name",
+      "value": "Никита",
+      "status": "active"
+    },
+    {
+      "subject": "user",
+      "key": "occupation",
+      "value": "врач",
+      "status": "retracted"
+    }
+  ],
+  "usage": [
+    {
+      "usage": {
+        "prompt_tokens": 718,
+        "total_tokens": 874,
+        "completion_tokens": 156,
+        "estimated_cost": 0.00008505000000000001,
+        "prompt_tokens_details": null
+      },
+      "raw": "{\n  \"facts\": [\n    {\"op\": \"set\", \"subject\": \"user\", \"key\": \"name\", \"value\": \"Артём\", \"sourceId\": \"s1\"},\n    {\"op\": \"set\", \"subject\": \"user\", \"key\": \"city\", \"value\": \"Казань\", \"sourceId\": \"s2\"},\n    {\"op\": \"set\", \"subject\": \"character\", \"key\": \"name\", \"value\": \"Лира\", \"sourceId\": \"s3\"},\n    {\"op\": \"set\", \"subject\": \"character\", \"key\": \"likes\", \"value\": \"музыка\", \"sourceId\": \"s4\"}\n  ],\n  \"events\": []\n}"
+    },
+    {
+      "usage": {
+        "prompt_tokens": 789,
+        "total_tokens": 910,
+        "completion_tokens": 121,
+        "estimated_cost": 0.00008337500000000001,
+        "prompt_tokens_details": null
+      },
+      "raw": "{\n  \"facts\": [\n    {\"op\": \"set\", \"subject\": \"user\", \"key\": \"name\", \"value\": \"Никита\", \"sourceId\": \"s1\"},\n    {\"op\": \"retract\", \"subject\": \"user\", \"key\": \"name\", \"value\": \"Артём\", \"sourceId\": \"s1\"},\n    {\"op\": \"set\", \"subject\": \"user\", \"key\": \"occupation\", \"value\": \"врач\", \"sourceId\": \"s2\"}\n  ],\n  \"events\": []\n}"
+    },
+    {
+      "usage": {
+        "prompt_tokens": 780,
+        "total_tokens": 831,
+        "completion_tokens": 51,
+        "estimated_cost": 0.0000687,
+        "prompt_tokens_details": null
+      },
+      "raw": "{\n  \"facts\": [\n    {\"op\": \"retract\", \"subject\": \"user\", \"key\": \"occupation\", \"value\": \"врач\", \"sourceId\": \"s1\"}\n  ],\n  \"events\": []\n}"
+    }
+  ]
+}

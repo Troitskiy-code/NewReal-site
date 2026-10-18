@@ -8,6 +8,8 @@ import { hasDistinctKeyTokens, isSemanticDuplicate } from "@/lib/memoryEmbedding
 import { STATUS_LABELS, inferMemoryStatus, memoryOverlap, safeMemoryParaphrase, sameMemoryMeaning } from "@/lib/memoryNarrative";
 import { makeSummarySources } from "@/lib/memorySummaryEvidence";
 import { memoryScopeWhere, type ChatScope } from "@/lib/chatThreads";
+import { memoryV2Enabled } from "./memoryFacts";
+import { clearFactMemory, lockMemoryThread, readFactCore, replaceManualFactCore } from "./memoryV2";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const CORE_MEMORY_MODEL = "google/gemma-4-31b-it";
@@ -683,16 +685,17 @@ export function formatRelevantMemories(memories: RelevantMemories): string | nul
 
 export async function loadMemoryCandidates(
   scope: ChatScope,
-  maxContextTokens = 6000
+  maxContextTokens = 6000,
+  query = ""
 ): Promise<MemoryCandidates> {
   const { userId, characterId } = scope;
   const minImportance = episodicImportanceThreshold(maxContextTokens);
 
   const [core, important, recent] = await Promise.all([
-    prisma.coreMemory.findUnique({
+    readFactCore(scope, query).then(content => content !== null ? { content } : prisma.coreMemory.findUnique({
       where: { threadId: scope.threadId },
       select: { content: true },
-    }),
+    })),
     prisma.episodicMemory.findMany({
       where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
       orderBy: [{ importance: "desc" }, { timestamp: "desc" }, { id: "desc" }],
@@ -791,6 +794,7 @@ export async function setSummaryContent(scope: ChatScope, summary: string) {
 
   if (!trimmed) {
     await prisma.$transaction(async (tx) => {
+      if (memoryV2Enabled()) await lockMemoryThread(tx, scope.threadId);
       await tx.memory.deleteMany({ where: key });
       await tx.memoryEntry.deleteMany({ where: { ...key, type: "summary" } });
     });
@@ -799,6 +803,7 @@ export async function setSummaryContent(scope: ChatScope, summary: string) {
   }
 
   const saved = await prisma.$transaction(async (tx) => {
+    if (memoryV2Enabled()) await lockMemoryThread(tx, scope.threadId);
     const row = await tx.memory.upsert({
     where: { threadId: scope.threadId },
     create: { ...key, summary: trimmed },
@@ -808,6 +813,7 @@ export async function setSummaryContent(scope: ChatScope, summary: string) {
     });
     await tx.memoryEntry.deleteMany({ where: { ...key, type: "summary" } });
     await tx.memoryEntry.create({ data: { ...key, type: "summary", content: trimmed } });
+    if (memoryV2Enabled()) await tx.chatThread.update({ where: { id: scope.threadId }, data: { memorySummaryInvalidated: false } });
     return row;
   });
   debugLog("MemoryEditor", `summary saved user=${userId} character=${characterId} chars=${trimmed.length}`);
@@ -818,6 +824,7 @@ export async function setCoreMemoryContent(scope: ChatScope, content: string) {
   const { userId, characterId } = scope;
   const key = memoryScopeWhere(scope);
   const trimmed = normalizeManualCoreMemory(content);
+  if (memoryV2Enabled()) return replaceManualFactCore(scope, trimmed);
   const saved = await prisma.$transaction(async (tx) => {
     const row = await tx.coreMemory.upsert({
       where: { threadId: scope.threadId },
@@ -834,13 +841,9 @@ export async function setCoreMemoryContent(scope: ChatScope, content: string) {
 }
 
 export async function clearChatMemories(scope: ChatScope) {
-  const key = memoryScopeWhere(scope);
-  await Promise.all([
-    prisma.memory.deleteMany({ where: key }),
-    prisma.coreMemory.deleteMany({ where: key }),
-    prisma.episodicMemory.deleteMany({ where: key }),
-    prisma.memoryEntry.deleteMany({ where: key }),
-  ]);
+  // Explicit deletion covers both formats even during a feature-flag rollback.
+  // Re-enabling v2 must never resurrect memory the user has cleared.
+  return clearFactMemory(scope);
 }
 
 /**

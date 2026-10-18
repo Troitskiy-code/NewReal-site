@@ -31,6 +31,8 @@ import {
 } from "@/lib/messageEmbeddings";
 import { analyzeIntent, type UserIntent } from "@/lib/intentAnalyzer";
 import { ingestChatTurnMemory } from "@/lib/advancedMemory";
+import { memoryV2Enabled } from "@/lib/memoryFacts";
+import { attachMemoryReply, drainMemoryJobs, enqueueMemoryTurn, finishMemoryTurn, invalidateMessageMemory, lockMemoryThread } from "@/lib/memoryV2";
 import { resolveChatMemorySummary } from "@/lib/chatMemory";
 import {
   assemblePreparedChatMessages,
@@ -69,8 +71,18 @@ async function createMessageAndBumpTotal(scope: ChatScope, data: {
   role: string;
   content: string;
   finishReason?: "stop" | "length";
-}) {
+}, memoryUserMessageId?: string, appendMemoryReply = false) {
   const now = new Date();
+  if (memoryV2Enabled()) return prisma.$transaction(async tx => {
+    await lockMemoryThread(tx, scope.threadId);
+    const message = await tx.message.create({ data: { ...data, characterId: scope.characterId, chatId: scope.characterId,
+      userId: scope.userId, threadId: scope.threadId } });
+    await tx.character.update({ where: { id: scope.characterId }, data: { totalMessages: { increment: 1 }, lastActive: now } });
+    await tx.chatThread.update({ where: { id: scope.threadId }, data: { lastMessageAt: now, status: "active" } });
+    if (data.role === "user") await enqueueMemoryTurn(tx, scope, message.id);
+    if (data.role === "assistant" && memoryUserMessageId) await attachMemoryReply(tx, scope, memoryUserMessageId, message.id, appendMemoryReply);
+    return message;
+  });
   const [message] = await prisma.$transaction([
     // chatId keeps its legacy meaning (the character); the story is threadId.
     prisma.message.create({ data: { ...data, characterId: scope.characterId, chatId: scope.characterId, userId: scope.userId, threadId: scope.threadId } }),
@@ -225,6 +237,7 @@ async function handlePost(
     let ragQueryText: string | undefined;
     let excludeMessageId: string | undefined;
     let continueCutOff = false;
+    let memoryUserMessageId: string | undefined;
 
     // Pin the story type before inserting the first greeting or user turn.
     assertPromptStateAvailable(await getOrCreateThreadPromptState(scope), character.rpConfig);
@@ -246,6 +259,11 @@ async function handlePost(
       continueCutOff = isAssistantMessageCutOff(lastAssistant.content, lastAssistant.finishReason);
       console.log(`📌 Обрыв обнаружен: ${continueCutOff ? "да" : "нет"}`);
       ragQueryText = lastAssistant.content;
+      if (memoryV2Enabled()) {
+        const priorUser = await prisma.message.findFirst({ where: { ...messageScopeWhere(scope), role: "user",
+          createdAt: { lte: lastAssistant.createdAt } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+        memoryUserMessageId = priorUser?.id;
+      }
     } else if (retryLast) {
       const lastUser = await prisma.message.findFirst({
         where: {
@@ -262,6 +280,7 @@ async function handlePost(
 
       ragQueryText = lastUser.content;
       excludeMessageId = lastUser.id;
+      memoryUserMessageId = lastUser.id;
     } else {
       const existingMessagesCount = await prisma.message.count({
         where: messageScopeWhere(scope),
@@ -286,6 +305,7 @@ async function handlePost(
         role: "user",
         content: message,
       });
+      memoryUserMessageId = userMessage.id;
 
       scheduleMessageEmbedding(userMessage.id, message, KODIKROUTER_KEY, persistEmbeddings);
       ragQueryText = message;
@@ -382,6 +402,13 @@ async function handlePost(
       scheduleTurnMemory = (assistantReply) => {
         if (turnMemoryScheduled) return;
         turnMemoryScheduled = true;
+        if (memoryV2Enabled() && userMessage) {
+          const id = userMessage.id;
+          void prisma.$transaction(tx => finishMemoryTurn(tx, id, null))
+            .then(() => drainMemoryJobs({ threadId: scope.threadId, apiKey: KODIKROUTER_KEY }))
+            .catch(error => errorLog("MemoryV2", "background drain deferred", toSafeDiagnostic(error)));
+          return;
+        }
         void ingestChatTurnMemory({
           scope,
           userMessage: userText,
@@ -435,7 +462,12 @@ async function handlePost(
       const appendsToCutOff = Boolean(continueChat && continueCutOff && lastAssistant);
       const assistantMessage =
         appendsToCutOff && lastAssistant
-          ? await prisma.message.update({
+          ? memoryV2Enabled() ? await prisma.$transaction(async tx => {
+              await invalidateMessageMemory(tx, scope, lastAssistant.id);
+              return tx.message.update({ where: { id: lastAssistant.id }, data: {
+                content: mergeAssistantContinuation(lastAssistant.content, assistantReply), finishReason: completion.finishReason,
+              } });
+            }) : await prisma.message.update({
               where: { id: lastAssistant.id },
               data: {
                 content: mergeAssistantContinuation(lastAssistant.content, assistantReply),
@@ -446,7 +478,7 @@ async function handlePost(
               role: "assistant",
               content: assistantReply,
               finishReason: completion.finishReason,
-            });
+            }, memoryUserMessageId, continueChat);
       if (appendsToCutOff) await markThreadActive(scope.threadId);
 
       responseStage = "schedule_memory";
@@ -457,6 +489,8 @@ async function handlePost(
         persistEmbeddings
       );
       scheduleTurnMemory(assistantReply);
+      if (memoryV2Enabled() && (continueChat || retryLast)) void drainMemoryJobs({ threadId: scope.threadId, apiKey: KODIKROUTER_KEY })
+        .catch(error => errorLog("MemoryV2", "background drain deferred", toSafeDiagnostic(error)));
       // The reply is stored, so the debit is final.
       refundCharge = async () => {};
 

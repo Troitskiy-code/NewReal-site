@@ -13,6 +13,8 @@ import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatT
 import { getMemoryProvider } from "./aiProviders";
 import { groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
 import { SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS, withSummaryRefreshLease } from "./memorySummaryRefresh";
+import { memoryV2Enabled } from "./memoryFacts";
+import { lockMemoryThread } from "./memoryV2";
 import {
   fetchEmbeddings,
   hasDistinctKeyTokens,
@@ -572,10 +574,16 @@ async function persistMemorySummary(
   summarizedMessageCount: number,
   expectedCoverage: Date | null | "none",
   expectedSummary?: string,
-  historyGuard?: (tx: Prisma.TransactionClient) => Promise<boolean>
+  historyGuard?: (tx: Prisma.TransactionClient) => Promise<boolean>,
+  expectedMemoryRevision?: number
 ): Promise<string | null> {
   try {
     return await prisma.$transaction(async (tx) => {
+      if (memoryV2Enabled()) {
+        await lockMemoryThread(tx, scope.threadId);
+        const thread = await tx.chatThread.findUnique({ where: { id: scope.threadId }, select: { memoryRevision: true } });
+        if (!thread || expectedMemoryRevision !== undefined && thread.memoryRevision !== expectedMemoryRevision) return null;
+      }
       if (historyGuard && !(await historyGuard(tx))) return null;
       const key = memoryScopeWhere(scope);
       if (expectedCoverage === "none") {
@@ -589,6 +597,7 @@ async function persistMemorySummary(
       }
       await tx.memoryEntry.deleteMany({ where: { ...key, type: "summary" } });
       await tx.memoryEntry.create({ data: { ...key, type: "summary", content: summary } });
+      if (memoryV2Enabled()) await tx.chatThread.update({ where: { id: scope.threadId }, data: { memorySummaryInvalidated: false } });
       return summary;
     });
   } catch (error) {
@@ -606,13 +615,15 @@ async function createArcSummary(
   messagesToSummarize: DialogMessage[],
   config: SummaryConfig,
   plan: string,
-  onWrite?: (status: "updated" | "conflict") => void
+  onWrite?: (status: "updated" | "conflict") => void,
+  snapshotRevision?: number
 ): Promise<string | null> {
   if (messagesToSummarize.length === 0) {
     return null;
   }
 
   const coreText = await loadCoreMemoryText(scope);
+  const revision = snapshotRevision ?? (memoryV2Enabled() ? (await prisma.chatThread.findUniqueOrThrow({ where: { id: scope.threadId }, select: { memoryRevision: true } })).memoryRevision : undefined);
   messagesToSummarize = fitSummaryMessages(messagesToSummarize, coreText);
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
@@ -622,7 +633,7 @@ async function createArcSummary(
     summary,
     lastSummarizedTimestamp(messagesToSummarize),
     messagesToSummarize.length,
-    "none"
+    "none", undefined, undefined, revision
   );
   onWrite?.(saved ? "updated" : "conflict");
   if (!saved) {
@@ -650,10 +661,14 @@ async function updateArcWithChapter(
   chapterMessages: DialogMessage[],
   config: SummaryConfig,
   plan: string,
-  onWrite?: (status: "updated" | "conflict") => void
+  onWrite?: (status: "updated" | "conflict") => void,
+  snapshotRevision?: number
 ): Promise<string | null> {
   const coreText = await loadCoreMemoryText(scope);
-  chapterMessages = fitSummaryMessages(chapterMessages, coreText, existingSummary);
+  const state = memoryV2Enabled() ? await prisma.chatThread.findUniqueOrThrow({ where: { id: scope.threadId },
+    select: { memoryRevision: true, memorySummaryInvalidated: true } }) : null;
+  const sourceSummary = state?.memorySummaryInvalidated ? "" : existingSummary;
+  chapterMessages = fitSummaryMessages(chapterMessages, coreText, sourceSummary);
   const chapterText = formatDialogForSummary(chapterMessages);
   const chapterTokens = countTokens(chapterText);
   const arcTokens = countTokens(existingSummary);
@@ -665,14 +680,14 @@ async function updateArcWithChapter(
   );
   // One grounded update sees the actual new messages, not a twice-compressed chapter.
   const mergedSummary = await requestSelectedSummary(apiKey, MERGE_PROMPT,
-    mergeSources(existingSummary, chapterMessages), config.maxTokens, coreText);
+    mergeSources(sourceSummary, chapterMessages), config.maxTokens, coreText);
   const saved = await persistMemorySummary(
     scope,
     mergedSummary,
     lastSummarizedTimestamp(chapterMessages),
     existingCount + chapterMessages.length,
     existingCoverage,
-    existingSummary
+    existingSummary, undefined, snapshotRevision ?? state?.memoryRevision
   );
   onWrite?.(saved ? "updated" : "conflict");
   if (!saved) {
@@ -703,6 +718,7 @@ async function refreshChatMemorySummary(
 
   const { config, plan } = getSummaryConfigForUser(user);
   const maxContextTokens = getContextTokenLimit(user);
+  const snapshotRevision = memoryV2Enabled() ? (await prisma.chatThread.findUniqueOrThrow({ where: { id: scope.threadId }, select: { memoryRevision: true } })).memoryRevision : undefined;
 
   const existingMemory = await prisma.memory.findUnique({
     where: { threadId: scope.threadId },
@@ -751,7 +767,7 @@ async function refreshChatMemorySummary(
       coverage,
       historyToChapter,
       config,
-      plan
+      plan, undefined, snapshotRevision
     );
   }
 
@@ -771,7 +787,7 @@ async function refreshChatMemorySummary(
     return null;
   }
 
-  return createArcSummary(scope, apiKey, historyToSummarize, config, plan);
+  return createArcSummary(scope, apiKey, historyToSummarize, config, plan, undefined, snapshotRevision);
 }
 
 export async function resolveChatMemorySummary(scope: ChatScope, apiKey: string,
@@ -805,10 +821,21 @@ export async function readChatMemoryState(scope: ChatScope): Promise<ChatMemoryS
     where: { threadId: scope.threadId },
     select: { summary: true, lastSummarizedAt: true, summarizedMessageCount: true },
   });
-  const summary = existingMemory?.summary?.trim() || null;
+  let summary = existingMemory?.summary?.trim() || null;
+  let coveredUntil = summary ? existingMemory?.lastSummarizedAt ?? null : null;
+  if (memoryV2Enabled()) {
+    const thread = await prisma.chatThread.findUnique({ where: { id: scope.threadId }, select: { memoryWatermarkMessageId: true, memorySummaryInvalidated: true } });
+    if (thread?.memorySummaryInvalidated) summary = null;
+    const processed = thread?.memoryWatermarkMessageId ? await prisma.message.findFirst({
+      where: { id: thread.memoryWatermarkMessageId, threadId: scope.threadId }, select: { createdAt: true },
+    }) : null;
+    // Both summary and structured memory must have processed a message before it
+    // can leave the protected raw suffix. No model call is added to the hot path.
+    coveredUntil = coveredUntil && processed ? new Date(Math.min(coveredUntil.getTime(), processed.createdAt.getTime())) : null;
+  }
   return {
     summary,
-    coveredUntil: summary ? existingMemory?.lastSummarizedAt ?? null : null,
+    coveredUntil,
     summarizedMessageCount: existingMemory?.summarizedMessageCount ?? 0,
   };
 }
@@ -831,6 +858,7 @@ export async function forceRefreshMemorySummary(
       select: { subscriptionType: true, subscriptionEnd: true },
     }));
   const { config, plan } = getSummaryConfigForUser(loadedUser ?? {});
+  const snapshotRevision = memoryV2Enabled() ? (await prisma.chatThread.findUniqueOrThrow({ where: { id: scope.threadId }, select: { memoryRevision: true } })).memoryRevision : undefined;
 
   const existingMemory = await prisma.memory.findUnique({
     where: { threadId: scope.threadId },
@@ -857,7 +885,7 @@ export async function forceRefreshMemorySummary(
       allMessages.length > KEEP_RECENT_MESSAGES
         ? getHistoryForSummary(allMessages)
         : allMessages.slice(0, MAX_SUMMARY_CHUNK_MESSAGES);
-    return createArcSummary(scope, apiKey, historyToSummarize, config, plan, onWrite);
+    return createArcSummary(scope, apiKey, historyToSummarize, config, plan, onWrite, snapshotRevision);
   }
 
   const coverage = existingMemory.lastSummarizedAt ?? null;
@@ -882,7 +910,7 @@ export async function forceRefreshMemorySummary(
     chapterMessages,
     config,
     plan,
-    onWrite
+    onWrite, snapshotRevision
   );
 }
 

@@ -138,6 +138,8 @@ model Message {
   isAutoEvent Boolean  @default(false)
   embedding   MessageEmbedding?
   deepinfraEmbedding MessageEmbeddingDeepinfra?
+  memoryUserJobs MemoryJob[] @relation("MemoryJobUser")
+  memoryAssistantJobs MemoryJob[] @relation("MemoryJobAssistant")
 
   @@index([userId, characterId])
   @@index([userId, chatId])
@@ -167,6 +169,18 @@ model ChatThread {
   coreMemories     CoreMemory[]
   episodicMemories EpisodicMemory[]
   memoryEntries    MemoryEntry[]
+  memoryFacts      MemoryFact[]
+  memoryJobs       MemoryJob[]
+  memoryChanges    MemoryChange[]
+  memoryNextSeq    Int @default(0)
+  memoryWatermarkSeq Int @default(0)
+  memoryWatermarkMessageId String?
+  memoryV2Initialized Boolean @default(false)
+  memoryRevision Int @default(0)
+  memoryManualSeq Int @default(0)
+  memorySummaryInvalidated Boolean @default(false)
+  memoryLeaseOwner String?
+  memoryLeaseUntil DateTime?
 
   @@index([userId, characterId, status, lastMessageAt])
   @@index([userId, lastMessageAt])
@@ -264,9 +278,12 @@ model EpisodicMemory {
   event       String    @db.Text
   timestamp   DateTime  @default(now())
   importance  Int       @default(1)
+  sourceMemoryJobId String?
+  sourceMemoryJob MemoryJob? @relation(fields: [sourceMemoryJobId], references: [id], onDelete: SetNull)
 
   @@index([userId, characterId, timestamp])
   @@index([threadId, timestamp])
+  @@index([sourceMemoryJobId])
 }
 
 model MemoryEntry {
@@ -283,6 +300,75 @@ model MemoryEntry {
 
   @@index([userId, characterId, type])
   @@index([threadId, type])
+}
+
+// Stage 2: thread-local facts. MemoryChange retains the source assertions even
+// when repeated values reuse a fact row. The SQL migration adds partial indexes.
+model MemoryFact {
+  id String @id @default(cuid())
+  threadId String
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  subject String
+  key String
+  value String @db.Text
+  cardinality String
+  status String @default("active")
+  supersededById String?
+  source String
+  sourceMessageId String?
+  seq Int
+  confidence Float @default(1)
+  pinned Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([threadId, status])
+  @@index([threadId, subject, key])
+}
+
+model MemoryJob {
+  id String @id @default(cuid())
+  threadId String
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  // One durable turn exists as soon as the user's message is committed.
+  userMessageId String? @unique
+  userMessage Message? @relation("MemoryJobUser", fields: [userMessageId], references: [id], onDelete: SetNull)
+  assistantMessageId String? @unique
+  assistantMessageIds String[] @default([])
+  assistantMessage Message? @relation("MemoryJobAssistant", fields: [assistantMessageId], references: [id], onDelete: SetNull)
+  seq Int
+  status String @default("awaiting_reply")
+  attempts Int @default(0)
+  availableAt DateTime @default(now())
+  startedAt DateTime?
+  finishedAt DateTime?
+  errorCode String?
+  sourceFingerprint String?
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  changes MemoryChange[]
+  episodicProjections EpisodicMemory[]
+  @@unique([threadId, seq])
+  @@index([status, availableAt])
+}
+
+model MemoryChange {
+  id String @id @default(cuid())
+  threadId String
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  jobId String?
+  job MemoryJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  subject String
+  key String
+  op String
+  before Json?
+  after Json
+  actor String
+  seq Int
+  invalidated Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([threadId, subject, key, seq])
+  @@index([jobId])
 }
 
 model Persona {

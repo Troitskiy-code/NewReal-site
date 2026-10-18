@@ -47,6 +47,8 @@ export function createFakeProvider() {
     reply: 'Персонаж отвечает спокойно.',
     coreText: 'UNCHANGED',
     summaryText: null,
+    extractionText: '{"facts":[],"events":[]}',
+    beforeExtraction: null,
     summaryFails: false,
     embeddingsFail: false,
     consolidationFails: false,
@@ -61,6 +63,7 @@ export function createFakeProvider() {
     reset() {
       Object.assign(provider, {
         intent: 'general', reply: 'Персонаж отвечает спокойно.', coreText: 'UNCHANGED', summaryText: null,
+        extractionText: '{"facts":[],"events":[]}', beforeExtraction: null,
         summaryFails: false, embeddingsFail: false, consolidationFails: false, beforeSummary: null, beforeCore: null, beforeEmbedding: null,
         classify: () => ({ isEvent: false, importance: 1, text: '' }),
       });
@@ -71,6 +74,7 @@ export function createFakeProvider() {
       const messages = Array.isArray(body?.messages) ? body.messages : [];
       const all = messages.map((m) => String(m.content ?? '')).join('\n');
       const system = String(messages[0]?.content ?? '');
+      if (system.startsWith('MEMORY_FACT_EXTRACTION_V2')) return 'memory_extract';
       if (all.includes('классификатор намерений')) return 'intent';
       if (all.includes('"isEvent"')) return 'classifier';
       if (system.startsWith('Ты — анализатор устойчивых фактов')) return 'core';
@@ -104,7 +108,11 @@ export function createFakeProvider() {
         const prompt = (body.messages ?? []).map((m) => String(m.content ?? '')).join('\n');
         provider.calls.push({ kind, model: body.model, prompt });
         let content;
-        if (kind === 'intent') content = JSON.stringify({ intent: provider.intent, confidence: 0.9 });
+        if (kind === 'memory_extract') {
+          if (provider.beforeExtraction) await provider.beforeExtraction(body);
+          content = typeof provider.extractionText === 'function' ? provider.extractionText(body) : provider.extractionText;
+        }
+        else if (kind === 'intent') content = JSON.stringify({ intent: provider.intent, confidence: 0.9 });
         else if (kind === 'classifier') content = JSON.stringify(provider.classify(prompt));
         else if (kind === 'core') {
           if (provider.beforeCore) await provider.beforeCore();

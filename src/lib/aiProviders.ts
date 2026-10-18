@@ -57,6 +57,7 @@ export function serviceTransport(purpose: string, requestedModel: string, legacy
   const provider = purpose === "character_generation" ? "deepinfra" : getMemoryProvider();
   const choices: Record<string, string> = {
     summary: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+    memory_extract: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     intent: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     memory: requestedModel === "google/gemma-4-31b-it" ? "google/gemma-4-31B-it-turbo" : "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     character_event: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",

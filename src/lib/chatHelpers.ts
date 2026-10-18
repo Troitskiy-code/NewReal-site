@@ -669,6 +669,7 @@ export async function prepareFastContext({
   character,
   user,
   apiKey,
+  ragQueryText,
   continueMode = false,
   continueCutOff = false,
   historyBeforeMessageId,
@@ -690,7 +691,7 @@ export async function prepareFastContext({
           .catch((error) => errorLog("Memory", "summary refresh failed, using stored summary", toSafeDiagnostic(error)))
           .then(() => readChatMemoryState(scope))
       : readChatMemoryState(scope),
-    loadMemoryCandidates(scope, maxContextTokens),
+    loadMemoryCandidates(scope, maxContextTokens, ragQueryText),
     getSelectedChatPersona(userId, characterId, scope.threadId),
     loadChatHistoryRows({ scope, historyLimit, historyBeforeMessageId }),
   ]);
