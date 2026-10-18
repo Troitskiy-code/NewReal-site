@@ -1,0 +1,46 @@
+{
+  "label": "baseline-s7",
+  "sourceRef": "HEAD",
+  "mutation": null,
+  "generatedAt": "2026-10-18T07:18:17.149Z",
+  "passed": 0,
+  "failed": 1,
+  "results": [
+    {
+      "id": "S7",
+      "title": "Ошибка обновления выжимки сохраняет доступный необработанный хвост",
+      "pass": false,
+      "details": {
+        "missing": [
+          "ХВОСТ-08",
+          "ХВОСТ-09"
+        ],
+        "lastUserKept": true,
+        "coverageKept": true,
+        "promptTokens": 5845
+      },
+      "metrics": {
+        "promptTokens": 5845,
+        "systemTokens": 828,
+        "historyMessages": 23,
+        "auxCalls": {
+          "intent": 1,
+          "embedding": 3,
+          "memory": 2,
+          "summary": 1
+        },
+        "syntheticPrepMs": 408,
+        "costTelemetry": {
+          "source": "synthetic-provider-not-real-ruble-cost",
+          "events": 8,
+          "failedAttempts": 1,
+          "inputTokens": 1330,
+          "outputTokens": 110,
+          "recordedVC": 4,
+          "knownEstimatedRub": 0.0039747,
+          "unknownCosts": 1
+        }
+      }
+    }
+  ]
+}

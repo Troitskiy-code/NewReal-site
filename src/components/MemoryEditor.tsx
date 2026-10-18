@@ -296,7 +296,7 @@ function CharacterMemoryEditor({ characterId, threadId, onClose }: {
       {tab === "summary" ? (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="space-y-2 rounded-lg border border-[#2a2638] p-3 text-xs text-gray-400">
-            <p>Обновление добавляет новые события. Пересборка заново читает переписку и заменяет сводку; постоянная память и события сохраняются.</p>
+            <p>Сводка объясняет, что произошло в переписке и на чём остановилась история. Обновление учитывает новые сообщения. Пересборка заново читает переписку и заменяет сводку; постоянная память и события сохраняются.</p>
             <label className="flex items-start gap-2">
               <input type="checkbox" checked={rebuildConfirmed} disabled={saving}
                 onChange={(event) => setRebuildConfirmed(event.target.checked)} />

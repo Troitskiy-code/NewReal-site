@@ -60,6 +60,19 @@ try {
     assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[44].createdAt.getTime());
   });
   const broken = await setup();
+  await check('narrative is saved and mirrored as prose by the actual refresh pipeline', async () => {
+    const fixture = await setup('Я не нашёл пропавший ключ.');
+    provider.summaryText = JSON.stringify({ items: [{ section: 'story', status: 'reported',
+      text: 'Пользователь не нашёл пропавший ключ.', sources: ['s3'] }] });
+    const summary = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+    assert.equal(summary, '## Предыстория\nПользователь не нашёл пропавший ключ.');
+    assert.equal(latestSummaryBody.max_tokens, policy.summaryGenerationLimit(200));
+    const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
+    const mirror = await db.memoryEntry.findMany({ where: { threadId: fixture.scope.threadId, type: 'summary' } });
+    assert.equal(saved.summary, summary); assert.equal(saved.summarizedMessageCount, 45);
+    assert.equal(mirror.length, 1); assert.equal(mirror[0].content, summary);
+    provider.summaryText = null;
+  });
   await check('truncated generation leaves text and coverage unchanged and defers paid retries', async () => {
     finishReason = 'length';
     await assert.rejects(memory.resolveChatMemorySummary(broken.scope, 'synthetic_memory_key', broken.user), { code: 'MEMORY_SUMMARY_TRUNCATED' });

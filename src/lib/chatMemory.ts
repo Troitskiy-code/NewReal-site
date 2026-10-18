@@ -110,6 +110,7 @@ function applyPromptVars(prompt: string, vars: Record<string, string | number>):
 }
 
 type SummarySections = {
+  story?: string;
   state?: string;
   decisions?: string;
   permanent?: string;
@@ -119,6 +120,7 @@ type SummarySections = {
 };
 
 const HEADING_MAP: Array<{ key: keyof SummarySections; test: RegExp }> = [
+  { key: "story", test: /^#{1,3}\s*(предыстория|backstory)/i },
   { key: "state", test: /^#{1,3}\s*(текущая ситуация|current situation)/i },
   { key: "decisions", test: /^#{1,3}\s*(принятые решения|decisions)/i },
   { key: "activeLines", test: /^#{1,3}\s*(открытые планы|open plans)/i },
@@ -150,6 +152,7 @@ export function parseSummarySections(text: string): SummarySections {
   const lines = text.split(/\r?\n/);
   let current: keyof SummarySections | null = null;
   const buckets: Record<keyof SummarySections, string[]> = {
+    story: [],
     state: [],
     decisions: [],
     permanent: [],
@@ -186,6 +189,7 @@ export function parseSummarySections(text: string): SummarySections {
 
 export function rebuildSummary(sections: SummarySections): string {
   const parts: string[] = [];
+  if (sections.story?.trim()) parts.push(`## Предыстория\n${sections.story.trim()}`);
   if (sections.state?.trim()) parts.push(`## Текущая ситуация\n${sections.state.trim()}`);
   if (sections.decisions?.trim()) parts.push(`## Принятые решения\n${sections.decisions.trim()}`);
   if (sections.permanent?.trim()) {

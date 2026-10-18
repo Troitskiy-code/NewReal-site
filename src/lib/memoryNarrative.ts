@@ -12,7 +12,7 @@ const STATUS_PATTERNS: Array<[MemoryStatus, RegExp]> = [
   ["proposed", /предлаг|предлож|(?:^|[^\p{L}])(?:можно|следует|нужно|должен|должны|стоит)(?=$|[^\p{L}])|suggest|propos|should/iu],
   ["promised", /обещ|гарантир|promise|guarantee/iu],
   ["decided", /решил|решено|решили|принят|соглас|утверд|будет|состоится|планиру|завтра|послезавтра|decid|agreed|will/iu],
-  ["done", /наш[её]л|нашли|потерял|потеряли|закопал|спрятал|отдал|передал|выполн|создал|поднял|повысил|объявил|заверш|found|lost|completed|announced/iu],
+  ["done", /наш[её]л|нашли|потерял|потеряли|закопал|спрятал|отдал|передал|выполн|создал|поднял|повысил|объявил|заверш|отправил(?:ся|ась|ись)|приш[её]л|пришли|found|lost|completed|announced/iu],
 ];
 export function inferMemoryStatus(text: string): MemoryStatus {
   const labelled = /^(?:По словам персонажа:\s*|Персонаж\s*)?\[(Сообщено|Предложено|Решено|Обещано|Выполнено|Отменено|Неясно)(?:;[^\]]*)?\]/iu.exec(text.trim());
@@ -32,8 +32,10 @@ export function memoryNumbers(text: string): string[] {
 }
 const DISCOURSE = new Set(["персонаж", "пользователь", "по", "я", "мы", "он", "она", "они", "это", "если", "при", "для", "план", "решение", "повышение", "учётная", "учетная", "официальное", "ставка", "ключ", "утром", "вечером", "сообщено", "предложено", "решено", "обещано", "выполнено", "отменено", "неясно", "из", "the", "i"]);
 function names(text: string): Set<string> {
-  return new Set((text.match(/\p{Lu}[\p{L}'-]+/gu) ?? []).map((word) => word.toLowerCase().replace(/ё/g, "е")
-    .replace(/^(.{5,})[ауюы]$/u, "$1")).filter((word) => !DISCOURSE.has(word)));
+  const transitions = new Set(["сначала", "затем", "позже", "теперь", "однако", "поэтому", "после"]);
+  return new Set((text.match(/\p{Lu}[\p{L}'-]+/gu) ?? []).map((word) => word.toLowerCase().replace(/ё/g, "е"))
+    .filter(word => !transitions.has(word)).map(word => word.replace(/^(.{5,})[ауюы]$/u, "$1"))
+    .filter((word) => !DISCOURSE.has(word)));
 }
 const STOP = new Set(["персонаж", "пользователь", "словам", "сообщил", "сообщено", "рассказал", "предложено", "решено", "обещано", "выполнено", "отменено", "неясно", "будет", "будут", "этого", "чтобы", "нашему", "нашего"]);
 export function memoryTerms(text: string): Set<string> {

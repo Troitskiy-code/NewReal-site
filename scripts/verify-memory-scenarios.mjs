@@ -173,9 +173,19 @@ try {
     provider.summaryFails = true;
     const turn = await chat(user.id, character.id, { message: textOfTokens('ХВОСТ-32 текущий вопрос', 40) });
     const memory = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
-    const text = contentOf(turn);
+    const text = turn.messages.slice(1).map(message => message.content).join('\n');
+    // The base roleplay prompt has grown since this fixture was written. Assert
+    // the largest whole-message suffix that actually fits, rather than a fixed
+    // 24-message count that would now exceed the 6000-token context.
+    const baseSystem = turn.system.split('\n\n## Память диалога')[0];
+    let room = 6000 - countTokens(baseSystem) - countTokens(turn.messages.at(-1).content);
     const windowMarkers = [];
-    for (let i = 8; i <= 31; i += 1) windowMarkers.push(`ХВОСТ-${String(i).padStart(2, '0')}`);
+    for (const row of [...rows.slice(-24)].reverse()) {
+      const tokens = countTokens(row.content);
+      if (tokens > room) break;
+      room -= tokens;
+      windowMarkers.unshift(row.content.match(/ХВОСТ-\d+/u)[0]);
+    }
     const missing = windowMarkers.filter((m) => !text.includes(m));
     const lastUserKept = turn.messages.at(-1)?.content?.includes('ХВОСТ-32') === true;
     const coverageKept = memory?.lastSummarizedAt?.getTime() === coverage.getTime();

@@ -24,10 +24,10 @@ export function groundedSummaryFormat(sourceIds: string[], storedLimit: number) 
     type: "object", additionalProperties: false, required: ["items"], properties: { items: {
       type: "array", minItems: 1, maxItems: Math.min(10, Math.max(1, Math.floor(storedLimit / 120))),
       items: { type: "object", additionalProperties: false, required: ["section", "text", "status", "sources"], properties: {
-        section: { type: "string", enum: ["state", "decisions", "plans", "events"] },
+        section: { type: "string", enum: ["story", "state", "decisions", "plans", "events"] },
         text: { type: "string", minLength: 1, maxLength: 1200 },
         status: { type: "string", enum: [...MEMORY_STATUSES] },
-        sources: { type: "array", minItems: 1, maxItems: 4, items: { type: "string", enum: sourceIds } },
+        sources: { type: "array", minItems: 1, maxItems: 12, items: { type: "string", enum: sourceIds } },
       } },
     } },
   } } };

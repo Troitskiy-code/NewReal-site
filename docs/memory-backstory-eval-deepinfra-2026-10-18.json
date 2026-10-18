@@ -1,0 +1,164 @@
+{
+  "provider": "deepinfra",
+  "scenarios": [
+    {
+      "id": "search-and-change-of-plan",
+      "budget": 800,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Я пришёл к маяку, чтобы найти пропавшую сестру."
+        },
+        {
+          "role": "assistant",
+          "content": "Сестра оставила записку: она отправилась к северному шлюзу."
+        },
+        {
+          "role": "user",
+          "content": "Я предложил проверить северный шлюз утром."
+        },
+        {
+          "role": "assistant",
+          "content": "Я согласился сопровождать пользователя к северному шлюзу утром."
+        },
+        {
+          "role": "user",
+          "content": "Я отменил поход утром из-за шторма."
+        },
+        {
+          "role": "assistant",
+          "content": "Я нашёл в записке запасной адрес сестры: старая обсерватория."
+        },
+        {
+          "role": "user",
+          "content": "Я решил отправиться в старую обсерваторию после шторма."
+        },
+        {
+          "role": "assistant",
+          "content": "Сестра пока не найдена."
+        }
+      ]
+    },
+    {
+      "id": "entry-plan-numbers-and-negation",
+      "budget": 200,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Я передал капитану 2 ключа от маяка."
+        },
+        {
+          "role": "assistant",
+          "content": "Я не нашёл тайник номер 17."
+        },
+        {
+          "role": "user",
+          "content": "Я обещаю помочь персонажу найти тайник номер 17 утром."
+        }
+      ]
+    }
+  ],
+  "report": [
+    {
+      "scenario": "search-and-change-of-plan",
+      "version": "before",
+      "budget": 800,
+      "raw": "{\"items\":[{\"section\":\"state\",\"text\":\"Сестра пока не найдена.\",\"status\":\"reported\",\"sources\":[\"s8\"]},{\"section\":\"plans\",\"text\":\"Пользователь и персонаж отправились к северному шлюзу утром.\",\"status\":\"cancelled\",\"sources\":[\"s3\",\"s4\",\"s5\"]},{\"section\":\"plans\",\"text\":\"Пользователь отправится в старую обсерваторию после шторма.\",\"status\":\"proposed\",\"sources\":[\"s7\"]}]}",
+      "summary": "## Текущая ситуация\n- [Сообщено; Персонаж] Сестра пока не найдена.\n\n## Принятые решения\n- [Решено; Пользователь] Пользователь отправится в старую обсерваторию после шторма.\n\n## Открытые планы\n- [Неясно; Пользователь / Персонаж] Пользователь и персонаж отправились к северному шлюзу утром.",
+      "diagnostics": {
+        "candidateCount": 3,
+        "sourceCount": 8,
+        "paraphraseFallbackCount": 0,
+        "budgetRejectedCount": 0,
+        "sourceFallbackCount": 0,
+        "sourcePoolFallbackCount": 0,
+        "fittedCount": 3,
+        "renderedUsage": 130,
+        "storedLimit": 800
+      },
+      "usage": {
+        "prompt_tokens": 751,
+        "total_tokens": 871,
+        "completion_tokens": 120,
+        "estimated_cost": 0.00008032500000000001,
+        "prompt_tokens_details": null
+      }
+    },
+    {
+      "scenario": "search-and-change-of-plan",
+      "version": "after",
+      "budget": 800,
+      "raw": "{\"items\":[{\"section\":\"story\",\"text\":\"Пользователь пришёл к маяку, чтобы найти пропавшую сестру. Сестра оставила записку, что отправилась к северному шлюзу. Пользователь предложил проверить северный шлюз утром, и персонаж согласился сопровождать его. Пользователь отменил поход из-за шторма. Персонаж нашёл в записке запасной адрес сестры: старая обсерватория. Пользователь решил отправиться в старую обсерваторию после шторма.\",\"status\":\"reported\",\"sources\":[\"s1\",\"s2\",\"s3\",\"s4\",\"s5\",\"s6\",\"s7\"]},{\"section\":\"state\",\"text\":\"Сестра пока не найдена.\",\"status\":\"reported\",\"sources\":[\"s8\"]},{\"section\":\"plans\",\"text\":\"Пользователь планирует отправиться в старую обсерваторию после шторма.\",\"status\":\"decided\",\"sources\":[\"s7\"]}]}",
+      "summary": "## Предыстория\nПользователь пришёл к маяку, чтобы найти пропавшую сестру. Сестра оставила записку, что отправилась к северному шлюзу. Пользователь предложил проверить северный шлюз утром, и персонаж согласился сопровождать его. Пользователь отменил поход из-за шторма. Персонаж нашёл в записке запасной адрес сестры: старая обсерватория. Пользователь решил отправиться в старую обсерваторию после шторма.\n\n## Текущая ситуация\n- [Сообщено; Персонаж] Сестра пока не найдена.\n\n## Принятые решения\n- [Решено; Пользователь] Пользователь планирует отправиться в старую обсерваторию после шторма.",
+      "diagnostics": {
+        "candidateCount": 3,
+        "sourceCount": 8,
+        "paraphraseFallbackCount": 0,
+        "budgetRejectedCount": 0,
+        "sourceFallbackCount": 0,
+        "sourcePoolFallbackCount": 0,
+        "fittedCount": 3,
+        "renderedUsage": 254,
+        "storedLimit": 800
+      },
+      "usage": {
+        "prompt_tokens": 1308,
+        "total_tokens": 1536,
+        "completion_tokens": 228,
+        "estimated_cost": 0.0001437,
+        "prompt_tokens_details": null
+      }
+    },
+    {
+      "scenario": "entry-plan-numbers-and-negation",
+      "version": "before",
+      "budget": 200,
+      "raw": "{\"items\":[{\"section\":\"state\",\"text\":\"Капитан получил 2 ключа от маяка.\",\"status\":\"reported\",\"sources\":[\"s1\"]}]}",
+      "summary": "## Недавние события\n- [Выполнено; Пользователь] Я передал капитану 2 ключа от маяка.",
+      "diagnostics": {
+        "candidateCount": 1,
+        "sourceCount": 3,
+        "paraphraseFallbackCount": 1,
+        "budgetRejectedCount": 0,
+        "sourceFallbackCount": 0,
+        "sourcePoolFallbackCount": 0,
+        "fittedCount": 1,
+        "renderedUsage": 39,
+        "storedLimit": 200
+      },
+      "usage": {
+        "prompt_tokens": 610,
+        "total_tokens": 648,
+        "completion_tokens": 38,
+        "estimated_cost": 0.00005335,
+        "prompt_tokens_details": null
+      }
+    },
+    {
+      "scenario": "entry-plan-numbers-and-negation",
+      "version": "after",
+      "budget": 200,
+      "raw": "{\"items\":[{\"section\":\"story\",\"text\":\"Пользователь передал капитану 2 ключа от маяка. Персонаж не нашёл тайник номер 17. Пользователь обещал помочь персонажу найти тайник номер 17 утром.\",\"status\":\"reported\",\"sources\":[\"s1\",\"s2\",\"s3\"]}]}",
+      "summary": "## Предыстория\nПользователь передал капитану 2 ключа от маяка. Персонаж не нашёл тайник номер 17. Пользователь обещал помочь персонажу найти тайник номер 17 утром.",
+      "diagnostics": {
+        "candidateCount": 1,
+        "sourceCount": 3,
+        "paraphraseFallbackCount": 0,
+        "budgetRejectedCount": 0,
+        "sourceFallbackCount": 0,
+        "sourcePoolFallbackCount": 0,
+        "fittedCount": 1,
+        "renderedUsage": 72,
+        "storedLimit": 200
+      },
+      "usage": {
+        "prompt_tokens": 1147,
+        "total_tokens": 1227,
+        "completion_tokens": 80,
+        "estimated_cost": 0.00010202500000000001,
+        "prompt_tokens_details": null
+      }
+    }
+  ],
+  "renderReplayed": true
+}
