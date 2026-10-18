@@ -23,10 +23,28 @@ export type FactDelta = { op: "set" | "retract"; subject: string; key: string; v
   sourceMessageId: string | null; source: string; pinned: boolean; confidence: number };
 export type FactSource = { id: string; author: "user" | "character"; messageId: string; text: string };
 export type ExtractedEvent = { text: string; importance: number; sourceMessageId: string; source: "user" | "character" };
+export type MemoryValidationReason = "invalid_response_type" | "invalid_json" | "invalid_root" | "unexpected_root_field"
+  | "invalid_facts_array" | "fact_limit_exceeded" | "invalid_events_array" | "event_limit_exceeded"
+  | "invalid_fact_object" | "unexpected_fact_field" | "invalid_operation" | "invalid_subject" | "invalid_key_type"
+  | "invalid_value_type" | "value_too_long" | "unsupported_key" | "unknown_source" | "user_fact_from_character"
+  | "character_fact_from_user_first_person" | "control_instruction" | "unsupported_value" | "question_source"
+  | "non_factual_source" | "unsupported_number" | "empty_value" | "negated_set" | "single_slot_conflict"
+  | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long";
+/** Only enums, generated source labels and sizes. Never include quotes, values or NPC names. */
+export type MemoryValidationDiagnostic = {
+  validationReason?: MemoryValidationReason; validationPath?: string;
+  factIndex?: number; eventIndex?: number; factKey?: string; factSubject?: string; factOperation?: string;
+  sourceId?: string; sourceRole?: "user" | "character"; sourceStatus?: string;
+  sourceChars?: number; valueChars?: number; responseChars?: number; sourceCount?: number;
+  factCount?: number; eventCount?: number;
+};
 export class MemoryExtractionError extends Error {
-  constructor(readonly code: string) { super(code); this.name = "MemoryExtractionError"; }
+  constructor(readonly code: string, readonly diagnostic: Readonly<MemoryValidationDiagnostic> = {}) {
+    super(code); this.name = "MemoryExtractionError";
+  }
 }
-const fail = (): never => { throw new MemoryExtractionError("MEMORY_EXTRACT_INVALID"); };
+const diagnosticSubject = (subject: string) => ["user", "character", "relationship", "world"].includes(subject)
+  ? subject : subject.startsWith("npc:") ? "npc" : "unknown";
 const clean = (text: string) => text.normalize("NFKC").toLowerCase().replace(/ё/g, "е");
 const nounStem = (word: string) => word.replace(/(?:ом|ем|ой|ей|ов|ам|ям|ах|ях|[аяуюеиыь])$/u, "");
 export function sameFactValue(left: string, right: string, key: string): boolean {
@@ -99,23 +117,47 @@ export function factExtractionFormat(sourceIds: string[]) {
 }
 
 export function parseFactExtraction(raw: string, sources: FactSource[]): { facts: FactDelta[]; events: ExtractedEvent[]; rejectedRetractions: number } {
+  const context: MemoryValidationDiagnostic = { responseChars: typeof raw === "string" ? raw.length : 0, sourceCount: sources.length };
+  const fail = (validationReason: MemoryValidationReason, validationPath: string,
+    detail: MemoryValidationDiagnostic = {}): never => {
+    throw new MemoryExtractionError("MEMORY_EXTRACT_INVALID", { ...context, ...detail, validationReason, validationPath });
+  };
+  if (typeof raw !== "string") return fail("invalid_response_type", "$");
   let data: unknown;
-  try { data = JSON.parse(raw); } catch { return fail(); }
-  if (!data || typeof data !== "object" || Array.isArray(data)) return fail();
+  try { data = JSON.parse(raw); } catch { return fail("invalid_json", "$"); }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return fail("invalid_root", "$");
   const result = data as Record<string, unknown>;
-  if (Object.keys(result).some(key => !["facts", "events"].includes(key)) || !Array.isArray(result.facts)
-    || result.facts.length > 12 || !Array.isArray(result.events) || result.events.length > 3) return fail();
+  if (Object.keys(result).some(key => !["facts", "events"].includes(key))) return fail("unexpected_root_field", "$");
+  if (!Array.isArray(result.facts)) return fail("invalid_facts_array", "facts");
+  context.factCount = result.facts.length;
+  if (result.facts.length > 12) return fail("fact_limit_exceeded", "facts");
+  if (!Array.isArray(result.events)) return fail("invalid_events_array", "events");
+  context.eventCount = result.events.length;
+  if (result.events.length > 3) return fail("event_limit_exceeded", "events");
   const known = new Map(sources.map(source => [source.id, source]));
   let rejectedRetractions = 0;
   const candidates = result.facts;
-  const facts: FactDelta[] = candidates.map(value => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return fail();
+  const facts: FactDelta[] = candidates.map((value, factIndex) => {
+    const detail: MemoryValidationDiagnostic = { factIndex };
+    const reject = (reason: MemoryValidationReason, field = ""): never => fail(reason, `facts[${factIndex}]${field ? `.${field}` : ""}`, detail);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return reject("invalid_fact_object");
     const row = value as Record<string, unknown>;
-    if (Object.keys(row).some(key => !["op", "subject", "key", "value", "sourceId"].includes(key))
-      || !["set", "retract"].includes(String(row.op)) || typeof row.subject !== "string" || !subjectValid(row.subject)
-      || typeof row.key !== "string" || typeof row.value !== "string" || row.value.length > 240) return fail();
+    if (Object.keys(row).some(key => !["op", "subject", "key", "value", "sourceId"].includes(key))) return reject("unexpected_fact_field");
+    if (!["set", "retract"].includes(String(row.op))) return reject("invalid_operation", "op");
+    detail.factOperation = String(row.op);
+    if (typeof row.subject !== "string" || !subjectValid(row.subject)) return reject("invalid_subject", "subject");
+    detail.factSubject = diagnosticSubject(row.subject);
+    if (typeof row.key !== "string") return reject("invalid_key_type", "key");
+    if (typeof row.value !== "string") return reject("invalid_value_type", "value");
+    detail.valueChars = row.value.length;
+    if (row.value.length > 240) return reject("value_too_long", "value");
     const key = canonicalFactKey(row.key), source = known.get(String(row.sourceId));
-    if (!Object.hasOwn(SLOTS, key) || !source || (row.subject === "user" && source.author !== "user")) return fail();
+    if (!Object.hasOwn(SLOTS, key)) return reject("unsupported_key", "key");
+    detail.factKey = key;
+    if (!source) return reject("unknown_source", "sourceId");
+    if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
+    detail.sourceRole = source.author; detail.sourceChars = source.text.length;
+    if (row.subject === "user" && source.author !== "user") return reject("user_fact_from_character", "sourceId");
     // A single-valued set already supersedes its predecessor. Some providers
     // redundantly retract that old value using the new-value quote. This row has
     // no additional effect and is omitted; it never bypasses validation of set.
@@ -123,20 +165,24 @@ export function parseFactExtraction(raw: string, sources: FactSource[]): { facts
       const next = other as Record<string, unknown> | null;
       return next && next.op === "set" && next.subject === row.subject && typeof next.key === "string" && canonicalFactKey(next.key) === key;
     })) return null;
-    if (row.subject === "character" && source.author === "user" && /(?:^|\s)я(?:\s|[,.])/iu.test(source.text)) return fail();
+    if (row.subject === "character" && source.author === "user" && /(?:^|\s)я(?:\s|[,.])/iu.test(source.text)) return reject("character_fact_from_user_first_person", "subject");
     const text = row.value.trim();
-    if (stripMemoryControlInstructions(text) !== text || /[\r\n\u0000-\u001f]/u.test(text)) return fail();
+    if (stripMemoryControlInstructions(text) !== text || /[\r\n\u0000-\u001f]/u.test(text)) return reject("control_instruction", "value");
     const negated = /(?:^|[^\p{L}])(?:не|нет|больше не|not|no longer)(?=$|[^\p{L}])/iu.test(source.text);
-    const unsupported = text && !supportedFactValue(text, source.text, key)
-      || /\?[»"')]*$/u.test(source.text) || ["proposed", "promised", "decided", "uncertain"].includes(inferMemoryStatus(source.text))
-      || memoryNumbers(text).some(number => !memoryNumbers(source.text).includes(number));
+    detail.sourceStatus = inferMemoryStatus(source.text);
+    const unsupported: MemoryValidationReason | null = memoryNumbers(text).some(number => !memoryNumbers(source.text).includes(number))
+      ? "unsupported_number" : /\?[»"')]*$/u.test(source.text) ? "question_source"
+        : ["proposed", "promised", "decided", "uncertain"].includes(detail.sourceStatus) ? "non_factual_source"
+          : text && !supportedFactValue(text, source.text, key) ? "unsupported_value" : null;
     // A model must not remove an unmentioned city/job/etc. Refuse only that
     // destructive operation, retain grounded updates and surface the warning.
     if (row.op === "retract" && (unsupported || !negated || !RETRACTION_CUES[key].test(source.text))) {
       rejectedRetractions++; return null;
     }
-    if (unsupported || row.op === "set" && (!text || negated && key !== "dislikes"
-      && !/(?:^|[^\p{L}])(?:не|not)(?=$|[^\p{L}])/iu.test(text))) return fail();
+    if (unsupported) return reject(unsupported, "value");
+    if (row.op === "set" && !text) return reject("empty_value", "value");
+    if (row.op === "set" && negated && key !== "dislikes"
+      && !/(?:^|[^\p{L}])(?:не|not)(?=$|[^\p{L}])/iu.test(text)) return reject("negated_set", "value");
     return { op: row.op as "set" | "retract", subject: row.subject, key, value: text,
       sourceMessageId: source.messageId, source: source.author === "user" ? "user_msg" : "assistant_msg",
       confidence: 1, pinned: false };
@@ -145,14 +191,21 @@ export function parseFactExtraction(raw: string, sources: FactSource[]): { facts
   const seen = new Map<string, string>();
   for (const fact of facts.filter(fact => fact.op === "set" && factCardinality(fact.key) === "single")) {
     const slot = `${fact.subject}:${fact.key}`;
-    if (seen.has(slot) && clean(seen.get(slot)!) !== clean(fact.value)) return fail();
+    if (seen.has(slot) && clean(seen.get(slot)!) !== clean(fact.value)) return fail("single_slot_conflict", "facts",
+      { factKey: fact.key, factSubject: diagnosticSubject(fact.subject) });
     seen.set(slot, fact.value);
   }
-  const events: ExtractedEvent[] = result.events.map(value => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return fail();
+  const events: ExtractedEvent[] = result.events.map((value, eventIndex) => {
+    const detail: MemoryValidationDiagnostic = { eventIndex };
+    const reject = (reason: MemoryValidationReason, field = ""): never => fail(reason, `events[${eventIndex}]${field ? `.${field}` : ""}`, detail);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return reject("invalid_event_object");
     const row = value as Record<string, unknown>, source = known.get(String(row.sourceId));
-    if (Object.keys(row).some(key => !["sourceId", "importance"].includes(key)) || !source
-      || ![2, 3].includes(Number(row.importance)) || source.text.length > 2000) return fail();
+    if (Object.keys(row).some(key => !["sourceId", "importance"].includes(key))) return reject("unexpected_event_field");
+    if (!source) return reject("unknown_source", "sourceId");
+    if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
+    detail.sourceRole = source.author; detail.sourceChars = source.text.length;
+    if (![2, 3].includes(Number(row.importance))) return reject("invalid_importance", "importance");
+    if (source.text.length > 2000) return reject("event_source_too_long", "sourceId");
     return { text: source.text, source: source.author, sourceMessageId: source.messageId, importance: Number(row.importance) };
   });
   return { facts, events, rejectedRetractions };

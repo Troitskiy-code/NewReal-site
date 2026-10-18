@@ -1,0 +1,64 @@
+{
+  "checkedAt": "2026-10-18T09:25:08.744Z",
+  "model": "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+  "sourceCount": 26,
+  "inputChars": 4598,
+  "attempts": [
+    {
+      "attempt": 1,
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 2290,
+        "completion_tokens": 380,
+        "total_tokens": 2670
+      },
+      "valid": false,
+      "code": "MEMORY_EXTRACT_INVALID",
+      "responseChars": 1035,
+      "sourceCount": 26,
+      "factCount": 6,
+      "eventCount": 3,
+      "factIndex": 0,
+      "factOperation": "set",
+      "factSubject": "world",
+      "valueChars": 16,
+      "factKey": "name",
+      "sourceId": "s2",
+      "sourceRole": "character",
+      "sourceChars": 31,
+      "sourceStatus": "reported",
+      "validationReason": "unsupported_value",
+      "validationPath": "facts[0].value",
+      "durationMs": 7495
+    },
+    {
+      "attempt": 2,
+      "httpStatus": 200,
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 2290,
+        "completion_tokens": 380,
+        "total_tokens": 2670
+      },
+      "valid": false,
+      "code": "MEMORY_EXTRACT_INVALID",
+      "responseChars": 1035,
+      "sourceCount": 26,
+      "factCount": 6,
+      "eventCount": 3,
+      "factIndex": 0,
+      "factOperation": "set",
+      "factSubject": "world",
+      "valueChars": 16,
+      "factKey": "name",
+      "sourceId": "s2",
+      "sourceRole": "character",
+      "sourceChars": 31,
+      "sourceStatus": "reported",
+      "validationReason": "unsupported_value",
+      "validationPath": "facts[0].value",
+      "durationMs": 5509
+    }
+  ]
+}

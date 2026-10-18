@@ -12,6 +12,9 @@ const memory = load(join(root, 'src/lib/memoryV2.ts'));
 const facts = load(join(root, 'src/lib/memoryFacts.ts'));
 const legacy = load(join(root, 'src/lib/advancedMemory.ts'));
 const summaries = load(join(root, 'src/lib/chatMemory.ts'));
+const logger = load(join(root, 'src/lib/logger.ts'));
+const diagnosticLines = [];
+logger.setDiagnosticSink({ debug: line => diagnosticLines.push(line), info: line => diagnosticLines.push(line), error: line => diagnosticLines.push(line) });
 const { NextRequest } = require('next/server');
 const messageRoute = load(join(root, 'src/app/api/messages/[id]/route.ts'));
 const cron = load(join(root, 'src/app/api/cron/memory-jobs/route.ts'));
@@ -129,6 +132,28 @@ try {
     assert.equal(facts.sameFactValue('музыку', 'музыка', 'likes'), true);
     assert.equal(facts.sameFactValue('Петров', 'Петрова', 'name'), false);
   });
+  await check('validation diagnostics survive the real logger and persist the exact rejection without private text', async () => {
+    const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
+    await run(f, output([delta('PRIVATE_MEMORY_VALUE')]));
+    const job = await db.memoryJob.findUnique({ where: { id: source.job.id } });
+    assert.equal(job.errorCode, 'MEMORY_EXTRACT_INVALID:unsupported_value');
+    const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn deferred'));
+    assert.ok(line); assert.match(line, /"validationReason":"unsupported_value"/);
+    assert.match(line, /"validationPath":"facts\[0\].value"/); assert.match(line, /"sourceId":"s1"/);
+    assert.match(line, /"attempt":1/); assert.match(line, /"maxAttempts":5/); assert.match(line, /"willRetry":true/);
+    assert.match(line, /"nextAttemptAt":/); assert.ok(!line.includes('PRIVATE_MEMORY_VALUE') && !line.includes('Анна'));
+  });
+  await check('provider timeout has a stable memory code, separate transport code and retry information', async () => {
+    const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
+    provider.beforeExtraction = async () => { throw Object.assign(new Error('PRIVATE_PROVIDER_RESPONSE'), { isAxiosError: true, code: 'ECONNABORTED' }); };
+    try { await run(f, output()); } finally { provider.beforeExtraction = null; }
+    const job = await db.memoryJob.findUnique({ where: { id: source.job.id } });
+    assert.equal(job.errorCode, 'MEMORY_EXTRACT_PROVIDER_TIMEOUT'); assert.equal(job.status, 'retry');
+    const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn deferred'));
+    assert.match(line, /"code":"MEMORY_EXTRACT_PROVIDER_TIMEOUT"/); assert.match(line, /"providerCode":"ECONNABORTED"/);
+    assert.match(line, /"stage":"provider_request"/); assert.match(line, /"timeoutMs":20000/);
+    assert.ok(!line.includes('PRIVATE_PROVIDER_RESPONSE'));
+  });
   await check('expired lease has a successor, and the old owner cannot commit or release it', async () => {
     const f = await setup(); await turn(f, 'Меня зовут Борис.'); provider.extractionText = output([delta('Борис')]);
     let release, entered; const gate = new Promise(resolve => { release = resolve; }); const began = new Promise(resolve => { entered = resolve; });
@@ -148,6 +173,10 @@ try {
     }
     const job = await db.memoryJob.findUnique({ where: { id: source.job.id } });
     assert.equal(job.status, 'failed'); assert.equal(job.attempts, 5);
+    assert.ok(job.finishedAt); assert.equal(job.errorCode, 'MEMORY_EXTRACT_INVALID:invalid_json');
+    const terminal = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn failed'));
+    assert.ok(terminal); assert.match(terminal, /"attempt":5/); assert.match(terminal, /"willRetry":false/);
+    assert.ok(!terminal.includes('nextAttemptAt'));
     const before = provider.calls.length; await run(f, output()); assert.equal(provider.calls.length, before);
     assert.equal((await db.chatThread.findUnique({ where: { id: f.scope.threadId } })).memoryWatermarkSeq, 0);
   });

@@ -171,22 +171,36 @@ async function claimJob(threadId: string) {
 async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJob>>>, apiKey: string) {
   const { job, owner, thread } = claim;
   const scope: ChatScope = { threadId: thread.id, characterId: thread.characterId, userId: thread.userId, legacy: false };
+  const startedAt = Date.now(), timeoutMs = 20_000;
+  const diagnostic: { sourceCount?: number; inputChars?: number; inputTokens?: number; responseChars?: number; finishReason?: string } = {};
+  let stage = "load_sources";
   try {
     const messages = await jobMessages(prisma, job), hash = fingerprint(messages), sources = factSources(messages);
+    stage = "prepare_input"; diagnostic.sourceCount = sources.length;
     const activeFacts = await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active" },
       select: { subject: true, key: true, value: true, pinned: true, source: true }, take: 150, orderBy: [{ pinned: "desc" }, { seq: "desc" }] });
     const input = JSON.stringify({ sources, activeFacts });
-    if (input.length > 64_000 || countTokens(input) > 8000) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
+    diagnostic.inputChars = input.length;
+    if (input.length > 64_000) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
+    diagnostic.inputTokens = countTokens(input);
+    if (diagnostic.inputTokens > 8000) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
     let extraction: ReturnType<typeof parseFactExtraction> = { facts: [], events: [], rejectedRetractions: 0 };
     if (sources.length) {
+      stage = "provider_request";
       const response = await serviceChatPost("memory_extract", "https://api.kodikrouter.ru/v1/chat/completions", {
         model: "openai/gpt-4o-mini", messages: [{ role: "system", content: FACT_EXTRACTION_RULES }, { role: "user", content: input }],
         max_tokens: 2000, temperature: 0, response_format: getMemoryProvider() === "deepinfra"
           ? factExtractionFormat(sources.map(source => source.id)) : { type: "json_object" },
-      }, { timeout: 20_000, headers: { Authorization: `Bearer ${apiKey}` } });
+      }, { timeout: timeoutMs, headers: { Authorization: `Bearer ${apiKey}` } });
+      stage = "validate_response";
+      const content = response.data?.choices?.[0]?.message?.content ?? "";
+      diagnostic.responseChars = typeof content === "string" ? content.length : 0;
+      const finishReason = response.data?.choices?.[0]?.finish_reason;
+      diagnostic.finishReason = ["stop", "length", "content_filter", "tool_calls", "function_call"].includes(finishReason) ? finishReason : "unknown";
       if (response.data?.choices?.[0]?.finish_reason === "length") throw new MemoryExtractionError("MEMORY_EXTRACT_TRUNCATED");
-      extraction = parseFactExtraction(response.data?.choices?.[0]?.message?.content ?? "", sources);
+      extraction = parseFactExtraction(content, sources);
     }
+    stage = "commit";
     const applied = await prisma.$transaction(async tx => {
       await lockMemoryThread(tx, thread.id);
       const current = await tx.chatThread.findUnique({ where: { id: thread.id } });
@@ -215,20 +229,33 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       await tx.chatThread.update({ where: { id: thread.id }, data: { memoryLeaseOwner: null, memoryLeaseUntil: null } });
       return true;
     });
-    if (applied) infoLog("MemoryV2", "turn processed", { seq: job.seq, attempts: job.attempts, facts: extraction.facts.length,
+    if (applied) infoLog("MemoryV2", "turn processed", { jobId: job.id, seq: job.seq, attempts: job.attempts, durationMs: Date.now() - startedAt, facts: extraction.facts.length,
       events: extraction.events.length, rejectedRetractions: extraction.rejectedRetractions });
     return applied;
   } catch (error) {
-    const code = error instanceof MemoryExtractionError ? error.code : "MEMORY_EXTRACT_PROVIDER_ERROR";
-    await prisma.$transaction(async tx => {
+    const safe = toSafeDiagnostic(error), validation = error instanceof MemoryExtractionError ? error.diagnostic : {};
+    const providerCode = typeof safe.code === "string" ? safe.code : undefined;
+    const timedOut = stage === "provider_request" && ["ECONNABORTED", "ETIMEDOUT", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"].includes(providerCode ?? "");
+    const code = error instanceof MemoryExtractionError ? error.code : stage === "provider_request"
+      ? timedOut ? "MEMORY_EXTRACT_PROVIDER_TIMEOUT" : "MEMORY_EXTRACT_PROVIDER_ERROR"
+      : safe.category === "prisma" ? "MEMORY_EXTRACT_PERSISTENCE_ERROR" : "MEMORY_EXTRACT_PROCESSING_ERROR";
+    const storedCode = validation.validationReason ? `${code}:${validation.validationReason}` : code;
+    const retryDelayMs = Math.min(600_000, 15_000 * 2 ** (job.attempts - 1));
+    const willRetry = job.attempts < MAX_ATTEMPTS, availableAt = new Date(Date.now() + retryDelayMs);
+    const deferred = await prisma.$transaction(async tx => {
       await lockMemoryThread(tx, thread.id);
       const current = await tx.chatThread.findUnique({ where: { id: thread.id } });
-      if (current?.memoryLeaseOwner !== owner) return;
-      await tx.memoryJob.update({ where: { id: job.id }, data: { status: job.attempts >= MAX_ATTEMPTS ? "failed" : "retry",
-        errorCode: code, availableAt: new Date(Date.now() + Math.min(600_000, 15_000 * 2 ** (job.attempts - 1))) } });
+      if (current?.memoryLeaseOwner !== owner) return false;
+      await tx.memoryJob.update({ where: { id: job.id }, data: { status: willRetry ? "retry" : "failed",
+        errorCode: storedCode, availableAt, finishedAt: willRetry ? null : new Date() } });
       await tx.chatThread.update({ where: { id: thread.id }, data: { memoryLeaseOwner: null, memoryLeaseUntil: null } });
+      return true;
     });
-    errorLog("MemoryV2", "turn deferred", { code, attempts: job.attempts, ...toSafeDiagnostic(error) });
+    const context = { ...safe, ...diagnostic, ...validation, code, ...(providerCode ? { providerCode } : {}), stage,
+      jobId: job.id, seq: job.seq, attempt: job.attempts, maxAttempts: MAX_ATTEMPTS, timeoutMs, durationMs: Date.now() - startedAt };
+    if (!deferred) infoLog("MemoryV2", "turn failure ignored", { ...context, outcome: "lease_lost" });
+    else errorLog("MemoryV2", willRetry ? "turn deferred" : "turn failed", { ...context, willRetry,
+      ...(willRetry ? { retryDelayMs, nextAttemptAt: availableAt.toISOString() } : {}) });
     return false;
   }
 }
