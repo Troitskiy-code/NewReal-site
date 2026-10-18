@@ -42,8 +42,10 @@ for (let attempt = 1; attempt <= calls; attempt++) {
       result.finishReason = ['stop', 'length', 'content_filter'].includes(data.choices?.[0]?.finish_reason) ? data.choices[0].finish_reason : 'unknown';
       result.usage = Object.fromEntries(['prompt_tokens', 'completion_tokens', 'total_tokens'].map(k => [k, data.usage?.[k]]).filter(([,v]) => typeof v === 'number'));
       try {
-        const parsed = memory.parseFactExtraction(data.choices?.[0]?.message?.content ?? '', sources);
-        Object.assign(result, { valid: true, facts: parsed.facts.length, events: parsed.events.length, rejectedRetractions: parsed.rejectedRetractions });
+        const parsed = memory.parseFactExtraction(data.choices?.[0]?.message?.content ?? '', sources, { partial: process.argv.includes('--partial') });
+        Object.assign(result, { valid: true, facts: parsed.facts.length, events: parsed.events.length,
+          rejectedRetractions: parsed.rejectedRetractions, rejectedFacts: parsed.rejectedFacts, rejectedEvents: parsed.rejectedEvents,
+          rejectedCandidates: parsed.rejectedCandidates });
       } catch (error) {
         if (!(error instanceof memory.MemoryExtractionError)) throw error;
         Object.assign(result, { valid: false, code: error.code, ...error.diagnostic });

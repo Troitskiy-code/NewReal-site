@@ -75,4 +75,40 @@ try {
 }
 assert.equal(facts.parseFactExtraction(JSON.stringify(body()), sources()).facts[0].value, 'Анна'); passed++;
 assert.equal(facts.parseFactExtraction(JSON.stringify(body([row({ key: 'city', value: 'Казань' })])), sources('Я живу в Казани.')).facts[0].value, 'Казань'); passed++;
+const localRejections = new Set(['unknown_source', 'user_fact_from_character', 'character_fact_from_user_first_person',
+  'control_instruction', 'unsupported_value', 'unsupported_number', 'question_source', 'non_factual_source',
+  'empty_value', 'negated_set', 'value_too_long', 'event_source_too_long', 'single_slot_conflict']);
+for (const [reason, data, evidence, , raw = false] of cases) {
+  if (!localRejections.has(reason)) {
+    assert.throws(() => facts.parseFactExtraction(raw ? data : JSON.stringify(data), evidence, { partial: true }),
+      error => error.diagnostic.validationReason === reason, 'protocol failures remain fatal in partial mode');
+  } else {
+    const skipped = facts.parseFactExtraction(JSON.stringify(data), evidence, { partial: true });
+    assert.equal(skipped.facts.length, 0); assert.equal(skipped.events.length, 0);
+    assert.ok(skipped.rejectedFacts + skipped.rejectedEvents > 0);
+    assert.ok(skipped.rejectedCandidates.some(d => d.validationReason === reason));
+    const safeId = `s${evidence.length + 1}`;
+    const combined = { facts: [...data.facts, row({ key: 'city', value: 'Казань', sourceId: safeId })], events: data.events };
+    const retained = facts.parseFactExtraction(JSON.stringify(combined), [...evidence,
+      { id: safeId, author: 'user', messageId: 'safe-message', text: 'Я живу в Казани.' }], { partial: true });
+    assert.deepEqual(retained.facts.map(f => f.value), ['Казань']);
+    assert.ok(!JSON.stringify(retained.rejectedCandidates).includes('PRIVATE_SENTINEL'));
+  }
+  passed++;
+}
+// An invalid replacement must not hide an independently confirmed retraction.
+const removed = facts.parseFactExtraction(JSON.stringify(body([
+  row({ key: 'occupation', op: 'retract', value: '' }), row({ key: 'occupation', value: 'космонавт' }),
+])), sources('Я больше не работаю врачом.'), { partial: true });
+assert.equal(removed.rejectedFacts, 1); assert.equal(removed.facts.length, 1); assert.equal(removed.facts[0].op, 'retract'); passed++;
+// Conflicting values reject the whole slot (including a retraction), keeping its old state.
+const conflict = facts.parseFactExtraction(JSON.stringify(body([
+  row(), row({ value: 'Мария' }), row({ op: 'retract', value: '', sourceId: 's2' }),
+])), sources('Анна и Мария. Моё имя больше не Анна.'), { partial: true });
+assert.equal(conflict.facts.length, 0); assert.equal(conflict.rejectedFacts, 3); passed++;
+// A local rejection must not mask a protocol error on the same candidate.
+assert.throws(() => facts.parseFactExtraction(JSON.stringify(body([row({ key: 'forged', value: 'x'.repeat(241) })])), sources(), { partial: true }),
+  error => error.diagnostic.validationReason === 'unsupported_key'); passed++;
+assert.throws(() => facts.parseFactExtraction(JSON.stringify({ facts: [], events: [{ sourceId: 'forged', importance: 99 }] }), sources(), { partial: true }),
+  error => error.diagnostic.validationReason === 'invalid_importance'); passed++;
 console.log(`Memory diagnostics: ${passed} checks passed`);

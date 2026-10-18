@@ -132,16 +132,101 @@ try {
     assert.equal(facts.sameFactValue('музыку', 'музыка', 'likes'), true);
     assert.equal(facts.sameFactValue('Петров', 'Петрова', 'name'), false);
   });
-  await check('validation diagnostics survive the real logger and persist the exact rejection without private text', async () => {
-    const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
+  await check('all-rejected extraction preserves old facts, reports the reason and never blocks the next turn', async () => {
+    const f = await setup('## Пользователь\n- Имя: Сохранённое'), source = await turn(f, 'Меня зовут Анна.');
     await run(f, output([delta('PRIVATE_MEMORY_VALUE')]));
     const job = await db.memoryJob.findUnique({ where: { id: source.job.id } });
-    assert.equal(job.errorCode, 'MEMORY_EXTRACT_INVALID:unsupported_value');
-    const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn deferred'));
+    assert.equal(job.errorCode, 'MEMORY_EXTRACT_REJECTED_ALL'); assert.equal(job.status, 'succeeded');
+    assert.deepEqual((await active(f.scope)).map(fact => fact.value), ['Сохранённое']);
+    const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn processed'));
     assert.ok(line); assert.match(line, /"validationReason":"unsupported_value"/);
     assert.match(line, /"validationPath":"facts\[0\].value"/); assert.match(line, /"sourceId":"s1"/);
-    assert.match(line, /"attempt":1/); assert.match(line, /"maxAttempts":5/); assert.match(line, /"willRetry":true/);
-    assert.match(line, /"nextAttemptAt":/); assert.ok(!line.includes('PRIVATE_MEMORY_VALUE') && !line.includes('Анна'));
+    assert.match(line, /"attempt":1/); assert.match(line, /"willRetry":false/);
+    assert.ok(!line.includes('nextAttemptAt') && !line.includes('PRIVATE_MEMORY_VALUE') && !line.includes('Анна'));
+    assert.ok((await memory.memoryJobStatus()).rejectedAllExtractions > 0);
+    await turn(f, 'Я живу в Казани.');
+    assert.equal((await run(f, output([delta('Казань', 's1', 'city')]))).processed, 1);
+    assert.equal((await db.chatThread.findUnique({ where: { id: f.scope.threadId } })).memoryWatermarkSeq, 2);
+  });
+  await check('bad world name is discarded while grounded facts, events and the next queued turn commit once', async () => {
+    const f = await setup();
+    const first = await turn(f, 'Меня зовут Анна. Я живу в Казани.', 'Я передал вам ключ.');
+    const second = await turn(f, 'Меня зовут Борис.');
+    const before = provider.calls.filter(call => call.kind === 'memory_extract').length;
+    assert.equal((await run(f, request => request.messages[1].content.includes('Борис') ? output([delta('Борис')])
+      : output([delta('Башня Рассвета', 's3', 'name', 'world'), delta('Анна'), delta('Казань', 's2', 'city')],
+        [{ sourceId: 's3', importance: 3 }]))).processed, 2);
+    const a = await db.memoryJob.findUnique({ where: { id: first.job.id } }), b = await db.memoryJob.findUnique({ where: { id: second.job.id } });
+    assert.equal(a.status, 'succeeded'); assert.equal(a.errorCode, 'MEMORY_EXTRACT_PARTIAL'); assert.equal(a.attempts, 1);
+    assert.equal(b.status, 'succeeded'); assert.equal(b.errorCode, null);
+    assert.equal(provider.calls.filter(call => call.kind === 'memory_extract').length - before, 2);
+    const current = await active(f.scope);
+    assert.ok(current.some(fact => fact.key === 'name' && fact.value === 'Борис'));
+    assert.ok(current.some(fact => fact.key === 'city' && fact.value === 'Казань'));
+    assert.ok(!current.some(fact => fact.subject === 'world'));
+    assert.equal(await db.memoryChange.count({ where: { jobId: first.job.id, subject: 'world' } }), 0);
+    assert.equal(await db.episodicMemory.count({ where: { sourceMemoryJobId: first.job.id } }), 1);
+    const thread = await db.chatThread.findUnique({ where: { id: f.scope.threadId } });
+    assert.equal(thread.memoryWatermarkMessageId, second.assistant.id); assert.equal(thread.memoryLeaseOwner, null);
+    assert.ok((await memory.memoryJobStatus()).partialExtractions > 0);
+  });
+  await check('conflicting name candidates preserve the old slot while accepting an independent city', async () => {
+    const f = await setup('## Пользователь\n- Имя: Старое'), source = await turn(f, 'Анна и Мария. Я живу в Казани.');
+    await run(f, output([delta('Анна'), delta('Мария'), delta('Казань', 's2', 'city')]));
+    const current = await active(f.scope);
+    assert.ok(current.some(fact => fact.key === 'name' && fact.value === 'Старое'));
+    assert.ok(current.some(fact => fact.key === 'city' && fact.value === 'Казань'));
+    assert.ok(!current.some(fact => ['Анна', 'Мария'].includes(fact.value)));
+    assert.equal((await db.memoryJob.findUnique({ where: { id: source.job.id } })).errorCode, 'MEMORY_EXTRACT_PARTIAL');
+  });
+  await check('unknown event source cannot discard an independently grounded fact', async () => {
+    const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
+    await run(f, output([delta('Анна')], [{ sourceId: 'forged', importance: 3 }]));
+    assert.equal((await db.memoryJob.findUnique({ where: { id: source.job.id } })).errorCode, 'MEMORY_EXTRACT_PARTIAL');
+    assert.equal((await active(f.scope))[0].value, 'Анна');
+    assert.equal(await db.episodicMemory.count({ where: { threadId: f.scope.threadId } }), 0);
+  });
+  await check('malformed candidate structure still rejects the entire response without applying good-looking siblings', async () => {
+    const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
+    await run(f, output([delta('Анна'), { ...delta('Анна'), op: 'broken' }]));
+    const job = await db.memoryJob.findUnique({ where: { id: source.job.id } });
+    assert.equal(job.status, 'retry'); assert.equal(job.errorCode, 'MEMORY_EXTRACT_INVALID:invalid_operation');
+    assert.equal((await active(f.scope)).length, 0);
+    assert.equal((await db.chatThread.findUnique({ where: { id: f.scope.threadId } })).memoryWatermarkSeq, 0);
+  });
+  await check('targeted recovery resets only the two named failed jobs, is idempotent and drains their queued successors', async () => {
+    const a = await setup(), b = await setup(), unrelated = await setup();
+    const first = await turn(a, 'Меня зовут Анна.'), next = await turn(a, 'Я живу в Казани.');
+    const second = await turn(b, 'Меня зовут Борис.'), other = await turn(unrelated, 'Меня зовут Вера.');
+    const ids = ['cmvdlrg32001gjbokici1tb56', 'cmvdmo54j00mpjbokg3dh7nvz'];
+    await db.memoryJob.update({ where: { id: first.job.id }, data: { id: ids[0], status: 'failed', attempts: 5, errorCode: 'MEMORY_EXTRACT_PROVIDER_ERROR' } });
+    await db.memoryJob.update({ where: { id: second.job.id }, data: { id: ids[1], status: 'failed', attempts: 5, errorCode: 'MEMORY_EXTRACT_PROVIDER_TIMEOUT' } });
+    await db.memoryJob.update({ where: { id: other.job.id }, data: { status: 'failed', attempts: 5, errorCode: 'MEMORY_EXTRACT_PROVIDER_ERROR' } });
+    const { Client } = require('pg'), client = new Client({ connectionString: h.databaseUrl });
+    const sql = readFileSync(join(root, 'docs/memory-v2-recover-2026-10-18.sql'), 'utf8');
+    await client.connect();
+    try {
+      // Prisma stores naive timestamps as UTC; SQL must not delay recovery by
+      // the operator session's time zone.
+      await client.query("SET TIME ZONE '+12:00'");
+      const result = await client.query(sql), changes = result.find(r => r.command === 'UPDATE').rows;
+      assert.equal(changes.length, 2); assert.ok(changes.every(row => row.previous_attempts === 5 && row.status === 'retry'));
+      // Adminer's statement-at-a-time execution must also be safe to repeat.
+      for (const statement of sql.replace(/--[^\n]*/g, '').split(';').map(s => s.trim()).filter(Boolean)) {
+        const result = await client.query(statement);
+        if (result.command === 'UPDATE') assert.equal(result.rowCount, 0);
+      }
+    } finally { await client.end(); }
+    const untouched = await db.memoryJob.findUnique({ where: { id: other.job.id } });
+    assert.equal(untouched.status, 'failed'); assert.equal(untouched.attempts, 5);
+    assert.equal((await db.memoryJob.findUnique({ where: { id: next.job.id } })).status, 'queued');
+    assert.equal((await run(a, request => JSON.parse(request.messages[1].content).sources[0].text.includes('Казани')
+      ? output([delta('Казань', 's1', 'city')]) : output([delta('Башня Рассвета', 's2', 'name', 'world'), delta('Анна')]))).processed, 2);
+    assert.equal((await run(b, output([delta('Борис')]))).processed, 1);
+    assert.equal((await db.memoryJob.findUnique({ where: { id: ids[0] } })).attempts, 1);
+    assert.equal((await db.chatThread.findUnique({ where: { id: a.scope.threadId } })).memoryWatermarkMessageId, next.assistant.id);
+    assert.ok((await active(a.scope)).some(fact => fact.value === 'Казань'));
+    assert.ok((await active(b.scope)).some(fact => fact.value === 'Борис'));
   });
   await check('provider timeout has a stable memory code, separate transport code and retry information', async () => {
     const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
@@ -151,7 +236,7 @@ try {
     assert.equal(job.errorCode, 'MEMORY_EXTRACT_PROVIDER_TIMEOUT'); assert.equal(job.status, 'retry');
     const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn deferred'));
     assert.match(line, /"code":"MEMORY_EXTRACT_PROVIDER_TIMEOUT"/); assert.match(line, /"providerCode":"ECONNABORTED"/);
-    assert.match(line, /"stage":"provider_request"/); assert.match(line, /"timeoutMs":20000/);
+    assert.match(line, /"stage":"provider_request"/); assert.match(line, /"timeoutMs":40000/);
     assert.ok(!line.includes('PRIVATE_PROVIDER_RESPONSE'));
   });
   await check('expired lease has a successor, and the old owner cannot commit or release it', async () => {

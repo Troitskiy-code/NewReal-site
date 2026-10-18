@@ -13,7 +13,7 @@ Object.assign(env, { NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1',
   NEXT_PUBLIC_APP_URL: 'http://localhost:3000', NEXT_PUBLIC_YANDEX_METRIKA_ID: '999001',
   LOGTAIL_SOURCE_TOKEN: '', LOGTAIL_INGESTING_HOST: '', RESEND_API_KEY: '',
 });
-const child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'build'], {
+const child = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'build', '--webpack'], {
   env, stdio: 'inherit', windowsHide: true,
 });
 child.on('error', () => { console.error('Synthetic build could not start'); process.exitCode = 1; });

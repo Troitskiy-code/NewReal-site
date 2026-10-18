@@ -171,7 +171,7 @@ async function claimJob(threadId: string) {
 async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJob>>>, apiKey: string) {
   const { job, owner, thread } = claim;
   const scope: ChatScope = { threadId: thread.id, characterId: thread.characterId, userId: thread.userId, legacy: false };
-  const startedAt = Date.now(), timeoutMs = 20_000;
+  const startedAt = Date.now(), timeoutMs = 40_000;
   const diagnostic: { sourceCount?: number; inputChars?: number; inputTokens?: number; responseChars?: number; finishReason?: string } = {};
   let stage = "load_sources";
   try {
@@ -184,7 +184,8 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
     if (input.length > 64_000) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
     diagnostic.inputTokens = countTokens(input);
     if (diagnostic.inputTokens > 8000) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
-    let extraction: ReturnType<typeof parseFactExtraction> = { facts: [], events: [], rejectedRetractions: 0 };
+    let extraction: ReturnType<typeof parseFactExtraction> = { facts: [], events: [], rejectedRetractions: 0,
+      rejectedFacts: 0, rejectedEvents: 0, rejectedCandidates: [] };
     if (sources.length) {
       stage = "provider_request";
       const response = await serviceChatPost("memory_extract", "https://api.kodikrouter.ru/v1/chat/completions", {
@@ -198,8 +199,12 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       const finishReason = response.data?.choices?.[0]?.finish_reason;
       diagnostic.finishReason = ["stop", "length", "content_filter", "tool_calls", "function_call"].includes(finishReason) ? finishReason : "unknown";
       if (response.data?.choices?.[0]?.finish_reason === "length") throw new MemoryExtractionError("MEMORY_EXTRACT_TRUNCATED");
-      extraction = parseFactExtraction(content, sources);
+      extraction = parseFactExtraction(content, sources, { partial: true });
     }
+    const hasRejectedCandidates = extraction.rejectedFacts + extraction.rejectedEvents > 0;
+    const warningCode = hasRejectedCandidates ? extraction.facts.length + extraction.events.length > 0
+      ? "MEMORY_EXTRACT_PARTIAL" : "MEMORY_EXTRACT_REJECTED_ALL"
+      : extraction.rejectedRetractions ? "MEMORY_EXTRACT_UNSUPPORTED_RETRACTION" : null;
     stage = "commit";
     const applied = await prisma.$transaction(async tx => {
       await lockMemoryThread(tx, thread.id);
@@ -224,13 +229,16 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       if (overflow.length) await tx.episodicMemory.deleteMany({ where: { id: { in: overflow.map(row => row.id) } } });
       await mirrorCore(tx, scope);
       await tx.memoryJob.update({ where: { id: job.id }, data: { status: "succeeded", sourceFingerprint: hash, finishedAt: new Date(),
-        errorCode: extraction.rejectedRetractions ? "MEMORY_EXTRACT_UNSUPPORTED_RETRACTION" : null } });
+        errorCode: warningCode } });
       await advanceWatermark(tx, thread.id);
       await tx.chatThread.update({ where: { id: thread.id }, data: { memoryLeaseOwner: null, memoryLeaseUntil: null } });
       return true;
     });
-    if (applied) infoLog("MemoryV2", "turn processed", { jobId: job.id, seq: job.seq, attempts: job.attempts, durationMs: Date.now() - startedAt, facts: extraction.facts.length,
-      events: extraction.events.length, rejectedRetractions: extraction.rejectedRetractions });
+    if (applied) infoLog("MemoryV2", "turn processed", { jobId: job.id, seq: job.seq, attempt: job.attempts, willRetry: false,
+      durationMs: Date.now() - startedAt, facts: extraction.facts.length,
+      events: extraction.events.length, rejectedRetractions: extraction.rejectedRetractions,
+      rejectedFacts: extraction.rejectedFacts, rejectedEvents: extraction.rejectedEvents, warningCode,
+      ...(hasRejectedCandidates ? { rejectedCandidates: extraction.rejectedCandidates } : {}) });
     return applied;
   } catch (error) {
     const safe = toSafeDiagnostic(error), validation = error instanceof MemoryExtractionError ? error.diagnostic : {};
@@ -361,7 +369,14 @@ export async function clearFactMemory(scope: ChatScope) {
 
 export async function memoryJobStatus() {
   if (!memoryV2Enabled()) return { enabled: false, jobs: [] };
-  const jobs = await prisma.memoryJob.groupBy({ by: ["status"], _count: { _all: true }, _min: { createdAt: true } });
-  const guardedRetractions = await prisma.memoryJob.count({ where: { status: "succeeded", errorCode: "MEMORY_EXTRACT_UNSUPPORTED_RETRACTION" } });
-  return { enabled: true, guardedRetractions, jobs: jobs.map(row => ({ status: row.status, count: row._count._all, oldestAt: row._min.createdAt })) };
+  const [jobs, warnings] = await Promise.all([
+    prisma.memoryJob.groupBy({ by: ["status"], _count: { _all: true }, _min: { createdAt: true } }),
+    prisma.memoryJob.groupBy({ by: ["errorCode"], where: { status: "succeeded", errorCode: { in: [
+      "MEMORY_EXTRACT_UNSUPPORTED_RETRACTION", "MEMORY_EXTRACT_PARTIAL", "MEMORY_EXTRACT_REJECTED_ALL",
+    ] } }, _count: { _all: true } }),
+  ]);
+  const count = (code: string) => warnings.find(row => row.errorCode === code)?._count._all ?? 0;
+  return { enabled: true, guardedRetractions: count("MEMORY_EXTRACT_UNSUPPORTED_RETRACTION"),
+    partialExtractions: count("MEMORY_EXTRACT_PARTIAL"), rejectedAllExtractions: count("MEMORY_EXTRACT_REJECTED_ALL"),
+    jobs: jobs.map(row => ({ status: row.status, count: row._count._all, oldestAt: row._min.createdAt })) };
 }

@@ -116,7 +116,10 @@ export function factExtractionFormat(sourceIds: string[]) {
   } } };
 }
 
-export function parseFactExtraction(raw: string, sources: FactSource[]): { facts: FactDelta[]; events: ExtractedEvent[]; rejectedRetractions: number } {
+export function parseFactExtraction(raw: string, sources: FactSource[], { partial = false } = {}): {
+  facts: FactDelta[]; events: ExtractedEvent[]; rejectedRetractions: number;
+  rejectedFacts: number; rejectedEvents: number; rejectedCandidates: Readonly<MemoryValidationDiagnostic>[];
+} {
   const context: MemoryValidationDiagnostic = { responseChars: typeof raw === "string" ? raw.length : 0, sourceCount: sources.length };
   const fail = (validationReason: MemoryValidationReason, validationPath: string,
     detail: MemoryValidationDiagnostic = {}): never => {
@@ -135,9 +138,24 @@ export function parseFactExtraction(raw: string, sources: FactSource[]): { facts
   context.eventCount = result.events.length;
   if (result.events.length > 3) return fail("event_limit_exceeded", "events");
   const known = new Map(sources.map(source => [source.id, source]));
-  let rejectedRetractions = 0;
+  let rejectedRetractions = 0, rejectedFacts = 0, rejectedEvents = 0;
+  const rejectedCandidates: Readonly<MemoryValidationDiagnostic>[] = [];
+  // A bad claim cannot poison unrelated grounded candidates. Protocol/schema
+  // errors still reject the response; provenance and value checks are unchanged.
+  const recoverable = new Set<MemoryValidationReason>(["unknown_source", "user_fact_from_character",
+    "character_fact_from_user_first_person", "control_instruction", "unsupported_value", "unsupported_number",
+    "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long"]);
+  const candidate = <T>(kind: "fact" | "event", parse: () => T | null): T | null => {
+    try { return parse(); } catch (error) {
+      if (!partial || !(error instanceof MemoryExtractionError) || !error.diagnostic.validationReason
+        || !recoverable.has(error.diagnostic.validationReason)) throw error;
+      rejectedCandidates.push(error.diagnostic);
+      if (kind === "fact") rejectedFacts++; else rejectedEvents++;
+      return null;
+    }
+  };
   const candidates = result.facts;
-  const facts: FactDelta[] = candidates.map((value, factIndex) => {
+  let facts: FactDelta[] = candidates.map((value, factIndex) => candidate<FactDelta>("fact", () => {
     const detail: MemoryValidationDiagnostic = { factIndex };
     const reject = (reason: MemoryValidationReason, field = ""): never => fail(reason, `facts[${factIndex}]${field ? `.${field}` : ""}`, detail);
     if (!value || typeof value !== "object" || Array.isArray(value)) return reject("invalid_fact_object");
@@ -150,10 +168,10 @@ export function parseFactExtraction(raw: string, sources: FactSource[]): { facts
     if (typeof row.key !== "string") return reject("invalid_key_type", "key");
     if (typeof row.value !== "string") return reject("invalid_value_type", "value");
     detail.valueChars = row.value.length;
-    if (row.value.length > 240) return reject("value_too_long", "value");
     const key = canonicalFactKey(row.key), source = known.get(String(row.sourceId));
     if (!Object.hasOwn(SLOTS, key)) return reject("unsupported_key", "key");
     detail.factKey = key;
+    if (row.value.length > 240) return reject("value_too_long", "value");
     if (!source) return reject("unknown_source", "sourceId");
     if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
     detail.sourceRole = source.author; detail.sourceChars = source.text.length;
@@ -161,7 +179,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[]): { facts
     // A single-valued set already supersedes its predecessor. Some providers
     // redundantly retract that old value using the new-value quote. This row has
     // no additional effect and is omitted; it never bypasses validation of set.
-    if (row.op === "retract" && factCardinality(key) === "single" && candidates.some(other => {
+    if (!partial && row.op === "retract" && factCardinality(key) === "single" && candidates.some(other => {
       const next = other as Record<string, unknown> | null;
       return next && next.op === "set" && next.subject === row.subject && typeof next.key === "string" && canonicalFactKey(next.key) === key;
     })) return null;
@@ -186,29 +204,46 @@ export function parseFactExtraction(raw: string, sources: FactSource[]): { facts
     return { op: row.op as "set" | "retract", subject: row.subject, key, value: text,
       sourceMessageId: source.messageId, source: source.author === "user" ? "user_msg" : "assistant_msg",
       confidence: 1, pinned: false };
-  }).filter((fact): fact is FactDelta => fact !== null);
+  })).filter((fact): fact is FactDelta => fact !== null);
   // Two new values for a single-valued slot in one extraction need a correction, not arbitrary last-wins.
   const seen = new Map<string, string>();
+  const conflicts = new Set<string>();
   for (const fact of facts.filter(fact => fact.op === "set" && factCardinality(fact.key) === "single")) {
     const slot = `${fact.subject}:${fact.key}`;
-    if (seen.has(slot) && clean(seen.get(slot)!) !== clean(fact.value)) return fail("single_slot_conflict", "facts",
-      { factKey: fact.key, factSubject: diagnosticSubject(fact.subject) });
+    if (seen.has(slot) && clean(seen.get(slot)!) !== clean(fact.value)) {
+      const detail = { factKey: fact.key, factSubject: diagnosticSubject(fact.subject) };
+      if (!partial) return fail("single_slot_conflict", "facts", detail);
+      if (!conflicts.has(slot)) rejectedCandidates.push({ ...context, ...detail,
+        validationReason: "single_slot_conflict", validationPath: "facts" });
+      conflicts.add(slot);
+    }
     seen.set(slot, fact.value);
   }
-  const events: ExtractedEvent[] = result.events.map((value, eventIndex) => {
+  if (conflicts.size) facts = facts.filter(fact => {
+    if (!conflicts.has(`${fact.subject}:${fact.key}`)) return true;
+    rejectedFacts++; return false;
+  });
+  if (partial) {
+    // Only an ACCEPTED replacement makes a retraction redundant. An invalid set
+    // must not suppress an independently grounded removal from the same slot.
+    const replacements = new Set(facts.filter(fact => fact.op === "set" && factCardinality(fact.key) === "single")
+      .map(fact => `${fact.subject}:${fact.key}`));
+    facts = facts.filter(fact => fact.op !== "retract" || !replacements.has(`${fact.subject}:${fact.key}`));
+  }
+  const events: ExtractedEvent[] = result.events.map((value, eventIndex) => candidate<ExtractedEvent>("event", () => {
     const detail: MemoryValidationDiagnostic = { eventIndex };
     const reject = (reason: MemoryValidationReason, field = ""): never => fail(reason, `events[${eventIndex}]${field ? `.${field}` : ""}`, detail);
     if (!value || typeof value !== "object" || Array.isArray(value)) return reject("invalid_event_object");
     const row = value as Record<string, unknown>, source = known.get(String(row.sourceId));
     if (Object.keys(row).some(key => !["sourceId", "importance"].includes(key))) return reject("unexpected_event_field");
+    if (![2, 3].includes(Number(row.importance))) return reject("invalid_importance", "importance");
     if (!source) return reject("unknown_source", "sourceId");
     if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
     detail.sourceRole = source.author; detail.sourceChars = source.text.length;
-    if (![2, 3].includes(Number(row.importance))) return reject("invalid_importance", "importance");
     if (source.text.length > 2000) return reject("event_source_too_long", "sourceId");
     return { text: source.text, source: source.author, sourceMessageId: source.messageId, importance: Number(row.importance) };
-  });
-  return { facts, events, rejectedRetractions };
+  })).filter((event): event is ExtractedEvent => event !== null);
+  return { facts, events, rejectedRetractions, rejectedFacts, rejectedEvents, rejectedCandidates };
 }
 
 /** Old Core is not silently reinterpreted by AI. Recognised labelled slots migrate;
