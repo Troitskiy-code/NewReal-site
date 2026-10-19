@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureAnonymousChatTables } from "@/lib/ensureAnonymousChatTables";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { getCronProvidedSecret, logCronSecretCheck } from "@/lib/cronAuth";
+import { cleanupSpeechCache } from "@/lib/chatSpeech";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -41,6 +42,7 @@ async function handle(req: NextRequest) {
       ? await prisma.anonymousSession.deleteMany({ where: { sessionId: { in: sessionIds } } })
       : { count: 0 };
 
+    const speech = await cleanupSpeechCache(cutoff);
     infoLog("Cron:CleanupAnonymous", `removed sessions=${sessions.count} messages=${messages.count} requests=${requests.count}`);
     return NextResponse.json({
       ok: true,
@@ -48,6 +50,7 @@ async function handle(req: NextRequest) {
       messages: messages.count,
       requests: requests.count,
       rateBuckets,
+      speech,
     });
   } catch (error) {
     errorLog("Cron:CleanupAnonymous", "cleanup failed", toSafeDiagnostic(error));

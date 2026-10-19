@@ -14,6 +14,7 @@ import { choiceNumeral, splitStoryChoices, type StoryChoicesSplit } from "@/lib/
 import PersonaSelector from "@/components/PersonaSelector";
 import ChatStorySettings from "@/components/ChatStorySettings";
 import ChatThreadsPanel from "@/components/ChatThreadsPanel";
+import { ChatSpeechProvider, ChatSpeechControls, MessageSpeechButton, MessageSpeechPlayer } from "@/components/ChatSpeech";
 import { THREAD_QUERY_PARAM, threadDisplayTitle, withThread, type ChatThreadSummary } from "@/lib/chatThreadShared";
 import type { ChatPersona } from "@/lib/persona";
 import {
@@ -356,7 +357,8 @@ function MessageToolbar({
   }
 
   return (
-    <div className="flex shrink-0 flex-nowrap items-center gap-1">
+    <div className="flex max-w-full flex-wrap items-center gap-1">
+      <MessageSpeechButton messageId={message.id} content={message.content} disabled={disabled} />
       <button
         type="button"
         onClick={onContinue}
@@ -565,7 +567,7 @@ function ChatMessageItem({
       )}
 
       {isEditing ? null : (
-        <div className={`-mt-0.5 flex px-1 ${isUser ? "justify-end" : "justify-start"}`}>
+        <div className={`-mt-0.5 flex max-w-full px-1 ${isUser ? "justify-end" : "justify-start"}`}>
           <MessageToolbar
             message={message}
             disabled={actionDisabled}
@@ -577,6 +579,7 @@ function ChatMessageItem({
           />
         </div>
       )}
+      {!isUser && !isEditing && !isStreaming && <MessageSpeechPlayer messageId={message.id} content={message.content} />}
     </div>
   );
 }
@@ -2055,7 +2058,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             </p>
           ) : null}
           <div data-character-list-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <ChatSpeechProvider key={`${characterId}:${threadId ?? ""}:${session?.user?.id ?? "guest"}`}
+              characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}>
             <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-4 md:space-y-4 md:px-4 md:pt-6">
+            <ChatSpeechControls />
             {characterCardDescription ? (
               <CharacterDescriptionCard description={characterCardDescription} />
             ) : null}
@@ -2125,6 +2131,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             ) : null}
             <div ref={messagesEndRef} />
             </div>
+            </ChatSpeechProvider>
           </div>
 
           <div className="shrink-0 px-3 py-3 md:p-4">

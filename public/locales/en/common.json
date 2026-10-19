@@ -1,4 +1,38 @@
 {
+  "chatSpeech": {
+    "label": "Character speech",
+    "listen": "Listen",
+    "pause": "Pause",
+    "resume": "Resume playback",
+    "seek": "Seek audio",
+    "preview": "Speech text",
+    "speechOnly": "Marked actions and stage directions are skipped. Review the speech text below the reply.",
+    "loading": "Generating audio…",
+    "player": "Character reply audio",
+    "voice": "Voice",
+    "voices": {
+      "fola": "Fola",
+      "fenrir": "Fenrir"
+    },
+    "unlimited": "Unlimited speech is included",
+    "daily": "Playbacks: {{remaining}} of 1 left today",
+    "reset": "One playback a day, including replays. Resets at 00:00 Moscow time. Pausing and resuming do not use another play.",
+    "upgrade": "Unlimited with a subscription",
+    "errors": {
+      "unauthorized": "Sign in to listen to this reply.",
+      "notFound": "This reply is unavailable. Refresh the chat.",
+      "empty": "This reply only contains actions or stage directions, with no words to read.",
+      "tooLong": "This reply is too long for speech (maximum 8,000 characters).",
+      "busy": "Another reply is being generated. Please wait.",
+      "quota": "Your free playback has been used today. Replays also count. Resets at 00:00 Moscow time. Subscriptions include unlimited speech.",
+      "rateLimit": "Too many requests. Try again in a minute.",
+      "changed": "The reply has changed. Try generating its audio again.",
+      "unavailable": "Could not load the audio. Please try again later.",
+      "playback": "Press play on the audio player. There is no need to generate the audio again.",
+      "pending": "Audio is still being prepared. Try Listen again later to continue the same recording.",
+      "uncertain": "The service did not confirm whether synthesis started. Retrying this reply is temporarily unavailable; your daily playback is preserved."
+    }
+  },
   "header": {
     "title": "NewVerse",
     "openMenu": "Open menu",

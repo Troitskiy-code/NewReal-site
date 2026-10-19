@@ -140,10 +140,45 @@ model Message {
   deepinfraEmbedding MessageEmbeddingDeepinfra?
   memoryUserJobs MemoryJob[] @relation("MemoryJobUser")
   memoryAssistantJobs MemoryJob[] @relation("MemoryJobAssistant")
+  speechClips SpeechClip[]
 
   @@index([userId, characterId])
   @@index([userId, chatId])
   @@index([threadId, createdAt])
+}
+
+// Private, bounded audio cache. Daily usage survives message deletion and cache eviction.
+model SpeechClip {
+  id              String   @id
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messageId       String
+  message         Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  voice           String
+  inputCharacters Int
+  status          String
+  audio           Bytes?
+  requestToken    String?
+  providerTaskId  String?
+  costEventId     String?
+  leaseUntil      DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, status, leaseUntil])
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model SpeechDailyQuota {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  day    String
+  used   Int    @default(0)
+
+  @@id([userId, day])
+  @@index([day])
 }
 
 // An independent story with one character (single hero, universe or group).
@@ -483,6 +518,8 @@ model User {
   firstVcPurchase FirstVcPurchase?
   telegramAccount TelegramAccount?
   telegramLinkTokens TelegramLinkToken[]
+  speechClips SpeechClip[]
+  speechDailyQuotas SpeechDailyQuota[]
 }
 
 model Transaction {

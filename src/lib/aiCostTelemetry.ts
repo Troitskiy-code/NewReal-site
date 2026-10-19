@@ -63,7 +63,7 @@ function requestId(value: unknown): string | null {
 }
 async function begin(model: string, purpose: string, provider = "kodikrouter", imageRub?: number): Promise<Ticket> {
   const ctx = contexts.getStore();
-  const surface = provider === "kodikrouter" || provider === "deepinfra" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
+  const surface = purpose === "speech" ? null : provider === "kodikrouter" || provider === "deepinfra" ? purpose === "embedding" ? "embeddings" : "chat_completions" : null;
   const ticket: Ticket = { id: randomUUID(), operationId: ctx?.operationId ?? randomUUID(), attempt: ctx ? ++ctx.sequence : 1,
     audience: ctx?.audience ?? "system", started: Date.now(), requestedModel: model, inputRate: null, outputRate: null, surface, provider, fx: provider === "deepinfra" ? deepinfraUsdRub() : null };
   const diagnostic = diagnosticAttempts.getStore();
@@ -158,6 +158,31 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
   } catch (error) { errorLog("AiCost", "Unable to complete cost attempt", ticketDiagnosticContext(ticket), toSafeDiagnostic(error)); }
 }
 const noUsage = () => readCostUsage(null);
+
+/** One durable event per asynchronous synthesis, including jobs that succeed after a reconnect. */
+export async function recordKieSpeechCost(job: { costEventId: string; userId: string; providerTaskId: string | null;
+  text: string; startedAt: Date }, model: string, state: "pending" | "completed" | "failed", credits: number | null = null) {
+  const ctx = contexts.getStore();
+  const fx = await getAccountingUsdRub();
+  const measured = credits !== null && Number.isFinite(credits) && credits >= 0;
+  const data = { provider: "kie", model, purpose: "speech", apiSurface: "text_to_speech", accountingVersion: 2,
+    outcome: state, providerRequestId: job.providerTaskId, inputCharacters: Array.from(job.text).length,
+    durationMs: state === "pending" ? null : Date.now() - job.startedAt.getTime(),
+    usageSource: measured ? "provider" : "missing", providerCostNative: measured ? credits : null,
+    providerCostCurrency: measured ? "CREDIT" : null, providerCostSemantics: measured ? "reported_credits_consumed" : "unverified",
+    // $0.005 / Kie credit. Reported credits are not a confirmed RUB ledger debit.
+    reportedCostRub: null, usdRub: fx, estimatedCostRub: measured && fx ? credits * 0.005 * fx : null,
+    costSource: measured && fx ? "kie_credits_estimate" : "unknown" };
+  try {
+    await prisma.aiCostEvent.upsert({ where: { id: job.costEventId }, update: {}, create: {
+      id: job.costEventId, operationId: job.costEventId, attempt: 1, audience: "user", ...data,
+      actorHash: ctx?.actorHash ?? (process.env.NEXTAUTH_SECRET ? createHmac("sha256", process.env.NEXTAUTH_SECRET).update(job.userId).digest("hex") : null),
+      subscriptionType: ctx?.subscriptionType,
+    } });
+    await prisma.aiCostEvent.updateMany({ where: { id: job.costEventId,
+      outcome: { in: state === "pending" ? ["pending"] : ["pending", state] } }, data });
+  } catch (error) { errorLog("AiCost", "Unable to record speech cost", toSafeDiagnostic(error)); }
+}
 function providerUsage(ticket: Ticket, data: unknown, embedding = false) {
   return ticket.provider === "deepinfra" ? readDeepinfraCostUsage(data, embedding) : readCostUsage(data, embedding);
 }
