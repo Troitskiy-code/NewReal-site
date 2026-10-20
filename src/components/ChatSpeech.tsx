@@ -5,13 +5,14 @@ import { useTranslation } from "react-i18next";
 import { LuLoaderCircle, LuPause, LuPlay, LuVolume2 } from "react-icons/lu";
 import LocaleLink from "./LocaleLink";
 import { useTelegramMode } from "./TelegramProvider";
-import { DEFAULT_SPEECH_VOICE, isSpeechVoice, speechText, SPEECH_VOICES, type SpeechQuota, type SpeechVoice } from "@/lib/speech";
+import { DEFAULT_SPEECH_VOICE, isSpeechVoice, SPEECH_VOICES, type SpeechQuota, type SpeechVoice } from "@/lib/speech";
 import { withThread } from "@/lib/chatThreadShared";
 
 type Clip = { messageId: string; content: string; voice: SpeechVoice; url: string };
 type SpeechContextValue = {
   quota: SpeechQuota | null; voice: SpeechVoice; setVoice: (voice: SpeechVoice) => void;
   loadingId: string | null; clip: Clip | null; paused: boolean; error: string | null; errorId: string | null;
+  prepared: Record<string, { content: string; text: string }>;
   toggle: (id: string, content: string) => void;
   bindAudio: (audio: HTMLAudioElement | null) => void;
   setPaused: (value: boolean) => void; stop: (id: string) => void; playbackError: () => void; seek: (seconds: number) => void;
@@ -31,6 +32,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   const [paused, setPaused] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
+  const [prepared, setPrepared] = useState<Record<string, { content: string; text: string }>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
@@ -102,9 +104,11 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       const deadline = Date.now() + 5 * 60_000;
       for (;;) {
         response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messageId: id, voice }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(60_000)]) });
+          body: JSON.stringify({ messageId: id, voice }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(100_000)]) });
         if (response.status !== 202) break;
-        await response.body?.cancel();
+        const state = await response.json();
+        if (typeof state.text === "string" && mountedRef.current && !controller.signal.aborted)
+          setPrepared(previous => ({ ...previous, [id]: { content, text: state.text } }));
         if (Date.now() >= deadline) throw new Error("pending");
         await new Promise<void>((resolve, reject) => {
           const onAbort = () => { clearTimeout(timer); reject(controller.signal.reason); };
@@ -124,6 +128,15 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       setQuota({ enabled: true, unlimited, remaining: unlimited ? null : Number(response.headers.get("X-Speech-Remaining") ?? 0),
         resetsAt: response.headers.get("X-Speech-Resets-At") ?? quota.resetsAt });
       setClip({ messageId: id, content, voice, url: URL.createObjectURL(blob) });
+      // Read the actual cached script; do not offer a local heuristic as an exact preview.
+      const metadataUrl = new URL(endpoint, window.location.origin);
+      metadataUrl.searchParams.set("messageId", id); metadataUrl.searchParams.set("voice", voice);
+      void fetch(metadataUrl, { cache: "no-store", signal: controller.signal }).then(async metadata => {
+        if (!metadata.ok) return;
+        const state = await metadata.json();
+        if (typeof state.text === "string" && mountedRef.current && !controller.signal.aborted)
+          setPrepared(previous => ({ ...previous, [id]: { content, text: state.text } }));
+      }).catch(() => {});
     } catch (caught) {
       if (mountedRef.current && !controller.signal.aborted) {
         setError(t(`chatSpeech.errors.${caught instanceof Error && ERROR_CODES.has(caught.message) ? caught.message : "unavailable"}`));
@@ -135,7 +148,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     }
   };
 
-  return <SpeechContext.Provider value={{ quota, voice, setVoice, loadingId, clip, paused, error, errorId, toggle,
+  return <SpeechContext.Provider value={{ quota, voice, setVoice, loadingId, clip, paused, error, errorId, prepared, toggle,
     bindAudio, setPaused, stop,
     seek: seconds => { if (audioRef.current && Number.isFinite(seconds)) audioRef.current.currentTime = seconds; },
     playbackError: () => { setErrorId(clip?.messageId ?? null); setError(t("chatSpeech.errors.playback")); } }}>{children}</SpeechContext.Provider>;
@@ -168,7 +181,7 @@ export function MessageSpeechButton({ messageId, content, disabled }: { messageI
   if (!speech?.quota?.enabled) return null;
   const loading = speech.loadingId === messageId;
   const playing = speech.clip?.messageId === messageId && !speech.paused;
-  const spoken = speechText(content);
+  const spoken = content.trim();
   const label = t(loading ? "chatSpeech.loading" : playing ? "chatSpeech.pause" : "chatSpeech.listen");
   return <button type="button" aria-label={spoken ? label : t("chatSpeech.errors.empty")} title={spoken ? label : t("chatSpeech.errors.empty")} aria-pressed={playing} aria-busy={loading}
     disabled={disabled || !spoken || Boolean(speech.loadingId)} onClick={() => void speech.toggle(messageId, content)}
@@ -187,10 +200,10 @@ export function MessageSpeechPlayer({ messageId, content }: { messageId: string;
   useEffect(() => () => stop?.(messageId), [messageId, content, stop]);
   if (!speech?.quota?.enabled) return null;
   const activeClip = speech.clip?.messageId === messageId && speech.clip.content === content ? speech.clip : null;
-  const spoken = speechText(content);
+  const spoken = speech.prepared[messageId]?.content === content ? speech.prepared[messageId].text : null;
   const time = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
   return <>
-    {spoken && spoken !== content.trim() && <details className="mt-1 font-sans text-xs text-wd-text-secondary">
+    {spoken && <details className="mt-1 font-sans text-xs text-wd-text-secondary">
       <summary className="cursor-pointer">{t("chatSpeech.preview")}</summary>
       <p className="mt-1 whitespace-pre-wrap">{spoken}</p>
     </details>}

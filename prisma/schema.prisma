@@ -158,6 +158,8 @@ model SpeechClip {
   inputCharacters Int
   status          String
   audio           Bytes?
+  preparedText    String?  @db.Text
+  preparedTurns   Json?
   requestToken    String?
   providerTaskId  String?
   costEventId     String?

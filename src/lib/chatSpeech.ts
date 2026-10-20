@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { moscowDayKey, nextMoscowMidnight } from "./freeDailyQuota";
 import { getSubscriptionPlan } from "./chatEconomy";
-import { speechText, SPEECH_MAX_CHARACTERS, type SpeechVoice, type SpeechQuota } from "./speech";
+import { speechSource, SPEECH_SOURCE_MAX_CHARACTERS, SPEECH_PREPARATION_VERSION, SPEECH_VOICES, type PreparedSpeech, type SpeechTurn, type SpeechVoice, type SpeechQuota } from "./speech";
 import { SPEECH_MODEL, SPEECH_CACHE_VERSION, speechEnabled } from "./speechProvider";
 
 const LEASE_MS = 120_000;
@@ -18,7 +18,7 @@ export function unlimitedSpeech(user: SpeechUser, now = new Date()): boolean {
 }
 
 export function speechClipId(userId: string, messageId: string, text: string, voice: SpeechVoice): string {
-  return createHash("sha256").update(JSON.stringify(["speech-dialogue-v2", SPEECH_CACHE_VERSION, SPEECH_MODEL, userId, messageId, text, voice])).digest("hex");
+  return createHash("sha256").update(JSON.stringify([SPEECH_PREPARATION_VERSION, SPEECH_CACHE_VERSION, SPEECH_MODEL, userId, messageId, text, voice])).digest("hex");
 }
 async function lockUser(tx: Prisma.TransactionClient, userId: string) {
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
@@ -45,7 +45,7 @@ async function debitPlayback(tx: Prisma.TransactionClient, userId: string, day: 
 }
 
 type Source = { userId: string; characterId: string; messageId: string; voice: SpeechVoice };
-export type SpeechReservation = Source & { id: string; token: string; text: string; freeDay: string | null;
+export type SpeechReservation = Source & { id: string; token: string; text: string; preparedText: string | null; preparedTurns: SpeechTurn[] | null; freeDay: string | null;
   providerTaskId: string | null; costEventId: string; uncertain: boolean; startedAt: Date };
 type Reserved = { kind: "cached"; audio: Buffer; quota: SpeechQuota } | { kind: "reserved"; reservation: SpeechReservation };
 
@@ -55,9 +55,9 @@ export async function reserveSpeech(source: Source, now = new Date()): Promise<R
     const message = await tx.message.findFirst({ where: { id: source.messageId, userId: source.userId,
       characterId: source.characterId, role: "assistant" }, select: { content: true } });
     if (!message) throw new ChatSpeechError("notFound", 404);
-    const text = speechText(message.content);
+    const text = speechSource(message.content);
     if (!text) throw new ChatSpeechError("empty", 400);
-    if (Array.from(text).length > SPEECH_MAX_CHARACTERS) throw new ChatSpeechError("tooLong", 400);
+    if (Array.from(text).length > SPEECH_SOURCE_MAX_CHARACTERS) throw new ChatSpeechError("tooLong", 400);
     const id = speechClipId(source.userId, source.messageId, text, source.voice);
     const state = await quota(tx, source.userId, user, now);
     if (!state.unlimited && state.remaining === 0) throw new ChatSpeechError("quota", 429);
@@ -82,17 +82,50 @@ export async function reserveSpeech(source: Source, now = new Date()): Promise<R
       { status: "processing", leaseUntil: { lte: now }, providerTaskId: null, costEventId: null },
     ] } });
     const token = randomUUID();
-    const resume = cached && cached.status !== "ready" && cached.expiresAt > now && Boolean(cached.costEventId);
+    const resume = cached && cached.status !== "ready" && cached.expiresAt > now;
     const providerTaskId = resume ? cached.providerTaskId : null;
-    const costEventId = resume ? cached.costEventId! : randomUUID();
+    const costEventId = resume && cached.costEventId ? cached.costEventId : randomUUID();
+    // Preparation is independent of the selected voice. Reuse only clips keyed to the current source/version.
+    const prepared = await tx.speechClip.findFirst({ where: {
+      id: { in: SPEECH_VOICES.map(voice => speechClipId(source.userId, source.messageId, text, voice.id)) },
+      preparedText: { not: null }, expiresAt: { gt: now },
+    }, select: { preparedText: true, preparedTurns: true } });
+    const preparedText = prepared?.preparedText ?? null;
+    const preparedTurns = Array.isArray(prepared?.preparedTurns) ? prepared.preparedTurns as SpeechTurn[] : null;
     const startedAt = resume ? cached.createdAt : now;
-    const data = { userId: source.userId, messageId: source.messageId, voice: source.voice, inputCharacters: Array.from(text).length,
+    const data = { userId: source.userId, messageId: source.messageId, voice: source.voice, inputCharacters: Array.from(preparedText ?? text).length,
       status: "processing", audio: null, requestToken: token, leaseUntil: new Date(now.getTime() + LEASE_MS),
-      providerTaskId, costEventId, createdAt: startedAt, expiresAt: new Date(now.getTime() + CACHE_MS) };
+      preparedText, preparedTurns: preparedTurns ?? Prisma.JsonNull, providerTaskId, costEventId: resume ? cached.costEventId : null,
+      createdAt: startedAt, expiresAt: new Date(now.getTime() + CACHE_MS) };
     await tx.speechClip.upsert({ where: { id }, create: { id, ...data }, update: data });
-    return { kind: "reserved", reservation: { ...source, id, token, text, providerTaskId, costEventId, startedAt,
-      uncertain: Boolean(resume && !providerTaskId), freeDay: state.unlimited ? null : moscowDayKey(now) } };
+    return { kind: "reserved", reservation: { ...source, id, token, text, preparedText, preparedTurns, providerTaskId, costEventId, startedAt,
+      uncertain: Boolean(resume && cached.costEventId && !providerTaskId), freeDay: state.unlimited ? null : moscowDayKey(now) } };
   });
+}
+
+export async function saveSpeechPreparation(job: SpeechReservation, prepared: PreparedSpeech) {
+  const result = await prisma.speechClip.updateMany({ where: { id: job.id, requestToken: job.token,
+    status: "processing", leaseUntil: { gt: new Date() } }, data: { preparedText: prepared.text, preparedTurns: prepared.turns,
+      inputCharacters: Array.from(prepared.text).length } });
+  if (!result.count) throw new ChatSpeechError("changed", 409);
+  job.preparedText = prepared.text; job.preparedTurns = prepared.turns;
+}
+
+/** Persist submission intent only after preparation. A crash before this point is safe to retry. */
+export async function markSpeechSubmitting(job: SpeechReservation) {
+  const result = await prisma.speechClip.updateMany({ where: { id: job.id, requestToken: job.token,
+    status: "processing", leaseUntil: { gt: new Date() } }, data: { costEventId: job.costEventId } });
+  if (!result.count) throw new ChatSpeechError("changed", 409);
+}
+
+export async function getPreparedSpeechText(source: Source): Promise<string | null> {
+  const message = await prisma.message.findFirst({ where: { id: source.messageId, userId: source.userId,
+    characterId: source.characterId, role: "assistant" }, select: { content: true } });
+  if (!message) throw new ChatSpeechError("notFound", 404);
+  const clip = await prisma.speechClip.findFirst({ where: {
+    id: speechClipId(source.userId, source.messageId, speechSource(message.content), source.voice), expiresAt: { gt: new Date() },
+  }, select: { preparedText: true } });
+  return clip?.preparedText ?? null;
 }
 
 export async function attachSpeechTask(job: SpeechReservation, taskId: string) {
@@ -113,7 +146,7 @@ export async function finishSpeech(job: SpeechReservation, audio: Buffer, now = 
       status: "processing", leaseUntil: { gt: now } }, select: { id: true } });
     const message = await tx.message.findFirst({ where: { id: job.messageId, userId: job.userId,
       characterId: job.characterId, role: "assistant" }, select: { content: true } });
-    if (!clip || !message || speechClipId(job.userId, job.messageId, speechText(message.content), job.voice) !== job.id)
+    if (!clip || !message || speechClipId(job.userId, job.messageId, speechSource(message.content), job.voice) !== job.id)
       throw new ChatSpeechError("changed", 409);
     // A queued task can cross midnight or a subscription expiry. Charge the entitlement at delivery.
     if (!unlimitedSpeech(user, now)) await debitPlayback(tx, job.userId, moscowDayKey(now));

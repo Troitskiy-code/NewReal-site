@@ -161,12 +161,12 @@ const noUsage = () => readCostUsage(null);
 
 /** One durable event per asynchronous synthesis, including jobs that succeed after a reconnect. */
 export async function recordKieSpeechCost(job: { costEventId: string; userId: string; providerTaskId: string | null;
-  text: string; startedAt: Date }, model: string, state: "pending" | "completed" | "failed", credits: number | null = null) {
+  text: string; preparedText?: string | null; startedAt: Date }, model: string, state: "pending" | "completed" | "failed", credits: number | null = null) {
   const ctx = contexts.getStore();
   const fx = await getAccountingUsdRub();
   const measured = credits !== null && Number.isFinite(credits) && credits >= 0;
   const data = { provider: "kie", model, purpose: "speech", apiSurface: "text_to_speech", accountingVersion: 2,
-    outcome: state, providerRequestId: job.providerTaskId, inputCharacters: Array.from(job.text).length,
+    outcome: state, providerRequestId: job.providerTaskId, inputCharacters: Array.from(job.preparedText ?? job.text).length,
     durationMs: state === "pending" ? null : Date.now() - job.startedAt.getTime(),
     usageSource: measured ? "provider" : "missing", providerCostNative: measured ? credits : null,
     providerCostCurrency: measured ? "CREDIT" : null, providerCostSemantics: measured ? "reported_credits_consumed" : "unverified",
