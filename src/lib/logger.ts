@@ -70,7 +70,7 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "jobId", "seq", "maxAttempts", "willRetry", "nextAttemptAt", "retryDelayMs", "timeoutMs", "providerCode",
   "validationReason", "validationPath", "factIndex", "eventIndex", "factKey", "factSubject", "factOperation",
   "sourceId", "sourceRole", "sourceStatus", "sourceChars", "valueChars", "responseChars", "inputChars", "inputTokens",
-  "factCount", "eventCount",
+  "factCount", "eventCount", "factsIncluded", "factsOmitted",
 ]);
 
 const ERROR_PAYLOAD_KEYS = new Set([

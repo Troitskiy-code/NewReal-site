@@ -170,6 +170,64 @@ try {
     assert.equal(thread.memoryWatermarkMessageId, second.assistant.id); assert.equal(thread.memoryLeaseOwner, null);
     assert.ok((await memory.memoryJobStatus()).partialExtractions > 0);
   });
+  await check('a story with hundreds of long facts still fits the extraction budget and keeps pinned facts', async () => {
+    const f = await setup();
+    await db.chatThread.update({ where: { id: f.scope.threadId }, data: { memoryV2Initialized: true } });
+    await db.memoryFact.create({ data: { threadId: f.scope.threadId, subject: 'user', key: 'name', value: 'Закреплённое имя',
+      cardinality: 'single', source: 'manual', seq: 0, pinned: true } });
+    await db.memoryFact.createMany({ data: Array.from({ length: 220 }, (_, i) => ({ threadId: f.scope.threadId,
+      subject: i % 2 ? 'user' : 'character', key: 'likes', cardinality: 'multi', source: 'user_msg', seq: i + 1,
+      value: `Длинное подробное описание любимого занятия номер ${i}: долгие прогулки вдоль северной набережной на рассвете` })) });
+    const source = await turn(f, 'Я живу в Казани.');
+    let sent;
+    await run(f, request => { sent = JSON.parse(request.messages[1].content); return output([delta('Казань', 's1', 'city')]); });
+    const job = await db.memoryJob.findUnique({ where: { id: source.job.id } });
+    assert.equal(job.status, 'succeeded'); assert.equal(job.attempts, 1);
+    assert.ok(sent.activeFacts.length > 0 && sent.activeFacts.length < 150, `kept ${sent.activeFacts.length} facts`);
+    assert.equal(sent.activeFacts[0].value, 'Закреплённое имя');
+    assert.ok(h.countTokens(JSON.stringify(sent)) <= 8000);
+    assert.ok((await active(f.scope)).some(fact => fact.key === 'city' && fact.value === 'Казань'));
+    const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn processed'));
+    assert.match(line, /"factsOmitted":[1-9]/);
+  });
+  await check('a turn too large even without facts is skipped explicitly and never blocks the next turn', async () => {
+    const f = await setup('## Пользователь\n- Имя: Сохранённое');
+    const huge = await turn(f, 'Я долго рассказываю о дороге через горы и реки, о каждом привале и каждой встрече. '.repeat(350));
+    const next = await turn(f, 'Я живу в Казани.');
+    const before = provider.calls.filter(call => call.kind === 'memory_extract').length;
+    assert.equal((await run(f, output([delta('Казань', 's1', 'city')]))).processed, 2);
+    const skipped = await db.memoryJob.findUnique({ where: { id: huge.job.id } });
+    assert.equal(skipped.status, 'succeeded'); assert.equal(skipped.errorCode, 'MEMORY_EXTRACT_SKIPPED_INPUT_TOO_LARGE');
+    assert.equal((await db.memoryJob.findUnique({ where: { id: next.job.id } })).status, 'succeeded');
+    assert.equal(provider.calls.filter(call => call.kind === 'memory_extract').length - before, 1, 'no paid call for the skipped turn');
+    const thread = await db.chatThread.findUnique({ where: { id: f.scope.threadId } });
+    assert.equal(thread.memoryWatermarkSeq, 2); assert.equal(thread.memoryLeaseOwner, null);
+    assert.deepEqual((await active(f.scope)).map(fact => fact.value).sort(), ['Казань', 'Сохранённое']);
+    assert.ok(diagnosticLines.some(line => line.includes(huge.job.id) && line.includes('turn skipped')));
+    assert.ok((await memory.memoryJobStatus()).skippedOversizedTurns > 0);
+  });
+  await check('stories blocked behind a failed head cannot starve the global drain', async () => {
+    const old = new Date(Date.now() - 86_400_000);
+    for (let i = 0; i < 31; i++) {
+      const blocked = await setup(), head = await turn(blocked, `Меня зовут Блок${i}.`), tail = await turn(blocked, 'Я живу в Омске.');
+      await db.memoryJob.update({ where: { id: head.job.id }, data: { status: 'failed', attempts: 5, errorCode: 'MEMORY_EXTRACT_INVALID' } });
+      await db.memoryJob.update({ where: { id: tail.job.id }, data: { availableAt: old } });
+    }
+    const healthy = await setup(), pending = await turn(healthy, 'Я живу в Казани.');
+    provider.extractionText = output([delta('Казань', 's1', 'city')]);
+    await memory.drainMemoryJobs({ apiKey: 'synthetic_memory_key', limit: 10 });
+    assert.equal((await db.memoryJob.findUnique({ where: { id: pending.job.id } })).status, 'succeeded');
+    await db.memoryJob.updateMany({ where: { status: 'failed', errorCode: 'MEMORY_EXTRACT_INVALID', attempts: 5 }, data: { status: 'cancelled' } });
+  });
+  await check('one malformed NPC subject is dropped while the rest of the extraction commits', async () => {
+    const f = await setup(), source = await turn(f, 'Меня зовут Анна. Я живу в Казани.');
+    await run(f, output([delta('Мисс', 's1', 'name', "npc:О'Нил"), delta('Анна'), delta('Казань', 's2', 'city')]));
+    const job = await db.memoryJob.findUnique({ where: { id: source.job.id } });
+    assert.equal(job.status, 'succeeded'); assert.equal(job.errorCode, 'MEMORY_EXTRACT_PARTIAL'); assert.equal(job.attempts, 1);
+    const current = await active(f.scope);
+    assert.ok(current.some(fact => fact.key === 'name' && fact.value === 'Анна'));
+    assert.ok(!current.some(fact => fact.subject.startsWith('npc:')));
+  });
   await check('conflicting name candidates preserve the old slot while accepting an independent city', async () => {
     const f = await setup('## Пользователь\n- Имя: Старое'), source = await turn(f, 'Анна и Мария. Я живу в Казани.');
     await run(f, output([delta('Анна'), delta('Мария'), delta('Казань', 's2', 'city')]));

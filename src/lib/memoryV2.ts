@@ -14,6 +14,9 @@ import { FACT_EXTRACTION_RULES, MemoryExtractionError, coreToFacts, factCardinal
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
 const MAX_ATTEMPTS = 5;
+const MAX_INPUT_TOKENS = 8000, MAX_INPUT_CHARS = 64_000, FACT_CONTEXT_LIMIT = 150;
+// A turn that cannot fit even without fact context fails identically on every retry.
+const SKIPPED_OVERSIZED_TURN = "MEMORY_EXTRACT_SKIPPED_INPUT_TOO_LARGE";
 const toJson = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 export async function lockMemoryThread(tx: Tx, threadId: string) {
   await tx.$queryRaw`SELECT id FROM "ChatThread" WHERE id = ${threadId} FOR UPDATE`;
@@ -168,22 +171,38 @@ async function claimJob(threadId: string) {
   });
 }
 
+/** Facts are context for the extractor, not its source: pinned and recent ones are kept while they fit.
+ * A fixed count made every story that reached ~150 facts exceed the token limit and block its queue. */
+export function fitExtractionInput<T>(sources: unknown[], facts: T[]) {
+  const render = (count: number) => JSON.stringify({ sources, activeFacts: facts.slice(0, count) });
+  const measure = (text: string) => text.length > MAX_INPUT_CHARS ? Infinity : countTokens(text);
+  if (measure(render(0)) > MAX_INPUT_TOKENS) return null;
+  let low = 0, high = facts.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (measure(render(middle)) <= MAX_INPUT_TOKENS) low = middle; else high = middle - 1;
+  }
+  const input = render(low);
+  return { input, tokens: measure(input), factsIncluded: low };
+}
+
 async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJob>>>, apiKey: string) {
   const { job, owner, thread } = claim;
   const scope: ChatScope = { threadId: thread.id, characterId: thread.characterId, userId: thread.userId, legacy: false };
   const startedAt = Date.now(), timeoutMs = 40_000;
-  const diagnostic: { sourceCount?: number; inputChars?: number; inputTokens?: number; responseChars?: number; finishReason?: string } = {};
+  const diagnostic: { sourceCount?: number; inputChars?: number; inputTokens?: number; responseChars?: number; finishReason?: string;
+    factsIncluded?: number; factsOmitted?: number } = {};
   let stage = "load_sources";
   try {
     const messages = await jobMessages(prisma, job), hash = fingerprint(messages), sources = factSources(messages);
     stage = "prepare_input"; diagnostic.sourceCount = sources.length;
     const activeFacts = await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active" },
-      select: { subject: true, key: true, value: true, pinned: true, source: true }, take: 150, orderBy: [{ pinned: "desc" }, { seq: "desc" }] });
-    const input = JSON.stringify({ sources, activeFacts });
-    diagnostic.inputChars = input.length;
-    if (input.length > 64_000) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
-    diagnostic.inputTokens = countTokens(input);
-    if (diagnostic.inputTokens > 8000) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
+      select: { subject: true, key: true, value: true, pinned: true, source: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] });
+    const fitted = fitExtractionInput(sources, activeFacts);
+    if (!fitted) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
+    const input = fitted.input;
+    diagnostic.inputChars = input.length; diagnostic.inputTokens = fitted.tokens;
+    diagnostic.factsIncluded = fitted.factsIncluded; diagnostic.factsOmitted = activeFacts.length - fitted.factsIncluded;
     let extraction: ReturnType<typeof parseFactExtraction> = { facts: [], events: [], rejectedRetractions: 0,
       rejectedFacts: 0, rejectedEvents: 0, rejectedCandidates: [] };
     if (sources.length) {
@@ -235,7 +254,8 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       return true;
     });
     if (applied) infoLog("MemoryV2", "turn processed", { jobId: job.id, seq: job.seq, attempt: job.attempts, willRetry: false,
-      durationMs: Date.now() - startedAt, facts: extraction.facts.length,
+      durationMs: Date.now() - startedAt, inputTokens: diagnostic.inputTokens, factsIncluded: diagnostic.factsIncluded,
+      factsOmitted: diagnostic.factsOmitted, facts: extraction.facts.length,
       events: extraction.events.length, rejectedRetractions: extraction.rejectedRetractions,
       rejectedFacts: extraction.rejectedFacts, rejectedEvents: extraction.rejectedEvents, warningCode,
       ...(hasRejectedCandidates ? { rejectedCandidates: extraction.rejectedCandidates } : {}) });
@@ -248,6 +268,24 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       ? timedOut ? "MEMORY_EXTRACT_PROVIDER_TIMEOUT" : "MEMORY_EXTRACT_PROVIDER_ERROR"
       : safe.category === "prisma" ? "MEMORY_EXTRACT_PERSISTENCE_ERROR" : "MEMORY_EXTRACT_PROCESSING_ERROR";
     const storedCode = validation.validationReason ? `${code}:${validation.validationReason}` : code;
+    if (code === "MEMORY_EXTRACT_INPUT_TOO_LARGE") {
+      // Retrying cannot shrink this turn, and a failed head would stop the story's memory for good.
+      // Skip it explicitly; earlier facts stay intact and later turns continue in order.
+      const skipped = await prisma.$transaction(async tx => {
+        await lockMemoryThread(tx, thread.id);
+        const current = await tx.chatThread.findUnique({ where: { id: thread.id } });
+        if (current?.memoryLeaseOwner !== owner) return false;
+        await tx.memoryJob.update({ where: { id: job.id }, data: { status: "succeeded", errorCode: SKIPPED_OVERSIZED_TURN, finishedAt: new Date() } });
+        await advanceWatermark(tx, thread.id);
+        await tx.chatThread.update({ where: { id: thread.id }, data: { memoryLeaseOwner: null, memoryLeaseUntil: null } });
+        return true;
+      });
+      const context = { ...diagnostic, code: SKIPPED_OVERSIZED_TURN, stage, jobId: job.id, seq: job.seq, attempt: job.attempts,
+        durationMs: Date.now() - startedAt };
+      if (skipped) errorLog("MemoryV2", "turn skipped", { ...context, willRetry: false });
+      else infoLog("MemoryV2", "turn failure ignored", { ...context, outcome: "lease_lost" });
+      return skipped;
+    }
     const retryDelayMs = Math.min(600_000, 15_000 * 2 ** (job.attempts - 1));
     const willRetry = job.attempts < MAX_ATTEMPTS, availableAt = new Date(Date.now() + retryDelayMs);
     const deferred = await prisma.$transaction(async tx => {
@@ -271,8 +309,11 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
 export async function drainMemoryJobs(options: { threadId?: string; limit?: number; apiKey?: string } = {}) {
   if (!memoryV2Enabled()) return { processed: 0 };
   const limit = Math.min(10, Math.max(1, options.limit ?? 1));
+  // A story whose head job failed cannot advance until an operator retries it. Such stories hold the
+  // oldest queued jobs, so without this filter enough of them would fill every slot and starve all others.
   const threadIds = options.threadId ? [options.threadId] : (await prisma.memoryJob.findMany({
-    where: { status: { in: ["queued", "retry", "processing", "awaiting_reply"] }, availableAt: { lte: new Date() } },
+    where: { status: { in: ["queued", "retry", "processing", "awaiting_reply"] }, availableAt: { lte: new Date() },
+      thread: { memoryJobs: { none: { status: "failed" } } } },
     distinct: ["threadId"], orderBy: { availableAt: "asc" }, take: 30, select: { threadId: true },
   })).map(row => row.threadId);
   let processed = 0, attempted = 0;
@@ -372,11 +413,12 @@ export async function memoryJobStatus() {
   const [jobs, warnings] = await Promise.all([
     prisma.memoryJob.groupBy({ by: ["status"], _count: { _all: true }, _min: { createdAt: true } }),
     prisma.memoryJob.groupBy({ by: ["errorCode"], where: { status: "succeeded", errorCode: { in: [
-      "MEMORY_EXTRACT_UNSUPPORTED_RETRACTION", "MEMORY_EXTRACT_PARTIAL", "MEMORY_EXTRACT_REJECTED_ALL",
+      "MEMORY_EXTRACT_UNSUPPORTED_RETRACTION", "MEMORY_EXTRACT_PARTIAL", "MEMORY_EXTRACT_REJECTED_ALL", SKIPPED_OVERSIZED_TURN,
     ] } }, _count: { _all: true } }),
   ]);
   const count = (code: string) => warnings.find(row => row.errorCode === code)?._count._all ?? 0;
   return { enabled: true, guardedRetractions: count("MEMORY_EXTRACT_UNSUPPORTED_RETRACTION"),
     partialExtractions: count("MEMORY_EXTRACT_PARTIAL"), rejectedAllExtractions: count("MEMORY_EXTRACT_REJECTED_ALL"),
+    skippedOversizedTurns: count(SKIPPED_OVERSIZED_TURN),
     jobs: jobs.map(row => ({ status: row.status, count: row._count._all, oldestAt: row._min.createdAt })) };
 }

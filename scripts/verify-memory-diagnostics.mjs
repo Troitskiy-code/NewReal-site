@@ -75,7 +75,7 @@ try {
 }
 assert.equal(facts.parseFactExtraction(JSON.stringify(body()), sources()).facts[0].value, 'Анна'); passed++;
 assert.equal(facts.parseFactExtraction(JSON.stringify(body([row({ key: 'city', value: 'Казань' })])), sources('Я живу в Казани.')).facts[0].value, 'Казань'); passed++;
-const localRejections = new Set(['unknown_source', 'user_fact_from_character', 'character_fact_from_user_first_person',
+const localRejections = new Set(['invalid_subject', 'unknown_source', 'user_fact_from_character', 'character_fact_from_user_first_person',
   'control_instruction', 'unsupported_value', 'unsupported_number', 'question_source', 'non_factual_source',
   'empty_value', 'negated_set', 'value_too_long', 'event_source_too_long', 'single_slot_conflict']);
 for (const [reason, data, evidence, , raw = false] of cases) {

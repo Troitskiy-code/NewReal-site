@@ -142,7 +142,9 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
   const rejectedCandidates: Readonly<MemoryValidationDiagnostic>[] = [];
   // A bad claim cannot poison unrelated grounded candidates. Protocol/schema
   // errors still reject the response; provenance and value checks are unchanged.
-  const recoverable = new Set<MemoryValidationReason>(["unknown_source", "user_fact_from_character",
+  // The JSON schema leaves `subject` a free string, so one malformed NPC subject is a
+  // candidate-level fault: at temperature 0 it would otherwise fail every retry and block the queue.
+  const recoverable = new Set<MemoryValidationReason>(["invalid_subject", "unknown_source", "user_fact_from_character",
     "character_fact_from_user_first_person", "control_instruction", "unsupported_value", "unsupported_number",
     "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long"]);
   const candidate = <T>(kind: "fact" | "event", parse: () => T | null): T | null => {
