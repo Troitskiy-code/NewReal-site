@@ -8,6 +8,8 @@ const evidence = load(join(root, 'src/lib/memorySummaryEvidence.ts'));
 const narrative = load(join(root, 'src/lib/memoryNarrative.ts'));
 const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
 const { countTokens } = load(join(root, 'src/lib/tokenCount.ts'));
+const policy = load(join(root, 'src/lib/memorySummaryPolicy.ts'));
+const logger = load(join(root, 'src/lib/logger.ts'));
 let passed = 0;
 function check(label, fn) { fn(); passed++; console.log(`PASS ${label}`); }
 const sources = evidence.makeSummarySources([
@@ -140,5 +142,32 @@ check('fitting fallback cannot hide an invalid later item or turn conflicting ev
     quotes, 200, countTokens), { code: 'MEMORY_SUMMARY_UNSUPPORTED_ITEM' });
   const text = evidence.renderGroundedSummary(JSON.stringify({ items: [valid] }), quotes, 200, countTokens);
   assert.match(text, /Неясно/); assert.match(text, /не отдавал/); assert.doesNotMatch(text, /\[Выполнено/);
+  assert.throws(() => evidence.renderGroundedSummary(JSON.stringify({ items: [valid, { ...valid, sources: ['invented'] }] }),
+    quotes, 200, countTokens), (error) => error.detail.validationReason === 'unknown_source' && error.detail.itemIndex === 2);
+});
+check('schema-valid item over its section source limit is dropped alone, never trimmed', () => {
+  const quotes = evidence.makeSummarySources([1, 2, 3, 4, 5].map(n => ({ role: 'user', content: `Шлюз номер ${n} закрыт.` })));
+  const wide = { section: 'state', status: 'reported', text: 'Шлюз номер 1 закрыт.', sources: ['s1', 's2', 's3', 's4', 's5'] };
+  const kept = { section: 'events', status: 'reported', text: 'Шлюз номер 5 закрыт.', sources: ['s5'] };
+  let stats;
+  const text = evidence.renderGroundedSummary(JSON.stringify({ items: [wide, kept] }), quotes, 400, countTokens, s => { stats = s; });
+  assert.match(text, /номер 5/); assert.doesNotMatch(text, /номер [1-4]/);
+  assert.equal(stats.skippedItemCount, 1); assert.equal(stats.skippedSourceLimitCount, 1);
+  // The same five sources are a valid story item: the limit is per section.
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [{ ...wide, section: 'story' }] }), quotes, 400, countTokens), /номер 1/);
+  assert.throws(() => evidence.renderGroundedSummary(JSON.stringify({ items: [wide, { ...kept, text: '   ' }] }), quotes, 400, countTokens),
+    (error) => error.code === 'MEMORY_SUMMARY_UNSUPPORTED_ITEM' && error.detail.validationReason === 'too_many_sources'
+      && error.detail.itemIndex === 1 && error.detail.itemSection === 'state' && error.detail.itemSources === 5 && error.detail.rejected === 2);
+});
+check('unsupported item log names the refused rule without item text or source ids', () => {
+  const error = new policy.MemorySummaryError('MEMORY_SUMMARY_UNSUPPORTED_ITEM', { validationReason: 'too_many_sources',
+    itemIndex: 3, itemSection: 'plans', itemSources: 6, rejected: 1, text: 'секретный текст', sources: ['s1'] });
+  const line = logger.formatErrorLog('Server', ['[ChatTTFT] background summary refresh failed', logger.toSafeDiagnostic(error)]);
+  assert.match(line, /"code":"MEMORY_SUMMARY_UNSUPPORTED_ITEM"/);
+  assert.match(line, /"validationReason":"too_many_sources"/); assert.match(line, /"itemIndex":3/);
+  assert.match(line, /"itemSection":"plans"/); assert.match(line, /"itemSources":6/); assert.match(line, /"rejected":1/);
+  assert.doesNotMatch(line, /секретный|s1/);
+  const forged = new policy.MemorySummaryError('MEMORY_SUMMARY_UNSUPPORTED_ITEM', { validationReason: 'текст пользователя', itemSection: 'x', itemIndex: -1 });
+  assert.doesNotMatch(logger.formatErrorLog('Server', [logger.toSafeDiagnostic(forged)]), /validationReason|itemSection|itemIndex/);
 });
 console.log(`${passed} passed`);

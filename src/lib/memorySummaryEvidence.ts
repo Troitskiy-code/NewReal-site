@@ -1,5 +1,5 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
-import { MemorySummaryError } from "./memorySummaryPolicy";
+import { MemorySummaryError, type MemorySummaryDetail, type MemorySummaryItemReason } from "./memorySummaryPolicy";
 import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, isSupportedMemoryText, memoryOverlap, sameMemoryMeaning, type MemoryStatus } from "./memoryNarrative";
 
 type Author = "user" | "character" | "memory";
@@ -10,6 +10,7 @@ export type SummaryRenderDiagnostics = {
   candidateCount: number; sourceCount: number; paraphraseFallbackCount: number;
   budgetRejectedCount: number; sourceFallbackCount: number; sourcePoolFallbackCount: number;
   fittedCount: number; renderedUsage: number; storedLimit: number;
+  skippedItemCount: number; skippedSourceLimitCount: number;
 };
 
 export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
@@ -87,7 +88,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   const rows: Array<{ primary: Row; alternatives: Row[] }> = [];
   const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
     paraphraseFallbackCount: 0, budgetRejectedCount: 0, sourceFallbackCount: 0, sourcePoolFallbackCount: 0,
-    fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens };
+    fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens, skippedItemCount: 0, skippedSourceLimitCount: 0 };
   const sectionFor = (status: MemoryStatus, section: Section): Section => status === "proposed" || status === "promised" ? "plans"
     : status === "decided" ? "decisions" : status === "done" || status === "cancelled" ? "events" : section;
   const sourceRow = (source: SummarySource & { index: number }, uncertain = false): Row => {
@@ -95,15 +96,28 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     return { section: sectionFor(status, "state"), status, author: sourceLabel(source), order: source.index,
       text: stripMemoryControlInstructions(source.text).replace(/\s+/g, " ").trim() };
   };
-  for (const value of result.items) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) throw new MemorySummaryError("MEMORY_SUMMARY_UNSUPPORTED_ITEM");
+  const skipped: MemorySummaryDetail[] = [];
+  for (const [index, value] of result.items.entries()) {
+    const refuse = (validationReason: MemorySummaryItemReason, extra: Partial<MemorySummaryDetail> = {}) =>
+      new MemorySummaryError("MEMORY_SUMMARY_UNSUPPORTED_ITEM", { validationReason, itemIndex: index + 1, ...extra });
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw refuse("not_object");
     const item = value as Record<string, unknown>;
-    if (Object.keys(item).some((key) => !["section", "text", "status", "sources"].includes(key))
-      || typeof item.section !== "string" || !Object.hasOwn(headings, item.section)
-      || typeof item.text !== "string" || !item.text.trim() || item.text.length > 1200
-      || !MEMORY_STATUSES.includes(item.status as MemoryStatus) || !Array.isArray(item.sources)
-      || item.sources.length < 1 || item.sources.length > (item.section === "story" ? 12 : 4)
-      || item.sources.some((id) => typeof id !== "string" || !known.has(id))) throw new MemorySummaryError("MEMORY_SUMMARY_UNSUPPORTED_ITEM");
+    if (Object.keys(item).some((key) => !["section", "text", "status", "sources"].includes(key))) throw refuse("unknown_field");
+    if (typeof item.section !== "string" || !Object.hasOwn(headings, item.section)) throw refuse("invalid_section");
+    const itemSection = item.section;
+    if (!MEMORY_STATUSES.includes(item.status as MemoryStatus)) throw refuse("invalid_status", { itemSection });
+    if (typeof item.text !== "string") throw refuse("invalid_text", { itemSection });
+    if (!Array.isArray(item.sources) || item.sources.length < 1 || item.sources.some((id) => typeof id !== "string")) {
+      throw refuse("invalid_sources", { itemSection });
+    }
+    const itemSources = item.sources.length;
+    // An invented id means the answer is not grounded; a valid neighbour must not hide it.
+    if (item.sources.some((id) => !known.has(id))) throw refuse("unknown_source", { itemSection, itemSources });
+    // The provider schema cannot express per-section limits, so a schema-valid answer may
+    // exceed them. Drop only that item; trimming its sources could hide a cited denial.
+    const limit: MemorySummaryItemReason | null = !item.text.trim() ? "blank_text" : item.text.length > 1200 ? "text_too_long"
+      : itemSources > (itemSection === "story" ? 12 : 4) ? "too_many_sources" : null;
+    if (limit) { skipped.push({ validationReason: limit, itemIndex: index + 1, itemSection, itemSources }); continue; }
     const selected = [...new Set(item.sources as string[])].map((id) => known.get(id)!).sort((a, b) => a.index - b.index);
     const evidence = selected.map((source) => source.text).join(" ");
     const supported = supportedSummaryText(item.text, selected);
@@ -123,6 +137,11 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     // Never trim a source or reinterpret a rejected paraphrase. Alternatives retain each
     // source's author/status; conflicting evidence remains explicitly uncertain.
     rows.push({ primary, alternatives: selected.map(source => sourceRow(source, status === "uncertain")) });
+  }
+  stats.skippedItemCount = skipped.length;
+  stats.skippedSourceLimitCount = skipped.filter(row => row.validationReason === "too_many_sources").length;
+  if (!rows.length && skipped.length) {
+    throw new MemorySummaryError("MEMORY_SUMMARY_UNSUPPORTED_ITEM", { ...skipped[0], rejected: skipped.length });
   }
   const fitted: Row[] = [];
   const render = () => (Object.keys(headings) as Section[]).map((section) => {

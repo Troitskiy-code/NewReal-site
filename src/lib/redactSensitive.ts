@@ -219,10 +219,32 @@ export function safeErrorFields(value: unknown): Record<string, SafeLogValue> {
     if (code) out.code = code;
     const status = httpStatus(record.status);
     if (status !== undefined) out.status = status;
+    if (name === "MemorySummaryError") Object.assign(out, memorySummaryDetail(record.detail));
     return out;
   } catch {
     return { category: "error" };
   }
+}
+
+const MEMORY_SUMMARY_ITEM_REASONS = new Set(["not_object", "unknown_field", "invalid_section", "invalid_status",
+  "invalid_text", "invalid_sources", "unknown_source", "blank_text", "text_too_long", "too_many_sources"]);
+const MEMORY_SUMMARY_SECTIONS = new Set(["story", "state", "decisions", "plans", "events"]);
+const smallCount = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1000
+  ? value as number : undefined;
+
+/** Which validation rule refused a provider item: enums and counters only, never item text or ids. */
+function memorySummaryDetail(value: unknown): Record<string, SafeLogValue> {
+  if (!isPlainObject(value)) return {};
+  const out: Record<string, SafeLogValue> = {};
+  if (typeof value.validationReason === "string" && MEMORY_SUMMARY_ITEM_REASONS.has(value.validationReason)) {
+    out.validationReason = value.validationReason;
+  }
+  if (typeof value.itemSection === "string" && MEMORY_SUMMARY_SECTIONS.has(value.itemSection)) out.itemSection = value.itemSection;
+  for (const key of ["itemIndex", "itemSources", "rejected"] as const) {
+    const count = smallCount(value[key]);
+    if (count !== undefined) out[key] = count;
+  }
+  return out;
 }
 
 function redactSensitiveInner(value: unknown, seen: WeakSet<object>, depth: number): SafeLogValue {

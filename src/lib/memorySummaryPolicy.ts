@@ -9,8 +9,17 @@ export function summaryGenerationLimit(storedLimit: number): number {
 export type MemorySummaryFailure = "MEMORY_SUMMARY_TRUNCATED" | "MEMORY_SUMMARY_EMPTY_RESPONSE"
   | "MEMORY_SUMMARY_INVALID_JSON" | "MEMORY_SUMMARY_INVALID_ITEMS" | "MEMORY_SUMMARY_UNSUPPORTED_ITEM"
   | "MEMORY_SUMMARY_EMPTY_RESULT" | "MEMORY_SUMMARY_NO_FITTING_SOURCE";
+/** Why one provider item was refused. Fatal reasons indicate invented or malformed output;
+ * limit reasons can occur in a schema-valid answer and only drop that item. */
+export type MemorySummaryItemReason = "not_object" | "unknown_field" | "invalid_section" | "invalid_status"
+  | "invalid_text" | "invalid_sources" | "unknown_source" | "blank_text" | "text_too_long" | "too_many_sources";
+/** Only enums and counters: never item text or source ids. */
+export type MemorySummaryDetail = { validationReason: MemorySummaryItemReason; itemIndex: number;
+  itemSection?: string; itemSources?: number; rejected?: number };
 export class MemorySummaryError extends Error {
-  constructor(readonly code: MemorySummaryFailure) { super(code); this.name = "MemorySummaryError"; }
+  constructor(readonly code: MemorySummaryFailure, readonly detail?: MemorySummaryDetail) {
+    super(code); this.name = "MemorySummaryError";
+  }
 }
 
 /** Deterministic size limits need editing/smaller input, not another immediate AI call. */
