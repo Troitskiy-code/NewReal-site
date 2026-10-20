@@ -34,7 +34,7 @@ class FixtureProviderError extends Error { constructor(status, definitive = fals
 const provider = { SPEECH_MODEL: 'google/gemini-3-8-flash-lite-tts', SPEECH_CACHE_VERSION: 'gemini-lite-native-v1-mp3-64', speechEnabled: () => true,
   SpeechProviderError: FixtureProviderError,
   submitSpeech: async () => { providerCalls++; if (providerFailure) throw new FixtureProviderError(503, true); return 'task_' + providerCalls; },
-  getSpeechTask: async () => { if (pollFailure) throw new FixtureProviderError(401, true); return { state: providerState, credits: .47, url: 'https://tempfile.aiquickdraw.com/speech.wav' }; },
+  getSpeechTask: async () => { if (pollFailure) throw new FixtureProviderError(pollFailure === 'transient' ? 503 : 401, pollFailure !== 'transient'); return { state: providerState, credits: .47, url: 'https://tempfile.aiquickdraw.com/speech.wav' }; },
   downloadSpeech: async () => { if (downloadFailure) throw new FixtureProviderError(); return audio; } };
 const lame = await import('@breezystack/lamejs');
 const mocks = {
@@ -263,6 +263,11 @@ try {
   check((await post(paidReq('no-spoken-words'), context)).status === 400 && providerCalls === beforeEmpty, 'AI-selected action-only reply does not start paid synthesis');
   await post(paidReq('no-spoken-words'), context);
   check(preparationCalls === beforeEmptyPreparation + 1, 'empty preparation is cached too');
+  await add('prepared-characters', 'paid', 'assistant', '*улыбнулась* Привет!');
+  check((await post(paidReq('prepared-characters'), context)).status === 200, 'marked actions are removed by preparation before paid synthesis');
+  const measuredScript = await db.speechClip.findFirst({ where: { messageId: 'prepared-characters' } });
+  check(measuredScript.inputCharacters === Array.from(measuredScript.preparedText).length && measuredScript.preparedText === 'Привет!',
+    'resuming a job preserves the prepared character count rather than restoring the raw source count');
 
   // Durable async jobs: polling, reconnects and failures must not purchase a second synthesis.
   await db.speechDailyQuota.deleteMany({ where: { userId: 'free' } });
@@ -277,6 +282,9 @@ try {
   check(providerCalls === submittedCalls, 'repeated pending polls never submit another paid task');
   await add('while-pending');
   check((await post(request('while-pending'), context)).status === 409, 'another reply cannot create a parallel pending task');
+  pollFailure = 'transient';
+  check((await post(request('pending-free'), context)).status === 202 && providerCalls === submittedCalls,
+    'transient status errors continue polling the accepted task without another paid submission');
   pollFailure = true;
   check((await post(request('pending-free'), context)).status === 503, 'poll authentication failure is controlled');
   check(Boolean((await db.speechClip.findFirst({ where: { messageId: 'pending-free' } })).providerTaskId), 'poll errors retain a known paid task even when the error is definitive for that HTTP call');
@@ -360,6 +368,10 @@ try {
       && body.model === 'google/gemini-3-8-flash-lite-tts' && body.input.speakers[0].voice_name === 'Fola'
       && body.input.filler_words === false && body.input.dialogue_turns[0].style.includes('без иностранного акцента'), 'fixed model, approved voice, native pronunciation and no filler words');
     check(real.speechInput('Hello, 21 October.', 'Fenrir').dialogue_turns[0].style.includes('original language'), 'English speech does not receive a Russian pronunciation instruction');
+    const emotionalInput = real.speechInput(performed.turns, 'Fola');
+    check(emotionalInput.dialogue_turns.length === 2 && emotionalInput.dialogue_turns[0].text.startsWith('<sigh>')
+      && emotionalInput.dialogue_turns.every(turn => turn.style.includes('без иностранного акцента')),
+      'per-turn emotions and vocal events preserve the native Russian pronunciation instruction');
     mode = 'pending'; check((await real.getSpeechTask('task_fixed')).state === 'pending', 'generating job remains pending');
     mode = 'ok'; const ready = await real.getSpeechTask('task_fixed');
     check(ready.state === 'ready' && ready.credits === .47, 'provider-reported credits accompany completed task');
@@ -375,6 +387,9 @@ try {
     for (const testMode of ['html', 'large']) {
       mode = testMode; await assert.rejects(() => real.downloadSpeech('https://tempfile.aiquickdraw.com/speech.wav'), /Speech provider unavailable/); check(true, 'provider rejects ' + testMode + ' audio');
     }
+    mode = 'http'; await assert.rejects(() => real.downloadSpeech('https://tempfile.aiquickdraw.com/speech.wav'),
+      error => error.status === 503 && error.reason === 'media_http' && !error.definitive);
+    check(true, 'media HTTP status and local failure stage survive error wrapping for diagnosis and automatic recovery');
     const beforeUnsafe = captured.length;
     await assert.rejects(() => real.downloadSpeech('https://attacker.invalid/audio.wav'));
     check(captured.length === beforeUnsafe, 'untrusted media host is rejected before network access');
