@@ -271,6 +271,32 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       ? timedOut ? "MEMORY_EXTRACT_PROVIDER_TIMEOUT" : "MEMORY_EXTRACT_PROVIDER_ERROR"
       : safe.category === "prisma" ? "MEMORY_EXTRACT_PERSISTENCE_ERROR" : "MEMORY_EXTRACT_PROCESSING_ERROR";
     const storedCode = validation.validationReason ? `${code}:${validation.validationReason}` : code;
+    if (code === "MEMORY_SOURCE_MISSING") {
+      // Without its user message the turn can never be extracted; retrying only blocks the story.
+      // Withdraw whatever it contributed and cancel it. A missing reply alone keeps the normal retry.
+      const cancelled = await prisma.$transaction(async tx => {
+        await lockMemoryThread(tx, thread.id);
+        const current = await tx.chatThread.findUnique({ where: { id: thread.id } });
+        if (current?.memoryLeaseOwner !== owner) return null;
+        const fresh = await tx.memoryJob.findUnique({ where: { id: job.id } });
+        const userPresent = fresh?.userMessageId ? await tx.message.findFirst({
+          where: { id: fresh.userMessageId, threadId: thread.id, role: "user" }, select: { id: true } }) : null;
+        if (!fresh || userPresent) return false;
+        await invalidateJob(tx, scope, fresh, true);
+        await tx.memoryJob.update({ where: { id: job.id }, data: { attempts: job.attempts, errorCode: "MEMORY_SOURCE_MISSING", finishedAt: new Date() } });
+        await mirrorCore(tx, scope); await advanceWatermark(tx, thread.id);
+        return true;
+      });
+      if (cancelled) {
+        infoLog("MemoryV2", "turn cancelled", { code, stage, jobId: job.id, seq: job.seq, attempt: job.attempts, willRetry: false,
+          durationMs: Date.now() - startedAt });
+        return true;
+      }
+      if (cancelled === null) {
+        infoLog("MemoryV2", "turn failure ignored", { code, stage, jobId: job.id, seq: job.seq, outcome: "lease_lost" });
+        return false;
+      }
+    }
     if (code === "MEMORY_EXTRACT_INPUT_TOO_LARGE") {
       // Retrying cannot shrink this turn, and a failed head would stop the story's memory for good.
       // Skip it explicitly; earlier facts stay intact and later turns continue in order.
@@ -365,7 +391,11 @@ export async function invalidateMessageMemory(tx: Tx, scope: ChatScope, messageI
   const jobs = await tx.memoryJob.findMany({ where: { threadId: scope.threadId,
     OR: [{ userMessageId: messageId }, { assistantMessageId: messageId }, { assistantMessageIds: { has: messageId } }] } });
   for (const job of jobs) {
-    await invalidateJob(tx, scope, job, deleted && job.userMessageId === messageId);
+    // A cancelled turn already had its claims withdrawn. Deleting its reply afterwards found it by the
+    // assistant id and requeued it without a user message: five MEMORY_SOURCE_MISSING failures, then a
+    // failed head that blocked the story (prod 2026-10-20). A turn whose user message is gone stays cancelled.
+    if (job.status === "cancelled") continue;
+    await invalidateJob(tx, scope, job, deleted && job.userMessageId === messageId || job.userMessageId === null);
     if (deleted && job.userMessageId !== messageId) {
       const ids = job.assistantMessageIds.filter(id => id !== messageId);
       await tx.memoryJob.update({ where: { id: job.id }, data: { assistantMessageId: ids.at(-1) ?? null, assistantMessageIds: ids } });

@@ -408,6 +408,31 @@ try {
     assert.equal(result.status, 200);
     assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'name').map(fact => fact.value), ['Анна']);
   });
+  await check('deleting the user message and then its reply never resurrects the cancelled turn', async () => {
+    const f = await setup(), only = await turn(f, 'Меня зовут Анна.'); await run(f, output([delta('Анна')]));
+    h.session.userId = f.user.id;
+    const remove = id => messageRoute.DELETE(new NextRequest(`http://localhost/api/messages/${id}`, { method: 'DELETE' }), { params: Promise.resolve({ id }) });
+    assert.equal((await remove(only.user.id)).status, 200);
+    assert.equal((await db.memoryJob.findUnique({ where: { id: only.job.id } })).status, 'cancelled');
+    assert.equal((await remove(only.assistant.id)).status, 200);
+    const job = await db.memoryJob.findUnique({ where: { id: only.job.id } });
+    assert.equal(job.status, 'cancelled', 'a reply deletion must not requeue a turn whose user message is gone');
+    const next = await turn(f, 'Я живу в Казани.');
+    assert.equal((await run(f, output([delta('Казань', 's1', 'city')]))).processed, 1);
+    assert.equal((await db.memoryJob.findUnique({ where: { id: next.job.id } })).status, 'succeeded');
+    assert.equal(await db.memoryJob.count({ where: { threadId: f.scope.threadId, status: 'failed' } }), 0);
+  });
+  await check('a queued turn whose user message vanished is cancelled instead of blocking the story', async () => {
+    const f = await setup(), lost = await turn(f, 'Меня зовут Анна.'), next = await turn(f, 'Я живу в Казани.');
+    // Simulate any path that removed the source outside invalidateMessageMemory (FK sets userMessageId to NULL).
+    await db.message.delete({ where: { id: lost.user.id } });
+    const before = provider.calls.filter(call => call.kind === 'memory_extract').length;
+    assert.equal((await run(f, output([delta('Казань', 's1', 'city')]))).processed, 2);
+    const cancelled = await db.memoryJob.findUnique({ where: { id: lost.job.id } });
+    assert.equal(cancelled.status, 'cancelled'); assert.equal(cancelled.errorCode, 'MEMORY_SOURCE_MISSING'); assert.equal(cancelled.attempts, 1);
+    assert.equal((await db.memoryJob.findUnique({ where: { id: next.job.id } })).status, 'succeeded');
+    assert.equal(provider.calls.filter(call => call.kind === 'memory_extract').length - before, 1, 'no paid call for the missing turn');
+  });
   await check('source rollback preserves newer valid changes in the same slot', async () => {
     const f = await setup(), old = await turn(f, 'Меня зовут Анна.'); await run(f, output([delta('Анна')]));
     await turn(f, 'Меня зовут Вера.'); await run(f, output([delta('Вера')]));
