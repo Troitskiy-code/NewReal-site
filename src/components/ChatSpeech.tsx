@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 import { LuLoaderCircle, LuPause, LuPlay, LuVolume2 } from "react-icons/lu";
 import LocaleLink from "./LocaleLink";
 import { useTelegramMode } from "./TelegramProvider";
-import { DEFAULT_SPEECH_VOICE, isSpeechVoice, SPEECH_VOICES, type SpeechQuota, type SpeechVoice } from "@/lib/speech";
+import { DEFAULT_SPEECH_VOICE, isSpeechVoice, isSpeechVoiceChoice, SPEECH_VOICES, type SpeechQuota, type SpeechVoice,
+  type SpeechVoiceChoice, type SpeechVoiceDefault } from "@/lib/speech";
 import { withThread } from "@/lib/chatThreadShared";
 
-type Clip = { messageId: string; content: string; voice: SpeechVoice; url: string };
+type Clip = { messageId: string; content: string; voice: SpeechVoice; choice: SpeechVoiceChoice; url: string };
 type SpeechContextValue = {
-  quota: SpeechQuota | null; voice: SpeechVoice; setVoice: (voice: SpeechVoice) => void;
+  quota: SpeechQuota | null; voice: SpeechVoice; choice: SpeechVoiceChoice; automatic: SpeechVoiceDefault | null;
+  setVoice: (voice: SpeechVoiceChoice) => void; refresh: () => void;
   loadingId: string | null; clip: Clip | null; paused: boolean; error: string | null; errorId: string | null;
   prepared: Record<string, { content: string; text: string }>;
   toggle: (id: string, content: string) => void;
@@ -26,7 +28,9 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   const { t } = useTranslation();
   const endpoint = withThread(`/api/chat/${characterId}/speech`, threadId);
   const [quota, setQuota] = useState<SpeechQuota | null>(null);
-  const [voice, setVoiceState] = useState<SpeechVoice>(DEFAULT_SPEECH_VOICE);
+  const [choice, setVoiceState] = useState<SpeechVoiceChoice>("auto");
+  const [automatic, setAutomatic] = useState<SpeechVoiceDefault | null>(null);
+  const voice = isSpeechVoice(choice) ? choice : automatic?.voice ?? DEFAULT_SPEECH_VOICE;
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [clip, setClip] = useState<Clip | null>(null);
   const [paused, setPaused] = useState(true);
@@ -39,15 +43,18 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   const clipRef = useRef<Clip | null>(null);
   useEffect(() => { clipRef.current = clip; }, [clip]);
   const bindAudio = useCallback((audio: HTMLAudioElement | null) => { audioRef.current = audio; }, []);
-  const storageKey = `newverse:speech-voice:${characterId}`;
+  const storageKey = `newverse:speech-voice:${userId ?? "guest"}:${characterId}`;
 
   const refreshQuota = useCallback(async (signal?: AbortSignal) => {
     if (!userId) return;
     try {
       const response = await fetch(endpoint, { cache: "no-store", signal });
       if (response.ok) {
-        const state = await response.json() as SpeechQuota;
-        if (mountedRef.current && !signal?.aborted) setQuota(state);
+        const state = await response.json() as SpeechQuota & { automatic?: SpeechVoiceDefault };
+        if (mountedRef.current && !signal?.aborted) {
+          setQuota(state);
+          if (state.automatic && isSpeechVoice(state.automatic.voice)) setAutomatic(state.automatic);
+        }
       }
     } catch { /* Controls stay hidden if configuration or the status service is unavailable. */ }
   }, [endpoint, userId]);
@@ -58,10 +65,16 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     queueMicrotask(() => {
       if (controller.signal.aborted) return;
       void refreshQuota(controller.signal);
-      try { const saved = localStorage.getItem(storageKey); if (isSpeechVoice(saved)) setVoiceState(saved); } catch {}
+      try {
+        const saved = localStorage.getItem(storageKey);
+        // The old key existed only after a deliberate voice change; preserve that manual choice once.
+        const previous = saved === null ? localStorage.getItem(`newverse:speech-voice:${characterId}`) : null;
+        if (isSpeechVoiceChoice(saved)) setVoiceState(saved);
+        else if (isSpeechVoice(previous)) { setVoiceState(previous); localStorage.setItem(storageKey, previous); }
+      } catch {}
     });
     return () => { mountedRef.current = false; controller.abort(); requestRef.current?.abort(); audioRef.current?.pause(); };
-  }, [refreshQuota, storageKey]);
+  }, [refreshQuota, storageKey, characterId]);
   // Refresh on the server's Moscow midnight, and after returning to this tab (e.g. after subscribing).
   useEffect(() => {
     if (!quota) return;
@@ -80,8 +93,8 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   const stop = useCallback((id: string) => {
     if (clipRef.current?.messageId === id) { audioRef.current?.pause(); setClip(null); setPaused(true); }
   }, []);
-  const setVoice = (value: SpeechVoice) => {
-    if (!isSpeechVoice(value)) return;
+  const setVoice = (value: SpeechVoiceChoice) => {
+    if (!isSpeechVoiceChoice(value) || requestRef.current) return;
     audioRef.current?.pause(); setClip(null); setPaused(true); setVoiceState(value); setError(null); setErrorId(null);
     try { localStorage.setItem(storageKey, value); } catch {}
   };
@@ -90,7 +103,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     setError(null); setErrorId(id);
     // Pause/resume belongs to the authorized playback. After 'ended' the clip is cleared;
     // starting it again must go through the server, even if the MP3 is already cached.
-    if (clip?.messageId === id && clip.content === content && clip.voice === voice && audioRef.current && !audioRef.current.ended) {
+    if (clip?.messageId === id && clip.content === content && clip.choice === choice && audioRef.current && !audioRef.current.ended) {
       if (!audioRef.current.paused) audioRef.current.pause();
       else {
         try { await audioRef.current.play(); } catch { setError(t("chatSpeech.errors.playback")); }
@@ -101,12 +114,15 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     const controller = new AbortController(); requestRef.current = controller; setLoadingId(id);
     try {
       let response: Response;
+      let requestedVoice: SpeechVoiceChoice = choice;
       const deadline = Date.now() + 5 * 60_000;
       for (;;) {
         response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messageId: id, voice }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(100_000)]) });
+          body: JSON.stringify({ messageId: id, voice: requestedVoice }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(100_000)]) });
         if (response.status !== 202) break;
         const state = await response.json();
+        // Pin this task's resolved voice even if the card/story type changes during synthesis.
+        if (isSpeechVoice(state.voice)) requestedVoice = state.voice;
         if (typeof state.text === "string" && mountedRef.current && !controller.signal.aborted)
           setPrepared(previous => ({ ...previous, [id]: { content, text: state.text } }));
         if (Date.now() >= deadline) throw new Error("pending");
@@ -127,10 +143,12 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       const unlimited = response.headers.get("X-Speech-Unlimited") === "true";
       setQuota({ enabled: true, unlimited, remaining: unlimited ? null : Number(response.headers.get("X-Speech-Remaining") ?? 0),
         resetsAt: response.headers.get("X-Speech-Resets-At") ?? quota.resetsAt });
-      setClip({ messageId: id, content, voice, url: URL.createObjectURL(blob) });
+      const actualVoice = response.headers.get("X-Speech-Voice");
+      const playedVoice = isSpeechVoice(actualVoice) ? actualVoice : voice;
+      setClip({ messageId: id, content, voice: playedVoice, choice, url: URL.createObjectURL(blob) });
       // Read the actual cached script; do not offer a local heuristic as an exact preview.
       const metadataUrl = new URL(endpoint, window.location.origin);
-      metadataUrl.searchParams.set("messageId", id); metadataUrl.searchParams.set("voice", voice);
+      metadataUrl.searchParams.set("messageId", id); metadataUrl.searchParams.set("voice", playedVoice);
       void fetch(metadataUrl, { cache: "no-store", signal: controller.signal }).then(async metadata => {
         if (!metadata.ok) return;
         const state = await metadata.json();
@@ -148,13 +166,13 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     }
   };
 
-  return <SpeechContext.Provider value={{ quota, voice, setVoice, loadingId, clip, paused, error, errorId, prepared, toggle,
+  return <SpeechContext.Provider value={{ quota, voice, choice, automatic, setVoice, refresh: refreshQuota, loadingId, clip, paused, error, errorId, prepared, toggle,
     bindAudio, setPaused, stop,
     seek: seconds => { if (audioRef.current && Number.isFinite(seconds)) audioRef.current.currentTime = seconds; },
     playbackError: () => { setErrorId(clip?.messageId ?? null); setError(t("chatSpeech.errors.playback")); } }}>{children}</SpeechContext.Provider>;
 }
 
-export function ChatSpeechControls() {
+export function ChatSpeechControls({ onOpenSettings }: { onOpenSettings: () => void }) {
   const speech = useContext(SpeechContext);
   const { t } = useTranslation();
   const telegram = useTelegramMode();
@@ -162,17 +180,46 @@ export function ChatSpeechControls() {
   return <section aria-label={t("chatSpeech.label")} className="mb-3 rounded-xl border border-wd-border bg-wd-bg/60 px-3 py-2 font-sans text-xs text-wd-text-secondary">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p>{t(speech.quota.unlimited ? "chatSpeech.unlimited" : "chatSpeech.daily", { remaining: speech.quota.remaining })}</p>
-      <label className="flex items-center gap-2">{t("chatSpeech.voice")}
-        <select aria-label={t("chatSpeech.voice")} value={speech.voice} disabled={Boolean(speech.loadingId)}
-          onChange={event => { if (isSpeechVoice(event.target.value)) speech.setVoice(event.target.value); }}
-          className="rounded-lg border border-wd-border bg-wd-bg px-2 py-1 text-wd-text">
-          {SPEECH_VOICES.map(voice => <option key={voice.id} value={voice.id}>{t(`chatSpeech.voices.${voice.label}`)}</option>)}
-        </select>
-      </label>
+      <button type="button" onClick={onOpenSettings} aria-label={t("chatSpeech.settingsTitle")}
+        className="rounded-lg border border-wd-border px-2 py-1 text-wd-text hover:bg-white/5">
+        {t("chatSpeech.voice")}: {speech.voice}{speech.choice === "auto" ? ` · ${t("chatSpeech.autoShort")}` : ""}
+      </button>
     </div>
     {!speech.quota.unlimited && <p className="mt-1">{t("chatSpeech.reset")}{!telegram && <> · <LocaleLink href="/pricing" className="text-wd-secondary underline">{t("chatSpeech.upgrade")}</LocaleLink></>}</p>}
     <p className="mt-1">{t("chatSpeech.speechOnly")}</p>
   </section>;
+}
+
+export function ChatSpeechSettings() {
+  const speech = useContext(SpeechContext);
+  const { t } = useTranslation();
+  const refresh = speech?.refresh;
+  useEffect(() => { refresh?.(); }, [refresh]);
+  if (!speech?.quota?.enabled) return <p className="text-sm text-wd-text-secondary">{t(speech?.quota ? "chatSpeech.settingsUnavailable" : "chatSpeech.settingsLoading")}</p>;
+  const busy = Boolean(speech.loadingId);
+  return <div className="space-y-5 text-sm text-wd-text">
+    <p className="text-wd-text-secondary">{t("chatSpeech.settingsHint")}</p>
+    <fieldset disabled={busy} className="space-y-4">
+      <legend className="sr-only">{t("chatSpeech.settingsTitle")}</legend>
+      <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${speech.choice === "auto" ? "border-wd-secondary bg-white/5" : "border-wd-border hover:bg-white/5"} ${busy ? "opacity-50" : ""}`}>
+        <input type="radio" name="character-speech-voice" value="auto" checked={speech.choice === "auto"}
+          onChange={() => speech.setVoice("auto")} className="mt-1 accent-wd-secondary" />
+        <span><span className="block font-semibold">{t("chatSpeech.autoVoice", { voice: speech.automatic?.voice ?? DEFAULT_SPEECH_VOICE })}</span>
+          <span className="mt-1 block text-xs leading-relaxed text-wd-text-secondary">{t(`chatSpeech.autoReasons.${speech.automatic?.role ?? "unknown"}`)}</span></span>
+      </label>
+      {(["female", "male", "other"] as const).map(gender => <div key={gender} className="space-y-2">
+        <h3 className="font-semibold">{t(`chatSpeech.voiceGroups.${gender}`)}</h3>
+        <div className="grid gap-2 sm:grid-cols-2">{SPEECH_VOICES.filter(voice => voice.gender === gender).map(voice => <label key={voice.id}
+          className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${speech.choice === voice.id ? "border-wd-secondary bg-white/5" : "border-wd-border hover:bg-white/5"} ${busy ? "opacity-50" : ""}`}>
+          <input type="radio" name="character-speech-voice" value={voice.id} checked={speech.choice === voice.id}
+            onChange={() => speech.setVoice(voice.id)} className="mt-1 accent-wd-secondary" />
+          <span><span className="block font-semibold">{voice.id}</span>
+            <span className="mt-1 block text-xs leading-relaxed text-wd-text-secondary">{t(`chatSpeech.voiceDescriptions.${voice.label}`)}</span></span>
+        </label>)}</div>
+      </div>)}
+    </fieldset>
+    <p role="status" className="text-xs text-wd-text-secondary">{t(busy ? "chatSpeech.voiceChangeBusy" : "chatSpeech.voiceSaved")}</p>
+  </div>;
 }
 
 export function MessageSpeechButton({ messageId, content, disabled }: { messageId: string; content: string; disabled: boolean }) {

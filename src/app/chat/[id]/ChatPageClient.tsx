@@ -14,7 +14,7 @@ import { choiceNumeral, splitStoryChoices, type StoryChoicesSplit } from "@/lib/
 import PersonaSelector from "@/components/PersonaSelector";
 import ChatStorySettings from "@/components/ChatStorySettings";
 import ChatThreadsPanel from "@/components/ChatThreadsPanel";
-import { ChatSpeechProvider, ChatSpeechControls, MessageSpeechButton, MessageSpeechPlayer } from "@/components/ChatSpeech";
+import { ChatSpeechProvider, ChatSpeechControls, ChatSpeechSettings, MessageSpeechButton, MessageSpeechPlayer } from "@/components/ChatSpeech";
 import { THREAD_QUERY_PARAM, threadDisplayTitle, withThread, type ChatThreadSummary } from "@/lib/chatThreadShared";
 import type { ChatPersona } from "@/lib/persona";
 import {
@@ -615,6 +615,7 @@ function ChatSettingsMenu({
   onOpenMemory,
   onOpenPersona,
   onOpenPrompt,
+  onOpenVoice,
   onClearChat,
   threadsEnabled = false,
   onOpenThreads,
@@ -628,6 +629,7 @@ function ChatSettingsMenu({
   onOpenMemory: () => void;
   onOpenPersona: () => void;
   onOpenPrompt: () => void;
+  onOpenVoice: () => void;
   onClearChat: () => void;
   /** Stories on: "new story" and the story list replace the destructive restart. */
   threadsEnabled?: boolean;
@@ -681,6 +683,14 @@ function ChatSettingsMenu({
             className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
           >
             Модели чата
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { onClose(); onOpenVoice(); }}
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
+          >
+            {t("chatSpeech.settingsTitle")}
           </button>
           <button
             type="button"
@@ -997,6 +1007,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const [memoryEditorOpen, setMemoryEditorOpen] = useState(false);
   const [personaSelectorOpen, setPersonaSelectorOpen] = useState(false);
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
+  const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<ChatPersona | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -1865,7 +1876,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   };
 
   return (
-    <>
+    <ChatSpeechProvider key={`${characterId}:${threadId ?? ""}:${session?.user?.id ?? "guest"}`}
+      characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}>
     {characterAvatarUrl ? <ChatPortraitBackground imageUrl={characterAvatarUrl} /> : null}
     <div
       className={`nv-chat-shell relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
@@ -1921,6 +1933,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               />
             )}
           </div>
+        </Modal>
+
+        <Modal open={voiceSettingsOpen} onClose={() => setVoiceSettingsOpen(false)} title={t("chatSpeech.settingsTitle")} wide>
+          <ChatSpeechSettings />
         </Modal>
 
         <Modal
@@ -2039,6 +2055,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                     onOpenMemory={() => setMemoryEditorOpen(true)}
                     onOpenPersona={() => setPersonaSelectorOpen(true)}
                     onOpenPrompt={() => setPromptSettingsOpen(true)}
+                    onOpenVoice={() => setVoiceSettingsOpen(true)}
                     onClearChat={() => {
                       setSettingsMenuOpen(false);
                       setConfirmClearChat(true);
@@ -2058,10 +2075,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             </p>
           ) : null}
           <div data-character-list-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <ChatSpeechProvider key={`${characterId}:${threadId ?? ""}:${session?.user?.id ?? "guest"}`}
-              characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}>
             <div className="mx-auto flex w-full max-w-3xl flex-col space-y-2 px-4 pb-3 pt-4 md:space-y-4 md:px-4 md:pt-6">
-            <ChatSpeechControls />
+            <ChatSpeechControls onOpenSettings={() => setVoiceSettingsOpen(true)} />
             {characterCardDescription ? (
               <CharacterDescriptionCard description={characterCardDescription} />
             ) : null}
@@ -2131,7 +2146,6 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             ) : null}
             <div ref={messagesEndRef} />
             </div>
-            </ChatSpeechProvider>
           </div>
 
           <div className="shrink-0 px-3 py-3 md:p-4">
@@ -2185,6 +2199,6 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       />
       {confirmModal}
     </div>
-    </>
+    </ChatSpeechProvider>
   );
 }

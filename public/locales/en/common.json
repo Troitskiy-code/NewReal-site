@@ -10,6 +10,32 @@
     "loading": "Generating audio…",
     "player": "Character reply audio",
     "voice": "Voice",
+    "settingsTitle": "Voice selection",
+    "settingsHint": "Automatic mode uses the character profile to select a voice. Worlds and groups use a male narrator. You can choose any voice manually.",
+    "settingsLoading": "Loading speech settings…",
+    "settingsUnavailable": "Speech is currently unavailable.",
+    "autoShort": "auto",
+    "autoVoice": "Automatic — {{voice}}",
+    "autoReasons": {
+      "female": "A female voice was selected from the character profile.",
+      "male": "A male voice was selected from the character profile.",
+      "narrator": "This story uses a male narrator by default.",
+      "unknown": "The character profile does not specify a clear gender. A male voice is used by default; you can change it manually."
+    },
+    "voiceGroups": { "female": "Female voices", "male": "Male voices", "other": "Additional voice" },
+    "voiceDescriptions": {
+      "aoede": "Breezy and relaxed. For natural conversations and gentle delivery.",
+      "kore": "Firm and composed. For confident, commanding characters.",
+      "leda": "Youthful and fresh. For light, lively conversations.",
+      "zephyr": "Bright and clear. For open, friendly characters.",
+      "fenrir": "Energetic and expressive. For emotional dialogue and dynamic scenes.",
+      "charon": "Calm and informative. For narration, world descriptions and measured storytelling.",
+      "orus": "Firm and confident. For serious, decisive characters.",
+      "puck": "Upbeat and lively. For outgoing, optimistic characters.",
+      "fola": "The original NewVerse conversational voice, retained for listeners who preferred it."
+    },
+    "voiceSaved": "Your choice is saved for this character on this device and applies to future playbacks.",
+    "voiceChangeBusy": "Wait for the current recording to finish preparing before changing the voice.",
     "voices": {
       "fola": "Fola",
       "fenrir": "Fenrir"

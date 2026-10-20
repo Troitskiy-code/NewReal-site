@@ -83,7 +83,7 @@ const source = (messageId, userId = 'free', voice = 'Fola') => ({ userId, charac
 const context = { params: Promise.resolve({ id: 'hero' }) };
 const request = (messageId, extra = {}, init = {}) => new NextRequest('http://localhost/api/chat/hero/speech?thread=story-free', {
   method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost', ...init.headers },
-  body: JSON.stringify({ messageId, ...extra }), ...init,
+  body: JSON.stringify({ messageId, voice: 'Fola', ...extra }), ...init,
 });
 try {
   run(binaries.initdb, ['-D', databaseDir, '-U', 'postgres', '--auth=trust', '--encoding=UTF8', '--locale=C']);
@@ -102,6 +102,35 @@ try {
   const load = loader();
   const service = load('src/lib/chatSpeech.ts');
   const shared = load('src/lib/speech.ts');
+  const voiceSelection = load('src/lib/speechVoiceSelection.ts');
+  const card = { roleplayMode: 'character', tags: null, appearance: null, appearance_en: null, description: null, description_en: null };
+  for (const [changes, mode, voice, role] of [
+    [{ tags: 'Женский персонаж' }, null, 'Aoede', 'female'],
+    [{ tags: 'Мужской персонаж' }, null, 'Fenrir', 'male'],
+    [{ tags: 'female character' }, null, 'Aoede', 'female'],
+    [{ appearance: 'Девушка с тёмными волосами.' }, null, 'Aoede', 'female'],
+    [{ appearance: 'Высокий мужчина в плаще.' }, null, 'Fenrir', 'male'],
+    [{ appearance_en: 'She wears a blue jacket.' }, null, 'Aoede', 'female'],
+    [{ appearance_en: 'He stands tall.' }, null, 'Fenrir', 'male'],
+    [{ description: 'Эмили — девушка с редким даром.' }, null, 'Aoede', 'female'],
+    [{ description: 'Она хранит тайну древнего храма.' }, null, 'Aoede', 'female'],
+    [{ description: 'Он охраняет древний храм.' }, null, 'Fenrir', 'male'],
+    [{ roleplayMode: 'world', tags: 'Женский персонаж' }, null, 'Charon', 'narrator'],
+    [{ roleplayMode: 'group' }, null, 'Charon', 'narrator'],
+    [{ tags: 'Женский персонаж' }, 'world', 'Charon', 'narrator'],
+    [{ roleplayMode: 'world', tags: 'Женский персонаж' }, 'character', 'Aoede', 'female'],
+    [{ tags: 'Женский персонаж, Мужской персонаж' }, null, 'Fenrir', 'unknown'],
+    [{ appearance_en: 'A woman beside a man.' }, null, 'Fenrir', 'unknown'],
+    [{ description: 'Ты — девушка в этом мире.' }, null, 'Fenrir', 'unknown'],
+    [{}, null, 'Fenrir', 'unknown'],
+  ]) {
+    const selected = voiceSelection.automaticSpeechVoice({ ...card, ...changes }, mode);
+    check(selected.voice === voice && selected.role === role, `automatic voice: ${JSON.stringify(changes)} / ${mode ?? 'card'}`);
+  }
+  check(shared.SPEECH_VOICES.filter(voice => voice.gender === 'female').length === 4
+    && shared.SPEECH_VOICES.filter(voice => voice.gender === 'male').length === 4
+    && shared.isSpeechVoice('Fola') && shared.isSpeechVoiceChoice('auto') && !shared.isSpeechVoiceChoice('untrusted'),
+    'voice catalog contains four male and four female choices, legacy Fola, and validated automatic selection');
   const preparation = loader({ realPreparation: true })('src/lib/speechPreparation.ts');
   const sourceText = 'Ты просыпаешься в комнате. За окном рассвет. Свиток гласит: «Выбери новый путь».\nВыбери клан:\n1. Акаси — «Тигры Заката»\nСтиль: меч.\n2. Курои — «Тени Ночи»';
   check(shared.speechSource(sourceText) === sourceText, 'narration, quoted scroll and menu reach AI without the destructive quote filter');
@@ -232,7 +261,7 @@ try {
   check((await status.json()).remaining === 0, 'quota status agrees with the generation API');
   sessionUser = 'paid';
   const paidReq = (id, extra = {}) => new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost' }, body: JSON.stringify({ messageId: id, ...extra }),
+    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost' }, body: JSON.stringify({ messageId: id, voice: 'Fola', ...extra }),
   });
   const paidApi = await post(paidReq('paid-0'), context);
   check(paidApi.status === 200 && paidApi.headers.get('X-Speech-Unlimited') === 'true', 'paid API response confirms unlimited entitlement');
@@ -268,6 +297,26 @@ try {
   const measuredScript = await db.speechClip.findFirst({ where: { messageId: 'prepared-characters' } });
   check(measuredScript.inputCharacters === Array.from(measuredScript.preparedText).length && measuredScript.preparedText === 'Привет!',
     'resuming a job preserves the prepared character count rather than restoring the raw source count');
+
+  // Automatic selection is resolved by the authorized server, with manual override and task pinning.
+  await db.character.update({ where: { id: 'hero' }, data: { tags: 'Женский персонаж', appearance: 'Девушка в синем плаще.' } });
+  const automaticStatus = await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid'), context);
+  check((await automaticStatus.json()).automatic.voice === 'Aoede', 'speech settings resolve a female default from the saved character profile');
+  await add('automatic-voice', 'paid');
+  const automaticStart = await routes.POST(paidReq('automatic-voice', { voice: 'auto' }), context);
+  const acceptedAutomatic = await automaticStart.json();
+  check(automaticStart.status === 202 && acceptedAutomatic.voice === 'Aoede', 'automatic submission returns its resolved voice for subsequent polls');
+  await db.chatPromptState.upsert({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } },
+    create: { scopeKey: 'thread:story-paid', characterId: 'hero', mode: 'world', builderVersion: 2 }, update: { mode: 'world' } });
+  const pinned = await routes.POST(paidReq('automatic-voice', { voice: acceptedAutomatic.voice }), context);
+  check(pinned.status === 200 && pinned.headers.get('X-Speech-Voice') === 'Aoede', 'an accepted task retains its voice when story settings change during generation');
+  const narratorStatus = await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid'), context);
+  const narratorDefault = (await narratorStatus.json()).automatic;
+  check(narratorDefault.voice === 'Charon' && narratorDefault.role === 'narrator', 'story type overrides a female card to select a male narrator for worlds');
+  check((await post(paidReq('automatic-voice', { voice: 'auto' }), context)).headers.get('X-Speech-Voice') === 'Charon', 'world playback uses the automatic male narrator');
+  check((await post(paidReq('automatic-voice', { voice: 'Kore' }), context)).headers.get('X-Speech-Voice') === 'Kore', 'an explicit manual voice overrides automatic narrator selection');
+  await db.chatPromptState.delete({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } } });
+  await db.character.update({ where: { id: 'hero' }, data: { tags: null, appearance: null } });
 
   // Durable async jobs: polling, reconnects and failures must not purchase a second synthesis.
   await db.speechDailyQuota.deleteMany({ where: { userId: 'free' } });
