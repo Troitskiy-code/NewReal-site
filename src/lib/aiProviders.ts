@@ -57,7 +57,9 @@ export function serviceTransport(purpose: string, requestedModel: string, legacy
   const provider = purpose === "character_generation" ? "deepinfra" : getMemoryProvider();
   const choices: Record<string, string> = {
     summary: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-    memory_extract: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+    // 2026-10-20 eval (scripts/eval-memory-extraction-models.mjs, production-sized turns): recall 68% vs 53%,
+    // 1 vs 16 false facts, p90 2.3 s vs 15.5 s against Mistral Small 3.2, at ~1.4x the cost per call.
+    memory_extract: "Qwen/Qwen3-Next-80B-A3B-Instruct",
     intent: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     memory: requestedModel === "google/gemma-4-31b-it" ? "google/gemma-4-31B-it-turbo" : "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     character_event: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",

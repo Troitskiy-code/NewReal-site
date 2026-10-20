@@ -1,0 +1,4782 @@
+{
+ "generatedAt": "2026-10-20T19:57:55.541Z",
+ "passes": 2,
+ "turns": 16,
+ "report": [
+  {
+   "model": "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+   "calls": 32,
+   "ok": 32,
+   "errors": "-",
+   "recall": 52.6,
+   "falsePositives": 2,
+   "rejectedPerCall": 0.9,
+   "p50": 3908,
+   "p90": 6040,
+   "max": 6769,
+   "outputAvg": 106,
+   "tokPerSec": 28,
+   "costUsdPer1000Calls": 0.23
+  },
+  {
+   "model": "google/gemma-4-31B-it-turbo",
+   "calls": 32,
+   "ok": 32,
+   "errors": "-",
+   "recall": 65.8,
+   "falsePositives": 0,
+   "rejectedPerCall": 0.5,
+   "p50": 2108,
+   "p90": 4760,
+   "max": 6158,
+   "outputAvg": 100,
+   "tokPerSec": 38,
+   "costUsdPer1000Calls": 0.2
+  },
+  {
+   "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+   "calls": 32,
+   "ok": 32,
+   "errors": "-",
+   "recall": 60.5,
+   "falsePositives": 0,
+   "rejectedPerCall": 0.5,
+   "p50": 2457,
+   "p90": 4424,
+   "max": 12870,
+   "outputAvg": 54,
+   "tokPerSec": 32,
+   "costUsdPer1000Calls": 0.11
+  },
+  {
+   "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+   "calls": 32,
+   "ok": 32,
+   "errors": "-",
+   "recall": 63.2,
+   "falsePositives": 0,
+   "rejectedPerCall": 0.8,
+   "p50": 11461,
+   "p90": 18074,
+   "max": 21028,
+   "outputAvg": 144,
+   "tokPerSec": 13,
+   "costUsdPer1000Calls": 0.32
+  },
+  {
+   "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "calls": 32,
+   "ok": 32,
+   "errors": "-",
+   "recall": 47.4,
+   "falsePositives": 4,
+   "rejectedPerCall": 0.7,
+   "p50": 7646,
+   "p90": 18647,
+   "max": 32064,
+   "outputAvg": 89,
+   "tokPerSec": 11,
+   "costUsdPer1000Calls": 0.29
+  },
+  {
+   "model": "Qwen/Qwen3-Next-80B-A3B-Instruct",
+   "calls": 32,
+   "ok": 32,
+   "errors": "-",
+   "recall": 68.4,
+   "falsePositives": 0,
+   "rejectedPerCall": 1.3,
+   "p50": 1185,
+   "p90": 2686,
+   "max": 4989,
+   "outputAvg": 146,
+   "tokPerSec": 104,
+   "costUsdPer1000Calls": 0.41
+  }
+ ],
+ "results": {
+  "mistralai/Mistral-Small-3.2-24B-Instruct-2506": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 6397,
+    "usage": {
+     "input": 2761,
+     "output": 160,
+     "cost": 0.00023907500000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 3908,
+    "usage": {
+     "input": 2722,
+     "output": 124,
+     "cost": 0.00022894999999999998
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "likes",
+      "value": "набережная",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 3610,
+    "usage": {
+     "input": 2729,
+     "output": 121,
+     "cost": 0.000228875
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 3369,
+    "usage": {
+     "input": 2725,
+     "output": 87,
+     "cost": 0.00022177500000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "habits",
+      "value": "занята утром",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 2105,
+    "usage": {
+     "input": 2729,
+     "output": 53,
+     "cost": 0.000215275
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "character",
+      "key": "likes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 2859,
+    "usage": {
+     "input": 2724,
+     "output": 104,
+     "cost": 0.00022510000000000002
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 4033,
+    "usage": {
+     "input": 2723,
+     "output": 105,
+     "cost": 0.000225225
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 5046,
+    "usage": {
+     "input": 2760,
+     "output": 137,
+     "cost": 0.00023439999999999998
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "likes",
+      "value": "ты",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 3
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 3047,
+    "usage": {
+     "input": 2734,
+     "output": 108,
+     "cost": 0.00022664999999999998
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 6040,
+    "usage": {
+     "input": 2726,
+     "output": 169,
+     "cost": 0.00023825000000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "казнят за магию",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 1458,
+    "usage": {
+     "input": 2716,
+     "output": 51,
+     "cost": 0.0002139
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 2385,
+    "usage": {
+     "input": 2721,
+     "output": 53,
+     "cost": 0.000214675
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 3368,
+    "usage": {
+     "input": 2722,
+     "output": 70,
+     "cost": 0.00021815000000000002
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 2657,
+    "usage": {
+     "input": 2757,
+     "output": 86,
+     "cost": 0.000223975
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 5259,
+    "usage": {
+     "input": 2720,
+     "output": 106,
+     "cost": 0.00022520000000000003
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 4103,
+    "usage": {
+     "input": 2726,
+     "output": 169,
+     "cost": 0.00023825000000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 3740,
+    "usage": {
+     "input": 2761,
+     "output": 160,
+     "cost": 0.00023907500000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 4230,
+    "usage": {
+     "input": 2722,
+     "output": 124,
+     "cost": 0.00022894999999999998
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "likes",
+      "value": "набережная",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 3883,
+    "usage": {
+     "input": 2729,
+     "output": 121,
+     "cost": 0.000228875
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 3468,
+    "usage": {
+     "input": 2725,
+     "output": 87,
+     "cost": 0.00022177500000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "habits",
+      "value": "занята утром",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 1840,
+    "usage": {
+     "input": 2729,
+     "output": 53,
+     "cost": 0.000215275
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "character",
+      "key": "likes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 4676,
+    "usage": {
+     "input": 2724,
+     "output": 104,
+     "cost": 0.00022510000000000002
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 4026,
+    "usage": {
+     "input": 2723,
+     "output": 105,
+     "cost": 0.000225225
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 4007,
+    "usage": {
+     "input": 2760,
+     "output": 137,
+     "cost": 0.00023439999999999998
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "likes",
+      "value": "ты",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 3
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 5403,
+    "usage": {
+     "input": 2734,
+     "output": 108,
+     "cost": 0.00022664999999999998
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 4691,
+    "usage": {
+     "input": 2726,
+     "output": 169,
+     "cost": 0.00023825000000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "казнят за магию",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 2981,
+    "usage": {
+     "input": 2716,
+     "output": 51,
+     "cost": 0.0002139
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 2227,
+    "usage": {
+     "input": 2721,
+     "output": 53,
+     "cost": 0.000214675
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 3147,
+    "usage": {
+     "input": 2722,
+     "output": 70,
+     "cost": 0.00021815000000000002
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 4143,
+    "usage": {
+     "input": 2757,
+     "output": 86,
+     "cost": 0.000223975
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 6769,
+    "usage": {
+     "input": 2720,
+     "output": 106,
+     "cost": 0.00022520000000000003
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 6237,
+    "usage": {
+     "input": 2726,
+     "output": 169,
+     "cost": 0.00023825000000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   }
+  ],
+  "google/gemma-4-31B-it-turbo": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 4633,
+    "usage": {
+     "input": 2569,
+     "output": 225,
+     "cost": 0.00030771
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 1531,
+    "usage": {
+     "input": 2534,
+     "output": 68,
+     "cost": 0.00025118
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 4135,
+    "usage": {
+     "input": 2540,
+     "output": 167,
+     "cost": 0.0002636200002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 1468,
+    "usage": {
+     "input": 2536,
+     "output": 42,
+     "cost": 0.0002207600002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 3809,
+    "usage": {
+     "input": 2538,
+     "output": 70,
+     "cost": 0.0002304600002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 6158,
+    "usage": {
+     "input": 2534,
+     "output": 122,
+     "cost": 0.0002477800002176
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механиком",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 2749,
+    "usage": {
+     "input": 2537,
+     "output": 100,
+     "cost": 0.0002405700002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 3245,
+    "usage": {
+     "input": 2570,
+     "output": 118,
+     "cost": 0.00024966000021760005
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 1275,
+    "usage": {
+     "input": 2545,
+     "output": 42,
+     "cost": 0.0002215700002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 6098,
+    "usage": {
+     "input": 2539,
+     "output": 128,
+     "cost": 0.0002502700002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 1675,
+    "usage": {
+     "input": 2532,
+     "output": 69,
+     "cost": 0.00022958000021760003
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 2028,
+    "usage": {
+     "input": 2534,
+     "output": 71,
+     "cost": 0.0002304400002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 1710,
+    "usage": {
+     "input": 2536,
+     "output": 47,
+     "cost": 0.00022246000021759998
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 1999,
+    "usage": {
+     "input": 2564,
+     "output": 95,
+     "cost": 0.0002413000002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 1748,
+    "usage": {
+     "input": 2533,
+     "output": 43,
+     "cost": 0.0002208300002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 4760,
+    "usage": {
+     "input": 2537,
+     "output": 180,
+     "cost": 0.00026777000021760005
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится в столице",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "младшая сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 5423,
+    "usage": {
+     "input": 2569,
+     "output": 225,
+     "cost": 0.000205310001024
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 1641,
+    "usage": {
+     "input": 2534,
+     "output": 68,
+     "cost": 0.0001500600010112
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 3683,
+    "usage": {
+     "input": 2540,
+     "output": 167,
+     "cost": 0.0001842600010112
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 1695,
+    "usage": {
+     "input": 2536,
+     "output": 42,
+     "cost": 0.0001414000010112
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 2058,
+    "usage": {
+     "input": 2538,
+     "output": 70,
+     "cost": 0.0001511000010112
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 2073,
+    "usage": {
+     "input": 2534,
+     "output": 55,
+     "cost": 0.0001456400010112
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 2108,
+    "usage": {
+     "input": 2537,
+     "output": 100,
+     "cost": 0.00016121000101119998
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 4075,
+    "usage": {
+     "input": 2570,
+     "output": 118,
+     "cost": 0.00016902000102399998
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 989,
+    "usage": {
+     "input": 2545,
+     "output": 42,
+     "cost": 0.00014221000101119998
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 3667,
+    "usage": {
+     "input": 2539,
+     "output": 128,
+     "cost": 0.0001709100010112
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 2159,
+    "usage": {
+     "input": 2532,
+     "output": 69,
+     "cost": 0.0001502200010112
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 1543,
+    "usage": {
+     "input": 2534,
+     "output": 71,
+     "cost": 0.0001510800010112
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 1721,
+    "usage": {
+     "input": 2536,
+     "output": 101,
+     "cost": 0.00016146000101119998
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 1659,
+    "usage": {
+     "input": 2564,
+     "output": 95,
+     "cost": 0.00016066000102399997
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 2980,
+    "usage": {
+     "input": 2533,
+     "output": 95,
+     "cost": 0.0001591500010112
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 4050,
+    "usage": {
+     "input": 2537,
+     "output": 176,
+     "cost": 0.00018705000101120001
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   }
+  ],
+  "deepseek-ai/DeepSeek-V4-Flash-0731": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 3006,
+    "usage": {
+     "input": 2753,
+     "output": 118,
+     "cost": 0.00018642000000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 2171,
+    "usage": {
+     "input": 2713,
+     "output": 34,
+     "cost": 0.0001689
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 2758,
+    "usage": {
+     "input": 2717,
+     "output": 58,
+     "cost": 0.00015041999999999999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 1978,
+    "usage": {
+     "input": 2716,
+     "output": 30,
+     "cost": 0.00014532
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 1508,
+    "usage": {
+     "input": 2717,
+     "output": 37,
+     "cost": 0.00014664
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 1824,
+    "usage": {
+     "input": 2713,
+     "output": 65,
+     "cost": 0.00015144
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 1870,
+    "usage": {
+     "input": 2715,
+     "output": 71,
+     "cost": 0.00015264
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 3034,
+    "usage": {
+     "input": 2748,
+     "output": 56,
+     "cost": 0.00015192
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 6872,
+    "usage": {
+     "input": 2721,
+     "output": 20,
+     "cost": 0.00016685999999999998
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 2555,
+    "usage": {
+     "input": 2717,
+     "output": 79,
+     "cost": 0.0001542
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 2457,
+    "usage": {
+     "input": 2708,
+     "output": 63,
+     "cost": 0.00015078
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "relationship.status",
+      "value": "вернулся к родителям",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 1922,
+    "usage": {
+     "input": 2708,
+     "output": 36,
+     "cost": 0.00014591999999999999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 2561,
+    "usage": {
+     "input": 2712,
+     "output": 86,
+     "cost": 0.00015516
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Капитан Северов",
+      "key": "occupation",
+      "value": "капитан",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 4104,
+    "usage": {
+     "input": 2748,
+     "output": 34,
+     "cost": 0.000171
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 2208,
+    "usage": {
+     "input": 2710,
+     "output": 10,
+     "cost": 0.00014136
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 3945,
+    "usage": {
+     "input": 2718,
+     "output": 134,
+     "cost": 0.00016416
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "age",
+      "value": "младшая сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится в столице",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 2374,
+    "usage": {
+     "input": 2753,
+     "output": 118,
+     "cost": 0.00007122
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 1516,
+    "usage": {
+     "input": 2713,
+     "output": 34,
+     "cost": 0.0000537
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 1815,
+    "usage": {
+     "input": 2717,
+     "output": 58,
+     "cost": 0.000058259999999999994
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 1454,
+    "usage": {
+     "input": 2716,
+     "output": 30,
+     "cost": 0.00005315999999999999
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 1887,
+    "usage": {
+     "input": 2717,
+     "output": 37,
+     "cost": 0.00005448
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 1621,
+    "usage": {
+     "input": 2713,
+     "output": 65,
+     "cost": 0.00005928
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 2293,
+    "usage": {
+     "input": 2715,
+     "output": 71,
+     "cost": 0.00006048
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 2316,
+    "usage": {
+     "input": 2748,
+     "output": 56,
+     "cost": 0.000059760000000000004
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 3255,
+    "usage": {
+     "input": 2721,
+     "output": 20,
+     "cost": 0.000051660000000000003
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 2115,
+    "usage": {
+     "input": 2717,
+     "output": 78,
+     "cost": 0.00006186000000000001
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 4424,
+    "usage": {
+     "input": 2708,
+     "output": 34,
+     "cost": 0.000053400000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 12870,
+    "usage": {
+     "input": 2708,
+     "output": 36,
+     "cost": 0.00016896
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 3091,
+    "usage": {
+     "input": 2712,
+     "output": 20,
+     "cost": 0.000051120000000000005
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 5867,
+    "usage": {
+     "input": 2748,
+     "output": 34,
+     "cost": 0.0000558
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 3154,
+    "usage": {
+     "input": 2710,
+     "output": 10,
+     "cost": 0.000049199999999999997
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 3841,
+    "usage": {
+     "input": 2718,
+     "output": 103,
+     "cost": 0.00015858000000000002
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится в столице",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   }
+  ],
+  "Qwen/Qwen3-235B-A22B-Instruct-2507": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 18259,
+    "usage": {
+     "input": 2767,
+     "output": 238,
+     "cost": 0.00037993
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 8844,
+    "usage": {
+     "input": 2724,
+     "output": 121,
+     "cost": 0.00031171
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 18435,
+    "usage": {
+     "input": 2727,
+     "output": 191,
+     "cost": 0.00035048
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 7983,
+    "usage": {
+     "input": 2726,
+     "output": 57,
+     "cost": 0.00027669
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 8796,
+    "usage": {
+     "input": 2728,
+     "output": 82,
+     "cost": 0.00029062
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "character",
+      "key": "likes",
+      "value": "рыбалку",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 13130,
+    "usage": {
+     "input": 2725,
+     "output": 121,
+     "cost": 0.00031180000000000004
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 12681,
+    "usage": {
+     "input": 2723,
+     "output": 126,
+     "cost": 0.00031437
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 10052,
+    "usage": {
+     "input": 2756,
+     "output": 125,
+     "cost": 0.00031679
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 3
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 15467,
+    "usage": {
+     "input": 2735,
+     "output": 190,
+     "cost": 0.00035065
+    },
+    "accepted": [],
+    "rejected": 3,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 13377,
+    "usage": {
+     "input": 2727,
+     "output": 164,
+     "cost": 0.00033563
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 6428,
+    "usage": {
+     "input": 2718,
+     "output": 82,
+     "cost": 0.00028972000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 4334,
+    "usage": {
+     "input": 2719,
+     "output": 63,
+     "cost": 0.00027936
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 13821,
+    "usage": {
+     "input": 2728,
+     "output": 207,
+     "cost": 0.00035937
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Северов",
+      "key": "name",
+      "value": "Северов",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Северов",
+      "key": "occupation",
+      "value": "капитан",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 12907,
+    "usage": {
+     "input": 2755,
+     "output": 145,
+     "cost": 0.0003277
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 11976,
+    "usage": {
+     "input": 2719,
+     "output": 154,
+     "cost": 0.00032941
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 15067,
+    "usage": {
+     "input": 2731,
+     "output": 222,
+     "cost": 0.00036789
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "relationship.status",
+      "value": "младшая сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 21028,
+    "usage": {
+     "input": 2767,
+     "output": 281,
+     "cost": 0.00040358000000000006
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 9156,
+    "usage": {
+     "input": 2724,
+     "output": 121,
+     "cost": 0.00031171
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 11829,
+    "usage": {
+     "input": 2727,
+     "output": 191,
+     "cost": 0.00035048
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 4345,
+    "usage": {
+     "input": 2726,
+     "output": 57,
+     "cost": 0.00027669
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 6859,
+    "usage": {
+     "input": 2728,
+     "output": 82,
+     "cost": 0.00029062
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "character",
+      "key": "likes",
+      "value": "рыбалку",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 7785,
+    "usage": {
+     "input": 2725,
+     "output": 124,
+     "cost": 0.00031345000000000006
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 9884,
+    "usage": {
+     "input": 2723,
+     "output": 126,
+     "cost": 0.00031437
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 9827,
+    "usage": {
+     "input": 2756,
+     "output": 123,
+     "cost": 0.00031569
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 3
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 14489,
+    "usage": {
+     "input": 2735,
+     "output": 182,
+     "cost": 0.00034625000000000004
+    },
+    "accepted": [],
+    "rejected": 3,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 11461,
+    "usage": {
+     "input": 2727,
+     "output": 160,
+     "cost": 0.00033343000000000007
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 4719,
+    "usage": {
+     "input": 2718,
+     "output": 82,
+     "cost": 0.00028972000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 4902,
+    "usage": {
+     "input": 2719,
+     "output": 63,
+     "cost": 0.00027936
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 11176,
+    "usage": {
+     "input": 2728,
+     "output": 207,
+     "cost": 0.00035937
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Северов",
+      "key": "name",
+      "value": "Северов",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Северов",
+      "key": "occupation",
+      "value": "капитан",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 11578,
+    "usage": {
+     "input": 2755,
+     "output": 142,
+     "cost": 0.00032605000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 11169,
+    "usage": {
+     "input": 2719,
+     "output": 154,
+     "cost": 0.00032941
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 18074,
+    "usage": {
+     "input": 2731,
+     "output": 213,
+     "cost": 0.00036294
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "relationship.status",
+      "value": "младшая сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "учится",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   }
+  ],
+  "meta-llama/Llama-3.3-70B-Instruct-Turbo": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 18647,
+    "usage": {
+     "input": 2643,
+     "output": 182,
+     "cost": 0.00032254000000000007
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 6428,
+    "usage": {
+     "input": 2607,
+     "output": 31,
+     "cost": 0.00027062
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 20130,
+    "usage": {
+     "input": 2612,
+     "output": 100,
+     "cost": 0.00029319999999999997
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 12529,
+    "usage": {
+     "input": 2609,
+     "output": 88,
+     "cost": 0.00028906
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "habits",
+      "value": "занята утром",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 3067,
+    "usage": {
+     "input": 2614,
+     "output": 33,
+     "cost": 0.00027196000000000007
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "likes",
+      "value": "не рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 4930,
+    "usage": {
+     "input": 2607,
+     "output": 52,
+     "cost": 0.00027734
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 13121,
+    "usage": {
+     "input": 2609,
+     "output": 127,
+     "cost": 0.00030154
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 15064,
+    "usage": {
+     "input": 2644,
+     "output": 100,
+     "cost": 0.0002964
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 3
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 19701,
+    "usage": {
+     "input": 2618,
+     "output": 211,
+     "cost": 0.00032932
+    },
+    "accepted": [],
+    "rejected": 5,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 8528,
+    "usage": {
+     "input": 2611,
+     "output": 130,
+     "cost": 0.00030270000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 2951,
+    "usage": {
+     "input": 2601,
+     "output": 32,
+     "cost": 0.00027034000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казани",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 3158,
+    "usage": {
+     "input": 2605,
+     "output": 47,
+     "cost": 0.00027554
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 4964,
+    "usage": {
+     "input": 2607,
+     "output": 81,
+     "cost": 0.00028662
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Северов",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 3046,
+    "usage": {
+     "input": 2639,
+     "output": 32,
+     "cost": 0.00027414000000000003
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 32064,
+    "usage": {
+     "input": 2602,
+     "output": 146,
+     "cost": 0.00030692
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "habits",
+      "value": "не врать",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 5497,
+    "usage": {
+     "input": 2612,
+     "output": 56,
+     "cost": 0.00027912
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "relationship.status",
+      "value": "сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 13612,
+    "usage": {
+     "input": 2643,
+     "output": 108,
+     "cost": 0.00029886
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 6362,
+    "usage": {
+     "input": 2607,
+     "output": 31,
+     "cost": 0.00027062
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 6835,
+    "usage": {
+     "input": 2612,
+     "output": 100,
+     "cost": 0.00029319999999999997
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 7646,
+    "usage": {
+     "input": 2609,
+     "output": 88,
+     "cost": 0.00028906
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "habits",
+      "value": "занята утром",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 3640,
+    "usage": {
+     "input": 2614,
+     "output": 33,
+     "cost": 0.00027196000000000007
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "likes",
+      "value": "не рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 7064,
+    "usage": {
+     "input": 2607,
+     "output": 91,
+     "cost": 0.00028982
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 10650,
+    "usage": {
+     "input": 2609,
+     "output": 127,
+     "cost": 0.00030154
+    },
+    "accepted": [],
+    "rejected": 2,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 14029,
+    "usage": {
+     "input": 2644,
+     "output": 123,
+     "cost": 0.00030376
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 3
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 12409,
+    "usage": {
+     "input": 2618,
+     "output": 134,
+     "cost": 0.00030468000000000004
+    },
+    "accepted": [],
+    "rejected": 3,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 7761,
+    "usage": {
+     "input": 2611,
+     "output": 128,
+     "cost": 0.00030206
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 2350,
+    "usage": {
+     "input": 2601,
+     "output": 32,
+     "cost": 0.00027034000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казани",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 3997,
+    "usage": {
+     "input": 2605,
+     "output": 47,
+     "cost": 0.00027554
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 7046,
+    "usage": {
+     "input": 2607,
+     "output": 81,
+     "cost": 0.00028662
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Северов",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 3497,
+    "usage": {
+     "input": 2639,
+     "output": 32,
+     "cost": 0.00027414000000000003
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 9235,
+    "usage": {
+     "input": 2602,
+     "output": 120,
+     "cost": 0.0002986
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "habits",
+      "value": "не врать",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 13705,
+    "usage": {
+     "input": 2612,
+     "output": 129,
+     "cost": 0.00030248
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "relationship.status",
+      "value": "сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   }
+  ],
+  "Qwen/Qwen3-Next-80B-A3B-Instruct": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 3979,
+    "usage": {
+     "input": 2767,
+     "output": 197,
+     "cost": 0.00046573000000000003
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 2795,
+    "usage": {
+     "input": 2724,
+     "output": 58,
+     "cost": 0.00030896
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 2187,
+    "usage": {
+     "input": 2727,
+     "output": 142,
+     "cost": 0.00040163000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 1158,
+    "usage": {
+     "input": 2726,
+     "output": 57,
+     "cost": 0.00030804000000000004
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 599,
+    "usage": {
+     "input": 2728,
+     "output": 13,
+     "cost": 0.00025982
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 1642,
+    "usage": {
+     "input": 2725,
+     "output": 130,
+     "cost": 0.00038825
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 1311,
+    "usage": {
+     "input": 2723,
+     "output": 132,
+     "cost": 0.00039027
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "skills",
+      "value": "играть на гитаре",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 2066,
+    "usage": {
+     "input": 2756,
+     "output": 123,
+     "cost": 0.00038334
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 3
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 2250,
+    "usage": {
+     "input": 2735,
+     "output": 638,
+     "cost": 0.00094795
+    },
+    "accepted": [],
+    "rejected": 12,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 1335,
+    "usage": {
+     "input": 2727,
+     "output": 142,
+     "cost": 0.00040163000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 1232,
+    "usage": {
+     "input": 2718,
+     "output": 82,
+     "cost": 0.00033482
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 759,
+    "usage": {
+     "input": 2719,
+     "output": 63,
+     "cost": 0.00031401
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 4989,
+    "usage": {
+     "input": 2728,
+     "output": 192,
+     "cost": 0.00045672000000000003
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Капитан Северов",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "Капитан Северов увёл шхуну на юг",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 1090,
+    "usage": {
+     "input": 2755,
+     "output": 124,
+     "cost": 0.00038435000000000005
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 966,
+    "usage": {
+     "input": 2719,
+     "output": 130,
+     "cost": 0.00038771
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 979,
+    "usage": {
+     "input": 2731,
+     "output": 151,
+     "cost": 0.00041189000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "relationship.status",
+      "value": "младшая сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 1091,
+    "usage": {
+     "input": 2767,
+     "output": 197,
+     "cost": 0.00046573000000000003
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 746,
+    "usage": {
+     "input": 2724,
+     "output": 58,
+     "cost": 0.00030896
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 1100,
+    "usage": {
+     "input": 2727,
+     "output": 142,
+     "cost": 0.00040163000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 1046,
+    "usage": {
+     "input": 2726,
+     "output": 57,
+     "cost": 0.00030804000000000004
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 614,
+    "usage": {
+     "input": 2728,
+     "output": 13,
+     "cost": 0.00025982
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 1598,
+    "usage": {
+     "input": 2725,
+     "output": 130,
+     "cost": 0.00038825
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 1185,
+    "usage": {
+     "input": 2723,
+     "output": 132,
+     "cost": 0.00039027
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "skills",
+      "value": "играть на гитаре",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 1009,
+    "usage": {
+     "input": 2756,
+     "output": 123,
+     "cost": 0.00038334
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 3
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 2686,
+    "usage": {
+     "input": 2735,
+     "output": 638,
+     "cost": 0.00094795
+    },
+    "accepted": [],
+    "rejected": 12,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 974,
+    "usage": {
+     "input": 2727,
+     "output": 142,
+     "cost": 0.00040163000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 1451,
+    "usage": {
+     "input": 2718,
+     "output": 82,
+     "cost": 0.00033482
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 902,
+    "usage": {
+     "input": 2719,
+     "output": 63,
+     "cost": 0.00031401
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 1050,
+    "usage": {
+     "input": 2728,
+     "output": 192,
+     "cost": 0.00045672000000000003
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Капитан Северов",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "Капитан Северов увёл шхуну на юг",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 1212,
+    "usage": {
+     "input": 2755,
+     "output": 58,
+     "cost": 0.00031175
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 1150,
+    "usage": {
+     "input": 2719,
+     "output": 130,
+     "cost": 0.00038771
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 1
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 1511,
+    "usage": {
+     "input": 2731,
+     "output": 151,
+     "cost": 0.00041189000000000004
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "relationship.status",
+      "value": "младшая сестра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0
+   }
+  ]
+ }
+}
