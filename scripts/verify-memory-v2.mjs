@@ -294,7 +294,7 @@ try {
     assert.equal(job.errorCode, 'MEMORY_EXTRACT_PROVIDER_TIMEOUT'); assert.equal(job.status, 'retry');
     const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn deferred'));
     assert.match(line, /"code":"MEMORY_EXTRACT_PROVIDER_TIMEOUT"/); assert.match(line, /"providerCode":"ECONNABORTED"/);
-    assert.match(line, /"stage":"provider_request"/); assert.match(line, /"timeoutMs":40000/);
+    assert.match(line, /"stage":"provider_request"/); assert.match(line, /"timeoutMs":75000/);
     assert.ok(!line.includes('PRIVATE_PROVIDER_RESPONSE'));
   });
   await check('expired lease has a successor, and the old owner cannot commit or release it', async () => {

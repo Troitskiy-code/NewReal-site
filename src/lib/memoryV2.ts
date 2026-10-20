@@ -15,6 +15,9 @@ type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
 const MAX_ATTEMPTS = 5;
 const MAX_INPUT_TOKENS = 8000, MAX_INPUT_CHARS = 64_000, FACT_CONTEXT_LIMIT = 150;
+// Background work nobody waits for: Mistral writes ~400-600 JSON tokens at ~36-45 tok/s, so 40 s cut off
+// about 2% of turns (prod 2026-10-18..20). The 180 s lease still bounds a stuck worker.
+const EXTRACTION_TIMEOUT_MS = 75_000;
 // A turn that cannot fit even without fact context fails identically on every retry.
 const SKIPPED_OVERSIZED_TURN = "MEMORY_EXTRACT_SKIPPED_INPUT_TOO_LARGE";
 const toJson = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -189,7 +192,7 @@ export function fitExtractionInput<T>(sources: unknown[], facts: T[]) {
 async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJob>>>, apiKey: string) {
   const { job, owner, thread } = claim;
   const scope: ChatScope = { threadId: thread.id, characterId: thread.characterId, userId: thread.userId, legacy: false };
-  const startedAt = Date.now(), timeoutMs = 40_000;
+  const startedAt = Date.now(), timeoutMs = EXTRACTION_TIMEOUT_MS;
   const diagnostic: { sourceCount?: number; inputChars?: number; inputTokens?: number; responseChars?: number; finishReason?: string;
     factsIncluded?: number; factsOmitted?: number } = {};
   let stage = "load_sources";

@@ -230,7 +230,12 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
   } catch (error) {
     // A parallel attempt already answered; this one was cancelled on purpose, not lost.
     const superseded = isSupersededRequest(config?.signal);
-    if (networkPlan && !superseded) markDeepinfraNetworkFailure(networkPlan, error);
+    // axios reports its overall request timeout as ECONNABORTED. A non-streaming completion only
+    // answers after generation ends, so that timeout means a slow model, not a broken route; it
+    // must not move all DeepInfra traffic to the reserve. Socket errors and the streaming chat
+    // first-byte/idle watchdogs still open the reserve window.
+    const generationTimeout = axios.isAxiosError(error) && error.code === "ECONNABORTED" && !error.response;
+    if (networkPlan && !superseded && !generationTimeout) markDeepinfraNetworkFailure(networkPlan, error);
     const response = axios.isAxiosError(error) ? error.response : null;
     const fields = { ...ticketDiagnosticContext(ticket), ...transport.fields(),
       ...safeTransportHeaders(response?.headers ?? {}, ticket.provider), stage: "service_request",

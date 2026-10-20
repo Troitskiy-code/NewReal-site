@@ -312,5 +312,21 @@ try {
     assert.equal(response.status,503); const result = await response.json(); assert.equal(result.ok,false); assert.equal(result.failed,1);
     assert.doesNotMatch(JSON.stringify(result), /synthetic|Ключ|Bearer|apiKey/);
   });
+  await check('a slow non-streaming answer keeps the primary route; a socket failure opens the reserve', async () => {
+    const network = load(join(root, 'src/lib/deepinfraNetwork.ts')), url = config.DEEPINFRA_EMBEDDING_URL;
+    Object.assign(process.env, { DEEPINFRA_NETWORK_MODE: 'auto', DEEPINFRA_PROXY_URL: 'http://primary.example:3128', ALLVPN_PROXY_URL: 'http://127.0.0.1:18080' });
+    try {
+      assert.equal(network.deepinfraRequestPlan(url).route, 'proxy');
+      before = async () => { throw Object.assign(new Error('timeout of 5000ms exceeded'), { isAxiosError: true, code: 'ECONNABORTED' }); };
+      await assert.rejects(client.fetchTextEmbeddings(['text'], '', 'document', 5000)); before = null;
+      assert.equal(network.deepinfraRequestPlan(url).route, 'proxy', 'axios generation timeout must not switch all traffic');
+      before = async () => { throw Object.assign(new Error('socket hang up'), { isAxiosError: true, code: 'ECONNRESET' }); };
+      await assert.rejects(client.fetchTextEmbeddings(['text'], '', 'document', 5000)); before = null;
+      assert.equal(network.deepinfraRequestPlan(url).route, 'allvpn', 'a broken connection still opens the reserve window');
+    } finally {
+      before = null;
+      for (const key of ['DEEPINFRA_NETWORK_MODE', 'DEEPINFRA_PROXY_URL', 'ALLVPN_PROXY_URL']) delete process.env[key];
+    }
+  });
   console.log(`verify:deepinfra:embeddings: ${checks} passed`);
 } finally { await pg.close(); }
