@@ -11,8 +11,10 @@ RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production PORT=8080
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates openssl && rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production PORT=8080 ALLVPN_XRAY_PATH=/opt/xray/xray
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates openssl unzip && rm -rf /var/lib/apt/lists/*
+COPY scripts/install-allvpn-xray.mjs ./scripts/install-allvpn-xray.mjs
+RUN node scripts/install-allvpn-xray.mjs /opt/xray
 COPY --from=build --chown=node:node /app/.next ./.next
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/public ./public

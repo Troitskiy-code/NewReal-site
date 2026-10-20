@@ -27,6 +27,8 @@
     "build": "node scripts/prisma-generate.cjs && next build --webpack",
     "start": "node scripts/start-app.mjs",
     "verify:startup": "node scripts/verify-app-startup.mjs",
+    "verify:allvpn": "node scripts/verify-allvpn.mjs",
+    "setup:allvpn": "node scripts/install-allvpn-xray.mjs",
     "lint": "eslint",
     "verify:quota:db": "node scripts/verify-free-daily-quota-db.mjs",
     "verify:economy": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-economy.ts",

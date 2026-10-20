@@ -38,10 +38,11 @@ async function freePort() {
   await new Promise(ok => probe.close(ok));
   return port;
 }
-async function run({ dev = false, worker = true, exit = 0 } = {}) {
+async function run({ dev = false, worker = true, exit = 0, vpn = false, forced = false } = {}) {
   const expected = !dev && worker ? '1' : '0';
   const env = { ...process.env, PORT: String(await freePort()), CRON_SECRET: 'synthetic-startup-secret',
-    ALLVPN_ENABLED: '1', ALLVPN_SUBSCRIPTION_URL: 'https://must-not-be-used.invalid/private',
+    ALLVPN_ENABLED: vpn ? '1' : '0', ALLVPN_SUBSCRIPTION_URL: 'invalid-synthetic-subscription',
+    DEEPINFRA_NETWORK_MODE: forced ? 'allvpn' : 'auto', MEMORY_V2_ENABLED: '0',
     CHARACTER_GENERATION_WORKER_ENABLED: worker ? '1' : '0', EXPECT_WORKER: expected,
     EXPECT_MODE: dev ? 'dev' : 'start', FAKE_NEXT_EXIT: exit ? String(exit) : '' };
   delete env.NODE_OPTIONS;
@@ -59,16 +60,19 @@ async function run({ dev = false, worker = true, exit = 0 } = {}) {
   }, 15000);
   const [code] = await once(child, 'exit'); clearTimeout(timer);
   assert.equal(code, exit, `wrapper exit: ${errors.slice(0, 200)} ${output.slice(0, 800)}`);
-  assert.ok(output.includes('next_started'), 'Next process starts');
-  assert.equal(output.includes('worker_request_authenticated'), expected === '1' && !exit,
+  assert.equal(output.includes('next_started'), !forced, 'forced mode fails closed; reserve failure keeps primary startup available');
+  assert.equal(output.includes('worker_request_authenticated'), expected === '1' && !exit && !forced,
     'production worker reaches only the authenticated loopback endpoint');
-  assert.ok(!output.includes('allvpn_ready') && !output.includes('allvpn_unavailable'), 'obsolete VPN flags do not start a gateway');
+  assert.equal(output.includes('allvpn_unavailable'), vpn, 'gateway starts only with the explicit enable flag');
+  assert.ok(!output.includes('invalid-synthetic-subscription') && !errors.includes('invalid-synthetic-subscription'), 'subscription is never logged');
 }
 try {
-  await run(); console.log('PASS production startup retains the authenticated character worker without a VPN runtime');
+  await run(); console.log('PASS production startup retains the authenticated character worker with AllVPN disabled');
   await run({ worker: false }); console.log('PASS worker disable flag remains effective');
   await run({ dev: true }); console.log('PASS development starts Next without a production worker');
   await run({ exit: 7 }); console.log('PASS child failure stops the worker and preserves the failure exit code');
+  await run({ vpn: true }); console.log('PASS unavailable reserve does not prevent primary startup or the character worker');
+  await run({ vpn: true, forced: true, exit: 1 }); console.log('PASS forced unavailable reserve fails closed without starting Next');
 } finally {
   const absolute = resolve(folder);
   if (dirname(absolute) !== resolve(tmpdir()) || !basename(absolute).startsWith('newreal-startup-')) throw new Error('Unsafe fixture cleanup path');

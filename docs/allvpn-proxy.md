@@ -1,15 +1,22 @@
-# External reserve: deployment status
+# AllVPN reserve for outgoing application requests
 
-The embedded AllVPN gateway was removed from the application on 2026-10-17 after Relaxdev blocked builds containing its VPN/proxy component. Do not restore that integration on Relaxdev or move it to another product of that platform.
+Relaxdev support confirmed on 2026-10-20, in the project support chat, that the previous Xray detection was a false alarm and the previous integration may be restored. Their permission covers the project's own proxy use without external distribution. The gateway must remain private to the application.
 
-The production Docker image installs no VPN binary. npm start launches Next.js and the existing authenticated character-generation worker through scripts/start-app.mjs. The worker's enable/disable flags and loopback endpoint are unchanged.
+## Production configuration
 
-For Relaxdev, use DEEPINFRA_NETWORK_MODE=primary with the existing DEEPINFRA_PROXY_URL. Disable ALLVPN_ENABLED on the old running image before replacing it, and remove the private subscription and obsolete local gateway settings from the platform. The new application image needs no VPN process or subscription.
+- Keep the existing DEEPINFRA_PROXY_URL unchanged: it is the primary route.
+- Set ALLVPN_ENABLED=1 and the private ALLVPN_SUBSCRIPTION_URL in Relaxdev's environment settings.
+- Set DEEPINFRA_NETWORK_MODE=auto. Transport failures open a 60-second reserve window, then the primary is tried again. HTTP/authentication/rate-limit/certificate errors and user cancellations do not change routes; partially delivered chat responses are not replayed.
+- npm start uses scripts/start-app.mjs to launch Next, the existing character and memory workers, and the private AllVPN gateway. Worker flags are preserved. A reserve startup failure in auto mode is logged without credentials and does not stop the primary application; startup retries a stopped gateway every 30 seconds.
+- Docker installs the pinned official Xray binary with SHA-256 verification. Its HTTP CONNECT listener binds only to 127.0.0.1:18080. No proxy route or listener is exposed through the application's public port 8080.
+- Startup supplies ALLVPN_PROXY_URL automatically when the embedded gateway is enabled. For a separately hosted reserve, disable the embedded gateway and supply an authenticated HTTP(S) CONNECT endpoint instead.
 
-A private local transfer backup is retained outside Git under .runtime/allvpn-transfer-2026-10-17/, with a ZIP copy under logs/. It preserves the original integration, source checksums, a standalone loopback gateway client and the private subscription. It contains no application API keys, database credentials, or admin/cron secrets. Keep this archive private. It is excluded from the Docker context and is not part of the deployed repository.
+Keep DEEPINFRA_NETWORK_MODE=primary as a kill switch. Forced allvpn mode is reserved for explicit diagnostics; production normally stays in auto. Switching off ALLVPN_ENABLED alone stops the gateway but does not override a manually configured external ALLVPN_PROXY_URL.
 
-Use that backup only on a separate server where the operator permits it. Its listener remains local to that server; authenticated, access-restricted HTTPS CONNECT access from the application must be configured separately before any remote connection. That setup is deferred, rather than exposing an open proxy.
+## Verification and secrets
 
-The application retains the external-reserve routing interface (ALLVPN_PROXY_URL with DEEPINFRA_NETWORK_MODE=auto) for a future permitted external endpoint. Do not set that URL to the former 127.0.0.1:18080 listener on Relaxdev: it no longer exists. Do not enable external failover until the new endpoint is configured and tested.
+npm run verify:allvpn checks subscription parsing, private binding, failover, cooldown, and streaming retry behavior without external network calls. npm run verify:startup checks application/worker startup and reserve failures with synthetic credentials. Gateway readiness uses an unauthenticated models GET and does not generate paid content.
 
-Relaxdev's published rules allow an application's outgoing API requests through an external proxy (section 2.4). A project/build block may still require a support review after the prohibited component is removed: https://relaxdev.ru/rules .
+Store subscription URLs only in ignored .env.local files or private platform environment settings. Do not place them in source, build logs, screenshots, or support messages. Xray payload logging is disabled and temporary configuration files have restricted permissions.
+
+The private transfer backup from 2026-10-17 remains under .runtime/allvpn-transfer-2026-10-17/, with a ZIP copy under logs/. It includes the subscription and is excluded from both Git and the Docker build context. It can still be used for a later move to a permitted separate server.
