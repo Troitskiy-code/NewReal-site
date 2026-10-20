@@ -19,7 +19,7 @@ const RAG_TOP_K = 5;
 const RAG_MIN_SIMILARITY = 0.25;
 export const RAG_HISTORY_TOKEN_THRESHOLD = 3000;
 /** The query embedding sits on the reply path; past this the chat continues without quotes. */
-export const RAG_QUERY_EMBEDDING_TIMEOUT_MS = 3000;
+export const RAG_QUERY_EMBEDDING_TIMEOUT_MS = 5000;
 
 const RAG_QUESTION_WORD_RE =
   /(?:^|[^\p{L}])(?:кто|что|где|когда|почему|как)(?=[^\p{L}]|$)/iu;

@@ -146,11 +146,68 @@ try {
     await assert.rejects(client.fetchTextEmbeddings(['text'], '', 'document', 25)); before = null;
     assert.equal(latestEvent().outcome, 'failed');
   });
-  await check('RAG query has an instruction, document does not; query wait <=3 seconds', async () => {
+  await check('RAG query has an instruction, document does not; query wait <=5 seconds', async () => {
+    const n = posts.length;
     await rag.searchRelevantMessages(scope, 'Где ключ?', '');
-    assert.match(posts.at(-1).body.input[0], /^Instruct: /); assert.ok(posts.at(-1).options.timeout <= 3000);
+    assert.match(posts.at(-1).body.input[0], /^Instruct: /); assert.ok(posts.at(-1).options.timeout <= 5000 && posts.at(-1).options.timeout > 4500);
+    assert.equal(posts.length - n, 1, 'a fast answer sends no hedge');
     assert.equal(await rag.saveMessageEmbeddingFromContent('legacy', 'Ключ лежит под ступенью.', ''), true);
     assert.deepEqual(posts.at(-1).body.input, ['Ключ лежит под ступенью.']);
+  });
+  const rateLimited = (headers = {}) => Object.assign(new Error('synthetic 429'), { isAxiosError: true, response: { status: 429, headers, data: {} } });
+  const limitFirst = (count, headers) => { let seen = 0; before = async () => { if (seen++ < count) throw rateLimited(headers); }; };
+  await check('one 429 is retried once inside the RAG budget and both attempts are accounted', async () => {
+    const n = posts.length, e = events.size; limitFirst(1);
+    const started = Date.now(); const result = await client.fetchTextEmbeddings(['Где ключ?'], '', 'query', 3000); before = null;
+    assert.equal(result.vectors.length, 1); assert.equal(posts.length - n, 2); assert.ok(Date.now() - started >= 250);
+    assert.ok(posts.at(-1).options.timeout < 3000 - 200); assert.match(posts.at(-1).body.input[0], /^Instruct: /);
+    assert.deepEqual([...events.values()].slice(e).map(row => row.outcome), ['failed', 'completed']);
+  });
+  await check('a second 429 is not retried again', async () => {
+    const n = posts.length; limitFirst(2);
+    await assert.rejects(client.fetchTextEmbeddings(['Где ключ?'], '', 'query', 3000), { message: 'synthetic 429' }); before = null;
+    assert.equal(posts.length - n, 2);
+  });
+  await check('429 is not retried when the remaining budget or Retry-After cannot fit', async () => {
+    let n = posts.length; limitFirst(1);
+    await assert.rejects(client.fetchTextEmbeddings(['Где ключ?'], '', 'query', 600), { message: 'synthetic 429' }); before = null;
+    assert.equal(posts.length - n, 1);
+    n = posts.length; limitFirst(1, { 'retry-after': '5' });
+    await assert.rejects(client.fetchTextEmbeddings(['Где ключ?'], '', 'query', 3000), { message: 'synthetic 429' }); before = null;
+    assert.equal(posts.length - n, 1);
+  });
+  // Per-call behaviour: 'stall' waits for its abort signal, a number answers after that many ms.
+  const scripted = (plan) => { let call = 0; before = options => {
+    const step = plan[Math.min(call++, plan.length - 1)];
+    if (step === 'stall') return new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(new Error('synthetic abort')), { once: true }));
+    return new Promise(resolve => setTimeout(resolve, step));
+  }; };
+  await check('a slow RAG query gets one hedge; the first answer wins and the loser is recorded as cancelled', async () => {
+    const n = posts.length, e = events.size; scripted(['stall', 10]);
+    const started = Date.now(); const result = await client.fetchTextEmbeddings(['Где ключ?'], '', 'query', 5000); before = null;
+    const elapsed = Date.now() - started; await settle();
+    assert.equal(result.vectors.length, 1); assert.equal(posts.length - n, 2);
+    assert.ok(elapsed >= client.QUERY_HEDGE_DELAY_MS && elapsed < client.QUERY_HEDGE_DELAY_MS + 1000, `hedge answered in ${elapsed} ms`);
+    assert.deepEqual(posts.slice(n).map(post => post.body.input), [posts[n].body.input, posts[n].body.input]);
+    assert.deepEqual([...events.values()].slice(e).map(row => row.outcome), ['cancelled', 'completed']);
+  });
+  await check('background embeddings are never hedged', async () => {
+    const n = posts.length; scripted([client.QUERY_HEDGE_DELAY_MS + 300]);
+    await client.fetchTextEmbeddings(['Ключ лежит под ступенью.'], '', 'document', 5000); before = null;
+    assert.equal(posts.length - n, 1);
+  });
+  await check('when both attempts stall the query fails at its deadline as an ordinary failure', async () => {
+    const n = posts.length, e = events.size; scripted(['stall']);
+    const started = Date.now();
+    await assert.rejects(client.fetchTextEmbeddings(['Где ключ?'], '', 'query', 2600)); before = null;
+    const elapsed = Date.now() - started; await settle();
+    assert.equal(posts.length - n, 2); assert.ok(elapsed >= 2500 && elapsed < 3200, `failed after ${elapsed} ms`);
+    assert.deepEqual([...events.values()].slice(e).map(row => row.outcome), ['failed', 'failed']);
+  });
+  await check('no hedge is sent when the remaining budget is too short to help', async () => {
+    const n = posts.length; scripted(['stall']);
+    await assert.rejects(client.fetchTextEmbeddings(['Где ключ?'], '', 'query', 1900)); before = null;
+    assert.equal(posts.length - n, 1);
   });
   await check('legacy vectors are retained; completed new vectors are not requested twice', async () => {
     const n = posts.length; assert.equal(await rag.saveMessageEmbeddingFromContent('legacy', 'Ключ лежит под ступенью.', ''), false);

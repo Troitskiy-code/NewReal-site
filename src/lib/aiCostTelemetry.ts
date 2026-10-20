@@ -190,6 +190,15 @@ function responseRequestId(ticket: Ticket, headers: Record<string, unknown>) {
   return ticket.provider === "deepinfra" ? headers["x-deepinfra-request-id"] ?? headers["x-request-id"] : headers["x-kodikrouter-request-id"];
 }
 
+/** Abort reason for the losing request of a hedged pair. */
+export class SupersededRequestError extends Error {
+  constructor() { super("A parallel attempt answered first"); this.name = "SupersededRequestError"; }
+}
+function isSupersededRequest(signal: unknown): boolean {
+  const candidate = signal as { aborted?: unknown; reason?: unknown } | null | undefined;
+  return candidate?.aborted === true && candidate.reason instanceof SupersededRequestError;
+}
+
 // A provider that stops answering (KodikRouter ETIMEDOUT on 2026-10-11) otherwise holds a request
 // until the OS gives up, about 130 s. Callers on the reply path pass a shorter timeout.
 const SERVICE_REQUEST_TIMEOUT_MS = 30_000;
@@ -219,13 +228,17 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
     }
     return response;
   } catch (error) {
-    if (networkPlan) markDeepinfraNetworkFailure(networkPlan, error);
+    // A parallel attempt already answered; this one was cancelled on purpose, not lost.
+    const superseded = isSupersededRequest(config?.signal);
+    if (networkPlan && !superseded) markDeepinfraNetworkFailure(networkPlan, error);
     const response = axios.isAxiosError(error) ? error.response : null;
-    errorLog("ChatDiagnostics", "service attempt failed", { ...ticketDiagnosticContext(ticket), ...transport.fields(),
+    const fields = { ...ticketDiagnosticContext(ticket), ...transport.fields(),
       ...safeTransportHeaders(response?.headers ?? {}, ticket.provider), stage: "service_request",
-      networkRoute, status: response?.status, durationMs: Date.now() - started }, toSafeDiagnostic(error));
+      networkRoute, status: response?.status, durationMs: Date.now() - started };
+    if (superseded) infoLog("ChatDiagnostics", "service attempt superseded", fields);
+    else errorLog("ChatDiagnostics", "service attempt failed", fields, toSafeDiagnostic(error));
     transport.release();
-    await finish(ticket, "failed", providerUsage(ticket, response?.data, purpose === "embedding"), response?.status,
+    await finish(ticket, superseded ? "cancelled" : "failed", providerUsage(ticket, response?.data, purpose === "embedding"), response?.status,
       undefined, undefined, undefined, responseRequestId(ticket, response?.headers ?? {}), response?.data?.id);
     throw error;
   } finally {
