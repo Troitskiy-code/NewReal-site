@@ -311,6 +311,28 @@ export async function chargeRobokassaRecurring(options: {
   return { invId };
 }
 
+export type RobokassaInvoiceState = { result: number; state: number | null };
+/**
+ * OpStateExt (docs.robokassa.ru/ru/xml-interfaces): Result.Code 0 = answered, 3 = invoice not found;
+ * State.Code 100 = paid, 10 = cancelled (no money), 60 = refused and returned, 5/20/50/80 = in progress.
+ * "OK" from /Merchant/Recurring only means the operation was created, so a charge is settled here or by
+ * ResultURL. It works only for live payments: test-mode invoices cannot be queried.
+ */
+export async function fetchRobokassaInvoiceState(invoiceId: string): Promise<RobokassaInvoiceState> {
+  if (!MERCHANT_ID || !PASSWORD2) throw new Error("Robokassa is not configured");
+  if (ROBOKASSA_TEST_MODE) throw new Error("OpStateExt is unavailable for test payments");
+  const params = new URLSearchParams({ MerchantLogin: MERCHANT_ID, InvoiceID: invoiceId,
+    Signature: md5(`${MERCHANT_ID}:${invoiceId}:${PASSWORD2}`) });
+  const response = await fetch(`https://auth.robokassa.ru/Merchant/WebService/Service.asmx/OpStateExt?${params}`, {
+    redirect: "error", signal: AbortSignal.timeout(15_000) });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`OpStateExt HTTP ${response.status}`);
+  const result = Number(/<Result>\s*<Code>\s*(\d+)\s*<\/Code>/i.exec(text)?.[1]);
+  if (!Number.isInteger(result)) throw new Error("OpStateExt response is unreadable");
+  const state = /<State>\s*<Code>\s*(\d+)\s*<\/Code>/i.exec(text)?.[1];
+  return { result, state: state === undefined ? null : Number(state) };
+}
+
 export async function cancelRobokassaRecurring(recurringId: string): Promise<boolean> {
   if (!MERCHANT_ID || !PASSWORD) {
     errorLog("Robokassa", "Recurring cancel skipped: merchant or password is not configured");

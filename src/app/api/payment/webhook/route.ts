@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PLANS, getSubscriptionActivationBenefits } from "@/lib/chatEconomy";
 import { extractShpParams, verifyRobokassaResultSignature } from "@/lib/robokassa";
 import { addSubscriptionDays } from "@/lib/subscriptionState";
+import { grantConfirmedRenewal } from "@/lib/subscriptionRenewal";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { applySubscriptionCoinGrant, grantPermanentUpdate } from "@/lib/verseCoins";
 import { paymentEventCreateData, parseConfirmedAmountRub, PAYMENT_PROVIDER } from "@/lib/paymentEvent";
@@ -227,26 +228,6 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
     return okResponse(invId);
   }
 
-  if (isSubscription) {
-    // The renewal cron grants the period when it starts a recurring charge and marks the invoice with this
-    // same Transaction marker, but writes no PaymentEvent. Since 186f40d (2026-10-01) only PaymentEvent was
-    // checked above, so every automatic renewal was applied twice: +60 days and a double VC grant
-    // (prod InvId=6575386534571268171, 2026-10-21). Record the confirmation once and grant nothing more.
-    const granted = await tx.transaction.findFirst({
-      where: { userId, description: paymentMarker, type: "subscription_renewal" },
-      select: { id: true },
-    });
-    if (granted) {
-      const shpPlan = shpValue(shp, "Shp_plan").trim().toLowerCase();
-      const plan = SUBSCRIPTION_PLANS.find((item) => item.id === (shpPlan === "history" ? "story" : shpPlan));
-      await tx.paymentEvent.create({
-        data: paymentEventCreateData(invId, userId, "subscription_renewal", { planId: plan?.id ?? null, amountRub }),
-      });
-      console.log(`[Robokassa] Webhook confirmed cron renewal: InvId=${invId}, already granted`);
-      return okResponse(invId);
-    }
-  }
-
   const currentUser = await tx.user.findUnique({
     where: { id: userId },
     select: {
@@ -278,7 +259,10 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
 
     const now = new Date();
     const applyMode = shpValue(shp, "Shp_applyMode").trim() === "afterExpiry" ? "afterExpiry" : "immediate";
-    const isRenewal =
+    // Child charges sent by the renewal cron are signed with Shp_renewal: they stay renewals even if the
+    // period lapsed while Robokassa was confirming them, and keep the series RecurringID.
+    const cronRenewal = shpValue(shp, "Shp_renewal").trim().toLowerCase() === "true";
+    const isRenewal = cronRenewal ||
       (Boolean(recurringId) && recurringId !== invId) ||
       (Boolean(currentUser.robokassaRecurringId) &&
         currentUser.robokassaRecurringId !== invId &&
@@ -298,60 +282,12 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
     );
 
     if (isRenewal) {
-      const baseDate =
-        currentUser.subscriptionEnd && currentUser.subscriptionEnd > now
-          ? currentUser.subscriptionEnd
-          : now;
-      const subscriptionEnd = addSubscriptionDays(baseDate, period === "year" ? 365 : 30);
-      const benefits = getSubscriptionActivationBenefits(plan, now);
-      const coinData = applySubscriptionCoinGrant(
-        { id: userId, verseCoins: currentUser.verseCoins, permanentCoins: currentUser.permanentCoins },
-        benefits.vcGrant
-      );
-
-      const renewalCommit = await commitPaymentGrant([
-        tx.paymentEvent.create({
-          data: paymentEventCreateData(invId, userId, "subscription_renewal", {
-            planId: analyticsPlanId,
-            amountRub,
-          }),
-        }),
-        tx.user.update({
-          where: { id: userId },
-          data: {
-            subscriptionType: plan.id,
-            subscriptionEnd,
-            isSubscribed: true,
-            robokassaRecurringId: nextRecurringId,
-            ...benefits.user,
-            ...coinData,
-          },
-        }),
-        tx.transaction.create({
-          data: {
-            userId,
-            amount: 0,
-            type: "subscription_renewal",
-            description: paymentMarker,
-          },
-        }),
-        tx.transaction.create({
-          data: {
-            userId,
-            amount: benefits.transaction.amount,
-            type: benefits.transaction.type,
-            description: benefits.transaction.description,
-          },
-        }),
-      ]);
-      if (renewalCommit.duplicate) {
-        return okResponse(invId);
-      }
-
+      // Shared with the cron's OpStateExt reconciliation: one confirmed invoice grants one period.
+      const renewal = await grantConfirmedRenewal(tx, { userId, invId, planId: plan.id, period, amountRub,
+        recurringId: nextRecurringId, now });
       console.log(
-        `[Robokassa] Webhook processed successfully: InvId=${invId}, renewal=${plan.id}, period=${period}, robokassaRecurringId=${nextRecurringId}`
+        `[Robokassa] Webhook processed successfully: InvId=${invId}, renewal=${plan.id}, period=${period}, granted=${renewal.granted}, robokassaRecurringId=${nextRecurringId}`
       );
-      await notifySubscriptionActivated(tx, userId, plan.name, subscriptionEnd);
       return okResponse(invId);
     }
 

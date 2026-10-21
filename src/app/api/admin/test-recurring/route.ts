@@ -29,6 +29,8 @@ function skipMessage(reason: string): string {
       return "Подписка ещё не истекла";
     case "already_initiated":
       return "Продление уже было запущено недавно";
+    case "awaiting_confirmation":
+      return "Предыдущее списание ещё не подтверждено Robokassa; новое не отправлено";
     case "charge_failed":
       return "Не удалось списать рекуррентный платёж в Robokassa";
     default:
@@ -76,6 +78,15 @@ export async function POST(req: NextRequest) {
       ignoreInitiated: force,
     });
     const status = !result.renewed ? (result.reason === "charge_failed" ? 502 : 400) : 200;
+
+    if (result.initiated) {
+      return NextResponse.json({
+        success: true,
+        message: "Списание отправлено; подписка продлится после подтверждения Robokassa",
+        invId: result.invId,
+        period: result.period,
+      }, { status: 202 });
+    }
 
     if (!result.renewed) {
       return NextResponse.json(

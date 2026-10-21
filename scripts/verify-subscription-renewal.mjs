@@ -1,5 +1,6 @@
-// Real renewal cron and real Robokassa webhook on disposable PostgreSQL. No network, no .env.
-// Regression for 2026-10-21: an automatic renewal was applied by the cron AND by the webhook (+60 days, double VC).
+// Real renewal cron, OpStateExt reconciliation and Robokassa webhook on disposable PostgreSQL. No network, no .env.
+// Regressions for 2026-10-21: a renewal was granted by the cron AND the webhook (+60 days), and the cron granted
+// the period when it merely sent a charge that might still fail.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
@@ -14,16 +15,27 @@ const { NextRequest } = require('next/server');
 const renewal = load(join(root, 'src/lib/subscriptionRenewal.ts'));
 const webhook = load(join(root, 'src/app/api/payment/webhook/route.ts'));
 const { getSubscriptionPlan } = load(join(root, 'src/lib/chatEconomy.ts'));
-const charges = [];
+const charges = [], stateQueries = [];
+let invoiceState = { result: 0, state: 5 };
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, init) => {
-  if (String(url) !== 'https://auth.robokassa.ru/Merchant/Recurring') throw new Error(`External network forbidden: ${url}`);
-  charges.push(Object.fromEntries(new URLSearchParams(String(init.body))));
-  return new Response('OK', { status: 200 });
+  const target = String(url);
+  if (target === 'https://auth.robokassa.ru/Merchant/Recurring') {
+    charges.push(Object.fromEntries(new URLSearchParams(String(init.body))));
+    return new Response('OK', { status: 200 });
+  }
+  if (target.startsWith('https://auth.robokassa.ru/Merchant/WebService/Service.asmx/OpStateExt?')) {
+    const params = new URL(target).searchParams;
+    stateQueries.push(params.get('InvoiceID'));
+    assert.equal(params.get('Signature'), createHash('md5').update(`synthetic_merchant:${params.get('InvoiceID')}:synthetic_result_password`).digest('hex'));
+    const state = invoiceState.state === null ? '' : `<State><Code>${invoiceState.state}</Code></State>`;
+    return new Response(`<?xml version="1.0"?><OperationStateResponse><Result><Code>${invoiceState.result}</Code></Result>${state}</OperationStateResponse>`);
+  }
+  throw new Error(`External network forbidden: ${target}`);
 };
 let passed = 0;
 async function check(label, fn) { await fn(); passed++; console.log(`PASS ${label}`); }
-const DAY = 86_400_000;
+const DAY = 86_400_000, MIN = 60_000;
 function signedResult(fields) {
   const suffix = Object.keys(fields).filter(key => /^shp_/i.test(key)).sort().map(key => `${key}=${fields[key]}`).join(':');
   const SignatureValue = createHash('md5').update(`${fields.OutSum}:${fields.InvId}:${process.env.ROBOKASSA_PASSWORD2}${suffix ? `:${suffix}` : ''}`).digest('hex');
@@ -31,52 +43,100 @@ function signedResult(fields) {
 }
 const deliver = fields => webhook.POST(new NextRequest('http://localhost/api/payment/webhook', { method: 'POST',
   headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(signedResult(fields)).toString() }));
-async function subscriber(end) {
-  return db.user.create({ data: { email: `renew-${Math.random().toString(36).slice(2)}@example.test`, subscriptionType: 'universe',
+const resultFor = charge => Object.fromEntries(Object.entries(charge).filter(([key]) => key === 'OutSum' || key === 'InvId' || /^Shp_/.test(key)));
+async function subscriber(end, plan = 'universe') {
+  return db.user.create({ data: { email: `renew-${Math.random().toString(36).slice(2)}@example.test`, subscriptionType: plan,
     subscriptionEnd: end, isSubscribed: true, robokassaRecurringId: String(1_900_000_000 + Math.floor(Math.random() * 90_000_000)),
     verseCoins: 100, permanentCoins: 100 } });
 }
-const resultFor = (charge) => Object.fromEntries(Object.entries(charge).filter(([key]) => key === 'OutSum' || key === 'InvId' || /^Shp_/.test(key)));
+const user = id => db.user.findUniqueOrThrow({ where: { id } });
+// Initiated markers carry the real clock; age them to emulate a later cron run.
+const ageInitiated = (userId, ms) => db.$executeRaw`UPDATE "Transaction" SET "createdAt" = "createdAt" - (${ms} * interval '1 millisecond') WHERE "userId" = ${userId} AND type = 'subscription_renewal_initiated'`;
 try {
-  await check('cron renewal followed by the Robokassa confirmation extends exactly one period and grants VC once', async () => {
-    const now = new Date(), end = new Date(now.getTime() + 3_600_000), user = await subscriber(end);
-    const result = await renewal.renewSubscriptionIfDue(user.id, { now });
-    assert.equal(result.renewed, true);
-    const afterCron = await db.user.findUniqueOrThrow({ where: { id: user.id } });
-    assert.equal(afterCron.subscriptionEnd.getTime(), end.getTime() + 30 * DAY);
-    const charge = charges.at(-1); assert.equal(charge.InvoiceID, result.invId);
-    const response = await deliver(resultFor(charge));
-    assert.equal(response.status, 200); assert.match(await response.text(), new RegExp(`^OK${result.invId}`));
-    const afterWebhook = await db.user.findUniqueOrThrow({ where: { id: user.id } });
-    assert.equal(afterWebhook.subscriptionEnd.getTime(), afterCron.subscriptionEnd.getTime(), 'the webhook must not add a second period');
-    assert.equal(afterWebhook.verseCoins, afterCron.verseCoins, 'the webhook must not grant the plan VC a second time');
-    assert.equal(await db.transaction.count({ where: { userId: user.id, description: `Robokassa InvId=${result.invId}` } }), 1);
-    const event = await db.paymentEvent.findUniqueOrThrow({ where: { provider_invoiceId: { provider: 'robokassa', invoiceId: result.invId } } });
-    assert.equal(event.kind, 'subscription_renewal'); assert.equal(event.userId, user.id); assert.equal(event.planId, 'universe');
-    const replay = await deliver(resultFor(charge));
-    assert.equal(replay.status, 200);
-    assert.equal((await db.user.findUniqueOrThrow({ where: { id: user.id } })).subscriptionEnd.getTime(), afterCron.subscriptionEnd.getTime());
+  await check('sending a charge grants nothing; the Robokassa confirmation grants one period and VC once', async () => {
+    const now = new Date(), end = new Date(now.getTime() + 3_600_000), u = await subscriber(end);
+    const sent = await renewal.renewSubscriptionIfDue(u.id, { now });
+    assert.equal(sent.renewed, false); assert.equal(sent.initiated, true);
+    assert.equal(charges.at(-1).Shp_renewal, 'true');
+    const afterCharge = await user(u.id);
+    assert.equal(afterCharge.subscriptionEnd.getTime(), end.getTime(), 'no period before confirmation');
+    assert.equal(afterCharge.verseCoins, 100);
+    const response = await deliver(resultFor(charges.at(-1)));
+    assert.equal(response.status, 200); assert.match(await response.text(), new RegExp(`^OK${sent.invId}`));
+    const confirmed = await user(u.id);
+    assert.equal(confirmed.subscriptionEnd.getTime(), end.getTime() + 30 * DAY);
+    assert.ok(confirmed.verseCoins > 100); assert.equal(confirmed.robokassaRecurringId, u.robokassaRecurringId, 'series id is kept');
+    assert.equal(await db.transaction.count({ where: { userId: u.id, description: `Robokassa InvId=${sent.invId}` } }), 1);
+    assert.equal((await db.paymentEvent.findUniqueOrThrow({ where: { provider_invoiceId: { provider: 'robokassa', invoiceId: sent.invId } } })).kind, 'subscription_renewal');
+    await deliver(resultFor(charges.at(-1)));
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(), confirmed.subscriptionEnd.getTime(), 'a replayed ResultURL adds nothing');
   });
-  await check('a renewal confirmed only by the webhook still extends one period', async () => {
-    const end = new Date(Date.now() + 5 * DAY), user = await subscriber(end);
-    const response = await deliver({ OutSum: `${getSubscriptionPlan('universe').monthlyPrice}.00`, InvId: '777000111', Shp_userId: user.id,
+  await check('a lost ResultURL never causes a second charge; the paid state grants once, from the charge time', async () => {
+    const now = new Date(), end = new Date(now.getTime() + 3_600_000), u = await subscriber(end);
+    const sent = await renewal.renewSubscriptionIfDue(u.id, { now });
+    const chargesBefore = charges.length;
+    invoiceState = { result: 0, state: 5 };
+    // Within the grace period nobody is asked; the charge is simply pending.
+    const early = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(now.getTime() + 5 * MIN) });
+    assert.equal(early.reason, 'awaiting_confirmation'); assert.equal(charges.length, chargesBefore);
+    // A day later with the period lapsed and the money taken: reconcile, no new charge.
+    await ageInitiated(u.id, 26 * 3_600_000);
+    invoiceState = { result: 0, state: 100 };
+    const later = new Date(now.getTime() + 26 * 3_600_000);
+    const summary = await renewal.renewDueSubscriptions(later);
+    assert.ok(summary.reconciled.some(row => row.userId === u.id && row.outcome === 'granted'));
+    assert.equal(charges.length, chargesBefore, 'reconciliation never charges');
+    const granted = await user(u.id);
+    assert.equal(granted.subscriptionEnd.getTime(), end.getTime() + 30 * DAY, 'extended from the old end, no paid days lost');
+    await deliver(resultFor(charges[chargesBefore - 1]));
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(), granted.subscriptionEnd.getTime(), 'a late ResultURL adds nothing');
+    assert.ok(stateQueries.includes(sent.invId));
+  });
+  await check('a declined charge grants nothing and is retried only after the 24 h back-off', async () => {
+    const now = new Date(), end = new Date(now.getTime() + 3_600_000), u = await subscriber(end);
+    await renewal.renewSubscriptionIfDue(u.id, { now });
+    await ageInitiated(u.id, 20 * MIN);
+    invoiceState = { result: 0, state: 10 };
+    const chargesBefore = charges.length;
+    const soon = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(now.getTime() + 20 * MIN) });
+    assert.equal(soon.reason, 'already_initiated'); assert.equal(charges.length, chargesBefore);
+    assert.equal(await db.transaction.count({ where: { userId: u.id, type: 'subscription_renewal_declined' } }), 1);
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime(), 'a declined charge gives no period');
+    await ageInitiated(u.id, 25 * 3_600_000);
+    const retry = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(now.getTime() + 25 * 3_600_000) });
+    assert.equal(retry.initiated, true); assert.equal(charges.length, chargesBefore + 1);
+  });
+  await check('an operation still in progress is neither granted nor charged again, even in force mode', async () => {
+    const now = new Date(), end = new Date(now.getTime() + 3_600_000), u = await subscriber(end);
+    await renewal.renewSubscriptionIfDue(u.id, { now });
+    await ageInitiated(u.id, 30 * 3_600_000);
+    const chargesBefore = charges.length;
+    for (const state of [{ result: 0, state: 50 }, { result: 1000, state: null }]) {
+      invoiceState = state;
+      const result = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(now.getTime() + 30 * 3_600_000), force: true, ignoreInitiated: true });
+      assert.equal(result.reason, 'awaiting_confirmation');
+    }
+    assert.equal(charges.length, chargesBefore);
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime());
+  });
+  await check('a renewal granted by the pre-change cron is only recorded when its ResultURL arrives', async () => {
+    const end = new Date(Date.now() + 30 * DAY), u = await subscriber(end);
+    await db.transaction.create({ data: { userId: u.id, amount: 0, type: 'subscription_renewal', description: 'Robokassa InvId=888000111' } });
+    await db.transaction.create({ data: { userId: u.id, amount: 0, type: 'subscription_renewal_initiated', description: 'Robokassa recurring initiated InvId=888000111' } });
+    const response = await deliver({ OutSum: `${getSubscriptionPlan('universe').monthlyPrice}.00`, InvId: '888000111', Shp_userId: u.id,
       Shp_subscription: 'true', Shp_plan: 'universe', Shp_period: 'month', Shp_applyMode: 'immediate' });
     assert.equal(response.status, 200);
-    const after = await db.user.findUniqueOrThrow({ where: { id: user.id } });
-    assert.equal(after.subscriptionEnd.getTime(), end.getTime() + 30 * DAY);
-    assert.ok(after.verseCoins > user.verseCoins, 'a genuine renewal still grants the plan VC');
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime());
+    assert.ok(await db.paymentEvent.findUnique({ where: { provider_invoiceId: { provider: 'robokassa', invoiceId: '888000111' } } }));
+    const due = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(), force: true, ignoreInitiated: true });
+    assert.notEqual(due.reason, 'awaiting_confirmation', 'an old-format marker is not a pending charge');
   });
-  await check('a cron renewal whose webhook already arrived does not apply again', async () => {
-    const now = new Date(), end = new Date(now.getTime() + 3_600_000), user = await subscriber(end);
-    // Webhook-first ordering: let the cron create the invoice id, then deliver and re-run the cron grant.
-    globalThis.fetch = async (url, init) => { charges.push(Object.fromEntries(new URLSearchParams(String(init.body)))); return new Response('OK'); };
-    const first = await renewal.renewSubscriptionIfDue(user.id, { now, force: true, ignoreInitiated: true });
-    const once = await db.user.findUniqueOrThrow({ where: { id: user.id } });
-    await deliver(resultFor(charges.at(-1)));
-    const again = await renewal.renewSubscriptionIfDue(user.id, { now: new Date(now.getTime() + 1000) });
-    assert.equal(again.renewed, false); assert.equal(again.reason, 'not_due');
-    assert.equal((await db.user.findUniqueOrThrow({ where: { id: user.id } })).subscriptionEnd.getTime(), once.subscriptionEnd.getTime());
-    assert.equal(first.renewed, true);
+  await check('a renewal confirmed only by ResultURL (no cron charge) still extends one period', async () => {
+    const end = new Date(Date.now() + 5 * DAY), u = await subscriber(end, 'dialog');
+    const response = await deliver({ OutSum: `${getSubscriptionPlan('dialog').monthlyPrice}.00`, InvId: '777000111', Shp_userId: u.id,
+      Shp_subscription: 'true', Shp_plan: 'dialog', Shp_period: 'month', Shp_applyMode: 'immediate' });
+    assert.equal(response.status, 200);
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime() + 30 * DAY);
   });
   console.log(`Subscription renewal: ${passed} checks passed`);
 } finally { globalThis.fetch = realFetch; await h.stop(); }
