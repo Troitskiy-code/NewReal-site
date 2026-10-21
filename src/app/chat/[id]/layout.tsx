@@ -20,14 +20,14 @@ export const viewport: Viewport = {
 
 const loadChatCharacter = cache(async (id: string) => {
   try {
-    return await prisma.character.findUnique({ where: { id }, select: { id: true, name: true, userId: true } });
+    return await prisma.character.findUnique({ where: { id }, select: { id: true, name: true, userId: true, isPublic: true } });
   } catch (error) {
     console.error("Failed to load character metadata:", error);
     return null;
   }
 });
 
-/** Telegram Mini App: a character outside the Telegram catalog does not exist (404). */
+/** Telegram Mini App: another user's private character does not exist (404). */
 async function assertVisibleInTelegram(id: string) {
   if (!(await isTelegramContext())) return;
   const character = await loadChatCharacter(id);

@@ -173,8 +173,8 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
   if (!character.isPublic) {
     return withCookie(NextResponse.json({ error: "Не авторизован" }, { status: 401 }), sessionId);
   }
-  // A guest in Telegram sees only the Telegram catalog.
-  if (!(await isCharacterAllowedInTelegram({ id: character.id, userId: "" }, null))) {
+  // Guests in Telegram have access to the same public characters as website guests.
+  if (!(await isCharacterAllowedInTelegram({ id: character.id, userId: "", isPublic: character.isPublic }, null))) {
     return withCookie(NextResponse.json({ error: "Персонаж не найден" }, { status: 404 }), sessionId);
   }
 
@@ -303,8 +303,8 @@ export async function handleAnonymousChatPost(
   if (!character.isPublic) {
     return withCookie(NextResponse.json({ error: "Не авторизован" }, { status: 401 }), sessionId);
   }
-  // A guest in Telegram sees only the Telegram catalog.
-  if (!(await isCharacterAllowedInTelegram({ id: character.id, userId: "" }, null))) {
+  // Guests in Telegram have access to the same public characters as website guests.
+  if (!(await isCharacterAllowedInTelegram({ id: character.id, userId: "", isPublic: character.isPublic }, null))) {
     return withCookie(NextResponse.json({ error: "Персонаж не найден" }, { status: 404 }), sessionId);
   }
 

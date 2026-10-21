@@ -72,6 +72,7 @@ try {
   const listed = await db.character.create({ data: { name: 'Вампир Лео', name_en: 'Leo the Vampire', slug: 'leo-vampire', userId: author.id, isPublic: true,
     greeting: 'Ночь опускается на город.', greeting_en: 'Night falls.', systemPrompt: 'Ты — вампир Лео.', descriptionCard: 'Вампир из старого города.' } });
   const hidden = await db.character.create({ data: { name: 'Скрытая Лилит', slug: 'hidden-lilith', userId: author.id, isPublic: true, systemPrompt: 'Ты — Лилит.' } });
+  const privateOther = await db.character.create({ data: { name: 'Приватная Лилит', slug: 'private-lilith', userId: author.id, isPublic: false, systemPrompt: 'Private.' } });
   await db.telegramCatalogEntry.create({ data: { characterId: listed.id } });
   const siteUser = await db.user.create({ data: { email: 'site-tg@example.test', name: 'Сайт', password: await bcrypt.hash('SiteTest123!', 10), emailVerified: new Date(), verseCoins: 500 } });
 
@@ -182,10 +183,14 @@ try {
   const hiddenPage = await request(`/ru/character/${hidden.slug}`, { cookie: tgCookies });
   const hiddenChat = await request(`/ru/chat/${hidden.id}`, { cookie: tgCookies });
   const hiddenBodies = (await hiddenPage.text()) + (await hiddenChat.text());
-  check('8.5 direct links to a hidden character are 404 in Telegram and do not reveal its name', hiddenPage.status === 404 && hiddenChat.status === 404
-    && !hiddenBodies.includes('Лилит'), [hiddenPage.status, hiddenChat.status]);
+  check('8.5 direct links to public characters without a legacy entry open in Telegram', hiddenPage.status === 200 && hiddenChat.status === 200
+    && hiddenBodies.includes('Лилит'), [hiddenPage.status, hiddenChat.status]);
+  const privatePage = await request(`/ru/character/${privateOther.slug}`, { cookie: tgCookies });
+  const privateChat = await request(`/ru/chat/${privateOther.id}`, { cookie: tgCookies });
+  const privateBodies = (await privatePage.text()) + (await privateChat.text());
+  check('private cards and chat metadata remain hidden in Telegram', privatePage.status === 404 && privateChat.status === 404 && !privateBodies.includes('Приватная Лилит'));
   const tgHome = await (await request('/ru', { cookie: tgCookies })).text();
-  check('8.6 Telegram catalog page lists the approved character and not the hidden one', tgHome.includes('Вампир Лео') && !tgHome.includes('Скрытая Лилит'));
+  check('8.6 Telegram catalog lists all public cards, without private cards', tgHome.includes('Вампир Лео') && tgHome.includes('Скрытая Лилит') && !tgHome.includes('Приватная Лилит'));
   const entry = await request('/tg');
   check('9.5 /tg is served in place (no redirect that could drop the fragment) and is noindex', entry.status === 200
     && /noindex/.test(entry.headers.get('x-robots-tag') ?? '') && (await entry.text()).includes('noindex'));
@@ -296,16 +301,21 @@ try {
     await settle(page, 2500);
     const user = await db.user.findFirst({ where: { telegramAccount: { telegramId: TG_BROWSER } } });
     check('2.13 browser: consent creates the account and opens the catalog in the Telegram context', Boolean(user) && await page.locator('html[data-telegram="1"]').count() === 1);
-    check('8.7 browser: catalog shows only the Telegram catalog', !(await page.getByText('Скрытая Лилит').count()));
+    check('8.7 browser: full public catalog is visible, private cards are hidden', (await page.getByText('Скрытая Лилит').count()) > 0 && !(await page.getByText('Приватная Лилит').count()));
     const nav = await page.locator(`nav[aria-label="${JSON.parse(readFileSync('public/locales/ru/common.json', 'utf8')).header.bottomNav}"] a`).evaluateAll((links) => links.map((a) => a.getAttribute('href')));
     check('5.14 bottom navigation without the coins entry; favorites instead', nav.length === 5 && !nav.some((href) => /coins/.test(href)) && nav.some((href) => /favorites/.test(href)), nav);
     const balanceEl = page.locator('[data-testid="vc-balance"]').first();
     await balanceEl.waitFor();
-    check('5.15 VC balance is visible and is not a link to the shop', (await balanceEl.evaluate((element) => element.tagName)) === 'SPAN'
-      && /VC/.test(await balanceEl.innerText()));
+    // The current mobile header hides the VC suffix below 400px and keeps the coin icon/title.
+    const balanceState = await balanceEl.evaluate((element) => ({
+      tag: element.tagName, title: element.getAttribute('title'), text: element.innerText,
+      linked: Boolean(element.closest('a')),
+    }));
+    check('5.15 VC balance is visible and is not a link to the shop', balanceState.tag === 'SPAN'
+      && balanceState.title === 'VerseCoins' && /\d/.test(balanceState.text) && !balanceState.linked, balanceState);
     const tgCalls = await page.evaluate(() => JSON.parse(sessionStorage.getItem('test:tg') || '[]'));
     check('4.1 SDK: ready, expand, palette colours for header/background/bottom bar, vertical swipes off',
-      ['ready', 'expand', 'header:#0d0d0d', 'bg:#0a0a0a', 'bottom:#0d0d0d', 'noswipe'].every((call) => tgCalls.includes(call)), tgCalls);
+      ['ready', 'expand', 'header:#0c0b12', 'bg:#0c0b12', 'bottom:#0c0b12', 'noswipe'].every((call) => tgCalls.includes(call)), tgCalls);
     check('4.2 theme from Telegram is applied to the document (dark)', await page.locator('html[data-tg-color-scheme="dark"]').count() === 1);
 
     const ym = await page.evaluate(() => JSON.parse(sessionStorage.getItem('test:ym') || '[]'));
@@ -354,9 +364,11 @@ try {
     await page.goto(`${base}/ru/chat/${listed.id}`);
     await page.locator('textarea').first().waitFor();
     await settle(page, 1500);
+    await page.getByRole('button', { name: 'Как списываются VC', exact: true }).click();
     const chatHint = await page.locator('main').innerText();
     check('5.19 chat in Telegram: neutral VC rules text, composer visible at mobile width', !/оплачивается/.test(chatHint) && /списываются/.test(chatHint)
       && await page.locator('textarea').first().isVisible());
+    await page.getByRole('button', { name: 'Как списываются VC', exact: true }).click();
     const vvh = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--nv-tg-vvh'));
     const shellHeight = await page.locator('.nv-chat-shell').evaluate((element) => element.getBoundingClientRect().height);
     check('4.5 chat height follows the visible viewport (keyboard-safe variable)', vvh.trim() === '844px' && Math.abs(shellHeight - (844 - 56)) <= 2, { vvh, shellHeight });
@@ -418,7 +430,7 @@ try {
     check('2.14 startapp c_<slug> opens the character; language EN from Telegram', page.url().endsWith('/en/character/leo-vampire'));
     check('4.7 light Telegram theme: document marked light, palette colours still applied to Telegram chrome',
       await page.locator('html[data-tg-color-scheme="light"]').count() === 1
-      && (await page.evaluate(() => sessionStorage.getItem('test:tg'))).includes('header:#0d0d0d'));
+      && (await page.evaluate(() => sessionStorage.getItem('test:tg'))).includes('header:#0c0b12'));
     const findings = purchaseFindings(await domParts(page));
     check('5.21 English character page in Telegram has no purchase elements', findings.length === 0, findings);
     await page.screenshot({ path: join(shots, 'character-light-en.png') });

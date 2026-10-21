@@ -503,8 +503,12 @@ try {
     const mk = (name, slug, extra = {}) => db.character.create({ data: { name, slug, userId: owner.id, isPublic: true, systemPrompt: `Ты — ${name}.`, greeting: 'Привет.', ...extra } });
     const listed = await mk('Лео Вампир', 'leo-vampire');
     const hidden = await mk('Скрытая Лилит', 'hidden-lilith');
+    const privateOther = await mk('Приватная Лилит', 'private-lilith', { isPublic: false, imageUrl: 'data:image/png;base64,dGVzdA==' });
+    const ownPrivate = await mk('Мой приватный Лео', 'my-private-leo', { isPublic: false, userId: viewer.id });
     const own = await db.character.create({ data: { name: 'Мой Лео', slug: 'my-leo', userId: viewer.id, isPublic: true, systemPrompt: 'Ты — мой персонаж.' } });
     await db.telegramCatalogEntry.create({ data: { characterId: listed.id } });
+    // A legacy catalog entry must never make a now-private character public.
+    await db.telegramCatalogEntry.create({ data: { characterId: privateOther.id } });
     const catalog = src('lib/publicCatalog.ts');
     const charactersRoute = src('app/api/characters/route.ts');
     const characterPublic = src('lib/characterPublic.ts');
@@ -521,34 +525,40 @@ try {
     const tgSearch = await catalog.getPublicCatalog('new', 1, 'Лилит');
     const tgForYou = await catalog.getPublicCatalog('for-you', 1, '');
     check('8.2 website catalog is unchanged (all public characters)', ['Лео Вампир', 'Скрытая Лилит', 'Мой Лео'].every((name) => names(siteCatalog.data).includes(name)));
-    check('8.3 Telegram catalog shows only approved characters and the viewer\'s own', names(tgCatalog.data) === 'Лео Вампир,Мой Лео', names(tgCatalog.data));
-    check('8.4 Telegram search and recommendations do not reveal hidden characters', tgSearch.data.length === 0
-      && !names(tgForYou.data).includes('Лилит'));
+    check('8.3 Telegram and website have the same public catalog', names(tgCatalog.data) === names(siteCatalog.data), names(tgCatalog.data));
+    check('8.4 Telegram search and recommendations include public characters without a legacy entry', tgSearch.data.some(row => row.id === hidden.id)
+      && tgForYou.data.some(row => row.id === hidden.id) && !tgForYou.data.some(row => row.id === privateOther.id));
     const api = await (await charactersRoute.GET(new NextRequest(`${SITE}/api/characters?limit=50`))).json();
     const apiSearch = await (await charactersRoute.GET(new NextRequest(`${SITE}/api/characters?search=${encodeURIComponent('Лилит')}`))).json();
-    check('8.5 characters API in Telegram lists and searches only the Telegram catalog', !names(api.data ?? api.characters ?? []).includes('Лилит')
-      && (api.data ?? api.characters ?? []).length >= 1 && (apiSearch.data ?? apiSearch.characters ?? []).length === 0);
-    check('8.6 direct link to a hidden character is not found in Telegram, approved and own ones open',
-      (await characterPublic.findCharacterBySlugForViewer('hidden-lilith', viewer.id)) === null
+    check('8.5 characters API includes all public cards, excludes others private cards', (api.data ?? api.characters ?? []).some(row => row.id === hidden.id)
+      && !(api.data ?? api.characters ?? []).some(row => row.id === privateOther.id)
+      && (apiSearch.data ?? apiSearch.characters ?? []).some(row => row.id === hidden.id));
+    check('8.6 direct links to public characters without a legacy entry open in Telegram',
+      (await characterPublic.findCharacterBySlugForViewer('hidden-lilith', viewer.id))?.id === hidden.id
       && (await characterPublic.findCharacterBySlugForViewer('leo-vampire', viewer.id))?.id === listed.id
       && (await characterPublic.findCharacterBySlugForViewer('my-leo', viewer.id))?.id === own.id);
     const hiddenChat = await chatRoute.GET(new NextRequest(`${SITE}/api/chat/${hidden.id}`), { params: Promise.resolve({ id: hidden.id }) });
-    check('8.7 chat with a hidden character is 404 in Telegram', hiddenChat.status === 404);
+    check('8.7 chat with a public character without a legacy entry opens in Telegram', hiddenChat.status === 200);
+    check('private cards remain author-only even with a legacy Telegram entry',
+      (await characterPublic.findCharacterBySlugForViewer(privateOther.slug, viewer.id)) === null
+      && (await characterPublic.findCharacterBySlugForViewer(ownPrivate.slug, viewer.id))?.id === ownPrivate.id
+      && [403, 404].includes((await chatRoute.GET(new NextRequest(`${SITE}/api/chat/${privateOther.id}`), { params: Promise.resolve({ id: privateOther.id }) })).status));
     const avatarRoute = src('app/api/characters/[id]/avatar/route.ts');
     const avatar = (id) => avatarRoute.GET(new NextRequest(`${SITE}/api/characters/${id}/avatar`), { params: Promise.resolve({ id }) });
     for (const id of [hidden.id, listed.id, own.id]) await db.character.update({ where: { id }, data: { imageUrl: 'data:image/png;base64,dGVzdA==' } });
     const hiddenAvatar = await avatar(hidden.id);
     const listedAvatar = await avatar(listed.id);
-    check('Telegram avatar API hides unlisted characters and allows listed and own images without shared caching', hiddenAvatar.status === 404
+    check('Telegram avatar API allows all public images and hides others private images', hiddenAvatar.status === 200
+      && (await avatar(privateOther.id)).status === 404
       && listedAvatar.status === 200 && (await avatar(own.id)).status === 200 && listedAvatar.headers.get('cache-control') === 'private, no-store');
     const picks = await src('lib/onboardingPicks.ts').getOnboardingPicks({ style: null, gender: null, interests: [], page: 0 });
-    check('the new main onboarding picker respects the Telegram catalog too', picks.characters.some((card) => card.id === listed.id)
-      && picks.characters.every((card) => card.id !== hidden.id));
+    check('onboarding includes the full public catalog and excludes private cards', picks.characters.some((card) => card.id === listed.id)
+      && picks.characters.some((card) => card.id === hidden.id) && picks.characters.every((card) => card.id !== privateOther.id));
     const asset = 'a'.repeat(32);
-    await db.character.update({ where: { id: hidden.id }, data: { imageUrl: `/api/character-media/${owner.id}/${asset}` } });
+    await db.character.update({ where: { id: privateOther.id }, data: { imageUrl: `/api/character-media/${owner.id}/${asset}` } });
     const mediaRoute = src('app/api/character-media/[owner]/[asset]/route.ts');
     const hiddenMedia = await mediaRoute.GET(new NextRequest(`${SITE}/api/character-media/${owner.id}/${asset}`), { params: Promise.resolve({ owner: owner.id, asset }) });
-    check('the stable media URL also hides images outside the Telegram catalog before accessing storage', hiddenMedia.status === 404);
+    check('stable media URLs hide others private images before accessing storage', hiddenMedia.status === 404);
     await db.character.update({ where: { id: hidden.id }, data: { imageUrl: 'data:image/png;base64,dGVzdA==' } });
     telegramRequest.context = false;
     const siteAvatar = await avatar(hidden.id);
@@ -556,9 +566,11 @@ try {
     check('8.8 the same character opens on the website', (await characterPublic.findCharacterBySlugForViewer('hidden-lilith', viewer.id))?.id === hidden.id
       && (await chatRoute.GET(new NextRequest(`${SITE}/api/chat/${hidden.id}`), { params: Promise.resolve({ id: hidden.id }) })).status === 200);
 
-    // A website chat with the hidden character must not appear in the Telegram list of chats.
+    // Public website histories carry across; private histories remain inaccessible.
     await h.helpers.messages(viewer.id, hidden.id, [{ role: 'user', content: 'Привет с сайта' }, { role: 'assistant', content: 'Привет!' }], { mirror: false });
     await db.favorite.createMany({ data: [{ userId: viewer.id, characterId: hidden.id }, { userId: viewer.id, characterId: listed.id }] });
+    await h.helpers.messages(viewer.id, privateOther.id, [{ role: 'user', content: 'Old history' }], { mirror: false });
+    await db.favorite.create({ data: { userId: viewer.id, characterId: privateOther.id } });
 
     telegramRequest.context = true;
     const chat = await h.chat(viewer.id, listed.id, { message: 'Привет, Лео!' });
@@ -576,9 +588,11 @@ try {
     session.userId = viewer.id;
     const chats = await (await chatsRoute.GET()).json();
     const favorites = await (await favoritesRoute.GET()).json();
-    check('8.9 Telegram lists of chats and favorites skip characters outside the Telegram catalog',
-      chats.data.every((row) => row.character.id !== hidden.id) && chats.data.some((row) => row.character.id === listed.id)
-      && favorites.data.every((row) => row.id !== hidden.id) && favorites.data.some((row) => row.id === listed.id));
+    check('8.9 Telegram chats and favorites include all public cards and exclude others private cards',
+      chats.data.some((row) => row.character.id === hidden.id) && chats.data.some((row) => row.character.id === listed.id)
+      && chats.data.every((row) => row.character.id !== privateOther.id)
+      && favorites.data.some((row) => row.id === hidden.id) && favorites.data.some((row) => row.id === listed.id)
+      && favorites.data.every((row) => row.id !== privateOther.id));
 
     const broke = await db.user.create({ data: { email: 'broke@example.test', verseCoins: 0 } });
     session.userId = broke.id;
@@ -601,9 +615,20 @@ try {
       body: JSON.stringify({ message: 'Привет', requestId: `req${randomBytes(6).toString('hex')}` }) }), { params: Promise.resolve({ id: characterId }) });
     const guestHidden = await guest(hidden.id);
     const guestListed = await guest(listed.id);
+    const guestPrivate = await guest(privateOther.id);
     const guestText = await guestListed.text();
-    check('9.4 guest chat works in Telegram for an approved character, hidden one is 404', guestHidden.status === 404
-      && guestListed.status === 200 && /"type":"end"|assistant/.test(guestText), { hidden: guestHidden.status, listed: guestListed.status });
+    check('9.4 Telegram guest chat allows all public characters and rejects private ones', guestHidden.status === 200 && guestPrivate.status === 401
+      && guestListed.status === 200 && /"type":"end"|assistant/.test(guestText), { hidden: guestHidden.status, listed: guestListed.status, private: guestPrivate.status });
+
+    await db.character.update({ where: { id: hidden.id }, data: { isPublic: false } });
+    check('unpublishing a card revokes Telegram catalog, direct-link and avatar access immediately',
+      !(await catalog.getPublicCatalog('new', 1, '')).data.some(row => row.id === hidden.id)
+      && await characterPublic.findCharacterBySlugForViewer(hidden.slug, viewer.id) === null
+      && (await avatar(hidden.id)).status === 404);
+    await db.character.update({ where: { id: hidden.id }, data: { isPublic: true } });
+    check('publishing a card makes it available without a Telegram selection',
+      (await catalog.getPublicCatalog('new', 1, '')).data.some(row => row.id === hidden.id)
+      && (await characterPublic.findCharacterBySlugForViewer(hidden.slug, null))?.id === hidden.id);
 
     // Daily bonus: a Telegram account counts as a verified identity (no email in the Mini App).
     const bonusRoute = src('app/api/daily-bonus/route.ts');

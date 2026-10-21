@@ -25,7 +25,7 @@ export function parseCatalogQuery(params: SeoSearchParams) {
 export const getPublicCatalog = cache(async (sort: string, page: number, search: string, genreTag = "") => {
   try {
     const viewerId = await getViewerId();
-    // In Telegram: only the approved catalog (and the viewer's own characters).
+    // Telegram uses the same public visibility as the website.
     const where = await withTelegramCharacterWhere({
       isPublic: true, slug: { not: null },
       ...(genreTag ? catalogTagCondition(genreTag) : catalogSearchCondition(search)),

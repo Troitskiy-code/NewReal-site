@@ -21,11 +21,12 @@ export default async function ChatPage({ params }: PageProps) {
       name_en: true,
       updatedAt: true,
       userId: true,
+      isPublic: true,
     },
   });
 
   if (!character) notFound();
-  // Telegram shows only the approved catalog (and the viewer's own characters).
+  // Telegram shares the public catalog; private cards are visible only to their author.
   if (!(await isCharacterAllowedInTelegram(character, await getViewerId()))) notFound();
 
   return (
