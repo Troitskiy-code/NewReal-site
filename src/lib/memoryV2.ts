@@ -14,6 +14,8 @@ import { FACT_EXTRACTION_RULES, MemoryExtractionError, coreToFacts, factCardinal
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
 const MAX_ATTEMPTS = 5;
+// Backoff 15 s doubling to a 30 min cap: 14 attempts cover about 3.5 hours of provider trouble.
+const MAX_TRANSIENT_ATTEMPTS = 14;
 const MAX_INPUT_TOKENS = 8000, MAX_INPUT_CHARS = 64_000, FACT_CONTEXT_LIMIT = 150;
 // Background work nobody waits for: Mistral writes ~400-600 JSON tokens at ~36-45 tok/s, so 40 s cut off
 // about 2% of turns (prod 2026-10-18..20). The 180 s lease still bounds a stuck worker.
@@ -315,8 +317,15 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       else infoLog("MemoryV2", "turn failure ignored", { ...context, outcome: "lease_lost" });
       return skipped;
     }
-    const retryDelayMs = Math.min(600_000, 15_000 * 2 ** (job.attempts - 1));
-    const willRetry = job.attempts < MAX_ATTEMPTS, availableAt = new Date(Date.now() + retryDelayMs);
+    // A provider outage (timeout, 5xx, 429, lost connection) is not the turn's fault. Five attempts spanned
+    // ~4 minutes, so an hour of DeepInfra trouble left a failed head that blocked the story for good
+    // (prod 2026-10-21 15:04 and 16:29). Such failures keep retrying for hours; bad output still stops at five.
+    const providerStatus = typeof safe.status === "number" ? safe.status : undefined;
+    const transient = stage === "provider_request" && !(error instanceof MemoryExtractionError)
+      && (providerStatus === undefined || providerStatus >= 500 || providerStatus === 429);
+    const maxAttempts = transient ? MAX_TRANSIENT_ATTEMPTS : MAX_ATTEMPTS;
+    const retryDelayMs = Math.min(transient ? 1_800_000 : 600_000, 15_000 * 2 ** (job.attempts - 1));
+    const willRetry = job.attempts < maxAttempts, availableAt = new Date(Date.now() + retryDelayMs);
     const deferred = await prisma.$transaction(async tx => {
       await lockMemoryThread(tx, thread.id);
       const current = await tx.chatThread.findUnique({ where: { id: thread.id } });
@@ -327,7 +336,7 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       return true;
     });
     const context = { ...safe, ...diagnostic, ...validation, code, ...(providerCode ? { providerCode } : {}), stage,
-      jobId: job.id, seq: job.seq, attempt: job.attempts, maxAttempts: MAX_ATTEMPTS, timeoutMs, durationMs: Date.now() - startedAt };
+      jobId: job.id, seq: job.seq, attempt: job.attempts, maxAttempts, timeoutMs, durationMs: Date.now() - startedAt };
     if (!deferred) infoLog("MemoryV2", "turn failure ignored", { ...context, outcome: "lease_lost" });
     else errorLog("MemoryV2", willRetry ? "turn deferred" : "turn failed", { ...context, willRetry,
       ...(willRetry ? { retryDelayMs, nextAttemptAt: availableAt.toISOString() } : {}) });

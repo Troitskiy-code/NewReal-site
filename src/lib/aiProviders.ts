@@ -57,9 +57,11 @@ export function serviceTransport(purpose: string, requestedModel: string, legacy
   const provider = purpose === "character_generation" ? "deepinfra" : getMemoryProvider();
   const choices: Record<string, string> = {
     summary: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-    // 2026-10-20 eval (scripts/eval-memory-extraction-models.mjs, production-sized turns): recall 68% vs 53%,
-    // 1 vs 16 false facts, p90 2.3 s vs 15.5 s against Mistral Small 3.2, at ~1.4x the cost per call.
-    memory_extract: "Qwen/Qwen3-Next-80B-A3B-Instruct",
+    // 2026-10-20 eval (scripts/eval-memory-extraction-models.mjs, production-sized turns): Gemma 4 Turbo recall
+    // 68% vs 53% for Mistral Small 3.2, 2 vs 16 false facts, p90 4.2 s vs 15.5 s. Qwen3-Next scored the same
+    // offline but failed 17% of daytime production calls (75 s timeouts, HTTP 500) on 2026-10-21; Gemma is
+    // the chat base model with ample DeepInfra capacity (~0.1% failures on the memory purpose).
+    memory_extract: "google/gemma-4-31B-it-turbo",
     intent: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     memory: requestedModel === "google/gemma-4-31b-it" ? "google/gemma-4-31B-it-turbo" : "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
     character_event: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",

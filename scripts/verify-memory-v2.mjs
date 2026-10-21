@@ -297,6 +297,35 @@ try {
     assert.match(line, /"stage":"provider_request"/); assert.match(line, /"timeoutMs":75000/);
     assert.ok(!line.includes('PRIVATE_PROVIDER_RESPONSE'));
   });
+  await check('provider outages retry for hours instead of blocking the story after five quick attempts', async () => {
+    const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
+    const attemptUntil = async (limit, failure) => {
+      provider.beforeExtraction = async () => { throw failure; };
+      try {
+        for (let i = 0; i < limit; i++) {
+          await db.memoryJob.update({ where: { id: source.job.id }, data: { availableAt: new Date(0) } });
+          await run(f, output());
+        }
+      } finally { provider.beforeExtraction = null; }
+      return db.memoryJob.findUnique({ where: { id: source.job.id } });
+    };
+    const http500 = Object.assign(new Error('provider 500'), { isAxiosError: true, code: 'ERR_BAD_RESPONSE', response: { status: 500, headers: {}, data: {} } });
+    let job = await attemptUntil(6, http500);
+    assert.equal(job.status, 'retry', 'a sixth 5xx is still retried'); assert.equal(job.attempts, 6);
+    assert.ok(job.availableAt.getTime() - Date.now() > 7 * 60_000, 'backoff keeps growing past the old 2 min cap');
+    job = await attemptUntil(8, Object.assign(new Error('timeout'), { isAxiosError: true, code: 'ECONNABORTED' }));
+    assert.equal(job.status, 'failed'); assert.equal(job.attempts, 14); assert.equal(job.errorCode, 'MEMORY_EXTRACT_PROVIDER_TIMEOUT');
+    assert.ok(job.availableAt.getTime() - Date.now() <= 30 * 60_000 + 5000, 'backoff is capped at 30 minutes');
+    const g = await setup(), bad = await turn(g, 'Меня зовут Вера.');
+    provider.beforeExtraction = async () => { throw Object.assign(new Error('bad request'), { isAxiosError: true, code: 'ERR_BAD_REQUEST', response: { status: 400, headers: {}, data: {} } }); };
+    try {
+      for (let i = 0; i < 5; i++) {
+        await db.memoryJob.update({ where: { id: bad.job.id }, data: { availableAt: new Date(0) } });
+        await run(g, output());
+      }
+    } finally { provider.beforeExtraction = null; }
+    assert.equal((await db.memoryJob.findUnique({ where: { id: bad.job.id } })).status, 'failed', 'a 4xx request error still stops at five');
+  });
   await check('expired lease has a successor, and the old owner cannot commit or release it', async () => {
     const f = await setup(); await turn(f, 'Меня зовут Борис.'); provider.extractionText = output([delta('Борис')]);
     let release, entered; const gate = new Promise(resolve => { release = resolve; }); const began = new Promise(resolve => { entered = resolve; });
