@@ -227,6 +227,26 @@ async function processConfirmedPayment(tx: Prisma.TransactionClient, payload: {
     return okResponse(invId);
   }
 
+  if (isSubscription) {
+    // The renewal cron grants the period when it starts a recurring charge and marks the invoice with this
+    // same Transaction marker, but writes no PaymentEvent. Since 186f40d (2026-10-01) only PaymentEvent was
+    // checked above, so every automatic renewal was applied twice: +60 days and a double VC grant
+    // (prod InvId=6575386534571268171, 2026-10-21). Record the confirmation once and grant nothing more.
+    const granted = await tx.transaction.findFirst({
+      where: { userId, description: paymentMarker, type: "subscription_renewal" },
+      select: { id: true },
+    });
+    if (granted) {
+      const shpPlan = shpValue(shp, "Shp_plan").trim().toLowerCase();
+      const plan = SUBSCRIPTION_PLANS.find((item) => item.id === (shpPlan === "history" ? "story" : shpPlan));
+      await tx.paymentEvent.create({
+        data: paymentEventCreateData(invId, userId, "subscription_renewal", { planId: plan?.id ?? null, amountRub }),
+      });
+      console.log(`[Robokassa] Webhook confirmed cron renewal: InvId=${invId}, already granted`);
+      return okResponse(invId);
+    }
+  }
+
   const currentUser = await tx.user.findUnique({
     where: { id: userId },
     select: {

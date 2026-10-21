@@ -59,6 +59,8 @@ async function applySuccessfulRenewal(params: {
   const benefits = getSubscriptionActivationBenefits(getSubscriptionPlan(params.planId), params.now);
 
   return prisma.$transaction(async (tx) => {
+    // The Robokassa webhook for this invoice locks the same row; whichever runs second sees the marker.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${params.userId} FOR UPDATE`;
     const existing = await tx.transaction.findFirst({
       where: { userId: params.userId, description: paymentMarker },
       select: { id: true },
