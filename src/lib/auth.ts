@@ -17,6 +17,7 @@ import { infoLog } from "./logger";
 import { getRequiredEnv } from "./requireEnv";
 import { emailDomain } from "./redactSensitive";
 import { reportAuthFailure, withAuthErrorReport } from "./safeDiagnostics";
+import { nextAuthLogger } from "./authLogger";
 import { transferAnonymousChatToUser } from "./anonymousTransfer";
 import {
   ANONYMOUS_SESSION_COOKIE,
@@ -237,17 +238,7 @@ export const authOptions: AuthOptions = {
   },
   secret: getRequiredEnv("NEXTAUTH_SECRET"),
   debug: false,
-  logger: {
-    error(code, metadata) {
-      reportAuthFailure(`NextAuth.${String(code)}`, metadata);
-    },
-    warn(code) {
-      infoLog("NextAuth", String(code));
-    },
-    debug() {
-      /* library debug disabled so provider errors cannot bypass redaction */
-    },
-  },
+  logger: nextAuthLogger,
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
