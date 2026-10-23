@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
 import CharacterPublicView from "./CharacterPublicView";
-import { getCharacterPageData } from "@/lib/characterPageData";
+import { CharacterFaq, characterFaq, CharacterStory, SimilarCharacters } from "./CharacterPageSections";
+import { getCharacterPageData, getCharacterStory, getSimilarCharacters } from "@/lib/characterPageData";
 import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL } from "@/lib/seo";
 import { translate } from "@/lib/getDictionary";
 import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
@@ -76,6 +77,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     if (!character.isPublic) {
       return { ...result, robots: { index: false, follow: false } };
     }
+    // Explicit cards stay reachable but out of the index (and out of the sitemap).
+    if ((await getCharacterStory(slug)).adult) {
+      return { ...result, robots: { index: false, follow: true } };
+    }
 
     return result;
 }
@@ -83,6 +88,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function CharacterPage({ params }: PageProps) {
   const { slug } = await params;
   const { character, locale, view } = await getCharacterPageData(slug);
+  const [{ story }, similar] = await Promise.all([getCharacterStory(slug), getSimilarCharacters(character)]);
   const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
   const description = truncateDescription(
     getLocalizedCardDescription(character, locale) ||
@@ -110,7 +116,14 @@ export default async function CharacterPage({ params }: PageProps) {
         />
       ) : null}
       <main className="flex-1 px-4 py-8 sm:px-6">
-        <CharacterPublicView character={view} />
+        <CharacterPublicView
+          character={view}
+          story={story ? <CharacterStory story={story} name={name} locale={locale} /> : null}
+        />
+        <div className="mx-auto mt-10 flex w-full max-w-3xl flex-col gap-10">
+          <SimilarCharacters characters={similar} locale={locale} />
+          <CharacterFaq items={characterFaq(locale, name)} locale={locale} />
+        </div>
       </main>
       <Footer />
     </div>

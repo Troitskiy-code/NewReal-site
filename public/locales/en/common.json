@@ -253,7 +253,23 @@
     "copied": "Link copied",
     "shareFailed": "Could not copy the link",
     "about": "About character",
-    "close": "Close"
+    "close": "Close",
+    "storyStart": "How the story begins",
+    "scenario": "Scenario",
+    "similar": "Similar characters",
+    "messagesWord": { "one": "message", "few": "messages", "many": "messages" },
+    "faq": {
+      "title": "Frequently asked questions",
+      "freeQ": "Can I chat with {{name}} for free?",
+      "freeA": "Yes. Guests get {{limit}} {{messages}} without signing up. After sign-up you get {{onboarding}} free replies a day for the first week, then {{daily}} a day on the base model.",
+      "freeAPaid": "Yes. Guests get {{limit}} {{messages}} without signing up. After that you can continue the story in your account with VC or a subscription.",
+      "registerQ": "Do I need to sign up?",
+      "registerA": "Not to start: the first {{limit}} {{messages}} can be sent as a guest. To keep going, sign in and the guest chat moves to your account.",
+      "languageQ": "What language does {{name}} reply in?",
+      "languageA": "The language of the site: Russian on the Russian version, English on the English one. You can switch the language in the menu and keep the same story.",
+      "startQ": "How do I start the story?",
+      "startA": "Press “Start chat”. {{name}} opens the scene with the first message, and the plot follows your replies."
+    }
   },
   "errorPage": {
     "notFoundTitle": "Page not found",

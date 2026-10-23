@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
-import { prisma } from "@/lib/prisma";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { SITE_URL } from "@/lib/seo";
 import { LOCALES, withLocale } from "@/lib/i18nConfig";
 import { getGenreStats } from "@/lib/genreCatalog";
 import { genrePath, indexableGenreIds } from "@/lib/genreSeo";
+import { getIndexableCharacterRows } from "@/lib/characterPageData";
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +42,8 @@ async function getGenreEntries(): Promise<MetadataRoute.Sitemap> {
 
 async function getPublicCharacterEntries(): Promise<MetadataRoute.Sitemap> {
   try {
-    const characters = await prisma.character.findMany({
-      where: { isPublic: true, slug: { not: null } },
-      select: { id: true, slug: true, updatedAt: true },
-    });
+    // Explicit cards are noindex, so they stay out of the sitemap too.
+    const characters = await getIndexableCharacterRows();
 
     return characters.flatMap((character) => {
       if (!character.slug?.trim()) return [];
