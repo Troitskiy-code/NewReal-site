@@ -5,6 +5,7 @@ import { pageIndexingMetadata, PUBLIC_PAGE_PATHS } from "@/lib/seoIndexing";
 import { FEATURED_GENRES } from "@/lib/characterTags";
 import { GENRE_INTROS } from "@/lib/genreIntros";
 import { catalogVariantText } from "@/lib/catalogMeta";
+import { CREATE_LANDING, homeAbout } from "@/lib/landingTexts";
 import {
   findFeaturedGenre, GENRE_INDEX_MIN_CHARACTERS, genreIndexingMetadata, indexableGenreIds, parseGenrePage,
 } from "@/lib/genreSeo";
@@ -20,7 +21,7 @@ for (const locale of ["ru", "en"] as const) {
     check((metadata.robots as { index: boolean }).index, `${page}: indexable`);
   }
 }
-for (const page of ["login", "register", "create", "edit", "profile", "referral", "subscription", "notifications", "forgotPassword", "resetPassword", "verifyEmail"]) {
+for (const page of ["login", "register", "edit", "profile", "referral", "subscription", "notifications", "forgotPassword", "resetPassword", "verifyEmail"]) {
   const metadata = pageIndexingMetadata(page, "ru", origin);
   check((metadata.robots as { index: boolean }).index === false && !metadata.alternates, `${page}: noindex without homepage canonical`);
 }
@@ -87,6 +88,24 @@ check(variant({ page: "2" }).title.includes("страница 2") && variant({ q
 check(variant({ sort: "new" }, "en").title.startsWith("New AI characters"), "English variant titles are localized");
 check(translate("ru", "meta.character.title", { name: "Сэм" }) !== translate("en", "meta.character.title", { name: "Сэм" }), "character title templates differ between RU and EN");
 check(translate("ru", "meta.genre.descriptionPage", { description: "D", page: 2 }).includes("2"), "genre pages 2+ carry the page number in the description");
+
+// Landing copy targets the main Wordstat clusters: "ИИ-персонажи / чат с ИИ-персонажами" and "создать ИИ-персонажа".
+check(translate("ru", "meta.home.title").startsWith("ИИ-персонажи") && translate("ru", "meta.create.title").startsWith("Создать ИИ-персонажа"), "home and create titles lead with the target query");
+for (const locale of ["ru", "en"] as const) {
+  for (const page of ["home", "create"]) {
+    check(translate(locale, `meta.${page}.description`).length <= 160, `${page}: ${locale} description <= 160`);
+  }
+  const wordCount = (texts: string[]) => texts.join(" ").split(/\s+/).filter((word) => /[\p{L}\d]/u.test(word)).length;
+  for (const freeQuota of [true, false]) {
+    const about = homeAbout(locale, freeQuota);
+    const words = wordCount([...about.paragraphs, ...about.faq.flatMap((item) => [item.question, item.answer])]);
+    check(words >= 250 && words <= 600 && about.faq.length >= 4, `home about: ${locale} ${words} words, ${about.faq.length} FAQ`);
+  }
+  const create = CREATE_LANDING[locale];
+  const createWords = wordCount([create.intro, ...create.steps.flatMap((s) => [s.title, s.text]), ...create.features.flatMap((f) => [f.title, f.text]), ...create.faq.flatMap((f) => [f.question, f.answer])]);
+  check(createWords >= 250 && createWords <= 800 && create.faq.length >= 4, `create landing: ${locale} ${createWords} words, ${create.faq.length} FAQ`);
+}
+check(homeAbout("ru", true).faq[0].answer !== homeAbout("ru", false).faq[0].answer, "free-reply answer follows FREE_DAILY_QUOTA_ENABLED");
 
 if (process.argv.includes("--http")) {
   const result = spawnSync(process.execPath, ["scripts/verify-seo-runtime.mjs"], { stdio: "inherit", windowsHide: true });

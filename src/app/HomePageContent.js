@@ -19,7 +19,7 @@ import { withLocale } from "@/lib/i18nConfig";
 // The widest grid row up to lg (4 columns); on xl the fifth card is in view and loads at once anyway.
 const FIRST_ROW_CARDS = 4;
 
-export default function HomePageContent({ initialData, showHero = false, onboarding = null, freeQuotaOffer = false }) {
+export default function HomePageContent({ initialData, showHero = false, onboarding = null, freeQuotaOffer = false, about = null }) {
   const { t, i18n } = useTranslation();
   const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
   const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload, recommendationMode } =
@@ -123,6 +123,8 @@ export default function HomePageContent({ initialData, showHero = false, onboard
             />
           </>
         )}
+
+        {!hasFilters && about}
       </main>
 
       <Footer />

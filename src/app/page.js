@@ -2,6 +2,7 @@ import JsonLd from "@/components/JsonLd";
 import { getRequestLocale } from "@/lib/getRequestLocale";
 import { buildWebsiteJsonLd } from "@/lib/jsonLd";
 import HomePageContent from "./HomePageContent";
+import HomeAbout from "@/components/HomeAbout";
 import { getLocalizedPageMetadata } from "@/lib/seo";
 import { getPublicCatalog, parseCatalogQuery } from "@/lib/publicCatalog";
 import { getViewerId } from "@/lib/characterPublic";
@@ -21,6 +22,7 @@ export default async function HomePage({ searchParams }) {
     readOnboardingPrefs(),
   ]);
   const showHero = !viewerId && query.page === 1 && !query.search;
+  const freeQuota = isFreeDailyQuotaEnabled();
   const onboarding = {
     enabled: isOnboardingEnabled(),
     show: query.page === 1 && !query.search && await shouldShowOnboarding(viewerId, onboardingPrefs),
@@ -35,7 +37,8 @@ export default async function HomePage({ searchParams }) {
         initialData={initialData}
         showHero={showHero}
         onboarding={onboarding}
-        freeQuotaOffer={isFreeDailyQuotaEnabled()}
+        freeQuotaOffer={freeQuota}
+        about={query.page === 1 && !query.search ? <HomeAbout locale={locale} freeQuota={freeQuota} /> : null}
       />
     </>
   );

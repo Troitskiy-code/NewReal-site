@@ -119,6 +119,17 @@ try {
   check(search.body.includes('href="/en/character/seo-hero-26"') && !search.body.includes('href="/en/character/seo-hero-1"'), 'server q search uses English fields');
   const tracked = await request('/ru?sort=top&etext=test&ybaip=test');
   check(tracked.body.includes('rel="canonical" href="https://newvers.ai/ru"'), 'tracking canonical clean');
+  for (const locale of ['ru', 'en']) {
+    const create = await request(`/${locale}/create`);
+    check(create.status === 200 && create.body.includes(`rel="canonical" href="https://newvers.ai/${locale}/create"`) && !create.body.includes('noindex'), `/${locale}/create: indexable landing`);
+    check(/<h1[^>]*>(Создать ИИ-персонажа|Create an AI character)<\/h1>/.test(create.body) && create.body.includes('<details'), `/${locale}/create: SSR H1 and FAQ`);
+    const editor = await request(`/${locale}/create/character`);
+    check(editor.status === 200 && editor.body.includes('noindex, follow') && !editor.body.includes('rel="canonical"'), `/${locale}/create/character: editor noindex`);
+    const home = await request(`/${locale}`);
+    check(home.body.includes('id="home-about"') && home.body.includes(`href="/${locale}/create"`), `/${locale}: about block with create link`);
+    const paged = await request(`/${locale}?page=2`);
+    check(!paged.body.includes('id="home-about"'), `/${locale}?page=2: no about block`);
+  }
   for (const path of ['/ru/pricing', '/en/pricing', '/ru/coins', '/ru/support']) {
     const response = await request(path);
     check(response.status === 200 && response.body.includes(`rel="canonical" href="https://newvers.ai${path}"`), `${path}: canonical retained`);
@@ -189,6 +200,7 @@ try {
     check(character.body.split('<footer')[0].includes(`href="/${locale}/genres/romance"`) && character.body.split('<footer')[0].includes(`href="/${locale}/genres/anime"`), `${locale}: character tags link to genre pages`);
   }
   check(sitemap.body.includes('/ru/genres/romance</loc>') && sitemap.body.includes('/en/genres/romance</loc>') && sitemap.body.includes('/ru/genres</loc>'), 'sitemap filled genres and hub');
+  check(sitemap.body.includes('/ru/create</loc>') && sitemap.body.includes('/en/create</loc>') && !sitemap.body.includes('/create/'), 'sitemap has the create landing, not the editor');
   check(!sitemap.body.includes('/genres/comedy</loc>') && !sitemap.body.includes('/genres/horror</loc>') && !sitemap.body.includes('genres/romance?page'), 'sitemap excludes thin genres and pagination');
   check(sitemap.body.match(/<loc>https:\/\/newvers.ai\/ru\/genres\/romance<\/loc>\s*<lastmod>([^<]+)/)?.[1] === updatedAt.toISOString(), 'genre lastmod is its latest character');
   // Filling a thin genre flips it to indexable and into the sitemap with no code change.

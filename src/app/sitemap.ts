@@ -25,6 +25,7 @@ const STATIC_PAGES: Array<{
   { path: "/privacy", changeFrequency: "monthly", priority: 0.3 },
   { path: "/rules", changeFrequency: "monthly", priority: 0.3 },
   { path: "/genres", changeFrequency: "weekly", priority: 0.6 },
+  { path: "/create", changeFrequency: "monthly", priority: 0.7 },
 ];
 
 /** Thin genres (noindex) stay out until they fill up; failures propagate like the character query. */

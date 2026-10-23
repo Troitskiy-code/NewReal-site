@@ -221,7 +221,7 @@
       "search": "Search results"
     },
     "hero": {
-      "eyebrow": "NewVerse — AI roleplay stories",
+      "eyebrow": "NewVerse — chat with AI characters",
       "title": "Stories that remember you",
       "text": "Pick a hero or a whole world and continue the plot whenever you like. Characters remember details and grow the story with you.",
       "start": "Start a story",
@@ -461,12 +461,12 @@
   },
   "meta": {
     "home": {
-      "title": "NewVerse — Your universe of AI roleplay characters",
-      "description": "Chat with unique AI characters in roleplaying games. Create your own worlds and stories."
+      "title": "AI characters: chat and roleplay — NewVerse",
+      "description": "Chat with AI characters: talk, text and play roleplay stories. Characters remember the details, and you can start without signing up."
     },
     "create": {
-      "title": "Create a character — NewVerse",
-      "description": "Create your own unique AI character for roleplaying games."
+      "title": "Create an AI character for free — NewVerse creator",
+      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, in English and Russian."
     },
     "edit": {
       "title": "Edit character — NewVerse",
