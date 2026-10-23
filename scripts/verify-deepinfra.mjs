@@ -73,7 +73,7 @@ try {
   const user = await h.helpers.user('universe');
   await h.db.user.update({ where: { id: user.id }, data: { selectedModelId: legacy.id } });
   const character = await h.helpers.character(user.id);
-  const sql = ['20261011210000_deepinfra_chat_catalog', '20261016120000_deepinfra_pilot_models', '20261016150000_deepinfra_hide_unapproved']
+  const sql = ['20261011210000_deepinfra_chat_catalog', '20261016120000_deepinfra_pilot_models', '20261016150000_deepinfra_hide_unapproved', '20261020120000_deepinfra_vc_prices']
     .map(name => readFileSync(join(h.root, 'prisma/migrations', name, 'migration.sql'), 'utf8')).join('\n');
   const { Client } = require('pg');
   const pg = new Client({ connectionString: h.databaseUrl });
@@ -116,7 +116,7 @@ try {
   const request = id => new NextRequest('http://localhost/api/user/select-model', { method: 'POST', body: JSON.stringify({ modelId: id }) });
   check((await select.POST(request(legacy.id))).status === 400, 'selection API cannot choose an inactive provider');
   const middle = list.models.find(m => m.name === 'deepinfra:moonshotai/Kimi-K2.6');
-  check((await select.POST(request(middle.id))).status === 200, 'premium 27 VC pilot model is selectable');
+  check((await select.POST(request(middle.id))).status === 200, 'premium 33 VC pilot model is selectable');
   const reply = await h.chat(user.id, character.id, { message: 'Я открываю дверь маяка и продолжаю нашу историю.' });
   check(reply.status === 200 && reply.events.some(e => e.type === 'end'), 'real chat handler completes a DeepInfra reply');
   const wireCall = routes.at(-1);
@@ -125,9 +125,9 @@ try {
     && wireCall.headers.Authorization === 'Bearer synthetic_deepinfra_key', 'request uses exact API ID and exclusively the DeepInfra key');
   check(wireCall.body.max_tokens === 1000 && wireCall.body.stream_options.include_usage === true
     && wireCall.redirect === 'error', 'stream requests usage, caps total output, and refuses authenticated redirects');
-  check((await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 27
-    && await h.db.transaction.count({ where: { userId: user.id, type: 'chat' } }) === 1, 'successful reply deducts 27 VC exactly once');
-  const cost = await h.db.aiCostEvent.findFirst({ where: { provider: 'deepinfra', purpose: 'chat', chargedVC: 27 } });
+  check((await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 33
+    && await h.db.transaction.count({ where: { userId: user.id, type: 'chat' } }) === 1, 'successful reply deducts 33 VC exactly once');
+  const cost = await h.db.aiCostEvent.findFirst({ where: { provider: 'deepinfra', purpose: 'chat', chargedVC: 33 } });
   check(cost?.providerCostNative === 0.002 && cost.providerCostCurrency === 'USD'
     && cost.providerCostSemantics === 'provider_estimated_usd' && cost.outputTokens === 10, 'estimated_cost is USD; cost is ignored; reasoning is not added twice');
   check(Math.abs(cost.estimatedCostRub - 0.216384) < 1e-12 && cost.usdRub === 108.192 && cost.reportedCostRub === null, 'cost uses funded-dollar FX and remains an estimate');
@@ -136,7 +136,7 @@ try {
   const previousReply = await h.db.message.findFirst({ where: { userId: user.id, characterId: character.id, role: 'assistant' } });
   const regenerated = await postRoute('src/app/api/chat/[id]/regenerate/route.ts', user.id, character.id, { messageId: previousReply.id });
   check(regenerated.wire.includes('"type":"end"')
-    && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 54,
+    && (await h.db.user.findUnique({ where: { id: user.id } })).verseCoins === user.verseCoins - 66,
     'actual regenerate handler uses the selected DeepInfra model and charges once');
   const guest = load('src/lib/anonymousChat.ts');
   h.session.userId = null;
