@@ -29,6 +29,8 @@ try {
   check(headers.providerRequestId === 'proxy_request_123' && headers.retryAfterMs === 2000 && headers.responseContentType === 'text/event-stream','Undici Headers retain safe request ID, content type and retry delay');
   const opts = network.deepinfraAxiosOptions('https://api.deepinfra.com/v1/openai/embeddings');
   check(opts.proxy === false && opts.httpsAgent instanceof HttpAgent && opts.httpsAgent.options.keepAlive,'embeddings and services use CONNECT rather than environment proxy');
+  await network.deepinfraFetch('https://api.deepinfra.com/v1/openai/audio/speech',{method:'POST',body:'synthetic speech'});
+  check(!calls.at(-1).native && calls.at(-1).init.dispatcher instanceof FetchAgent,'speech uses the same explicit CONNECT route');
   check(Object.keys(network.deepinfraAxiosOptions('https://api.kodikrouter.ru/v1/chat/completions')).length === 0,'other providers retain their route');
   await network.deepinfraFetch('https://other.example',{});
   check(calls.at(-1).native,'no global fetch replacement or unrelated proxy');
