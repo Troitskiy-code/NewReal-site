@@ -75,6 +75,25 @@ try {
 }
 assert.equal(facts.parseFactExtraction(JSON.stringify(body()), sources()).facts[0].value, 'Анна'); passed++;
 assert.equal(facts.parseFactExtraction(JSON.stringify(body([row({ key: 'city', value: 'Казань' })])), sources('Я живу в Казани.')).facts[0].value, 'Казань'); passed++;
+// Trait and relationship summaries share roots with the quote; unrelated summaries and concrete slots stay strict.
+const accepts = (patch, text, role = 'assistant') => facts.parseFactExtraction(JSON.stringify(body([row(patch)])), sources(text, role), { partial: true }).facts.length === 1;
+assert.ok(accepts({ subject: 'character', key: 'personality', value: 'властность' }, 'Он властно сжал её запястье.')); passed++;
+assert.ok(accepts({ subject: 'relationship', key: 'relationship.status', value: 'стали гораздо ближе' }, 'После той ночи мы стали намного ближе.')); passed++;
+assert.ok(!accepts({ subject: 'character', key: 'personality', value: 'жажда абсолютного контроля' }, 'Он медленно закрыл дверь.')); passed++;
+const joined = { subject: 'character', key: 'personality', value: 'властная, привыкла держать всё под контролем', sourceId: 's2' };
+assert.ok(accepts(joined, 'Я привыкла держать всё под контролем. Я властная.')); passed++;
+// Neighbouring sentences count only within the same message.
+assert.equal(facts.parseFactExtraction(JSON.stringify(body([row(joined)])), facts.factSources([{ id: 'u', role: 'user', content: 'Ты привыкла держать всё под контролем.' },
+  { id: 'a', role: 'assistant', content: 'Я властная.' }]), { partial: true }).facts.length, 0); passed++;
+assert.ok(!accepts({ subject: 'character', key: 'occupation', value: 'опытная архитекторша' }, 'Я архитектор.')); passed++;
+// The character addressing the user's hero by name is evidence of user.name, even in a question.
+for (const text of ['Привет, Штефан!', 'Штефан, подожди меня.', 'Ты опять опоздал, Штефан.', 'Штефан, ты здесь?', '— Нет, Штефан, не уходи.']) {
+  assert.ok(accepts({ value: 'Штефан' }, text), text); passed++;
+}
+for (const [value, text] of [['Штефан', 'Тебя зовут Штефан.'], ['Штефан', 'Штефан ушёл в лес.'], ['малыш', 'Иди сюда, малыш.'], ['Анна', 'Привет, Штефан!']]) {
+  assert.ok(!accepts({ value }, text), `${value}: ${text}`); passed++;
+}
+assert.ok(!accepts({ key: 'occupation', value: 'Штефан' }, 'Привет, Штефан!')); passed++;
 const localRejections = new Set(['invalid_subject', 'unknown_source', 'user_fact_from_character', 'character_fact_from_user_first_person',
   'control_instruction', 'unsupported_value', 'unsupported_number', 'question_source', 'non_factual_source',
   'empty_value', 'negated_set', 'value_too_long', 'event_source_too_long', 'single_slot_conflict']);

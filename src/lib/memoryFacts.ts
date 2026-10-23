@@ -64,6 +64,23 @@ function supportedFactValue(value: string, evidence: string, key: string): boole
   return words(value).length > 0 && words(value).every(word => source.includes(word)
     || nounStem(word).length >= 4 && source.some(other => nounStem(other) === nounStem(word)));
 }
+// Character traits and relationship status are summaries, not quotes («властная» → «властность»,
+// «мы стали намного ближе» → «стали гораздо ближе»). They pass when at least half of their content
+// words share a five-letter root with the quote and its neighbouring sentences of the same message,
+// since a summary often joins two adjacent sentences. Names, numbers and concrete slots stay strict.
+const SUMMARY_KEYS = new Set(["personality", "relationship.status"]);
+function supportedSummaryValue(value: string, evidence: string): boolean {
+  const roots = (text: string) => (clean(text).match(/\p{L}{4,}/gu) ?? []).map(word => word.slice(0, 5));
+  const source = new Set(roots(evidence)), words = roots(value);
+  return words.length > 0 && 2 * words.filter(root => source.has(root)).length >= words.length;
+}
+// The character calling the user's hero by name («Привет, Анна!», «Анна, подожди») is evidence of that
+// name even in a question or a proposal. Only a capitalised name set off as an address qualifies.
+function addressedName(name: string, evidence: string): boolean {
+  if (!/^\p{Lu}[\p{Ll}-]+(?: \p{Lu}[\p{Ll}-]+)?$/u.test(name)) return false;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
+  return new RegExp(`(?:^|[,—–]\\s*|[«"]\\s*)${escaped}\\s*[,!]|,\\s*${escaped}\\s*(?:[.!?…»"]|$)`, "u").test(evidence.normalize("NFKC"));
+}
 const subjectValid = (subject: string) => /^(?:user|character|relationship|world|npc:[\p{L}\p{N} _-]{1,60})$/u.test(subject);
 const RETRACTION_CUES: Record<string, RegExp> = {
   name: /зов|имен|имя|name/iu, age: /возраст|лет|год|age|years/iu,
@@ -138,6 +155,11 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
   context.eventCount = result.events.length;
   if (result.events.length > 3) return fail("event_limit_exceeded", "events");
   const known = new Map(sources.map(source => [source.id, source]));
+  const summaryEvidence = (source: FactSource) => {
+    const index = sources.indexOf(source);
+    return sources.slice(Math.max(0, index - 1), index + 2).filter(other => other.messageId === source.messageId)
+      .map(other => other.text).join(" ");
+  };
   let rejectedRetractions = 0, rejectedFacts = 0, rejectedEvents = 0;
   const rejectedCandidates: Readonly<MemoryValidationDiagnostic>[] = [];
   // A bad claim cannot poison unrelated grounded candidates. Protocol/schema
@@ -177,7 +199,9 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     if (!source) return reject("unknown_source", "sourceId");
     if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
     detail.sourceRole = source.author; detail.sourceChars = source.text.length;
-    if (row.subject === "user" && source.author !== "user") return reject("user_fact_from_character", "sourceId");
+    const addressed = row.op === "set" && row.subject === "user" && key === "name" && source.author !== "user"
+      && addressedName(row.value.trim(), source.text);
+    if (row.subject === "user" && source.author !== "user" && !addressed) return reject("user_fact_from_character", "sourceId");
     // A single-valued set already supersedes its predecessor. Some providers
     // redundantly retract that old value using the new-value quote. This row has
     // no additional effect and is omitted; it never bypasses validation of set.
@@ -188,12 +212,15 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     if (row.subject === "character" && source.author === "user" && /(?:^|\s)я(?:\s|[,.])/iu.test(source.text)) return reject("character_fact_from_user_first_person", "subject");
     const text = row.value.trim();
     if (stripMemoryControlInstructions(text) !== text || /[\r\n\u0000-\u001f]/u.test(text)) return reject("control_instruction", "value");
+    if (addressed) return { op: "set", subject: "user", key, value: text, sourceMessageId: source.messageId,
+      source: "assistant_msg", confidence: 1, pinned: false };
     const negated = /(?:^|[^\p{L}])(?:не|нет|больше не|not|no longer)(?=$|[^\p{L}])/iu.test(source.text);
     detail.sourceStatus = inferMemoryStatus(source.text);
     const unsupported: MemoryValidationReason | null = memoryNumbers(text).some(number => !memoryNumbers(source.text).includes(number))
       ? "unsupported_number" : /\?[»"')]*$/u.test(source.text) ? "question_source"
         : ["proposed", "promised", "decided", "uncertain"].includes(detail.sourceStatus) ? "non_factual_source"
-          : text && !supportedFactValue(text, source.text, key) ? "unsupported_value" : null;
+          : text && !supportedFactValue(text, source.text, key)
+            && !(SUMMARY_KEYS.has(key) && supportedSummaryValue(text, summaryEvidence(source))) ? "unsupported_value" : null;
     // A model must not remove an unmentioned city/job/etc. Refuse only that
     // destructive operation, retain grounded updates and surface the warning.
     if (row.op === "retract" && (unsupported || !negated || !RETRACTION_CUES[key].test(source.text))) {

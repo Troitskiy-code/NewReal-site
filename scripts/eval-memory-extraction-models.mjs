@@ -19,6 +19,13 @@ const forbidden = new Proxy({}, { get() { throw new Error('Database forbidden');
 const { root, load } = createModuleLoader({ prismaFor: () => forbidden });
 const facts = load(join(root, 'src/lib/memoryFacts.ts'));
 const { countTokens } = load(join(root, 'src/lib/tokenCount.ts'));
+// --baseline REF: also run the prompt and validator of that Git revision (e.g. HEAD = production) on the same turns.
+// "REF prompt + new validator" re-parses the REF answers, isolating the validator change from the prompt change.
+const baselineRef = arg('--baseline');
+const baseFacts = baselineRef ? createModuleLoader({ prismaFor: () => forbidden, sourceRef: baselineRef }).load(join(root, 'src/lib/memoryFacts.ts')) : null;
+const VARIANTS = baseFacts ? [{ label: `${baselineRef} prompt+validator`, prompt: baseFacts, validator: baseFacts },
+  { label: `${baselineRef} prompt, new validator`, prompt: baseFacts, validator: facts, reuses: 0 },
+  { label: 'new prompt+validator', prompt: facts, validator: facts }] : [{ label: 'current', prompt: facts, validator: facts }];
 
 const ALL_MODELS = [
   { id: 'mistralai/Mistral-Small-3.2-24B-Instruct-2506' },
@@ -57,6 +64,19 @@ const TURNS = [
     expect: [['character', ['name'], 'Мирр']] },
   { u: 'Я ненавижу, когда мне врут.', a: 'Я запомню и не буду тебе врать.', expect: [['user', ['dislikes'], '']] },
   { u: 'Ты упоминала, что у тебя есть сестра?', a: 'Да, моя младшая сестра Ника учится в столице.', expect: [['npc:*', [], 'Ник']] },
+  // 2026-10-23: summaries of traits/relationships, the user's name from the character's address, and their look-alikes.
+  { u: 'Почему ты всегда всё решаешь за нас?', a: 'Потому что я привыкла держать всё под контролем. Я властная и не терплю возражений.',
+    expect: [['character', ['personality'], 'власт']] },
+  { u: 'Я обнимаю тебя и тихо говорю, что больше никуда не отпущу.', a: 'После всего, что было, мы стали намного ближе. Теперь ты мой самый близкий человек.',
+    expect: [['relationship', ['relationship.status'], '']] },
+  { u: 'Я захожу в таверну и сажусь у стойки.', a: 'Трактирщица улыбается: — Привет, Штефан! Давно тебя не было. Как обычно, тёмное пиво?',
+    expect: [['user', ['name'], 'Штефан']] },
+  { u: 'Я молча стою у двери.', a: 'Штефан, ты чего застыл? Заходи уже, ужин стынет.', expect: [['user', ['name'], 'Штефан']] },
+  { u: 'Я смотрю, как ты ругаешься с Брэндоном.', a: 'Брэндон, уйди немедленно! — кричу я ему вслед и хлопаю дверью.',
+    forbid: [['user', ['name'], 'Брэндон'], ['character', ['name'], 'Брэндон']] },
+  { u: 'Я подхожу ближе.', a: 'Иди сюда, малыш, не бойся. Я тебя не обижу.', forbid: [['user', ['name'], '']] },
+  { u: 'Я рассказываю тебе смешную историю про кота.', a: 'Я смеюсь, прикрывая рот ладонью, и качаю головой.', none: true },
+  { u: 'Привет!', a: 'Я медленно поднимаю взгляд от книги, улыбаюсь краешком губ и киваю.', none: true },
 ];
 // Unrelated context of a long story, so prefill and prompt shape match production.
 const ACTIVE = Array.from({ length: long ? 140 : 60 }, (_, i) => ({ subject: i % 3 === 0 ? 'world' : i % 2 ? 'user' : 'character',
@@ -73,10 +93,10 @@ const padded = (reply, index) => { if (!long) return reply; const text = i => FI
   const half = Array.from({ length: 14 }, (_, i) => text(i)).join(' '); return `${half} ${reply} ${Array.from({ length: 14 }, (_, i) => text(i + 5)).join(' ')}`; };
 const matches = (fact, [subject, keys, needle]) => (subject === 'npc:*' ? fact.subject.startsWith('npc:') : fact.subject === subject)
   && (!keys.length || keys.includes(fact.key)) && (`${fact.subject} ${fact.value}`.toLowerCase().includes(needle.toLowerCase()));
-async function call(model, turn, index) {
+async function call(model, turn, index, prompt = facts) {
   const sources = facts.factSources([{ id: 'u', role: 'user', content: turn.u }, { id: 'a', role: 'assistant', content: padded(turn.a, index) }]);
   const input = JSON.stringify({ sources, activeFacts: ACTIVE });
-  const body = { model: model.id, messages: [{ role: 'system', content: facts.FACT_EXTRACTION_RULES }, { role: 'user', content: input }],
+  const body = { model: model.id, messages: [{ role: 'system', content: prompt.FACT_EXTRACTION_RULES }, { role: 'user', content: input }],
     max_tokens: 2000, temperature: 0, response_format: facts.factExtractionFormat(sources.map(source => source.id)),
     ...(model.reasoning ? { reasoning_effort: 'none' } : {}) };
   const started = Date.now();
@@ -88,27 +108,37 @@ async function call(model, turn, index) {
     const data = await response.json(), choice = data.choices?.[0];
     const usage = { input: data.usage?.prompt_tokens ?? countTokens(input), output: data.usage?.completion_tokens ?? 0, cost: data.usage?.estimated_cost ?? null };
     if (choice?.finish_reason === 'length') return { ms, usage, error: 'truncated' };
-    try {
-      const parsed = facts.parseFactExtraction(choice?.message?.content ?? '', sources, { partial: true });
-      return { ms, usage, accepted: parsed.facts, rejected: parsed.rejectedFacts + parsed.rejectedEvents, events: parsed.events.length };
-    } catch (error) { return { ms, usage, error: `invalid:${error.diagnostic?.validationReason ?? error.message}` }; }
+    return { ms, usage, content: choice?.message?.content ?? '', sources };
   } catch (error) { return { ms: Date.now() - started, error: error.name === 'TimeoutError' ? 'timeout' : 'network' }; }
 }
 
-const results = Object.fromEntries(MODELS.map(model => [model.id, []]));
+const validate = (validator, answer) => {
+  if (answer.error) return answer;
+  try {
+    const parsed = validator.parseFactExtraction(answer.content, answer.sources, { partial: true });
+    return { ms: answer.ms, usage: answer.usage, accepted: parsed.facts, rejected: parsed.rejectedFacts + parsed.rejectedEvents, events: parsed.events.length,
+      rejectedReasons: parsed.rejectedCandidates.map(candidate => candidate.validationReason) };
+  } catch (error) { return { ms: answer.ms, usage: answer.usage, error: `invalid:${error.diagnostic?.validationReason ?? error.message}` }; }
+};
+const runs = MODELS.flatMap(model => VARIANTS.map(variant => ({ model, variant, key: `${model.id} | ${variant.label}` })));
+const results = Object.fromEntries(runs.map(run => [run.key, []]));
 // One worker per model: models run in parallel, each model's calls stay sequential so latency is not self-inflicted.
 await Promise.all(MODELS.map(async model => {
   for (let pass = 0; pass < passes; pass++) for (const [index, turn] of TURNS.entries()) {
-    const result = await call(model, turn, index);
-    results[model.id].push({ pass, turn: index, ...result });
-    process.stdout.write('.');
+    const answers = [];
+    for (const variant of VARIANTS) {
+      const answer = variant.reuses === undefined ? await call(model, turn, index, variant.prompt) : answers[variant.reuses];
+      answers.push(answer);
+      results[`${model.id} | ${variant.label}`].push({ pass, turn: index, ...validate(variant.validator, answer), content: answer.content });
+      process.stdout.write('.');
+    }
   }
 }));
 console.log('');
 const pct = (values, p) => { const s = [...values].sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : null; };
 const report = [];
-for (const model of MODELS) {
-  const rows = results[model.id], ok = rows.filter(row => !row.error);
+for (const run of runs) {
+  const rows = results[run.key], ok = rows.filter(row => !row.error);
   let expected = 0, found = 0, falsePositive = 0;
   for (const row of ok) {
     const turn = TURNS[row.turn];
@@ -119,7 +149,7 @@ for (const model of MODELS) {
   const ms = ok.map(row => row.ms), output = ok.map(row => row.usage.output);
   const speed = ok.filter(row => row.usage.output > 50).map(row => row.usage.output / (row.ms / 1000));
   const cost = ok.reduce((sum, row) => sum + (row.usage.cost ?? 0), 0);
-  report.push({ model: model.id, calls: rows.length, ok: ok.length, errors: Object.entries(rows.filter(row => row.error).reduce((m, row) => (m[row.error] = (m[row.error] ?? 0) + 1, m), {})).map(([k, v]) => `${k}×${v}`).join(', ') || '-',
+  report.push({ model: run.key, calls: rows.length, ok: ok.length, errors: Object.entries(rows.filter(row => row.error).reduce((m, row) => (m[row.error] = (m[row.error] ?? 0) + 1, m), {})).map(([k, v]) => `${k}×${v}`).join(', ') || '-',
     recall: expected ? Math.round(1000 * found / expected) / 10 : null, falsePositives: falsePositive,
     rejectedPerCall: ok.length ? Math.round(10 * ok.reduce((s, row) => s + row.rejected, 0) / ok.length) / 10 : null,
     p50: pct(ms, .5), p90: pct(ms, .9), max: ms.length ? Math.max(...ms) : null,

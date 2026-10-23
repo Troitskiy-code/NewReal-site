@@ -1,0 +1,3643 @@
+{
+ "generatedAt": "2026-10-23T15:00:37.576Z",
+ "passes": 2,
+ "long": true,
+ "turns": 24,
+ "report": [
+  {
+   "model": "google/gemma-4-31B-it-turbo | HEAD prompt+validator",
+   "calls": 48,
+   "ok": 48,
+   "errors": "-",
+   "recall": 60.9,
+   "falsePositives": 2,
+   "rejectedPerCall": 0.5,
+   "p50": 3583,
+   "p90": 5754,
+   "max": 8151,
+   "outputAvg": 87,
+   "tokPerSec": 27,
+   "costUsdPer1000Calls": 0.56
+  },
+  {
+   "model": "google/gemma-4-31B-it-turbo | HEAD prompt, new validator",
+   "calls": 48,
+   "ok": 48,
+   "errors": "-",
+   "recall": 78.3,
+   "falsePositives": 2,
+   "rejectedPerCall": 0.3,
+   "p50": 3583,
+   "p90": 5754,
+   "max": 8151,
+   "outputAvg": 87,
+   "tokPerSec": 27,
+   "costUsdPer1000Calls": 0.56
+  },
+  {
+   "model": "google/gemma-4-31B-it-turbo | new prompt+validator",
+   "calls": 48,
+   "ok": 48,
+   "errors": "-",
+   "recall": 73.9,
+   "falsePositives": 2,
+   "rejectedPerCall": 0.3,
+   "p50": 3108,
+   "p90": 6360,
+   "max": 9977,
+   "outputAvg": 88,
+   "tokPerSec": 28,
+   "costUsdPer1000Calls": 0.57
+  }
+ ],
+ "results": {
+  "google/gemma-4-31B-it-turbo | HEAD prompt+validator": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 5582,
+    "usage": {
+     "input": 6194,
+     "output": 227,
+     "cost": 0.0006128800002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Артём\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик в депо\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Лира\",\n      \"sourceId\": \"s17\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"хранительница городского архива\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 1647,
+    "usage": {
+     "input": 6142,
+     "output": 68,
+     "cost": 0.0005541400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Самара\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 4146,
+    "usage": {
+     "input": 6143,
+     "output": 169,
+     "cost": 0.0005885700002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set",
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"27 лет\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"likes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 5754,
+    "usage": {
+     "input": 6151,
+     "output": 43,
+     "cost": 0.0005464500002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 1270,
+    "usage": {
+     "input": 6155,
+     "output": 34,
+     "cost": 0.0005578300000767999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"character\",\"key\":\"dislikes\",\"value\":\"рыбалка\",\"sourceId\":\"s16\"}],\"events\":[]}"
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 3223,
+    "usage": {
+     "input": 6158,
+     "output": 122,
+     "cost": 0.0005739400002176
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"retract\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"учусь на врача\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 4841,
+    "usage": {
+     "input": 6145,
+     "output": 101,
+     "cost": 0.0005656300002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"skills\",\n      \"value\": \"игра на гитаре, готовка\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 3557,
+    "usage": {
+     "input": 6175,
+     "output": 54,
+     "cost": 0.0005523500002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"relationship\",\"key\":\"relationship.status\",\"value\":\"пара\",\"sourceId\":\"s18\"}],\"events\":[{\"sourceId\":\"s17\",\"importance\":3},{\"sourceId\":\"s18\",\"importance\":3}]}"
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 2794,
+    "usage": {
+     "input": 6160,
+     "output": 103,
+     "cost": 0.0005676600002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "разбирала старые карты в архиве",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"разбирала старые карты в архиве\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 3562,
+    "usage": {
+     "input": 6156,
+     "output": 131,
+     "cost": 0.0005768200002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"world\",\n      \"key\": \"world.rule\",\n      \"value\": \"магия запрещена законом, за неё казнят\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"skills\",\n      \"value\": \"магические способности\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 2250,
+    "usage": {
+     "input": 6156,
+     "output": 69,
+     "cost": 0.0005557400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Казань\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 3676,
+    "usage": {
+     "input": 6142,
+     "output": 71,
+     "cost": 0.0005551600002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"около тридцати\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 4325,
+    "usage": {
+     "input": 6139,
+     "output": 102,
+     "cost": 0.0005654300002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Капитан Северов\",\n      \"key\": \"personality\",\n      \"value\": \"упрямый\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s1\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 4803,
+    "usage": {
+     "input": 6180,
+     "output": 97,
+     "cost": 0.0005674200002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Мирра\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 4787,
+    "usage": {
+     "input": 6150,
+     "output": 99,
+     "cost": 0.0005654000002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"когда мне врут\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 5665,
+    "usage": {
+     "input": 6161,
+     "output": 184,
+     "cost": 0.0005952900002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"name\",\n      \"value\": \"Ника\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"relationship.status\",\n      \"value\": \"младшая сестра персонажа\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"city\",\n      \"value\": \"столица\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 16,
+    "ms": 3293,
+    "usage": {
+     "input": 6170,
+     "output": 83,
+     "cost": 0.0005617600002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"personality\",\n      \"value\": \"властная, привыкла держать всё под контролем, не терпит возражений\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 17,
+    "ms": 4079,
+    "usage": {
+     "input": 6171,
+     "output": 101,
+     "cost": 0.0005679700002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "самый близкий человек",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"самый близкий человек\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 18,
+    "ms": 3924,
+    "usage": {
+     "input": 6211,
+     "output": 70,
+     "cost": 0.0005610300002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "user_fact_from_character"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 19,
+    "ms": 3112,
+    "usage": {
+     "input": 6175,
+     "output": 70,
+     "cost": 0.0005577900002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "user_fact_from_character"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 20,
+    "ms": 3169,
+    "usage": {
+     "input": 6196,
+     "output": 67,
+     "cost": 0.0005586600002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    },\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 21,
+    "ms": 5085,
+    "usage": {
+     "input": 6161,
+     "output": 16,
+     "cost": 0.0005381700002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 22,
+    "ms": 862,
+    "usage": {
+     "input": 6149,
+     "output": 8,
+     "cost": 0.0005343700002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[],\"events\":[]}"
+   },
+   {
+    "pass": 0,
+    "turn": 23,
+    "ms": 846,
+    "usage": {
+     "input": 6150,
+     "output": 8,
+     "cost": 0.0005344600002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 7899,
+    "usage": {
+     "input": 6194,
+     "output": 227,
+     "cost": 0.0006128800002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Артём\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик в депо\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Лира\",\n      \"sourceId\": \"s17\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"хранительница городского архива\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 8151,
+    "usage": {
+     "input": 6142,
+     "output": 68,
+     "cost": 0.0005541400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Самара\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 4914,
+    "usage": {
+     "input": 6143,
+     "output": 168,
+     "cost": 0.0005882300002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set",
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"27\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"likes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 2450,
+    "usage": {
+     "input": 6151,
+     "output": 43,
+     "cost": 0.0005464500002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 1493,
+    "usage": {
+     "input": 6155,
+     "output": 34,
+     "cost": 0.0005437500002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"character\",\"key\":\"dislikes\",\"value\":\"рыбалка\",\"sourceId\":\"s16\"}],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 7512,
+    "usage": {
+     "input": 6158,
+     "output": 122,
+     "cost": 0.0005739400002176
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механиком",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"retract\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механиком\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"учусь на врача\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 3689,
+    "usage": {
+     "input": 6145,
+     "output": 101,
+     "cost": 0.0005656300002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"skills\",\n      \"value\": \"игра на гитаре, готовка\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 2132,
+    "usage": {
+     "input": 6175,
+     "output": 54,
+     "cost": 0.0005523500002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"relationship\",\"key\":\"relationship.status\",\"value\":\"пара\",\"sourceId\":\"s18\"}],\"events\":[{\"sourceId\":\"s17\",\"importance\":3},{\"sourceId\":\"s18\",\"importance\":3}]}"
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 2412,
+    "usage": {
+     "input": 6160,
+     "output": 103,
+     "cost": 0.0005676600002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "разбирала старые карты в архиве",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"разбирала старые карты в архиве\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 2632,
+    "usage": {
+     "input": 6156,
+     "output": 131,
+     "cost": 0.0005768200002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"world\",\n      \"key\": \"world.rule\",\n      \"value\": \"магия запрещена законом, за неё казнят\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"skills\",\n      \"value\": \"магические способности\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 3583,
+    "usage": {
+     "input": 6156,
+     "output": 69,
+     "cost": 0.0005557400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Казань\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 4719,
+    "usage": {
+     "input": 6142,
+     "output": 71,
+     "cost": 0.0005551600002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"около тридцати\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 3638,
+    "usage": {
+     "input": 6139,
+     "output": 102,
+     "cost": 0.0005654300002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Капитан Северов\",\n      \"key\": \"personality\",\n      \"value\": \"упрямый\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s1\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 4330,
+    "usage": {
+     "input": 6180,
+     "output": 97,
+     "cost": 0.0005674200002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Мирра\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 3956,
+    "usage": {
+     "input": 6150,
+     "output": 99,
+     "cost": 0.0005654000002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"когда мне врут\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 5975,
+    "usage": {
+     "input": 6161,
+     "output": 184,
+     "cost": 0.0005952900002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"name\",\n      \"value\": \"Ника\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"relationship.status\",\n      \"value\": \"младшая сестра персонажа\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"city\",\n      \"value\": \"столица\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 16,
+    "ms": 2481,
+    "usage": {
+     "input": 6170,
+     "output": 83,
+     "cost": 0.0005617600002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"personality\",\n      \"value\": \"властная, привыкла держать всё под контролем, не терпит возражений\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 17,
+    "ms": 4913,
+    "usage": {
+     "input": 6171,
+     "output": 101,
+     "cost": 0.0005679700002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "самый близкий человек",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"самый близкий человек\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 18,
+    "ms": 2971,
+    "usage": {
+     "input": 6211,
+     "output": 70,
+     "cost": 0.0005610300002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "user_fact_from_character"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 19,
+    "ms": 1776,
+    "usage": {
+     "input": 6175,
+     "output": 33,
+     "cost": 0.0005452100002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "user_fact_from_character"
+    ],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"user\",\"key\":\"name\",\"value\":\"Штефан\",\"sourceId\":\"s16\"}],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 20,
+    "ms": 2160,
+    "usage": {
+     "input": 6196,
+     "output": 67,
+     "cost": 0.0005586600002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    },\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 21,
+    "ms": 3129,
+    "usage": {
+     "input": 6161,
+     "output": 16,
+     "cost": 0.0005381700002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 22,
+    "ms": 1242,
+    "usage": {
+     "input": 6149,
+     "output": 16,
+     "cost": 0.0005370900002176001
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 23,
+    "ms": 1743,
+    "usage": {
+     "input": 6150,
+     "output": 16,
+     "cost": 0.0005371800002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   }
+  ],
+  "google/gemma-4-31B-it-turbo | HEAD prompt, new validator": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 5582,
+    "usage": {
+     "input": 6194,
+     "output": 227,
+     "cost": 0.0006128800002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Артём\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик в депо\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Лира\",\n      \"sourceId\": \"s17\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"хранительница городского архива\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 1647,
+    "usage": {
+     "input": 6142,
+     "output": 68,
+     "cost": 0.0005541400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Самара\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 4146,
+    "usage": {
+     "input": 6143,
+     "output": 169,
+     "cost": 0.0005885700002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set",
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"27 лет\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"likes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 5754,
+    "usage": {
+     "input": 6151,
+     "output": 43,
+     "cost": 0.0005464500002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 1270,
+    "usage": {
+     "input": 6155,
+     "output": 34,
+     "cost": 0.0005578300000767999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"character\",\"key\":\"dislikes\",\"value\":\"рыбалка\",\"sourceId\":\"s16\"}],\"events\":[]}"
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 3223,
+    "usage": {
+     "input": 6158,
+     "output": 122,
+     "cost": 0.0005739400002176
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"retract\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"учусь на врача\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 4841,
+    "usage": {
+     "input": 6145,
+     "output": 101,
+     "cost": 0.0005656300002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"skills\",\n      \"value\": \"игра на гитаре, готовка\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 3557,
+    "usage": {
+     "input": 6175,
+     "output": 54,
+     "cost": 0.0005523500002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"relationship\",\"key\":\"relationship.status\",\"value\":\"пара\",\"sourceId\":\"s18\"}],\"events\":[{\"sourceId\":\"s17\",\"importance\":3},{\"sourceId\":\"s18\",\"importance\":3}]}"
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 2794,
+    "usage": {
+     "input": 6160,
+     "output": 103,
+     "cost": 0.0005676600002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "разбирала старые карты в архиве",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"разбирала старые карты в архиве\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 3562,
+    "usage": {
+     "input": 6156,
+     "output": 131,
+     "cost": 0.0005768200002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"world\",\n      \"key\": \"world.rule\",\n      \"value\": \"магия запрещена законом, за неё казнят\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"skills\",\n      \"value\": \"магические способности\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 2250,
+    "usage": {
+     "input": 6156,
+     "output": 69,
+     "cost": 0.0005557400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Казань\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 3676,
+    "usage": {
+     "input": 6142,
+     "output": 71,
+     "cost": 0.0005551600002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"около тридцати\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 4325,
+    "usage": {
+     "input": 6139,
+     "output": 102,
+     "cost": 0.0005654300002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Капитан Северов",
+      "key": "personality",
+      "value": "упрямый",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Капитан Северов\",\n      \"key\": \"personality\",\n      \"value\": \"упрямый\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s1\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 4803,
+    "usage": {
+     "input": 6180,
+     "output": 97,
+     "cost": 0.0005674200002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Мирра\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 4787,
+    "usage": {
+     "input": 6150,
+     "output": 99,
+     "cost": 0.0005654000002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"когда мне врут\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 5665,
+    "usage": {
+     "input": 6161,
+     "output": 184,
+     "cost": 0.0005952900002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "relationship.status",
+      "value": "младшая сестра персонажа",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"name\",\n      \"value\": \"Ника\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"relationship.status\",\n      \"value\": \"младшая сестра персонажа\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"city\",\n      \"value\": \"столица\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 16,
+    "ms": 3293,
+    "usage": {
+     "input": 6170,
+     "output": 83,
+     "cost": 0.0005617600002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "personality",
+      "value": "властная, привыкла держать всё под контролем, не терпит возражений",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"personality\",\n      \"value\": \"властная, привыкла держать всё под контролем, не терпит возражений\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 17,
+    "ms": 4079,
+    "usage": {
+     "input": 6171,
+     "output": 101,
+     "cost": 0.0005679700002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "самый близкий человек",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"самый близкий человек\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 18,
+    "ms": 3924,
+    "usage": {
+     "input": 6211,
+     "output": 70,
+     "cost": 0.0005610300002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 19,
+    "ms": 3112,
+    "usage": {
+     "input": 6175,
+     "output": 70,
+     "cost": 0.0005577900002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 20,
+    "ms": 3169,
+    "usage": {
+     "input": 6196,
+     "output": 67,
+     "cost": 0.0005586600002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    },\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 21,
+    "ms": 5085,
+    "usage": {
+     "input": 6161,
+     "output": 16,
+     "cost": 0.0005381700002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 22,
+    "ms": 862,
+    "usage": {
+     "input": 6149,
+     "output": 8,
+     "cost": 0.0005343700002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[],\"events\":[]}"
+   },
+   {
+    "pass": 0,
+    "turn": 23,
+    "ms": 846,
+    "usage": {
+     "input": 6150,
+     "output": 8,
+     "cost": 0.0005344600002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 7899,
+    "usage": {
+     "input": 6194,
+     "output": 227,
+     "cost": 0.0006128800002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Артём\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик в депо\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Лира\",\n      \"sourceId\": \"s17\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"хранительница городского архива\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 8151,
+    "usage": {
+     "input": 6142,
+     "output": 68,
+     "cost": 0.0005541400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Самара\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 4914,
+    "usage": {
+     "input": 6143,
+     "output": 168,
+     "cost": 0.0005882300002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set",
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"27\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"likes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 2450,
+    "usage": {
+     "input": 6151,
+     "output": 43,
+     "cost": 0.0005464500002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 1493,
+    "usage": {
+     "input": 6155,
+     "output": 34,
+     "cost": 0.0005437500002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"character\",\"key\":\"dislikes\",\"value\":\"рыбалка\",\"sourceId\":\"s16\"}],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 7512,
+    "usage": {
+     "input": 6158,
+     "output": 122,
+     "cost": 0.0005739400002176
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механиком",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"retract\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механиком\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"учусь на врача\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 3689,
+    "usage": {
+     "input": 6145,
+     "output": 101,
+     "cost": 0.0005656300002175999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"skills\",\n      \"value\": \"игра на гитаре, готовка\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 2132,
+    "usage": {
+     "input": 6175,
+     "output": 54,
+     "cost": 0.0005523500002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"relationship\",\"key\":\"relationship.status\",\"value\":\"пара\",\"sourceId\":\"s18\"}],\"events\":[{\"sourceId\":\"s17\",\"importance\":3},{\"sourceId\":\"s18\",\"importance\":3}]}"
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 2412,
+    "usage": {
+     "input": 6160,
+     "output": 103,
+     "cost": 0.0005676600002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "разбирала старые карты в архиве",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"разбирала старые карты в архиве\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 2632,
+    "usage": {
+     "input": 6156,
+     "output": 131,
+     "cost": 0.0005768200002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"world\",\n      \"key\": \"world.rule\",\n      \"value\": \"магия запрещена законом, за неё казнят\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"skills\",\n      \"value\": \"магические способности\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 3583,
+    "usage": {
+     "input": 6156,
+     "output": 69,
+     "cost": 0.0005557400002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Казань\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 4719,
+    "usage": {
+     "input": 6142,
+     "output": 71,
+     "cost": 0.0005551600002176
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"около тридцати\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 3638,
+    "usage": {
+     "input": 6139,
+     "output": 102,
+     "cost": 0.0005654300002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Капитан Северов",
+      "key": "personality",
+      "value": "упрямый",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Капитан Северов\",\n      \"key\": \"personality\",\n      \"value\": \"упрямый\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s1\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 4330,
+    "usage": {
+     "input": 6180,
+     "output": 97,
+     "cost": 0.0005674200002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Мирра\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 3956,
+    "usage": {
+     "input": 6150,
+     "output": 99,
+     "cost": 0.0005654000002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"когда мне врут\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 5975,
+    "usage": {
+     "input": 6161,
+     "output": 184,
+     "cost": 0.0005952900002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "relationship.status",
+      "value": "младшая сестра персонажа",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "city",
+      "value": "столица",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"name\",\n      \"value\": \"Ника\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"relationship.status\",\n      \"value\": \"младшая сестра персонажа\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"city\",\n      \"value\": \"столица\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 16,
+    "ms": 2481,
+    "usage": {
+     "input": 6170,
+     "output": 83,
+     "cost": 0.0005617600002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "personality",
+      "value": "властная, привыкла держать всё под контролем, не терпит возражений",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"personality\",\n      \"value\": \"властная, привыкла держать всё под контролем, не терпит возражений\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 17,
+    "ms": 4913,
+    "usage": {
+     "input": 6171,
+     "output": 101,
+     "cost": 0.0005679700002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "самый близкий человек",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"самый близкий человек\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 18,
+    "ms": 2971,
+    "usage": {
+     "input": 6211,
+     "output": 70,
+     "cost": 0.0005610300002175999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 19,
+    "ms": 1776,
+    "usage": {
+     "input": 6175,
+     "output": 33,
+     "cost": 0.0005452100002176
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"user\",\"key\":\"name\",\"value\":\"Штефан\",\"sourceId\":\"s16\"}],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 20,
+    "ms": 2160,
+    "usage": {
+     "input": 6196,
+     "output": 67,
+     "cost": 0.0005586600002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    },\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 21,
+    "ms": 3129,
+    "usage": {
+     "input": 6161,
+     "output": 16,
+     "cost": 0.0005381700002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 22,
+    "ms": 1242,
+    "usage": {
+     "input": 6149,
+     "output": 16,
+     "cost": 0.0005370900002176001
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 23,
+    "ms": 1743,
+    "usage": {
+     "input": 6150,
+     "output": 16,
+     "cost": 0.0005371800002176
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   }
+  ],
+  "google/gemma-4-31B-it-turbo | new prompt+validator": [
+   {
+    "pass": 0,
+    "turn": 0,
+    "ms": 6276,
+    "usage": {
+     "input": 6253,
+     "output": 233,
+     "cost": 0.00064199
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Лира",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Лира",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Артём\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик в депо\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Лира\",\n      \"key\": \"name\",\n      \"value\": \"Лира\",\n      \"sourceId\": \"s17\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Лира\",\n      \"key\": \"occupation\",\n      \"value\": \"хранительница городского архива\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 1,
+    "ms": 2013,
+    "usage": {
+     "input": 6201,
+     "output": 68,
+     "cost": 0.0005568900002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Самара\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 2,
+    "ms": 4545,
+    "usage": {
+     "input": 6202,
+     "output": 168,
+     "cost": 0.0005909800002432001
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set",
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"27\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"likes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 3,
+    "ms": 1997,
+    "usage": {
+     "input": 6210,
+     "output": 43,
+     "cost": 0.0005492000002432
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 4,
+    "ms": 2524,
+    "usage": {
+     "input": 6214,
+     "output": 71,
+     "cost": 0.0005590800002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"dislikes\",\n      \"value\": \"рыбалка\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 5,
+    "ms": 3317,
+    "usage": {
+     "input": 6217,
+     "output": 122,
+     "cost": 0.0005766900002431999
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"retract\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"учится на врача\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 6,
+    "ms": 2220,
+    "usage": {
+     "input": 6204,
+     "output": 47,
+     "cost": 0.0005500200002432
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"user\",\"key\":\"skills\",\"value\":\"игра на гитаре, готовка\",\"sourceId\":\"s1\"}],\"events\":[{\"sourceId\":\"s16\",\"importance\":2}]}"
+   },
+   {
+    "pass": 0,
+    "turn": 7,
+    "ms": 5341,
+    "usage": {
+     "input": 6234,
+     "output": 121,
+     "cost": 0.0005945200000768
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"пара\",\n      \"sourceId\": \"s18\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    },\n    {\n      \"sourceId\": \"s18\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 8,
+    "ms": 3851,
+    "usage": {
+     "input": 6219,
+     "output": 103,
+     "cost": 0.0005870500000768
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "разбирала старые карты в архиве",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"разбирала старые карты в архиве\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 9,
+    "ms": 3108,
+    "usage": {
+     "input": 6215,
+     "output": 131,
+     "cost": 0.0005795700002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"world\",\n      \"key\": \"world.rule\",\n      \"value\": \"магия запрещена законом, за неё казнят\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"skills\",\n      \"value\": \"магические способности\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 10,
+    "ms": 1752,
+    "usage": {
+     "input": 6215,
+     "output": 32,
+     "cost": 0.0005459100002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"user\",\"key\":\"city\",\"value\":\"Казань\",\"sourceId\":\"s1\"}],\"events\":[]}"
+   },
+   {
+    "pass": 0,
+    "turn": 11,
+    "ms": 1807,
+    "usage": {
+     "input": 6201,
+     "output": 71,
+     "cost": 0.0005579100002432
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"около тридцати\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 12,
+    "ms": 7809,
+    "usage": {
+     "input": 6198,
+     "output": 102,
+     "cost": 0.0005681800002431999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Капитан Северов",
+      "key": "personality",
+      "value": "упрямый",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Капитан Северов\",\n      \"key\": \"personality\",\n      \"value\": \"упрямый\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s1\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 13,
+    "ms": 2981,
+    "usage": {
+     "input": 6239,
+     "output": 97,
+     "cost": 0.0005701700002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Мирра\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 14,
+    "ms": 1629,
+    "usage": {
+     "input": 6209,
+     "output": 44,
+     "cost": 0.0005494500002431999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"user\",\"key\":\"dislikes\",\"value\":\"когда врут\",\"sourceId\":\"s1\"}],\"events\":[{\"sourceId\":\"s16\",\"importance\":2}]}"
+   },
+   {
+    "pass": 0,
+    "turn": 15,
+    "ms": 9977,
+    "usage": {
+     "input": 6220,
+     "output": 185,
+     "cost": 0.0005983800002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится в столице",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "младшая сестра персонажа",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"name\",\n      \"value\": \"Ника\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"occupation\",\n      \"value\": \"учится в столице\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"младшая сестра персонажа\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 16,
+    "ms": 5133,
+    "usage": {
+     "input": 6229,
+     "output": 83,
+     "cost": 0.0005645100002431999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "personality",
+      "value": "властная, привыкла держать всё под контролем и не терпит возражений",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"personality\",\n      \"value\": \"властная, привыкла держать всё под контролем и не терпит возражений\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 17,
+    "ms": 2967,
+    "usage": {
+     "input": 6230,
+     "output": 47,
+     "cost": 0.0005523600002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "самый близкий человек",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"relationship\",\"key\":\"relationship.status\",\"value\":\"самый близкий человек\",\"sourceId\":\"s17\"}],\"events\":[{\"sourceId\":\"s16\",\"importance\":2}]}"
+   },
+   {
+    "pass": 0,
+    "turn": 18,
+    "ms": 3649,
+    "usage": {
+     "input": 6270,
+     "output": 70,
+     "cost": 0.0005637800002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 19,
+    "ms": 2312,
+    "usage": {
+     "input": 6234,
+     "output": 70,
+     "cost": 0.0005605400002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 20,
+    "ms": 4463,
+    "usage": {
+     "input": 6255,
+     "output": 126,
+     "cost": 0.0005814700002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Брэндон",
+      "key": "name",
+      "value": "Брэндон",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Брэндон\",\n      \"key\": \"name\",\n      \"value\": \"Брэндон\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    },\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 21,
+    "ms": 1547,
+    "usage": {
+     "input": 6220,
+     "output": 16,
+     "cost": 0.0005409200002432001
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 22,
+    "ms": 2456,
+    "usage": {
+     "input": 6208,
+     "output": 16,
+     "cost": 0.00056416
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 0,
+    "turn": 23,
+    "ms": 1430,
+    "usage": {
+     "input": 6209,
+     "output": 16,
+     "cost": 0.0005399300002432001
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 0,
+    "ms": 7456,
+    "usage": {
+     "input": 6253,
+     "output": 227,
+     "cost": 0.0006156300002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Артём",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик в депо",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Лира",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "хранительница городского архива",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Артём\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик в депо\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Лира\",\n      \"sourceId\": \"s17\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"хранительница городского архива\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 1,
+    "ms": 2701,
+    "usage": {
+     "input": 6201,
+     "output": 68,
+     "cost": 0.0005568900002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Самара",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"city\",\n      \"value\": \"Самара\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 2,
+    "ms": 5322,
+    "usage": {
+     "input": 6202,
+     "output": 172,
+     "cost": 0.0005923400002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "кофе",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 2,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set",
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"27 лет\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"кофе\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"likes\",\n      \"value\": \"кофе по утрам\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 3,
+    "ms": 2146,
+    "usage": {
+     "input": 6210,
+     "output": 43,
+     "cost": 0.0005492000002432
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 4,
+    "ms": 2564,
+    "usage": {
+     "input": 6214,
+     "output": 34,
+     "cost": 0.0005465000002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "dislikes",
+      "value": "рыбалка",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"character\",\"key\":\"dislikes\",\"value\":\"рыбалка\",\"sourceId\":\"s16\"}],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 5,
+    "ms": 5220,
+    "usage": {
+     "input": 6217,
+     "output": 122,
+     "cost": 0.0005766900002431999
+    },
+    "accepted": [
+     {
+      "op": "retract",
+      "subject": "user",
+      "key": "occupation",
+      "value": "механик",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"retract\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"механик\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"occupation\",\n      \"value\": \"учится на врача\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 6,
+    "ms": 3184,
+    "usage": {
+     "input": 6204,
+     "output": 101,
+     "cost": 0.0005683800002431999
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 1,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"skills\",\n      \"value\": \"игра на гитаре, готовка\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 7,
+    "ms": 2685,
+    "usage": {
+     "input": 6234,
+     "output": 121,
+     "cost": 0.0005778800002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "пара",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"пара\",\n      \"sourceId\": \"s18\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    },\n    {\n      \"sourceId\": \"s18\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 8,
+    "ms": 3713,
+    "usage": {
+     "input": 6219,
+     "output": 103,
+     "cost": 0.0005704100002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "occupation",
+      "value": "разбирала старые карты в архиве",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"occupation\",\n      \"value\": \"разбирала старые карты в архиве\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 9,
+    "ms": 2889,
+    "usage": {
+     "input": 6215,
+     "output": 131,
+     "cost": 0.0005795700002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "world",
+      "key": "world.rule",
+      "value": "магия запрещена законом, за неё казнят",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "unsupported_value"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"world\",\n      \"key\": \"world.rule\",\n      \"value\": \"магия запрещена законом, за неё казнят\",\n      \"sourceId\": \"s1\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"skills\",\n      \"value\": \"магические способности\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 10,
+    "ms": 2862,
+    "usage": {
+     "input": 6215,
+     "output": 32,
+     "cost": 0.0005459100002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "city",
+      "value": "Казань",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"user\",\"key\":\"city\",\"value\":\"Казань\",\"sourceId\":\"s1\"}],\"events\":[]}"
+   },
+   {
+    "pass": 1,
+    "turn": 11,
+    "ms": 5286,
+    "usage": {
+     "input": 6201,
+     "output": 71,
+     "cost": 0.0005579100002432
+    },
+    "accepted": [],
+    "rejected": 1,
+    "events": 0,
+    "rejectedReasons": [
+     "negated_set"
+    ],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"age\",\n      \"value\": \"около тридцати\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 12,
+    "ms": 6360,
+    "usage": {
+     "input": 6198,
+     "output": 102,
+     "cost": 0.0005681800002431999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Капитан Северов",
+      "key": "personality",
+      "value": "упрямый",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Капитан Северов\",\n      \"key\": \"personality\",\n      \"value\": \"упрямый\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s1\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 13,
+    "ms": 4265,
+    "usage": {
+     "input": 6239,
+     "output": 97,
+     "cost": 0.0005701700002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "name",
+      "value": "Мирра",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"name\",\n      \"value\": \"Мирра\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 14,
+    "ms": 3482,
+    "usage": {
+     "input": 6209,
+     "output": 99,
+     "cost": 0.0005681500002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "dislikes",
+      "value": "когда мне врут",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"dislikes\",\n      \"value\": \"когда мне врут\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 3\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 15,
+    "ms": 4850,
+    "usage": {
+     "input": 6220,
+     "output": 185,
+     "cost": 0.0005983800002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "name",
+      "value": "Ника",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "npc:Ника",
+      "key": "occupation",
+      "value": "учится в столице",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     },
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "младшая сестра персонажа",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"name\",\n      \"value\": \"Ника\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Ника\",\n      \"key\": \"occupation\",\n      \"value\": \"учится в столице\",\n      \"sourceId\": \"s16\"\n    },\n    {\n      \"op\": \"set\",\n      \"subject\": \"relationship\",\n      \"key\": \"relationship.status\",\n      \"value\": \"младшая сестра персонажа\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 16,
+    "ms": 5427,
+    "usage": {
+     "input": 6229,
+     "output": 83,
+     "cost": 0.0005645100002431999
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "character",
+      "key": "personality",
+      "value": "властная, привыкла держать всё под контролем и не терпит возражений",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"character\",\n      \"key\": \"personality\",\n      \"value\": \"властная, привыкла держать всё под контролем и не терпит возражений\",\n      \"sourceId\": \"s17\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 17,
+    "ms": 2451,
+    "usage": {
+     "input": 6230,
+     "output": 47,
+     "cost": 0.0005523600002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "relationship",
+      "key": "relationship.status",
+      "value": "самый близкий человек",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 1,
+    "rejectedReasons": [],
+    "content": "{\"facts\":[{\"op\":\"set\",\"subject\":\"relationship\",\"key\":\"relationship.status\",\"value\":\"самый близкий человек\",\"sourceId\":\"s17\"}],\"events\":[{\"sourceId\":\"s16\",\"importance\":2}]}"
+   },
+   {
+    "pass": 1,
+    "turn": 18,
+    "ms": 6448,
+    "usage": {
+     "input": 6270,
+     "output": 70,
+     "cost": 0.0005637800002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 19,
+    "ms": 1901,
+    "usage": {
+     "input": 6234,
+     "output": 70,
+     "cost": 0.0005605400002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "user",
+      "key": "name",
+      "value": "Штефан",
+      "sourceMessageId": "a",
+      "source": "assistant_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"user\",\n      \"key\": \"name\",\n      \"value\": \"Штефан\",\n      \"sourceId\": \"s16\"\n    }\n  ],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 20,
+    "ms": 5933,
+    "usage": {
+     "input": 6255,
+     "output": 126,
+     "cost": 0.0005814700002432
+    },
+    "accepted": [
+     {
+      "op": "set",
+      "subject": "npc:Брэндон",
+      "key": "name",
+      "value": "Брэндон",
+      "sourceMessageId": "u",
+      "source": "user_msg",
+      "confidence": 1,
+      "pinned": false
+     }
+    ],
+    "rejected": 0,
+    "events": 2,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [\n    {\n      \"op\": \"set\",\n      \"subject\": \"npc:Брэндон\",\n      \"key\": \"name\",\n      \"value\": \"Брэндон\",\n      \"sourceId\": \"s1\"\n    }\n  ],\n  \"events\": [\n    {\n      \"sourceId\": \"s16\",\n      \"importance\": 2\n    },\n    {\n      \"sourceId\": \"s17\",\n      \"importance\": 2\n    }\n  ]\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 21,
+    "ms": 1050,
+    "usage": {
+     "input": 6220,
+     "output": 16,
+     "cost": 0.0005409200002432001
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 22,
+    "ms": 2664,
+    "usage": {
+     "input": 6208,
+     "output": 16,
+     "cost": 0.0005398400002432
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   },
+   {
+    "pass": 1,
+    "turn": 23,
+    "ms": 1959,
+    "usage": {
+     "input": 6209,
+     "output": 16,
+     "cost": 0.0005399300002432001
+    },
+    "accepted": [],
+    "rejected": 0,
+    "events": 0,
+    "rejectedReasons": [],
+    "content": "{\n  \"facts\": [],\n  \"events\": []\n}"
+   }
+  ]
+ }
+}
