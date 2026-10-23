@@ -1,0 +1,1836 @@
+{
+  "generatedAt": "2026-10-20T18:22:53.051Z",
+  "queries": 46,
+  "models": [
+    {
+      "model": "Qwen/Qwen3-Embedding-0.6B",
+      "recallAt1": 84.8,
+      "recallAt3": 97.8,
+      "recallAt5": 100,
+      "recallAt10": 100,
+      "mrr": 0.918,
+      "hardQueries": 18,
+      "hardAboveGold": 4,
+      "perQuery": [
+        {
+          "story": "port",
+          "q": "Как меня зовут на самом деле?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "real_name",
+            "name_igor",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Где ты спрятала ключ от склепа?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "crypt_key",
+            "cabin_key",
+            "compass"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Что я тебе обещал принести?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "promise_map",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Как зовут хозяйку таверны?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 3,
+          "hardAboveGold": false,
+          "top3": [
+            "marfa",
+            "filler",
+            "red_anchor"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Сколько сейчас просит проводник за дорогу?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "guide_40",
+            "guide_55",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Кто взял мой компас?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "compass",
+            "name_igor",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "А сколько он просил сначала?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "guide_40",
+            "guide_55",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "когда погаснет огонь на маяке?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "lighthouse_keeper",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Как тебя зовут и откуда ты?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "sister",
+            "huntress_name",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Куда меня ранил волк?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 3,
+          "hardAboveGold": false,
+          "top3": [
+            "wolf_wound",
+            "horse_name",
+            "herb"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Чем ты лечила мою рану?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "wolf_wound",
+            "herb",
+            "bow_return"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Из-за чего мы поссорились у моста?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 15,
+          "hardAboveGold": false,
+          "top3": [
+            "quarrel",
+            "camp_spot",
+            "no_fire"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Какое имя я дал своему коню?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "horse_name",
+            "horse_other",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Где мы решили ставить лагерь?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "camp_spot",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Почему мы не разжигали костёр?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 8,
+          "hardAboveGold": false,
+          "top3": [
+            "no_fire",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "как зовут мою сестру и чем она занимается",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "sister",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "А за сколько ты его выкупила?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "bow_return",
+            "quarrel",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кем я работаю на станции?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "role_engineer",
+            "commander",
+            "ai_name"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Расшифруй своё имя",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "ai_name",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Удалось починить утечку кислорода?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "oxygen",
+            "oxygen_fixed",
+            "no_signal"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кто сейчас командует станцией?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 4,
+          "hardAboveGold": false,
+          "top3": [
+            "commander",
+            "role_engineer",
+            "ai_name"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Напомни код от грузового отсека",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 7,
+          "hardAboveGold": false,
+          "top3": [
+            "cargo_code",
+            "supply_ship",
+            "role_engineer"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Когда прилетит корабль снабжения?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "supply_ship",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кто отправил сигнал бедствия?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "no_signal",
+            "commander_old",
+            "oxygen_fixed"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "что там с моим растением в оранжерее",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "plant",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "А в каком шлюзе это было?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "oxygen_fixed",
+            "oxygen",
+            "no_signal"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Кого убили и где?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "weapon",
+            "victim",
+            "suspect_wife"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Чем был нанесён удар?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "weapon",
+            "not_suspect",
+            "letter"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Какое алиби у племянника?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "alibi",
+            "suspect_wife",
+            "maid_lie"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Что было в письме с печатью?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "letter",
+            "safe",
+            "not_suspect"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Во сколько на самом деле пришла дама в шляпке?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "maid",
+            "maid_lie",
+            "suspect_wife"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Что пропало из сейфа?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "safe",
+            "letter",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Кого я подозреваю?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 39,
+          "hardAboveGold": false,
+          "top3": [
+            "suspect_wife",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Почему компаньона можно исключить?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "not_suspect",
+            "suspect_wife",
+            "letter"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Когда и где у нас встреча?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "meeting",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "А что она сказала сначала?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "maid",
+            "maid_lie",
+            "suspect_wife"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Где я работаю?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "job",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Как зовут твоего кота?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "cat",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "На что у меня аллергия?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "allergy",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Когда у тебя день рождения?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "birthday",
+            "filler",
+            "movie_cancel"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Что я тебе подарил?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "gift",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Так когда мы идём в кино?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "movie_cancel",
+            "movie_plan",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "в какой кинотеатр мы собирались?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "movie_plan",
+            "movie_cancel",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Как прошёл твой экзамен? Когда он был?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "exam",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Помнишь, о чём я мечтаю?",
+          "composedQuery": false,
+          "goldRank": 4,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "А какую ты сейчас слушаешь постоянно?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "song_fav",
+            "filler",
+            "filler"
+          ]
+        }
+      ]
+    },
+    {
+      "model": "BAAI/bge-m3",
+      "recallAt1": 71.7,
+      "recallAt3": 84.8,
+      "recallAt5": 89.1,
+      "recallAt10": 95.7,
+      "mrr": 0.803,
+      "hardQueries": 18,
+      "hardAboveGold": 4,
+      "perQuery": [
+        {
+          "story": "port",
+          "q": "Как меня зовут на самом деле?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 4,
+          "hardAboveGold": false,
+          "top3": [
+            "real_name",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Где ты спрятала ключ от склепа?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "crypt_key",
+            "cabin_key",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Что я тебе обещал принести?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "promise_map",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Как зовут хозяйку таверны?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "marfa",
+            "red_anchor",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Сколько сейчас просит проводник за дорогу?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "guide_55",
+            "guide_40",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Кто взял мой компас?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "compass",
+            "cabin_key",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "А сколько он просил сначала?",
+          "composedQuery": true,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "guide_55",
+            "guide_40",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "когда погаснет огонь на маяке?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "lighthouse_keeper",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Как тебя зовут и откуда ты?",
+          "composedQuery": false,
+          "goldRank": 5,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Куда меня ранил волк?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "wolf_wound",
+            "herb",
+            "horse_name"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Чем ты лечила мою рану?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 3,
+          "hardAboveGold": false,
+          "top3": [
+            "herb",
+            "filler",
+            "wolf_wound"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Из-за чего мы поссорились у моста?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 18,
+          "hardAboveGold": false,
+          "top3": [
+            "quarrel",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Какое имя я дал своему коню?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "horse_name",
+            "horse_other",
+            "wolf_wound"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Где мы решили ставить лагерь?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "camp_spot",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Почему мы не разжигали костёр?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 5,
+          "hardAboveGold": false,
+          "top3": [
+            "no_fire",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "как зовут мою сестру и чем она занимается",
+          "composedQuery": true,
+          "goldRank": 8,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "А за сколько ты его выкупила?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "bow_return",
+            "quarrel",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кем я работаю на станции?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "role_engineer",
+            "ai_name",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Расшифруй своё имя",
+          "composedQuery": false,
+          "goldRank": 7,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "cargo_code",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Удалось починить утечку кислорода?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "oxygen",
+            "oxygen_fixed",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кто сейчас командует станцией?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 6,
+          "hardAboveGold": false,
+          "top3": [
+            "commander",
+            "ai_name",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Напомни код от грузового отсека",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "cargo_code",
+            "lab_code",
+            "commander"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Когда прилетит корабль снабжения?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "supply_ship",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кто отправил сигнал бедствия?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "no_signal",
+            "filler",
+            "commander"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "что там с моим растением в оранжерее",
+          "composedQuery": true,
+          "goldRank": 21,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "А в каком шлюзе это было?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "oxygen",
+            "oxygen_fixed",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Кого убили и где?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "victim",
+            "weapon",
+            "suspect_wife"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Чем был нанесён удар?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "weapon",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Какое алиби у племянника?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "suspect_wife",
+            "alibi",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Что было в письме с печатью?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "letter",
+            "meeting",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Во сколько на самом деле пришла дама в шляпке?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "maid",
+            "maid_lie",
+            "meeting"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Что пропало из сейфа?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "safe",
+            "letter",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Кого я подозреваю?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 43,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "suspect_wife",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Почему компаньона можно исключить?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "not_suspect",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Когда и где у нас встреча?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "meeting",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "А что она сказала сначала?",
+          "composedQuery": true,
+          "goldRank": 13,
+          "hardRank": 5,
+          "hardAboveGold": true,
+          "top3": [
+            "suspect_wife",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Где я работаю?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "job",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Как зовут твоего кота?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "cat",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "На что у меня аллергия?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "allergy",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Когда у тебя день рождения?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "birthday",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Что я тебе подарил?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "gift",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Так когда мы идём в кино?",
+          "composedQuery": true,
+          "goldRank": 4,
+          "hardRank": 6,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "в какой кинотеатр мы собирались?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "movie_plan",
+            "movie_cancel",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Как прошёл твой экзамен? Когда он был?",
+          "composedQuery": true,
+          "goldRank": 10,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Помнишь, о чём я мечтаю?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "dream",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "А какую ты сейчас слушаешь постоянно?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "song_fav",
+            "filler",
+            "filler"
+          ]
+        }
+      ]
+    },
+    {
+      "model": "google/embeddinggemma-300m",
+      "recallAt1": 84.8,
+      "recallAt3": 97.8,
+      "recallAt5": 100,
+      "recallAt10": 100,
+      "mrr": 0.914,
+      "hardQueries": 18,
+      "hardAboveGold": 4,
+      "perQuery": [
+        {
+          "story": "port",
+          "q": "Как меня зовут на самом деле?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "real_name",
+            "name_igor",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Где ты спрятала ключ от склепа?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "crypt_key",
+            "cabin_key",
+            "compass"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Что я тебе обещал принести?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "promise_map",
+            "filler",
+            "guide_40"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Как зовут хозяйку таверны?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "marfa",
+            "red_anchor",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Сколько сейчас просит проводник за дорогу?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "guide_55",
+            "guide_40",
+            "lighthouse_keeper"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "Кто взял мой компас?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "compass",
+            "crypt_key",
+            "cabin_key"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "А сколько он просил сначала?",
+          "composedQuery": true,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "guide_55",
+            "guide_40",
+            "filler"
+          ]
+        },
+        {
+          "story": "port",
+          "q": "когда погаснет огонь на маяке?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "lighthouse_keeper",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Как тебя зовут и откуда ты?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "huntress_name",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Куда меня ранил волк?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "wolf_wound",
+            "herb",
+            "huntress_name"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Чем ты лечила мою рану?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "herb",
+            "wolf_wound",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Из-за чего мы поссорились у моста?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 5,
+          "hardAboveGold": false,
+          "top3": [
+            "quarrel",
+            "camp_spot",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Какое имя я дал своему коню?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "horse_name",
+            "horse_other",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Где мы решили ставить лагерь?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "camp_spot",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "Почему мы не разжигали костёр?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 7,
+          "hardAboveGold": false,
+          "top3": [
+            "no_fire",
+            "filler",
+            "quarrel"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "как зовут мою сестру и чем она занимается",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "sister",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "forest",
+          "q": "А за сколько ты его выкупила?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": 2,
+          "hardAboveGold": false,
+          "top3": [
+            "bow_return",
+            "quarrel",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кем я работаю на станции?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "role_engineer",
+            "commander",
+            "ai_name"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Расшифруй своё имя",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "ai_name",
+            "cargo_code",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Удалось починить утечку кислорода?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "oxygen",
+            "oxygen_fixed",
+            "no_signal"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кто сейчас командует станцией?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 4,
+          "hardAboveGold": false,
+          "top3": [
+            "commander",
+            "role_engineer",
+            "ai_name"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Напомни код от грузового отсека",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": 3,
+          "hardAboveGold": false,
+          "top3": [
+            "cargo_code",
+            "supply_ship",
+            "lab_code"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Когда прилетит корабль снабжения?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "supply_ship",
+            "oxygen_fixed",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "Кто отправил сигнал бедствия?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "no_signal",
+            "commander",
+            "oxygen_fixed"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "что там с моим растением в оранжерее",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "plant",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "station",
+          "q": "А в каком шлюзе это было?",
+          "composedQuery": true,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "oxygen",
+            "oxygen_fixed",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Кого убили и где?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "victim",
+            "weapon",
+            "maid"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Чем был нанесён удар?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "weapon",
+            "victim",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Какое алиби у племянника?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "alibi",
+            "letter",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Что было в письме с печатью?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "letter",
+            "meeting",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Во сколько на самом деле пришла дама в шляпке?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 1,
+          "hardAboveGold": true,
+          "top3": [
+            "maid",
+            "maid_lie",
+            "letter"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Что пропало из сейфа?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "safe",
+            "letter",
+            "victim"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Кого я подозреваю?",
+          "composedQuery": false,
+          "goldRank": 2,
+          "hardRank": 39,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "suspect_wife",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Почему компаньона можно исключить?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "not_suspect",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "Когда и где у нас встреча?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "meeting",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "detective",
+          "q": "А что она сказала сначала?",
+          "composedQuery": true,
+          "goldRank": 5,
+          "hardRank": 2,
+          "hardAboveGold": true,
+          "top3": [
+            "suspect_wife",
+            "maid_lie",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Где я работаю?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "job",
+            "filler",
+            "dream"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Как зовут твоего кота?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "cat",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "На что у меня аллергия?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "allergy",
+            "exam",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Когда у тебя день рождения?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "birthday",
+            "gift",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Что я тебе подарил?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "gift",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Так когда мы идём в кино?",
+          "composedQuery": true,
+          "goldRank": 3,
+          "hardRank": 4,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "filler",
+            "movie_cancel"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "в какой кинотеатр мы собирались?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "movie_plan",
+            "movie_cancel",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Как прошёл твой экзамен? Когда он был?",
+          "composedQuery": true,
+          "goldRank": 2,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "filler",
+            "exam",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "Помнишь, о чём я мечтаю?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "dream",
+            "filler",
+            "filler"
+          ]
+        },
+        {
+          "story": "everyday",
+          "q": "А какую ты сейчас слушаешь постоянно?",
+          "composedQuery": false,
+          "goldRank": 1,
+          "hardRank": null,
+          "hardAboveGold": false,
+          "top3": [
+            "song_fav",
+            "filler",
+            "filler"
+          ]
+        }
+      ]
+    }
+  ]
+}
