@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -43,7 +43,8 @@ export type CharacterPublicViewData = {
   moderationReason?: string | null;
 };
 
-export default function CharacterPublicView({ character }: { character: CharacterPublicViewData }) {
+/** `story` is server-rendered (scenario and first message) and sits between the memory and the actions. */
+export default function CharacterPublicView({ character, story }: { character: CharacterPublicViewData; story?: ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
   const locale = useCurrentLocale();
@@ -194,6 +195,8 @@ export default function CharacterPublicView({ character }: { character: Characte
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-gray-200">{publicMemory}</p>
             </div>
           ) : null}
+
+          {story}
 
           {/* Phones: a bar that sticks above the bottom nav (globals.css), secondary actions shrink to icons. */}
           <div className="nv-sticky-cta flex gap-2 max-md:-mx-5 max-md:-mb-5 max-md:rounded-b-wd max-md:border-t max-md:border-wd-border max-md:bg-wd-card/95 max-md:px-5 max-md:py-3 max-md:backdrop-blur-md max-sm:-mx-4 max-sm:rounded-none max-sm:bg-wd-bg/95 max-sm:px-4 sm:max-md:-mx-6 sm:max-md:-mb-6 sm:max-md:px-6">

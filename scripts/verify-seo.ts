@@ -6,6 +6,9 @@ import { FEATURED_GENRES } from "@/lib/characterTags";
 import { GENRE_INTROS } from "@/lib/genreIntros";
 import { catalogVariantText } from "@/lib/catalogMeta";
 import {
+  hasAdultText, isAdultCharacter, rankSimilarCharacters, SIMILAR_CHARACTERS_LIMIT, STORY_GREETING_MAX, STORY_SCENARIO_MAX, storyExcerpt,
+} from "@/lib/characterSeoContent";
+import {
   findFeaturedGenre, GENRE_INDEX_MIN_CHARACTERS, genreIndexingMetadata, indexableGenreIds, parseGenrePage,
 } from "@/lib/genreSeo";
 
@@ -87,6 +90,40 @@ check(variant({ page: "2" }).title.includes("страница 2") && variant({ q
 check(variant({ sort: "new" }, "en").title.startsWith("New AI characters"), "English variant titles are localized");
 check(translate("ru", "meta.character.title", { name: "Сэм" }) !== translate("en", "meta.character.title", { name: "Сэм" }), "character title templates differ between RU and EN");
 check(translate("ru", "meta.genre.descriptionPage", { description: "D", page: 2 }).includes("2"), "genre pages 2+ carry the page number in the description");
+
+// Character page body: story excerpts, the 18+ guard, similar characters and the FAQ.
+for (const clean of ["Пилот выходит из кабины (cockpit) и улыбается.", "Тепло в груди, небо над горами.", "Секстант и карта на столе.",
+  "Трахея", "A lustrous blade; seen with the naked eye.", "Sussex, Essex", "Ей 18 лет.", "Возбуждено уголовное дело.", "Hana-irswuncs"]) {
+  check(!hasAdultText(clean), `adult guard ignores "${clean}"`);
+}
+for (const explicit of ["Откровенный секс", "хочет трахнуть", "ёбаный", "Erotic roleplay", "NSFW", "Только 18+", "sexy", "F*ck".replace("*", "u")]) {
+  check(hasAdultText(explicit), `adult guard flags "${explicit}"`);
+}
+check(isAdultCharacter(["Чистое описание", null, "Порно-сцена"]) && !isAdultCharacter(["Чистое описание", null, undefined]), "one explicit field flags the whole character");
+check(storyExcerpt("*{{char}} улыбается.* Привет, {{user}}! {{user}}, ты пришёл?", "Хана", "ru", 900) === "Хана улыбается. Привет! Ты пришёл?", "story excerpt resolves macros and drops asterisks");
+check(storyExcerpt("Hi {{user}}. {{user}} is late, and {{char}} has tea.", "Hana", "en", 900) === "Hi you. You are late, and Hana has tea.", "story excerpt addresses the reader in English");
+check(storyExcerpt("{{user}} — новый напарник.", "Вера", "ru", 900) === "Вы — новый напарник.", "story excerpt capitalizes the reader at a sentence start");
+check(storyExcerpt("  \n ", "Хана", "ru", 900) === null && storyExcerpt(null, "Хана", "ru", 900) === null, "empty story text renders nothing");
+const longStory = storyExcerpt("Первое предложение истории. ".repeat(60), "Хана", "ru", STORY_GREETING_MAX)!;
+check(longStory.length <= STORY_GREETING_MAX + 2 && longStory.endsWith(". …"), "long greeting cut at a sentence end");
+const oneSentence = storyExcerpt("слово ".repeat(200), "Хана", "ru", STORY_SCENARIO_MAX)!;
+check(oneSentence.length <= STORY_SCENARIO_MAX && oneSentence.endsWith("слово…"), "long scenario without sentences cut at a word");
+const candidates = [
+  { id: "c", tags: "Романтика", totalMessages: 5 }, { id: "b", tags: "Романтика", totalMessages: 5 },
+  { id: "a", tags: "Аниме, Цундере", totalMessages: 900 }, { id: "d", tags: "Комедия", totalMessages: 1000 },
+  { id: "self", tags: "Романтика, Аниме", totalMessages: 9999 }, { id: "e", tags: "Цундере", totalMessages: 1 }, { id: "b", tags: "Романтика", totalMessages: 5 },
+];
+const similar = rankSimilarCharacters({ id: "self", tags: "Романтика, Аниме, Цундере" }, candidates).map((card) => card.id);
+check(similar.join() === "a,b,c,e,d", `similar: shared genres first, then popularity and id (${similar.join()})`);
+check(rankSimilarCharacters({ id: "self", tags: "Романтика, Аниме, Цундере" }, [...candidates].reverse()).map((card) => card.id).join() === similar.join(), "similar order does not depend on the query order");
+check(rankSimilarCharacters({ id: "x", tags: null }, Array.from({ length: 20 }, (_, i) => ({ id: `p${i}`, tags: null, totalMessages: i }))).length === SIMILAR_CHARACTERS_LIMIT, "similar fills up to the limit by popularity");
+for (const locale of ["ru", "en"] as const) {
+  for (const key of ["storyStart", "scenario", "similar", "faq.title", "faq.freeQ", "faq.freeA", "faq.freeAPaid", "faq.registerQ", "faq.registerA", "faq.languageQ", "faq.languageA", "faq.startQ", "faq.startA", "messagesWord.one", "messagesWord.few", "messagesWord.many"]) {
+    check(translate(locale, `characterPage.${key}`, { name: "Хана", limit: 5, messages: "x", onboarding: 20, daily: 5 }).length > 0, `${locale}: characterPage.${key}`);
+  }
+  check(!/\{\{/.test(translate(locale, "characterPage.faq.freeA", { name: "Хана", limit: 5, messages: "x", onboarding: 20, daily: 5 })), `${locale}: FAQ variables filled`);
+}
+check(translate("ru", "characterPage.faq.freeQ") !== translate("en", "characterPage.faq.freeQ"), "FAQ differs between RU and EN");
 
 if (process.argv.includes("--http")) {
   const result = spawnSync(process.execPath, ["scripts/verify-seo-runtime.mjs"], { stdio: "inherit", windowsHide: true });

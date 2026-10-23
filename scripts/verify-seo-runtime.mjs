@@ -52,15 +52,35 @@ try {
   const owner = await db.user.create({ data: { email: 'seo-owner@example.test', name: 'SEO author' } });
   const outsider = await db.user.create({ data: { email: 'seo-other@example.test' } });
   const updatedAt = new Date('2026-10-01T12:00:00Z');
+  const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
   for (let i = 1; i <= 26; i++) await db.character.create({ data: {
     id: `seo-public-${i}`, slug: `seo-hero-${i}`, name: `Герой SEO ${i}`, name_en: `SEO hero ${i}`,
     descriptionCard: `Публичное описание ${i}`, descriptionCard_en: `Public description ${i}`,
     publicMemory: 'Открытая история', publicMemory_en: 'Public story',
     privateMemory: 'PRIVATE_MEMORY_SENTINEL', systemPrompt: 'SYSTEM_PROMPT_SENTINEL',
     moderationReason: 'MODERATION_SENTINEL', userId: owner.id, isPublic: true,
-    totalMessages: 100 - i, updatedAt,
+    totalMessages: 100 - i, updatedAt, imageUrl: avatar,
     // Genres: 25 romance (two pages of 24), comedy thin with 2 (one stored under the English alias).
     tags: i === 25 ? 'Comedy' : i === 13 ? 'Романтика, Комедия' : 'Романтика, Аниме',
+  } });
+  // A card with prod-like text lengths, for the word count of the page body.
+  await db.character.create({ data: {
+    id: 'seo-story-id', slug: 'seo-story', userId: owner.id, isPublic: true, totalMessages: 0, updatedAt, imageUrl: avatar,
+    tags: 'Детектив, Загадочный', name: 'Вера Ланская', name_en: 'Vera Lanskaya',
+    descriptionCard: 'Вера Ланская — частный детектив из дождливого портового города. Бывшая следовательница, ушедшая из полиции после громкого дела, которое так и не закрыли. Она пьёт слишком много кофе, не доверяет совпадениям и замечает то, что другие пропускают. Вера ищет напарника для расследования, где у каждого свидетеля своя тайна, а у города — своя цена.',
+    descriptionCard_en: 'Vera Lanskaya is a private detective in a rainy port town. A former investigator, she left the police after a high-profile case that was never closed. She drinks too much coffee, distrusts coincidences and notices what others miss. Vera is looking for a partner for an investigation where every witness has a secret and the town has its price.',
+    publicMemory: 'Работает одна уже три года. Держит в столе папку с нераскрытым делом и никому её не показывает.',
+    publicMemory_en: 'She has worked alone for three years. She keeps the file of an unsolved case in her desk and shows it to no one.',
+    scenario: 'Осень, портовый город Северск. Третью неделю идут дожди, а в доках пропадают люди. Полиция списывает всё на несчастные случаи, но вдова одного из грузчиков приносит Вере письмо, написанное за день до исчезновения мужа. {{user}} — новый напарник Веры: можно вести допросы, изучать улики и решать, кому верить.',
+    scenario_en: 'Autumn in the port town of Seversk. It has rained for three weeks, and people keep disappearing at the docks. The police call it accidents, but a dockworker\'s widow brings Vera a letter her husband wrote the day before he vanished. {{user}} is Vera\'s new partner: you can question witnesses, study the evidence and decide whom to trust.',
+    greeting: '*Дверь в контору скрипит, за окном шумит дождь. {{char}} не поднимает глаз от разложенных на столе фотографий.* Вы опоздали на семь минут, {{user}}. *Она пододвигает к вам чашку остывшего кофе.* Ничего, я тоже не люблю приходить вовремя — так видно, кто нервничает. Садитесь. *Она разворачивает к вам снимок причала, на котором кто-то обвёл мелом пустое место.* Здесь в прошлый четверг видели Игната Белова. Утром от него остались только ботинки и это письмо. *Вера постукивает пальцем по конверту.* Вдова уверена, что муж знал, кто за ним придёт. Я думаю, он знал гораздо больше. С чего начнём: с доков или с вдовы?',
+    greeting_en: '*The office door creaks, rain drums on the window. {{char}} does not look up from the photographs spread across the desk.* You\'re seven minutes late, {{user}}. *She slides a cup of cold coffee towards you.* Never mind, I don\'t like being on time either — that way you see who gets nervous. Sit down. *She turns a photo of the pier towards you; someone has chalked an empty outline on it.* Ignat Belov was seen here last Thursday. By morning all that was left were his boots and this letter. *Vera taps the envelope.* His widow is sure he knew who was coming for him. I think he knew much more. Where do we start: the docks or the widow?',
+  } });
+  // Clean card text, explicit first message: the whole character stays out of indexable HTML.
+  await db.character.create({ data: {
+    id: 'seo-adult-id', slug: 'seo-adult', userId: owner.id, isPublic: true, totalMessages: 50, updatedAt, imageUrl: avatar,
+    tags: 'Комедия', name: 'ADULT_NAME_SENTINEL', descriptionCard: 'Обычное описание карточки.',
+    greeting: 'ADULT_GREETING_SENTINEL Откровенная эротика.', scenario: 'ADULT_SCENARIO_SENTINEL',
   } });
   await db.character.create({ data: { id: 'seo-private-id', slug: 'seo-private-slug', tags: 'Комедия',
     name: 'PRIVATE_NAME_SENTINEL', descriptionCard: 'Private owner card', isPublic: false,
@@ -191,6 +211,37 @@ try {
   check(sitemap.body.includes('/ru/genres/romance</loc>') && sitemap.body.includes('/en/genres/romance</loc>') && sitemap.body.includes('/ru/genres</loc>'), 'sitemap filled genres and hub');
   check(!sitemap.body.includes('/genres/comedy</loc>') && !sitemap.body.includes('/genres/horror</loc>') && !sitemap.body.includes('genres/romance?page'), 'sitemap excludes thin genres and pagination');
   check(sitemap.body.match(/<loc>https:\/\/newvers.ai\/ru\/genres\/romance<\/loc>\s*<lastmod>([^<]+)/)?.[1] === updatedAt.toISOString(), 'genre lastmod is its latest character');
+  // Character page body: scenario, first message, similar characters and FAQ; explicit cards stay out.
+  const section = (body, id) => body.match(new RegExp(`<section aria-labelledby="${id}"[^>]*>([\\s\\S]*?)</section>`))?.[1] ?? '';
+  const characterLinks = html => [...html.matchAll(/href="\/(?:ru|en)\/character\/([^"]+)"/g)].map(match => match[1]);
+  for (const locale of ['ru', 'en']) {
+    const ru = locale === 'ru';
+    const story = await request(`/${locale}/character/seo-story`);
+    check(story.status === 200 && !story.body.includes('noindex'), `${locale}/character/seo-story: indexable`);
+    check(story.body.includes(`<title>${ru ? 'Вера Ланская — ролевая игра с ИИ-персонажем | NewVerse' : 'Vera Lanskaya'}`), `${locale}/character/seo-story: title unchanged`);
+    const scenario = section(story.body, 'character-scenario');
+    check(scenario.includes(ru ? 'Осень, портовый город Северск.' : 'Autumn in the port town of Seversk.'), `${locale}: localized scenario in SSR HTML`);
+    check(scenario.includes(ru ? 'Вы — новый напарник Веры' : 'You are Vera'), `${locale}: scenario addresses the reader`);
+    const greeting = section(story.body, 'character-story-start');
+    check(greeting.includes(ru ? 'Вера Ланская не поднимает глаз' : 'Vera Lanskaya does not look up'), `${locale}: first message with the name resolved`);
+    check(greeting.includes(ru ? 'Вы опоздали на семь минут.' : 'seven minutes late.'), `${locale}: address to {{user}} dropped`);
+    check(!/\{\{|\*/.test(scenario + greeting), `${locale}: no macros or roleplay asterisks`);
+    const similar = characterLinks(section(story.body, 'similar-characters'));
+    check(similar.join() === [1, 2, 3, 4, 5, 6, 7, 8].map(i => `seo-hero-${i}`).join(), `${locale}: 8 similar characters, filled by popularity (${similar.join()})`);
+    const faq = section(story.body, 'character-faq');
+    check((faq.match(/<dt/g) ?? []).length === 4 && faq.includes(ru ? 'Можно ли играть с персонажем Вера Ланская бесплатно?' : 'Can I chat with Vera Lanskaya for free?'), `${locale}: four FAQ items`);
+    check(faq.includes(ru ? '5 сообщений' : '5 messages'), `${locale}: FAQ uses the guest limit`);
+    const hero = await request(`/${locale}/character/seo-hero-1`);
+    check(!hero.body.includes('aria-labelledby="character-story-start"') && !hero.body.includes('aria-labelledby="character-scenario"'), `${locale}: no empty story blocks`);
+    const heroSimilar = characterLinks(section(hero.body, 'similar-characters'));
+    check(heroSimilar.join() === [2, 3, 4, 5, 6, 7, 8, 9].map(i => `seo-hero-${i}`).join(), `${locale}: similar share genres, never the page itself`);
+    const comedy25 = characterLinks(section((await request(`/${locale}/character/seo-hero-25`)).body, 'similar-characters'));
+    check(comedy25[0] === 'seo-hero-13' && comedy25.length === 8 && !comedy25.includes('seo-adult'), `${locale}: same genre first, explicit card never linked (${comedy25.join()})`);
+    const adult = await request(`/${locale}/character/seo-adult`);
+    check(adult.status === 200 && robotsMeta(adult.body) === 'noindex, follow', `${locale}: explicit card noindex,follow`);
+    check(!/ADULT_(GREETING|SCENARIO)_SENTINEL|эротика/.test(adult.body), `${locale}: explicit fields absent from HTML and payload`);
+  }
+  check(sitemap.body.includes('/ru/character/seo-story</loc>') && !sitemap.body.includes('seo-adult'), 'sitemap excludes explicit cards');
   // Filling a thin genre flips it to indexable and into the sitemap with no code change.
   await db.character.updateMany({ where: { id: { in: [14, 15, 16, 17, 18, 19].map(i => `seo-public-${i}`) } }, data: { tags: 'Романтика, Комедия' } });
   const filled = await request('/ru/genres/comedy');
@@ -203,6 +254,19 @@ try {
   let page = await noJs.newPage();
   await page.goto(base + '/en/character/seo-hero-1');
   check(await page.locator('h1').innerText() === 'SEO hero 1', 'character content visible with JS disabled');
+  // Visible words of a prod-like card, with and without the new body blocks (menu and footer included).
+  for (const locale of ['ru', 'en']) {
+    await page.goto(`${base}/${locale}/character/seo-story`);
+    const words = await page.evaluate(() => {
+      const count = element => (element?.innerText ?? '').split(/\s+/).filter(word => /[\p{L}\d]/u.test(word)).length;
+      const added = ['character-scenario', 'character-story-start', 'similar-characters', 'character-faq']
+        .reduce((sum, id) => sum + count(document.querySelector(`section[aria-labelledby="${id}"]`)), 0);
+      return { total: count(document.body), added };
+    });
+    const before = words.total - words.added;
+    console.log(`${locale}/character/seo-story visible words: ${before} -> ${words.total} (x${(words.total / before).toFixed(2)})`);
+    check(words.total >= 2 * before, `${locale}: visible words at least doubled`);
+  }
   await page.goto(base + '/en');
   check(await page.locator('a[href="/en/character/seo-hero-1"]:visible').count() === 1, 'catalog links visible with JS disabled');
   await noJs.close();
