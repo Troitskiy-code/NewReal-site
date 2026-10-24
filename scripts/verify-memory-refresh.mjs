@@ -80,8 +80,8 @@ try {
     await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     assert.match(latestSummaryBody.messages[0].content, /Участники: герой пользователя — Артём, персонаж — Вика\. В пересказе называй их по именам/);
   });
-  await check('with a Kie key the summary goes to GPT-6 Luna with the strict schema, metered in Kie credits', async () => {
-    process.env.KIE_API_KEY = 'synthetic_kie_key';
+  await check('with Kie enabled the summary goes to GPT-6 Luna with the strict schema, metered in Kie credits', async () => {
+    Object.assign(process.env, { KIE_API_KEY: 'synthetic_kie_key', SUMMARY_KIE_ENABLED: 'true' });
     try {
       provider.summaryText = JSON.stringify({ items: [{ section: 'story', status: 'reported', text: 'Пользователь не нашёл пропавший ключ.', sources: ['s1'] }] });
       const fixture = await setup('Я не нашёл пропавший ключ.');
@@ -96,10 +96,10 @@ try {
       assert.equal(cost.outcome, 'completed'); assert.equal(cost.model, 'gpt-6-luna');
       assert.equal(cost.providerCostNative, 0.1); assert.equal(cost.providerCostCurrency, 'CREDIT');
       assert.equal(cost.inputTokens, 100); assert.equal(cost.outputTokens, 20);
-    } finally { delete process.env.KIE_API_KEY; provider.summaryText = null; }
+    } finally { delete process.env.KIE_API_KEY; delete process.env.SUMMARY_KIE_ENABLED; provider.summaryText = null; }
   });
   await check('a Kie that does not answer hands the summary to DeepInfra; the failed attempt is recorded', async () => {
-    process.env.KIE_API_KEY = 'synthetic_kie_key';
+    Object.assign(process.env, { KIE_API_KEY: 'synthetic_kie_key', SUMMARY_KIE_ENABLED: 'true' });
     try {
       provider.summaryText = JSON.stringify({ items: [{ section: 'story', status: 'reported', text: 'Пользователь не нашёл пропавший ключ.', sources: ['s1'] }] });
       for (const failure of [{ kieFails: 504 }, { kieCode: 524 }]) {
@@ -115,15 +115,18 @@ try {
         const cost = await db.aiCostEvent.findFirst({ where: { provider: 'kie', purpose: 'summary' }, orderBy: { createdAt: 'desc' } });
         assert.equal(cost.outcome, 'failed');
       }
-    } finally { delete process.env.KIE_API_KEY; provider.summaryText = null; }
+    } finally { delete process.env.KIE_API_KEY; delete process.env.SUMMARY_KIE_ENABLED; provider.summaryText = null; }
   });
-  await check('SUMMARY_KIE_ENABLED=false keeps the summary on the reserve provider', async () => {
-    Object.assign(process.env, { KIE_API_KEY: 'synthetic_kie_key', SUMMARY_KIE_ENABLED: 'false' });
+  await check('Kie is opt-in: a Kie key alone or SUMMARY_KIE_ENABLED=false keeps the summary on DeepInfra', async () => {
     try {
-      const fixture = await setup();
-      const before = provider.calls.length;
-      await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
-      assert.equal(provider.calls.slice(before).filter(row => row.kind === 'kie').length, 0);
+      for (const flag of [undefined, 'false']) {
+        Object.assign(process.env, { KIE_API_KEY: 'synthetic_kie_key' });
+        if (flag) process.env.SUMMARY_KIE_ENABLED = flag; else delete process.env.SUMMARY_KIE_ENABLED;
+        const fixture = await setup();
+        const before = provider.calls.length;
+        await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+        assert.equal(provider.calls.slice(before).filter(row => row.kind === 'kie').length, 0, String(flag));
+      }
     } finally { delete process.env.KIE_API_KEY; delete process.env.SUMMARY_KIE_ENABLED; }
   });
   await check('new messages inside the kept recent window do not trigger a paid summary call', async () => {
@@ -174,7 +177,7 @@ try {
     const fixture = await setup();
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     assert.ok(result && countTokens(result) <= 200);
-    assert.equal(latestSummaryBody.model, 'mistralai/Mistral-Small-3.2-24B-Instruct-2506');
+    assert.equal(latestSummaryBody.model, 'google/gemma-4-31B-it-turbo');
     assert.equal(latestSummaryBody.max_tokens, 768); assert.equal(latestSummaryBody.response_format.type, 'json_schema');
     assert.equal(latestSummaryBody.response_format.json_schema.strict, true);
     process.env.MEMORY_AI_PROVIDER = 'kodikrouter';

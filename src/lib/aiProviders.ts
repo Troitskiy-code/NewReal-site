@@ -58,7 +58,7 @@ export function serviceTransport(purpose: string, requestedModel: string, legacy
   const choices: Record<string, string> = {
     // 2026-10-24 chapter summaries on a 171-message story, manual beat scoring: Gemma 4 Turbo 69–82%
     // (three runs, 1–2 compressions), GPT-6 Luna 42–49%, Mistral Small 3.2 22–28% (it wrote three full
-    // items per chapter, so the oldest chapters were re-compressed every step). Also the Kie reserve.
+    // items per chapter, so the oldest chapters were re-compressed every step). The Kie route (kieText) is opt-in.
     summary: "google/gemma-4-31B-it-turbo",
     // 2026-10-20 eval (scripts/eval-memory-extraction-models.mjs, production-sized turns): Gemma 4 Turbo recall
     // 68% vs 53% for Mistral Small 3.2, 2 vs 16 false facts, p90 4.2 s vs 15.5 s. Qwen3-Next scored the same

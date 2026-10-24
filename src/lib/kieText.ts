@@ -1,18 +1,18 @@
 import { meteredKiePost } from "./aiCostTelemetry";
 
 /**
- * Summary model since 2026-10-24: GPT-6 Luna through Kie. With chapter summaries it kept 42–49% of a
- * 171-message story's key beats against 22–28% for Mistral-Small, which wrote three full items per
- * chapter and forced a compression on every step (eval 2026-10-24). About $0.005 per rebuild.
+ * Optional summary route: GPT-6 Luna through Kie, tried before DeepInfra when enabled. With chapter
+ * summaries it kept 42–49% of a 171-message story's key beats against 69–82% for Gemma 4 Turbo on
+ * DeepInfra, the default (eval 2026-10-24). About $0.005 per rebuild.
  */
 export const KIE_SUMMARY_MODEL = "gpt-6-luna";
 const KIE_RESPONSES_URL = "https://api.kie.ai/codex/v1/responses";
 /** Kie's gateway cuts a non-streamed answer at ~100 s (code 524); Luna answered a chunk in 17–45 s. */
 const KIE_SUMMARY_TIMEOUT_MS = 75_000;
 
-/** Off with SUMMARY_KIE_ENABLED=false (rollback), or when no Kie key is configured. */
+/** Opt-in: SUMMARY_KIE_ENABLED=true and a Kie key. Otherwise summaries go to DeepInfra only. */
 export function kieSummaryEnabled(): boolean {
-  return process.env.SUMMARY_KIE_ENABLED !== "false" && Boolean(process.env.KIE_API_KEY?.trim());
+  return process.env.SUMMARY_KIE_ENABLED === "true" && Boolean(process.env.KIE_API_KEY?.trim());
 }
 
 export class KieTextError extends Error {
