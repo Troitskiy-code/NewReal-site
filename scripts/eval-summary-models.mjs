@@ -49,7 +49,7 @@ const time = row => new Date(row.createdAt).getTime();
 function systemPrompt(prompt, maxTokens, names) {
   const cast = [names.user && `герой пользователя — ${names.user}`, names.character && `персонаж — ${names.character}`].filter(Boolean);
   return prompt + '\n\n' + evidence.GROUNDED_SUMMARY_RULES
-    + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${policy.summaryItemLimit(maxTokens)} пунктов. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${policy.SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии. Старые сцены при обновлении сжимай сильнее, чем новые. JSON полностью закрой; без markdown-обёртки.`
+    + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${policy.summaryItemLimit(maxTokens)} пунктов${policy.pastItemLimit ? `, из них past — не больше ${policy.pastItemLimit(maxTokens)}` : ''}. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${policy.SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии. Старые сцены при обновлении сжимай сильнее, чем новые. JSON полностью закрой; без markdown-обёртки.`
     + (cast.length ? `\nУчастники: ${cast.join(', ')}. В пересказе называй их по именам, а не «пользователь» и «персонаж».` : '');
 }
 const mergeSources = (old, messages) => [...evidence.sourcesFromSummaries(old), ...evidence.makeSummarySources(messages)]
@@ -141,7 +141,8 @@ async function runModel(id, messages, core, names, maxTokens) {
         const answer = await callModel(spec, systemPrompt(prompt, maxTokens, names), input, maxTokens, sources.map(s => s.id));
         let stats = null;
         const summary = evidence.renderGroundedSummary(answer.text, sources, maxTokens, countTokens, s => { stats = s; }, core ?? '', names);
-        record({ ...answer.usage, finish: answer.finishReason, ok: Boolean(summary), stats, raw: answer.text });
+        record({ ...answer.usage, finish: answer.finishReason, ok: Boolean(summary), stats, raw: answer.text,
+          ...(process.argv.includes('--keep-input') ? { request: input } : {}) });
         if (!summary) throw new StepError('MEMORY_SUMMARY_NO_FITTING_SOURCE', { counted: true });
         return summary;
       } catch (error) {

@@ -151,7 +151,41 @@ check('a merge keeps the compressed past first and new events after it', () => {
   assert.doesNotMatch(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика поужинала с Артёмом в ресторане.', 's1', 'reported', 'past')] }),
     quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём'), /ресторане/);
 });
-check('at most two past items are pinned, leaving room for new events', () => {
+check('past may take all items but two, and at most 60% of the budget', () => {
+  assert.equal(policy.pastItemLimit(1500), 4); assert.equal(policy.pastItemLimit(800), 2); assert.equal(policy.pastItemLimit(200), 1);
+  assert.ok(evidence.GROUNDED_SUMMARY_RULES.includes('не меньше двух пунктов оставь для новых сообщений'));
+  const stages = [
+    'Вика и Артём учились в одной школе, и в выпускном классе Артём признался Вике в чувствах, а она ему отказала.',
+    'Через три года они случайно встретились в клубе, где Вика отмечала с подругами, а Артём праздновал возвращение Сергея из армии.',
+    'Вика рассказала, что танцует в своей команде, снимает видео, работает в кофейне и учится заочно на дизайнера.',
+    'Артём рассказал о своём проекте, который приносит ему доход, и предложил Вике снова общаться без спешки.',
+    'Вика дала Артёму свой номер, и после клуба он подвёз её домой.',
+  ];
+  const quotes = [...evidence.sourcesFromSummaries(`## Предыстория\n${stages.join(' ')}`), ...evidence.makeSummarySources([
+    { role: 'assistant', content: 'Ресторан был отличный, и после ужина мы поехали ко мне.' }])].map((source, index) => ({ ...source, id: `s${index + 1}` }));
+  const latest = 'Вика и Артём поужинали в ресторане и поехали к Вике.';
+  let stats;
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [
+    ...stages.map((text, index) => item(text, `s${index + 1}`, 'reported', 'past')), item(latest, 's6', 'reported', 'story')] }),
+    quotes, 1500, text => text.length, value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
+  // Five past items are offered, four may be pinned, and only what fits in 60% of 1500 characters is kept.
+  assert.ok(stats.pastItemCount >= 3 && stats.pastItemCount <= 4, String(stats.pastItemCount));
+  assert.ok(result.indexOf(latest) > 0, 'the new scene keeps its place');
+  assert.ok(result.slice(0, result.indexOf(latest)).length <= 900);
+});
+check('a paraphrased retelling needs a third of its terms; invented ones and other sections still need half', () => {
+  const said = [{ text: 'Вика призналась Артёму, что три года назад отказала ему из страха привязаться.' }];
+  const paraphrase = 'Вика рассказала Артёму, что тогда отказала ему из страха и чувств.';
+  assert.equal(narrative.retellingRejection(paraphrase, said, ['Вика', 'Артём']), 'terms');
+  assert.equal(narrative.retellingRejection(paraphrase, said, ['Вика', 'Артём'], said, narrative.RETELLING_TERM_SHARE), null);
+  assert.equal(narrative.retellingRejection('Вика купила Артёму новую машину вечером.', said, ['Вика', 'Артём'], said, narrative.RETELLING_TERM_SHARE), 'terms');
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: said[0].text }]);
+  const story = evidence.renderGroundedSummary(JSON.stringify({ items: [item(paraphrase, 's1', 'reported', 'story')] }), quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём');
+  assert.match(story, /страха и чувств/);
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item(paraphrase, 's1', 'reported', 'events'), item(said[0].text.replace('призналась', 'сказала'), 's1', 'reported', 'story')] }),
+    quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём').includes('страха и чувств'), false);
+});
+check('at most two past items are pinned at an 800-token budget, leaving room for new events', () => {
   const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе. Потом они поужинали в ресторане.';
   const quotes = evidence.sourcesFromSummaries(previous);
   let stats;
@@ -161,7 +195,6 @@ check('at most two past items are pinned, leaving room for new events', () => {
     item('Потом они поужинали в ресторане.', 's3', 'reported', 'past'),
   ] }), quotes, 800, countTokens, value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
   assert.equal(stats.pastItemCount, 2);
-  assert.ok(evidence.GROUNDED_SUMMARY_RULES.includes('past — не больше двух пунктов'));
 });
 check('a merge without a past carries the opening of the previous story forward', () => {
   const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе.';

@@ -103,9 +103,13 @@ export function isSupportedRetelling(sentence: string, evidence: Array<{ text: s
   knownNames: string[]): boolean {
   return retellingRejection(sentence, evidence, knownNames) === null;
 }
+/** Share of a narrative sentence's terms that must occur in its evidence. A retelling in its own
+ * words matched 38–56% of the source terms and lost whole items at 1/2 (Gemma 16 items per
+ * rebuild, eval 2026-10-24); invented sentences stayed at 0–25%. */
+export const RETELLING_TERM_SHARE = 1 / 3;
 /** The first rule a retelling sentence breaks, or null. Only enums leave this function. */
 export function retellingRejection(sentence: string, evidence: Array<{ text: string; status?: MemoryStatus }>,
-  knownNames: string[], denials: Array<{ text: string }> = evidence): RetellingRejection | null {
+  knownNames: string[], denials: Array<{ text: string }> = evidence, termShare = 0.5): RetellingRejection | null {
   if (!sentence.trim() || stripMemoryControlInstructions(sentence) !== sentence) return "control";
   if (ROLEPLAY_VOICE.test(sentence)) return "person";
   if (!evidence.length) return "speaker";
@@ -141,7 +145,7 @@ export function retellingRejection(sentence: string, evidence: Array<{ text: str
   // Names are verified above and do not count as support, unless they are all the sentence has.
   const withoutNames = [...terms].filter(term => !nameTerms.has(term));
   const content = withoutNames.length ? withoutNames : [...terms];
-  return content.length > 0 && content.filter(term => sourceTerms.has(term)).length / content.length >= 0.5 ? null : "terms";
+  return content.length > 0 && content.filter(term => sourceTerms.has(term)).length / content.length >= termShare ? null : "terms";
 }
 
 /** A quoted gesture or two-word reply («Можешь.», «За спину.») is not an event worth a prompt

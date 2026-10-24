@@ -6,6 +6,15 @@ export const MAX_SUMMARY_GENERATION_TOKENS = 4096;
  * 1500 tokens made the model write ~2500 tokens, past the 90 s timeout, while the renderer could
  * keep only five of them (prod 2026-10-24). */
 export const summaryItemLimit = (storedLimit: number) => Math.min(10, Math.max(1, Math.floor(storedLimit / 220)));
+/** Past items a merge may pin: all but two, which stay for the new messages (4 of 6 at 1500).
+ * Two past items had to hold a whole 171-message story, so the restaurant date and the decision to
+ * be a couple washed out after eight merges with every model tried (eval 2026-10-24). */
+export const pastItemLimit = (storedLimit: number) => {
+  const items = summaryItemLimit(storedLimit);
+  return Math.max(Math.min(2, items), items - 2);
+};
+/** Share of the stored allowance the pinned past may fill, so the new scenes always fit. */
+export const PAST_BUDGET_SHARE = 0.6;
 /** Provider-side item length. 1200 characters invited a scene-by-scene retelling: ~3000 tokens for
  * 28 messages, past the 90 s timeout and the stored allowance (prod 2026-10-24). */
 export const SUMMARY_ITEM_MAX_CHARS = 600;
