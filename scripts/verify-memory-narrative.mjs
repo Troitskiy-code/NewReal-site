@@ -101,6 +101,27 @@ check('a story cannot use an uncited denial-free neighbour to hide a cited denia
   ]);
   assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Ключ передан капитану.', 's1', 'reported', 'story')] }), quotes, 800, countTokens), '');
 });
+check('an item cut at the provider length limit loses only its unfinished sentence', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Вика работает в кофейне по выходным и учится заочно на дизайн.' }]);
+  const whole = 'Вика работает в кофейне по выходным. '.repeat(16);
+  const cut = (whole + 'Вика учится заочно на диз').slice(0, policy.SUMMARY_ITEM_MAX_CHARS);
+  assert.ok(cut.length === policy.SUMMARY_ITEM_MAX_CHARS && !/[.!?]$/.test(cut));
+  let stats;
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [item(cut, 's1', 'reported', 'story')] }), quotes, 2000, countTokens, value => { stats = value; });
+  assert.match(result, /по выходным\.$/); assert.doesNotMatch(result, /диз$/); assert.equal(stats.cutItemCount, 1);
+  // A short item without a final period is not «cut»: only the provider limit cuts mid-word.
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика работает в кофейне', 's1', 'reported', 'story')] }), quotes, 800, countTokens), /кофейне$/);
+});
+check('a sentence repeated by a later story item is kept once', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Вика работает в кофейне по выходным и учится заочно на дизайн.' }]);
+  let stats;
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [
+    item('Вика работает в кофейне по выходным.', 's1', 'reported', 'story'),
+    item('Вика работает в кофейне по выходным. Вика учится заочно на дизайн.', 's1', 'reported', 'story'),
+  ] }), quotes, 800, countTokens, value => { stats = value; });
+  assert.equal(result, '## Предыстория\nВика работает в кофейне по выходным.\nВика учится заочно на дизайн.');
+  assert.equal(stats.duplicateSentenceCount, 1);
+});
 check('a short opening word is not an unknown name', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);
   const text = 'Но Вика работает в кофейне по выходным.';

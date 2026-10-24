@@ -1,5 +1,5 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
-import { MemorySummaryError, type MemorySummaryDetail, type MemorySummaryItemReason } from "./memorySummaryPolicy";
+import { MemorySummaryError, SUMMARY_ITEM_MAX_CHARS, type MemorySummaryDetail, type MemorySummaryItemReason } from "./memorySummaryPolicy";
 import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, knownMemoryNames, retellingRejection, sameMemoryMeaning,
   type MemoryStatus, type RetellingRejection } from "./memoryNarrative";
 
@@ -18,6 +18,7 @@ export type SummaryRenderDiagnostics = {
   candidateCount: number; sourceCount: number; unsupportedItemCount: number;
   budgetRejectedCount: number; fittedCount: number; renderedUsage: number; storedLimit: number;
   skippedItemCount: number; skippedSourceLimitCount: number; trimmedStoryCount: number; rejectedSentenceCount: number;
+  cutItemCount: number; duplicateSentenceCount: number;
 } & Record<RejectionStat, number>;
 
 export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
@@ -60,8 +61,12 @@ function summarySubject(text: string): SummarySource["speaker"] {
  * citation (a story retells more than it can cite); a denial counts only from `cited`. */
 function checkSummaryText(text: string, support: SummarySource[], cited: SummarySource[], knownNames: string[]) {
   const supported: string[] = [], rejected: RetellingRejection[] = [];
-  if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return { supported, rejected: ["control" as const] };
-  for (const sentence of sentences(text)) {
+  if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return { supported, rejected: ["control" as const], cut: false };
+  const all = sentences(text);
+  // The provider schema stops an item at SUMMARY_ITEM_MAX_CHARS, mid-word if needed («…как сильно
+  // изменил»). That unfinished tail is dropped; it could stop right before a negation.
+  const cut = text.trim().length >= SUMMARY_ITEM_MAX_CHARS && !/[.!?…]["»)]*$/u.test(text.trim());
+  for (const sentence of cut ? all.slice(0, -1) : all) {
     const reason = sentence.split(/,\s*и\s+(?=(?:пользователь|персонаж)(?:\s|[,:]))/iu).map(assertion => {
       const subject = summarySubject(assertion);
       const claimable = (source: SummarySource) => {
@@ -74,7 +79,7 @@ function checkSummaryText(text: string, support: SummarySource[], cited: Summary
     }).find(Boolean);
     if (reason) rejected.push(reason); else supported.push(sentence);
   }
-  return { supported, rejected };
+  return { supported, rejected, cut };
 }
 
 /** Sources are checked per request; IDs are not a persistent facts database. `context` (Core)
@@ -101,7 +106,9 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
     unsupportedItemCount: 0, budgetRejectedCount: 0, fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens,
     skippedItemCount: 0, skippedSourceLimitCount: 0, trimmedStoryCount: 0, rejectedSentenceCount: 0,
+    cutItemCount: 0, duplicateSentenceCount: 0,
     ...Object.fromEntries(Object.values(REJECTION_STAT).map(key => [key, 0])) as Record<RejectionStat, number> };
+  const keptSentences: string[] = [];
   const sectionFor = (status: MemoryStatus, section: Section): Section => status === "proposed" || status === "promised" ? "plans"
     : status === "decided" ? "decisions" : status === "done" || status === "cancelled" ? "events" : section;
   const skipped: MemorySummaryDetail[] = [];
@@ -139,9 +146,16 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     const check = checkSummaryText(item.text, item.section === "story" ? [...known.values()] : cited, cited, knownNames);
     for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
     stats.rejectedSentenceCount += check.rejected.length;
+    if (check.cut) stats.cutItemCount++;
     if (check.rejected.length && !(item.section === "story" && check.supported.length)) { stats.unsupportedItemCount++; continue; }
     if (check.rejected.length) stats.trimmedStoryCount++;
-    const safeText = check.supported.join(" ").replace(/\s+/g, " ").trim();
+    // Story items of one answer overlap («…обсуждали проекты. Артём предложил…» twice): a sentence
+    // already kept from an earlier item is not repeated.
+    const fresh = check.supported.filter(sentence => !keptSentences.some(kept => kept === sentence || sameMemoryMeaning(kept, sentence)));
+    stats.duplicateSentenceCount += check.supported.length - fresh.length;
+    if (!fresh.length) { if (check.supported.length) continue; stats.unsupportedItemCount++; continue; }
+    keptSentences.push(...fresh);
+    const safeText = fresh.join(" ").replace(/\s+/g, " ").trim();
     // A chosen status cannot promote a source to an executed action. Ambiguous multi-source changes stay uncertain.
     const sourceStatuses = new Set(selected.map((source) => source.status ?? inferMemoryStatus(source.text)));
     const asked = item.status as MemoryStatus;
