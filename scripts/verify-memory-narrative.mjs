@@ -57,6 +57,26 @@ check('an ordinary word opening a sentence is not taken for an unknown name', ()
   const text = 'Подруги из танцевальной группы обсуждали новые хореографии для видео.';
   assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] }), quotes, 800, countTokens), /Подруги/);
 });
+check('a story keeps its supported sentences and counts the refused rule without text', () => {
+  const quotes = evidence.makeSummarySources([
+    { role: 'assistant', content: 'Это было три года назад. И да, отказала. Мне тогда не до отношений было.' },
+    { role: 'user', content: 'Да, ты до сих пор мне нравишься.' },
+  ]);
+  let stats;
+  const text = 'Три года назад Вика отказала Артёму. Петров увёз Вику в Казань. Тогда ей было не до отношений.';
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [{ ...item(text, 's1', 'reported', 'story'), sources: ['s1', 's2', 's3'] },
+    { ...item('Петров увёз Вику.', 's1'), sources: ['s1', 's2'] }] }),
+    quotes, 800, countTokens, value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
+  assert.equal(result, '## Предыстория\nТри года назад Вика отказала Артёму. Тогда ей было не до отношений.');
+  assert.equal(stats.trimmedStoryCount, 1); assert.equal(stats.unsupportedItemCount, 1);
+  assert.equal(stats.rejectedNameCount, 2); assert.equal(stats.rejectedSentenceCount, 2);
+  assert.ok(Object.values(stats).every(value => typeof value === 'number'));
+});
+check('a short opening word is not an unknown name', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);
+  const text = 'Но Вика работает в кофейне по выходным.';
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] }), quotes, 800, countTokens, undefined, '- Имя: Вика'), /^## Предыстория\nНо Вика/);
+});
 check('a name from Core context is known, a name absent everywhere is not', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным.' }]);
   const raw = text => JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] });

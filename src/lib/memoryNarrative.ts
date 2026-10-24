@@ -89,23 +89,31 @@ export function knownMemoryNames(text: string): string[] {
  * an ordinary word of the evidence. Completion, cancellation and promises still need a source
  * with that status, and a cited denial blocks the positive claim.
  */
+export const RETELLING_REJECTIONS = ["control", "speaker", "status", "number", "negation", "contradiction", "name", "terms"] as const;
+export type RetellingRejection = typeof RETELLING_REJECTIONS[number];
 export function isSupportedRetelling(sentence: string, evidence: Array<{ text: string; status?: MemoryStatus }>,
   knownNames: string[]): boolean {
-  if (!sentence.trim() || !evidence.length || stripMemoryControlInstructions(sentence) !== sentence) return false;
+  return retellingRejection(sentence, evidence, knownNames) === null;
+}
+/** The first rule a retelling sentence breaks, or null. Only enums leave this function. */
+export function retellingRejection(sentence: string, evidence: Array<{ text: string; status?: MemoryStatus }>,
+  knownNames: string[]): RetellingRejection | null {
+  if (!sentence.trim() || stripMemoryControlInstructions(sentence) !== sentence) return "control";
+  if (!evidence.length) return "speaker";
   const joined = evidence.map(row => row.text).join(" ");
   const status = inferMemoryStatus(sentence);
   if ((status === "done" || status === "cancelled" || status === "promised")
-    && !evidence.some(row => (row.status ?? inferMemoryStatus(row.text)) === status)) return false;
+    && !evidence.some(row => (row.status ?? inferMemoryStatus(row.text)) === status)) return "status";
   const available = new Set(memoryNumbers(joined));
-  if (memoryNumbers(sentence).some(value => !available.has(value))) return false;
+  if (memoryNumbers(sentence).some(value => !available.has(value))) return "number";
   const terms = memoryTerms(sentence), sourceTerms = memoryTerms(joined);
   if (NEGATION.test(sentence)) {
-    if (!evidence.some(row => NEGATION.test(row.text))) return false;
+    if (!evidence.some(row => NEGATION.test(row.text))) return "negation";
   } else if (evidence.some(row => {
     if (!NEGATION.test(row.text)) return false;
     const denied = memoryTerms(row.text);
     return [...terms].filter(term => denied.has(term)).length / Math.max(terms.size, denied.size, 1) >= 0.5;
-  })) return false;
+  })) return "contradiction";
   const known = [...names(joined), ...knownNames.map(nameKey)];
   const nameTerms = new Set<string>();
   for (const match of sentence.matchAll(/\p{Lu}[\p{L}'-]+/gu)) {
@@ -117,13 +125,14 @@ export function isSupportedRetelling(sentence: string, evidence: Array<{ text: s
     }
     const initial = /^[\s"«(*—–-]*$/u.test(sentence.slice(0, match.index));
     const term = memoryTerms(match[0]);
-    if (initial && [...term].every(value => sourceTerms.has(value)) && term.size) continue;
-    return false;
+    // «Три», «Но», «Их»: a short opening word is a function word, not an unknown name.
+    if (initial && (!term.size || [...term].every(value => sourceTerms.has(value)))) continue;
+    return "name";
   }
   // Names are verified above and do not count as support, unless they are all the sentence has.
   const withoutNames = [...terms].filter(term => !nameTerms.has(term));
   const content = withoutNames.length ? withoutNames : [...terms];
-  return content.length > 0 && content.filter(term => sourceTerms.has(term)).length / content.length >= 0.5;
+  return content.length > 0 && content.filter(term => sourceTerms.has(term)).length / content.length >= 0.5 ? null : "terms";
 }
 
 export function safeMemoryParaphrase(text: string, evidence: string): string {

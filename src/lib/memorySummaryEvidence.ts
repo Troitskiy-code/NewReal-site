@@ -1,16 +1,24 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { MemorySummaryError, type MemorySummaryDetail, type MemorySummaryItemReason } from "./memorySummaryPolicy";
-import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, isSupportedRetelling, knownMemoryNames, sameMemoryMeaning, type MemoryStatus } from "./memoryNarrative";
+import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, knownMemoryNames, retellingRejection, sameMemoryMeaning,
+  type MemoryStatus, type RetellingRejection } from "./memoryNarrative";
 
 type Author = "user" | "character" | "memory";
 export type SummarySource = { id: string; author: Author; text: string; status?: MemoryStatus;
   speaker?: "user" | "character"; turn?: number };
 const LABELS: Record<Author, string> = { user: "Пользователь", character: "Персонаж", memory: "Из прежней сводки" };
+/** Per-rule counters of refused retelling sentences: logs show which rule refuses, never the text. */
+export const REJECTION_STAT = {
+  control: "rejectedControlCount", speaker: "rejectedSpeakerCount", status: "rejectedStatusCount",
+  number: "rejectedNumberCount", negation: "rejectedNegationCount", contradiction: "rejectedContradictionCount",
+  name: "rejectedNameCount", terms: "rejectedTermsCount",
+} as const satisfies Record<RetellingRejection, string>;
+type RejectionStat = typeof REJECTION_STAT[RetellingRejection];
 export type SummaryRenderDiagnostics = {
   candidateCount: number; sourceCount: number; unsupportedItemCount: number;
   budgetRejectedCount: number; fittedCount: number; renderedUsage: number; storedLimit: number;
-  skippedItemCount: number; skippedSourceLimitCount: number;
-};
+  skippedItemCount: number; skippedSourceLimitCount: number; trimmedStoryCount: number; rejectedSentenceCount: number;
+} & Record<RejectionStat, number>;
 
 export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
 Составь предысторию, которая объясняет читателю и ИИ, что произошло в диалоге и на чём он остановился.
@@ -50,20 +58,24 @@ function summarySubject(text: string): SummarySource["speaker"] {
 /** Each assertion is checked against the cited sources its subject may claim: first-person
  * evidence belongs to its speaker and cannot be reassigned in a retelling. A cited source need
  * not be repeated, since a story item cites more quotes than any one sentence; a cited denial
- * still blocks the positive claim inside isSupportedRetelling. */
-function supportedSummaryText(text: string, selected: SummarySource[], knownNames: string[]): boolean {
-  if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return false;
-  const assertions = sentences(text).flatMap(sentence => sentence.split(/,\s*и\s+(?=(?:пользователь|персонаж)(?:\s|[,:]))/iu));
-  return assertions.every(sentence => {
-    const subject = summarySubject(sentence);
-    const eligible = selected.filter(source => {
-      const speaker = summarySubject(source.text)
-        ?? (/(?:^|[^\p{L}])(?:я|мне|мой|моя|мы)(?=$|[^\p{L}])/iu.test(source.text)
-          ? source.speaker ?? (source.author === "memory" ? undefined : source.author) : undefined);
-      return !(speaker && subject && speaker !== subject);
-    });
-    return isSupportedRetelling(sentence, eligible, knownNames);
-  });
+ * still blocks the positive claim inside retellingRejection. */
+function checkSummaryText(text: string, selected: SummarySource[], knownNames: string[]) {
+  const supported: string[] = [], rejected: RetellingRejection[] = [];
+  if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return { supported, rejected: ["control" as const] };
+  for (const sentence of sentences(text)) {
+    const reason = sentence.split(/,\s*и\s+(?=(?:пользователь|персонаж)(?:\s|[,:]))/iu).map(assertion => {
+      const subject = summarySubject(assertion);
+      const eligible = selected.filter(source => {
+        const speaker = summarySubject(source.text)
+          ?? (/(?:^|[^\p{L}])(?:я|мне|мой|моя|мы)(?=$|[^\p{L}])/iu.test(source.text)
+            ? source.speaker ?? (source.author === "memory" ? undefined : source.author) : undefined);
+        return !(speaker && subject && speaker !== subject);
+      });
+      return retellingRejection(assertion, eligible, knownNames);
+    }).find(Boolean);
+    if (reason) rejected.push(reason); else supported.push(sentence);
+  }
+  return { supported, rejected };
 }
 
 /** Sources are checked per request; IDs are not a persistent facts database. `context` (Core)
@@ -87,7 +99,8 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   const knownNames = knownMemoryNames([context, ...sources.map(source => source.text)].join("\n"));
   const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
     unsupportedItemCount: 0, budgetRejectedCount: 0, fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens,
-    skippedItemCount: 0, skippedSourceLimitCount: 0 };
+    skippedItemCount: 0, skippedSourceLimitCount: 0, trimmedStoryCount: 0, rejectedSentenceCount: 0,
+    ...Object.fromEntries(Object.values(REJECTION_STAT).map(key => [key, 0])) as Record<RejectionStat, number> };
   const sectionFor = (status: MemoryStatus, section: Section): Section => status === "proposed" || status === "promised" ? "plans"
     : status === "decided" ? "decisions" : status === "done" || status === "cancelled" ? "events" : section;
   const skipped: MemorySummaryDetail[] = [];
@@ -115,8 +128,14 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     const selected = [...new Set(item.sources as string[])].map((id) => known.get(id)!).sort((a, b) => a.index - b.index);
     // An unsupported retelling is dropped. Pasting its quotes instead turned summaries into
     // a log of replies that every later refresh fed back as evidence (prod 2026-10-24).
-    if (!supportedSummaryText(item.text, selected, knownNames)) { stats.unsupportedItemCount++; continue; }
-    const safeText = item.text.replace(/\s+/g, " ").trim();
+    // A story keeps its supported sentences: each one was checked on its own, while one bad
+    // sentence used to erase a whole long retelling. Other sections stay all-or-nothing.
+    const check = checkSummaryText(item.text, selected, knownNames);
+    for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
+    stats.rejectedSentenceCount += check.rejected.length;
+    if (check.rejected.length && !(item.section === "story" && check.supported.length)) { stats.unsupportedItemCount++; continue; }
+    if (check.rejected.length) stats.trimmedStoryCount++;
+    const safeText = check.supported.join(" ").replace(/\s+/g, " ").trim();
     // A chosen status cannot promote a source to an executed action. Ambiguous multi-source changes stay uncertain.
     const sourceStatuses = new Set(selected.map((source) => source.status ?? inferMemoryStatus(source.text)));
     const asked = item.status as MemoryStatus;
