@@ -200,6 +200,8 @@ async function handlePost(
       historyBeforeMessageId: assistantMessage.id,
       intent,
       locale: getApiLocale(req),
+      // Regeneration adds no messages; the summary refresh (up to its 90 s timeout) stays off the reply path.
+      refreshSummary: false,
     });
 
     const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);

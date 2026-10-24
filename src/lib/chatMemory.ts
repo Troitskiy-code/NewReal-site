@@ -25,6 +25,10 @@ import {
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const SUMMARY_MODEL = "openai/gpt-4o-mini";
+/** A grounded summary of a long story is ~1200 output tokens: ~30 s on Mistral-Small through the
+ * proxy, so the default 30 s service timeout cut most rebuild steps (prod 2026-10-24). Summaries
+ * run in the background or in the explicit rebuild, never on the reply path; the lease is 180 s. */
+const SUMMARY_TIMEOUT_MS = 90_000;
 const KEEP_RECENT_MESSAGES = 25;
 /** One summary call never takes more than this many messages; older backlogs catch up oldest-first. */
 export const MAX_SUMMARY_CHUNK_MESSAGES = 120;
@@ -502,6 +506,7 @@ async function requestKodikText(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
+      timeout: SUMMARY_TIMEOUT_MS,
     }
   );
 
