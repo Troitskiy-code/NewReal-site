@@ -10,7 +10,8 @@ export type SummarySource = { id: string; author: Author; text: string; status?:
 const LABELS: Record<Author, string> = { user: "Пользователь", character: "Персонаж", memory: "Из прежней сводки" };
 /** Per-rule counters of refused retelling sentences: logs show which rule refuses, never the text. */
 export const REJECTION_STAT = {
-  control: "rejectedControlCount", person: "rejectedPersonCount", speaker: "rejectedSpeakerCount", status: "rejectedStatusCount",
+  control: "rejectedControlCount", person: "rejectedPersonCount", copy: "rejectedCopyCount", fragment: "rejectedFragmentCount",
+  speaker: "rejectedSpeakerCount", status: "rejectedStatusCount",
   number: "rejectedNumberCount", negation: "rejectedNegationCount", contradiction: "rejectedContradictionCount",
   name: "rejectedNameCount", terms: "rejectedTermsCount",
 } as const satisfies Record<RetellingRejection, string>;
@@ -58,17 +59,28 @@ function summarySubject(text: string): SummarySource["speaker"] {
   return match ? match[1].toLowerCase() === "пользователь" ? "user" : "character" : undefined;
 }
 
+const normalizedSentence = (text: string) => text.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
 /** Each assertion is checked against the sources its subject may claim: first-person evidence
  * belongs to its speaker and cannot be reassigned in a retelling. `support` may be wider than the
  * citation (a story retells more than it can cite); a denial counts only from `cited`. */
-function checkSummaryText(text: string, support: SummarySource[], cited: SummarySource[], knownNames: string[]) {
+function checkSummaryText(text: string, support: SummarySource[], cited: SummarySource[], knownNames: string[],
+  messages: string[] = []) {
   const supported: string[] = [], rejected: RetellingRejection[] = [];
   if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return { supported, rejected: ["control" as const], cut: false };
   const all = sentences(text);
   // The provider schema stops an item at SUMMARY_ITEM_MAX_CHARS, mid-word if needed («…как сильно
-  // изменил»). That unfinished tail is dropped; it could stop right before a negation.
-  const cut = text.trim().length >= SUMMARY_ITEM_MAX_CHARS && !/[.!?…]["»)]*$/u.test(text.trim());
+  // изменил»), sometimes a few characters short. That unfinished tail is dropped; it could stop
+  // right before a negation.
+  const cut = text.trim().length >= SUMMARY_ITEM_MAX_CHARS * 0.95 && !/[.!?…]["»)]*$/u.test(text.trim());
   for (const sentence of cut ? all.slice(0, -1) : all) {
+    // `messages` is given for a retelling only: a verbatim piece of a reply («Открыла глаза.
+    // Пьяный от сна взгляд.») or a two-word fragment («Неон.») is narration, not a retelling.
+    if (messages.length) {
+      const plain = normalizedSentence(sentence);
+      if (plain.split(" ").filter(Boolean).length < 3) { rejected.push("fragment"); continue; }
+      if (messages.some(message => message.includes(plain))) { rejected.push("copy"); continue; }
+    }
     const reason = sentence.split(/,\s*и\s+(?=(?:пользователь|персонаж)(?:\s|[,:]))/iu).map(assertion => {
       const subject = summarySubject(assertion);
       const claimable = (source: SummarySource) => {
@@ -105,6 +117,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   type Row = { section: Section; text: string; status: MemoryStatus; author: string; order: number; pinned?: boolean };
   const rows: Row[] = [];
   const memorySources = [...known.values()].filter(source => source.author === "memory");
+  const messageTexts = [...turns.values()].map(rows => normalizedSentence(rows.map(row => row.text).join(" ")));
   // Names may come from any part of the request: cited roleplay quotes are first person.
   const knownNames = knownMemoryNames([context, ...sources.map(source => source.text)].join("\n"));
   const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
@@ -153,7 +166,8 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     const cited = [...new Map(selected.flatMap(source => source.turn === undefined ? [source] : turns.get(source.turn)!)
       .map(source => [source.id, source])).values()];
     // A past compresses the previous summary, so only that summary supports it.
-    const check = checkSummaryText(item.text, past ? memorySources : narrative ? [...known.values()] : cited, cited, knownNames);
+    const check = checkSummaryText(item.text, past ? memorySources : narrative ? [...known.values()] : cited, cited, knownNames,
+      narrative ? messageTexts : []);
     for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
     stats.rejectedSentenceCount += check.rejected.length;
     if (check.cut) stats.cutItemCount++;

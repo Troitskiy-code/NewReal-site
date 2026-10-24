@@ -65,7 +65,7 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "networkRoute",
   "candidateCount", "sourceCount", "unsupportedItemCount", "budgetRejectedCount",
   "fittedCount", "renderedUsage", "skippedItemCount", "skippedSourceLimitCount",
-  "trimmedStoryCount", "rejectedSentenceCount", "cutItemCount", "duplicateSentenceCount", "pastItemCount", "pastCarriedCount", "rejectedControlCount", "rejectedPersonCount", "rejectedSpeakerCount", "rejectedStatusCount",
+  "trimmedStoryCount", "rejectedSentenceCount", "cutItemCount", "duplicateSentenceCount", "pastItemCount", "pastCarriedCount", "rejectedControlCount", "rejectedPersonCount", "rejectedCopyCount", "rejectedFragmentCount", "rejectedSpeakerCount", "rejectedStatusCount",
   "rejectedNumberCount", "rejectedNegationCount", "rejectedContradictionCount", "rejectedNameCount", "rejectedTermsCount",
   "itemIndex", "itemSection", "itemSources",
   // Memory v2: local validation enums, generated labels, counters and job correlation.

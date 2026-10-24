@@ -89,7 +89,7 @@ export function knownMemoryNames(text: string): string[] {
  * an ordinary word of the evidence. Completion, cancellation and promises still need a source
  * with that status, and a cited denial blocks the positive claim.
  */
-export const RETELLING_REJECTIONS = ["control", "person", "speaker", "status", "number", "negation", "contradiction", "name", "terms"] as const;
+export const RETELLING_REJECTIONS = ["control", "person", "copy", "fragment", "speaker", "status", "number", "negation", "contradiction", "name", "terms"] as const;
 /** A retelling is third person. «я/ты/мы» or a *stage direction* is a pasted roleplay reply,
  * which passes every overlap check by being a copy (prod rebuild 2026-10-24). */
 const ROLEPLAY_VOICE = /\*|(?:^|[^\p{L}])(?:я|меня|мне|мной|мой|моя|моё|мое|мои|моего|моей|моих|мы|нас|нам|нами|наш|наша|наше|наши|ты|тебя|тебе|тобой|твой|твоя|твоё|твое|твои|твоего|твоей)(?=$|[^\p{L}])/iu;

@@ -77,7 +77,7 @@ check('a pasted first-person reply or stage direction is refused even though it 
   let stats;
   for (const text of ['Я прочитала сообщение и у меня загорелись щёки.', '*я прикусила губу*']) {
     assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] }), quotes, 800, countTokens, value => { stats = value; }), '');
-    assert.equal(stats.rejectedPersonCount, 1);
+    assert.equal(stats.rejectedPersonCount + stats.rejectedCopyCount, 1);
   }
   assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Персонаж прочитала сообщение, и у неё загорелись щёки.', 's1', 'reported', 'story')] }),
     quotes, 800, countTokens), /^## Предыстория/);
@@ -102,38 +102,38 @@ check('a story cannot use an uncited denial-free neighbour to hide a cited denia
   assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Ключ передан капитану.', 's1', 'reported', 'story')] }), quotes, 800, countTokens), '');
 });
 check('an item cut at the provider length limit loses only its unfinished sentence', () => {
-  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Вика работает в кофейне по выходным и учится заочно на дизайн.' }]);
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным и учусь заочно на дизайн.' }]);
   const whole = 'Вика работает в кофейне по выходным. '.repeat(16);
   const cut = (whole + 'Вика учится заочно на диз').slice(0, policy.SUMMARY_ITEM_MAX_CHARS);
   assert.ok(cut.length === policy.SUMMARY_ITEM_MAX_CHARS && !/[.!?]$/.test(cut));
   let stats;
-  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [item(cut, 's1', 'reported', 'story')] }), quotes, 2000, countTokens, value => { stats = value; });
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [item(cut, 's1', 'reported', 'story')] }), quotes, 2000, countTokens, value => { stats = value; }, '- Имя: Вика');
   assert.match(result, /по выходным\.$/); assert.doesNotMatch(result, /диз$/); assert.equal(stats.cutItemCount, 1);
   // A short item without a final period is not «cut»: only the provider limit cuts mid-word.
-  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика работает в кофейне', 's1', 'reported', 'story')] }), quotes, 800, countTokens), /кофейне$/);
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика работает в кофейне', 's1', 'reported', 'story')] }), quotes, 800, countTokens, undefined, '- Имя: Вика'), /кофейне$/);
 });
 check('a sentence repeated by a later story item is kept once', () => {
-  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Вика работает в кофейне по выходным и учится заочно на дизайн.' }]);
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным и учусь заочно на дизайн.' }]);
   let stats;
   const result = evidence.renderGroundedSummary(JSON.stringify({ items: [
     item('Вика работает в кофейне по выходным.', 's1', 'reported', 'story'),
     item('Вика работает в кофейне по выходным. Вика учится заочно на дизайн.', 's1', 'reported', 'story'),
-  ] }), quotes, 800, countTokens, value => { stats = value; });
+  ] }), quotes, 800, countTokens, value => { stats = value; }, '- Имя: Вика');
   assert.equal(result, '## Предыстория\nВика работает в кофейне по выходным.\nВика учится заочно на дизайн.');
   assert.equal(stats.duplicateSentenceCount, 1);
 });
 check('an over-long answer loses its oldest scene, not the latest events', () => {
   const quotes = evidence.makeSummarySources([
-    { role: 'assistant', content: 'Вика сидела в клубе с подругами из танцевальной группы и обсуждала новые видео.' },
-    { role: 'user', content: 'Артём пригласил Вику в ресторан и признался, что она ему до сих пор нравится.' },
+    { role: 'assistant', content: 'Я сидела в клубе с подругами из танцевальной группы и обсуждала новые видео.' },
+    { role: 'user', content: 'Я пригласил тебя в ресторан и признался, что ты мне до сих пор нравишься.' },
   ]);
   const old = { ...item('Вика сидела в клубе с подругами из танцевальной группы и обсуждала новые видео.', 's1', 'reported', 'story') };
   const latest = { ...item('Артём пригласил Вику в ресторан и признался, что она ему до сих пор нравится.', 's2', 'reported', 'story') };
   const budget = countTokens(`## Предыстория\n${latest.text}`) + 2;
   let stats;
-  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [old, latest] }), quotes, budget, countTokens, value => { stats = value; });
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [old, latest] }), quotes, budget, countTokens, value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
   assert.equal(result, `## Предыстория\n${latest.text}`); assert.equal(stats.budgetRejectedCount, 1);
-  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [old, latest] }), quotes, 800, countTokens), `## Предыстория\n${old.text}\n${latest.text}`);
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [old, latest] }), quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём'), `## Предыстория\n${old.text}\n${latest.text}`);
   assert.equal(policy.summaryItemLimit(1500), 6); assert.equal(policy.summaryItemLimit(200), 1);
 });
 check('a merge keeps the compressed past first and new events after it', () => {
@@ -166,9 +166,19 @@ check('a merge without a past carries the opening of the previous story forward'
   assert.equal(legacy.some(source => source.past), false);
 });
 check('a past without a previous summary is an ordinary story item', () => {
-  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Вика работает в кофейне по выходным.' }]);
-  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика работает в кофейне по выходным.', 's1', 'reported', 'past')] }), quotes, 800, countTokens),
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным.' }]);
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика работает в кофейне по выходным.', 's1', 'reported', 'past')] }), quotes, 800, countTokens, undefined, '- Имя: Вика'),
     '## Предыстория\nВика работает в кофейне по выходным.');
+});
+check('a story refuses verbatim narration and two-word fragments, keeps the retelling', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Открыла глаза. Пьяный от сна взгляд. Артём? Я проснулась от того, что Артём гремел посудой на кухне.' }]);
+  let stats;
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [item('Открыла глаза. Пьяный от сна взгляд. Неон. Вика проснулась, когда Артём гремел посудой на кухне.', 's1', 'reported', 'story')] }),
+    quotes, 800, countTokens, value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
+  assert.equal(result, '## Предыстория\nВика проснулась, когда Артём гремел посудой на кухне.');
+  assert.equal(stats.rejectedCopyCount, 1); assert.equal(stats.rejectedFragmentCount, 2);
+  // Labelled items keep their old behaviour: a verbatim third-person fact is still accepted there.
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Пьяный от сна взгляд.', 's2', 'reported', 'state')] }), quotes, 800, countTokens), /Пьяный/);
 });
 check('a short opening word is not an unknown name', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);
@@ -258,10 +268,10 @@ check('a short retelling of an oversized quote is kept without the quote or unre
   assert.throws(() => evidence.renderGroundedSummary('{"items":[]}', quotes, 200, countTokens), { code: 'MEMORY_SUMMARY_INVALID_ITEMS' });
 });
 check('an item over the stored budget is dropped whole', () => {
-  const quotes = evidence.makeSummarySources([{ role: 'user', content: 'Смотритель хранит ключ возле деревянной ступени в закрытой башне.' }]);
+  const quotes = evidence.makeSummarySources([{ role: 'user', content: 'Я храню ключ возле деревянной ступени в закрытой башне.' }]);
   let stats;
   const text = evidence.renderGroundedSummary(JSON.stringify({ items: [{ section: 'story', status: 'reported',
-    text: quotes[0].text, sources: ['s1'] }] }), quotes, 10, countTokens, value => { stats = value; });
+    text: 'Пользователь хранит ключ возле деревянной ступени в закрытой башне.', sources: ['s1'] }] }), quotes, 10, countTokens, value => { stats = value; });
   assert.equal(text, ''); assert.equal(stats.budgetRejectedCount, 1);
 });
 check('a valid item cannot hide an invalid later item, and a cited denial blocks the positive claim', () => {
@@ -283,7 +293,7 @@ check('schema-valid item over its section source limit is dropped alone, never t
   assert.match(text, /номер 5/); assert.doesNotMatch(text, /номер [1-4]/);
   assert.equal(stats.skippedItemCount, 1); assert.equal(stats.skippedSourceLimitCount, 1);
   // The same five sources are a valid story item: the limit is per section.
-  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [{ ...wide, section: 'story' }] }), quotes, 400, countTokens), /номер 1/);
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [{ ...wide, section: 'story', text: 'Пользователь видит, что шлюз номер 1 закрыт.' }] }), quotes, 400, countTokens), /номер 1/);
   assert.throws(() => evidence.renderGroundedSummary(JSON.stringify({ items: [wide, { ...kept, text: '   ' }] }), quotes, 400, countTokens),
     (error) => error.code === 'MEMORY_SUMMARY_UNSUPPORTED_ITEM' && error.detail.validationReason === 'too_many_sources'
       && error.detail.itemIndex === 1 && error.detail.itemSection === 'state' && error.detail.itemSources === 5 && error.detail.rejected === 2);
