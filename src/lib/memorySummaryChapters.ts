@@ -20,6 +20,8 @@ export type SummaryMode = "summary" | "merge" | "chapter" | "compress";
 export const CHAPTER_BUDGET_SHARE = 0.5;
 /** A compressed pair keeps ~60% of its length, and at most this share of the allowance. */
 const COMPRESSED_SHARE = 0.6, COMPRESSED_MAX_SHARE = 0.35, MAX_COMPRESSIONS = 4;
+/** After an overflow the summary is compressed to this share of its allowance. */
+const COMPRESSED_TARGET_SHARE = 0.75;
 /** A compression is kept when it is at most 85% of the pair, so every round frees room. */
 const COMPRESSED_ACCEPT_SHARE = 0.85;
 /** «## Предыстория» counted by the renderer's budget. */
@@ -104,7 +106,11 @@ async function fitChapters(chapters: string[], rest: string, context: ChapterCon
   const { maxTokens, countTokens } = context;
   const size = () => countTokens(composeChapterSummary(chapters, rest));
   // The newest chapter is never touched by a compression: at least three chapters are needed.
-  for (let round = 0; size() > maxTokens && chapters.length >= 3 && round < MAX_COMPRESSIONS; round++) {
+  // Once over the allowance, compress down to COMPRESSED_TARGET_SHARE of it, so the next chapters fit
+  // without another round: compressing just under the limit re-compressed the story's opening on
+  // almost every refresh (prod test 2026-10-24).
+  const target = size() > maxTokens ? Math.floor(maxTokens * COMPRESSED_TARGET_SHARE) : maxTokens;
+  for (let round = 0; size() > target && chapters.length >= 3 && round < MAX_COMPRESSIONS; round++) {
     chapters = [await compressChapters(chapters[0], chapters[1], context, stats), ...chapters.slice(2)];
   }
   // Last resort without a model: the oldest chapters lose their later sentences, their opening

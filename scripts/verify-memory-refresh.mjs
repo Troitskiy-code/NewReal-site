@@ -130,12 +130,23 @@ try {
     } finally { delete process.env.KIE_API_KEY; delete process.env.SUMMARY_KIE_ENABLED; }
   });
   await check('new messages inside the kept recent window do not trigger a paid summary call', async () => {
-    const fixture = await setup('Смотритель хранит ключ возле ступени. '.repeat(40));
-    await db.memory.update({ where: { threadId: fixture.scope.threadId }, data: { lastSummarizedAt: fixture.rows[42].createdAt, summarizedMessageCount: 43 } });
+    const fixture = await setup();
+    await db.memory.update({ where: { threadId: fixture.scope.threadId }, data: { lastSummarizedAt: fixture.rows[49].createdAt, summarizedMessageCount: 50 } });
     const calls = provider.calls.filter(row => row.kind === 'summary').length;
-    // 27 long new messages exceed the token threshold, but only 2 lie outside the 25 kept recent ones.
+    // 20 short new messages all fit the kept window, so nothing is summarizable yet.
     assert.equal(await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user), 'Прежняя память.');
     assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
+  });
+  await check('the kept window is sized by tokens so it fits the prompt; a refresh waits for 30% of the context', () => {
+    const long = 'Смотритель хранит ключ возле ступени. '.repeat(40), short = 'Ключ лежит под ступенью.';
+    const rows = (content, count) => Array.from({ length: count }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content }));
+    assert.equal(memory.recentWindowSize(rows(short, 40), 16000), 25, 'short messages keep the full 25');
+    const kept = memory.recentWindowSize(rows(long, 40), 16000);
+    assert.ok(kept >= 4 && kept < 25, String(kept));
+    assert.ok(countTokens(long) * kept <= 16000 * 0.2, 'the window stays within 20% of the context');
+    assert.equal(memory.recentWindowSize(rows(long + long + long + long, 10), 4000), 4, 'never fewer than 4');
+    assert.equal(memory.refreshTokenThreshold(memory.SUMMARY_CONFIG.universe, 16000), 4800);
+    assert.equal(memory.refreshTokenThreshold(memory.SUMMARY_CONFIG.start, 2000), memory.SUMMARY_CONFIG.start.refreshTokenThreshold);
   });
   await check('a truncated answer keeps its complete items and never repairs the cut one', () => {
     const cut = '{"items":[{"section":"story","text":"Ключ {лежит} под \\"ступенью\\".","status":"reported","sources":["s1"]},'

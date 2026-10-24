@@ -451,8 +451,32 @@ export function takeSummaryChunk(
   return messages.slice(0, end);
 }
 
-function getHistoryForSummary(messages: DialogMessage[]): DialogMessage[] {
-  return takeSummaryChunk(messages);
+/**
+ * The newest messages stay out of the summary only while they fit the prompt: at most
+ * RECENT_WINDOW_SHARE of the context, 4–25 messages. A fixed 25 long roleplay replies took
+ * 12–15k of a 16k prompt; the oldest of them were neither summarized nor sent (up to 17 per
+ * turn, prod test 2026-10-24).
+ */
+const RECENT_WINDOW_SHARE = 0.2, MIN_RECENT_MESSAGES = 4;
+/** A refresh waits for this share of the context beyond the window, so a chapter retells a real
+ * part of the story: at 3000 tokens long replies wrote a chapter every 2–3 turns and the oldest
+ * chapter was re-compressed on almost every refresh. Window + backlog stay within ~half the context. */
+const REFRESH_CONTEXT_SHARE = 0.3;
+export function recentWindowSize(messages: DialogMessage[], contextTokens: number): number {
+  const limit = Math.floor(contextTokens * RECENT_WINDOW_SHARE);
+  let count = 0, tokens = 0;
+  for (let index = messages.length - 1; index >= 0 && count < KEEP_RECENT_MESSAGES; index--) {
+    const size = countTokens(messages[index].content);
+    if (count >= MIN_RECENT_MESSAGES && tokens + size > limit) break;
+    tokens += size; count++;
+  }
+  return count;
+}
+function getHistoryForSummary(messages: DialogMessage[], contextTokens: number): DialogMessage[] {
+  return takeSummaryChunk(messages, recentWindowSize(messages, contextTokens));
+}
+export function refreshTokenThreshold(config: SummaryConfig, contextTokens: number): number {
+  return Math.max(config.refreshTokenThreshold, Math.floor(contextTokens * REFRESH_CONTEXT_SHARE));
 }
 
 async function loadCoreMemoryText(scope: ChatScope): Promise<string | null> {
@@ -841,16 +865,17 @@ async function refreshChatMemorySummary(
     // Only messages older than the kept recent window can be summarized. Counting that window
     // too kept a long story over the threshold forever: a paid merge of ~2 messages after
     // almost every turn (prod 2026-10-24).
-    const historyToChapter = getHistoryForSummary(allMessages);
+    const historyToChapter = getHistoryForSummary(allMessages, maxContextTokens);
     const newTokens = historyToChapter.reduce((sum, message) => sum + countTokens(message.content), 0);
+    const tokenThreshold = refreshTokenThreshold(config, maxContextTokens);
 
     if (
       historyToChapter.length < config.refreshMessageThreshold &&
-      newTokens < config.refreshTokenThreshold
+      newTokens < tokenThreshold
     ) {
       infoLog(
         "Memory",
-        `Skipped refresh (summarizable: ${historyToChapter.length} msgs, ${newTokens} tokens; threshold: ${config.refreshMessageThreshold} msgs / ${config.refreshTokenThreshold} tokens)`
+        `Skipped refresh (summarizable: ${historyToChapter.length} msgs, ${newTokens} tokens; threshold: ${config.refreshMessageThreshold} msgs / ${tokenThreshold} tokens)`
       );
       return existingMemory.summary;
     }
@@ -878,7 +903,7 @@ async function refreshChatMemorySummary(
     return null;
   }
 
-  const historyToSummarize = getHistoryForSummary(allMessages);
+  const historyToSummarize = getHistoryForSummary(allMessages, maxContextTokens);
   if (historyToSummarize.length === 0) {
     return null;
   }
@@ -976,10 +1001,11 @@ export async function forceRefreshMemorySummary(
     return null;
   }
 
+  const contextTokens = getContextTokenLimit(loadedUser);
   if (!existingMemory) {
     const historyToSummarize =
-      allMessages.length > KEEP_RECENT_MESSAGES
-        ? getHistoryForSummary(allMessages)
+      allMessages.length > recentWindowSize(allMessages, contextTokens)
+        ? getHistoryForSummary(allMessages, contextTokens)
         : allMessages.slice(0, MAX_SUMMARY_CHUNK_MESSAGES);
     return createArcSummary(scope, apiKey, historyToSummarize, config, plan, onWrite, snapshotRevision);
   }
@@ -989,9 +1015,9 @@ export async function forceRefreshMemorySummary(
   const chapterMessages =
     newMessages.length === 0
       ? []
-      : newMessages.length <= KEEP_RECENT_MESSAGES
+      : newMessages.length <= recentWindowSize(newMessages, contextTokens)
         ? newMessages.slice(0, MAX_SUMMARY_CHUNK_MESSAGES)
-        : getHistoryForSummary(newMessages);
+        : getHistoryForSummary(newMessages, contextTokens);
 
   if (chapterMessages.length === 0) {
     return existingMemory.summary;
@@ -1096,9 +1122,10 @@ export async function rebuildMemorySummaryStep(
     // to the prompt verbatim. Summarizing them filled half a 196-message summary with the last scene
     // and squeezed the middle of the story (prod 2026-10-24). A timestamp group is never split.
     const newest = await prisma.message.findMany({ where: messageScopeWhere(scope), orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: KEEP_RECENT_MESSAGES + 1, select: { createdAt: true } });
-    let latest: { createdAt: Date } | null = newest.length > KEEP_RECENT_MESSAGES ? newest[KEEP_RECENT_MESSAGES] : null;
-    if (latest && newest[KEEP_RECENT_MESSAGES - 1].createdAt.getTime() === latest.createdAt.getTime()) {
+      take: KEEP_RECENT_MESSAGES + 1, select: { createdAt: true, content: true, role: true } });
+    const keep = recentWindowSize([...newest].reverse(), getContextTokenLimit(user));
+    let latest: { createdAt: Date } | null = newest.length > keep ? newest[keep] : null;
+    if (latest && newest[keep - 1].createdAt.getTime() === latest.createdAt.getTime()) {
       latest = await prisma.message.findFirst({ where: { ...messageScopeWhere(scope), createdAt: { lt: latest.createdAt } },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { createdAt: true } });
     }
