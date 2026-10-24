@@ -55,23 +55,22 @@ function summarySubject(text: string): SummarySource["speaker"] {
   return match ? match[1].toLowerCase() === "пользователь" ? "user" : "character" : undefined;
 }
 
-/** Each assertion is checked against the cited sources its subject may claim: first-person
- * evidence belongs to its speaker and cannot be reassigned in a retelling. A cited source need
- * not be repeated, since a story item cites more quotes than any one sentence; a cited denial
- * still blocks the positive claim inside retellingRejection. */
-function checkSummaryText(text: string, selected: SummarySource[], knownNames: string[]) {
+/** Each assertion is checked against the sources its subject may claim: first-person evidence
+ * belongs to its speaker and cannot be reassigned in a retelling. `support` may be wider than the
+ * citation (a story retells more than it can cite); a denial counts only from `cited`. */
+function checkSummaryText(text: string, support: SummarySource[], cited: SummarySource[], knownNames: string[]) {
   const supported: string[] = [], rejected: RetellingRejection[] = [];
   if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return { supported, rejected: ["control" as const] };
   for (const sentence of sentences(text)) {
     const reason = sentence.split(/,\s*и\s+(?=(?:пользователь|персонаж)(?:\s|[,:]))/iu).map(assertion => {
       const subject = summarySubject(assertion);
-      const eligible = selected.filter(source => {
+      const claimable = (source: SummarySource) => {
         const speaker = summarySubject(source.text)
           ?? (/(?:^|[^\p{L}])(?:я|мне|мой|моя|мы)(?=$|[^\p{L}])/iu.test(source.text)
             ? source.speaker ?? (source.author === "memory" ? undefined : source.author) : undefined);
         return !(speaker && subject && speaker !== subject);
-      });
-      return retellingRejection(assertion, eligible, knownNames);
+      };
+      return retellingRejection(assertion, support.filter(claimable), knownNames, cited.filter(claimable));
     }).find(Boolean);
     if (reason) rejected.push(reason); else supported.push(sentence);
   }
@@ -132,11 +131,12 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     // a log of replies that every later refresh fed back as evidence (prod 2026-10-24).
     // A story keeps its supported sentences: each one was checked on its own, while one bad
     // sentence used to erase a whole long retelling. Other sections stay all-or-nothing.
-    // A cited sentence brings its whole message: an item may cite 12 sentence ids while retelling
-    // dozens of messages, so sentence-only evidence refused most of a long story.
-    const evidence = [...new Map(selected.flatMap(source => source.turn === undefined ? [source] : turns.get(source.turn)!)
+    // A cited sentence brings its whole message. A story retells dozens of messages but cites at
+    // most 12 sentences, so it is supported by the whole request (78 of ~95 story sentences failed
+    // on cited messages alone, prod 2026-10-24); denials still count only from what it cites.
+    const cited = [...new Map(selected.flatMap(source => source.turn === undefined ? [source] : turns.get(source.turn)!)
       .map(source => [source.id, source])).values()];
-    const check = checkSummaryText(item.text, evidence, knownNames);
+    const check = checkSummaryText(item.text, item.section === "story" ? [...known.values()] : cited, cited, knownNames);
     for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
     stats.rejectedSentenceCount += check.rejected.length;
     if (check.rejected.length && !(item.section === "story" && check.supported.length)) { stats.unsupportedItemCount++; continue; }

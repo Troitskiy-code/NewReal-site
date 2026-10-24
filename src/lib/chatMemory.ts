@@ -11,7 +11,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { getMemoryProvider } from "./aiProviders";
-import { groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
+import { groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, SUMMARY_ITEM_MAX_CHARS, summaryGenerationLimit } from "./memorySummaryPolicy";
 import { SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS, withSummaryRefreshLease } from "./memorySummaryRefresh";
 import { memoryV2Enabled } from "./memoryFacts";
 import { lockMemoryThread } from "./memoryV2";
@@ -492,7 +492,7 @@ async function requestKodikText(
         {
           role: "system",
           content: applyPromptVars(systemPrompt, { maxTokens }) + "\n\n" + GROUNDED_SUMMARY_RULES
-            + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${Math.min(10, Math.max(1, Math.floor(maxTokens / 120)))} пунктов. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Короткие законченные предложения. JSON полностью закрой; без markdown-обёртки.`,
+            + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${Math.min(10, Math.max(1, Math.floor(maxTokens / 120)))} пунктов. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии. Старые сцены при обновлении сжимай сильнее, чем новые. JSON полностью закрой; без markdown-обёртки.`,
         },
         { role: "user", content: userContent },
       ],

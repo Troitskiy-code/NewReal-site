@@ -84,7 +84,8 @@ try {
   });
   await check('the generation allowance covers every item the schema allows', () => {
     const items = policy.groundedSummaryFormat(['s1'], 1500).json_schema.schema.properties.items.maxItems;
-    assert.ok(policy.summaryGenerationLimit(1500) >= items * 400 || policy.summaryGenerationLimit(1500) === 4096);
+    assert.ok(policy.summaryGenerationLimit(1500) >= items * 250 || policy.summaryGenerationLimit(1500) === 4096);
+    assert.equal(policy.groundedSummaryFormat(['s1'], 1500).json_schema.schema.properties.items.items.properties.text.maxLength, policy.SUMMARY_ITEM_MAX_CHARS);
   });
   await check('truncated generation leaves text and coverage unchanged and defers paid retries', async () => {
     finishReason = 'length';

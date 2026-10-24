@@ -3,12 +3,15 @@ import { MEMORY_STATUSES } from "./memoryNarrative";
 /** Generation includes JSON bookkeeping; the persisted tariff allowance is separate. */
 export const MAX_SUMMARY_GENERATION_TOKENS = 4096;
 const summaryItemLimit = (storedLimit: number) => Math.min(10, Math.max(1, Math.floor(storedLimit / 120)));
+/** Provider-side item length. 1200 characters invited a scene-by-scene retelling: ~3000 tokens for
+ * 28 messages, past the 90 s timeout and the stored allowance (prod 2026-10-24). */
+export const SUMMARY_ITEM_MAX_CHARS = 600;
 /** The renderer enforces the stored allowance, so generation follows what the schema lets the model
- * write (~400 tokens per 1200-character item with sources). The stored allowance alone cut long
+ * write (~250 tokens per 600-character item with its sources). The stored allowance alone cut long
  * stories mid-answer on every attempt (prod 2026-10-24, 2634 of a 1500 allowance). */
 export function summaryGenerationLimit(storedLimit: number): number {
   return Math.min(MAX_SUMMARY_GENERATION_TOKENS,
-    Math.max(768, Math.ceil(storedLimit * 1.5) + 384, summaryItemLimit(storedLimit) * 400));
+    Math.max(768, Math.ceil(storedLimit * 1.5) + 384, summaryItemLimit(storedLimit) * 250));
 }
 
 export type MemorySummaryFailure = "MEMORY_SUMMARY_TRUNCATED" | "MEMORY_SUMMARY_EMPTY_RESPONSE"
@@ -39,7 +42,7 @@ export function groundedSummaryFormat(sourceIds: string[], storedLimit: number) 
       type: "array", minItems: 1, maxItems: summaryItemLimit(storedLimit),
       items: { type: "object", additionalProperties: false, required: ["section", "text", "status", "sources"], properties: {
         section: { type: "string", enum: ["story", "state", "decisions", "plans", "events"] },
-        text: { type: "string", minLength: 1, maxLength: 1200 },
+        text: { type: "string", minLength: 1, maxLength: SUMMARY_ITEM_MAX_CHARS },
         status: { type: "string", enum: [...MEMORY_STATUSES] },
         sources: { type: "array", minItems: 1, maxItems: 12, items: { type: "string", enum: sourceIds } },
       } },

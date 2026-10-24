@@ -82,14 +82,24 @@ check('a pasted first-person reply or stage direction is refused even though it 
   assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Персонаж прочитала сообщение, и у неё загорелись щёки.', 's1', 'reported', 'story')] }),
     quotes, 800, countTokens), /^## Предыстория/);
 });
-check('a cited sentence brings its whole message as evidence, but not other messages', () => {
+check('a cited sentence brings its whole message as evidence, but not other messages outside a story', () => {
   const quotes = evidence.makeSummarySources([
     { role: 'assistant', content: 'Ладно. Ресторан. Заедь после семи, после репетиции я свободна.' },
     { role: 'user', content: 'Посмотрел ещё раз ваше короткое видео.' },
   ]);
-  const raw = text => JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] });
-  assert.match(evidence.renderGroundedSummary(raw('Вика согласилась на ресторан после репетиции.'), quotes, 800, countTokens, undefined, '- Имя: Вика'), /ресторан/);
-  assert.equal(evidence.renderGroundedSummary(raw('Вика посмотрела короткое видео.'), quotes, 800, countTokens, undefined, '- Имя: Вика'), '');
+  const raw = (text, section) => JSON.stringify({ items: [item(text, 's1', 'reported', section)] });
+  assert.match(evidence.renderGroundedSummary(raw('Вика согласилась на ресторан после репетиции.', 'state'), quotes, 800, countTokens, undefined, '- Имя: Вика'), /ресторан/);
+  assert.equal(evidence.renderGroundedSummary(raw('Вика посмотрела короткое видео.', 'state'), quotes, 800, countTokens, undefined, '- Имя: Вика'), '');
+  // A story retells more than it can cite: the whole request supports it, still sentence by sentence.
+  assert.equal(evidence.renderGroundedSummary(raw('Вика согласилась на ресторан. Артём посмотрел короткое видео. Вика купила собаку.', 'story'), quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём'),
+    '## Предыстория\nВика согласилась на ресторан. Артём посмотрел короткое видео.');
+});
+check('a story cannot use an uncited denial-free neighbour to hide a cited denial', () => {
+  const quotes = evidence.makeSummarySources([
+    { role: 'user', content: 'Я не отдавал ключ капитану.' },
+    { role: 'assistant', content: 'Капитан сказал, что ключ передан.' },
+  ]);
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Ключ передан капитану.', 's1', 'reported', 'story')] }), quotes, 800, countTokens), '');
 });
 check('a short opening word is not an unknown name', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);

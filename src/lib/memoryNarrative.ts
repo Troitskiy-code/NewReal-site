@@ -100,7 +100,7 @@ export function isSupportedRetelling(sentence: string, evidence: Array<{ text: s
 }
 /** The first rule a retelling sentence breaks, or null. Only enums leave this function. */
 export function retellingRejection(sentence: string, evidence: Array<{ text: string; status?: MemoryStatus }>,
-  knownNames: string[]): RetellingRejection | null {
+  knownNames: string[], denials: Array<{ text: string }> = evidence): RetellingRejection | null {
   if (!sentence.trim() || stripMemoryControlInstructions(sentence) !== sentence) return "control";
   if (ROLEPLAY_VOICE.test(sentence)) return "person";
   if (!evidence.length) return "speaker";
@@ -113,7 +113,7 @@ export function retellingRejection(sentence: string, evidence: Array<{ text: str
   const terms = memoryTerms(sentence), sourceTerms = memoryTerms(joined);
   if (NEGATION.test(sentence)) {
     if (!evidence.some(row => NEGATION.test(row.text))) return "negation";
-  } else if (evidence.some(row => {
+  } else if (denials.some(row => {
     if (!NEGATION.test(row.text)) return false;
     const denied = memoryTerms(row.text);
     return [...terms].filter(term => denied.has(term)).length / Math.max(terms.size, denied.size, 1) >= 0.5;
