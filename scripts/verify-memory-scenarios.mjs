@@ -175,10 +175,9 @@ try {
     const memory = await db.memory.findUnique({ where: { threadId: (await helpers.thread(user.id, character.id)).id } });
     const text = turn.messages.slice(1).map(message => message.content).join('\n');
     // The base roleplay prompt has grown since this fixture was written. Assert
-    // the largest whole-message suffix that actually fits, rather than a fixed
-    // 24-message count that would now exceed the 6000-token context.
-    const baseSystem = turn.system.split('\n\n## Память диалога')[0];
-    let room = 6000 - countTokens(baseSystem) - countTokens(turn.messages.at(-1).content);
+    // the largest whole-message suffix that fits beside the actual system prompt:
+    // memory keeps its reserve, so the small summary stays instead of one more old row.
+    let room = 6000 - countTokens(turn.system) - countTokens(turn.messages.at(-1).content);
     const windowMarkers = [];
     for (const row of [...rows.slice(-24)].reverse()) {
       const tokens = countTokens(row.content);
@@ -190,8 +189,9 @@ try {
     const lastUserKept = turn.messages.at(-1)?.content?.includes('ХВОСТ-32') === true;
     const coverageKept = memory?.lastSummarizedAt?.getTime() === coverage.getTime();
     const withinLimit = turn.promptTokens <= 6000;
-    record('S7', 'Ошибка обновления выжимки сохраняет доступный необработанный хвост', missing.length === 0 && lastUserKept && coverageKept && withinLimit,
-      { missing, lastUserKept, coverageKept, promptTokens: turn.promptTokens }, metricsOf(turn));
+    const summaryKept = turn.system.includes('Гость пришёл к маяку');
+    record('S7', 'Ошибка обновления выжимки сохраняет доступный необработанный хвост и память', missing.length === 0 && lastUserKept && coverageKept && withinLimit && summaryKept,
+      { missing, lastUserKept, coverageKept, summaryKept, promptTokens: turn.promptTokens }, metricsOf(turn));
   }
 
   // S7b: successful summary moves coverage to the last summarized message, never to "now".

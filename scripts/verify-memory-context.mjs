@@ -109,9 +109,32 @@ group('context', () => {
     memoryCandidates: { core: '## Пользователь\n' + 'Старая заметка. '.repeat(500), episodic: [] },
     historyRows: crowdedRows, totalHistoryTokens: 0,
   }, 'general');
-  check(crowded.messages.length === crowdedRows.length + 1 && crowded.stats.droppedUnprocessed === 0
-    && crowded.totalTokens <= 3000 && crowded.stats.droppedMemoryBlocks.includes('summary'),
-  'tail: a full stale summary/core cannot evict an unprocessed suffix that fits with the base prompt', crowded.stats);
+  // A full summary and core leave the unprocessed tail most of the context: the summary goes,
+  // core stays, and at most the oldest unprocessed row gives way to memory's reserve.
+  check(crowded.messages.at(-1).content === crowdedRows.at(-1).content && crowded.stats.droppedUnprocessed <= 1
+    && crowded.totalTokens <= 3000 && crowded.stats.droppedMemoryBlocks.includes('summary')
+    && !crowded.stats.droppedMemoryBlocks.includes('core') && crowded.messages[0].content.includes('[[MEMORY:core]]'),
+  'tail: a full stale summary cannot evict the unprocessed suffix, and core is never dropped', crowded.stats);
+
+  // After a coverage loss every recent row is unprocessed. The tail must not take memory's reserve:
+  // on prod this sent ~20% of a 196-message story without summary, events or core.
+  const lostRows = Array.from({ length: 100 }, (_, index) => ({
+    id: `lost${index}`, role: index % 2 ? 'assistant' : 'user', createdAt: at(index + 1),
+    content: `Ход ${index}. ${'долгая сцена у маяка '.repeat(30)}`,
+  }));
+  const lost = helpers.assemblePreparedChatMessages({
+    userId: 'u', locale: 'ru', maxContextTokens: 16000, historyLimit: 100, subscriptionLogType: 'universe', ragEligible: true,
+    systemPromptBase: 'Ты — Хранитель маяка.',
+    memorySummary: '## Предыстория\nВика и Артём встретились в клубе спустя три года и начали встречаться.',
+    summaryCoveredUntil: null,
+    memoryCandidates: { core: '## Пользователь\n- Имя: Артём\n\n## Персонаж\n- Имя: Вика',
+      episodic: [{ id: 'e1', event: 'Вика призналась, что до сих пор любит Артёма.', importance: 3, timestamp: at(50) }] },
+    historyRows: lostRows, totalHistoryTokens: 0,
+  }, 'general');
+  check(lost.stats.droppedMemoryBlocks.length === 0 && lost.messages[0].content.includes('Имя: Артём')
+    && lost.messages[0].content.includes('начали встречаться') && lost.totalTokens <= 16000
+    && lost.messages.at(-1).content === lostRows.at(-1).content && lost.stats.droppedUnprocessed > 0,
+  'tail: a long unprocessed tail after coverage loss keeps core, summary and events', lost.stats);
 
   // Assembly properties over random contexts.
   let violations = [];

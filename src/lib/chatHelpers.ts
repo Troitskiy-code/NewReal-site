@@ -560,7 +560,11 @@ async function loadChatHistoryRows({
   return { rows: rows.reverse(), olderCount: Math.max(0, total - rows.length), historyBefore: cutoff };
 }
 
-const DROP_ORDER_WHEN_OVER_LIMIT: MemoryBlockKind[] = ["quotes", "summary", "events", "core"];
+/** Core (names, relationships, key facts) is never dropped: a 16k prompt without it lost the
+ * names of everyone in a 196-message story (prod 2026-10-24). Events are cheaper than the summary. */
+const DROP_ORDER_WHEN_OVER_LIMIT: MemoryBlockKind[] = ["quotes", "events", "summary"];
+/** Share of the context that memory keeps even against a long unprocessed tail. */
+const MEMORY_RESERVE_SHARE = 0.3;
 
 export function assemblePreparedChatMessages(
   context: FastChatContext,
@@ -600,13 +604,16 @@ export function assemblePreparedChatMessages(
   const rows = context.historyRows;
   const coverage = context.summaryCoveredUntil;
 
-  // Unprocessed messages have no dependable replacement in stored memory. Pin the
-  // contiguous suffix that fits with the base prompt, then shed old memory before it.
-  // If that suffix itself exceeds the budget, retain the newest messages and report
-  // the dropped rows; the timestamp never pretends that they were summarized.
+  // Unprocessed messages have no dependable replacement in stored memory. Pin the contiguous
+  // suffix, then shed old memory before it. The suffix may not take memory's reserve: an
+  // unbounded tail evicted every memory block once coverage fell behind. Rows beyond it are
+  // reported as dropped; the timestamp never pretends that they were summarized.
+  const baseTokens = countTokens(context.systemPromptBase);
+  const memoryTokens = countTokens(compose(quotesOutside(new Set()))) - baseTokens;
+  const memoryReserve = Math.min(Math.max(0, memoryTokens), Math.floor(maxContextTokens * MEMORY_RESERVE_SHARE));
   const protectedTail = selectRecentHistory(rows, coverage, {
     base: 0,
-    extended: Math.max(0, maxContextTokens - countTokens(context.systemPromptBase)),
+    extended: Math.max(0, maxContextTokens - baseTokens - memoryReserve),
   });
   let quotes = quotesOutside(new Set(protectedTail.rows.map((row) => row.id)));
   let systemPrompt = compose(quotes);

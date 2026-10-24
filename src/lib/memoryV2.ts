@@ -413,10 +413,17 @@ export async function invalidateMessageMemory(tx: Tx, scope: ChatScope, messageI
   if (jobs.length) {
     await mirrorCore(tx, scope); await advanceWatermark(tx, scope.threadId);
   }
-  // Older messages may predate durable jobs but still be part of a summary.
-  // Keep the editor's copy and invalidate its use even when no job was found.
-  await tx.memory.updateMany({ where: { threadId: scope.threadId }, data: { lastSummarizedAt: null, summarizedMessageCount: 0 } });
-  await tx.chatThread.update({ where: { id: scope.threadId }, data: { memorySummaryInvalidated: true,
+  // Older messages may predate durable jobs but still be part of a summary. Keep the editor's copy
+  // and invalidate its use when the summary covers the changed message, or when its coverage is
+  // unknown (a manual or legacy summary may describe anything). Resetting it for the newest reply
+  // (regenerate, continue) restarted the summary from the first message and dropped all memory
+  // from the prompt for the rest of the session (prod 2026-10-24).
+  const message = await tx.message.findUnique({ where: { id: messageId }, select: { createdAt: true } });
+  const summary = await tx.memory.findUnique({ where: { threadId: scope.threadId }, select: { summary: true, lastSummarizedAt: true } });
+  const covered = Boolean(summary?.summary.trim()) && (!summary?.lastSummarizedAt || !message
+    || message.createdAt.getTime() <= summary.lastSummarizedAt.getTime());
+  if (covered) await tx.memory.updateMany({ where: { threadId: scope.threadId }, data: { lastSummarizedAt: null, summarizedMessageCount: 0 } });
+  await tx.chatThread.update({ where: { id: scope.threadId }, data: { ...(covered ? { memorySummaryInvalidated: true } : {}),
     memoryRevision: { increment: 1 }, memoryLeaseOwner: null, memoryLeaseUntil: null } });
 }
 

@@ -392,6 +392,23 @@ try {
     await legacy.setCoreMemoryContent(f.scope, ''); await run(f, output([delta('Борис')]));
     assert.equal((await active(f.scope)).length, 0);
   });
+  await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
+    const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
+    const late = await turn(f, 'А дальше?', 'Я живу у маяка.');
+    await db.memory.upsert({ where: { threadId: f.scope.threadId }, create: { ...await helpers.key(f.user.id, f.character.id), summary: '## Предыстория\nЛира рассказала о себе.',
+      lastSummarizedAt: early.assistant.createdAt, summarizedMessageCount: 2 }, update: { summary: '## Предыстория\nЛира рассказала о себе.',
+      lastSummarizedAt: early.assistant.createdAt, summarizedMessageCount: 2 } });
+    // Regenerating or continuing the newest reply: the summary never saw it.
+    await db.$transaction(tx => memory.invalidateMessageMemory(tx, f.scope, late.assistant.id));
+    const kept = await db.memory.findUnique({ where: { threadId: f.scope.threadId } });
+    assert.equal(kept.lastSummarizedAt.getTime(), early.assistant.createdAt.getTime());
+    assert.equal((await db.chatThread.findUnique({ where: { id: f.scope.threadId } })).memorySummaryInvalidated, false);
+    assert.match((await summaries.readChatMemoryState(f.scope)).summary, /Лира рассказала/);
+    // Editing a message the summary covers makes it stale.
+    await db.$transaction(tx => memory.invalidateMessageMemory(tx, f.scope, early.assistant.id));
+    assert.equal((await db.memory.findUnique({ where: { threadId: f.scope.threadId } })).lastSummarizedAt, null);
+    assert.equal((await summaries.readChatMemoryState(f.scope)).summary, null);
+  });
   await check('source edits retract old assistant facts and re-extract the replacement', async () => {
     const f = await setup(), source = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     await run(f, output([delta('Лира', 's2', 'name', 'character')]));
