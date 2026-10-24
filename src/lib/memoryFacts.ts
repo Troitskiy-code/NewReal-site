@@ -60,7 +60,7 @@ export const MULTI_FACT_LIMIT = 6;
  * overlaps («красные волосы» / «красная чёлка») are different facts and stay apart. */
 export function factValueCovers(broader: string, narrower: string, key: string): boolean {
   if (factCardinality(key) !== "multi" || memoryNumbers(broader).join("|") !== memoryNumbers(narrower).join("|") && memoryNumbers(narrower).length) return false;
-  const words = (text: string) => (clean(text).match(/[\p{L}\p{N}]+/gu) ?? []).filter(word => word.length > 2);
+  const words = (text: string): string[] => [...clean(text).matchAll(/[\p{L}\p{N}]+/gu)].map(match => match[0]).filter(word => word.length > 2);
   const wide = words(broader), narrow = words(narrower);
   const same = (a: string, b: string) => a === b || nounStem(a).length >= 4 && nounStem(a) === nounStem(b);
   return narrow.length > 0 && wide.length > narrow.length && narrow.every(word => wide.some(other => same(word, other)));
