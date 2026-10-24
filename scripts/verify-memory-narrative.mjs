@@ -151,6 +151,18 @@ check('a merge keeps the compressed past first and new events after it', () => {
   assert.doesNotMatch(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика поужинала с Артёмом в ресторане.', 's1', 'reported', 'past')] }),
     quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём'), /ресторане/);
 });
+check('at most two past items are pinned, leaving room for new events', () => {
+  const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе. Потом они поужинали в ресторане.';
+  const quotes = evidence.sourcesFromSummaries(previous);
+  let stats;
+  evidence.renderGroundedSummary(JSON.stringify({ items: [
+    item('Вика отказала Артёму три года назад.', 's1', 'reported', 'past'),
+    item('Через три года они встретились в клубе.', 's2', 'reported', 'past'),
+    item('Потом они поужинали в ресторане.', 's3', 'reported', 'past'),
+  ] }), quotes, 800, countTokens, value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
+  assert.equal(stats.pastItemCount, 2);
+  assert.ok(evidence.GROUNDED_SUMMARY_RULES.includes('past — не больше двух пунктов'));
+});
 check('a merge without a past carries the opening of the previous story forward', () => {
   const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе.';
   const quotes = [...evidence.sourcesFromSummaries(previous), ...evidence.makeSummarySources([
