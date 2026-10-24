@@ -546,6 +546,35 @@ async function requestSummary(apiKey: string, messages: DialogMessage[], maxToke
   return requestSelectedSummary(apiKey, SUMMARY_PROMPT, makeSummarySources(messages), maxTokens, coreText, names);
 }
 
+const BACKOFF_FAILURES = new Set(["MEMORY_SUMMARY_TRUNCATED", "MEMORY_SUMMARY_NO_FITTING_SOURCE"]);
+/** Older messages first, never splitting a timestamp group; the whole chunk if it cannot shrink. */
+function olderHalf(messages: DialogMessage[]): DialogMessage[] {
+  let end = Math.ceil(messages.length / 2);
+  while (end > 0 && end < messages.length && messageTime(messages[end - 1]) === messageTime(messages[end])) end -= 1;
+  return messages.slice(0, end);
+}
+/**
+ * At temperature 0 one chunk can fail the same way on every attempt: an answer that runs past the
+ * output limit with no complete item, or one where nothing passes the check. The refresh or rebuild
+ * then stalled for good (prod 2026-10-24, step 147 of 196). The older half is retried; when it cannot
+ * shrink further the chunk is skipped (`summary: null`): the caller keeps its retelling and moves on.
+ */
+async function summarizeChunk(messages: DialogMessage[], run: (chunk: DialogMessage[]) => Promise<string>):
+  Promise<{ summary: string | null; used: DialogMessage[] }> {
+  let chunk = messages;
+  for (;;) {
+    try {
+      return { summary: await run(chunk), used: chunk };
+    } catch (error) {
+      if (!(error instanceof MemorySummaryError) || !BACKOFF_FAILURES.has(error.code)) throw error;
+      const half = olderHalf(chunk);
+      if (half.length && half.length < chunk.length) { chunk = half; continue; }
+      infoLog("MemorySummary", "chunk skipped", { ...toSafeDiagnostic(error), stage: "chunk_backoff", count: chunk.length });
+      return { summary: null, used: chunk };
+    }
+  }
+}
+
 /** Names for the retelling: Core first, then the story's persona and the character card.
  * Without them the model wrote «пользователь» throughout a 196-message story (prod 2026-10-24). */
 async function summaryParticipants(scope: ChatScope, coreText: string | null): Promise<SummaryParticipants> {
@@ -670,8 +699,11 @@ async function createArcSummary(
   messagesToSummarize = fitSummaryMessages(messagesToSummarize, coreText);
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
-  const summary = await requestSummary(apiKey, messagesToSummarize, config.maxTokens, coreText,
-    await summaryParticipants(scope, coreText));
+  const names = await summaryParticipants(scope, coreText);
+  const attempt = await summarizeChunk(messagesToSummarize,
+    chunk => requestSummary(apiKey, chunk, config.maxTokens, coreText, names));
+  messagesToSummarize = attempt.used;
+  const summary = attempt.summary ?? "";
   const saved = await persistMemorySummary(
     scope,
     summary,
@@ -723,8 +755,12 @@ async function updateArcWithChapter(
     `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}) → eventsLimit: ${eventsLimit}`
   );
   // One grounded update sees the actual new messages, not a twice-compressed chapter.
-  const mergedSummary = await requestSelectedSummary(apiKey, MERGE_PROMPT,
-    mergeSources(sourceSummary, chapterMessages), config.maxTokens, coreText, await summaryParticipants(scope, coreText));
+  const names = await summaryParticipants(scope, coreText);
+  const attempt = await summarizeChunk(chapterMessages, chunk => requestSelectedSummary(apiKey, MERGE_PROMPT,
+    mergeSources(sourceSummary, chunk), config.maxTokens, coreText, names));
+  chapterMessages = attempt.used;
+  // A skipped chunk keeps the previous retelling; coverage still moves on.
+  const mergedSummary = attempt.summary ?? sourceSummary;
   const saved = await persistMemorySummary(
     scope,
     mergedSummary,
@@ -1066,8 +1102,11 @@ export async function rebuildMemorySummaryStep(
   if (!chunk.length) throw new MemorySummaryInputError();
   const { config } = getSummaryConfigForUser(user);
   const coreText = await loadCoreMemoryText(scope);
-  cursor.draft = await requestSelectedSummary(apiKey, cursor.draft ? MERGE_PROMPT : SUMMARY_PROMPT,
-    mergeSources(cursor.draft, chunk), config.maxTokens, coreText, await summaryParticipants(scope, coreText));
+  const names = await summaryParticipants(scope, coreText), draft = cursor.draft;
+  const attempt = await summarizeChunk(chunk, part => requestSelectedSummary(apiKey, draft ? MERGE_PROMPT : SUMMARY_PROMPT,
+    mergeSources(draft, part), config.maxTokens, coreText, names));
+  chunk = attempt.used;
+  cursor.draft = attempt.summary ?? draft;
   cursor.after = lastSummarizedTimestamp(chunk).toISOString();
   cursor.processed += chunk.length;
   const remaining = await prisma.message.count({ where: { ...messageScopeWhere(scope), createdAt: { gt: new Date(cursor.after), lte: new Date(cursor.through) } } });

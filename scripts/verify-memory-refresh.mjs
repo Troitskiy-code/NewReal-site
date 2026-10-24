@@ -101,17 +101,17 @@ try {
     assert.ok(policy.summaryGenerationLimit(1500) >= items * 250 || policy.summaryGenerationLimit(1500) === 4096);
     assert.equal(policy.groundedSummaryFormat(['s1'], 1500).json_schema.schema.properties.items.items.properties.text.maxLength, policy.SUMMARY_ITEM_MAX_CHARS);
   });
-  await check('truncated generation leaves text and coverage unchanged and defers paid retries', async () => {
+  await check('a chunk truncated on every attempt is retried smaller, then skipped: text kept, coverage moves on', async () => {
     finishReason = 'length';
     provider.summaryText = '{"items":[{"section":"events","text":"Ключ лежит';
-    await assert.rejects(memory.resolveChatMemorySummary(broken.scope, 'synthetic_memory_key', broken.user), { code: 'MEMORY_SUMMARY_TRUNCATED' });
-    provider.summaryText = null;
     const calls = provider.calls.filter(row => row.kind === 'summary').length;
+    assert.equal(await memory.resolveChatMemorySummary(broken.scope, 'synthetic_memory_key', broken.user), 'Прежняя память.');
+    provider.summaryText = null; finishReason = 'stop';
+    // Halving 44 summarizable messages down to one: several smaller attempts, not a stall.
+    assert.ok(provider.calls.filter(row => row.kind === 'summary').length - calls > 2);
     const kept = await db.memory.findUnique({ where: { threadId: broken.scope.threadId } });
-    assert.equal(kept.summary, 'Прежняя память.'); assert.equal(kept.summarizedMessageCount, 1);
-    assert.equal(await memory.resolveChatMemorySummary(broken.scope, 'synthetic_memory_key', broken.user), kept.summary);
-    assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
-    finishReason = 'stop';
+    assert.equal(kept.summary, 'Прежняя память.'); assert.equal(kept.summarizedMessageCount, 2);
+    assert.equal(kept.lastSummarizedAt.getTime(), broken.rows[1].createdAt.getTime());
   });
   await check('invalid JSON and unsupported facts cannot overwrite persisted memory', async () => {
     for (const text of ['{"items":[', JSON.stringify({ items: [{ section: 'events', text: 'Ключ найден.', sources: ['unknown'], status: 'done' }] })]) {
@@ -164,24 +164,18 @@ try {
       { role: 'user', content: 'Смотритель хранит ключ. '.repeat(9000), createdAt: next }];
     assert.deepEqual(memory.fitSummaryMessages(rows, null), rows.slice(0, 2));
   });
-  await check('an answer with no supported item preserves memory/coverage and installs a long shared cooldown', async () => {
+  await check('an answer with no supported item keeps the summary text and moves coverage past the skipped chunk', async () => {
     const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
     const fixture = await setup(long);
     provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'Петров спрятал ключ в подвале.',
       status: 'reported', sources: ['s2'] }] });
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+    provider.summaryText = null;
+    // No invented «Петров» reaches memory; the refresh does not stall on the same chunk forever.
     assert.equal(result, 'Прежняя память.');
     const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
-    assert.equal(saved.summary, result); assert.equal(saved.summarizedMessageCount, 1);
-    assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[0].createdAt.getTime());
-    const { createHash } = await import('node:crypto');
-    const id = 'memory-summary:' + createHash('sha256').update(fixture.scope.threadId).digest('hex');
-    const rows = await db.$queryRaw`SELECT EXTRACT(EPOCH FROM ("leaseUntil" - (NOW() AT TIME ZONE 'UTC'))) AS remaining FROM "EmbeddingBackfillLease" WHERE id = ${id}`;
-    assert.ok(Number(rows[0].remaining) > 1700);
-    const calls = provider.calls.filter(row => row.kind === 'summary').length;
-    assert.equal(await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user), result);
-    assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
-    provider.summaryText = null;
+    assert.equal(saved.summary, result); assert.ok(saved.summarizedMessageCount > 1);
+    assert.ok(saved.lastSummarizedAt.getTime() > fixture.rows[0].createdAt.getTime());
   });
   await check('actual refresh persists a short retelling of oversized evidence, never the quote itself', async () => {
     const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
