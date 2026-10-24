@@ -196,6 +196,23 @@ check('numbers spoken in words and 24-hour clock times support a retelling; inve
   assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('У Вики смена до 14:00, а репетиция в 16:00.', 's1', 'reported', 'story')] }),
     quotes, 800, countTokens, undefined, '- Имя: Вика'), /смена до 14:00, а репетиция в 16:00/);
 });
+check('hundreds and compound numerals in words support digits; case forms of names match', () => {
+  const said = 'Я займу тебе двести кредитов. Ждали сто двадцать пять дней, а склад на тысяча двести мест.';
+  for (const sentence of ['Кай одолжил Тоби 200 кредитов.', 'Они ждали 125 дней.', 'На складе 1200 мест.'])
+    assert.equal(narrative.retellingNumbersSupported(sentence, said), true, sentence);
+  for (const sentence of ['Кай одолжил Тоби 300 кредитов.', 'Они ждали 126 дней.'])
+    assert.equal(narrative.retellingNumbersSupported(sentence, said), false, sentence);
+  assert.equal(narrative.isSameMemoryName('Нового', 'Новый'), true);
+  assert.equal(narrative.isSameMemoryName('Ярославля', 'Ярославль'), true);
+  assert.equal(narrative.isSameMemoryName('Ирмы', 'Ирма'), true);
+  assert.equal(narrative.isSameMemoryName('Ирма', 'Лейла'), false);
+  const evidence = [{ text: 'Мы везём лекарства для колонии Новый Ярославль.' }, { text: 'Я попыталась догнать вора, но потеряла его в тупике.' }];
+  const names = ['Кай', 'Эйра'];
+  assert.equal(narrative.retellingRejection('Кай везёт лекарства для колонии Нового Ярославля.', evidence, names, evidence, narrative.RETELLING_TERM_SHARE), null);
+  assert.equal(narrative.retellingRejection('Попытка догнать вора закончилась в тупике.', evidence, names, evidence, narrative.RETELLING_TERM_SHARE), null);
+  assert.equal(narrative.retellingRejection('Петров попытался догнать вора в тупике.', evidence, names, evidence, narrative.RETELLING_TERM_SHARE), 'name');
+  assert.equal(narrative.retellingRejection('Эйра встретила Петрова в тупике.', evidence, names, evidence, narrative.RETELLING_TERM_SHARE), 'name');
+});
 check('at most two past items are pinned at an 800-token budget, leaving room for new events', () => {
   const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе. Потом они поужинали в ресторане.';
   const quotes = evidence.sourcesFromSummaries(previous);

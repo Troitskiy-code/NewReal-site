@@ -19,7 +19,7 @@ export type SummaryMode = "summary" | "merge" | "chapter" | "compress";
 /** The new chapter and the current sections share half of the allowance; written chapters keep the rest. */
 export const CHAPTER_BUDGET_SHARE = 0.5;
 /** A compressed pair keeps ~60% of its length, and at most this share of the allowance. */
-const COMPRESSED_SHARE = 0.6, COMPRESSED_MAX_SHARE = 0.35, MAX_COMPRESSIONS = 4;
+const COMPRESSED_SHARE = 0.6, COMPRESSED_MIN_SHARE = 0.35, COMPRESSED_MAX_SHARE = 0.35, MAX_COMPRESSIONS = 4;
 /** After an overflow the summary is compressed to this share of its allowance. */
 const COMPRESSED_TARGET_SHARE = 0.75;
 /** A compression is kept when it is at most 85% of the pair, so every round frees room. */
@@ -111,7 +111,7 @@ async function fitChapters(chapters: string[], rest: string, context: ChapterCon
   // almost every refresh (prod test 2026-10-24).
   const target = size() > maxTokens ? Math.floor(maxTokens * COMPRESSED_TARGET_SHARE) : maxTokens;
   for (let round = 0; size() > target && chapters.length >= 3 && round < MAX_COMPRESSIONS; round++) {
-    chapters = [await compressChapters(chapters[0], chapters[1], context, stats), ...chapters.slice(2)];
+    chapters = [await compressChapters(chapters[0], chapters[1], context, stats, size() - target), ...chapters.slice(2)];
   }
   // Last resort without a model: the oldest chapters lose their later sentences, their opening
   // stays; then the current sections lose their last lines.
@@ -124,11 +124,14 @@ async function fitChapters(chapters: string[], rest: string, context: ChapterCon
   return composeChapterSummary(chapters, rest);
 }
 
-async function compressChapters(first: string, second: string, context: ChapterContext, stats: ChapterStats): Promise<string> {
+async function compressChapters(first: string, second: string, context: ChapterContext, stats: ChapterStats, excess = 0): Promise<string> {
   const { maxTokens, core, names, countTokens, ask, diagnose } = context;
   const pairTokens = countTokens(`${first} ${second}`);
-  const target = Math.max(Math.min(120, maxTokens),
-    Math.min(Math.ceil(pairTokens * COMPRESSED_SHARE), Math.floor(maxTokens * COMPRESSED_MAX_SHARE)));
+  // Ask for what the overflow needs in one round, between 35% and 60% of the pair: compressing
+  // each pair to 60% took 2–4 rounds per overflow, and every round re-told the story's opening
+  // (16 rounds in 20 minutes on three stories, prod test 2026-10-24).
+  const wanted = Math.min(Math.ceil(pairTokens * COMPRESSED_SHARE), Math.max(Math.ceil(pairTokens * COMPRESSED_MIN_SHARE), pairTokens - excess));
+  const target = Math.max(Math.min(120, maxTokens), Math.min(wanted, Math.floor(maxTokens * COMPRESSED_MAX_SHARE)));
   const sources = sourcesFromSummaries(`## Предыстория\n${first}\n${second}`).map((source, index) => ({ ...source, id: `s${index + 1}` }));
   try {
     const raw = await ask("compress", JSON.stringify({ sources }), target, sources.map(source => source.id));

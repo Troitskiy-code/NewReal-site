@@ -124,6 +124,25 @@ await check('a compression longer than its target but clearly shorter than the p
   assert.ok(result.startsWith(`## Предыстория\n${compressed}`));
 });
 
+await check('a compression asks for what the overflow needs, between 35% and 60% of the pair', async () => {
+  const old = ['Вика и Артём учились в одной школе, и Артём признался Вике в чувствах, а она ему отказала из страха перемен.',
+    'Через три года они встретились в клубе, обменялись номерами, и Артём подвёз Вику домой после клуба.',
+    'Вика написала Артёму первой, и он пригласил её в ресторан.'];
+  const newest = 'В ресторане Артём предложил встречаться, и Вика согласилась.';
+  const provider = stub({ chapter: JSON.stringify({ items: [story(newest)] }),
+    compress: input => JSON.stringify({ items: [{ ...story(input.sources[0].text), sources: [input.sources[0].id] }] }) });
+  const chars = text => text.length;
+  const all = chars(chapters.composeChapterSummary([...old, newest], ''));
+  const limit = all - 10;
+  await chapters.writeSummaryChapter(`## Предыстория\n${old.join('\n')}`, [{ role: 'user', content: 'В ресторане я предложил встречаться, и ты согласилась.' }],
+    context(provider.ask, limit, chars));
+  const first = provider.calls.find(call => call.mode === 'compress');
+  const pair = chars(`${old[0]} ${old[1]}`);
+  const wanted = Math.min(Math.ceil(pair * 0.6), Math.max(Math.ceil(pair * 0.35), pair - (all - Math.floor(limit * 0.75))));
+  assert.equal(first.budget, Math.max(Math.min(120, limit), Math.min(wanted, Math.floor(limit * 0.35))));
+  assert.ok(first.budget <= Math.ceil(pair * 0.6));
+});
+
 await check('a refused compression keeps the opening sentences of both chapters and still fits', async () => {
   const old = ['Вика и Артём учились в одной школе. Артём признался Вике в чувствах. Вика ему отказала.',
     'Через три года они встретились в клубе. Они обменялись номерами. Артём подвёз Вику домой.', 'Вика написала Артёму первой.'];

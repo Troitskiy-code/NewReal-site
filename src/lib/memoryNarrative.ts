@@ -74,9 +74,14 @@ export function sameMemoryMeaning(left: string, right: string): boolean {
 
 const nameKey = (word: string) => word.toLowerCase().replace(/ё/g, "е").replace(/^(.{5,})[ауюы]$/u, "$1");
 /** Case forms of one name share a stem: «Вика/Вику», «Артём/Артёма». */
+/** Case endings of names and of their adjectives: «Нового Ярославля» is «Новый Ярославль». */
+const NAME_ENDING = /(?:ого|его|ому|ему|ыми|ими|ами|ями|ой|ей|ый|ий|ая|яя|ое|ее|ую|юю|ым|им|ом|ем|ых|их|ые|ие|ах|ях|ам|ям|ов|ев|ь|а|я|у|ю|ы|и|е|о)$/u;
+const nameStem = (word: string) => { const stem = word.replace(NAME_ENDING, ""); return stem.length >= 3 ? stem : word; };
 function sameName(left: string, right: string): boolean {
   const [short, long] = left.length <= right.length ? [left, right] : [right, left];
-  return long.startsWith(short.length > 3 ? short.slice(0, -1) : short);
+  if (long.startsWith(short.length > 3 ? short.slice(0, -1) : short)) return true;
+  const a = nameStem(left), b = nameStem(right);
+  return a === b || Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a));
 }
 /** «Артёма» and «Артём» are one participant. */
 export function isSameMemoryName(left: string, right: string): boolean {
@@ -111,20 +116,30 @@ const NUMBER_WORDS: Array<[number, string]> = [
   [15, "пятнадцать пятнадцати"], [16, "шестнадцать шестнадцати"], [17, "семнадцать семнадцати"], [18, "восемнадцать восемнадцати"],
   [19, "девятнадцать девятнадцати"], [20, "двадцать двадцати"], [30, "тридцать тридцати"], [40, "сорок сорока"],
   [50, "пятьдесят пятидесяти"], [60, "шестьдесят шестидесяти"], [70, "семьдесят семидесяти"], [80, "восемьдесят восьмидесяти"],
-  [90, "девяносто девяноста"], [100, "сто ста"],
+  [90, "девяносто девяноста"], [100, "сто ста"], [200, "двести двухсот"], [300, "триста трехсот"],
+  [400, "четыреста четырехсот"], [500, "пятьсот пятисот"], [600, "шестьсот шестисот"], [700, "семьсот семисот"],
+  [800, "восемьсот восьмисот"], [900, "девятьсот девятисот"], [1000, "тысяча тысячи тысяч тысячу"],
 ];
 const NUMBER_WORD = new Map(NUMBER_WORDS.flatMap(([value, forms]) => forms.split(" ").map(form => [form, value] as const)));
-/** Digits of the evidence plus its numerals in words, tens joined with units («двадцать пять» → 25). */
+/**
+ * Digits of the evidence plus its numerals in words, with every running total of a compound one:
+ * «двести пятьдесят» → 200, 50, 250; «тысяча двести» → 1000, 200, 1200. «Двести кредитов» retold
+ * as «200 кредитов» lost a crew member's debt from the summary (prod test 2026-10-24).
+ */
 function evidenceNumbers(text: string): Set<string> {
   const found = new Set(memoryNumbers(text));
-  const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
-  words.forEach((word, index) => {
+  const words = text.toLowerCase().replace(/ё/g, "е").match(/\p{L}+/gu) ?? [];
+  let total = 0, last = Infinity;
+  for (const word of words) {
     const value = NUMBER_WORD.get(word);
-    if (value === undefined) return;
+    if (value === undefined) { total = 0; last = Infinity; continue; }
     found.add(String(value));
-    const next = NUMBER_WORD.get(words[index + 1] ?? "");
-    if (value >= 20 && value % 10 === 0 && value < 100 && next !== undefined && next > 0 && next < 10) found.add(String(value + next));
-  });
+    // A place no smaller than the previous one starts a new number: «пять шесть» is 5 and 6.
+    if (value === 1000) total = (total || 1) * 1000;
+    else total = value < last ? total + value : value;
+    last = value === 1000 ? Infinity : value;
+    found.add(String(total));
+  }
   return found;
 }
 /**
@@ -184,6 +199,8 @@ export function retellingRejection(sentence: string, evidence: Array<{ text: str
     const initial = /^[\s"«(*—–-]*$/u.test(sentence.slice(0, match.index));
     const term = memoryTerms(match[0]);
     // «Три», «Но», «Их»: a short opening word is a function word, not an unknown name.
+    // A first word is grammar only when the evidence has the word: an invented subject
+    // («Петров гарантирует…» for «Меллон гарантирует…») is the worst error a retelling can make.
     if (initial && (!term.size || [...term].every(value => sourceTerms.has(value)))) continue;
     return "name";
   }
