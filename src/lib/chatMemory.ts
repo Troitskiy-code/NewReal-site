@@ -6,13 +6,14 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
-import { GROUNDED_SUMMARY_RULES, makeSummarySources, participantNames, renderGroundedSummary, sourcesFromSummaries, type SummaryParticipants, type SummarySource } from "@/lib/memorySummaryEvidence";
+import { makeSummarySources, participantNames, renderGroundedSummary, sourcesFromSummaries, type SummaryParticipants, type SummarySource } from "@/lib/memorySummaryEvidence";
+import { summarySystemPrompt, writeSummaryChapter, type SummaryMode } from "@/lib/memorySummaryChapters";
 import { getSelectedChatPersona } from "@/lib/personaService";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { getMemoryProvider } from "./aiProviders";
-import { groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, pastItemLimit, readSummaryResponse, SUMMARY_ITEM_MAX_CHARS, summaryGenerationLimit, summaryItemLimit } from "./memorySummaryPolicy";
+import { groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
 import { SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS, withSummaryRefreshLease } from "./memorySummaryRefresh";
 import { memoryV2Enabled } from "./memoryFacts";
 import { lockMemoryThread } from "./memoryV2";
@@ -95,8 +96,6 @@ function getSummaryConfigForUser(user: {
   return { config: getSummaryConfig(plan), plan: plan === "history" ? "story" : plan || "start" };
 }
 
-const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Сохрани смысл, действующие планы и изменения состояния по исходной переписке.`;
-const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Обнови краткую сводку по новой части переписки. Сохрани содержание открытых планов, объедини повторы; различай предложение, решение, выполнение и отмену. При неясном противоречии не угадывай.`;
 const MAX_SUMMARY_INPUT_TOKENS = 12_000;
 function summaryInputTooLarge(input: string, tokenLimit = MAX_SUMMARY_INPUT_TOKENS): boolean {
   // Bound work before the tokenizer too: adversarial repeated text can make BPE expensive.
@@ -108,13 +107,6 @@ type DialogMessage = {
   content: string;
   createdAt?: Date | string;
 };
-
-function applyPromptVars(prompt: string, vars: Record<string, string | number>): string {
-  return Object.entries(vars).reduce(
-    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
-    prompt
-  );
-}
 
 type SummarySections = {
   story?: string;
@@ -479,14 +471,13 @@ function lastSummarizedTimestamp(messages: DialogMessage[]): Date {
 
 async function requestKodikText(
   apiKey: string,
-  systemPrompt: string,
+  mode: SummaryMode,
   userContent: string,
   maxTokens: number,
   sourceIds: string[],
   names: SummaryParticipants = {}
 ): Promise<string> {
   const generationLimit = summaryGenerationLimit(maxTokens);
-  const cast = [names.user && `герой пользователя — ${names.user}`, names.character && `персонаж — ${names.character}`].filter(Boolean);
   const response = await meteredPost("summary",
     `${KODIKROUTER_URL}/chat/completions`,
     {
@@ -494,9 +485,7 @@ async function requestKodikText(
       messages: [
         {
           role: "system",
-          content: applyPromptVars(systemPrompt, { maxTokens }) + "\n\n" + GROUNDED_SUMMARY_RULES
-            + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${summaryItemLimit(maxTokens)} пунктов, из них past — не больше ${pastItemLimit(maxTokens)}. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии. Старые сцены при обновлении сжимай сильнее, чем новые. JSON полностью закрой; без markdown-обёртки.`
-            + (cast.length ? `\nУчастники: ${cast.join(", ")}. В пересказе называй их по именам, а не «пользователь» и «персонаж».` : ""),
+          content: summarySystemPrompt(mode, maxTokens, names),
         },
         { role: "user", content: userContent },
       ],
@@ -526,14 +515,14 @@ async function requestKodikText(
 }
 
 async function requestSelectedSummary(
-  apiKey: string, prompt: string, sources: SummarySource[], maxTokens: number,
+  apiKey: string, mode: SummaryMode, sources: SummarySource[], maxTokens: number,
   coreText: string | null, names: SummaryParticipants = {}
 ): Promise<string> {
   if (!sources.length) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   // One bounded generation; failures are deferred by the background refresh lease.
   const input = JSON.stringify({ sources, core: coreText });
   if (summaryInputTooLarge(input)) throw new MemorySummaryInputError();
-  const raw = await requestKodikText(apiKey, prompt,
+  const raw = await requestKodikText(apiKey, mode,
     input, maxTokens, sources.map(source => source.id), names);
   const summary = renderGroundedSummary(raw, sources, maxTokens, countTokens,
     stats => infoLog("MemorySummary", "render completed", stats), coreText ?? "", names);
@@ -543,7 +532,19 @@ async function requestSelectedSummary(
 
 async function requestSummary(apiKey: string, messages: DialogMessage[], maxTokens: number, coreText: string | null,
   names: SummaryParticipants = {}): Promise<string> {
-  return requestSelectedSummary(apiKey, SUMMARY_PROMPT, makeSummarySources(messages), maxTokens, coreText, names);
+  return requestSelectedSummary(apiKey, "summary", makeSummarySources(messages), maxTokens, coreText, names);
+}
+
+/** The next chapter of `previous` from `messages`: written chapters are context and never re-told. */
+async function requestChapterSummary(apiKey: string, previous: string, messages: DialogMessage[], maxTokens: number,
+  coreText: string | null, names: SummaryParticipants = {}): Promise<string> {
+  return writeSummaryChapter(previous, messages, { maxTokens, core: coreText, names, countTokens,
+    ask: async (mode, input, budget, sourceIds) => {
+      if (summaryInputTooLarge(input)) throw new MemorySummaryInputError();
+      return requestKodikText(apiKey, mode, input, budget, sourceIds, names);
+    },
+    diagnose: stats => infoLog("MemorySummary", "render completed", stats) },
+  stats => infoLog("MemorySummary", "chapters composed", stats));
 }
 
 const BACKOFF_FAILURES = new Set(["MEMORY_SUMMARY_TRUNCATED", "MEMORY_SUMMARY_NO_FITTING_SOURCE"]);
@@ -756,8 +757,8 @@ async function updateArcWithChapter(
   );
   // One grounded update sees the actual new messages, not a twice-compressed chapter.
   const names = await summaryParticipants(scope, coreText);
-  const attempt = await summarizeChunk(chapterMessages, chunk => requestSelectedSummary(apiKey, MERGE_PROMPT,
-    mergeSources(sourceSummary, chunk), config.maxTokens, coreText, names));
+  const attempt = await summarizeChunk(chapterMessages, chunk => requestChapterSummary(apiKey, sourceSummary, chunk,
+    config.maxTokens, coreText, names));
   chapterMessages = attempt.used;
   // A skipped chunk keeps the previous retelling; coverage still moves on.
   const mergedSummary = attempt.summary ?? sourceSummary;
@@ -1112,8 +1113,7 @@ export async function rebuildMemorySummaryStep(
   const { config } = getSummaryConfigForUser(user);
   const coreText = await loadCoreMemoryText(scope);
   const names = await summaryParticipants(scope, coreText), draft = cursor.draft;
-  const attempt = await summarizeChunk(chunk, part => requestSelectedSummary(apiKey, draft ? MERGE_PROMPT : SUMMARY_PROMPT,
-    mergeSources(draft, part), config.maxTokens, coreText, names));
+  const attempt = await summarizeChunk(chunk, part => requestChapterSummary(apiKey, draft, part, config.maxTokens, coreText, names));
   chunk = attempt.used;
   cursor.draft = attempt.summary ?? draft;
   cursor.after = lastSummarizedTimestamp(chunk).toISOString();

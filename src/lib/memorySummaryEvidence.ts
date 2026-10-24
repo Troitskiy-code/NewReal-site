@@ -52,6 +52,23 @@ export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
 Перефразируй кратко, без новых участников, мотивов, эмоций, причин или результатов. Явно описанные причины и изменения отношений сохраняй.
 При обновлении сожми прежнюю предысторию в past, новые изменения изложи в story, закрой выполненные/отменённые планы. Не дописывай журнал к старому.`;
 
+/** Chapter mode: written chapters arrive as `previous`, context only, and are never rewritten.
+ * Eight merges that each re-told the whole past from the previous retelling kept ~30% of a
+ * 171-message story's key beats with every model and past budget tried (eval 2026-10-24). */
+export const CHAPTER_SUMMARY_RULES = GROUNDED_SUMMARY_RULES
+  .replace(/^Если во входе есть источники прежней сводки.*$/mu,
+    "Во входе previous — предыдущая записанная глава предыстории: только контекст, не источник. Не пересказывай и не повторяй их, не возвращай section=past. "
+    + "section=story — следующая глава только о новых сообщениях: связный пересказ от третьего лица, один пункт из 2–6 предложений. "
+    + "В главе важнее всего повороты: признания, решения, изменения отношений, первые разы, конфликты, обещания и открытые линии; быт, жесты и обстановку пропускай.")
+  .replace(/^При обновлении сожми прежнюю предысторию.*$/mu,
+    "Источники прежней сводки — текущая ситуация, решения и планы: перенеси ещё действующие, закрой выполненные и отменённые, не дублируй.");
+/** Compression of the two oldest chapters when the summary outgrows its allowance. */
+export const CHAPTER_COMPRESSION_RULES = `MEMORY_CHAPTER_COMPRESSION_V1
+Источники — две соседние главы предыстории ролевого диалога в хронологическом порядке. Сожми их в одну главу заметно короче.
+Сохрани, с чего всё началось, признания, решения, изменения отношений, первые разы, конфликты, обещания и открытые линии. Подробности, быт и обстановку выбрасывай.
+Связный пересказ от третьего лица, хронология сохраняется. Не добавляй ничего, чего нет в источниках: ни событий, ни мотивов, ни чисел. Имена, отрицания и авторство сохраняй.
+Верни только JSON: {"items":[{"section":"story","text":"…","status":"reported","sources":["s1","s4"]}]}. section=story, status=reported, в sources — 1–12 id использованных предложений. Без markdown-обёртки.`;
+
 const sentences = (text: string) => text.split(/\r?\n|(?<=[.!?])\s+/u).map(line => line.trim()).filter(Boolean);
 const sourceLabel = (source: SummarySource) => source.author === "memory" && source.speaker
   ? `${LABELS[source.speaker]} (из прежней сводки)` : LABELS[source.author];
@@ -66,7 +83,10 @@ export function participantNames(core: string): SummaryParticipants {
 function summarySubject(text: string, names: SummaryParticipants = {}): SummarySource["speaker"] {
   const match = /^(?:(?:сначала|затем|позже)\s+)?(пользователь|персонаж)(?:\s|[,:])/iu.exec(text.trim());
   if (match) return match[1].toLowerCase() === "пользователь" ? "user" : "character";
-  const first = /^(?:(?:сначала|затем|позже)\s+)?(\p{Lu}[\p{L}'-]+)/iu.exec(text.trim())?.[1];
+  const lead = /^(?:(?:сначала|затем|позже)\s+)?(\p{Lu}[\p{L}'-]+)/iu.exec(text.trim());
+  // «Вика и Артём учились…» belongs to both: compressing it into «Артём признался…» was refused
+  // as someone else's words.
+  const first = lead && !/^\s+и\s+\p{Lu}/u.test(text.trim().slice(lead[0].length)) ? lead[1] : undefined;
   if (!first) return undefined;
   return names.user && isSameMemoryName(first, names.user) ? "user"
     : names.character && isSameMemoryName(first, names.character) ? "character" : undefined;
@@ -78,7 +98,7 @@ const normalizedSentence = (text: string) => text.toLowerCase().replace(/ё/g, "
  * belongs to its speaker and cannot be reassigned in a retelling. `support` may be wider than the
  * citation (a story retells more than it can cite); a denial counts only from `cited`. */
 function checkSummaryText(text: string, support: SummarySource[], cited: SummarySource[], knownNames: string[],
-  messages: string[] = [], names: SummaryParticipants = {}) {
+  messages: string[] = [], names: SummaryParticipants = {}, narrative = messages.length > 0) {
   const supported: string[] = [], rejected: RetellingRejection[] = [];
   if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return { supported, rejected: ["control" as const], cut: false };
   const all = sentences(text);
@@ -104,7 +124,7 @@ function checkSummaryText(text: string, support: SummarySource[], cited: Summary
       };
       // A retelling (story/past) paraphrases; other sections restate one source and keep the 1/2 share.
       return retellingRejection(assertion, support.filter(claimable), knownNames, cited.filter(claimable),
-        messages.length ? RETELLING_TERM_SHARE : undefined);
+        narrative ? RETELLING_TERM_SHARE : undefined);
     }).find(Boolean);
     if (reason) rejected.push(reason); else supported.push(sentence);
   }
@@ -115,7 +135,7 @@ function checkSummaryText(text: string, support: SummarySource[], cited: Summary
  * only widens the names a retelling may use; it is never evidence for an assertion. */
 export function renderGroundedSummary(raw: string, sources: SummarySource[], maxTokens: number,
   countTokens: (text: string) => number, diagnose?: (stats: SummaryRenderDiagnostics) => void, context = "",
-  names: SummaryParticipants = participantNames(context)): string {
+  names: SummaryParticipants = participantNames(context), mode: "merge" | "chapter" = "merge"): string {
   let parsed: unknown;
   try { parsed = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "")); }
   catch { throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_JSON"); }
@@ -160,7 +180,8 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     // A past needs a previous summary to compress; without one it is an ordinary story item.
     // All but two items may be pinned past: a merge spending all six on the old story left no room
     // for the new messages, while two past items lost the middle of the story (see pastItemLimit).
-    const past = itemSection === "past" && memorySources.length > 0 && pastSeen++ < pastItemLimit(maxTokens);
+    // A chapter never re-tells the past: a past item there is an ordinary story item.
+    const past = mode === "merge" && itemSection === "past" && memorySources.length > 0 && pastSeen++ < pastItemLimit(maxTokens);
     const narrative = itemSection === "story" || itemSection === "past";
     if (!MEMORY_STATUSES.includes(item.status as MemoryStatus)) throw refuse("invalid_status", { itemSection });
     if (typeof item.text !== "string") throw refuse("invalid_text", { itemSection });
@@ -187,7 +208,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
       .map(source => [source.id, source])).values()];
     // A past compresses the previous summary, so only that summary supports it.
     const check = checkSummaryText(item.text, past ? memorySources : narrative ? [...known.values()] : cited, cited, knownNames,
-      narrative ? messageTexts : [], names);
+      narrative ? messageTexts : [], names, narrative);
     for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
     stats.rejectedSentenceCount += check.rejected.length;
     if (check.cut) stats.cutItemCount++;
@@ -195,7 +216,9 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     if (check.rejected.length) stats.trimmedStoryCount++;
     // Story items of one answer overlap («…обсуждали проекты. Артём предложил…» twice): a sentence
     // already kept from an earlier item is not repeated.
-    const fresh = check.supported.filter(sentence => !keptSentences.some(kept => kept === sentence || sameMemoryMeaning(kept, sentence)));
+    // Repeats inside one item count too: a chapter said «Вика проснулась и обнаружила…» three times.
+    const fresh = check.supported.filter((sentence, position, all) => ![...keptSentences, ...all.slice(0, position)]
+      .some(kept => kept === sentence || sameMemoryMeaning(kept, sentence)));
     stats.duplicateSentenceCount += check.supported.length - fresh.length;
     if (!fresh.length) { if (check.supported.length) continue; stats.unsupportedItemCount++; continue; }
     keptSentences.push(...fresh);
@@ -238,7 +261,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   // fills at most PAST_BUDGET_SHARE, so the new scenes always have room.
   const pastLimit = Math.floor(maxTokens * PAST_BUDGET_SHARE);
   for (const row of rows.filter(row => row.pinned)) tryFit(row, pastLimit);
-  if (!fitted.some(row => row.pinned)) {
+  if (mode === "merge" && !fitted.some(row => row.pinned)) {
     for (const [index, source] of memorySources.filter(source => source.past).entries()) {
       if (hasRoleplayVoice(source.text) || keptSentences.some(kept => sameMemoryMeaning(kept, source.text))) continue;
       if (!tryFit({ section: "story", text: source.text, status: "reported", author: LABELS.memory, order: -1000 + index, pinned: true }, pastLimit)) break;

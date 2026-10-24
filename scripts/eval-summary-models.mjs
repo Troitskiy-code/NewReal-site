@@ -20,6 +20,10 @@ const { root, load } = createModuleLoader({ prismaFor: () => { throw new Error('
 const evidence = load(join(root, 'src/lib/memorySummaryEvidence.ts'));
 const policy = load(join(root, 'src/lib/memorySummaryPolicy.ts'));
 const { countTokens } = load(join(root, 'src/lib/tokenCount.ts'));
+const chapterModule = load(join(root, 'src/lib/memorySummaryChapters.ts'));
+// chapters (production since 2026-10-24) or merge (every step re-tells the past; the earlier path).
+const STRUCTURE = arg('--structure') ?? 'chapters';
+if (!['chapters', 'merge'].includes(STRUCTURE)) throw new Error('--structure is chapters or merge');
 
 // Prices in USD per 1M tokens (DeepInfra catalog 2026-10-11; kie.ai/pricing 2026-10-24).
 const MODELS = {
@@ -37,21 +41,13 @@ const MODELS = {
 const chosen = (arg('--models') ?? Object.keys(MODELS).join(',')).split(',');
 for (const id of chosen) if (!MODELS[id]) throw new Error(`Unknown model ${id}`);
 
-// Copied from src/lib/chatMemory.ts (SUMMARY_PROMPT, MERGE_PROMPT, requestKodikText, rebuild limits).
-const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Сохрани смысл, действующие планы и изменения состояния по исходной переписке.`;
-const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Обнови краткую сводку по новой части переписки. Сохрани содержание открытых планов, объедини повторы; различай предложение, решение, выполнение и отмену. При неясном противоречии не угадывай.`;
+// Rebuild limits copied from src/lib/chatMemory.ts; prompts come from memorySummaryChapters.
 // --single: the whole summarizable story in one call (experiment, not the production bound).
 const SINGLE = process.argv.includes('--single');
 const KEEP_RECENT = 25, MAX_CHUNK = SINGLE ? 10_000 : 120, MAX_INPUT = SINGLE ? 60_000 : 12_000, TIMEOUT_MS = SINGLE ? 240_000 : 90_000;
 const BACKOFF = new Set(['MEMORY_SUMMARY_TRUNCATED', 'MEMORY_SUMMARY_NO_FITTING_SOURCE']);
 const tooLarge = (input, limit = MAX_INPUT) => input.length > limit * 8 || countTokens(input) > limit;
 const time = row => new Date(row.createdAt).getTime();
-function systemPrompt(prompt, maxTokens, names) {
-  const cast = [names.user && `герой пользователя — ${names.user}`, names.character && `персонаж — ${names.character}`].filter(Boolean);
-  return prompt + '\n\n' + evidence.GROUNDED_SUMMARY_RULES
-    + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${policy.summaryItemLimit(maxTokens)} пунктов${policy.pastItemLimit ? `, из них past — не больше ${policy.pastItemLimit(maxTokens)}` : ''}. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${policy.SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии. Старые сцены при обновлении сжимай сильнее, чем новые. JSON полностью закрой; без markdown-обёртки.`
-    + (cast.length ? `\nУчастники: ${cast.join(', ')}. В пересказе называй их по именам, а не «пользователь» и «персонаж».` : '');
-}
 const mergeSources = (old, messages) => [...evidence.sourcesFromSummaries(old), ...evidence.makeSummarySources(messages)]
   .map((source, index) => ({ ...source, id: `s${index + 1}` }));
 
@@ -131,22 +127,18 @@ async function callModel(spec, system, user, maxTokens, sourceIds) {
 async function runModel(id, messages, core, names, maxTokens) {
   const spec = MODELS[id], calls = [], steps = [];
   const record = (entry) => { calls.push(entry); };
-  async function selected(prompt, sources) {
-    if (!sources.length) throw new StepError('MEMORY_SUMMARY_NO_FITTING_SOURCE');
-    const input = JSON.stringify({ sources, core });
+  /** One provider answer for `mode`; transport failures are retried like the user's rebuild loop would. */
+  async function ask(mode, input, budget, sourceIds) {
     if (tooLarge(input)) throw new StepError('INPUT_TOO_LARGE');
     let lastError;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const answer = await callModel(spec, systemPrompt(prompt, maxTokens, names), input, maxTokens, sources.map(s => s.id));
-        let stats = null;
-        const summary = evidence.renderGroundedSummary(answer.text, sources, maxTokens, countTokens, s => { stats = s; }, core ?? '', names);
-        record({ ...answer.usage, finish: answer.finishReason, ok: Boolean(summary), stats, raw: answer.text,
+        const answer = await callModel(spec, chapterModule.summarySystemPrompt(mode, budget, names), input, budget, sourceIds);
+        record({ ...answer.usage, mode, finish: answer.finishReason, ok: true, raw: answer.text,
           ...(process.argv.includes('--keep-input') ? { request: input } : {}) });
-        if (!summary) throw new StepError('MEMORY_SUMMARY_NO_FITTING_SOURCE', { counted: true });
-        return summary;
+        return answer.text;
       } catch (error) {
-        if (!error.counted) record({ ...(error.usage ?? { ms: error.ms ?? 0 }), error: error.code ?? String(error), providerMessage: error.providerMessage });
+        record({ ...(error.usage ?? { ms: error.ms ?? 0 }), mode, error: error.code ?? String(error), providerMessage: error.providerMessage });
         // Transport failures are retried like the user's rebuild loop would; content failures repeat at temperature 0.
         if (!/^(TIMEOUT|NETWORK|HTTP_5|HTTP_429)/.test(error.code ?? '')) throw error;
         lastError = error;
@@ -154,6 +146,20 @@ async function runModel(id, messages, core, names, maxTokens) {
       }
     }
     throw lastError;
+  }
+  /** Render statistics belong to the call that produced them (the last recorded one). */
+  const diagnose = stats => { const last = calls.at(-1); if (last) last.stats = stats; };
+  async function step(draft, part) {
+    if (STRUCTURE === 'chapters') {
+      return chapterModule.writeSummaryChapter(draft, part, { maxTokens, core, names, countTokens, ask, diagnose },
+        stats => { const last = calls.at(-1); if (last) last.chapters = stats; });
+    }
+    const sources = mergeSources(draft, part);
+    if (!sources.length) throw new StepError('MEMORY_SUMMARY_NO_FITTING_SOURCE');
+    const raw = await ask(draft ? 'merge' : 'summary', JSON.stringify({ sources, core }), maxTokens, sources.map(source => source.id));
+    const summary = evidence.renderGroundedSummary(raw, sources, maxTokens, countTokens, diagnose, core ?? '', names);
+    if (!summary) { calls.at(-1).ok = false; throw new StepError('MEMORY_SUMMARY_NO_FITTING_SOURCE'); }
+    return summary;
   }
   const olderHalf = rows => {
     let end = Math.ceil(rows.length / 2);
@@ -170,34 +176,36 @@ async function runModel(id, messages, core, names, maxTokens) {
     const fits = candidate => !tooLarge(JSON.stringify(mergeSources(draft, candidate)), MAX_INPUT - 2000);
     while (chunk.length && !fits(chunk)) { const last = time(chunk.at(-1)); chunk = chunk.filter(row => time(row) !== last); }
     if (!chunk.length) throw new Error('A single timestamp group exceeds the input bound; clipping is not reproduced here.');
-    const step = { from: index, offered: chunk.length, attempts: [] };
+    const entry = { from: index, offered: chunk.length, attempts: [] };
     let part = chunk, summary = null;
     for (;;) {
-      try { summary = await selected(draft ? MERGE_PROMPT : SUMMARY_PROMPT, mergeSources(draft, part)); step.attempts.push('ok'); break; } catch (error) {
-        step.attempts.push(error.code ?? String(error));
-        if (!BACKOFF.has(error.code)) { step.fatal = error.code ?? String(error); break; }
+      try { summary = await step(draft, part); entry.attempts.push('ok'); break; } catch (error) {
+        entry.attempts.push(error.code ?? String(error));
+        if (!BACKOFF.has(error.code)) { entry.fatal = error.code ?? String(error); break; }
         const half = olderHalf(part);
         if (half.length && half.length < part.length) { part = half; continue; }
-        step.skipped = true; break;
+        entry.skipped = true; break;
       }
     }
-    if (step.fatal) { step.skipped = true; part = chunk; }
-    step.used = part.length;
+    if (entry.fatal) { entry.skipped = true; part = chunk; }
+    entry.used = part.length;
     if (summary) draft = summary;
     index += part.length;
-    steps.push(step);
-    console.log(JSON.stringify({ model: id, processed: index, total: messages.length, attempts: step.attempts, skipped: Boolean(step.skipped) }));
+    steps.push(entry);
+    console.log(JSON.stringify({ model: id, processed: index, total: messages.length, attempts: entry.attempts, skipped: Boolean(entry.skipped) }));
   }
   const sum = key => calls.reduce((total, call) => total + (Number(call[key]) || 0), 0);
   const cost = (sum('input') * spec.price[0] + sum('output') * spec.price[1]) / 1e6;
   const latencies = calls.map(call => call.ms).filter(Boolean).sort((a, b) => a - b);
   const pick = q => latencies.length ? latencies[Math.min(latencies.length - 1, Math.floor(q * latencies.length))] : null;
   const rejected = calls.reduce((total, call) => total + (call.stats?.rejectedSentenceCount ?? 0), 0);
+  const compressions = calls.filter(call => call.mode === 'compress').length;
   return { id, model: spec.model ?? spec.path, provider: spec.provider, summary: draft, steps, calls,
     totals: { calls: calls.length, failedCalls: calls.filter(call => call.error || !call.ok).length,
       skippedSteps: steps.filter(step => step.skipped).length, inputTokens: sum('input'), outputTokens: sum('output'),
       reasoningTokens: sum('reasoning'), costUsd: Number(cost.toFixed(5)), p50ms: pick(0.5), p90ms: pick(0.9), maxMs: latencies.at(-1) ?? null,
-      rejectedSentences: rejected, summaryChars: draft.length, summaryTokens: countTokens(draft) } };
+      rejectedSentences: rejected, compressionCalls: compressions,
+      chapters: evidence && STRUCTURE === 'chapters' ? chapterModule.splitSummaryChapters(draft).chapters.length : null, summaryChars: draft.length, summaryTokens: countTokens(draft) } };
 }
 
 const story = JSON.parse(readFileSync(storyPath, 'utf8'));

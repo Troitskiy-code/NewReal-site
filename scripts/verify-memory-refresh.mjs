@@ -65,7 +65,8 @@ try {
     provider.summaryText = JSON.stringify({ items: [{ section: 'story', status: 'reported',
       text: 'Пользователь не нашёл пропавший ключ.', sources: ['s3'] }] });
     const summary = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
-    assert.equal(summary, '## Предыстория\nПользователь не нашёл пропавший ключ.');
+    // The previous summary is the first chapter and stays as written; the new chapter follows it.
+    assert.equal(summary, '## Предыстория\nПрежняя память.\nПользователь не нашёл пропавший ключ.');
     assert.equal(latestSummaryBody.max_tokens, policy.summaryGenerationLimit(200));
     const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
     const mirror = await db.memoryEntry.findMany({ where: { threadId: fixture.scope.threadId, type: 'summary' } });
@@ -168,7 +169,7 @@ try {
     const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
     const fixture = await setup(long);
     provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'Петров спрятал ключ в подвале.',
-      status: 'reported', sources: ['s2'] }] });
+      status: 'reported', sources: ['s1'] }] });
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     provider.summaryText = null;
     // No invented «Петров» reaches memory; the refresh does not stall on the same chunk forever.
@@ -180,8 +181,9 @@ try {
   await check('actual refresh persists a short retelling of oversized evidence, never the quote itself', async () => {
     const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
     const fixture = await setup(long);
+    // The previous summary is a chapter, not a source: message sources start at s1.
     provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'смотритель хранит ключ возле деревянной ступени.',
-      status: 'reported', sources: ['s3'] }] });
+      status: 'reported', sources: ['s1'] }] });
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     assert.ok(result && countTokens(result) <= 200); assert.match(result, /хранит ключ возле деревянной ступени\.$/);
     assert.doesNotMatch(result, /закрытой башне/);
