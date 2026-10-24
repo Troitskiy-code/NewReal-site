@@ -130,10 +130,10 @@ try {
       { role: 'user', content: 'Смотритель хранит ключ. '.repeat(9000), createdAt: next }];
     assert.deepEqual(memory.fitSummaryMessages(rows, null), rows.slice(0, 2));
   });
-  await check('unrepresentable quotes preserve memory/coverage and install a long shared cooldown', async () => {
+  await check('an answer with no supported item preserves memory/coverage and installs a long shared cooldown', async () => {
     const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
     const fixture = await setup(long);
-    provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'смотритель хранит ключ возле деревянной ступени.',
+    provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'Петров спрятал ключ в подвале.',
       status: 'reported', sources: ['s2'] }] });
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     assert.equal(result, 'Прежняя память.');
@@ -149,14 +149,14 @@ try {
     assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
     provider.summaryText = null;
   });
-  await check('actual refresh rescues oversized selected evidence and persists a bounded sourced summary', async () => {
+  await check('actual refresh persists a short retelling of oversized evidence, never the quote itself', async () => {
     const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
     const fixture = await setup(long);
-    await db.message.update({ where: { id: fixture.rows[1].id }, data: { content: 'смотритель хранит ключ номер 17 возле деревянной ступени.' } });
     provider.summaryText = JSON.stringify({ items: [{ section: 'state', text: 'смотритель хранит ключ возле деревянной ступени.',
       status: 'reported', sources: ['s3'] }] });
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
-    assert.ok(result && countTokens(result) <= 200); assert.match(result, /ключ номер 17/);
+    assert.ok(result && countTokens(result) <= 200); assert.match(result, /хранит ключ возле деревянной ступени\.$/);
+    assert.doesNotMatch(result, /закрытой башне/);
     const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
     assert.equal(saved.summary, result); assert.ok(saved.summarizedMessageCount > 1 && saved.summarizedMessageCount < fixture.rows.length);
     assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[saved.summarizedMessageCount - 1].createdAt.getTime());

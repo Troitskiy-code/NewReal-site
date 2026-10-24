@@ -43,21 +43,26 @@ check('denial cannot be hidden by cherry-picking a positive source in the same c
     { role: 'user', content: 'Я не отдавал ключ капитану.' },
     { role: 'assistant', content: 'Я передал ключ капитану.' },
   ]);
-  const result = render([item('Ключ передан капитану.', ['s1', 's2'])], sources);
-  assert.match(result, /не отдавал/); assert.match(result, /Неясно/);
+  assert.equal(render([item('Ключ передан капитану.', ['s1', 's2'])], sources), '');
 });
 check('changing numbers or adding an unsupported outcome never becomes narrative', () => {
   const sources = evidence.makeSummarySources([{ role: 'user', content: 'Я предлагаю повысить ставку до 5,5%.' }]);
   for (const text of ['Пользователь предлагает повысить ставку до 9%.', 'Пользователь повысил ставку до 5,5%.']) {
-    const result = render([item(text, ['s1'])], sources);
-    assert.doesNotMatch(result, /## Предыстория|9%|Пользователь повысил/);
-    assert.match(result, /предлагаю/);
+    assert.equal(render([item(text, ['s1'])], sources), '');
   }
+});
+check('a long story item need not repeat every quote it cites', () => {
+  const sources = evidence.makeSummarySources([
+    { role: 'user', content: 'Я пришёл в клуб с друзьями.' },
+    { role: 'assistant', content: 'Привет.' },
+    { role: 'assistant', content: 'Ладно, давай пересядем к вам.' },
+  ]);
+  const text = 'Пользователь пришёл в клуб с друзьями.';
+  assert.equal(render([item(text, ['s1', 's2', 's3'])], sources), `## Предыстория\n${text}`);
 });
 check('a first-person promise cannot be assigned to the other participant', () => {
   const sources = evidence.makeSummarySources([{ role: 'assistant', content: 'Я обещаю вернуть ключ капитану.' }]);
-  const result = render([item('Пользователь обещает вернуть ключ капитану.', ['s1'], 'promised', 'plans')], sources);
-  assert.doesNotMatch(result, /Пользователь обещает/); assert.match(result, /Я обещаю/);
+  assert.equal(render([item('Пользователь обещает вернуть ключ капитану.', ['s1'], 'promised', 'plans')], sources), '');
 });
 check('a promise to help the other participant preserves subject and object', () => {
   const sources = evidence.makeSummarySources([{ role: 'user', content: 'Я обещаю помочь персонажу найти тайник номер 17 утром.' }]);
@@ -100,10 +105,10 @@ check('a real provider failure cannot turn a cancelled trip into an accomplished
     { role: 'assistant', content: 'Я согласился сопровождать пользователя к северному шлюзу утром.' },
     { role: 'user', content: 'Я отменил поход утром из-за шторма.' },
   ]);
-  const result = render([item('Пользователь и персонаж отправились к северному шлюзу утром.', ['s1', 's2', 's3'], 'cancelled', 'plans')], sources);
-  assert.doesNotMatch(result, /отправились/); assert.match(result, /отменил поход/);
-  const proposalOnly = render([item('Пользователь отправился к северному шлюзу утром.', ['s1'])], sources);
-  assert.doesNotMatch(proposalOnly, /отправился/); assert.match(proposalOnly, /предложил/);
+  assert.equal(render([item('Пользователь и персонаж отправились к северному шлюзу утром.', ['s1', 's2', 's3'], 'cancelled', 'plans')], sources), '');
+  assert.equal(render([item('Пользователь отправился к северному шлюзу утром.', ['s1'])], sources), '');
+  const text = 'Пользователь отменил поход утром из-за шторма.';
+  assert.equal(render([item(text, ['s1', 's2', 's3'])], sources), `## Предыстория\n${text}`);
 });
 check('backstory survives parse/rebuild and the next summary update', () => {
   const text = 'Пользователь предложил проверить северный шлюз. Персонаж завершил проверку северного шлюза.';

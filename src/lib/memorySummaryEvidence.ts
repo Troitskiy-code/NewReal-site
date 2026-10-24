@@ -1,15 +1,14 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { MemorySummaryError, type MemorySummaryDetail, type MemorySummaryItemReason } from "./memorySummaryPolicy";
-import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, isSupportedMemoryText, memoryOverlap, sameMemoryMeaning, type MemoryStatus } from "./memoryNarrative";
+import { MEMORY_STATUSES, STATUS_LABELS, inferMemoryStatus, isSupportedRetelling, knownMemoryNames, sameMemoryMeaning, type MemoryStatus } from "./memoryNarrative";
 
 type Author = "user" | "character" | "memory";
 export type SummarySource = { id: string; author: Author; text: string; status?: MemoryStatus;
   speaker?: "user" | "character"; turn?: number };
 const LABELS: Record<Author, string> = { user: "Пользователь", character: "Персонаж", memory: "Из прежней сводки" };
 export type SummaryRenderDiagnostics = {
-  candidateCount: number; sourceCount: number; paraphraseFallbackCount: number;
-  budgetRejectedCount: number; sourceFallbackCount: number; sourcePoolFallbackCount: number;
-  fittedCount: number; renderedUsage: number; storedLimit: number;
+  candidateCount: number; sourceCount: number; unsupportedItemCount: number;
+  budgetRejectedCount: number; fittedCount: number; renderedUsage: number; storedLimit: number;
   skippedItemCount: number; skippedSourceLimitCount: number;
 };
 
@@ -48,31 +47,29 @@ function summarySubject(text: string): SummarySource["speaker"] {
   return match ? match[1].toLowerCase() === "пользователь" ? "user" : "character" : undefined;
 }
 
-/** Check each complete assertion against its own evidence, not unrelated numbers/negations
- * from the entire paragraph. Keep the stricter single-fact guard used by episodic memory. */
-function supportedSummaryText(text: string, selected: SummarySource[]): boolean {
+/** Each assertion is checked against the cited sources its subject may claim: first-person
+ * evidence belongs to its speaker and cannot be reassigned in a retelling. A cited source need
+ * not be repeated, since a story item cites more quotes than any one sentence; a cited denial
+ * still blocks the positive claim inside isSupportedRetelling. */
+function supportedSummaryText(text: string, selected: SummarySource[], knownNames: string[]): boolean {
   if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return false;
   const assertions = sentences(text).flatMap(sentence => sentence.split(/,\s*и\s+(?=(?:пользователь|персонаж)(?:\s|[,:]))/iu));
-  const support = assertions.map(sentence => selected.map(source => {
-    // First-person evidence belongs to its speaker; it cannot be reassigned in a retelling.
-    const speaker = summarySubject(source.text)
-      ?? (/(?:^|[^\p{L}])(?:я|мне|мой|моя|мы)(?=$|[^\p{L}])/iu.test(source.text)
-        ? source.speaker ?? (source.author === "memory" ? undefined : source.author) : undefined);
+  return assertions.every(sentence => {
     const subject = summarySubject(sentence);
-    if (speaker && subject && speaker !== subject) return false;
-    const status = inferMemoryStatus(sentence);
-    if (source.status && status !== "reported" && status !== source.status) return false;
-    return sentences(source.text).some(evidence => isSupportedMemoryText(sentence, evidence));
-  }));
-  // All cited evidence must be represented. Otherwise a positive source could hide
-  // a cited denial, or a completed action could erase an explicitly cited condition.
-  return support.every(matches => matches.some(Boolean))
-    && selected.every((_, index) => support.some(matches => matches[index]));
+    const eligible = selected.filter(source => {
+      const speaker = summarySubject(source.text)
+        ?? (/(?:^|[^\p{L}])(?:я|мне|мой|моя|мы)(?=$|[^\p{L}])/iu.test(source.text)
+          ? source.speaker ?? (source.author === "memory" ? undefined : source.author) : undefined);
+      return !(speaker && subject && speaker !== subject);
+    });
+    return isSupportedRetelling(sentence, eligible, knownNames);
+  });
 }
 
-/** Sources are checked per request; IDs are not a persistent facts database. */
+/** Sources are checked per request; IDs are not a persistent facts database. `context` (Core)
+ * only widens the names a retelling may use; it is never evidence for an assertion. */
 export function renderGroundedSummary(raw: string, sources: SummarySource[], maxTokens: number,
-  countTokens: (text: string) => number, diagnose?: (stats: SummaryRenderDiagnostics) => void): string {
+  countTokens: (text: string) => number, diagnose?: (stats: SummaryRenderDiagnostics) => void, context = ""): string {
   let parsed: unknown;
   try { parsed = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "")); }
   catch { throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_JSON"); }
@@ -85,17 +82,14 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   const headings = { story: "Предыстория", state: "Текущая ситуация", decisions: "Принятые решения", plans: "Открытые планы", events: "Недавние события" };
   type Section = keyof typeof headings;
   type Row = { section: Section; text: string; status: MemoryStatus; author: string; order: number };
-  const rows: Array<{ primary: Row; alternatives: Row[] }> = [];
+  const rows: Row[] = [];
+  // Names may come from any part of the request: cited roleplay quotes are first person.
+  const knownNames = knownMemoryNames([context, ...sources.map(source => source.text)].join("\n"));
   const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
-    paraphraseFallbackCount: 0, budgetRejectedCount: 0, sourceFallbackCount: 0, sourcePoolFallbackCount: 0,
-    fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens, skippedItemCount: 0, skippedSourceLimitCount: 0 };
+    unsupportedItemCount: 0, budgetRejectedCount: 0, fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens,
+    skippedItemCount: 0, skippedSourceLimitCount: 0 };
   const sectionFor = (status: MemoryStatus, section: Section): Section => status === "proposed" || status === "promised" ? "plans"
     : status === "decided" ? "decisions" : status === "done" || status === "cancelled" ? "events" : section;
-  const sourceRow = (source: SummarySource & { index: number }, uncertain = false): Row => {
-    const status = uncertain ? "uncertain" : source.status ?? inferMemoryStatus(source.text);
-    return { section: sectionFor(status, "state"), status, author: sourceLabel(source), order: source.index,
-      text: stripMemoryControlInstructions(source.text).replace(/\s+/g, " ").trim() };
-  };
   const skipped: MemorySummaryDetail[] = [];
   for (const [index, value] of result.items.entries()) {
     const refuse = (validationReason: MemorySummaryItemReason, extra: Partial<MemorySummaryDetail> = {}) =>
@@ -119,24 +113,19 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
       : itemSources > (itemSection === "story" ? 12 : 4) ? "too_many_sources" : null;
     if (limit) { skipped.push({ validationReason: limit, itemIndex: index + 1, itemSection, itemSources }); continue; }
     const selected = [...new Set(item.sources as string[])].map((id) => known.get(id)!).sort((a, b) => a.index - b.index);
-    const evidence = selected.map((source) => source.text).join(" ");
-    const supported = supportedSummaryText(item.text, selected);
-    const safeText = supported ? item.text.replace(/\s+/g, " ").trim()
-      : stripMemoryControlInstructions(evidence).replace(/\s+/g, " ").trim();
-    if (safeText !== item.text.replace(/\s+/g, " ").trim()) stats.paraphraseFallbackCount++;
-    if (!safeText) continue;
+    // An unsupported retelling is dropped. Pasting its quotes instead turned summaries into
+    // a log of replies that every later refresh fed back as evidence (prod 2026-10-24).
+    if (!supportedSummaryText(item.text, selected, knownNames)) { stats.unsupportedItemCount++; continue; }
+    const safeText = item.text.replace(/\s+/g, " ").trim();
     // A chosen status cannot promote a source to an executed action. Ambiguous multi-source changes stay uncertain.
     const sourceStatuses = new Set(selected.map((source) => source.status ?? inferMemoryStatus(source.text)));
     const asked = item.status as MemoryStatus;
-    const story = item.section === "story" && supported && !/(?:^|[^\p{L}])(?:я|ты|мы|мой|моя|твой|твоя)(?=$|[^\p{L}])/iu.test(safeText);
+    const story = item.section === "story" && !/(?:^|[^\p{L}])(?:я|ты|мы|мой|моя|твой|твоя)(?=$|[^\p{L}])/iu.test(safeText);
     const status: MemoryStatus = story ? "reported" : asked === "uncertain" || sourceStatuses.size > 1 ? "uncertain"
       : sourceStatuses.has(asked) ? asked : [...sourceStatuses][0];
     const author = [...new Set(selected.map(sourceLabel))].join(" / ");
-    const primary = { section: story ? "story" as const : sectionFor(status, item.section === "story" ? "events" : item.section as Section), text: safeText, status, author,
-      order: Math.max(...selected.map((source) => source.index)) };
-    // Never trim a source or reinterpret a rejected paraphrase. Alternatives retain each
-    // source's author/status; conflicting evidence remains explicitly uncertain.
-    rows.push({ primary, alternatives: selected.map(source => sourceRow(source, status === "uncertain")) });
+    rows.push({ section: story ? "story" as const : sectionFor(status, item.section === "story" ? "events" : item.section as Section), text: safeText, status, author,
+      order: Math.max(...selected.map((source) => source.index)) });
   }
   stats.skippedItemCount = skipped.length;
   stats.skippedSourceLimitCount = skipped.filter(row => row.validationReason === "too_many_sources").length;
@@ -158,26 +147,9 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     fitted.pop(); stats.budgetRejectedCount++;
     return false;
   };
-  for (const { primary, alternatives } of rows) {
-    if (tryFit(primary)) continue;
-    for (const alternative of alternatives) {
-      const before = fitted.length;
-      if (tryFit(alternative) && fitted.length > before) stats.sourceFallbackCount++;
-    }
-  }
-  // A valid item may point only at an oversized quote. Use another complete, clean
-  // source rather than erase the memory or retry the same paid generation forever.
-  // Prefer current dialogue to secondary memory; all items have been validated above.
-  if (!fitted.length) {
-    const relevance = (source: SummarySource) => Math.max(0, ...rows.map(row => memoryOverlap(row.primary.text, source.text)));
-    const pool = [...known.values()].map(source => ({ source, score: relevance(source) })).filter(row => row.score > 0)
-      .sort((a, b) => b.score - a.score || Number(a.source.author === "memory") - Number(b.source.author === "memory") || b.source.index - a.source.index);
-    for (const { source } of pool) {
-      const row = sourceRow(source, true);
-      if (tryFit(row)) { stats.sourcePoolFallbackCount++; break; }
-    }
-  }
-  const summary = render();
+  // A row that does not fit is dropped whole; it is never cut or replaced by its quotes.
+  for (const row of rows) tryFit(row);
+    const summary = render();
   stats.fittedCount = fitted.length; stats.renderedUsage = countTokens(summary);
   diagnose?.(stats);
   return summary;

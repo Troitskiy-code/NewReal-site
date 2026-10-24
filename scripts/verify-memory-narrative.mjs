@@ -33,17 +33,35 @@ check('5.5 percent and delayed 6 percent remain separate', () => {
   const result = render([item(sources[0].text, 's1'), item(sources[2].text, 's3')]);
   assert.match(result, /5,5%/); assert.match(result, /6%/); assert.match(result, /Отменено/);
 });
-check('unsupported number falls back to the original evidence', () => {
-  const result = render([item('Повысить учётную ставку до 9%.', 's1')]);
-  assert.doesNotMatch(result, /9%/); assert.match(result, /5,5%/);
+check('unsupported number drops the item instead of pasting its quote', () => {
+  assert.equal(render([item('Повысить учётную ставку до 9%.', 's1')]), '');
 });
 check('negation cannot be lost during paraphrase', () => {
-  const result = render([item('Ключ отдан капитану.', 's4', 'done')]);
-  assert.match(result, /не отдавал/); assert.doesNotMatch(result, /Выполнено/);
+  assert.equal(render([item('Ключ отдан капитану.', 's4', 'done')]), '');
 });
 check('new named participant is not persisted', () => {
-  const result = render([item('Петров гарантирует вклады до 100000 рублей.', 's5')]);
-  assert.doesNotMatch(result, /Петров/); assert.match(result, /Меллон/);
+  assert.equal(render([item('Петров гарантирует вклады до 100000 рублей.', 's5')]), '');
+});
+check('a name used elsewhere in the request may appear in a retelling of a first-person quote', () => {
+  const quotes = evidence.makeSummarySources([
+    { role: 'user', content: 'А ты же Вика, верно? Я Артём.' },
+    { role: 'assistant', content: 'Я узнала его: это тот самый парень, с которого всё началось три года назад.' },
+  ]);
+  const text = 'Вика узнала Артёма: с него всё началось три года назад.';
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item(text, 's3', 'reported', 'story')] }), quotes, 800, countTokens),
+    `## Предыстория\n${text}`);
+});
+check('an ordinary word opening a sentence is not taken for an unknown name', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant',
+    content: '*я сижу в углу с подружками из танцевальной группы и обсуждаю новые хореографии для видео*' }]);
+  const text = 'Подруги из танцевальной группы обсуждали новые хореографии для видео.';
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] }), quotes, 800, countTokens), /Подруги/);
+});
+check('a name from Core context is known, a name absent everywhere is not', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным.' }]);
+  const raw = text => JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] });
+  assert.match(evidence.renderGroundedSummary(raw('Вика работает в кофейне по выходным.'), quotes, 800, countTokens, undefined, '- Имя: Вика'), /Вика/);
+  assert.equal(evidence.renderGroundedSummary(raw('Марина работает в кофейне по выходным.'), quotes, 800, countTokens, undefined, '- Имя: Вика'), '');
 });
 check('unsupported source ID refuses the complete candidate', () => {
   assert.throws(() => render([item('Нашёл ключ.', 'invented')]));
@@ -103,45 +121,38 @@ check('negated cancellation and promise stay reported claims', () => {
   assert.equal(narrative.inferMemoryStatus('Я не отменял повышение ставки.'), 'reported');
   assert.equal(narrative.inferMemoryStatus('Я не обещал гарантировать вклады.'), 'reported');
 });
-check('oversized concatenated evidence fits complete attributed sources without losing numbers or negation', () => {
+check('an unsupported claim over long denials is dropped, never replaced by the quotes', () => {
   const quotes = Array.from({ length: 4 }, (_, i) => ({ id: `s${i + 1}`, author: i % 2 ? 'character' : 'user',
     text: `смотритель не передавал ключ номер ${i + 17} капитану, ` + 'ключ хранится возле деревянной ступени, '.repeat(5) + 'условия передачи прежние.' }));
   let stats;
   const text = evidence.renderGroundedSummary(JSON.stringify({ items: [{ section: 'events', status: 'done',
     text: 'смотритель передал ключ капитану.', sources: quotes.map(source => source.id) }] }), quotes, 200, countTokens, value => { stats = value; });
-  assert.ok(text && countTokens(text) <= 200); assert.match(text, /не передавал ключ номер 17/);
-  assert.match(text, /Пользователь/); assert.doesNotMatch(text, /Выполнено/);
-  assert.ok(stats.paraphraseFallbackCount > 0 && stats.budgetRejectedCount > 0 && stats.sourceFallbackCount > 0);
+  assert.equal(text, ''); assert.equal(stats.unsupportedItemCount, 1); assert.equal(stats.fittedCount, 0);
   assert.equal(stats.renderedUsage, countTokens(text));
   assert.ok(Object.values(stats).every(value => typeof value === 'number'));
 });
-check('a different relevant complete quote rescues an oversized selection without storing unrelated filler', () => {
+check('a short retelling of an oversized quote is kept without the quote or unrelated filler', () => {
   const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
-  const quotes = [{ id: 's1', author: 'user', text: long },
-    { id: 's2', author: 'character', text: 'смотритель хранит ключ номер 17 возле деревянной ступени.' },
-    { id: 's3', author: 'user', text: 'Благодарю, прекрасно.' }];
-  let stats;
-  const text = evidence.renderGroundedSummary(JSON.stringify({ items: [{ section: 'state', status: 'reported',
-    text: 'смотритель хранит ключ возле деревянной ступени.', sources: ['s1'] }] }), quotes, 200, countTokens, value => { stats = value; });
-  assert.ok(text && countTokens(text) <= 200); assert.match(text, /ключ номер 17/); assert.match(text, /Персонаж/);
-  assert.match(text, /Неясно/); assert.doesNotMatch(text, /Благодарю/); assert.equal(stats.sourcePoolFallbackCount, 1);
-});
-check('unrepresentable single quote remains whole and empty provider items are rejected explicitly', () => {
-  const long = 'смотритель хранит ключ возле деревянной ступени в закрытой башне, '.repeat(12) + 'номер 17.';
-  const quotes = [{ id: 's1', author: 'user', text: long }, { id: 's2', author: 'user', text: 'Благодарю.' }];
+  const quotes = [{ id: 's1', author: 'user', text: long }, { id: 's2', author: 'user', text: 'Благодарю, прекрасно.' }];
   const text = evidence.renderGroundedSummary(JSON.stringify({ items: [{ section: 'state', status: 'reported',
     text: 'смотритель хранит ключ возле деревянной ступени.', sources: ['s1'] }] }), quotes, 200, countTokens);
-  assert.equal(text, '');
+  assert.equal(text, '## Текущая ситуация\n- [Сообщено; Пользователь] смотритель хранит ключ возле деревянной ступени.');
   assert.throws(() => evidence.renderGroundedSummary('{"items":[]}', quotes, 200, countTokens), { code: 'MEMORY_SUMMARY_INVALID_ITEMS' });
 });
-check('fitting fallback cannot hide an invalid later item or turn conflicting evidence into certainty', () => {
+check('an item over the stored budget is dropped whole', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'user', content: 'Смотритель хранит ключ возле деревянной ступени в закрытой башне.' }]);
+  let stats;
+  const text = evidence.renderGroundedSummary(JSON.stringify({ items: [{ section: 'story', status: 'reported',
+    text: quotes[0].text, sources: ['s1'] }] }), quotes, 10, countTokens, value => { stats = value; });
+  assert.equal(text, ''); assert.equal(stats.budgetRejectedCount, 1);
+});
+check('a valid item cannot hide an invalid later item, and a cited denial blocks the positive claim', () => {
   const quotes = [{ id: 's1', author: 'user', text: 'Я не отдавал ключ капитану.' },
     { id: 's2', author: 'character', text: 'Я передал ключ капитану.' }];
   const valid = { section: 'events', status: 'done', text: 'Ключ отдан капитану.', sources: ['s1', 's2'] };
   assert.throws(() => evidence.renderGroundedSummary(JSON.stringify({ items: [valid, { ...valid, sources: ['invented'] }] }),
     quotes, 200, countTokens), { code: 'MEMORY_SUMMARY_UNSUPPORTED_ITEM' });
-  const text = evidence.renderGroundedSummary(JSON.stringify({ items: [valid] }), quotes, 200, countTokens);
-  assert.match(text, /Неясно/); assert.match(text, /не отдавал/); assert.doesNotMatch(text, /\[Выполнено/);
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [valid] }), quotes, 200, countTokens), '');
   assert.throws(() => evidence.renderGroundedSummary(JSON.stringify({ items: [valid, { ...valid, sources: ['invented'] }] }),
     quotes, 200, countTokens), (error) => error.detail.validationReason === 'unknown_source' && error.detail.itemIndex === 2);
 });

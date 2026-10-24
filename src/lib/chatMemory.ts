@@ -527,7 +527,7 @@ async function requestSelectedSummary(
   const raw = await requestKodikText(apiKey, prompt,
     input, maxTokens, sources.map(source => source.id));
   const summary = renderGroundedSummary(raw, sources, maxTokens, countTokens,
-    stats => infoLog("MemorySummary", "render completed", stats));
+    stats => infoLog("MemorySummary", "render completed", stats), coreText ?? "");
   if (!summary) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   return summary;
 }

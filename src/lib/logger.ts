@@ -63,8 +63,8 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "firstByteLimitMs", "idleLimitMs", "totalLimitMs",
   "generationLimit", "storedLimit", "outputUsage",
   "networkRoute",
-  "candidateCount", "sourceCount", "paraphraseFallbackCount", "budgetRejectedCount",
-  "sourceFallbackCount", "sourcePoolFallbackCount", "fittedCount", "renderedUsage",
+  "candidateCount", "sourceCount", "unsupportedItemCount", "budgetRejectedCount",
+  "fittedCount", "renderedUsage", "skippedItemCount", "skippedSourceLimitCount",
   "itemIndex", "itemSection", "itemSources",
   // Memory v2: local validation enums, generated labels, counters and job correlation.
   "jobId", "seq", "maxAttempts", "willRetry", "nextAttemptAt", "retryDelayMs", "timeoutMs", "providerCode",
