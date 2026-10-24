@@ -88,6 +88,26 @@ await check('overflow compresses only the two oldest chapters; the newest stays 
   assert.equal(stats.compressedPairCount, 1); assert.equal(stats.chapterCount, 3);
 });
 
+await check('a compression longer than its target but clearly shorter than the pair is kept, not cut back to openings', async () => {
+  const old = ['Вика и Артём учились в одной школе, и в выпускном классе Артём признался Вике в чувствах, но она ему отказала.',
+    'Вика объяснила, что отказала Артёму из страха перемен и привязанности, хотя он ей нравился все эти годы.',
+    'Через три года они встретились в клубе и обменялись номерами.'];
+  const compressed = 'Артём признался Вике в чувствах ещё в выпускном классе школы, но она тогда отказала ему, потому что боялась перемен и привязанности, хотя он ей нравился все эти годы.';
+  const provider = stub({ chapter: JSON.stringify({ items: [story('Артём пригласил Вику в ресторан, и она согласилась.')] }),
+    compress: input => JSON.stringify({ items: [{ ...story(compressed), sources: input.sources.map(source => source.id) }] }) });
+  const chars = text => text.length;
+  const pair = chars(`${old[0]} ${old[1]}`);
+  const limit = chars(chapters.composeChapterSummary([...old, 'Артём пригласил Вику в ресторан, и она согласилась.'], '')) - 20;
+  // Counted in characters: the target (60% of the pair, at least 120) is shorter than the answer, which is within 85%.
+  const target = Math.max(Math.min(120, limit), Math.min(Math.ceil(pair * 0.6), Math.floor(limit * 0.35)));
+  assert.ok(chars(compressed) > target && chars(compressed) <= pair * 0.85, `${chars(compressed)} ${target} ${pair}`);
+  let stats;
+  const result = await chapters.writeSummaryChapter(`## Предыстория\n${old.join('\n')}`, [{ role: 'user', content: 'Я приглашаю тебя в ресторан, и ты согласилась.' }],
+    context(provider.ask, limit, chars), value => { stats = value; });
+  assert.equal(stats.compressedPairCount, 1); assert.equal(stats.compressionFallbackCount, 0);
+  assert.ok(result.startsWith(`## Предыстория\n${compressed}\n${old[2]}`));
+});
+
 await check('a refused compression keeps the opening sentences of both chapters and still fits', async () => {
   const old = ['Вика и Артём учились в одной школе. Артём признался Вике в чувствах. Вика ему отказала.',
     'Через три года они встретились в клубе. Они обменялись номерами. Артём подвёз Вику домой.', 'Вика написала Артёму первой.'];

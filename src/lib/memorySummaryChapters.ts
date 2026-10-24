@@ -20,6 +20,10 @@ export type SummaryMode = "summary" | "merge" | "chapter" | "compress";
 export const CHAPTER_BUDGET_SHARE = 0.5;
 /** A compressed pair keeps ~60% of its length, and at most this share of the allowance. */
 const COMPRESSED_SHARE = 0.6, COMPRESSED_MAX_SHARE = 0.35, MAX_COMPRESSIONS = 4;
+/** A compression is kept when it is at most 85% of the pair, so every round frees room. */
+const COMPRESSED_ACCEPT_SHARE = 0.85;
+/** «## Предыстория» counted by the renderer's budget. */
+const HEADING_TOKENS = 8;
 
 export function summarySystemPrompt(mode: SummaryMode, maxTokens: number, names: SummaryParticipants = {}): string {
   const cast = [names.user && `герой пользователя — ${names.user}`, names.character && `персонаж — ${names.character}`].filter(Boolean);
@@ -115,15 +119,21 @@ async function fitChapters(chapters: string[], rest: string, context: ChapterCon
 }
 
 async function compressChapters(first: string, second: string, context: ChapterContext, stats: ChapterStats): Promise<string> {
-  const { maxTokens, core, names, countTokens, ask } = context;
+  const { maxTokens, core, names, countTokens, ask, diagnose } = context;
+  const pairTokens = countTokens(`${first} ${second}`);
   const target = Math.max(Math.min(120, maxTokens),
-    Math.min(Math.ceil(countTokens(`${first} ${second}`) * COMPRESSED_SHARE), Math.floor(maxTokens * COMPRESSED_MAX_SHARE)));
+    Math.min(Math.ceil(pairTokens * COMPRESSED_SHARE), Math.floor(maxTokens * COMPRESSED_MAX_SHARE)));
   const sources = sourcesFromSummaries(`## Предыстория\n${first}\n${second}`).map((source, index) => ({ ...source, id: `s${index + 1}` }));
   try {
     const raw = await ask("compress", JSON.stringify({ sources }), target, sources.map(source => source.id));
-    const rendered = renderGroundedSummary(raw, sources, target, countTokens, undefined, [core ?? "", first, second].join("\n"), names, "chapter");
+    // The target steers the model; any answer clearly shorter than the pair is kept. Fitting it to
+    // the target dropped a 280-token compression of a 426-token pair whole (target 256), and the
+    // fallback then cut the story's opening (prod rebuild 2026-10-24). A summary still too long gets
+    // another round.
+    const rendered = renderGroundedSummary(raw, sources, Math.ceil(pairTokens * COMPRESSED_ACCEPT_SHARE) + HEADING_TOKENS, countTokens,
+      diagnose, [core ?? "", first, second].join("\n"), names, "chapter");
     const text = splitSummaryChapters(rendered).chapters.join(" ");
-    if (text && countTokens(text) < countTokens(`${first} ${second}`)) { stats.compressedPairCount++; return text; }
+    if (text && countTokens(text) <= pairTokens * COMPRESSED_ACCEPT_SHARE) { stats.compressedPairCount++; return text; }
   } catch (error) {
     // A refused or unusable answer falls back below; a transport failure defers the whole refresh.
     if (!(error instanceof MemorySummaryError)) throw error;
