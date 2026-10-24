@@ -180,6 +180,17 @@ check('a story refuses verbatim narration and two-word fragments, keeps the rete
   // Labelled items keep their old behaviour: a verbatim third-person fact is still accepted there.
   assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Пьяный от сна взгляд.', 's2', 'reported', 'state')] }), quotes, 800, countTokens), /Пьяный/);
 });
+check('participant names come from Core and keep authorship in a named retelling', () => {
+  const core = '## Персонаж\n- Имя: Вика\n- Возраст: двадцать один\n\n## Пользователь\n- Занятие: IT\n- Имя: Артём';
+  assert.deepEqual(evidence.participantNames(core), { user: 'Артём', character: 'Вика' });
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я обещаю позвонить тебе завтра после репетиции.' }]);
+  const raw = text => JSON.stringify({ items: [item(text, 's1', 'promised', 'plans')] });
+  assert.match(evidence.renderGroundedSummary(raw('Вика обещает позвонить завтра после репетиции.'), quotes, 800, countTokens, undefined, core), /Вика обещает/);
+  // The character's first-person promise cannot become Артём's.
+  assert.equal(evidence.renderGroundedSummary(raw('Артём обещает позвонить завтра после репетиции.'), quotes, 800, countTokens, undefined, core), '');
+  // Names given without Core work the same way.
+  assert.match(evidence.renderGroundedSummary(raw('Вика обещает позвонить завтра после репетиции.'), quotes, 800, countTokens, undefined, '', { user: 'Артём', character: 'Вика' }), /Вика обещает/);
+});
 check('a short opening word is not an unknown name', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);
   const text = 'Но Вика работает в кофейне по выходным.';

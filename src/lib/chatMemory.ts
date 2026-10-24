@@ -6,7 +6,8 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
-import { GROUNDED_SUMMARY_RULES, makeSummarySources, renderGroundedSummary, sourcesFromSummaries, type SummarySource } from "@/lib/memorySummaryEvidence";
+import { GROUNDED_SUMMARY_RULES, makeSummarySources, participantNames, renderGroundedSummary, sourcesFromSummaries, type SummaryParticipants, type SummarySource } from "@/lib/memorySummaryEvidence";
+import { getSelectedChatPersona } from "@/lib/personaService";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
@@ -481,9 +482,11 @@ async function requestKodikText(
   systemPrompt: string,
   userContent: string,
   maxTokens: number,
-  sourceIds: string[]
+  sourceIds: string[],
+  names: SummaryParticipants = {}
 ): Promise<string> {
   const generationLimit = summaryGenerationLimit(maxTokens);
+  const cast = [names.user && `герой пользователя — ${names.user}`, names.character && `персонаж — ${names.character}`].filter(Boolean);
   const response = await meteredPost("summary",
     `${KODIKROUTER_URL}/chat/completions`,
     {
@@ -492,7 +495,8 @@ async function requestKodikText(
         {
           role: "system",
           content: applyPromptVars(systemPrompt, { maxTokens }) + "\n\n" + GROUNDED_SUMMARY_RULES
-            + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${summaryItemLimit(maxTokens)} пунктов. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии. Старые сцены при обновлении сжимай сильнее, чем новые. JSON полностью закрой; без markdown-обёртки.`,
+            + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${summaryItemLimit(maxTokens)} пунктов. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии. Старые сцены при обновлении сжимай сильнее, чем новые. JSON полностью закрой; без markdown-обёртки.`
+            + (cast.length ? `\nУчастники: ${cast.join(", ")}. В пересказе называй их по именам, а не «пользователь» и «персонаж».` : ""),
         },
         { role: "user", content: userContent },
       ],
@@ -523,22 +527,35 @@ async function requestKodikText(
 
 async function requestSelectedSummary(
   apiKey: string, prompt: string, sources: SummarySource[], maxTokens: number,
-  coreText: string | null
+  coreText: string | null, names: SummaryParticipants = {}
 ): Promise<string> {
   if (!sources.length) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   // One bounded generation; failures are deferred by the background refresh lease.
   const input = JSON.stringify({ sources, core: coreText });
   if (summaryInputTooLarge(input)) throw new MemorySummaryInputError();
   const raw = await requestKodikText(apiKey, prompt,
-    input, maxTokens, sources.map(source => source.id));
+    input, maxTokens, sources.map(source => source.id), names);
   const summary = renderGroundedSummary(raw, sources, maxTokens, countTokens,
-    stats => infoLog("MemorySummary", "render completed", stats), coreText ?? "");
+    stats => infoLog("MemorySummary", "render completed", stats), coreText ?? "", names);
   if (!summary) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   return summary;
 }
 
-async function requestSummary(apiKey: string, messages: DialogMessage[], maxTokens: number, coreText: string | null): Promise<string> {
-  return requestSelectedSummary(apiKey, SUMMARY_PROMPT, makeSummarySources(messages), maxTokens, coreText);
+async function requestSummary(apiKey: string, messages: DialogMessage[], maxTokens: number, coreText: string | null,
+  names: SummaryParticipants = {}): Promise<string> {
+  return requestSelectedSummary(apiKey, SUMMARY_PROMPT, makeSummarySources(messages), maxTokens, coreText, names);
+}
+
+/** Names for the retelling: Core first, then the story's persona and the character card.
+ * Without them the model wrote «пользователь» throughout a 196-message story (prod 2026-10-24). */
+async function summaryParticipants(scope: ChatScope, coreText: string | null): Promise<SummaryParticipants> {
+  const fromCore = participantNames(coreText ?? "");
+  const [character, persona] = await Promise.all([
+    fromCore.character ? null : prisma.character.findUnique({ where: { id: scope.characterId }, select: { name: true } }),
+    fromCore.user ? null : getSelectedChatPersona(scope.userId, scope.characterId, scope.threadId).catch(() => null),
+  ]);
+  const short = (name?: string | null) => name && name.trim().length <= 30 ? name.trim() : undefined;
+  return { user: short(fromCore.user ?? persona?.name), character: short(fromCore.character ?? character?.name) };
 }
 
 function mergeSources(oldSummary: string, messages: DialogMessage[]): SummarySource[] {
@@ -653,7 +670,8 @@ async function createArcSummary(
   messagesToSummarize = fitSummaryMessages(messagesToSummarize, coreText);
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
-  const summary = await requestSummary(apiKey, messagesToSummarize, config.maxTokens, coreText);
+  const summary = await requestSummary(apiKey, messagesToSummarize, config.maxTokens, coreText,
+    await summaryParticipants(scope, coreText));
   const saved = await persistMemorySummary(
     scope,
     summary,
@@ -706,7 +724,7 @@ async function updateArcWithChapter(
   );
   // One grounded update sees the actual new messages, not a twice-compressed chapter.
   const mergedSummary = await requestSelectedSummary(apiKey, MERGE_PROMPT,
-    mergeSources(sourceSummary, chapterMessages), config.maxTokens, coreText);
+    mergeSources(sourceSummary, chapterMessages), config.maxTokens, coreText, await summaryParticipants(scope, coreText));
   const saved = await persistMemorySummary(
     scope,
     mergedSummary,
@@ -1049,7 +1067,7 @@ export async function rebuildMemorySummaryStep(
   const { config } = getSummaryConfigForUser(user);
   const coreText = await loadCoreMemoryText(scope);
   cursor.draft = await requestSelectedSummary(apiKey, cursor.draft ? MERGE_PROMPT : SUMMARY_PROMPT,
-    mergeSources(cursor.draft, chunk), config.maxTokens, coreText);
+    mergeSources(cursor.draft, chunk), config.maxTokens, coreText, await summaryParticipants(scope, coreText));
   cursor.after = lastSummarizedTimestamp(chunk).toISOString();
   cursor.processed += chunk.length;
   const remaining = await prisma.message.count({ where: { ...messageScopeWhere(scope), createdAt: { gt: new Date(cursor.after), lte: new Date(cursor.through) } } });

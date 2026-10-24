@@ -78,6 +78,10 @@ function sameName(left: string, right: string): boolean {
   const [short, long] = left.length <= right.length ? [left, right] : [right, left];
   return long.startsWith(short.length > 3 ? short.slice(0, -1) : short);
 }
+/** «Артёма» and «Артём» are one participant. */
+export function isSameMemoryName(left: string, right: string): boolean {
+  return sameName(nameKey(left), nameKey(right));
+}
 export function knownMemoryNames(text: string): string[] {
   return [...names(text)];
 }

@@ -73,6 +73,12 @@ try {
     assert.equal(mirror.length, 1); assert.equal(mirror[0].content, summary);
     provider.summaryText = null;
   });
+  await check('the summary prompt names the participants from Core instead of «пользователь»', async () => {
+    const fixture = await setup();
+    await db.coreMemory.create({ data: { ...await helpers.key(fixture.user.id, fixture.scope.characterId), content: '## Персонаж\n- Имя: Вика\n\n## Пользователь\n- Имя: Артём' } });
+    await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+    assert.match(latestSummaryBody.messages[0].content, /Участники: герой пользователя — Артём, персонаж — Вика\. В пересказе называй их по именам/);
+  });
   await check('new messages inside the kept recent window do not trigger a paid summary call', async () => {
     const fixture = await setup('Смотритель хранит ключ возле ступени. '.repeat(40));
     await db.memory.update({ where: { threadId: fixture.scope.threadId }, data: { lastSummarizedAt: fixture.rows[42].createdAt, summarizedMessageCount: 43 } });

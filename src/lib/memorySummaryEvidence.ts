@@ -1,6 +1,6 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { MemorySummaryError, SUMMARY_ITEM_MAX_CHARS, type MemorySummaryDetail, type MemorySummaryItemReason } from "./memorySummaryPolicy";
-import { MEMORY_STATUSES, STATUS_LABELS, hasRoleplayVoice, inferMemoryStatus, knownMemoryNames, retellingRejection, sameMemoryMeaning,
+import { MEMORY_STATUSES, STATUS_LABELS, hasRoleplayVoice, inferMemoryStatus, isSameMemoryName, knownMemoryNames, retellingRejection, sameMemoryMeaning,
   type MemoryStatus, type RetellingRejection } from "./memoryNarrative";
 
 type Author = "user" | "character" | "memory";
@@ -54,9 +54,21 @@ export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
 const sentences = (text: string) => text.split(/\r?\n|(?<=[.!?])\s+/u).map(line => line.trim()).filter(Boolean);
 const sourceLabel = (source: SummarySource) => source.author === "memory" && source.speaker
   ? `${LABELS[source.speaker]} (из прежней сводки)` : LABELS[source.author];
-function summarySubject(text: string): SummarySource["speaker"] {
+/** The two participants by name, so a retelling can say «Артём», not «пользователь». */
+export type SummaryParticipants = { user?: string; character?: string };
+/** Names from Core sections «## Пользователь» / «## Персонаж» («- Имя: Артём»). */
+export function participantNames(core: string): SummaryParticipants {
+  const name = (title: string) => new RegExp(`^##\\s*${title}[^\\n]*\\n((?:(?!##)[^\\n]*(?:\\n|$))*)`, "imu").exec(core)?.[1]
+    ?.match(/^\s*[-*•]?\s*Имя:\s*([^\n,;]{1,40})/imu)?.[1].trim();
+  return { user: name("Пользователь"), character: name("Персонаж") };
+}
+function summarySubject(text: string, names: SummaryParticipants = {}): SummarySource["speaker"] {
   const match = /^(?:(?:сначала|затем|позже)\s+)?(пользователь|персонаж)(?:\s|[,:])/iu.exec(text.trim());
-  return match ? match[1].toLowerCase() === "пользователь" ? "user" : "character" : undefined;
+  if (match) return match[1].toLowerCase() === "пользователь" ? "user" : "character";
+  const first = /^(?:(?:сначала|затем|позже)\s+)?(\p{Lu}[\p{L}'-]+)/iu.exec(text.trim())?.[1];
+  if (!first) return undefined;
+  return names.user && isSameMemoryName(first, names.user) ? "user"
+    : names.character && isSameMemoryName(first, names.character) ? "character" : undefined;
 }
 
 const normalizedSentence = (text: string) => text.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -65,7 +77,7 @@ const normalizedSentence = (text: string) => text.toLowerCase().replace(/ё/g, "
  * belongs to its speaker and cannot be reassigned in a retelling. `support` may be wider than the
  * citation (a story retells more than it can cite); a denial counts only from `cited`. */
 function checkSummaryText(text: string, support: SummarySource[], cited: SummarySource[], knownNames: string[],
-  messages: string[] = []) {
+  messages: string[] = [], names: SummaryParticipants = {}) {
   const supported: string[] = [], rejected: RetellingRejection[] = [];
   if (!text.trim() || text.length > 1200 || stripMemoryControlInstructions(text) !== text) return { supported, rejected: ["control" as const], cut: false };
   const all = sentences(text);
@@ -82,9 +94,9 @@ function checkSummaryText(text: string, support: SummarySource[], cited: Summary
       if (messages.some(message => message.includes(plain))) { rejected.push("copy"); continue; }
     }
     const reason = sentence.split(/,\s*и\s+(?=(?:пользователь|персонаж)(?:\s|[,:]))/iu).map(assertion => {
-      const subject = summarySubject(assertion);
+      const subject = summarySubject(assertion, names);
       const claimable = (source: SummarySource) => {
-        const speaker = summarySubject(source.text)
+        const speaker = summarySubject(source.text, names)
           ?? (/(?:^|[^\p{L}])(?:я|мне|мой|моя|мы)(?=$|[^\p{L}])/iu.test(source.text)
             ? source.speaker ?? (source.author === "memory" ? undefined : source.author) : undefined);
         return !(speaker && subject && speaker !== subject);
@@ -99,7 +111,8 @@ function checkSummaryText(text: string, support: SummarySource[], cited: Summary
 /** Sources are checked per request; IDs are not a persistent facts database. `context` (Core)
  * only widens the names a retelling may use; it is never evidence for an assertion. */
 export function renderGroundedSummary(raw: string, sources: SummarySource[], maxTokens: number,
-  countTokens: (text: string) => number, diagnose?: (stats: SummaryRenderDiagnostics) => void, context = ""): string {
+  countTokens: (text: string) => number, diagnose?: (stats: SummaryRenderDiagnostics) => void, context = "",
+  names: SummaryParticipants = participantNames(context)): string {
   let parsed: unknown;
   try { parsed = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "")); }
   catch { throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_JSON"); }
@@ -119,7 +132,8 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   const memorySources = [...known.values()].filter(source => source.author === "memory");
   const messageTexts = [...turns.values()].map(rows => normalizedSentence(rows.map(row => row.text).join(" ")));
   // Names may come from any part of the request: cited roleplay quotes are first person.
-  const knownNames = knownMemoryNames([context, ...sources.map(source => source.text)].join("\n"));
+  const knownNames = [...knownMemoryNames([context, ...sources.map(source => source.text)].join("\n")),
+    ...knownMemoryNames([names.user, names.character].filter(Boolean).join(" "))];
   const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
     unsupportedItemCount: 0, budgetRejectedCount: 0, fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens,
     skippedItemCount: 0, skippedSourceLimitCount: 0, trimmedStoryCount: 0, rejectedSentenceCount: 0,
@@ -167,7 +181,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
       .map(source => [source.id, source])).values()];
     // A past compresses the previous summary, so only that summary supports it.
     const check = checkSummaryText(item.text, past ? memorySources : narrative ? [...known.values()] : cited, cited, knownNames,
-      narrative ? messageTexts : []);
+      narrative ? messageTexts : [], names);
     for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
     stats.rejectedSentenceCount += check.rejected.length;
     if (check.cut) stats.cutItemCount++;
