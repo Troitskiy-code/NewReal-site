@@ -189,6 +189,60 @@ export function trimTextToTokenLimit(text: string, maxTokens: number): string {
   return best.trimEnd();
 }
 
+/** Whole lines in order: ranked Core keeps its most important facts and never a half-fact.
+ * A heading is kept only together with a line under it. */
+export function trimLinesToTokenLimit(text: string, maxTokens: number): string {
+  if (!text || maxTokens <= 0) return "";
+  if (countTokens(text) <= maxTokens) return text;
+  const kept: string[] = [];
+  let heading: string | null = null;
+  for (const line of text.split("\n")) {
+    if (/^#{1,3}\s/.test(line.trim()) || !line.trim()) { if (line.trim()) heading = line; continue; }
+    const next = [...kept, ...(heading ? [...(kept.length ? [""] : []), heading] : []), line];
+    if (countTokens(next.join("\n")) > maxTokens) break;
+    kept.splice(0, kept.length, ...next);
+    heading = null;
+  }
+  // A single fact larger than the allowance (a pasted note): its beginning beats nothing.
+  return kept.length ? kept.join("\n") : trimTextToTokenLimit(text, maxTokens);
+}
+
+const SUMMARY_HEAD_SHARE = 0.35;
+/**
+ * Over its allowance a summary keeps its opening (how the story began) and its newest part and
+ * drops whole sentences from the middle. Slicing the text cut the newest events mid-sentence.
+ */
+export function trimSummaryToTokenLimit(text: string, maxTokens: number): string {
+  if (!text || maxTokens <= 0) return "";
+  if (countTokens(text) <= maxTokens) return text;
+  type Unit = { text: string; heading: boolean; lineStart: boolean };
+  const units: Unit[] = [];
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    if (/^#{1,3}\s/.test(line.trim())) { units.push({ text: line.trim(), heading: true, lineStart: true }); continue; }
+    line.trim().split(/(?<=[.!?…])\s+/u).forEach((sentence, index) => units.push({ text: sentence, heading: false, lineStart: index === 0 }));
+  }
+  const gap: Unit = { text: "…", heading: false, lineStart: true };
+  const render = (rows: Unit[]) => rows.map((row, index) => index === 0 ? row.text
+    : `${row.heading ? "\n\n" : row.lineStart ? "\n" : " "}${row.text}`).join("");
+  const head: Unit[] = [];
+  for (const unit of units) {
+    if (countTokens(render([...head, unit])) > maxTokens * SUMMARY_HEAD_SHARE) break;
+    head.push(unit);
+  }
+  const tail: Unit[] = [];
+  for (let index = units.length - 1; index >= head.length; index -= 1) {
+    const candidate = [units[index], ...tail];
+    // A heading in the dropped middle stays with the section it introduces.
+    if (countTokens(render([...head, gap, ...candidate])) > maxTokens) break;
+    tail.unshift(units[index]);
+  }
+  const middleHeading = [...units.slice(head.length, units.length - tail.length)].reverse().find(unit => unit.heading);
+  const rows = [...head, gap, ...(middleHeading && tail[0] && !tail[0].heading ? [middleHeading] : []), ...tail];
+  while (rows.length > head.length + 1 && countTokens(render(rows)) > maxTokens) rows.splice(head.length + 1, 1);
+  return render(rows).trim();
+}
+
 export function allocateTokens(
   _messages: ChatCompletionMessage[],
   maxContextTokens: number,
@@ -314,6 +368,8 @@ export type ContextAssemblyStats = {
   unprocessedInWindow: number;
   droppedUnprocessed: number;
   droppedMemoryBlocks: MemoryBlockKind[];
+  /** Blocks shortened to their allowance: an overflow that is otherwise invisible in the prompt. */
+  trimmedMemoryBlocks: MemoryBlockKind[];
 };
 
 export type PreparedChatMessages = {
@@ -576,7 +632,7 @@ export function assemblePreparedChatMessages(
 
   // Episodic: pick by rank for the actual intent, keep what fits, show in story order.
   const coreText = context.memoryCandidates.core
-    ? trimTextToTokenLimit(context.memoryCandidates.core, allocations.coreEpisodic)
+    ? trimLinesToTokenLimit(context.memoryCandidates.core, allocations.coreEpisodic)
     : "";
   let episodicRoom = allocations.coreEpisodic - countTokens(coreText);
   const keptEvents: EpisodicMemoryItem[] = [];
@@ -588,7 +644,7 @@ export function assemblePreparedChatMessages(
     episodicRoom -= itemTokens;
   }
   const eventsText = sortEpisodicChronologically(keptEvents).map(formatEpisodicLine).join("\n");
-  const summaryText = context.memorySummary ? trimTextToTokenLimit(context.memorySummary, allocations.summary) : "";
+  const summaryText = context.memorySummary ? trimSummaryToTokenLimit(context.memorySummary, allocations.summary) : "";
   const quotesOutside = (recentIds: Set<string>) =>
     fitRagExcerpts(ragMessages ?? [], recentIds, allocations.retrieved, countTokens, locale);
   const dropped = new Set<MemoryBlockKind>();
@@ -654,6 +710,8 @@ export function assemblePreparedChatMessages(
     unprocessedInWindow: recent.unprocessedInWindow,
     droppedUnprocessed: recent.droppedUnprocessed,
     droppedMemoryBlocks: [...dropped],
+    trimmedMemoryBlocks: [...(coreText !== (context.memoryCandidates.core ?? "") ? ["core" as const] : []),
+      ...(summaryText !== (context.memorySummary ?? "") ? ["summary" as const] : [])],
   };
 
   debugLog(
@@ -662,7 +720,7 @@ export function assemblePreparedChatMessages(
   );
   debugLog(
     "Chat",
-    `Отправлено ${messages.length} сообщений user=${context.userId} (токенов: ${totalTokens}, лимит: ${maxContextTokens}) episodic=${stats.episodicShown} rag=${stats.ragQuotes} unprocessed=${stats.unprocessedInWindow} droppedUnprocessed=${stats.droppedUnprocessed}${stats.droppedMemoryBlocks.length ? ` droppedBlocks=${stats.droppedMemoryBlocks.join(",")}` : ""}`
+    `Отправлено ${messages.length} сообщений user=${context.userId} (токенов: ${totalTokens}, лимит: ${maxContextTokens}) episodic=${stats.episodicShown} rag=${stats.ragQuotes} unprocessed=${stats.unprocessedInWindow} droppedUnprocessed=${stats.droppedUnprocessed}${stats.droppedMemoryBlocks.length ? ` droppedBlocks=${stats.droppedMemoryBlocks.join(",")}` : ""}${stats.trimmedMemoryBlocks.length ? ` trimmedBlocks=${stats.trimmedMemoryBlocks.join(",")}` : ""}`
   );
   if (totalTokens > maxContextTokens) {
     errorLog("Chat", `Контекст превышает лимит даже без памяти: ${totalTokens}/${maxContextTokens}`);

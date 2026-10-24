@@ -116,6 +116,19 @@ group('context', () => {
     && !crowded.stats.droppedMemoryBlocks.includes('core') && crowded.messages[0].content.includes('[[MEMORY:core]]'),
   'tail: a full stale summary cannot evict the unprocessed suffix, and core is never dropped', crowded.stats);
 
+  // A summary over its allowance keeps its opening and its newest part, whole sentences only.
+  const longSummary = '## Предыстория\nВика и Артём встретились в клубе. ' + Array.from({ length: 60 }, (_, i) => `Сцена ${i + 1} прошла спокойно у маяка.`).join(' ')
+    + ' В конце они решили встречаться.\n\n## Открытые планы\n- [Обещано; Персонаж] Вика обещала позвонить завтра.';
+  const trimmedSummary = helpers.trimSummaryToTokenLimit(longSummary, 300);
+  check(helpers.countTokens(trimmedSummary) <= 300 && trimmedSummary.startsWith('## Предыстория\nВика и Артём встретились в клубе.')
+    && trimmedSummary.includes('\n…') && trimmedSummary.includes('решили встречаться') && trimmedSummary.includes('## Открытые планы')
+    && trimmedSummary.endsWith('позвонить завтра.') && !/Сцена \d+ прошла спокойно у$/.test(trimmedSummary.split('\n…')[0]),
+  'summary: an over-long summary keeps its opening and newest part, dropping whole middle sentences', trimmedSummary);
+  check(helpers.trimSummaryToTokenLimit('## Предыстория\nКороткая история.', 300) === '## Предыстория\nКороткая история.', 'summary: a fitting summary is unchanged');
+  const core = '## Отношения\n- Статус: встречаются полгода\n\n## Персонаж\n- Имя: Вика\n- Возраст: двадцать один\n\n## Пользователь\n- Имя: Артём';
+  const trimmedCore = helpers.trimLinesToTokenLimit(core, helpers.countTokens('## Отношения\n- Статус: встречаются полгода\n\n## Персонаж\n- Имя: Вика') + 1);
+  check(trimmedCore === '## Отношения\n- Статус: встречаются полгода\n\n## Персонаж\n- Имя: Вика', 'core: trimming keeps whole facts in rank order and no empty heading', trimmedCore);
+
   // After a coverage loss every recent row is unprocessed. The tail must not take memory's reserve:
   // on prod this sent ~20% of a 196-message story without summary, events or core.
   const lostRows = Array.from({ length: 100 }, (_, index) => ({
