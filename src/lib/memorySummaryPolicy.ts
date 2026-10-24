@@ -2,7 +2,10 @@ import { MEMORY_STATUSES } from "./memoryNarrative";
 
 /** Generation includes JSON bookkeeping; the persisted tariff allowance is separate. */
 export const MAX_SUMMARY_GENERATION_TOKENS = 4096;
-const summaryItemLimit = (storedLimit: number) => Math.min(10, Math.max(1, Math.floor(storedLimit / 120)));
+/** Items the stored allowance can hold at ~220 tokens per full 600-character item. Ten items for
+ * 1500 tokens made the model write ~2500 tokens, past the 90 s timeout, while the renderer could
+ * keep only five of them (prod 2026-10-24). */
+export const summaryItemLimit = (storedLimit: number) => Math.min(10, Math.max(1, Math.floor(storedLimit / 220)));
 /** Provider-side item length. 1200 characters invited a scene-by-scene retelling: ~3000 tokens for
  * 28 messages, past the 90 s timeout and the stored allowance (prod 2026-10-24). */
 export const SUMMARY_ITEM_MAX_CHARS = 600;

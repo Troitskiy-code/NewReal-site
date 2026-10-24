@@ -186,9 +186,11 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     fitted.pop(); stats.budgetRejectedCount++;
     return false;
   };
-  // A row that does not fit is dropped whole; it is never cut or replaced by its quotes.
-  for (const row of rows) tryFit(row);
-    const summary = render();
+  // A row that does not fit is dropped whole; it is never cut or replaced by its quotes. The newest
+  // rows are fitted first, so an over-long answer loses old scenes rather than the latest events
+  // (prod 2026-10-24 dropped 3–5 of the newest items per step). Rendering keeps chronology.
+  for (const row of [...rows].sort((a, b) => b.order - a.order)) tryFit(row);
+  const summary = render();
   stats.fittedCount = fitted.length; stats.renderedUsage = countTokens(summary);
   diagnose?.(stats);
   return summary;

@@ -122,6 +122,20 @@ check('a sentence repeated by a later story item is kept once', () => {
   assert.equal(result, '## Предыстория\nВика работает в кофейне по выходным.\nВика учится заочно на дизайн.');
   assert.equal(stats.duplicateSentenceCount, 1);
 });
+check('an over-long answer loses its oldest scene, not the latest events', () => {
+  const quotes = evidence.makeSummarySources([
+    { role: 'assistant', content: 'Вика сидела в клубе с подругами из танцевальной группы и обсуждала новые видео.' },
+    { role: 'user', content: 'Артём пригласил Вику в ресторан и признался, что она ему до сих пор нравится.' },
+  ]);
+  const old = { ...item('Вика сидела в клубе с подругами из танцевальной группы и обсуждала новые видео.', 's1', 'reported', 'story') };
+  const latest = { ...item('Артём пригласил Вику в ресторан и признался, что она ему до сих пор нравится.', 's2', 'reported', 'story') };
+  const budget = countTokens(`## Предыстория\n${latest.text}`) + 2;
+  let stats;
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [old, latest] }), quotes, budget, countTokens, value => { stats = value; });
+  assert.equal(result, `## Предыстория\n${latest.text}`); assert.equal(stats.budgetRejectedCount, 1);
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [old, latest] }), quotes, 800, countTokens), `## Предыстория\n${old.text}\n${latest.text}`);
+  assert.equal(policy.summaryItemLimit(1500), 6); assert.equal(policy.summaryItemLimit(200), 1);
+});
 check('a short opening word is not an unknown name', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);
   const text = 'Но Вика работает в кофейне по выходным.';
