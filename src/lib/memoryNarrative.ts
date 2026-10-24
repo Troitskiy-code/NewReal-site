@@ -89,7 +89,10 @@ export function knownMemoryNames(text: string): string[] {
  * an ordinary word of the evidence. Completion, cancellation and promises still need a source
  * with that status, and a cited denial blocks the positive claim.
  */
-export const RETELLING_REJECTIONS = ["control", "speaker", "status", "number", "negation", "contradiction", "name", "terms"] as const;
+export const RETELLING_REJECTIONS = ["control", "person", "speaker", "status", "number", "negation", "contradiction", "name", "terms"] as const;
+/** A retelling is third person. «я/ты/мы» or a *stage direction* is a pasted roleplay reply,
+ * which passes every overlap check by being a copy (prod rebuild 2026-10-24). */
+const ROLEPLAY_VOICE = /\*|(?:^|[^\p{L}])(?:я|меня|мне|мной|мой|моя|моё|мое|мои|моего|моей|моих|мы|нас|нам|нами|наш|наша|наше|наши|ты|тебя|тебе|тобой|твой|твоя|твоё|твое|твои|твоего|твоей)(?=$|[^\p{L}])/iu;
 export type RetellingRejection = typeof RETELLING_REJECTIONS[number];
 export function isSupportedRetelling(sentence: string, evidence: Array<{ text: string; status?: MemoryStatus }>,
   knownNames: string[]): boolean {
@@ -99,6 +102,7 @@ export function isSupportedRetelling(sentence: string, evidence: Array<{ text: s
 export function retellingRejection(sentence: string, evidence: Array<{ text: string; status?: MemoryStatus }>,
   knownNames: string[]): RetellingRejection | null {
   if (!sentence.trim() || stripMemoryControlInstructions(sentence) !== sentence) return "control";
+  if (ROLEPLAY_VOICE.test(sentence)) return "person";
   if (!evidence.length) return "speaker";
   const joined = evidence.map(row => row.text).join(" ");
   const status = inferMemoryStatus(sentence);

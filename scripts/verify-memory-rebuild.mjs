@@ -19,8 +19,8 @@ async function setup(count = 49) {
   const user = await helpers.user('universe');
   const character = await helpers.character(user.id);
   const rows = await helpers.messages(user.id, character.id, Array.from({ length: count }, (_, i) => ({
-    role: i % 2 ? 'assistant' : 'user', content: i === 0 ? 'Я предлагаю гарантировать вклады до 100000 рублей.'
-      : i === count - 1 ? 'Я решил отложить повышение ставки до 6%.' : `Обсуждаем экономический план, ход ${i}.`,
+    role: i % 2 ? 'assistant' : 'user', content: i === 0 ? 'Пользователь предлагает гарантировать вклады до 100000 рублей.'
+      : i === count - 1 ? 'Пользователь решил отложить повышение ставки до 6%.' : `Обсуждаем экономический план, ход ${i}.`,
   })), { mirror: false });
   await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)),
     summary: '## Активные линии\n- Придерживаемся курса.', lastSummarizedAt: rows.at(-1).createdAt, summarizedMessageCount: count } });

@@ -9,7 +9,7 @@ export type SummarySource = { id: string; author: Author; text: string; status?:
 const LABELS: Record<Author, string> = { user: "Пользователь", character: "Персонаж", memory: "Из прежней сводки" };
 /** Per-rule counters of refused retelling sentences: logs show which rule refuses, never the text. */
 export const REJECTION_STAT = {
-  control: "rejectedControlCount", speaker: "rejectedSpeakerCount", status: "rejectedStatusCount",
+  control: "rejectedControlCount", person: "rejectedPersonCount", speaker: "rejectedSpeakerCount", status: "rejectedStatusCount",
   number: "rejectedNumberCount", negation: "rejectedNegationCount", contradiction: "rejectedContradictionCount",
   name: "rejectedNameCount", terms: "rejectedTermsCount",
 } as const satisfies Record<RetellingRejection, string>;
@@ -91,6 +91,8 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_ITEMS");
   }
   const known = new Map(sources.map((source, index) => [source.id, { ...source, index }]));
+  const turns = new Map<number, SummarySource[]>();
+  for (const source of known.values()) if (source.turn !== undefined) turns.set(source.turn, [...turns.get(source.turn) ?? [], source]);
   const headings = { story: "Предыстория", state: "Текущая ситуация", decisions: "Принятые решения", plans: "Открытые планы", events: "Недавние события" };
   type Section = keyof typeof headings;
   type Row = { section: Section; text: string; status: MemoryStatus; author: string; order: number };
@@ -130,7 +132,11 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     // a log of replies that every later refresh fed back as evidence (prod 2026-10-24).
     // A story keeps its supported sentences: each one was checked on its own, while one bad
     // sentence used to erase a whole long retelling. Other sections stay all-or-nothing.
-    const check = checkSummaryText(item.text, selected, knownNames);
+    // A cited sentence brings its whole message: an item may cite 12 sentence ids while retelling
+    // dozens of messages, so sentence-only evidence refused most of a long story.
+    const evidence = [...new Map(selected.flatMap(source => source.turn === undefined ? [source] : turns.get(source.turn)!)
+      .map(source => [source.id, source])).values()];
+    const check = checkSummaryText(item.text, evidence, knownNames);
     for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
     stats.rejectedSentenceCount += check.rejected.length;
     if (check.rejected.length && !(item.section === "story" && check.supported.length)) { stats.unsupportedItemCount++; continue; }

@@ -30,7 +30,7 @@ check('scheduled rate is a decision rather than accomplished fact', () => {
   assert.match(result, /Решено/); assert.doesNotMatch(result, /Выполнено/);
 });
 check('5.5 percent and delayed 6 percent remain separate', () => {
-  const result = render([item(sources[0].text, 's1'), item(sources[2].text, 's3')]);
+  const result = render([item('Пользователь предлагает повысить учётную ставку до 5,5%.', 's1'), item('Пользователь решил отложить повышение ставки до 6%.', 's3')]);
   assert.match(result, /5,5%/); assert.match(result, /6%/); assert.match(result, /Отменено/);
 });
 check('unsupported number drops the item instead of pasting its quote', () => {
@@ -72,6 +72,25 @@ check('a story keeps its supported sentences and counts the refused rule without
   assert.equal(stats.rejectedNameCount, 2); assert.equal(stats.rejectedSentenceCount, 2);
   assert.ok(Object.values(stats).every(value => typeof value === 'number'));
 });
+check('a pasted first-person reply or stage direction is refused even though it is a verbatim copy', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: '*я прикусила губу* Я прочитала сообщение и у меня загорелись щёки.' }]);
+  let stats;
+  for (const text of ['Я прочитала сообщение и у меня загорелись щёки.', '*я прикусила губу*']) {
+    assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] }), quotes, 800, countTokens, value => { stats = value; }), '');
+    assert.equal(stats.rejectedPersonCount, 1);
+  }
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Персонаж прочитала сообщение, и у неё загорелись щёки.', 's1', 'reported', 'story')] }),
+    quotes, 800, countTokens), /^## Предыстория/);
+});
+check('a cited sentence brings its whole message as evidence, but not other messages', () => {
+  const quotes = evidence.makeSummarySources([
+    { role: 'assistant', content: 'Ладно. Ресторан. Заедь после семи, после репетиции я свободна.' },
+    { role: 'user', content: 'Посмотрел ещё раз ваше короткое видео.' },
+  ]);
+  const raw = text => JSON.stringify({ items: [item(text, 's1', 'reported', 'story')] });
+  assert.match(evidence.renderGroundedSummary(raw('Вика согласилась на ресторан после репетиции.'), quotes, 800, countTokens, undefined, '- Имя: Вика'), /ресторан/);
+  assert.equal(evidence.renderGroundedSummary(raw('Вика посмотрела короткое видео.'), quotes, 800, countTokens, undefined, '- Имя: Вика'), '');
+});
 check('a short opening word is not an unknown name', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);
   const text = 'Но Вика работает в кофейне по выходным.';
@@ -99,11 +118,11 @@ check('uncertain conflicting sources are not silently resolved', () => {
   assert.match(result, /Неясно/);
 });
 check('no partial sentence when fitting summary budget', () => {
-  const result = render([item(sources[0].text, 's1')], 15);
+  const result = render([item('Пользователь предлагает повысить учётную ставку до 5,5%.', 's1')], 15);
   assert.equal(result, '');
 });
 check('prior statuses survive merge without nesting presentation labels', () => {
-  const result = render([item(sources[0].text, 's1')]);
+  const result = render([item('Пользователь предлагает повысить учётную ставку до 5,5%.', 's1')]);
   const next = evidence.sourcesFromSummaries(result);
   assert.equal(next[0].status, 'proposed'); assert.equal(next[0].author, 'memory');
   assert.doesNotMatch(next[0].text, /\[Предложено/);
