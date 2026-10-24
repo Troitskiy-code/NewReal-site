@@ -745,22 +745,20 @@ async function refreshChatMemorySummary(
   });
 
   if (existingMemory) {
-    const newMessages = allMessages;
-    const newTokens = newMessages.reduce((sum, message) => sum + countTokens(message.content), 0);
+    // Only messages older than the kept recent window can be summarized. Counting that window
+    // too kept a long story over the threshold forever: a paid merge of ~2 messages after
+    // almost every turn (prod 2026-10-24).
+    const historyToChapter = getHistoryForSummary(allMessages);
+    const newTokens = historyToChapter.reduce((sum, message) => sum + countTokens(message.content), 0);
 
     if (
-      newMessages.length < config.refreshMessageThreshold &&
+      historyToChapter.length < config.refreshMessageThreshold &&
       newTokens < config.refreshTokenThreshold
     ) {
       infoLog(
         "Memory",
-        `Skipped refresh (new: ${newMessages.length} msgs, ${newTokens} tokens; threshold: ${config.refreshMessageThreshold} msgs / ${config.refreshTokenThreshold} tokens)`
+        `Skipped refresh (summarizable: ${historyToChapter.length} msgs, ${newTokens} tokens; threshold: ${config.refreshMessageThreshold} msgs / ${config.refreshTokenThreshold} tokens)`
       );
-      return existingMemory.summary;
-    }
-
-    const historyToChapter = getHistoryForSummary(newMessages);
-    if (historyToChapter.length === 0) {
       return existingMemory.summary;
     }
 

@@ -73,6 +73,14 @@ try {
     assert.equal(mirror.length, 1); assert.equal(mirror[0].content, summary);
     provider.summaryText = null;
   });
+  await check('new messages inside the kept recent window do not trigger a paid summary call', async () => {
+    const fixture = await setup('Смотритель хранит ключ возле ступени. '.repeat(40));
+    await db.memory.update({ where: { threadId: fixture.scope.threadId }, data: { lastSummarizedAt: fixture.rows[42].createdAt, summarizedMessageCount: 43 } });
+    const calls = provider.calls.filter(row => row.kind === 'summary').length;
+    // 27 long new messages exceed the token threshold, but only 2 lie outside the 25 kept recent ones.
+    assert.equal(await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user), 'Прежняя память.');
+    assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
+  });
   await check('a truncated answer keeps its complete items and never repairs the cut one', () => {
     const cut = '{"items":[{"section":"story","text":"Ключ {лежит} под \\"ступенью\\".","status":"reported","sources":["s1"]},'
       + '{"section":"events","text":"Ключ не';

@@ -200,7 +200,7 @@ try {
     const character = await helpers.character(user.id);
     const base = Date.now() - 7_200_000;
     const items = [];
-    for (let i = 1; i <= 40; i += 1) items.push({ role: i % 2 ? 'user' : 'assistant', content: `Реплика ${i} про маяк`, createdAt: new Date(base + i * 1000) });
+    for (let i = 1; i <= 60; i += 1) items.push({ role: i % 2 ? 'user' : 'assistant', content: `Реплика ${i} про маяк`, createdAt: new Date(base + i * 1000) });
     const rows = await helpers.messages(user.id, character.id, items, { mirror: false });
     await db.memory.create({ data: { ...(await helpers.key(user.id, character.id)), summary: '## Недавние события\n1. Начало.', lastSummarizedAt: rows[4].createdAt, summarizedMessageCount: 5 } });
     provider.reset();
@@ -215,12 +215,13 @@ try {
   }
 
   // S7c: a manual summary save is not proof that the history was processed.
+  // (60 messages: only those older than the kept recent window count toward the refresh threshold.)
   if (want('S7c')) {
     const user = await helpers.user('dialog');
     const character = await helpers.character(user.id);
     const base = Date.now() - 7_200_000;
     const items = [];
-    for (let i = 1; i <= 40; i += 1) items.push({ role: i % 2 ? 'user' : 'assistant', content: `Ранняя реплика ${String(i).padStart(2, '0')} о маяке`, createdAt: new Date(base + i * 1000) });
+    for (let i = 1; i <= 60; i += 1) items.push({ role: i % 2 ? 'user' : 'assistant', content: `Ранняя реплика ${String(i).padStart(2, '0')} о маяке`, createdAt: new Date(base + i * 1000) });
     await helpers.messages(user.id, character.id, items, { mirror: false });
     const advanced = load(join(root, 'src/lib/advancedMemory.ts'));
     await advanced.setSummaryContent(await helpers.scope(user.id, character.id), '## Активные линии\n- Ручная заметка владельца.');
