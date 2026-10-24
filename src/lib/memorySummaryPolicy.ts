@@ -44,7 +44,7 @@ export function groundedSummaryFormat(sourceIds: string[], storedLimit: number) 
     type: "object", additionalProperties: false, required: ["items"], properties: { items: {
       type: "array", minItems: 1, maxItems: summaryItemLimit(storedLimit),
       items: { type: "object", additionalProperties: false, required: ["section", "text", "status", "sources"], properties: {
-        section: { type: "string", enum: ["story", "state", "decisions", "plans", "events"] },
+        section: { type: "string", enum: ["past", "story", "state", "decisions", "plans", "events"] },
         text: { type: "string", minLength: 1, maxLength: SUMMARY_ITEM_MAX_CHARS },
         status: { type: "string", enum: [...MEMORY_STATUSES] },
         sources: { type: "array", minItems: 1, maxItems: 12, items: { type: "string", enum: sourceIds } },

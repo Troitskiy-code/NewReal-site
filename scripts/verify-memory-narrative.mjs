@@ -136,6 +136,40 @@ check('an over-long answer loses its oldest scene, not the latest events', () =>
   assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [old, latest] }), quotes, 800, countTokens), `## Предыстория\n${old.text}\n${latest.text}`);
   assert.equal(policy.summaryItemLimit(1500), 6); assert.equal(policy.summaryItemLimit(200), 1);
 });
+check('a merge keeps the compressed past first and new events after it', () => {
+  const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе.\n\n## Открытые планы\n- [Обещано; Персонаж] Я обещаю позвонить завтра.';
+  const quotes = [...evidence.sourcesFromSummaries(previous), ...evidence.makeSummarySources([
+    { role: 'assistant', content: 'Ресторан был отличный, и после ужина мы поехали ко мне.' }])].map((source, index) => ({ ...source, id: `s${index + 1}` }));
+  assert.deepEqual(quotes.map(source => Boolean(source.past)), [true, true, false, false]);
+  const latest = 'Вика и Артём поужинали в ресторане и поехали к Вике.';
+  const items = [item(latest, 's4', 'reported', 'story'), { ...item('Вика отказала Артёму три года назад, а через три года они встретились в клубе.', 's1', 'reported', 'past'), sources: ['s1', 's2'] }];
+  let stats;
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items }), quotes, 800, countTokens, value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
+  assert.equal(result, `## Предыстория\nВика отказала Артёму три года назад, а через три года они встретились в клубе.\n${latest}`);
+  assert.equal(stats.pastItemCount, 1); assert.equal(stats.pastCarriedCount, 0);
+  // Only the previous summary supports the past: a past claiming the new restaurant scene is refused.
+  assert.doesNotMatch(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика поужинала с Артёмом в ресторане.', 's1', 'reported', 'past')] }),
+    quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём'), /ресторане/);
+});
+check('a merge without a past carries the opening of the previous story forward', () => {
+  const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе.';
+  const quotes = [...evidence.sourcesFromSummaries(previous), ...evidence.makeSummarySources([
+    { role: 'assistant', content: 'Ресторан был отличный, и после ужина мы поехали ко мне.' }])].map((source, index) => ({ ...source, id: `s${index + 1}` }));
+  const latest = 'Вика и Артём поужинали в ресторане и поехали к Вике.';
+  let stats;
+  const result = evidence.renderGroundedSummary(JSON.stringify({ items: [item(latest, 's3', 'reported', 'story')] }), quotes, 800, countTokens,
+    value => { stats = value; }, '- Имя: Вика\n- Имя: Артём');
+  assert.equal(result, `## Предыстория\nВика отказала Артёму три года назад.\nЧерез три года они встретились в клубе.\n${latest}`);
+  assert.equal(stats.pastCarriedCount, 2);
+  // A legacy summary of quotes has no «Предыстория»: nothing is carried.
+  const legacy = evidence.sourcesFromSummaries('## Недавние события\n- [Неясно; Персонаж] *я сижу в углу с подружками*');
+  assert.equal(legacy.some(source => source.past), false);
+});
+check('a past without a previous summary is an ordinary story item', () => {
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Вика работает в кофейне по выходным.' }]);
+  assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item('Вика работает в кофейне по выходным.', 's1', 'reported', 'past')] }), quotes, 800, countTokens),
+    '## Предыстория\nВика работает в кофейне по выходным.');
+});
 check('a short opening word is not an unknown name', () => {
   const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'Я работаю в кофейне по выходным, но учусь заочно.' }]);
   const text = 'Но Вика работает в кофейне по выходным.';

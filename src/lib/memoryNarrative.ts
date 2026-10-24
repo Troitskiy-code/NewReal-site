@@ -93,6 +93,7 @@ export const RETELLING_REJECTIONS = ["control", "person", "speaker", "status", "
 /** A retelling is third person. «я/ты/мы» or a *stage direction* is a pasted roleplay reply,
  * which passes every overlap check by being a copy (prod rebuild 2026-10-24). */
 const ROLEPLAY_VOICE = /\*|(?:^|[^\p{L}])(?:я|меня|мне|мной|мой|моя|моё|мое|мои|моего|моей|моих|мы|нас|нам|нами|наш|наша|наше|наши|ты|тебя|тебе|тобой|твой|твоя|твоё|твое|твои|твоего|твоей)(?=$|[^\p{L}])/iu;
+export const hasRoleplayVoice = (text: string) => ROLEPLAY_VOICE.test(text);
 export type RetellingRejection = typeof RETELLING_REJECTIONS[number];
 export function isSupportedRetelling(sentence: string, evidence: Array<{ text: string; status?: MemoryStatus }>,
   knownNames: string[]): boolean {
