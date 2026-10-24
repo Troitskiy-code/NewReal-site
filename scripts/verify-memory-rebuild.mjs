@@ -42,8 +42,9 @@ try {
   await db.coreMemory.create({ data: { ...(await helpers.key(first.user.id, first.character.id)), content: '## Пользователь\n- Имя Мирон.' } });
   const originalEvent = await db.episodicMemory.create({ data: { ...(await helpers.key(first.user.id, first.character.id)), event: 'Ручное событие.', importance: 3 } });
   const result = await (await post(first.character.id, { mode: 'rebuild', confirm: true })).json();
+  // The 25 newest messages stay out of the summary, as in the background refresh: 49 - 25 = 24.
   check('49-message rebuild recovers the original plan despite complete old coverage', () => {
-    assert.equal(result.status, 'updated'); assert.equal(result.processed, 49);
+    assert.equal(result.status, 'updated'); assert.equal(result.processed, 24);
     assert.match(result.summary.summary, /100000/); assert.doesNotMatch(result.summary.summary, /Придерживаемся курса/);
     assert.equal(provider.calls.filter(row => row.kind === 'summary').length, 1);
   });
@@ -53,6 +54,13 @@ try {
   assert.equal((await db.episodicMemory.findUnique({ where: { id: originalEvent.id } })).event, 'Ручное событие.');
   const costs = await db.aiCostEvent.findMany({ where: { purpose: 'summary' } });
   assert.ok(costs.length && costs.every(row => row.actorHash && row.subscriptionType === 'universe' && row.chargedVC === 0));
+
+  const short = await setup(20);
+  const shortCalls = provider.total;
+  const shortResponse = await post(short.character.id, { mode: 'rebuild', confirm: true });
+  check('a story within the kept recent window has nothing to rebuild and calls no model', () => {
+    assert.equal(shortResponse.status, 400); assert.equal(provider.total, shortCalls);
+  });
 
   const many = await setup(150);
   const initial = await (await post(many.character.id, { mode: 'rebuild', confirm: true })).json();
@@ -76,13 +84,14 @@ try {
   assert.equal((await post(many.character.id, { mode: 'rebuild', confirm: true, continuation: `${stale}.${signature}` })).status, 400);
   check('expired signed continuation is rejected without AI', () => assert.equal(provider.total, firstCalls));
   const completed = await (await post(many.character.id, { mode: 'rebuild', confirm: true, continuation: initial.continuation })).json();
-  check('second bounded call commits all 150 messages atomically', () => {
-    assert.equal(completed.status, 'updated'); assert.equal(completed.processed, 150);
+  check('second bounded call commits all 125 summarizable messages atomically', () => {
+    assert.equal(completed.status, 'updated'); assert.equal(completed.processed, 125);
     assert.equal(provider.calls.filter(row => row.kind === 'summary').length, 2);
   });
   const stored = await db.memory.findUnique({ where: { threadId: (await helpers.thread(many.user.id, many.character.id)).id } });
-  assert.equal(stored.summarizedMessageCount, 150);
-  assert.equal(stored.lastSummarizedAt.getTime(), many.rows.at(-1).createdAt.getTime());
+  assert.equal(stored.summarizedMessageCount, 125);
+  // Coverage ends before the kept recent window: those 25 messages go to the prompt verbatim.
+  assert.equal(stored.lastSummarizedAt.getTime(), many.rows.at(-26).createdAt.getTime());
   const mirrored = await db.memoryEntry.findMany({ where: { userId: many.user.id, characterId: many.character.id, type: 'summary' } });
   assert.equal(mirrored.length, 1); assert.equal(mirrored[0].content, stored.summary);
 
@@ -124,7 +133,8 @@ try {
     assert.equal(changed.status, 'conflict'); assert.match(changed.summary.summary, /Придерживаемся курса/);
   });
   const largeUser = await helpers.user('universe'), largeCharacter = await helpers.character(largeUser.id);
-  await helpers.messages(largeUser.id, largeCharacter.id, [{ role: 'user', content: 'А'.repeat(100000) }], { mirror: false });
+  await helpers.messages(largeUser.id, largeCharacter.id, [{ role: 'user', content: 'А'.repeat(100000) },
+    ...Array.from({ length: 26 }, (_, i) => ({ role: i % 2 ? 'user' : 'assistant', content: `Короткая реплика ${i}.` }))], { mirror: false });
   h.session.userId = largeUser.id; provider.reset();
   const callsBeforeLarge = provider.total;
   await post(largeCharacter.id, { mode: 'rebuild', confirm: true });

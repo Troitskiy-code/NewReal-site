@@ -1074,7 +1074,16 @@ export async function rebuildMemorySummaryStep(
   let cursor: RebuildCursor;
   if (continuation) cursor = readRebuildCursor(continuation, scope);
   else {
-    const latest = await prisma.message.findFirst({ where: messageScopeWhere(scope), orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+    // Like the background refresh, a rebuild leaves the kept recent window alone: those messages go
+    // to the prompt verbatim. Summarizing them filled half a 196-message summary with the last scene
+    // and squeezed the middle of the story (prod 2026-10-24). A timestamp group is never split.
+    const newest = await prisma.message.findMany({ where: messageScopeWhere(scope), orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: KEEP_RECENT_MESSAGES + 1, select: { createdAt: true } });
+    let latest: { createdAt: Date } | null = newest.length > KEEP_RECENT_MESSAGES ? newest[KEEP_RECENT_MESSAGES] : null;
+    if (latest && newest[KEEP_RECENT_MESSAGES - 1].createdAt.getTime() === latest.createdAt.getTime()) {
+      latest = await prisma.message.findFirst({ where: { ...messageScopeWhere(scope), createdAt: { lt: latest.createdAt } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { createdAt: true } });
+    }
     if (!latest) return { status: "empty" as const, updated: false, summary: null };
     const total = await prisma.message.count({ where: { ...messageScopeWhere(scope), createdAt: { lte: latest.createdAt } } });
     cursor = { version: 2, userId: scope.userId, characterId: scope.characterId, threadId: scope.threadId, snapshot: summarySnapshot(current),
