@@ -392,6 +392,13 @@ try {
     await legacy.setCoreMemoryContent(f.scope, ''); await run(f, output([delta('Борис')]));
     assert.equal((await active(f.scope)).length, 0);
   });
+  await check('a two-word quoted event is not stored, a real event is', async () => {
+    const f = await setup();
+    await turn(f, 'Можешь.', 'Я пообещала тебе позвонить завтра после репетиции.');
+    await run(f, output([], [{ sourceId: 's1', importance: 2 }, { sourceId: 's2', importance: 3 }]));
+    const events = (await db.episodicMemory.findMany({ where: { threadId: f.scope.threadId } })).map(row => row.event);
+    assert.equal(events.length, 1); assert.match(events[0], /позвонить завтра/);
+  });
   await check('a multi-valued slot merges a fuller value, ignores a narrower repeat and keeps at most six values', async () => {
     const f = await setup('## Пользователь\n- Нравится: море');
     const likes = async () => (await active(f.scope)).filter(fact => fact.key === 'likes' && fact.subject === 'user');

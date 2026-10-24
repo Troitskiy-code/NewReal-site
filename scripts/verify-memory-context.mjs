@@ -129,6 +129,25 @@ group('context', () => {
   const trimmedCore = helpers.trimLinesToTokenLimit(core, helpers.countTokens('## Отношения\n- Статус: встречаются полгода\n\n## Персонаж\n- Имя: Вика') + 1);
   check(trimmedCore === '## Отношения\n- Статус: встречаются полгода\n\n## Персонаж\n- Имя: Вика', 'core: trimming keeps whole facts in rank order and no empty heading', trimmedCore);
 
+  // Event lifecycle: trivial quotes never show; summarized ordinary events yield to newer ones
+  // unless important or about the current message.
+  const lifecycle = helpers.assemblePreparedChatMessages({
+    userId: 'u', locale: 'ru', maxContextTokens: 16000, historyLimit: 60, subscriptionLogType: 'universe', ragEligible: true,
+    systemPromptBase: 'Ты — Вика.', memorySummary: '## Предыстория\nВика и Артём встретились в клубе.', summaryCoveredUntil: at(10),
+    memoryCandidates: { core: null, episodic: [
+      { id: 'trivial', event: 'По словам персонажа: [Сообщено] Можешь.', importance: 3, timestamp: at(20) },
+      { id: 'old', event: 'Вика рассказала, что работает в кофейне по выходным.', importance: 2, timestamp: at(5) },
+      { id: 'oldKey', event: 'Артём признался Вике в чувствах три года назад.', importance: 3, timestamp: at(4) },
+      { id: 'oldAsked', event: 'Вика купила красный корсет для выступления.', importance: 2, timestamp: at(3) },
+      { id: 'fresh', event: 'Вика пригласила Артёма к себе домой.', importance: 2, timestamp: at(20) },
+    ] },
+    historyRows: [{ id: 'q', role: 'user', createdAt: at(21), content: 'Где тот красный корсет для выступления?' }], totalHistoryTokens: 0,
+  }, 'general');
+  const lifecycleSystem = lifecycle.messages[0].content;
+  check(!lifecycleSystem.includes('Можешь.') && !lifecycleSystem.includes('работает в кофейне')
+    && lifecycleSystem.includes('признался Вике') && lifecycleSystem.includes('красный корсет') && lifecycleSystem.includes('пригласила Артёма'),
+  'events: trivial quotes never show, summarized ordinary events yield unless important or asked about', lifecycle.stats);
+
   // After a coverage loss every recent row is unprocessed. The tail must not take memory's reserve:
   // on prod this sent ~20% of a 196-message story without summary, events or core.
   const lostRows = Array.from({ length: 100 }, (_, index) => ({

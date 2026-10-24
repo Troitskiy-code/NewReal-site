@@ -19,6 +19,7 @@ import { messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { promptAssemblyDiagnostics, logPromptDelivery } from "@/lib/promptDiagnostics";
 import { readChatMemoryState, resolveChatMemorySummary } from "@/lib/chatMemory";
 import { appendMemorySection, type MemoryBlock, type MemoryBlockKind } from "@/lib/memoryPromptFormat";
+import { isTrivialEvent, memoryOverlap } from "@/lib/memoryNarrative";
 import type { UserIntent } from "@/lib/intentAnalyzer";
 import {
   isRagEligible,
@@ -637,7 +638,12 @@ export function assemblePreparedChatMessages(
   let episodicRoom = allocations.coreEpisodic - countTokens(coreText);
   const keptEvents: EpisodicMemoryItem[] = [];
   const query = [...context.historyRows].reverse().find((row) => row.role === "user")?.content ?? "";
-  for (const item of rankEpisodicCandidates(context.memoryCandidates.episodic, query).slice(0, episodicLimitForIntent(intent))) {
+  // Event lifecycle: trivial quotes never take a line, and an ordinary event the summary already
+  // retells gives its line to newer ones unless it is important or about the current message.
+  const covered = context.summaryCoveredUntil?.getTime();
+  const liveEvents = context.memoryCandidates.episodic.filter(item => !isTrivialEvent(item.event)
+    && (item.importance >= 3 || covered === undefined || item.timestamp.getTime() > covered || memoryOverlap(query, item.event) >= 0.5));
+  for (const item of rankEpisodicCandidates(liveEvents, query).slice(0, episodicLimitForIntent(intent))) {
     const itemTokens = countTokens(formatEpisodicLine(item)) + 1;
     if (itemTokens > episodicRoom) continue;
     keptEvents.push(item);

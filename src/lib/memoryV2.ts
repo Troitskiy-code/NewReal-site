@@ -7,7 +7,7 @@ import { setAiCostActor, setAiCostThread, withAiCostContext } from "./aiCostTele
 import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
 import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
-import { inferMemoryStatus, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
+import { inferMemoryStatus, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
   factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, type FactDelta } from "./memoryFacts";
 
@@ -249,6 +249,9 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       for (const delta of extraction.facts) await applyFact(tx, thread.id, delta, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
       const existing = await tx.episodicMemory.findMany({ where: { threadId: thread.id }, orderBy: { timestamp: "desc" }, take: 300 });
       for (const event of extraction.events) {
+        // A two-word quote («Можешь.», «За спину.») is a gesture, not an event: 49 of 104 events of
+        // one 196-message story were such fragments, filling the prompt with noise (prod 2026-10-24).
+        if (isTrivialEvent(event.text)) continue;
         const status = inferMemoryStatus(event.text);
         const text = `${event.source === "character" ? "По словам персонажа: " : ""}[${STATUS_LABELS[status]}] ${event.text}`;
         if (existing.some(row => sameMemoryMeaning(row.event, text))) continue;

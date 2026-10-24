@@ -140,6 +140,13 @@ export function retellingRejection(sentence: string, evidence: Array<{ text: str
   return content.length > 0 && content.filter(term => sourceTerms.has(term)).length / content.length >= 0.5 ? null : "terms";
 }
 
+/** A quoted gesture or two-word reply («Можешь.», «За спину.») is not an event worth a prompt
+ * line. The stored «По словам персонажа: [Сообщено]» prefix does not count. */
+export function isTrivialEvent(event: string): boolean {
+  const body = event.replace(/^(?:По словам персонажа:\s*)?\[[^\]]+\]\s*/u, "").replace(/\*/g, " ");
+  return (body.match(/[\p{L}\p{N}]+/gu) ?? []).length < 3;
+}
+
 export function safeMemoryParaphrase(text: string, evidence: string): string {
   return isSupportedMemoryText(text, evidence) ? text.replace(/\s+/g, " ").trim()
     : stripMemoryControlInstructions(evidence).replace(/\s+/g, " ").trim();
