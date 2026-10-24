@@ -143,9 +143,13 @@ try {
     const sources = evidence.makeSummarySources(chunk);
     assert.ok(countTokens(JSON.stringify({ sources, core: null })) <= 12000);
   });
-  await check('a single oversized message cannot silently advance coverage', () => {
-    assert.throws(() => memory.fitSummaryMessages([{ role: 'user', content: 'Смотритель хранит ключ. '.repeat(9000), createdAt: new Date() }], null),
-      { name: 'MemorySummaryInputError' });
+  await check('a single oversized message is clipped, marked and fits instead of stalling the summary', () => {
+    const huge = { role: 'user', content: 'Смотритель хранит ключ. '.repeat(9000), createdAt: new Date() };
+    const [clipped, ...rest] = memory.fitSummaryMessages([huge], null);
+    assert.equal(rest.length, 0); assert.equal(clipped.createdAt, huge.createdAt);
+    assert.match(clipped.content, /^Смотритель хранит ключ\./); assert.match(clipped.content, /\[…сообщение сокращено для сводки\]$/);
+    assert.ok(clipped.content.length < huge.content.length);
+    assert.ok(countTokens(JSON.stringify({ sources: evidence.makeSummarySources([clipped]), core: null })) <= 12000);
   });
   await check('a fitting first timestamp group is not lost by midpoint rounding', () => {
     const first = new Date(1700000000000), next = new Date(1700000001000);
@@ -186,14 +190,15 @@ try {
     assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[saved.summarizedMessageCount - 1].createdAt.getTime());
     provider.summaryText = null;
   });
-  await check('oversized single-message input is deferred before any paid request', async () => {
+  await check('an oversized oldest message is clipped and the summary moves past it', async () => {
     const fixture = await setup();
     await db.message.update({ where: { id: fixture.rows[1].id }, data: { content: 'Смотритель хранит ключ. '.repeat(9000) } });
     const calls = provider.calls.filter(row => row.kind === 'summary').length;
-    assert.equal(await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user), 'Прежняя память.');
-    assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls);
+    await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+    assert.equal(provider.calls.filter(row => row.kind === 'summary').length, calls + 1);
+    assert.match(JSON.stringify(latestSummaryBody), /сообщение сокращено для сводки/);
     const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
-    assert.equal(saved.summarizedMessageCount, 1); assert.equal(saved.lastSummarizedAt.getTime(), fixture.rows[0].createdAt.getTime());
+    assert.ok(saved.lastSummarizedAt.getTime() > fixture.rows[0].createdAt.getTime() && saved.summarizedMessageCount > 1);
   });
   await check('independent application processes share one database claim', async () => {
     const independent = createModuleLoader({ prismaFor: () => db }).load(join(root, 'src/lib/memorySummaryRefresh.ts'));

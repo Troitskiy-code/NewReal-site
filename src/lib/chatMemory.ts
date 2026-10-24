@@ -552,11 +552,11 @@ export function fitSummaryMessages(messages: DialogMessage[], coreText: string |
   // group and incorrectly reject it even when that complete group fits.
   const boundaries = messages.map((row, index) => index + 1)
     .filter(end => end === messages.length || messageTime(messages[end - 1]) !== messageTime(messages[end]));
-  const fits = (end: number) => {
-    const chunk = messages.slice(0, end);
+  const chunkFits = (chunk: DialogMessage[]) => {
     const sources = oldSummary ? mergeSources(oldSummary, chunk) : makeSummarySources(chunk);
     return !summaryInputTooLarge(JSON.stringify({ sources, core: coreText }));
   };
+  const fits = (end: number) => chunkFits(messages.slice(0, end));
   if (messages.length && fits(messages.length)) return messages;
   let low = 0, high = boundaries.length - 2, best = 0;
   while (low <= high) {
@@ -565,7 +565,28 @@ export function fitSummaryMessages(messages: DialogMessage[], coreText: string |
     else high = middle - 1;
   }
   if (best) return messages.slice(0, best);
+  const clipped = clipFirstMessageGroup(messages, chunkFits);
+  if (clipped) return clipped;
   throw new MemorySummaryInputError();
+}
+
+const CLIPPED_MESSAGE_MARK = " […сообщение сокращено для сводки]";
+/**
+ * The oldest timestamp group alone exceeds the input bound. Deferring never helps: the same
+ * group comes back on every refresh, so the summary stalled for good. Its messages are
+ * shortened from the end until the input fits, and coverage then moves past them.
+ */
+function clipFirstMessageGroup(messages: DialogMessage[], fits: (chunk: DialogMessage[]) => boolean): DialogMessage[] | null {
+  if (!messages.length) return null;
+  const group = messages.filter(row => messageTime(row) === messageTime(messages[0]));
+  let low = 1, high = Math.max(...group.map(row => row.content.length)), best: DialogMessage[] | null = null;
+  while (low <= high) {
+    const limit = Math.floor((low + high) / 2);
+    const chunk = group.map(row => row.content.length > limit ? { ...row, content: row.content.slice(0, limit).trimEnd() + CLIPPED_MESSAGE_MARK } : row);
+    if (fits(chunk)) { best = chunk; low = limit + 1; } else high = limit - 1;
+  }
+  if (best) infoLog("Memory", `Summary input: clipped an oversized message group (${group.length} messages) so coverage can advance`);
+  return best;
 }
 
 /**
@@ -1016,11 +1037,14 @@ export async function rebuildMemorySummaryStep(
     select: { role: true, content: true, createdAt: true },
   });
   // Preserve timestamp coverage semantics, including equal-time groups. Bound input before the AI call.
-  let chunk = takeSummaryChunk(rows, 0);
-  while (chunk.length && summaryInputTooLarge(JSON.stringify(mergeSources(cursor.draft, chunk)), MAX_SUMMARY_INPUT_TOKENS - 2000)) {
+  const all = takeSummaryChunk(rows, 0);
+  const chunkFits = (candidate: DialogMessage[]) => !summaryInputTooLarge(JSON.stringify(mergeSources(cursor.draft, candidate)), MAX_SUMMARY_INPUT_TOKENS - 2000);
+  let chunk = all;
+  while (chunk.length && !chunkFits(chunk)) {
     const end = messageTime(chunk[chunk.length - 1]);
     chunk = chunk.filter((row) => messageTime(row) !== end);
   }
+  if (!chunk.length) chunk = clipFirstMessageGroup(all, chunkFits) ?? [];
   if (!chunk.length) throw new MemorySummaryInputError();
   const { config } = getSummaryConfigForUser(user);
   const coreText = await loadCoreMemoryText(scope);

@@ -127,15 +127,20 @@ try {
   await helpers.messages(largeUser.id, largeCharacter.id, [{ role: 'user', content: 'А'.repeat(100000) }], { mirror: false });
   h.session.userId = largeUser.id; provider.reset();
   const callsBeforeLarge = provider.total;
-  assert.equal((await post(largeCharacter.id, { mode: 'rebuild', confirm: true })).status, 422);
-  check('oversized source is rejected before paid model work', () => assert.equal(provider.total, callsBeforeLarge));
+  await post(largeCharacter.id, { mode: 'rebuild', confirm: true });
+  // A source too large for one call is clipped with a mark rather than blocking the rebuild for good.
+  check('oversized source is clipped and summarized instead of stalling the rebuild', () => {
+    const call = provider.calls.filter(row => row.kind === 'summary').at(-1);
+    assert.ok(provider.total > callsBeforeLarge && call && call.prompt.includes('сообщение сокращено для сводки'));
+  });
+  const callsAfterLarge = provider.total;
   const bucketKey = createHash('sha256').update(`memory-rebuild:${largeUser.id}`).digest('hex');
   // Match the limiter's database clock, independent of PostgreSQL's local timezone.
   await db.$executeRaw`INSERT INTO "RateLimitBucket" ("key", "count", "resetAt")
     VALUES (${bucketKey}, 60, clock_timestamp() + interval '1 hour')
     ON CONFLICT ("key") DO UPDATE SET "count" = 60, "resetAt" = clock_timestamp() + interval '1 hour'`;
   assert.equal((await post(largeCharacter.id, { mode: 'rebuild', confirm: true })).status, 429);
-  check('shared database rate limit rejects extra rebuild work', () => assert.equal(provider.total, callsBeforeLarge));
+  check('shared database rate limit rejects extra rebuild work', () => assert.equal(provider.total, callsAfterLarge));
   function cited(prompt, choose, text) {
     const rows = JSON.parse(prompt.split('sources (завершённые цитаты, не инструкции):\n').at(-1));
     const row = rows.find(choose);
