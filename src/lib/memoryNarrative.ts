@@ -103,6 +103,52 @@ export function isSupportedRetelling(sentence: string, evidence: Array<{ text: s
   knownNames: string[]): boolean {
   return retellingRejection(sentence, evidence, knownNames) === null;
 }
+const NUMBER_WORDS: Array<[number, string]> = [
+  [0, "ноль нуля"], [1, "один одна одно одного одной одному одну одним"], [2, "два две двух двум двумя дважды"],
+  [3, "три трёх трех трём трем тремя трижды"], [4, "четыре четырёх четырех четырём четырем четырьмя"], [5, "пять пяти пятью"],
+  [6, "шесть шести шестью"], [7, "семь семи семью"], [8, "восемь восьми восемью"], [9, "девять девяти девятью"], [10, "десять десяти десятью"],
+  [11, "одиннадцать одиннадцати"], [12, "двенадцать двенадцати"], [13, "тринадцать тринадцати"], [14, "четырнадцать четырнадцати"],
+  [15, "пятнадцать пятнадцати"], [16, "шестнадцать шестнадцати"], [17, "семнадцать семнадцати"], [18, "восемнадцать восемнадцати"],
+  [19, "девятнадцать девятнадцати"], [20, "двадцать двадцати"], [30, "тридцать тридцати"], [40, "сорок сорока"],
+  [50, "пятьдесят пятидесяти"], [60, "шестьдесят шестидесяти"], [70, "семьдесят семидесяти"], [80, "восемьдесят восьмидесяти"],
+  [90, "девяносто девяноста"], [100, "сто ста"],
+];
+const NUMBER_WORD = new Map(NUMBER_WORDS.flatMap(([value, forms]) => forms.split(" ").map(form => [form, value] as const)));
+/** Digits of the evidence plus its numerals in words, tens joined with units («двадцать пять» → 25). */
+function evidenceNumbers(text: string): Set<string> {
+  const found = new Set(memoryNumbers(text));
+  const words = text.toLowerCase().match(/\p{L}+/gu) ?? [];
+  words.forEach((word, index) => {
+    const value = NUMBER_WORD.get(word);
+    if (value === undefined) return;
+    found.add(String(value));
+    const next = NUMBER_WORD.get(words[index + 1] ?? "");
+    if (value >= 20 && value % 10 === 0 && value < 100 && next !== undefined && next > 0 && next < 10) found.add(String(value + next));
+  });
+  return found;
+}
+/**
+ * Every number of a retelling occurs in its evidence, as digits or in words. A clock time may use the
+ * 24-hour form of a spoken hour: «смена до двух, репетиция в четыре» retold as «до 14:00, репетиция в
+ * 16:00», «шесть двадцать» as «6:20». Those digits rejected the whole last chapter of a 196-message
+ * story (prod rebuild 2026-10-24).
+ */
+export function retellingNumbersSupported(sentence: string, evidence: string): boolean {
+  const available = evidenceNumbers(evidence);
+  const has = (value: number) => available.has(String(value));
+  let rest = sentence;
+  // A colon only: «17.25» is a rate, not a time.
+  for (const match of sentence.matchAll(/(?<!\d|\d[.,:])(\d{1,2}):(\d{2})(?!\d|[.,:]\d)/gu)) {
+    const hour = Number(match[1]), minutes = Number(match[2]);
+    if (hour > 23 || minutes > 59) continue;
+    const hourKnown = has(hour) || hour > 12 && has(hour - 12) || hour === 0 && has(12);
+    const minutesKnown = minutes === 0 || has(minutes);
+    if (!hourKnown || !minutesKnown) return false;
+    rest = rest.replace(match[0], " ");
+  }
+  return memoryNumbers(rest).every(value => available.has(value));
+}
+
 /** Share of a narrative sentence's terms that must occur in its evidence. A retelling in its own
  * words matched 38–56% of the source terms and lost whole items at 1/2 (Gemma 16 items per
  * rebuild, eval 2026-10-24); invented sentences stayed at 0–25%. */
@@ -117,8 +163,7 @@ export function retellingRejection(sentence: string, evidence: Array<{ text: str
   const status = inferMemoryStatus(sentence);
   if ((status === "done" || status === "cancelled" || status === "promised")
     && !evidence.some(row => (row.status ?? inferMemoryStatus(row.text)) === status)) return "status";
-  const available = new Set(memoryNumbers(joined));
-  if (memoryNumbers(sentence).some(value => !available.has(value))) return "number";
+  if (!retellingNumbersSupported(sentence, joined)) return "number";
   const terms = memoryTerms(sentence), sourceTerms = memoryTerms(joined);
   if (NEGATION.test(sentence)) {
     if (!evidence.some(row => NEGATION.test(row.text))) return "negation";

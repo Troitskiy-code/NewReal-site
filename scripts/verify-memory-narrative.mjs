@@ -185,6 +185,17 @@ check('a paraphrased retelling needs a third of its terms; invented ones and oth
   assert.equal(evidence.renderGroundedSummary(JSON.stringify({ items: [item(paraphrase, 's1', 'reported', 'events'), item(said[0].text.replace('призналась', 'сказала'), 's1', 'reported', 'story')] }),
     quotes, 800, countTokens, undefined, '- Имя: Вика\n- Имя: Артём').includes('страха и чувств'), false);
 });
+check('numbers spoken in words and 24-hour clock times support a retelling; invented ones do not', () => {
+  const said = 'Смена до двух, репетиция в четыре, а будильник показывал шесть двадцать. Встаю в восемь. Ждала двадцать пять минут.';
+  for (const sentence of ['Смена закончится в 14:00, а репетиция начнётся в 16:00.', 'Будильник показывал 6:20.', 'Вика встаёт в 8.',
+    'Вика ждала 25 минут.', 'Смена до 2, репетиция в 4.']) assert.equal(narrative.retellingNumbersSupported(sentence, said), true, sentence);
+  for (const sentence of ['Смена закончится в 15:00.', 'Будильник показывал 6:30.', 'Вика встаёт в 9.', 'Ставка выросла до 17.25.'])
+    assert.equal(narrative.retellingNumbersSupported(sentence, said), false, sentence);
+  assert.equal(narrative.retellingNumbersSupported('Ставка выросла до 17.25.', 'Ставка выросла до 17.25.'), true);
+  const quotes = evidence.makeSummarySources([{ role: 'assistant', content: 'У меня смена до двух, а репетиция в четыре.' }]);
+  assert.match(evidence.renderGroundedSummary(JSON.stringify({ items: [item('У Вики смена до 14:00, а репетиция в 16:00.', 's1', 'reported', 'story')] }),
+    quotes, 800, countTokens, undefined, '- Имя: Вика'), /смена до 14:00, а репетиция в 16:00/);
+});
 check('at most two past items are pinned at an 800-token budget, leaving room for new events', () => {
   const previous = '## Предыстория\nВика отказала Артёму три года назад. Через три года они встретились в клубе. Потом они поужинали в ресторане.';
   const quotes = evidence.sourcesFromSummaries(previous);
