@@ -73,9 +73,24 @@ try {
     assert.equal(mirror.length, 1); assert.equal(mirror[0].content, summary);
     provider.summaryText = null;
   });
+  await check('a truncated answer keeps its complete items and never repairs the cut one', () => {
+    const cut = '{"items":[{"section":"story","text":"Ключ {лежит} под \\"ступенью\\".","status":"reported","sources":["s1"]},'
+      + '{"section":"events","text":"Ключ не';
+    const result = policy.readSummaryResponse({ choices: [{ finish_reason: 'length', message: { content: cut } }] });
+    assert.equal(result.finishReason, 'length');
+    assert.deepEqual(JSON.parse(result.text).items.map(row => row.text), ['Ключ {лежит} под "ступенью".']);
+    assert.throws(() => policy.readSummaryResponse({ choices: [{ finish_reason: 'length', message: { content: '{"items":[{"section":"story","text":"Клю' } }] }),
+      { code: 'MEMORY_SUMMARY_TRUNCATED' });
+  });
+  await check('the generation allowance covers every item the schema allows', () => {
+    const items = policy.groundedSummaryFormat(['s1'], 1500).json_schema.schema.properties.items.maxItems;
+    assert.ok(policy.summaryGenerationLimit(1500) >= items * 400 || policy.summaryGenerationLimit(1500) === 4096);
+  });
   await check('truncated generation leaves text and coverage unchanged and defers paid retries', async () => {
     finishReason = 'length';
+    provider.summaryText = '{"items":[{"section":"events","text":"Ключ лежит';
     await assert.rejects(memory.resolveChatMemorySummary(broken.scope, 'synthetic_memory_key', broken.user), { code: 'MEMORY_SUMMARY_TRUNCATED' });
+    provider.summaryText = null;
     const calls = provider.calls.filter(row => row.kind === 'summary').length;
     const kept = await db.memory.findUnique({ where: { threadId: broken.scope.threadId } });
     assert.equal(kept.summary, 'Прежняя память.'); assert.equal(kept.summarizedMessageCount, 1);

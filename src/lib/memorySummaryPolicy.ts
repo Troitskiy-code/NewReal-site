@@ -2,8 +2,13 @@ import { MEMORY_STATUSES } from "./memoryNarrative";
 
 /** Generation includes JSON bookkeeping; the persisted tariff allowance is separate. */
 export const MAX_SUMMARY_GENERATION_TOKENS = 4096;
+const summaryItemLimit = (storedLimit: number) => Math.min(10, Math.max(1, Math.floor(storedLimit / 120)));
+/** The renderer enforces the stored allowance, so generation follows what the schema lets the model
+ * write (~400 tokens per 1200-character item with sources). The stored allowance alone cut long
+ * stories mid-answer on every attempt (prod 2026-10-24, 2634 of a 1500 allowance). */
 export function summaryGenerationLimit(storedLimit: number): number {
-  return Math.min(MAX_SUMMARY_GENERATION_TOKENS, Math.max(768, Math.ceil(storedLimit * 1.5) + 384));
+  return Math.min(MAX_SUMMARY_GENERATION_TOKENS,
+    Math.max(768, Math.ceil(storedLimit * 1.5) + 384, summaryItemLimit(storedLimit) * 400));
 }
 
 export type MemorySummaryFailure = "MEMORY_SUMMARY_TRUNCATED" | "MEMORY_SUMMARY_EMPTY_RESPONSE"
@@ -31,7 +36,7 @@ export function isDeferredSummaryFailure(error: unknown): boolean {
 export function groundedSummaryFormat(sourceIds: string[], storedLimit: number) {
   return { type: "json_schema", json_schema: { name: "grounded_memory", strict: true, schema: {
     type: "object", additionalProperties: false, required: ["items"], properties: { items: {
-      type: "array", minItems: 1, maxItems: Math.min(10, Math.max(1, Math.floor(storedLimit / 120))),
+      type: "array", minItems: 1, maxItems: summaryItemLimit(storedLimit),
       items: { type: "object", additionalProperties: false, required: ["section", "text", "status", "sources"], properties: {
         section: { type: "string", enum: ["story", "state", "decisions", "plans", "events"] },
         text: { type: "string", minLength: 1, maxLength: 1200 },
@@ -42,11 +47,39 @@ export function groundedSummaryFormat(sourceIds: string[], storedLimit: number) 
   } } };
 }
 
+/** `{"items":[…` cut at the token limit: the complete item objects, closed as a valid answer, or
+ * null. An unfinished item is never repaired; its text could stop before a negation. */
+export function completeSummaryItems(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0, inString = false, escaped = false, lastItemEnd = -1;
+  for (let index = start; index < text.length; index++) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "\"") inString = false;
+    } else if (char === "\"") inString = true;
+    else if (char === "{" || char === "[") depth++;
+    else if (char === "}" || char === "]") {
+      depth--;
+      // Root object = 1, items array = 2: an item object closes back to depth 2.
+      if (char === "}" && depth === 2) lastItemEnd = index;
+    }
+  }
+  return lastItemEnd < 0 ? null : `${text.slice(start, lastItemEnd + 1)}]}`;
+}
+
 export function readSummaryResponse(data: { choices?: Array<{ finish_reason?: string | null;
   message?: { content?: unknown } }> }): { text: string; finishReason: string } {
   const choice = data?.choices?.[0];
-  if (choice?.finish_reason === "length") throw new MemorySummaryError("MEMORY_SUMMARY_TRUNCATED");
   const text = typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
+  if (choice?.finish_reason === "length") {
+    // The end of a long answer is lost, not its beginning: keep the items the model finished.
+    const complete = completeSummaryItems(text);
+    if (!complete) throw new MemorySummaryError("MEMORY_SUMMARY_TRUNCATED");
+    return { text: complete, finishReason: "length" };
+  }
   if (!text) throw new MemorySummaryError("MEMORY_SUMMARY_EMPTY_RESPONSE");
   return { text, finishReason: choice?.finish_reason === "stop" ? "stop" : "other" };
 }
