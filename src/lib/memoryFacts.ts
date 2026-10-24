@@ -54,6 +54,17 @@ export function sameFactValue(left: string, right: string, key: string): boolean
   return a.length > 0 && a.length === b.length && a.every((word, index) => word === b[index]
     || nounStem(word).length >= 4 && nounStem(word) === nounStem(b[index]));
 }
+/** Most active values one multi-valued slot keeps; older unpinned ones are superseded. */
+export const MULTI_FACT_LIMIT = 6;
+/** Every word of `narrower` is in the fuller `broader` («танцы» ⊂ «танцы и косплеи»). Partial
+ * overlaps («красные волосы» / «красная чёлка») are different facts and stay apart. */
+export function factValueCovers(broader: string, narrower: string, key: string): boolean {
+  if (factCardinality(key) !== "multi" || memoryNumbers(broader).join("|") !== memoryNumbers(narrower).join("|") && memoryNumbers(narrower).length) return false;
+  const words = (text: string) => (clean(text).match(/[\p{L}\p{N}]+/gu) ?? []).filter(word => word.length > 2);
+  const wide = words(broader), narrow = words(narrower);
+  const same = (a: string, b: string) => a === b || nounStem(a).length >= 4 && nounStem(a) === nounStem(b);
+  return narrow.length > 0 && wide.length > narrow.length && narrow.every(word => wide.some(other => same(word, other)));
+}
 function supportedFactValue(value: string, evidence: string, key: string): boolean {
   if (clean(evidence).includes(clean(value))) return true;
   if (key === "name" || key === "age") return false;

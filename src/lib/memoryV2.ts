@@ -8,7 +8,7 @@ import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
 import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { inferMemoryStatus, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
-import { FACT_EXTRACTION_RULES, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat,
+import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
   factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, type FactDelta } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
@@ -52,14 +52,23 @@ async function applyFact(tx: Tx, threadId: string, delta: FactDelta, seq: number
     } });
     return;
   }
+  const multi = factCardinality(delta.key) === "multi";
+  // A value already contained in a fuller one adds nothing; a fuller value replaces the narrower
+  // unpinned ones it contains. Without this a slot only grew («танцы», «танцы и косплеи», …).
+  if (multi && active.some(fact => factValueCovers(fact.value, delta.value, delta.key))) return;
   // Free the single-valued slot before inserting its successor (partial SQL index).
-  const replaced = factCardinality(delta.key) === "single" ? active : [];
+  const replaced = multi ? active.filter(fact => !fact.pinned && factValueCovers(delta.value, fact.value, delta.key)) : active;
   if (replaced.length) await tx.memoryFact.updateMany({ where: { id: { in: replaced.map(fact => fact.id) } }, data: { status: "superseded" } });
   const previous = !record ? (await tx.memoryFact.findMany({ where: slot })).find(fact => sameFactValue(fact.value, delta.value, delta.key)) : null;
   const data = { ...slot, value: delta.value, cardinality: factCardinality(delta.key), status: "active", supersededById: null,
     source: delta.source, sourceMessageId: delta.sourceMessageId, seq, pinned: delta.pinned, confidence: delta.confidence };
   const next = previous ? await tx.memoryFact.update({ where: { id: previous.id }, data }) : await tx.memoryFact.create({ data });
   if (replaced.length) await tx.memoryFact.updateMany({ where: { id: { in: replaced.map(fact => fact.id) } }, data: { supersededById: next.id } });
+  if (!multi) return;
+  // A capped slot: the oldest unpinned values give way; manual pinned facts are never evicted.
+  const kept = await tx.memoryFact.findMany({ where: { ...slot, status: "active" }, orderBy: [{ seq: "desc" }, { id: "desc" }] });
+  const evicted = kept.filter(fact => !fact.pinned && fact.id !== next.id).slice(Math.max(0, MULTI_FACT_LIMIT - kept.filter(fact => fact.pinned).length - (next.pinned ? 0 : 1)));
+  if (evicted.length) await tx.memoryFact.updateMany({ where: { id: { in: evicted.map(fact => fact.id) } }, data: { status: "superseded", supersededById: next.id } });
 }
 
 async function initializeFacts(tx: Tx, scope: ChatScope) {

@@ -392,6 +392,21 @@ try {
     await legacy.setCoreMemoryContent(f.scope, ''); await run(f, output([delta('Борис')]));
     assert.equal((await active(f.scope)).length, 0);
   });
+  await check('a multi-valued slot merges a fuller value, ignores a narrower repeat and keeps at most six values', async () => {
+    const f = await setup('## Пользователь\n- Нравится: море');
+    const likes = async () => (await active(f.scope)).filter(fact => fact.key === 'likes' && fact.subject === 'user');
+    await turn(f, 'Я люблю танцы.'); await run(f, output([delta('танцы', 's1', 'likes')]));
+    await turn(f, 'Я люблю танцы и косплеи.'); await run(f, output([delta('танцы и косплеи', 's1', 'likes')]));
+    assert.deepEqual((await likes()).map(fact => fact.value).sort(), ['море', 'танцы и косплеи']);
+    await turn(f, 'Я люблю танцы.'); await run(f, output([delta('танцы', 's1', 'likes')]));
+    assert.deepEqual((await likes()).map(fact => fact.value).sort(), ['море', 'танцы и косплеи']);
+    // The oldest values give way. (A slot with a manual pinned value is closed to the extractor.)
+    for (const value of ['кофе', 'чай', 'горы', 'книги', 'кино', 'музыку', 'собак']) {
+      await turn(f, `Я люблю ${value}.`); await run(f, output([delta(value, 's1', 'likes')]));
+    }
+    const kept = (await likes()).map(fact => fact.value);
+    assert.deepEqual(kept.sort(), ['горы', 'кино', 'книги', 'музыку', 'собак', 'чай']);
+  });
   await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
     const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     const late = await turn(f, 'А дальше?', 'Я живу у маяка.');
