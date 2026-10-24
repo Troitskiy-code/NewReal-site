@@ -50,6 +50,8 @@ export function createFakeProvider() {
     extractionText: '{"facts":[],"events":[]}',
     beforeExtraction: null,
     summaryFails: false,
+    kieFails: false,
+    kieCode: null,
     embeddingsFail: false,
     consolidationFails: false,
     beforeSummary: null,
@@ -64,7 +66,7 @@ export function createFakeProvider() {
       Object.assign(provider, {
         intent: 'general', reply: 'Персонаж отвечает спокойно.', coreText: 'UNCHANGED', summaryText: null,
         extractionText: '{"facts":[],"events":[]}', beforeExtraction: null,
-        summaryFails: false, embeddingsFail: false, consolidationFails: false, beforeSummary: null, beforeCore: null, beforeEmbedding: null,
+        summaryFails: false, kieFails: false, kieCode: null, embeddingsFail: false, consolidationFails: false, beforeSummary: null, beforeCore: null, beforeEmbedding: null,
         classify: () => ({ isEvent: false, importance: 1, text: '' }),
       });
       provider.calls = [];
@@ -102,6 +104,16 @@ export function createFakeProvider() {
               data: inputs.map((text, index) => ({ index, embedding: body.model === 'Qwen/Qwen3-Embedding-0.6B' ? fakeEmbedding(text).slice(0, 1024) : fakeEmbedding(text) })),
             },
           };
+        }
+        if (String(url) === 'https://api.kie.ai/codex/v1/responses') {
+          // Kie Responses API: the same synthetic summary, wrapped as Kie answers it.
+          provider.calls.push({ kind: 'kie', model: body.model, effort: body.reasoning?.effort, format: body.text?.format?.type });
+          if (provider.kieFails) throw axiosError(provider.kieFails === true ? 503 : provider.kieFails);
+          if (provider.kieCode) return { status: 200, headers: {}, data: { code: provider.kieCode, msg: 'synthetic gateway failure' } };
+          const answer = await provider.axiosPost('https://api.kie.ai/v1/chat/completions', { model: body.model, messages: body.input });
+          return { status: 200, headers: {}, data: { id: 'resp_fake_kie', status: 'completed', credits_consumed: 0.1,
+            output: [{ type: 'message', content: [{ type: 'output_text', text: answer.data.choices[0].message.content }] }],
+            usage: { input_tokens: 100, output_tokens: 20 } } };
         }
         if (!String(url).endsWith('/chat/completions')) throw new Error(`Unexpected provider URL ${url}`);
         const kind = provider.kindOf(body);
@@ -327,7 +339,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
 
   const session = { userId: null };
   for (const key of Object.keys(process.env)) {
-    if (/^(CHAT_AI_PROVIDER$|MEMORY_AI_PROVIDER$|EMBEDDING_AI_PROVIDER$|DEEPINFRA_|LOGTAIL_|AI_COST_|KODIK_COST_|ENABLE_RAG_EMBEDDINGS$|MEMORY_DEDUP_THRESHOLD$|DEBUG$)/.test(key)) delete process.env[key];
+    if (/^(CHAT_AI_PROVIDER$|MEMORY_AI_PROVIDER$|EMBEDDING_AI_PROVIDER$|DEEPINFRA_|KIE_|SUMMARY_KIE_|LOGTAIL_|AI_COST_|KODIK_COST_|ENABLE_RAG_EMBEDDINGS$|MEMORY_DEDUP_THRESHOLD$|DEBUG$)/.test(key)) delete process.env[key];
   }
   process.env.KODIKROUTER_API_KEY = realProvider ? liveKey : 'synthetic_memory_key';
   process.env.NEXTAUTH_SECRET = 'synthetic_memory_actor';

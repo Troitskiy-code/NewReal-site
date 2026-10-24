@@ -80,6 +80,52 @@ try {
     await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     assert.match(latestSummaryBody.messages[0].content, /Участники: герой пользователя — Артём, персонаж — Вика\. В пересказе называй их по именам/);
   });
+  await check('with a Kie key the summary goes to GPT-6 Luna with the strict schema, metered in Kie credits', async () => {
+    process.env.KIE_API_KEY = 'synthetic_kie_key';
+    try {
+      provider.summaryText = JSON.stringify({ items: [{ section: 'story', status: 'reported', text: 'Пользователь не нашёл пропавший ключ.', sources: ['s1'] }] });
+      const fixture = await setup('Я не нашёл пропавший ключ.');
+      const before = provider.calls.length;
+      const summary = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+      assert.ok(summary && summary !== 'Прежняя память.');
+      const calls = provider.calls.slice(before);
+      assert.deepEqual(calls.filter(row => row.kind === 'kie').map(({ model, effort, format }) => ({ model, effort, format })),
+        [{ model: 'gpt-6-luna', effort: 'low', format: 'json_schema' }]);
+      assert.equal(calls.filter(row => row.kind === 'summary' && row.model !== 'gpt-6-luna').length, 0, 'no reserve call');
+      const cost = await db.aiCostEvent.findFirst({ where: { provider: 'kie', purpose: 'summary' }, orderBy: { createdAt: 'desc' } });
+      assert.equal(cost.outcome, 'completed'); assert.equal(cost.model, 'gpt-6-luna');
+      assert.equal(cost.providerCostNative, 0.1); assert.equal(cost.providerCostCurrency, 'CREDIT');
+      assert.equal(cost.inputTokens, 100); assert.equal(cost.outputTokens, 20);
+    } finally { delete process.env.KIE_API_KEY; provider.summaryText = null; }
+  });
+  await check('a Kie that does not answer hands the summary to DeepInfra; the failed attempt is recorded', async () => {
+    process.env.KIE_API_KEY = 'synthetic_kie_key';
+    try {
+      provider.summaryText = JSON.stringify({ items: [{ section: 'story', status: 'reported', text: 'Пользователь не нашёл пропавший ключ.', sources: ['s1'] }] });
+      for (const failure of [{ kieFails: 504 }, { kieCode: 524 }]) {
+        Object.assign(provider, failure);
+        const fixture = await setup('Я не нашёл пропавший ключ.');
+        const before = provider.calls.length;
+        const summary = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+        Object.assign(provider, { kieFails: false, kieCode: null });
+        assert.ok(summary && summary !== 'Прежняя память.', JSON.stringify(failure));
+        const calls = provider.calls.slice(before);
+        assert.equal(calls.filter(row => row.kind === 'kie').length, 1);
+        assert.equal(calls.filter(row => row.kind === 'summary' && row.model !== 'gpt-6-luna').length, 1, 'one reserve call');
+        const cost = await db.aiCostEvent.findFirst({ where: { provider: 'kie', purpose: 'summary' }, orderBy: { createdAt: 'desc' } });
+        assert.equal(cost.outcome, 'failed');
+      }
+    } finally { delete process.env.KIE_API_KEY; provider.summaryText = null; }
+  });
+  await check('SUMMARY_KIE_ENABLED=false keeps the summary on the reserve provider', async () => {
+    Object.assign(process.env, { KIE_API_KEY: 'synthetic_kie_key', SUMMARY_KIE_ENABLED: 'false' });
+    try {
+      const fixture = await setup();
+      const before = provider.calls.length;
+      await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
+      assert.equal(provider.calls.slice(before).filter(row => row.kind === 'kie').length, 0);
+    } finally { delete process.env.KIE_API_KEY; delete process.env.SUMMARY_KIE_ENABLED; }
+  });
   await check('new messages inside the kept recent window do not trigger a paid summary call', async () => {
     const fixture = await setup('Смотритель хранит ключ возле ступени. '.repeat(40));
     await db.memory.update({ where: { threadId: fixture.scope.threadId }, data: { lastSummarizedAt: fixture.rows[42].createdAt, summarizedMessageCount: 43 } });

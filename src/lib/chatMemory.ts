@@ -8,6 +8,7 @@ import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
 import { makeSummarySources, participantNames, renderGroundedSummary, sourcesFromSummaries, type SummaryParticipants, type SummarySource } from "@/lib/memorySummaryEvidence";
 import { summarySystemPrompt, writeSummaryChapter, type SummaryMode } from "@/lib/memorySummaryChapters";
+import { KieTextError, kieSummaryEnabled, requestKieSummary } from "@/lib/kieText";
 import { getSelectedChatPersona } from "@/lib/personaService";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
@@ -478,6 +479,22 @@ async function requestKodikText(
   names: SummaryParticipants = {}
 ): Promise<string> {
   const generationLimit = summaryGenerationLimit(maxTokens);
+  const system = summarySystemPrompt(mode, maxTokens, names);
+  if (kieSummaryEnabled()) {
+    try {
+      const data = await requestKieSummary(system, userContent, generationLimit, groundedSummaryFormat(sourceIds, maxTokens));
+      const result = readSummaryResponse(data);
+      infoLog("MemorySummary", "generation completed", { provider: "kie", finishReason: result.finishReason, generationLimit,
+        storedLimit: maxTokens, outputUsage: data.usage.completion_tokens });
+      return result.text;
+    } catch (error) {
+      // An answer cut at the limit goes through the chunk backoff like any provider's. A Kie that does
+      // not answer (timeout, gateway or rate error, empty or refused answer) hands the call to DeepInfra.
+      if (error instanceof MemorySummaryError && error.code !== "MEMORY_SUMMARY_EMPTY_RESPONSE") throw error;
+      infoLog("MemorySummary", "kie unavailable, using reserve", { ...toSafeDiagnostic(error), stage: "kie_fallback",
+        ...(error instanceof KieTextError ? { reason: error.reason } : {}) });
+    }
+  }
   const response = await meteredPost("summary",
     `${KODIKROUTER_URL}/chat/completions`,
     {
@@ -485,7 +502,7 @@ async function requestKodikText(
       messages: [
         {
           role: "system",
-          content: summarySystemPrompt(mode, maxTokens, names),
+          content: system,
         },
         { role: "user", content: userContent },
       ],
@@ -505,7 +522,7 @@ async function requestKodikText(
 
   try {
     const result = readSummaryResponse(response.data);
-    infoLog("MemorySummary", "generation completed", { finishReason: result.finishReason, generationLimit,
+    infoLog("MemorySummary", "generation completed", { provider: getMemoryProvider(), finishReason: result.finishReason, generationLimit,
       storedLimit: maxTokens, outputUsage: Number(response.data?.usage?.completion_tokens) || 0 });
     return result.text;
   } catch (error) {

@@ -56,7 +56,10 @@ export function textProviderForUrl(url: string): TextProvider {
 export function serviceTransport(purpose: string, requestedModel: string, legacyKey?: string) {
   const provider = purpose === "character_generation" ? "deepinfra" : getMemoryProvider();
   const choices: Record<string, string> = {
-    summary: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+    // 2026-10-24 chapter summaries on a 171-message story, manual beat scoring: Gemma 4 Turbo 69–82%
+    // (three runs, 1–2 compressions), GPT-6 Luna 42–49%, Mistral Small 3.2 22–28% (it wrote three full
+    // items per chapter, so the oldest chapters were re-compressed every step). Also the Kie reserve.
+    summary: "google/gemma-4-31B-it-turbo",
     // 2026-10-20 eval (scripts/eval-memory-extraction-models.mjs, production-sized turns): Gemma 4 Turbo recall
     // 68% vs 53% for Mistral Small 3.2, 2 vs 16 false facts, p90 4.2 s vs 15.5 s. Qwen3-Next scored the same
     // offline but failed 17% of daytime production calls (75 s timeouts, HTTP 500) on 2026-10-21; Gemma is

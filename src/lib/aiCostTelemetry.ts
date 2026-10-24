@@ -135,7 +135,8 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
     const explicitFx = finiteNonnegative(Number(process.env['AI_COST_USD_RUB']));
     const needsFx = ticket.provider === "kodikrouter" && ticket.surface === "chat_completions" && (usage.reportedCost ?? 0) > 0;
     const fx = needsFx ? explicitFx && explicitFx > 0 ? explicitFx : await getAccountingUsdRub() : null;
-    const cost = ticket.provider === "deepinfra" ? resolveDeepinfraCost(usage, catalog, ticket.fx) : ticket.surface ? resolveKodikCost(ticket.surface, usage, catalog, fx) : {
+    const cost = ticket.provider === "deepinfra" ? resolveDeepinfraCost(usage, catalog, ticket.fx)
+      : ticket.provider === "kie" ? await kieCreditCost(usage.reportedCost) : ticket.surface ? resolveKodikCost(ticket.surface, usage, catalog, fx) : {
       providerCostCurrency: null, providerCostSemantics: "unverified", usdRub: null,
       estimatedCostRub: null, costSource: "unknown",
     };
@@ -158,6 +159,43 @@ async function finish(ticket: Ticket, outcome: string, usage: CostUsage, status?
   } catch (error) { errorLog("AiCost", "Unable to complete cost attempt", ticketDiagnosticContext(ticket), toSafeDiagnostic(error)); }
 }
 const noUsage = () => readCostUsage(null);
+/** $0.005 per Kie credit. Reported credits are not a confirmed RUB ledger debit. */
+async function kieCreditCost(credits: number | null) {
+  const fx = await getAccountingUsdRub();
+  const measured = credits !== null;
+  return { providerCostCurrency: measured ? "CREDIT" : null, providerCostSemantics: measured ? "reported_credits_consumed" : "unverified",
+    usdRub: fx, estimatedCostRub: measured && fx ? credits * 0.005 * fx : null, costSource: measured && fx ? "kie_credits_estimate" : "unknown" };
+}
+function kieTextUsage(data: unknown): CostUsage {
+  const body = data && typeof data === "object" ? data as Record<string, unknown> : {};
+  const usage = body.usage && typeof body.usage === "object" ? body.usage as Record<string, unknown> : {};
+  return { ...readCostUsage(data), reportedCost: finiteNonnegative(body.credits_consumed ?? usage.credits_consumed) };
+}
+
+/** A Kie text request (its Responses API), metered like any service request. Kie reports a failure
+ * as HTTP 200 with {code, msg}; that attempt is recorded as failed with the code as its status. */
+export async function meteredKiePost<T = AxiosResponse["data"]>(purpose: string, url: string, body: unknown,
+  config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  const ticket = await begin(safeModel((body as { model?: unknown })?.model), purpose, "kie");
+  const transport = beginAiTransport(ticket.provider, ticket.requestedModel, purpose);
+  const started = Date.now();
+  try {
+    const response = await axios.post<T>(url, body, { ...config, timeout: config?.timeout || SERVICE_REQUEST_TIMEOUT_MS, maxRedirects: 0 });
+    const data = (response.data ?? {}) as { code?: unknown; id?: unknown };
+    const code = typeof data.code === "number" && data.code !== 200 ? data.code : null;
+    await finish(ticket, code === null ? "completed" : "failed", kieTextUsage(response.data), code ?? response.status,
+      undefined, undefined, undefined, undefined, data.id);
+    return response;
+  } catch (error) {
+    const response = axios.isAxiosError(error) ? error.response : null;
+    errorLog("ChatDiagnostics", "service attempt failed", { ...ticketDiagnosticContext(ticket), ...transport.fields(),
+      stage: "service_request", status: response?.status, durationMs: Date.now() - started }, toSafeDiagnostic(error));
+    await finish(ticket, "failed", noUsage(), response?.status);
+    throw error;
+  } finally {
+    transport.release();
+  }
+}
 
 /** One durable event per asynchronous synthesis, including jobs that succeed after a reconnect. */
 export async function recordKieSpeechCost(job: { costEventId: string; userId: string; providerTaskId: string | null;
