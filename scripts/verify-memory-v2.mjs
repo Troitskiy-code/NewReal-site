@@ -392,6 +392,27 @@ try {
     await legacy.setCoreMemoryContent(f.scope, ''); await run(f, output([delta('Борис')]));
     assert.equal((await active(f.scope)).length, 0);
   });
+  await check('appearance has its own key, and an NPC keeps a role instead of a bare name', async () => {
+    const f = await setup();
+    await turn(f, 'У меня красные волосы и чёрная куртка.', 'Серёга — мой коллега по кофейне.');
+    await run(f, output([
+      delta('красные волосы', 's1', 'appearance'),
+      delta('Серёга', 's2', 'name', 'npc:Серёга'),
+      delta('коллега по кофейне', 's2', 'relationship.status', 'npc:Серёга'),
+    ]));
+    const core = (await db.coreMemory.findUnique({ where: { threadId: f.scope.threadId } })).content;
+    assert.match(core, /## Пользователь\n- Внешность: красные волосы/);
+    assert.match(core, /## Серёга\n- Статус отношений: коллега по кофейне/);
+    assert.doesNotMatch(core, /Имя: Серёга/);
+    assert.ok(facts.FACT_EXTRACTION_RULES.includes('appearance — внешность'));
+    // NPCs known only by name (older data) share one line.
+    const rendered = facts.renderFactCore([
+      { subject: 'npc:Илья', key: 'name', value: 'Илья', pinned: false, seq: 1 },
+      { subject: 'npc:Маша', key: 'name', value: 'Маша', pinned: false, seq: 2 },
+      { subject: 'npc:Лера', key: 'relationship.status', value: 'подруга со школы', pinned: false, seq: 3 },
+    ]);
+    assert.equal(rendered, '## Лера\n- Статус отношений: подруга со школы\n\n## Другие персонажи\n- Илья, Маша');
+  });
   await check('a two-word quoted event is not stored, a real event is', async () => {
     const f = await setup();
     await turn(f, 'Можешь.', 'Я пообещала тебе позвонить завтра после репетиции.');
