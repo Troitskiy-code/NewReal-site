@@ -87,6 +87,35 @@ function sameInjury(left: string, right: string): boolean {
 }
 /** The fuller of two lines about one injury: a lasting condition first, then the number of words. */
 const injuryFullness = (value: string) => (LASTING_HEALTH.test(value) ? 100 : 0) + (clean(value).match(/[\p{L}\p{N}]{3,}/gu) ?? []).length;
+// One NPC filed under two subjects («Ирма» and «Ирма Сол», «Лейла» and «Лейла Нур», «Вальден» and «сэр
+// Вальден») split its facts over two cards in every group run of 2026-10-25. A shorter name joins a longer
+// one when its words, titles aside, open the longer name; a surname alone («Сол») or a name shared by two
+// different longer names stays apart.
+const NAME_TITLES = new Set(["сэр", "леди", "лорд", "мадам", "мадемуазель", "мисс", "миссис", "мистер", "госпожа", "господин",
+  "капитан", "мастер", "доктор", "док", "профессор", "отец", "мать", "брат", "сестра", "дядя", "тетя", "старый", "старая",
+  "старик", "старуха", "юный", "юная", "молодой", "молодая"]);
+function nameCore(subject: string): string[] {
+  const words: string[] = clean(subject.slice(4)).match(/\p{L}+/gu) ?? [];
+  const first = words.findIndex(word => !NAME_TITLES.has(word));
+  return first < 0 ? [] : words.slice(first);
+}
+const opensName = (short: string[], long: string[]) => short.length > 0 && short.length <= long.length
+  && short.every((word, index) => isSameMemoryName(word, long[index]));
+/** Maps each `npc:` subject to the fullest subject naming the same person; other subjects map to themselves. */
+export function npcAliasMap(subjects: string[]): Map<string, string> {
+  const npcs = [...new Set(subjects.filter(subject => subject.startsWith("npc:")))];
+  const cores = new Map(npcs.map(subject => [subject, nameCore(subject)]));
+  const fuller = (a: string, b: string) => cores.get(a)!.length - cores.get(b)!.length
+    || a.split(/\s+/u).length - b.split(/\s+/u).length || a.length - b.length || b.localeCompare(a);
+  const alias = new Map<string, string>();
+  for (const subject of npcs) {
+    const candidates = npcs.filter(other => other !== subject && opensName(cores.get(subject)!, cores.get(other)!));
+    const related = (a: string, b: string) => opensName(cores.get(a)!, cores.get(b)!) || opensName(cores.get(b)!, cores.get(a)!);
+    const unambiguous = candidates.every(a => candidates.every(b => related(a, b)));
+    alias.set(subject, unambiguous ? [subject, ...candidates].reduce((best, other) => fuller(other, best) > 0 ? other : best) : subject);
+  }
+  return alias;
+}
 /** Most active values one multi-valued slot keeps; older unpinned ones are superseded. */
 export const MULTI_FACT_LIMIT = 6;
 /** Every word of `narrower` is in the fuller `broader` («танцы» ⊂ «танцы и косплеи»). Partial
@@ -406,8 +435,21 @@ export function rankFacts<T extends RenderableFact>(facts: T[], query = ""): T[]
     || Number(essential(b)) - Number(essential(a)) || Number(isRelevantFact(b, query)) - Number(isRelevantFact(a, query))
     || b.seq - a.seq || a.key.localeCompare(b.key));
 }
-export function renderFactCore(facts: RenderableFact[]): string {
+export function renderFactCore(stored: RenderableFact[]): string {
   const sections = new Map<string, string[]>();
+  // Facts stored under an alias of an NPC («Ирма») join the card of its fullest name («Ирма Сол»).
+  const alias = npcAliasMap(stored.map(fact => fact.subject));
+  const facts = stored.map(fact => alias.has(fact.subject) ? { ...fact, subject: alias.get(fact.subject)! } : fact);
+  const joined = (fact: RenderableFact) => stored.some(other => other.subject !== fact.subject && alias.get(other.subject) === alias.get(fact.subject));
+  // A joined card shows one value per single slot (the best ranked) and each multi value once.
+  const shown = new Set<string>();
+  const repeated = (fact: RenderableFact) => {
+    if (!fact.subject.startsWith("npc:")) return false;
+    const slot = `${fact.subject}\n${fact.key}`, value = factCardinality(fact.key) === "single" ? slot : `${slot}\n${clean(fact.value)}`;
+    if (shown.has(value) || [...shown].some(seen => seen.startsWith(`${slot}\n`) && sameFactValue(seen.slice(slot.length + 1), fact.value, fact.key))) return true;
+    shown.add(value);
+    return false;
+  };
   // NPCs known only by their own name share one line instead of a heading each («## Серёга / - Имя: Серёга»).
   const bareName = (fact: RenderableFact) => fact.key === "name" && fact.subject.startsWith("npc:") && isSameMemoryName(fact.value, fact.subject.slice(4));
   const bare = new Set([...new Set(facts.filter(fact => fact.subject.startsWith("npc:")).map(fact => fact.subject))]
@@ -420,6 +462,7 @@ export function renderFactCore(facts: RenderableFact[]): string {
     && (injuryFullness(other.value) - injuryFullness(fact.value) || Number(other.pinned) || other.seq - fact.seq) > 0);
   for (const fact of rankFacts(facts)) {
     if (bare.has(fact.subject) || noise(fact) || merged(fact)) continue;
+    if (repeated(fact) && joined(fact)) continue;
     const heading = fact.subject === "user" ? "Пользователь" : fact.subject === "character" ? "Персонаж"
       : fact.subject === "relationship" ? "Отношения" : fact.subject.startsWith("npc:") ? fact.subject.slice(4) : "Мир и заметки";
     const label = SLOTS[fact.key]?.label;

@@ -9,7 +9,7 @@ import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { inferMemoryStatus, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
-  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, type FactDelta } from "./memoryFacts";
+  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, npcAliasMap, type FactDelta } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
@@ -214,8 +214,11 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
     stage = "prepare_input"; diagnostic.sourceCount = sources.length;
     const activeFacts = await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active" },
       select: { subject: true, key: true, value: true, pinned: true, source: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] })
-      // Stored noise would teach the extractor to file more of it.
-      .then(rows => rows.filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value)));
+      // Stored noise would teach the extractor to file more of it; two names of one NPC, to keep two cards.
+      .then(rows => {
+        const alias = npcAliasMap(rows.map(fact => fact.subject));
+        return rows.filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value)).map(fact => ({ ...fact, subject: alias.get(fact.subject) ?? fact.subject }));
+      });
     const fitted = fitExtractionInput(sources, activeFacts);
     if (!fitted) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
     const input = fitted.input;
@@ -250,7 +253,15 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       const ids = messages.map(message => message.id);
       await tx.$queryRaw`SELECT id FROM "Message" WHERE id = ANY(${ids}::text[]) FOR SHARE`;
       if (fingerprint(await jobMessages(tx, job)) !== hash) throw new MemoryExtractionError("MEMORY_SOURCE_CHANGED");
-      for (const delta of extraction.facts) await applyFact(tx, thread.id, delta, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
+      // A fact about «Ирма» goes to the card already stored as «Ирма Сол» (and the reverse is joined when rendered).
+      const npcs = (await tx.memoryFact.findMany({ where: { threadId: thread.id, status: "active", subject: { startsWith: "npc:" } },
+        select: { subject: true }, distinct: ["subject"] })).map(fact => fact.subject);
+      for (const extracted of extraction.facts) {
+        const subject = npcAliasMap([...npcs, extracted.subject]).get(extracted.subject) ?? extracted.subject;
+        if (subject.startsWith("npc:") && !npcs.includes(subject)) npcs.push(subject);
+        const delta = { ...extracted, subject };
+        await applyFact(tx, thread.id, delta, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
+      }
       const existing = await tx.episodicMemory.findMany({ where: { threadId: thread.id }, orderBy: { timestamp: "desc" }, take: 300 });
       for (const event of extraction.events) {
         // A two-word quote («Можешь.», «За спину.») is a gesture, not an event: 49 of 104 events of

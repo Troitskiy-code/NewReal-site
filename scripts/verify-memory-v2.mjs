@@ -526,6 +526,35 @@ try {
     await turn(f, 'Ещё старый шрам на левом плече.'); await run(f, output([delta('старый шрам на левом плече', 's1', 'health')]));
     assert.deepEqual(await health(), ['перелом левой ноги, наложен гипс', 'ранение в левое плечо осколком, задета артерия', 'старый шрам на левом плече']);
   });
+  await check('one NPC under two names is one card: the shorter name joins the fullest, ambiguous names stay apart', async () => {
+    // Subject pairs from the 2026-10-25 prod runs.
+    const map = subjects => Object.fromEntries([...facts.npcAliasMap(subjects)].map(([key, value]) => [key.slice(4), value.slice(4)]));
+    assert.deepEqual(map(['npc:Ирма', 'npc:Ирма Сол', 'npc:Лейла', 'npc:Лейла Нур', 'npc:Тоби', 'user']),
+      { 'Ирма': 'Ирма Сол', 'Ирма Сол': 'Ирма Сол', 'Лейла': 'Лейла Нур', 'Лейла Нур': 'Лейла Нур', 'Тоби': 'Тоби' });
+    assert.deepEqual(map(['npc:Верховный Магистр', 'npc:Верховный Магистр Ордена Соли']),
+      { 'Верховный Магистр': 'Верховный Магистр Ордена Соли', 'Верховный Магистр Ордена Соли': 'Верховный Магистр Ордена Соли' });
+    assert.deepEqual(map(['npc:Вальден', 'npc:сэр Вальден', 'npc:Степан', 'npc:Степан Ильич']),
+      { 'Вальден': 'сэр Вальден', 'сэр Вальден': 'сэр Вальден', 'Степан': 'Степан Ильич', 'Степан Ильич': 'Степан Ильич' }, 'titles aside');
+    assert.deepEqual(map(['npc:Сол', 'npc:Ирма Сол']), { 'Сол': 'Сол', 'Ирма Сол': 'Ирма Сол' }, 'a surname alone may be a relative');
+    assert.deepEqual(map(['npc:Анна', 'npc:Анна Петрова', 'npc:Анна Сидорова']).Анна, 'Анна', 'a name shared by two people stays apart');
+    assert.deepEqual(map(['npc:Хозяйка гостиницы', 'npc:Марта', 'npc:мадам Оркс', 'npc:Магистр']),
+      { 'Хозяйка гостиницы': 'Хозяйка гостиницы', 'Марта': 'Марта', 'мадам Оркс': 'мадам Оркс', 'Магистр': 'Магистр' });
+    const rendered = facts.renderFactCore([
+      { subject: 'npc:Ирма Сол', key: 'occupation', value: 'капитан «Астролябии»', pinned: false, seq: 9 },
+      { subject: 'npc:Ирма', key: 'occupation', value: 'капитан', pinned: false, seq: 3 },
+      { subject: 'npc:Ирма', key: 'health', value: 'забинтованное плечо', pinned: false, seq: 5 },
+      { subject: 'npc:Ирма Сол', key: 'health', value: 'раненое плечо', pinned: false, seq: 4 },
+      { subject: 'npc:Ирма', key: 'debts', value: 'должна Каю 200 кредитов', pinned: false, seq: 6 },
+      { subject: 'npc:Ирма Сол', key: 'debts', value: 'должна Каю 200 кредитов', pinned: false, seq: 2 },
+      { subject: 'npc:Сол', key: 'occupation', value: 'механик', pinned: false, seq: 1 },
+    ]);
+    assert.equal(rendered, '## Ирма Сол\n- Занятие: капитан «Астролябии»\n- Долги и обязательства: должна Каю 200 кредитов\n- Здоровье: раненое плечо\n\n## Сол\n- Занятие: механик');
+    const f = await setup();
+    const subjects = async () => [...new Set((await active(f.scope)).map(fact => `${fact.subject}=${fact.value}`))].sort();
+    await turn(f, 'Капитан Ирма Сол ранена в плечо.', 'Ирма Сол ранена в плечо.'); await run(f, output([delta('ранена в плечо', 's2', 'health', 'npc:Ирма Сол')]));
+    await turn(f, 'Как Ирма?', 'Ирма должна Каю двести кредитов.'); await run(f, output([delta('должна Каю двести кредитов', 's2', 'debts', 'npc:Ирма')]));
+    assert.deepEqual(await subjects(), ['npc:Ирма Сол=должна Каю двести кредитов', 'npc:Ирма Сол=ранена в плечо']);
+  });
   await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
     const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     const late = await turn(f, 'А дальше?', 'Я живу у маяка.');
