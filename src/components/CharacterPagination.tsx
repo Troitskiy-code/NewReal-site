@@ -15,7 +15,7 @@ function paginationItems(current: number, total: number): Array<number | "ellips
     return Array.from({ length: total }, (_, index) => index + 1);
   }
 
-  const marked = new Set([1, total, current, current - 1, current + 1, current - 2, current + 2]);
+  const marked = new Set([1, total, current, current - 1, current + 1]);
   const pages = [...marked].filter((value) => value >= 1 && value <= total).sort((a, b) => a - b);
   const items: Array<number | "ellipsis"> = [];
 
@@ -31,7 +31,9 @@ function paginationItems(current: number, total: number): Array<number | "ellips
 }
 
 const buttonClass =
-  "inline-flex h-10 min-w-10 items-center justify-center rounded-wd-pill border px-3 text-xs font-bold transition-colors disabled:opacity-50";
+  "h-10 min-w-10 shrink-0 items-center justify-center rounded-wd-pill px-3 text-sm font-medium tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wd-secondary disabled:pointer-events-none";
+
+const inactiveClass = "text-wd-text-secondary hover:bg-white/5 hover:text-white";
 
 export default function CharacterPagination({
   page,
@@ -50,62 +52,74 @@ export default function CharacterPagination({
 
   return (
     <nav
-      className="flex flex-wrap items-center justify-center gap-2 pb-6 pt-2"
+      className="flex justify-center pb-6 pt-2"
       aria-label={t("home.pagination")}
     >
-      <button
-        type="button"
-        className={`${buttonClass} border-wd-border bg-wd-card text-white hover:border-wd-secondary`}
-        disabled={disabled || page <= 1}
-        onClick={() => onPageChange(page - 1)}
-        aria-label={t("home.prevPage")}
-      >
-        ‹
-      </button>
+      <div className="inline-flex max-w-full flex-nowrap items-center gap-1 rounded-wd-pill border border-wd-border bg-wd-card p-1">
+        <button
+          type="button"
+          className={`${buttonClass} inline-flex ${inactiveClass} text-xl disabled:opacity-30`}
+          disabled={disabled || page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          aria-label={t("home.prevPage")}
+        >
+          <span aria-hidden>‹</span>
+        </button>
 
-      {items.map((item, index) =>
-        item === "ellipsis" ? (
-          <span key={`ellipsis-${index}`} className="px-1 text-sm text-wd-text-secondary" aria-hidden>
-            …
-          </span>
-        ) : (
-          hrefForPage ? <a
-            key={item}
-            href={hrefForPage(item)}
-            className={item === page
-              ? `${buttonClass} border-wd-primary bg-wd-primary text-white`
-              : `${buttonClass} border-wd-border bg-wd-card text-white hover:border-wd-secondary`}
-            aria-disabled={disabled || item === page}
-            aria-current={item === page ? "page" : undefined}
-            aria-label={t("home.page", { page: item, pages: totalPages })}
-            onClick={(event) => { event.preventDefault(); if (!disabled && item !== page) onPageChange(item); }}
-          >{item}</a> : <button
-            key={item}
-            type="button"
-            className={
-              item === page
-                ? `${buttonClass} border-wd-primary bg-wd-primary text-white`
-                : `${buttonClass} border-wd-border bg-wd-card text-white hover:border-wd-secondary`
-            }
-            disabled={disabled || item === page}
-            onClick={() => onPageChange(item)}
-            aria-current={item === page ? "page" : undefined}
-            aria-label={t("home.page", { page: item, pages: totalPages })}
-          >
-            {item}
-          </button>
-        )
-      )}
+        <span
+          className="inline-flex h-10 items-center gap-2 whitespace-nowrap px-4 text-sm tabular-nums sm:hidden"
+          aria-current="page"
+          aria-label={t("home.page", { page, pages: totalPages })}
+        >
+          <span className="font-semibold text-white">{page}</span>
+          <span className="text-wd-text-secondary" aria-hidden>/</span>
+          <span className="text-wd-text-secondary">{totalPages}</span>
+        </span>
 
-      <button
-        type="button"
-        className={`${buttonClass} border-wd-border bg-wd-card text-white hover:border-wd-secondary`}
-        disabled={disabled || page >= totalPages}
-        onClick={() => onPageChange(page + 1)}
-        aria-label={t("home.nextPage")}
-      >
-        ›
-      </button>
+        {items.map((item, index) =>
+          item === "ellipsis" ? (
+            <span key={`ellipsis-${index}`} className="hidden w-6 shrink-0 justify-center text-sm text-wd-text-secondary sm:inline-flex" aria-hidden>
+              …
+            </span>
+          ) : (
+            hrefForPage ? <a
+              key={item}
+              href={hrefForPage(item)}
+              className={item === page
+                ? `${buttonClass} hidden bg-wd-primary text-white sm:inline-flex`
+                : `${buttonClass} hidden ${inactiveClass} sm:inline-flex`}
+              aria-disabled={disabled || item === page}
+              aria-current={item === page ? "page" : undefined}
+              aria-label={t("home.page", { page: item, pages: totalPages })}
+              onClick={(event) => { event.preventDefault(); if (!disabled && item !== page) onPageChange(item); }}
+            >{item}</a> : <button
+              key={item}
+              type="button"
+              className={
+                item === page
+                  ? `${buttonClass} hidden bg-wd-primary text-white sm:inline-flex`
+                  : `${buttonClass} hidden ${inactiveClass} sm:inline-flex`
+              }
+              disabled={disabled || item === page}
+              onClick={() => onPageChange(item)}
+              aria-current={item === page ? "page" : undefined}
+              aria-label={t("home.page", { page: item, pages: totalPages })}
+            >
+              {item}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          className={`${buttonClass} inline-flex ${inactiveClass} text-xl disabled:opacity-30`}
+          disabled={disabled || page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          aria-label={t("home.nextPage")}
+        >
+          <span aria-hidden>›</span>
+        </button>
+      </div>
     </nav>
   );
 }
