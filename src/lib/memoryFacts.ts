@@ -85,6 +85,22 @@ function sameInjury(left: string, right: string): boolean {
   const a = injurySignature(left), b = injurySignature(right);
   return !!a && !!b && a.scar === b.scar && (!a.side || !b.side || a.side === b.side) && [...a.parts].some(part => b.parts.has(part));
 }
+// One detail described again and again: «рыжие волосы» / «рыжая макушка», «чёрное платье» / «чёрный
+// бархат платья», «фиалковые глаза» in three lines of one card (prod runs 2026-10-25). A part of an
+// appearance value names its details (hair, eyes, a garment, an accessory); parts naming the same
+// details are one detail, and the fullest description, then the newest, stays.
+const LOOK_DETAILS: Array<[string, RegExp]> = [["волосы", /^(?:волос|прическ|макушк|кос[аыуеи]?$|косой$|челк|кудр|локон|шевелюр|голов)/u],
+  ["глаза", /^глаз/u], ["борода", /^(?:бород|усы$|усов$|усами$|щетин)/u], ["кожа", /^кож/u], ["китель", /^кител/u], ["халат", /^халат/u],
+  ["комбинезон", /^комбинезон/u], ["куртка", /^куртк/u], ["плащ", /^плащ/u], ["платье", /^плать/u], ["рубашка", /^(?:рубаш|рубах)/u],
+  ["форма", /^форм(?:а|ы|у|е|ой)?$/u], ["майка", /^майк/u], ["свитер", /^свитер/u], ["жилет", /^жилет/u], ["камзол", /^камзол/u],
+  ["мундир", /^мундир/u], ["фартук", /^фартук/u], ["платок", /^плат(?:ок|ка|ке|ком)$/u], ["шарф", /^шарф/u], ["шляпа", /^шляп/u],
+  ["кепка", /^кепк/u], ["доспехи", /^доспех/u], ["сапоги", /^сапог/u], ["перчатки", /^перчат/u], ["очки", /^(?:очк|гогл)/u],
+  ["браслет", /^браслет/u], ["кольца", /^(?:кольц|перстн|перстень)/u], ["серьги", /^серьг/u], ["кулон", /^кулон/u], ["медальон", /^медальон/u]];
+function lookDetails(part: string): string {
+  const words: string[] = clean(part).match(/\p{L}+/gu) ?? [];
+  return LOOK_DETAILS.filter(([, pattern]) => words.some(word => pattern.test(word))).map(([detail]) => detail).join("+");
+}
+const lookFullness = (value: string) => (clean(value).match(/[\p{L}\p{N}]{3,}/gu) ?? []).length;
 /** The fuller of two lines about one injury: a lasting condition first, then the number of words. */
 const injuryFullness = (value: string) => (LASTING_HEALTH.test(value) ? 100 : 0) + (clean(value).match(/[\p{L}\p{N}]{3,}/gu) ?? []).length;
 // One NPC filed under two subjects («Ирма» and «Ирма Сол», «Лейла» and «Лейла Нур», «Вальден» and «сэр
@@ -122,6 +138,10 @@ export const MULTI_FACT_LIMIT = 6;
  * overlaps («красные волосы» / «красная чёлка») are different facts and stay apart. */
 export function factValueCovers(broader: string, narrower: string, key: string): boolean {
   if (key === "health" && sameInjury(broader, narrower)) return injuryFullness(broader) >= injuryFullness(narrower);
+  if (key === "appearance") {
+    const wide = lookDetails(lastingAppearance(broader));
+    if (wide && wide === lookDetails(lastingAppearance(narrower))) return lookFullness(broader) >= lookFullness(narrower);
+  }
   if (factCardinality(key) !== "multi" || memoryNumbers(broader).join("|") !== memoryNumbers(narrower).join("|") && memoryNumbers(narrower).length) return false;
   const words = (text: string): string[] => [...clean(text).matchAll(/[\p{L}\p{N}]+/gu)].map(match => match[0]).filter(word => word.length > 2);
   const wide = words(broader), narrow = words(narrower);
@@ -178,8 +198,24 @@ const mundaneOnly = (value: string) => {
   const words = valueWords(value);
   return words.some(word => MUNDANE_ITEM.test(word)) && !words.some(word => PLOT_ITEM.test(word)) && !namedInside(value);
 };
-/** Why a health, possessions or secrets value is noise, or null. Pinned (manual) facts are never checked. */
+// «Внешность» of a wounded captain held «бледное лицо», «серое лицо, пересохшие губы» and three ways of one
+// bandage (prod runs 2026-10-25). Such parts of a value describe one scene: pallor, bandages, dirt, an
+// expression, how clothes are worn. They are cut out part by part, so «чёрное одеяние, бледное лицо»
+// keeps the clothes. A pale skin as a trait, a scar or an eye patch stays.
+const PASSING_LOOK = /(?:^|[^\p{L}])(?:бледн\p{L}*(?:\s+\p{L}+){0,2}\s+лиц\p{L}*|лиц\p{L}* бледн\p{L}*|сер(?:ое|ым|ого) лиц\p{L}*|землист\p{L}*|осунувш\p{L}*|изможд\p{L}*|запавш\p{L}*|пересохш\p{L}*|потрескавш\p{L}*|покрасневш\p{L}*|заплаканн\p{L}*|слез\p{L}*|румян\p{L}*|вспотевш\p{L}*|испарин\p{L}*|дрож\p{L}*|измазан\p{L}*|испачкан\p{L}*|перепачкан\p{L}*|в крови|окровавл\p{L}*|мокр\p{L}*|промок\p{L}*|растрепан\p{L}*|взъерош\p{L}*|синяк\p{L}*|ссадин\p{L}*|царапин\p{L}*|бинт\p{L}*|забинтован\p{L}*|перебинтован\p{L}*|перевязан\p{L}*|прижат\p{L}*|улыб\p{L}*|ухмыл\p{L}*|хмур\p{L}*|нахмур\p{L}*|бесстрастн\p{L}*|напряжен\p{L}*|встревожен\p{L}*|испуган\p{L}*|растерян\p{L}*|устал\p{L}*|утомлен\p{L}*|заспан\p{L}*|свободнее|накинут\p{L}*|расстегнут\p{L}*|застегнут\p{L}*|закатан\p{L}*)(?=$|[^\p{L}])/iu;
+const passingLookPart = (part: string) => {
+  const text = clean(part);
+  return PASSING_LOOK.test(text) || /(?:^|[^\p{L}])повязк\p{L}*/u.test(text) && !/(?:^|[^\p{L}])глаз\p{L}*/u.test(text)
+    || /(?:^|[^\p{L}])пятн\p{L}*/u.test(text) && /(?:^|[^\p{L}])(?:щек\p{L}*|щёк\p{L}*|лиц\p{L}*|лбу|лоб|носу|руках)(?=$|[^\p{L}])/u.test(text);
+};
+const lookParts = (value: string) => value.split(/[,;]/u).map(part => part.trim()).filter(Boolean);
+/** An appearance value without its passing parts; empty when nothing lasting is left. */
+export function lastingAppearance(value: string): string {
+  return lookParts(value).filter(part => !passingLookPart(part)).join(", ");
+}
+/** Why a health, possessions, secrets or appearance value is noise, or null. Pinned (manual) facts are never checked. */
 export function slotNoiseReason(key: string, value: string): MemoryValidationReason | null {
+  if (key === "appearance") return lastingAppearance(value) ? null : "transient_state";
   if (key === "health") return TRANSIENT_HEALTH.test(value) || (ACUTE_HEALTH.test(value) && !LASTING_HEALTH.test(value)) ? "transient_state" : null;
   if (key === "possessions") return mundaneOnly(value) ? "slot_noise" : null;
   if (key === "secrets") return SUSPICION.test(value) || (mundaneOnly(value) && !CONCEALED.test(value)) ? "slot_noise" : null;
@@ -229,6 +265,7 @@ secrets — только то, что персонаж или пользоват
 Кодовые слова, пароли, условные сигналы и правила, о которых договорились герои, сохраняй как world.rule дословно. world.rule — устойчивые законы мира и договорённости, а не образные фразы рассказчика («тишина — правило этого дома»).
 value пиши по-русски, без английских слов.
 appearance — внешность: волосы, глаза, рост, телосложение, одежда, татуировки. Внешность не записывай в personality, likes или habits.
+appearance — только устойчивое. Сиюминутное (бледность, повязки и бинты, грязь и пятна, слёзы, выражение лица, как надета одежда) не записывай; уже записанную деталь повторяй, только если она изменилась.
 Для subject=npc:имя сохраняй, кто это и как связан с героями: relationship.status («подруга Вики из танцевальной группы», «друг Артёма, вернулся из армии») или occupation. Не сохраняй key=name, если value совпадает с именем в subject: одно имя без роли бесполезно.
 value — короткое конкретное значение из источника. Имена и числа копируй точно; обычные падежные формы существительных допустимы. Не заменяй содержание синонимами.
 Для retract пустое value снимает весь слот, непустое — только это значение.
@@ -369,7 +406,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     // within one scene (prod test 2026-10-25); a lasting wound or allergy stays. Clutter and suspicions likewise.
     const noise = row.op === "set" ? slotNoiseReason(key, text) : null;
     if (noise) return reject(noise, "value");
-    return { op: row.op as "set" | "retract", subject: row.subject, key, value: text,
+    return { op: row.op as "set" | "retract", subject: row.subject, key, value: row.op === "set" && key === "appearance" ? lastingAppearance(text) : text,
       sourceMessageId: source.messageId, source: source.author === "user" ? "user_msg" : "assistant_msg",
       confidence: 1, pinned: false };
   })).filter((fact): fact is FactDelta => fact !== null);
@@ -460,13 +497,25 @@ export function renderFactCore(stored: RenderableFact[]): string {
   const merged = (fact: RenderableFact) => !fact.pinned && fact.key === "health" && facts.some(other => other !== fact
     && other.subject === fact.subject && other.key === "health" && !noise(other) && sameInjury(other.value, fact.value)
     && (injuryFullness(other.value) - injuryFullness(fact.value) || Number(other.pinned) || other.seq - fact.seq) > 0);
+  // Appearance is shown part by part: passing parts are cut (stored before the check existed) and each
+  // detail of a card keeps its fullest, then newest, description. Pinned parts are shown as written.
+  type LookPart = { fact: RenderableFact; index: number; text: string; detail: string };
+  const looks = new Map(facts.filter(fact => fact.key === "appearance").map(fact => [fact,
+    lookParts(fact.pinned ? fact.value : lastingAppearance(fact.value)).map((text, index): LookPart => ({ fact, index, text, detail: lookDetails(text) }))]));
+  const lookList = [...looks.values()].flat();
+  const beaten = (part: LookPart) => !part.fact.pinned && lookList.some(other => other !== part && other.fact.subject === part.fact.subject
+    && (part.detail ? other.detail === part.detail : clean(other.text) === clean(part.text))
+    && (lookFullness(other.text) - lookFullness(part.text) || Number(other.fact.pinned) || other.fact.seq - part.fact.seq
+      || facts.indexOf(other.fact) - facts.indexOf(part.fact) || other.index - part.index) > 0);
   for (const fact of rankFacts(facts)) {
     if (bare.has(fact.subject) || noise(fact) || merged(fact)) continue;
     if (repeated(fact) && joined(fact)) continue;
+    const value = fact.key === "appearance" ? (looks.get(fact) ?? []).filter(part => !beaten(part)).map(part => part.text).join(", ") : fact.value;
+    if (!value) continue;
     const heading = fact.subject === "user" ? "Пользователь" : fact.subject === "character" ? "Персонаж"
       : fact.subject === "relationship" ? "Отношения" : fact.subject.startsWith("npc:") ? fact.subject.slice(4) : "Мир и заметки";
     const label = SLOTS[fact.key]?.label;
-    const line = `- ${label ? `${label}: ` : ""}${fact.value}`;
+    const line = `- ${label ? `${label}: ` : ""}${value}`;
     sections.set(heading, [...(sections.get(heading) ?? []), line]);
   }
   if (bare.size) sections.set("Другие персонажи", [`- ${[...bare].map(subject => subject.slice(4)).join(", ")}`]);

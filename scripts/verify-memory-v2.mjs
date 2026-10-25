@@ -555,6 +555,47 @@ try {
     await turn(f, 'Как Ирма?', 'Ирма должна Каю двести кредитов.'); await run(f, output([delta('должна Каю двести кредитов', 's2', 'debts', 'npc:Ирма')]));
     assert.deepEqual(await subjects(), ['npc:Ирма Сол=должна Каю двести кредитов', 'npc:Ирма Сол=ранена в плечо']);
   });
+  await check('appearance drops passing states part by part and keeps one description per detail', async () => {
+    // Values the extractor filed in the 2026-10-25 prod runs.
+    const lasting = value => facts.lastingAppearance(value);
+    assert.equal(lasting('бледное лицо, китель застегнут на все пуговицы'), '');
+    assert.equal(lasting('серое лицо, пересохшие губы'), '');
+    assert.equal(lasting('левая рука забинтована и прижата к телу'), '');
+    assert.equal(lasting('изможденное лицо, глубоко запавшие глаза'), '');
+    assert.equal(lasting('пятно от мазута на щеке, растрепанные волосы'), '');
+    assert.equal(lasting('бесстрастное лицо'), '');
+    assert.equal(lasting('серая майка, массивная повязка на плече, осунувшееся лицо'), 'серая майка');
+    assert.equal(lasting('простое черное одеяние из плотной ткани, бледное лицо'), 'простое черное одеяние из плотной ткани');
+    assert.equal(lasting('бледное и строгое лицо, тяжелое платье из черного бархата'), 'тяжелое платье из черного бархата');
+    assert.equal(lasting('лицо измазано в технической смазке, гоглы, комбинезон'), 'гоглы, комбинезон');
+    assert.equal(lasting('темная форма, волосы свободнее обрамляют лицо'), 'темная форма');
+    assert.equal(lasting('мокрый плащ, два меча за спиной, волчий медальон на груди'), 'два меча за спиной, волчий медальон на груди');
+    for (const value of ['шрам на подбородке', 'фиалковые глаза, бледная кожа', 'комбинезон с пятнами масла и копоти', 'чёрная повязка на глазу',
+      'обветренная кожа, серая в тусклом свете', 'серые глаза', 'седая коса, китель', 'зелёный шарф, шрам над левой бровью']) assert.equal(lasting(value), value);
+    assert.equal(facts.slotNoiseReason('appearance', 'бледное лицо, забинтованное плечо'), 'transient_state');
+    const covers = (a, b) => facts.factValueCovers(a, b, 'appearance');
+    assert.ok(covers('рыжие волосы', 'рыжая макушка') && covers('чёрный бархат платья', 'черное платье') && !covers('черное платье', 'чёрный бархат платья'));
+    assert.ok(!covers('серые глаза', 'седая коса'));
+    const look = (subject, value, seq, pinned = false) => ({ subject, key: 'appearance', value, pinned, seq });
+    const rendered = facts.renderFactCore([
+      look('npc:Ирма Сол', 'бледное лицо, китель застегнут на все пуговицы', 9), look('npc:Ирма Сол', 'серое лицо, пересохшие губы', 8),
+      look('npc:Ирма Сол', 'левое плечо забинтовано под темно-синим кителем', 7), look('npc:Ирма Сол', 'темно-синий китель', 6),
+      look('npc:Ирма Сол', 'седая коса', 5), look('npc:Ирма Сол', 'шрам на подбородке', 4),
+      look('npc:Тоби', 'рыжие волосы', 3), look('npc:Тоби', 'рыжая макушка', 2), look('npc:Тоби', 'очки-гоглы', 1),
+      look('npc:Йеннифэр', 'темные волосы, фиалковые глаза', 12), look('npc:Йеннифэр', 'фарфоровая кожа, фиалковые глаза, черное платье', 11),
+      look('npc:Йеннифэр', 'чёрный бархат платья, фиалковые глаза', 10),
+      look('npc:Лейла Нур', 'бесстрастное лицо', 13, true),
+    ]);
+    assert.equal(rendered, [
+      '## Лейла Нур\n- Внешность: бесстрастное лицо',
+      '## Йеннифэр\n- Внешность: темные волосы, фиалковые глаза\n- Внешность: фарфоровая кожа\n- Внешность: чёрный бархат платья',
+      '## Ирма Сол\n- Внешность: темно-синий китель\n- Внешность: седая коса\n- Внешность: шрам на подбородке',
+      '## Тоби\n- Внешность: рыжие волосы\n- Внешность: очки-гоглы',
+    ].join('\n\n'), 'a pinned line is shown as written');
+    const stored = facts.parseFactExtraction(output([delta('серая майка, массивная повязка на плече', 's1', 'appearance', 'npc:Ирма')]),
+      facts.factSources([{ id: 'user', role: 'user', content: 'На Ирме серая майка, массивная повязка на плече.' }]), { partial: true }).facts;
+    assert.deepEqual(stored.map(fact => fact.value), ['серая майка']);
+  });
   await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
     const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     const late = await turn(f, 'А дальше?', 'Я живу у маяка.');
