@@ -110,8 +110,9 @@ group('context', () => {
     historyRows: crowdedRows, totalHistoryTokens: 0,
   }, 'general');
   // A full summary and core leave the unprocessed tail most of the context: the summary goes,
-  // core stays, and at most the oldest unprocessed row gives way to memory's reserve.
-  check(crowded.messages.at(-1).content === crowdedRows.at(-1).content && crowded.stats.droppedUnprocessed <= 1
+  // core stays, and at most the two oldest unprocessed rows give way to memory's reserve and the
+  // memory header (which asks to answer from memory, ~70 tokens more since 2026-10-25) in this 3k context.
+  check(crowded.messages.at(-1).content === crowdedRows.at(-1).content && crowded.stats.droppedUnprocessed <= 2
     && crowded.totalTokens <= 3000 && crowded.stats.droppedMemoryBlocks.includes('summary')
     && !crowded.stats.droppedMemoryBlocks.includes('core') && crowded.messages[0].content.includes('[[MEMORY:core]]'),
   'tail: a full stale summary cannot evict the unprocessed suffix, and core is never dropped', crowded.stats);

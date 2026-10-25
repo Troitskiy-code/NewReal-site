@@ -38,7 +38,8 @@ export type MemoryValidationReason = "invalid_response_type" | "invalid_json" | 
   | "invalid_value_type" | "value_too_long" | "unsupported_key" | "unknown_source" | "user_fact_from_character"
   | "character_fact_from_user_first_person" | "control_instruction" | "unsupported_value" | "question_source"
   | "non_factual_source" | "unsupported_number" | "empty_value" | "negated_set" | "single_slot_conflict"
-  | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long" | "redundant_npc_name";
+  | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long" | "redundant_npc_name"
+  | "transient_state";
 /** Only enums, generated source labels and sizes. Never include quotes, values or NPC names. */
 export type MemoryValidationDiagnostic = {
   validationReason?: MemoryValidationReason; validationPath?: string;
@@ -103,6 +104,8 @@ function addressedName(name: string, evidence: string): boolean {
   const escaped = name.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
   return new RegExp(`(?:^|[,—–]\\s*|[«"]\\s*)${escaped}\\s*[,!]|,\\s*${escaped}\\s*(?:[.!?…»"]|$)`, "u").test(evidence.normalize("NFKC"));
 }
+/** A state of the moment, not a lasting condition: sleep, sedation, tiredness, hunger, being stable. */
+const TRANSIENT_HEALTH = /(?:^|[^\p{L}])(?:спит|сон|сна|уснул\p{L}*|засыпа\p{L}*|устал\p{L}*|утомл\p{L}*|голод\p{L}*|под седатив\p{L}*|седатив\p{L}*|под лекарств\p{L}*|без сознания|стабилиз\p{L}*|бледн\p{L}*|слаб(?:ость|ая|ый)|пьян\p{L}*|похмель\p{L}*|бодр\p{L}*|выспал\p{L}*|сонн\p{L}*)(?=$|[^\p{L}])/iu;
 /** A negation within three words before one of the value's words (five-letter roots). */
 function negationNear(value: string, evidence: string): boolean {
   const roots = new Set((clean(value).match(/\p{L}{3,}/gu) ?? []).map(word => word.slice(0, 5)));
@@ -141,6 +144,11 @@ facts: до 12 объектов {op:"set"|"retract",subject:"user"|"character"|"
 pets — питомцы: вид и кличка, где они («пёс Бублик, оставлен в гостинице «Чайка»»). health — здоровье: аллергии, болезни, ранения («аллергия на кошек», «ранение в левое плечо»).
 possessions — важные вещи и тайники: что, у кого или где спрятано («ключ от кладовой спрятан под третьей ступенькой лестницы»). debts — долги и обязательства: кто кому сколько должен («Тоби должен Каю 200 кредитов»). secrets — тайны: суть и кто о ней знает.
 Такие личные факты пользователя сохраняй, даже если он сказал их мимоходом в действии или реплике. Питомцев не записывай в likes, болезни — в dislikes.
+possessions — только сюжетно важное: ключи, документы, артефакты, оружие, деньги, тайники, отданные, полученные и украденные вещи. Быт не записывай: инструменты, посуду, еду, мебель, мелкие запчасти; одежда и украшения — это appearance.
+health — только длительное: аллергии, болезни, ранения и их последствия. Сиюминутные состояния (устал, спит, под лекарствами, стабилизирован, голоден) не записывай.
+secrets — только то, что персонаж или пользователь скрывает и раскрыл. Подозрения и догадки — не тайны, их не записывай.
+Кодовые слова, пароли, условные сигналы и правила, о которых договорились герои, сохраняй как world.rule дословно. world.rule — устойчивые законы мира и договорённости, а не образные фразы рассказчика («тишина — правило этого дома»).
+value пиши по-русски, без английских слов.
 appearance — внешность: волосы, глаза, рост, телосложение, одежда, татуировки. Внешность не записывай в personality, likes или habits.
 Для subject=npc:имя сохраняй, кто это и как связан с героями: relationship.status («подруга Вики из танцевальной группы», «друг Артёма, вернулся из армии») или occupation. Не сохраняй key=name, если value совпадает с именем в subject: одно имя без роли бесполезно.
 value — короткое конкретное значение из источника. Имена и числа копируй точно; обычные падежные формы существительных допустимы. Не заменяй содержание синонимами.
@@ -207,7 +215,8 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
   // candidate-level fault: at temperature 0 it would otherwise fail every retry and block the queue.
   const recoverable = new Set<MemoryValidationReason>(["invalid_subject", "unknown_source", "user_fact_from_character",
     "character_fact_from_user_first_person", "control_instruction", "unsupported_value", "unsupported_number",
-    "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long", "redundant_npc_name"]);
+    "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long", "redundant_npc_name",
+    "transient_state"]);
   const candidate = <T>(kind: "fact" | "event", parse: () => T | null): T | null => {
     try { return parse(); } catch (error) {
       if (!partial || !(error instanceof MemoryExtractionError) || !error.diagnostic.validationReason
@@ -277,6 +286,9 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     if (row.op === "set" && !text) return reject("empty_value", "value");
     if (row.op === "set" && negatedValue && key !== "dislikes"
       && !/(?:^|[^\p{L}])(?:не|not)(?=$|[^\p{L}])/iu.test(text)) return reject("negated_set", "value");
+    // «под седативом», «стабилизирована, глубокий сон» filled the health slot of a wounded captain
+    // within one scene (prod test 2026-10-25); a lasting wound or allergy stays.
+    if (row.op === "set" && key === "health" && TRANSIENT_HEALTH.test(text)) return reject("transient_state", "value");
     return { op: row.op as "set" | "retract", subject: row.subject, key, value: text,
       sourceMessageId: source.messageId, source: source.author === "user" ? "user_msg" : "assistant_msg",
       confidence: 1, pinned: false };

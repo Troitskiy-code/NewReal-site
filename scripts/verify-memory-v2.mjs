@@ -145,6 +145,9 @@ try {
     assert.deepEqual(one('У меня нет собаки.', 'собака', 'pets'), [], 'a negation right before the fact refuses it');
     assert.deepEqual(one('Меня зовут Глеб, мне двадцать девять.', '29', 'age'), ['age=29']);
     assert.deepEqual(one('Меня зовут Глеб, мне двадцать девять.', '30', 'age'), []);
+    assert.deepEqual(one('Капитан под седативом, стабилизирована, глубокий сон.', 'под седативом', 'health', 'npc:Ирма'), [], 'a state of the moment is not health');
+    assert.deepEqual(one('Капитан под седативом, стабилизирована, глубокий сон.', 'стабилизирована, глубокий сон', 'health', 'npc:Ирма'), []);
+    assert.deepEqual(one('Осколок пробил капитану левое плечо, ранение глубокое.', 'ранение в левое плечо', 'health', 'npc:Ирма'), ['health=ранение в левое плечо']);
   });
   await check('all-rejected extraction preserves old facts, reports the reason and never blocks the next turn', async () => {
     const f = await setup('## Пользователь\n- Имя: Сохранённое'), source = await turn(f, 'Меня зовут Анна.');
