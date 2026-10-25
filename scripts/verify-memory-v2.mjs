@@ -596,6 +596,37 @@ try {
       facts.factSources([{ id: 'user', role: 'user', content: 'На Ирме серая майка, массивная повязка на плече.' }]), { partial: true }).facts;
     assert.deepEqual(stored.map(fact => fact.value), ['серая майка']);
   });
+  await check('the user hero is never an NPC card; the full introduced name is kept', async () => {
+    // The 2026-10-25 group runs: «Навигатор Кай Ортега прибыл», stored as «Ортега», and the crew's «Кай» became npc:Кай.
+    const intro = '*Ставлю сумку у кресла навигатора.* Навигатор Кай Ортега прибыл. Двадцать шесть лет.';
+    assert.equal(facts.fullNameInText('Ортега', intro), 'Кай Ортега');
+    assert.equal(facts.fullNameInText('Кай Ортега', intro), 'Кай Ортега', 'a sentence-opening word is not a name');
+    assert.equal(facts.fullNameInText('Анна', 'Привет. Анна, рада знакомству.'), 'Анна');
+    assert.equal(facts.fullNameInText('Ортега', 'Говорит Ортега.'), 'Ортега', 'a verb opening the sentence is not a name');
+    assert.ok(facts.isHeroName('npc:Кай', ['Кай Ортега']) && facts.isHeroName('npc:Ортега', ['Кай Ортега']));
+    assert.ok(!facts.isHeroName('npc:Ирма Ортега', ['Кай Ортега']), 'a relative with the same surname is not the hero');
+    assert.ok(!facts.isHeroName('npc:Кай', ['Ортега']) && !facts.isHeroName('user', ['Кай Ортега']));
+    const crew = facts.factSources([{ id: 'user', role: 'user', content: 'Принял, держу курс.' },
+      { id: 'reply', role: 'assistant', content: 'Кай — навигатор «Астролябии», — кивает Ирма.' }]);
+    const refused = facts.parseFactExtraction(output([delta('навигатор «Астролябии»', 's2', 'relationship.status', 'npc:Кай')]), crew,
+      { partial: true, heroNames: ['Кай Ортега'] });
+    assert.deepEqual(refused.facts, []); assert.equal(refused.rejectedCandidates[0].validationReason, 'npc_is_user');
+    const own = facts.parseFactExtraction(output([delta('аллергия на кошек', 's1', 'health', 'npc:Кай')]),
+      facts.factSources([{ id: 'user', role: 'user', content: 'У Кая аллергия на кошек.' }]), { partial: true, heroNames: ['Кай Ортега'] });
+    assert.deepEqual(own.facts.map(fact => `${fact.subject}:${fact.value}`), ['user:аллергия на кошек'], 'the user telling about the hero is a user fact');
+    const named = facts.parseFactExtraction(output([delta('Ортега', 's1', 'name')]), facts.factSources([{ id: 'user', role: 'user', content: intro }]), { partial: true });
+    assert.deepEqual(named.facts.map(fact => fact.value), ['Кай Ортега']);
+    const rendered = facts.renderFactCore([
+      { subject: 'user', key: 'name', value: 'Кай Ортега', pinned: false, seq: 1 },
+      { subject: 'npc:Кай', key: 'relationship.status', value: 'навигатор', pinned: false, seq: 2 },
+      { subject: 'npc:Тоби', key: 'debts', value: 'должен Каю 200 кредитов', pinned: false, seq: 3 },
+    ]);
+    assert.equal(rendered, '## Пользователь\n- Имя: Кай Ортега\n\n## Тоби\n- Долги и обязательства: должен Каю 200 кредитов');
+    const f = await setup('## Пользователь\n- Имя: Ортега');
+    await turn(f, intro, 'Ирма кивает: — Кай, займи кресло навигатора.');
+    await run(f, output([delta('навигатор', 's4', 'relationship.status', 'npc:Кай')]));
+    assert.deepEqual((await active(f.scope)).map(fact => `${fact.subject}:${fact.key}=${fact.value}`), ['user:name=Кай Ортега']);
+  });
   await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
     const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     const late = await turn(f, 'А дальше?', 'Я живу у маяка.');

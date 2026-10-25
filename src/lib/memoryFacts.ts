@@ -39,7 +39,7 @@ export type MemoryValidationReason = "invalid_response_type" | "invalid_json" | 
   | "character_fact_from_user_first_person" | "control_instruction" | "unsupported_value" | "question_source"
   | "non_factual_source" | "unsupported_number" | "empty_value" | "negated_set" | "single_slot_conflict"
   | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long" | "redundant_npc_name"
-  | "transient_state" | "slot_noise";
+  | "transient_state" | "slot_noise" | "npc_is_user";
 /** Only enums, generated source labels and sizes. Never include quotes, values or NPC names. */
 export type MemoryValidationDiagnostic = {
   validationReason?: MemoryValidationReason; validationPath?: string;
@@ -131,6 +131,29 @@ export function npcAliasMap(subjects: string[]): Map<string, string> {
     alias.set(subject, unambiguous ? [subject, ...candidates].reduce((best, other) => fuller(other, best) > 0 ? other : best) : subject);
   }
   return alias;
+}
+// The user's hero is not an NPC. In the 2026-10-25 group runs the user introduced himself as «Навигатор
+// Кай Ортега», the crew called him «Кай», and the extractor, barred from writing user facts out of their
+// replies, filed them under «npc:Кай» instead. An NPC whose name words (titles aside) all belong to a
+// name of the user's hero is that hero.
+export function isHeroName(subject: string, heroNames: string[]): boolean {
+  if (!subject.startsWith("npc:")) return false;
+  const core = nameCore(subject);
+  return core.length > 0 && heroNames.some(name => {
+    const words: string[] = clean(name).match(/\p{L}+/gu) ?? [];
+    return core.every(word => words.some(other => isSameMemoryName(word, other)));
+  });
+}
+/** «Навигатор Кай Ортега прибыл» names «Кай Ортега», not only «Ортега»: a capitalised word right before
+ * the name joins it unless it opens a sentence or a stage direction. */
+export function fullNameInText(name: string, text: string): string {
+  const source = text.normalize("NFKC"), escaped = name.trim().replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
+  const match = new RegExp(`(?<!\\p{L})${escaped}(?!\\p{L})`, "u").exec(source);
+  if (!match || name.trim().split(/\s+/u).length > 2) return name;
+  const before = /(\p{Lu}[\p{Ll}-]+)\s+$/u.exec(source.slice(0, match.index));
+  if (!before || before.index > 0 && /\p{L}/u.test(source[before.index - 1])) return match[0];
+  const opening = source.slice(0, before.index).trimEnd();
+  return !opening || /[.!?…*«"„—–:]$/u.test(opening) ? match[0] : `${before[1]} ${match[0]}`;
 }
 /** Most active values one multi-valued slot keeps; older unpinned ones are superseded. */
 export const MULTI_FACT_LIMIT = 6;
@@ -271,6 +294,7 @@ value — короткое конкретное значение из источ
 Для retract пустое value снимает весь слот, непустое — только это значение.
 sourceId — один id законченной исходной цитаты. Не извлекай факты из вопросов, предложений и догадок.
 subject=user — герой пользователя ЭТОЙ истории; только из его сообщения. Ассистент не вправе придумать пользователю имя или биографию.
+Герой пользователя — не NPC: не заводи subject=npc:имя для его имени, фамилии или прозвища, даже когда персонажи обращаются к нему или говорят о нём. Имя пользователя записывай полностью, как он представился («Кай Ортега»).
 Данные персонажа из его ответа допустимы. Первое лицо принадлежит автору цитаты. Мировые/NPC факты не приписывай главному персонажу.
 Меняй слот при явно сообщённом новом значении. «Больше не работаю там» — retract occupation, а не добавление второго места работы.
 Отсутствие упоминания НЕ отменяет факт. Если в новом ходе не сказано об изменении города, не меняй city. Не возвращай весь activeFacts как список изменений.
@@ -296,7 +320,7 @@ export function factExtractionFormat(sourceIds: string[]) {
   } } };
 }
 
-export function parseFactExtraction(raw: string, sources: FactSource[], { partial = false } = {}): {
+export function parseFactExtraction(raw: string, sources: FactSource[], { partial = false, heroNames = [] as string[] } = {}): {
   facts: FactDelta[]; events: ExtractedEvent[]; rejectedRetractions: number;
   rejectedFacts: number; rejectedEvents: number; rejectedCandidates: Readonly<MemoryValidationDiagnostic>[];
 } {
@@ -332,7 +356,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
   const recoverable = new Set<MemoryValidationReason>(["invalid_subject", "unknown_source", "user_fact_from_character",
     "character_fact_from_user_first_person", "control_instruction", "unsupported_value", "unsupported_number",
     "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long", "redundant_npc_name",
-    "transient_state", "slot_noise"]);
+    "transient_state", "slot_noise", "npc_is_user"]);
   const candidate = <T>(kind: "fact" | "event", parse: () => T | null): T | null => {
     try { return parse(); } catch (error) {
       if (!partial || !(error instanceof MemoryExtractionError) || !error.diagnostic.validationReason
@@ -365,6 +389,12 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
       return reject("redundant_npc_name", "value");
     }
     if (!source) return reject("unknown_source", "sourceId");
+    // The hero under an NPC name: from the user it is a user fact, from a reply it is refused like any
+    // user fact told by the assistant.
+    if (isHeroName(row.subject, heroNames)) {
+      if (source.author !== "user") return reject("npc_is_user", "subject");
+      row.subject = "user";
+    }
     if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
     detail.sourceRole = source.author; detail.sourceChars = source.text.length;
     const addressed = row.op === "set" && row.subject === "user" && key === "name" && source.author !== "user"
@@ -406,7 +436,9 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     // within one scene (prod test 2026-10-25); a lasting wound or allergy stays. Clutter and suspicions likewise.
     const noise = row.op === "set" ? slotNoiseReason(key, text) : null;
     if (noise) return reject(noise, "value");
-    return { op: row.op as "set" | "retract", subject: row.subject, key, value: row.op === "set" && key === "appearance" ? lastingAppearance(text) : text,
+    const storedValue = row.op !== "set" ? text : key === "appearance" ? lastingAppearance(text)
+      : key === "name" && row.subject === "user" && source.author === "user" ? fullNameInText(text, source.text) : text;
+    return { op: row.op as "set" | "retract", subject: row.subject as string, key, value: storedValue,
       sourceMessageId: source.messageId, source: source.author === "user" ? "user_msg" : "assistant_msg",
       confidence: 1, pinned: false };
   })).filter((fact): fact is FactDelta => fact !== null);
@@ -476,7 +508,10 @@ export function renderFactCore(stored: RenderableFact[]): string {
   const sections = new Map<string, string[]>();
   // Facts stored under an alias of an NPC («Ирма») join the card of its fullest name («Ирма Сол»).
   const alias = npcAliasMap(stored.map(fact => fact.subject));
-  const facts = stored.map(fact => alias.has(fact.subject) ? { ...fact, subject: alias.get(fact.subject)! } : fact);
+  // An NPC card under the user's hero's name holds what the assistant said about the user; it is not shown.
+  const heroNames = stored.filter(fact => fact.subject === "user" && fact.key === "name").map(fact => fact.value);
+  const facts = stored.filter(fact => fact.pinned || !isHeroName(fact.subject, heroNames))
+    .map(fact => alias.has(fact.subject) ? { ...fact, subject: alias.get(fact.subject)! } : fact);
   const joined = (fact: RenderableFact) => stored.some(other => other.subject !== fact.subject && alias.get(other.subject) === alias.get(fact.subject));
   // A joined card shows one value per single slot (the best ranked) and each multi value once.
   const shown = new Set<string>();

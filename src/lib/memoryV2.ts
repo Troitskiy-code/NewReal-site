@@ -9,7 +9,7 @@ import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { inferMemoryStatus, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
-  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, npcAliasMap, type FactDelta } from "./memoryFacts";
+  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, npcAliasMap, isHeroName, fullNameInText, type FactDelta } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
@@ -212,12 +212,22 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
   try {
     const messages = await jobMessages(prisma, job), hash = fingerprint(messages), sources = factSources(messages);
     stage = "prepare_input"; diagnostic.sourceCount = sources.length;
+    // The hero's names. A short stored name («Ортега») is completed once from the user's own introduction
+    // («Навигатор Кай Ортега прибыл»), so the crew's «Кай» is recognised as the hero.
+    const hero = await prisma.memoryFact.findFirst({ where: { threadId: thread.id, subject: "user", key: "name", status: "active" }, orderBy: { seq: "desc" } });
+    const introduced = hero && !hero.pinned ? await prisma.message.findFirst({ where: { threadId: thread.id, role: "user", content: { contains: hero.value } },
+      orderBy: { createdAt: "asc" }, select: { id: true, content: true } }) : null;
+    const fullName = hero && introduced ? fullNameInText(hero.value, introduced.content) : null;
+    const completedName = introduced && fullName && fullName !== hero?.value ? { value: fullName, messageId: introduced.id } : null;
+    const heroNames = [hero?.value, completedName?.value].filter((name): name is string => Boolean(name));
     const activeFacts = await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active" },
       select: { subject: true, key: true, value: true, pinned: true, source: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] })
-      // Stored noise would teach the extractor to file more of it; two names of one NPC, to keep two cards.
+      // Stored noise would teach the extractor to file more of it; two names of one NPC, to keep two cards;
+      // an NPC card of the hero, to keep filing the user's facts there.
       .then(rows => {
         const alias = npcAliasMap(rows.map(fact => fact.subject));
-        return rows.filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value)).map(fact => ({ ...fact, subject: alias.get(fact.subject) ?? fact.subject }));
+        return rows.filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value) && !isHeroName(fact.subject, heroNames))
+          .map(fact => ({ ...fact, subject: alias.get(fact.subject) ?? fact.subject }));
       });
     const fitted = fitExtractionInput(sources, activeFacts);
     if (!fitted) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
@@ -239,7 +249,7 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       const finishReason = response.data?.choices?.[0]?.finish_reason;
       diagnostic.finishReason = ["stop", "length", "content_filter", "tool_calls", "function_call"].includes(finishReason) ? finishReason : "unknown";
       if (response.data?.choices?.[0]?.finish_reason === "length") throw new MemoryExtractionError("MEMORY_EXTRACT_TRUNCATED");
-      extraction = parseFactExtraction(content, sources, { partial: true });
+      extraction = parseFactExtraction(content, sources, { partial: true, heroNames });
     }
     const hasRejectedCandidates = extraction.rejectedFacts + extraction.rejectedEvents > 0;
     const warningCode = hasRejectedCandidates ? extraction.facts.length + extraction.events.length > 0
@@ -253,6 +263,8 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       const ids = messages.map(message => message.id);
       await tx.$queryRaw`SELECT id FROM "Message" WHERE id = ANY(${ids}::text[]) FOR SHARE`;
       if (fingerprint(await jobMessages(tx, job)) !== hash) throw new MemoryExtractionError("MEMORY_SOURCE_CHANGED");
+      if (completedName) await applyFact(tx, thread.id, { op: "set", subject: "user", key: "name", value: completedName.value, source: "user_msg",
+        sourceMessageId: completedName.messageId, confidence: 1, pinned: false }, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
       // A fact about «Ирма» goes to the card already stored as «Ирма Сол» (and the reverse is joined when rendered).
       const npcs = (await tx.memoryFact.findMany({ where: { threadId: thread.id, status: "active", subject: { startsWith: "npc:" } },
         select: { subject: true }, distinct: ["subject"] })).map(fact => fact.subject);
