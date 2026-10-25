@@ -10,9 +10,10 @@ const KIE_RESPONSES_URL = "https://api.kie.ai/codex/v1/responses";
 /** Kie's gateway cuts a non-streamed answer at ~100 s (code 524); Luna answered a chunk in 17–45 s. */
 const KIE_SUMMARY_TIMEOUT_MS = 75_000;
 
-/** Opt-in: SUMMARY_KIE_ENABLED=true and a Kie key. Otherwise summaries go to DeepInfra only. */
+/** Opt-in: SUMMARY_KIE_ENABLED=true and a Kie key. Otherwise summaries go to DeepInfra only.
+ * Read by bracket: Relaxdev fills a dotted read of a variable missing from its settings with a stub. */
 export function kieSummaryEnabled(): boolean {
-  return process.env.SUMMARY_KIE_ENABLED === "true" && Boolean(process.env.KIE_API_KEY?.trim());
+  return process.env["SUMMARY_KIE_ENABLED"] === "true" && Boolean(process.env.KIE_API_KEY?.trim());
 }
 
 export class KieTextError extends Error {
