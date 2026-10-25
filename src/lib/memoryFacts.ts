@@ -39,7 +39,7 @@ export type MemoryValidationReason = "invalid_response_type" | "invalid_json" | 
   | "character_fact_from_user_first_person" | "control_instruction" | "unsupported_value" | "question_source"
   | "non_factual_source" | "unsupported_number" | "empty_value" | "negated_set" | "single_slot_conflict"
   | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long" | "redundant_npc_name"
-  | "transient_state";
+  | "transient_state" | "slot_noise";
 /** Only enums, generated source labels and sizes. Never include quotes, values or NPC names. */
 export type MemoryValidationDiagnostic = {
   validationReason?: MemoryValidationReason; validationPath?: string;
@@ -106,6 +106,32 @@ function addressedName(name: string, evidence: string): boolean {
 }
 /** A state of the moment, not a lasting condition: sleep, sedation, tiredness, hunger, being stable. */
 const TRANSIENT_HEALTH = /(?:^|[^\p{L}])(?:спит|сон|сна|уснул\p{L}*|засыпа\p{L}*|устал\p{L}*|утомл\p{L}*|голод\p{L}*|под седатив\p{L}*|седатив\p{L}*|под лекарств\p{L}*|без сознания|стабилиз\p{L}*|бледн\p{L}*|слаб(?:ость|ая|ый)|пьян\p{L}*|похмель\p{L}*|бодр\p{L}*|выспал\p{L}*|сонн\p{L}*)(?=$|[^\p{L}])/iu;
+// The extraction prompt asks for lasting health and plot-important things only, yet the 2026-10-25 prod
+// runs still filed «слишком быстрый пульс», «нога прижата стальной балкой», «мастерская с инструментами»,
+// «набор специй» and «подозревает начальника порта». These deterministic checks back the prompt up.
+/** Symptoms of one scene. Kept only next to a lasting condition: «ранение в плечо, потеря крови». */
+const ACUTE_HEALTH = /(?:^|[^\p{L}])(?:пульс\p{L}*|дыхани\p{L}*|дышит|задыха\p{L}*|боль|боли|болью|болит|хрип\p{L}*|прижат\p{L}*|зажат\p{L}*|придавл\p{L}*|полубессознат\p{L}*|бессознат\p{L}*|обморок\p{L}*|кровотечени\p{L}*|потер[яиюе] крови|дрож\p{L}*|озноб\p{L}*|тошн\p{L}*|головокружени\p{L}*|стабильн\p{L}*|шок|шоке|шоком|лихорад\p{L}*|синяк\p{L}*|ссадин\p{L}*|царапин\p{L}*|ушиб\p{L}*)(?=$|[^\p{L}])/iu;
+const LASTING_HEALTH = /(?:^|[^\p{L}])(?:ранен\p{L}*|ран[аыу]|шрам\p{L}*|аллерг\p{L}*|хронич\p{L}*|болезн\p{L}*|болен|больна|болеет|перелом\p{L}*|протез\p{L}*|слеп\p{L}*|глух\p{L}*|хрома\p{L}*|хромот\p{L}*|ампут\p{L}*|проклят\p{L}*|мутаци\p{L}*|ожог\p{L}*|диабет\p{L}*|астм\p{L}*|контуз\p{L}*|инвалид\p{L}*|постоянн\p{L}*|с детства)(?=$|[^\p{L}])/iu;
+/** Household things, clothing and jewellery (clothing and jewellery belong to appearance). */
+const MUNDANE_ITEM = /^(?:фонар|блокнот|инструмент|мастерск|паяльн|припо[йяюе]$|запчаст|специ(?:и|й|ям|ями|ях)$|баночк|посуд|кружк|чашк|тарелк|кастрюл|мебел|одеял|подушк|куртк|рубаш|рубах|сапог|ботин|шапк|шарф|перчат|браслет|серьг|ожерель|украшени)/u;
+/** What makes a thing matter to the plot: a hiding place, keys, papers, weapons, money, a hand-over. */
+const PLOT_ITEM = /^(?:тайник|спрят|прят|скрыт|скрыва|ключ|карт[аыуое]|письм|документ|дневник|записк|артефакт|амулет|медальон|меч|нож|кинжал|оружи|пистолет|револьвер|бластер|золот|монет|крон|кредит|деньг|денег|украл|украден|отдал|получил|подар|наследств|печат|улик|тубус|компас)/u;
+const CONCEALED = /(?:^|[^\p{L}])(?:скрыва\p{L}*|скрыл\p{L}*|прячет|прятал\p{L}*|спрята\p{L}*|тайн\p{L}*|втайне|тайком|никто не|никому)(?=$|[^\p{L}])/iu;
+const SUSPICION = /(?:^|[^\p{L}])(?:подозрева\p{L}*|подозрени\p{L}*|догадыва\p{L}*|предполага\p{L}*|возможно|вероятно|наверное|видимо|кажется|похоже)(?=$|[^\p{L}])/iu;
+const valueWords = (value: string) => clean(value).match(/\p{L}+/gu) ?? [];
+// «куртка Ники» is a clue, not clutter: a capitalised owner or place inside the value (not a «quoted» label).
+const namedInside = (value: string) => /[\p{Ll}\d,]\s+\p{Lu}/u.test(value.normalize("NFKC"));
+const mundaneOnly = (value: string) => {
+  const words = valueWords(value);
+  return words.some(word => MUNDANE_ITEM.test(word)) && !words.some(word => PLOT_ITEM.test(word)) && !namedInside(value);
+};
+/** Why a health, possessions or secrets value is noise, or null. Pinned (manual) facts are never checked. */
+export function slotNoiseReason(key: string, value: string): MemoryValidationReason | null {
+  if (key === "health") return TRANSIENT_HEALTH.test(value) || (ACUTE_HEALTH.test(value) && !LASTING_HEALTH.test(value)) ? "transient_state" : null;
+  if (key === "possessions") return mundaneOnly(value) ? "slot_noise" : null;
+  if (key === "secrets") return SUSPICION.test(value) || (mundaneOnly(value) && !CONCEALED.test(value)) ? "slot_noise" : null;
+  return null;
+}
 /** A negation within three words before one of the value's words (five-letter roots). */
 function negationNear(value: string, evidence: string): boolean {
   const roots = new Set((clean(value).match(/\p{L}{3,}/gu) ?? []).map(word => word.slice(0, 5)));
@@ -216,7 +242,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
   const recoverable = new Set<MemoryValidationReason>(["invalid_subject", "unknown_source", "user_fact_from_character",
     "character_fact_from_user_first_person", "control_instruction", "unsupported_value", "unsupported_number",
     "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long", "redundant_npc_name",
-    "transient_state"]);
+    "transient_state", "slot_noise"]);
   const candidate = <T>(kind: "fact" | "event", parse: () => T | null): T | null => {
     try { return parse(); } catch (error) {
       if (!partial || !(error instanceof MemoryExtractionError) || !error.diagnostic.validationReason
@@ -287,8 +313,9 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     if (row.op === "set" && negatedValue && key !== "dislikes"
       && !/(?:^|[^\p{L}])(?:не|not)(?=$|[^\p{L}])/iu.test(text)) return reject("negated_set", "value");
     // «под седативом», «стабилизирована, глубокий сон» filled the health slot of a wounded captain
-    // within one scene (prod test 2026-10-25); a lasting wound or allergy stays.
-    if (row.op === "set" && key === "health" && TRANSIENT_HEALTH.test(text)) return reject("transient_state", "value");
+    // within one scene (prod test 2026-10-25); a lasting wound or allergy stays. Clutter and suspicions likewise.
+    const noise = row.op === "set" ? slotNoiseReason(key, text) : null;
+    if (noise) return reject(noise, "value");
     return { op: row.op as "set" | "retract", subject: row.subject, key, value: text,
       sourceMessageId: source.messageId, source: source.author === "user" ? "user_msg" : "assistant_msg",
       confidence: 1, pinned: false };
@@ -362,7 +389,8 @@ export function renderFactCore(facts: RenderableFact[]): string {
   const bare = new Set([...new Set(facts.filter(fact => fact.subject.startsWith("npc:")).map(fact => fact.subject))]
     .filter(subject => facts.filter(fact => fact.subject === subject).every(bareName)));
   for (const fact of rankFacts(facts)) {
-    if (bare.has(fact.subject)) continue;
+    // Noise stored before the slot checks existed stays in the database but leaves the prompt.
+    if (bare.has(fact.subject) || (!fact.pinned && slotNoiseReason(fact.key, fact.value))) continue;
     const heading = fact.subject === "user" ? "Пользователь" : fact.subject === "character" ? "Персонаж"
       : fact.subject === "relationship" ? "Отношения" : fact.subject.startsWith("npc:") ? fact.subject.slice(4) : "Мир и заметки";
     const label = SLOTS[fact.key]?.label;

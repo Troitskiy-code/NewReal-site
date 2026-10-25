@@ -149,6 +149,46 @@ try {
     assert.deepEqual(one('Капитан под седативом, стабилизирована, глубокий сон.', 'стабилизирована, глубокий сон', 'health', 'npc:Ирма'), []);
     assert.deepEqual(one('Осколок пробил капитану левое плечо, ранение глубокое.', 'ранение в левое плечо', 'health', 'npc:Ирма'), ['health=ранение в левое плечо']);
   });
+  await check('slot noise: passing symptoms, clutter and suspicions leave health, possessions and secrets', () => {
+    // Values the extractor filed in the 2026-10-25 prod runs, sorted by hand.
+    const noise = {
+      health: ['слишком быстрый пульс', 'нога прижата стальной балкой к палубе', 'боль в плече, хриплый голос',
+        'полубессознательное состояние, тяжелое дыхание, потеря крови', 'под седативом', 'стабилизирована, осколок извлечен, глубокий сон',
+        'стабильна, забинтованное плечо, извлечен осколок, затянута артерия, значительная потеря крови', 'потеря крови, осколок в плече'],
+      possessions: ['мощный фонарь', 'фонарь', 'блокнот', 'мастерская в пристройке с инструментами', 'набор специй в стеклянных баночках',
+        'старый обгоревший паяльник с тяжелой ручкой, катушка припоя, ящик «Разное» с запчастями от радиоприемника',
+        'красная куртка с нашивкой-якорем', 'серебряный браслет', 'серебряный браслет на запястье'],
+      secrets: ['имеет личный набор специй, который не делит с остальными', 'подозревает начальника порта Короткова',
+        'подозревает Степана Ильича в том, что тот знает что-то про Нику'],
+    };
+    const kept = {
+      health: ['сильная аллергия на кошек', 'шрам над левой бровью', 'ранение в левое плечо осколком, затронута артерия, значительная потеря крови',
+        'ранение в левое плечо, забинтовано', 'поврежденная нога', 'перебинтованная нога', 'забинтованное плечо', 'хроническая боль в спине'],
+      possessions: ['медный ключ от нижней кладовой на шнурке на шее', 'страница из дневника', 'старый моторный катер в скрытой бухте за скалами',
+        'куртка Ники', 'лодка «Ласточка»', 'перламутровая раковина', 'компас Первого Капитана', 'карта (находится у Гильдии Ветряков)',
+        'письма Гильдии о скупке земель на Карне', 'десять золотых монет, железный ключ от каморки', 'тубус', 'маленький нож в поясе',
+        'модифицированный пульт', 'шесть ампул широкого спектра и пара доз обезболивающего', 'стальной меч', 'медальон', 'футляр с письмом',
+        'записка от Йеннифэр в тайнике под третьей половицей от окна в комнате гостиницы «Золотой Осетр»', 'гримуар, обернутый в плотную ткань',
+        'фонарь спрятан под крыльцом', 'кольцо с печатью Гильдии'],
+      secrets: ['скрывает что-то маленькое и темное за баночками с медикаментами', 'является дочерью бывшего мастера Гильдии Ветряков; знает сэр Вальден',
+        'пытался сэкономить топливо, чтобы отдать долги банде, и чуть не продал ячейки', 'знает о странице из дневника и числе «сорок семь»',
+        'существует «Объект Зеро» — земли, стертые с карт, к которым Гильдия ищет маршрут'],
+    };
+    for (const [key, values] of Object.entries(noise)) for (const value of values) assert.ok(facts.slotNoiseReason(key, value), `${key}: «${value}» is noise`);
+    for (const [key, values] of Object.entries(kept)) for (const value of values) assert.equal(facts.slotNoiseReason(key, value), null, `${key}: «${value}» stays`);
+    assert.equal(facts.slotNoiseReason('appearance', 'красная куртка'), null, 'clothing is fine in appearance');
+    const one = (content, value, key) => facts.parseFactExtraction(output([delta(value, 's1', key, 'npc:Лейла')]),
+      facts.factSources([{ id: 'user', role: 'user', content }]), { partial: true });
+    const clutter = one('У Лейлы на полке набор специй в стеклянных баночках.', 'набор специй в стеклянных баночках', 'possessions');
+    assert.deepEqual(clutter.facts, []); assert.equal(clutter.rejectedCandidates[0].validationReason, 'slot_noise');
+    // Noise already stored leaves the prompt; a pinned (manual) fact stays whatever it says.
+    const rendered = facts.renderFactCore([
+      { subject: 'character', key: 'possessions', value: 'фонарь', pinned: false, seq: 3 },
+      { subject: 'character', key: 'possessions', value: 'медный ключ на шнурке', pinned: false, seq: 2 },
+      { subject: 'character', key: 'health', value: 'боль в плече', pinned: true, seq: 1 },
+    ]);
+    assert.equal(rendered, '## Персонаж\n- Здоровье: боль в плече\n- Вещи и тайники: медный ключ на шнурке');
+  });
   await check('all-rejected extraction preserves old facts, reports the reason and never blocks the next turn', async () => {
     const f = await setup('## Пользователь\n- Имя: Сохранённое'), source = await turn(f, 'Меня зовут Анна.');
     await run(f, output([delta('PRIVATE_MEMORY_VALUE')]));

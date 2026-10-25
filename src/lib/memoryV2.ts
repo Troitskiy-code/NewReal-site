@@ -9,7 +9,7 @@ import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { inferMemoryStatus, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
-  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, type FactDelta } from "./memoryFacts";
+  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, type FactDelta } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
@@ -65,8 +65,10 @@ async function applyFact(tx: Tx, threadId: string, delta: FactDelta, seq: number
   const next = previous ? await tx.memoryFact.update({ where: { id: previous.id }, data }) : await tx.memoryFact.create({ data });
   if (replaced.length) await tx.memoryFact.updateMany({ where: { id: { in: replaced.map(fact => fact.id) } }, data: { supersededById: next.id } });
   if (!multi) return;
-  // A capped slot: the oldest unpinned values give way; manual pinned facts are never evicted.
-  const kept = await tx.memoryFact.findMany({ where: { ...slot, status: "active" }, orderBy: [{ seq: "desc" }, { id: "desc" }] });
+  // A capped slot: noise stored before the slot checks goes first, then the oldest unpinned values;
+  // manual pinned facts are never evicted.
+  const kept = (await tx.memoryFact.findMany({ where: { ...slot, status: "active" }, orderBy: [{ seq: "desc" }, { id: "desc" }] }))
+    .sort((a, b) => Number(!a.pinned && !!slotNoiseReason(a.key, a.value)) - Number(!b.pinned && !!slotNoiseReason(b.key, b.value)));
   const evicted = kept.filter(fact => !fact.pinned && fact.id !== next.id).slice(Math.max(0, MULTI_FACT_LIMIT - kept.filter(fact => fact.pinned).length - (next.pinned ? 0 : 1)));
   if (evicted.length) await tx.memoryFact.updateMany({ where: { id: { in: evicted.map(fact => fact.id) } }, data: { status: "superseded", supersededById: next.id } });
 }
@@ -211,7 +213,9 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
     const messages = await jobMessages(prisma, job), hash = fingerprint(messages), sources = factSources(messages);
     stage = "prepare_input"; diagnostic.sourceCount = sources.length;
     const activeFacts = await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active" },
-      select: { subject: true, key: true, value: true, pinned: true, source: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] });
+      select: { subject: true, key: true, value: true, pinned: true, source: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] })
+      // Stored noise would teach the extractor to file more of it.
+      .then(rows => rows.filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value)));
     const fitted = fitExtractionInput(sources, activeFacts);
     if (!fitted) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
     const input = fitted.input;
