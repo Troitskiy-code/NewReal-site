@@ -89,7 +89,7 @@ await check('overflow compresses only the two oldest chapters; the newest stays 
   assert.ok(stats.compressedPairCount >= 1);
 });
 
-await check('after an overflow the summary is compressed to 75% of the allowance, leaving room for the next chapters', async () => {
+await check('an overflow gets one compression round aimed at 75%, and another only while still over the allowance', async () => {
   const old = ['Вика и Артём учились в одной школе, и Артём признался Вике в чувствах.', 'Вика отказала Артёму, потому что боялась привязаться.',
     'Через три года они встретились в клубе и обменялись номерами.', 'Артём подвёз Вику домой после клуба.'];
   const newest = 'Артём пригласил Вику в ресторан, и она согласилась.';
@@ -99,9 +99,17 @@ await check('after an overflow the summary is compressed to 75% of the allowance
   const limit = words(chapters.composeChapterSummary([...old, newest], '')) - 2;
   const result = await chapters.writeSummaryChapter(`## Предыстория\n${old.join('\n')}`, [{ role: 'user', content: 'Я приглашаю тебя в ресторан, и ты согласилась.' }],
     context(provider.ask, limit, words));
-  assert.ok(words(result) <= Math.floor(limit * 0.75), `${words(result)} of ${limit}`);
-  assert.ok(provider.calls.filter(call => call.mode === 'compress').length >= 2, 'more than the one round that just fits');
+  // The stub keeps the first sentence of the pair: one round frees enough to get under the allowance.
+  assert.ok(words(result) <= limit, `${words(result)} of ${limit}`);
+  assert.equal(provider.calls.filter(call => call.mode === 'compress').length, 1);
   assert.ok(result.endsWith(`\n${newest}`));
+  // A compression that frees too little is followed by another round until the summary fits.
+  const stubborn = stub({ chapter: JSON.stringify({ items: [story(newest)] }),
+    compress: input => JSON.stringify({ items: [{ ...story(input.sources.map(source => source.text).join(' ').split(' ').slice(0, -1).join(' ')), sources: input.sources.map(source => source.id).slice(0, 12) }] }) });
+  const tight = words(chapters.composeChapterSummary([...old, newest], '')) - 6;
+  const second = await chapters.writeSummaryChapter(`## Предыстория\n${old.join('\n')}`, [{ role: 'user', content: 'Я приглашаю тебя в ресторан, и ты согласилась.' }],
+    context(stubborn.ask, tight, words));
+  assert.ok(words(second) <= tight, `${words(second)} of ${tight}`);
 });
 
 await check('a compression longer than its target but clearly shorter than the pair is kept, not cut back to openings', async () => {

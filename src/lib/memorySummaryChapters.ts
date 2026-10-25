@@ -109,8 +109,11 @@ async function fitChapters(chapters: string[], rest: string, context: ChapterCon
   // Once over the allowance, compress down to COMPRESSED_TARGET_SHARE of it, so the next chapters fit
   // without another round: compressing just under the limit re-compressed the story's opening on
   // almost every refresh (prod test 2026-10-24).
+  // One round per overflow: it aims at the 75% target, and only a summary still over its allowance
+  // gets another. Looping to the target took two rounds per overflow, since the model writes the
+  // pair longer than asked (prod test 2026-10-25).
   const target = size() > maxTokens ? Math.floor(maxTokens * COMPRESSED_TARGET_SHARE) : maxTokens;
-  for (let round = 0; size() > target && chapters.length >= 3 && round < MAX_COMPRESSIONS; round++) {
+  for (let round = 0; (round === 0 ? size() > target : size() > maxTokens) && chapters.length >= 3 && round < MAX_COMPRESSIONS; round++) {
     chapters = [await compressChapters(chapters[0], chapters[1], context, stats, size() - target), ...chapters.slice(2)];
   }
   // Last resort without a model: the oldest chapters lose their later sentences, their opening

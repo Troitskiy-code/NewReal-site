@@ -132,6 +132,20 @@ try {
     assert.equal(facts.sameFactValue('музыку', 'музыка', 'likes'), true);
     assert.equal(facts.sameFactValue('Петров', 'Петрова', 'name'), false);
   });
+  await check('personal facts get their own slots; a negation blocks only nearby words; ages in words count', () => {
+    const one = (content, value, key, subject = 'user') => facts.parseFactExtraction(output([delta(value, 's1', key, subject)]),
+      facts.factSources([{ id: 'user', role: 'user', content }]), { partial: true }).facts.map(fact => `${fact.key}=${fact.value}`);
+    assert.deepEqual(one('Кстати, я не один приехал — со мной пёс Бублик.', 'пёс Бублик', 'pets'), ['pets=пёс Бублик']);
+    assert.deepEqual(one('У меня сильная аллергия на кошек.', 'аллергия на кошек', 'health'), ['health=аллергия на кошек']);
+    assert.deepEqual(one('Этот шрам над левой бровью — с детства, не пугайтесь.', 'шрам над левой бровью', 'appearance'), ['appearance=шрам над левой бровью']);
+    assert.deepEqual(one('Давайте спрячем ключ под третьей ступенькой лестницы.', 'ключ спрятан под третьей ступенькой лестницы', 'possessions'),
+      ['possessions=ключ спрятан под третьей ступенькой лестницы']);
+    assert.deepEqual(one('Ладно, займу тебе двести кредитов до зарплаты.', 'должен 200 кредитов', 'debts', 'npc:Тоби'), ['debts=должен 200 кредитов']);
+    assert.deepEqual(one('Я дочь бывшего мастера Гильдии Ветряков.', 'дочь бывшего мастера Гильдии Ветряков', 'secrets'), ['secrets=дочь бывшего мастера Гильдии Ветряков']);
+    assert.deepEqual(one('У меня нет собаки.', 'собака', 'pets'), [], 'a negation right before the fact refuses it');
+    assert.deepEqual(one('Меня зовут Глеб, мне двадцать девять.', '29', 'age'), ['age=29']);
+    assert.deepEqual(one('Меня зовут Глеб, мне двадцать девять.', '30', 'age'), []);
+  });
   await check('all-rejected extraction preserves old facts, reports the reason and never blocks the next turn', async () => {
     const f = await setup('## Пользователь\n- Имя: Сохранённое'), source = await turn(f, 'Меня зовут Анна.');
     await run(f, output([delta('PRIVATE_MEMORY_VALUE')]));
