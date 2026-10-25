@@ -64,11 +64,35 @@ export function sameFactValue(left: string, right: string, key: string): boolean
   return a.length > 0 && a.length === b.length && a.every((word, index) => word === b[index]
     || nounStem(word).length >= 4 && nounStem(word) === nounStem(b[index]));
 }
+// One wounded shoulder filled five health lines in the 2026-10-25 prod runs («ранение в левое плечо»,
+// «забинтованное плечо», «перевязанное левое плечо», …). Lines about the same body part and side are one
+// injury; a scar stays apart from a fresh wound. Allergies and illnesses name no body part and never merge.
+const BODY_PARTS: Array<[string, RegExp]> = [["плечо", /^плеч/], ["нога", /^ног(?:а|и|у|ой|е|ам|ами|ах)?$/], ["рука", /^рук(?:а|и|у|ой|е|ам|ами|ах)?$/],
+  ["голова", /^голов(?:а|ы|у|ой|е)$/], ["спина", /^спин/], ["грудь", /^груд(?:ь|и|ью)$/], ["бок", /^бок(?:а|у|ом|е)?$/],
+  ["живот", /^живот/], ["глаз", /^глаз/], ["бровь", /^бров/], ["колено", /^колен/], ["ребро", /^(?:ребр|ребер)/],
+  ["запястье", /^запяст/], ["лодыжка", /^лодыж/], ["бедро", /^(?:бедр|бедер)/], ["шея", /^ше(?:я|и|ю|ей|е)$/], ["лицо", /^лиц(?:о|а|у|ом|е)$/],
+  ["щека", /^щек/], ["палец", /^(?:палец|пальц)/], ["кисть", /^кист(?:ь|и|ью)$/], ["лоб", /^(?:лоб|лба|лбу|лбом)$/],
+  ["висок", /^(?:висок|виск)/], ["ухо", /^(?:ухо|уха|уху|уши|ушей)$/], ["челюсть", /^челюст/], ["локоть", /^(?:локоть|локт)/],
+  ["ключица", /^ключиц/], ["позвоночник", /^позвоночн/], ["стопа", /^стоп(?:а|ы|у|ой|е)$/]];
+function injurySignature(value: string) {
+  const words: string[] = clean(value).match(/\p{L}+/gu) ?? [];
+  const parts = new Set(BODY_PARTS.filter(([, pattern]) => words.some(word => pattern.test(word))).map(([part]) => part));
+  if (!parts.size) return null;
+  const left = words.some(word => /^лев(?:ое|ая|ый|ой|ую|ом|ого|ым)$/u.test(word)), right = words.some(word => /^прав(?:ое|ая|ый|ой|ую|ом|ого|ым)$/u.test(word));
+  return { parts, side: left === right ? null : left ? "left" : "right", scar: words.some(word => word.startsWith("шрам")) };
+}
+function sameInjury(left: string, right: string): boolean {
+  const a = injurySignature(left), b = injurySignature(right);
+  return !!a && !!b && a.scar === b.scar && (!a.side || !b.side || a.side === b.side) && [...a.parts].some(part => b.parts.has(part));
+}
+/** The fuller of two lines about one injury: a lasting condition first, then the number of words. */
+const injuryFullness = (value: string) => (LASTING_HEALTH.test(value) ? 100 : 0) + (clean(value).match(/[\p{L}\p{N}]{3,}/gu) ?? []).length;
 /** Most active values one multi-valued slot keeps; older unpinned ones are superseded. */
 export const MULTI_FACT_LIMIT = 6;
 /** Every word of `narrower` is in the fuller `broader` («танцы» ⊂ «танцы и косплеи»). Partial
  * overlaps («красные волосы» / «красная чёлка») are different facts and stay apart. */
 export function factValueCovers(broader: string, narrower: string, key: string): boolean {
+  if (key === "health" && sameInjury(broader, narrower)) return injuryFullness(broader) >= injuryFullness(narrower);
   if (factCardinality(key) !== "multi" || memoryNumbers(broader).join("|") !== memoryNumbers(narrower).join("|") && memoryNumbers(narrower).length) return false;
   const words = (text: string): string[] => [...clean(text).matchAll(/[\p{L}\p{N}]+/gu)].map(match => match[0]).filter(word => word.length > 2);
   const wide = words(broader), narrow = words(narrower);
@@ -388,9 +412,14 @@ export function renderFactCore(facts: RenderableFact[]): string {
   const bareName = (fact: RenderableFact) => fact.key === "name" && fact.subject.startsWith("npc:") && isSameMemoryName(fact.value, fact.subject.slice(4));
   const bare = new Set([...new Set(facts.filter(fact => fact.subject.startsWith("npc:")).map(fact => fact.subject))]
     .filter(subject => facts.filter(fact => fact.subject === subject).every(bareName)));
+  // Noise stored before the slot checks existed stays in the database but leaves the prompt.
+  const noise = (fact: RenderableFact) => !fact.pinned && !!slotNoiseReason(fact.key, fact.value);
+  // So do health lines stored before injuries were merged: only the fullest line per injury is shown.
+  const merged = (fact: RenderableFact) => !fact.pinned && fact.key === "health" && facts.some(other => other !== fact
+    && other.subject === fact.subject && other.key === "health" && !noise(other) && sameInjury(other.value, fact.value)
+    && (injuryFullness(other.value) - injuryFullness(fact.value) || Number(other.pinned) || other.seq - fact.seq) > 0);
   for (const fact of rankFacts(facts)) {
-    // Noise stored before the slot checks existed stays in the database but leaves the prompt.
-    if (bare.has(fact.subject) || (!fact.pinned && slotNoiseReason(fact.key, fact.value))) continue;
+    if (bare.has(fact.subject) || noise(fact) || merged(fact)) continue;
     const heading = fact.subject === "user" ? "Пользователь" : fact.subject === "character" ? "Персонаж"
       : fact.subject === "relationship" ? "Отношения" : fact.subject.startsWith("npc:") ? fact.subject.slice(4) : "Мир и заметки";
     const label = SLOTS[fact.key]?.label;

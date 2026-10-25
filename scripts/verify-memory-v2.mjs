@@ -492,6 +492,40 @@ try {
     const kept = (await likes()).map(fact => fact.value);
     assert.deepEqual(kept.sort(), ['горы', 'кино', 'книги', 'музыку', 'собак', 'чай']);
   });
+  await check('health keeps one line per injury, the fullest; scars, other sides and allergies stay apart', async () => {
+    // Lines the extractor filed about one wounded shoulder and one leg in the 2026-10-25 prod runs.
+    const covers = (a, b) => facts.factValueCovers(a, b, 'health');
+    assert.ok(covers('ранение в левое плечо осколком, затронута артерия, значительная потеря крови', 'ранение в левое плечо, забинтовано'));
+    assert.ok(!covers('ранение в левое плечо, забинтовано', 'ранение в левое плечо осколком, затронута артерия, значительная потеря крови'));
+    assert.ok(covers('раненое плечо', 'перевязанное левое плечо'), 'a wound outranks a longer bandage line');
+    assert.ok(covers('перебинтованная нога', 'поврежденная нога') && covers('поврежденная нога', 'перебинтованная нога'), 'equal lines: either may stay');
+    assert.ok(!covers('ранение в левое плечо', 'шрам на левом плече'), 'a scar is not the fresh wound');
+    assert.ok(!covers('ранение в левое плечо', 'ранение в правое плечо'), 'the other side is another injury');
+    assert.ok(!covers('ранение в левое плечо', 'белый бинт на руке'), 'another body part');
+    assert.ok(!covers('сильная аллергия на кошек', 'аллергия на пыльцу'), 'allergies name no body part and never merge');
+    const shoulder = facts.renderFactCore([
+      { subject: 'npc:Ирма', key: 'health', value: 'забинтованное плечо', pinned: false, seq: 5 },
+      { subject: 'npc:Ирма', key: 'health', value: 'раненое плечо', pinned: false, seq: 4 },
+      { subject: 'npc:Ирма', key: 'health', value: 'перевязанное левое плечо', pinned: false, seq: 3 },
+      { subject: 'npc:Ирма', key: 'health', value: 'боль в плече, хриплый голос', pinned: false, seq: 6 },
+      { subject: 'npc:Ирма', key: 'health', value: 'белый бинт на руке', pinned: false, seq: 2 },
+      { subject: 'npc:Тоби', key: 'health', value: 'забинтованное плечо', pinned: false, seq: 1 },
+    ]);
+    assert.equal(shoulder, '## Ирма\n- Здоровье: раненое плечо\n- Здоровье: белый бинт на руке\n\n## Тоби\n- Здоровье: забинтованное плечо');
+    const pinned = facts.renderFactCore([
+      { subject: 'user', key: 'health', value: 'рана на ноге', pinned: true, seq: 1 },
+      { subject: 'user', key: 'health', value: 'перелом левой ноги, наложен гипс', pinned: false, seq: 2 },
+    ]);
+    assert.equal(pinned, '## Пользователь\n- Здоровье: рана на ноге\n- Здоровье: перелом левой ноги, наложен гипс', 'a pinned line always stays');
+    const f = await setup();
+    const health = async () => (await active(f.scope)).filter(fact => fact.key === 'health').map(fact => fact.value).sort();
+    await turn(f, 'У меня ранение в левое плечо осколком, задета артерия.'); await run(f, output([delta('ранение в левое плечо осколком, задета артерия', 's1', 'health')]));
+    await turn(f, 'Плечо забинтовано.'); await run(f, output([delta('плечо забинтовано', 's1', 'health')]));
+    await turn(f, 'Нога повреждена.'); await run(f, output([delta('поврежденная нога', 's1', 'health')]));
+    await turn(f, 'У меня перелом левой ноги, наложен гипс.'); await run(f, output([delta('перелом левой ноги, наложен гипс', 's1', 'health')]));
+    await turn(f, 'Ещё старый шрам на левом плече.'); await run(f, output([delta('старый шрам на левом плече', 's1', 'health')]));
+    assert.deepEqual(await health(), ['перелом левой ноги, наложен гипс', 'ранение в левое плечо осколком, задета артерия', 'старый шрам на левом плече']);
+  });
   await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
     const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     const late = await turn(f, 'А дальше?', 'Я живу у маяка.');
