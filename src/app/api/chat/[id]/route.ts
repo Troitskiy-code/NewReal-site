@@ -20,7 +20,7 @@ import {
   touchThread,
   type ChatScope,
 } from "@/lib/chatThreads";
-import { PromptBudgetError } from "@/lib/chatSystemPrompt";
+import { PromptBudgetError, withTurnReminder } from "@/lib/chatSystemPrompt";
 import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import {
   scheduleMessageEmbedding,
@@ -426,7 +426,7 @@ async function handlePost(
       });
     }
 
-    const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+    const upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, locale), KODIKROUTER_KEY);
 
     let responseStage = "deliver_meta";
     const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {

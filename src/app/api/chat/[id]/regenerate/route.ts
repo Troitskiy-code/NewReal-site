@@ -6,7 +6,7 @@ import { withAiCostContext, setAiCostActor, setAiCostThread, recordChatCostCharg
 import { chatThreadsEnabled, messageScopeWhere, requestedThreadId, resolveChatScope, markThreadActive } from "@/lib/chatThreads";
 import { NextRequest, NextResponse } from "next/server";
 import { GroupPromptUnavailableError } from "@/lib/promptState";
-import { PromptBudgetError } from "@/lib/chatSystemPrompt";
+import { PromptBudgetError, withTurnReminder } from "@/lib/chatSystemPrompt";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -204,7 +204,7 @@ async function handlePost(
       refreshSummary: false,
     });
 
-    const upstream = await streamChatCompletion(model.name, trimmedMessages, KODIKROUTER_KEY);
+    const upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, getApiLocale(req)), KODIKROUTER_KEY);
 
     let responseStage = "deliver_meta";
     const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {

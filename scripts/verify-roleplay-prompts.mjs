@@ -144,7 +144,7 @@ const deps = {
   '@/lib/advancedMemory': { loadMemoryCandidates: async () => ({ core: null, episodic: [] }), rankEpisodicCandidates: () => [], sortEpisodicChronologically: rows => rows, episodicLimitForIntent: () => 3, formatEpisodicLine: () => '' },
   '@/lib/chatMemory': { readChatMemoryState: async () => ({ summary: null, coveredUntil: null }) },
   '@/lib/personaService': { getSelectedChatPersona: async () => ({ id: 'persona', name: 'Пользователь', description: 'USER_PRIVATE_PERSONA' }) },
-  '@/lib/memoryPromptFormat': format, '@/lib/messageEmbeddings': { isRagEligible: () => false, shouldUseRag: () => ({ use: false, reason: 'test' }) },
+  '@/lib/memoryPromptFormat': format, '@/lib/freeDailyQuota': load('src/lib/freeDailyQuota.ts', { './chatEconomy': economy }), '@/lib/memoryNarrative': load('src/lib/memoryNarrative.ts', { './memorySafety': safety }), '@/lib/messageEmbeddings': { isRagEligible: () => false, shouldUseRag: () => ({ use: false, reason: 'test' }) },
   '@/lib/ragRetrieval': { fitRagExcerpts: () => [] }, '@/lib/subscriptionState': {}, '@/lib/verseCoins': {},
   '@/lib/retryWithBackoff': { retryWithBackoff: fn => fn() },
   '@/lib/aiCostTelemetry': { meteredPost: async (_purpose, _url, body) => { wires.push(body); return { data: { choices: [{ message: { content: 'synthetic reply' } }] } }; }, meteredChatFetch: async (_url, init) => { wires.push(JSON.parse(init.body)); return new Response('synthetic'); } },
@@ -294,7 +294,7 @@ const guestDeps = {
     persistGuestUserMessage: async ({ message }) => { const row = { id: 'guest-turn', role: 'user', content: message, createdAt: new Date() }; guestHistory.push(row); return row; },
     finalizeGuestGeneration: async () => ({ assistantMessageId: 'guest-assistant' }), failGuestGeneration: async () => {}, renewGuestGeneration: async () => true },
 };
-const guest = load('src/lib/anonymousChat.ts', { ...guestDeps, './aiProviders': deps['./aiProviders'], './deepinfraModels': deepinfraModels });
+const guest = load('src/lib/anonymousChat.ts', { ...guestDeps, './freeDailyQuotaServer': { isFreeDailyQuotaEnabled: () => false }, './aiProviders': deps['./aiProviders'], './deepinfraModels': deepinfraModels });
 await db.query('UPDATE "Character" SET "roleplayMode"=$1 WHERE id=$2', ['world', 'card']);
 for (const locale of ['ru', 'en']) {
   guestLocale = locale; guestHistory = [];
@@ -303,7 +303,9 @@ for (const locale of ['ru', 'en']) {
   check(response.status === 200, `${locale}: actual guest handler completes`);
   const wire = wires.at(-1);
   check(wire.messages[0].content.includes(builder.PROMPT_BUILDER_VERSION) && wire.messages[0].content.includes(locale === 'en' ? 'Role: world' : 'Роль: мир'), `${locale}: actual guest wire uses v2 and pinned world role`);
-  check(wire.messages.at(-1).content === 'Guest turn', `${locale}: guest current turn stays a user message`);
+  check(wire.messages.at(-1).role === 'user' && wire.messages.at(-1).content.startsWith('Guest turn\n\n[['), `${locale}: guest current turn stays a user message`);
+  check(wire.messages.at(-1).content.includes(locale === 'en' ? 'Only the user controls their hero' : 'Героем пользователя управляет только пользователь'),
+    `${locale}: the turn reminder follows the guest's message, in the reply language`);
 }
 
 // Run the real transfer function with the existing ownership/lease boundary stubbed.
@@ -462,7 +464,7 @@ await db.query('UPDATE "Character" SET "rpConfig"=$1::jsonb WHERE id=$2', [JSON.
 // Current DeepInfra rollout: real budgets, preparation, routing and diagnostic code;
 // only provider responses, auth and persistence are isolated fixtures.
 process.env.CHAT_AI_PROVIDER = 'deepinfra';
-const currentEconomy = load('src/lib/verseChatEconomy.ts', { './chatEconomy': economy });
+const currentEconomy = load('src/lib/verseChatEconomy.ts', { './chatEconomy': economy, './freeDailyQuota': load('src/lib/freeDailyQuota.ts', { './chatEconomy': economy }) });
 const capturedDeepinfra = [];
 const currentHelpers = load('src/lib/chatHelpers.ts', {
   ...deps, '@/lib/verseChatEconomy': currentEconomy,

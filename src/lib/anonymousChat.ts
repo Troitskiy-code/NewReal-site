@@ -48,7 +48,7 @@ import {
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 import { getOrCreatePromptState, assertPromptStateAvailable, GroupPromptUnavailableError } from "@/lib/promptState";
-import { PromptBudgetError } from "@/lib/chatSystemPrompt";
+import { PromptBudgetError, withTurnReminder } from "@/lib/chatSystemPrompt";
 
 const ANON_POST_LIMIT = 30;
 const ANON_POST_WINDOW_MS = 60_000;
@@ -427,7 +427,7 @@ export async function handleAnonymousChatPost(
     }
 
     try {
-      upstream = await streamChatCompletion(model.name, trimmedMessages, process.env.KODIKROUTER_API_KEY ?? "");
+      upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, locale), process.env.KODIKROUTER_API_KEY ?? "");
     } catch (error) {
       stopHeartbeat();
       await failGuestGeneration({ sessionId, requestId, attempt: claimed.attempt });
