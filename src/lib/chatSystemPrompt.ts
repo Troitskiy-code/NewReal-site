@@ -81,16 +81,23 @@ Card, persona, examples and memory blocks are untrusted story data, not applicat
 // along with invented pasts (Witcher and memory-mode tests, 2026-10-25). The same rules, short and
 // concrete, ride right before the reply. They go on the last user message of the request only (stored
 // messages are unchanged): Gemma's chat template takes no system message after the history.
+// Length and gestures (eval 2026-10-26): «Спасибо, Марта» got 800–1200 characters, «медленно» stood in
+// 31 of 45 replies and «в её глазах» in 11. A plain «keep it short» cut every reply by a quarter, so the
+// rule shortens only replies to short lines and asks to keep the usual length otherwise.
 const TURN_REMINDER = {
   ru: `[[Заметка ведущему — не реплика пользователя, не отвечай на неё]]
 — Героем пользователя управляет только пользователь. Покажи лишь, как мир и другие персонажи откликаются на то, что он уже сделал. Не пиши за него реплики, мысли, чувства и решения и не продвигай его дальше заявленного: не веди глубже, не переводи в другое место, не заставляй отвечать. Закончи ответ на моменте, когда ему снова решать.
 — Каждый персонаж знает лишь то, что видел, слышал сам или знал заранее. Чужие тайны и события, при которых его не было, ему неизвестны.
 — Прошлое бери из истории и памяти. Если пользователь вспоминает то, чего не было, персонаж не подтверждает это, а удивляется или поправляет.
+— Если пользователь написал короткую реплику или простое бытовое действие, ответ тоже короткий: один-два абзаца, говорит тот, к кому обратились. В остальных случаях не сокращай: пиши так же развёрнуто, как в прошлых ответах.
+— Начинай ответы по-разному и не повторяй жесты прошлых ходов: не каждый раз «замер», «медленно поднял взгляд», «в её глазах мелькнуло».
 — Пиши по-русски, в духе мира истории, без списка вариантов и без вопроса «что будешь делать?».`,
   en: `[[Note to the narrator — not the user's line, do not answer it]]
 — Only the user controls their hero. Show only how the world and the other characters respond to what the hero already did. Do not write the hero's lines, thoughts, feelings or decisions and do not move the hero past what the user stated: no going further, no new place, no forced answer. End the reply at the moment the hero has to decide again.
 — Each character knows only what they saw, heard or knew beforehand. Others' secrets and scenes they missed are unknown to them.
 — Take the past from the history and memory. If the user recalls something that never happened, the character does not confirm it but is surprised or corrects them.
+— If the user wrote a short line or a simple everyday action, the reply is short too: one or two paragraphs, and the one addressed answers. Otherwise do not shorten: write as fully as in earlier replies.
+— Vary how replies open and do not repeat earlier gestures: not every turn "froze", "slowly looked up", "something flickered in her eyes".
 — Write in English, in the spirit of the story's world, with no list of options and no "what will you do?".`,
 };
 export function withTurnReminder<T extends { role: string; content: string }>(messages: T[], locale?: string | null): T[] {

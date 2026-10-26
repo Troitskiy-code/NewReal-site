@@ -90,7 +90,7 @@ const RUBRIC = `Ты проверяешь ОДИН ответ ролевой м�
 3. score — 1–5: насколько это хороший ролевой ход (характеры, живость, отклик на сцену).
 Сначала найди цитату, потом решай. Формат: {"target":{"quote":"…","violated":false},"agency":{"quote":"…","violated":false},"score":4}
 quote — дословный фрагмент ответа, на котором основано решение, или пустая строка, если нарушения нет.`;
-async function judge(item, history, reply) {
+async function judge(item, history, userText, reply) {
   const recent = history.slice(-6).map(message => `${message.role === 'user' ? 'ПОЛЬЗОВАТЕЛЬ' : 'АССИСТЕНТ'}: ${message.content.slice(0, 1500)}`).join('\n\n');
   const user = `Режим: ${spec.cards[item.story].roleplayMode}. Карточка: ${spec.cards[item.story].name}. Герой пользователя: ${spec.heroes[item.story]}.
 Заметки к случаю: ${item.notes}
@@ -99,7 +99,7 @@ async function judge(item, history, reply) {
 Последние сообщения истории:
 ${recent}
 
-ПОСЛЕДНЕЕ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ: ${item.user}
+ПОСЛЕДНЕЕ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ: ${userText}
 
 ОЦЕНИВАЕМЫЙ ОТВЕТ:
 ${reply}`;
@@ -123,30 +123,71 @@ ${reply}`;
 }
 const latin = text => (text.match(/\b[A-Za-z]{3,}\b/g) ?? []).length;
 const menu = text => /(?:^|\n)\s*(?:\d[.)]|[-•])\s+\S.*\n\s*(?:\d[.)]|[-•])\s+\S/u.test(text) || /что (?:вы )?(?:будете|будешь) делать/iu.test(text);
+// Repetition across turns: the share of the reply's four-word runs that the last three assistant replies already used.
+const runs = text => {
+  const words = text.toLowerCase().replace(/ё/g, 'е').match(/\p{L}+/gu) ?? [];
+  return words.slice(3).map((_, index) => words.slice(index, index + 4).join(' '));
+};
+function repeated(reply, history) {
+  const seen = new Set(history.filter(message => message.role === 'assistant').slice(-3).flatMap(message => runs(message.content)));
+  const own = runs(reply);
+  return own.length ? own.filter(run => seen.has(run)).length / own.length : 0;
+}
+// «ты/вы»: how the character speaks to the hero in direct speech (lines after a dash).
+function address(text) {
+  const speech = (text.match(/—[^—*\n]{3,}/g) ?? []).join(' ');
+  return { formal: (speech.match(/(?<!\p{L})(?:вы|вас|вам|вами|ваш\p{L}*)(?!\p{L})/giu) ?? []).length,
+    informal: (speech.match(/(?<!\p{L})(?:ты|тебя|тебе|тобой|тво[йеяюи]\p{L}*)(?!\p{L})/giu) ?? []).length };
+}
+function addressShift(reply, history) {
+  if (spec.cards[history.story]?.roleplayMode !== 'character') return false;
+  const before = address(history.filter(message => message.role === 'assistant').map(message => message.content).join('\n'));
+  const now = address(reply);
+  const formal = before.formal >= before.informal;
+  return formal ? now.informal >= 2 && now.informal > now.formal : now.formal >= 2 && now.formal > now.informal;
+}
+// Modern words that break a fantasy world (the world story only).
+const ANACHRONISM = /(?<!\p{L})(?:электр\p{L}*|наэлектр\p{L}*|телефон\p{L}*|радио\p{L}*|компьютер\p{L}*|пластик\p{L}*|асфальт\p{L}*|бетон\p{L}*|стресс\p{L}*|адреналин\p{L}*|окей|о[’']кей|позитив\p{L}*|негатив\p{L}*|инфляц\p{L}*|алгоритм\p{L}*|процент\p{L}*|километр\p{L}*|сантиметр\p{L}*|миллиметр\p{L}*|килограмм\p{L}*|мегагерц\p{L}*|вольт\p{L}*|атом\p{L}*|молекул\p{L}*|вирус\p{L}*|бактери\p{L}*|гормон\p{L}*|рефлекс\p{L}*|режим\p{L}*|протокол\p{L}*|сканир\p{L}*|фокус\p{L}*|супер)(?!\p{L})/giu;
+const anachronisms = (reply, story) => spec.cards[story].roleplayMode === 'world' ? (reply.match(ANACHRONISM) ?? []).map(word => word.toLowerCase()) : [];
 
 // --rejudge: score the replies already in --out/results.json again (a changed rubric or judge), no chat calls.
 const REJUDGE = process.argv.includes('--rejudge');
 const results = REJUDGE ? JSON.parse(readFileSync(join(outDir, 'results.json'), 'utf8')) : [];
 const byId = Object.fromEntries(spec.cases.map(item => [item.id, item]));
 async function score(row, history) {
-  try { row.verdict = await judge(byId[row.case], history, row.reply); } catch (error) { row.verdict = { error: String(error.message ?? error) }; }
+  try { row.verdict = await judge(byId[row.case], history, row.user, row.reply); } catch (error) { row.verdict = { error: String(error.message ?? error) }; }
   process.stdout.write('.');
 }
+function measure(row, history, story) {
+  history.story = story;
+  Object.assign(row, { chars: row.reply.length, latin: latin(row.reply), menu: menu(row.reply), repeat: repeated(row.reply, history),
+    addressShift: addressShift(row.reply, history), anachronisms: anachronisms(row.reply, story) });
+}
 if (REJUDGE) {
-  for (const row of results) await score(row, JSON.parse(readFileSync(join(outDir, `prefix-${byId[row.case].story}.json`), 'utf8')));
+  for (const row of results) await score(row, row.context);
 } else {
   for (const story of [...new Set(cases.map(item => item.story))]) {
     const history = await prefix(story);
     console.log(`prefix ${story}: ${history.length} messages`);
     for (const item of cases.filter(entry => entry.story === story)) {
-      const trapHistory = [...history, { role: 'user', content: item.user }];
+      // A chain plays the next scenario turns one after another; only its last reply is judged.
+      const users = item.chain ? scenario[story].slice(spec.prefixTurns, spec.prefixTurns + item.chain) : [item.user];
       for (const ref of VARIANTS) {
         for (let sample = 0; sample < SAMPLES; sample++) {
-          const started = Date.now();
-          const reply = await chat(chatMessages(ref, story, trapHistory));
-          const row = { case: item.id, variant: ref, sample, ms: Date.now() - started, chars: reply.text.length, finish: reply.finish,
-            latin: latin(reply.text), menu: menu(reply.text), reply: reply.text };
-          await score(row, history);
+          const conversation = [...history];
+          const chainRepeats = [];
+          let row;
+          for (const user of users) {
+            const started = Date.now();
+            const reply = await chat(chatMessages(ref, story, [...conversation, { role: 'user', content: user }]));
+            row = { case: item.id, variant: ref, sample, ms: Date.now() - started, finish: reply.finish, user, reply: reply.text,
+              context: conversation.slice(-6) };
+            measure(row, conversation, story);
+            chainRepeats.push(row.repeat);
+            conversation.push({ role: 'user', content: user }, { role: 'assistant', content: reply.text });
+          }
+          if (item.chain) row.chainRepeat = chainRepeats.reduce((sum, value) => sum + value, 0) / chainRepeats.length;
+          await score(row, row.context);
           results.push(row);
         }
       }
@@ -157,12 +198,14 @@ writeFileSync(join(outDir, 'results.json'), JSON.stringify(results, null, 1));
 console.log('\n');
 const passed = (rows, criterion) => { const judged = rows.filter(row => row.verdict?.[criterion]); return judged.length ? `${judged.filter(row => !row.verdict[criterion].violated).length}/${judged.length}` : '-'; };
 const avg = (rows, pick) => rows.length ? (rows.reduce((sum, row) => sum + pick(row), 0) / rows.length) : 0;
+const pct = value => `${Math.round(value * 1000) / 10}%`;
 for (const ref of [...new Set(results.map(row => row.variant))]) {
   const rows = results.filter(row => row.variant === ref);
-  console.log(`${ref}: trap ${passed(rows, 'target')}, agency ${passed(rows, 'agency')}, score ${avg(rows.filter(row => row.verdict?.score), row => row.verdict.score).toFixed(2)}, chars ${Math.round(avg(rows, row => row.chars))}, ${Math.round(avg(rows, row => row.ms) / 100) / 10}s, latin ${rows.filter(row => row.latin).length}, menus ${rows.filter(row => row.menu).length}, judge errors ${rows.filter(row => row.verdict?.error).length}`);
+  console.log(`${ref}: trap ${passed(rows, 'target')}, agency ${passed(rows, 'agency')}, score ${avg(rows.filter(row => row.verdict?.score), row => row.verdict.score).toFixed(2)}, chars ${Math.round(avg(rows, row => row.chars))}, ${Math.round(avg(rows, row => row.ms) / 100) / 10}s, repeat ${pct(avg(rows, row => row.chainRepeat ?? row.repeat))}, address shifts ${rows.filter(row => row.addressShift).length}, anachronisms ${rows.reduce((sum, row) => sum + (row.anachronisms?.length ?? 0), 0)}, latin ${rows.filter(row => row.latin).length}, menus ${rows.filter(row => row.menu).length}, judge errors ${rows.filter(row => row.verdict?.error).length}`);
   for (const id of [...new Set(rows.map(row => row.case))]) {
     const own = rows.filter(row => row.case === id);
-    console.log(`  ${id}: trap ${passed(own, 'target')}, agency ${passed(own, 'agency')}, score ${avg(own.filter(row => row.verdict?.score), row => row.verdict.score).toFixed(1)}`);
+    const extra = byId[id].chain ? `, chain repeat ${pct(avg(own, row => row.chainRepeat))}` : id.endsWith('short') ? `, chars ${own.map(row => row.chars).join('/')}` : '';
+    console.log(`  ${id}: trap ${passed(own, 'target')}, agency ${passed(own, 'agency')}, score ${avg(own.filter(row => row.verdict?.score), row => row.verdict.score).toFixed(1)}${extra}${own.some(row => row.anachronisms?.length) ? `, anachronisms ${own.flatMap(row => row.anachronisms).join(',')}` : ''}`);
   }
 }
 console.log(`cost: chat $${((cost.chatIn * CHAT_PRICE[0] + cost.chatOut * CHAT_PRICE[1]) / 1e6).toFixed(3)} (${cost.chatIn}/${cost.chatOut} tokens), judge ≈ $${(cost.judgeCredits * 0.005 + (cost.judgeCredits ? 0 : (cost.judgeIn * JUDGE_PRICE[0] + cost.judgeOut * JUDGE_PRICE[1]) / 1e6)).toFixed(3)} (${cost.judgeIn}/${cost.judgeOut} tokens)`);
