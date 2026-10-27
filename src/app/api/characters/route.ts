@@ -24,6 +24,7 @@ import { characterTagSearchTerms } from "@/lib/characterTags";
 import { getCharacterRecommendationOrder } from "@/lib/characterRecommendations";
 import { readOnboardingPrefs } from "@/lib/onboardingServer";
 import type { RecommendationMode } from "@/lib/characterRecommendationRank";
+import { scheduleIndexNowChange } from "@/lib/indexNow";
 
 export const maxDuration = 60;
 
@@ -148,6 +149,7 @@ async function handlePost(req: NextRequest) {
     }
 
     // Prompt assembly is deterministic and uses the live card on each request; no AI generation here.
+    scheduleIndexNowChange(null, character);
     return NextResponse.json(character, { status: 201 });
   } catch (error) {
     if (error instanceof ClientInputError) return NextResponse.json({ error: error.message }, { status: 400 });

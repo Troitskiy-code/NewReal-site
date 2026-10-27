@@ -16,6 +16,7 @@ import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { ownerModerationFields, stripModerationFields } from "@/lib/characterModeration";
 import { Prisma } from "@prisma/client";
+import { scheduleIndexNowChange } from "@/lib/indexNow";
 
 export const maxDuration = 60;
 
@@ -219,6 +220,7 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
       console.log(`[Memory] Updated via character PUT character=${id} user=${session.user.id}`);
     }
 
+    scheduleIndexNowChange(authResult.character, character);
     return NextResponse.json({
       ...stripModerationFields(sanitizeCharacterMemory(character, session.user.id)),
       ...ownerModerationFields(character, session.user.id),
@@ -243,6 +245,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     if (authResult.error) return authResult.error;
 
     await prisma.character.delete({ where: { id } });
+    scheduleIndexNowChange(authResult.character, null);
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
