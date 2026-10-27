@@ -34,6 +34,7 @@ const loaders = Object.fromEntries(VARIANTS.map(ref => [ref, createModuleLoader(
   prismaFor: () => { throw new Error('Database forbidden'); }, sourceRef: ref === 'working' ? null : ref })]));
 const { countTokens } = loaders[VARIANTS[0]].load(join(loaders[VARIANTS[0]].root, 'src/lib/tokenCount.ts'));
 const prompts = Object.fromEntries(VARIANTS.map(ref => [ref, loaders[ref].load(join(loaders[ref].root, 'src/lib/chatSystemPrompt.ts'))]));
+const memoryFormats = Object.fromEntries(VARIANTS.map(ref => [ref, loaders[ref].load(join(loaders[ref].root, 'src/lib/memoryPromptFormat.ts'))]));
 
 const cost = { chatIn: 0, chatOut: 0, judgeCredits: 0, judgeIn: 0, judgeOut: 0 };
 async function post(url, headers, body, timeout = 120_000) {
@@ -50,9 +51,12 @@ async function post(url, headers, body, timeout = 120_000) {
 }
 
 /** The production request shape: system prompt, then the story (greeting first), cut to the history budget. */
-function chatMessages(ref, story, history) {
+function chatMessages(ref, story, history, memory = null) {
   const prompt = prompts[ref];
-  const system = prompt.assembleRoleplayPrompt(spec.cards[story], 'ru', {}).content;
+  const base = prompt.assembleRoleplayPrompt(spec.cards[story], 'ru', {}).content;
+  // A case may carry memory blocks; production appends them to the system prompt the same way.
+  const system = memory ? memoryFormats[ref].appendMemorySection(base, ['core', 'events', 'summary']
+    .filter(kind => memory[kind]).map(kind => ({ kind, body: memory[kind] })), 'ru') : base;
   const kept = [];
   let tokens = 0;
   for (const message of [...history].reverse()) {
@@ -179,7 +183,7 @@ if (REJUDGE) {
           let row;
           for (const user of users) {
             const started = Date.now();
-            const reply = await chat(chatMessages(ref, story, [...conversation, { role: 'user', content: user }]));
+            const reply = await chat(chatMessages(ref, story, [...conversation, { role: 'user', content: user }], item.memory));
             row = { case: item.id, variant: ref, sample, ms: Date.now() - started, finish: reply.finish, user, reply: reply.text,
               context: conversation.slice(-6) };
             measure(row, conversation, story);
