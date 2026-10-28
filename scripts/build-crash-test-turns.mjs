@@ -11,7 +11,18 @@ const config = { ...process.env };
 for (const file of ['.env', '.env.local']) if (existsSync(file)) Object.assign(config, parse(readFileSync(file)));
 const MODEL = arg('--model') ?? 'Qwen/Qwen3-235B-A22B-Instruct-2507';
 const outline = JSON.parse(readFileSync('docs/crash-test-witcher-outline-2026-10-28.json', 'utf8'));
-const OUT = 'docs/crash-test-witcher-turns-2026-10-28.json';
+const OUT = arg('--out') ?? 'docs/crash-test-witcher-turns-2026-10-28.json';
+// The first run drifted from the outline (blackmail instead of a promise, «30 флоринов», «Ван дер Во»): every
+// chapter is now checked for proper names and numbers outside the outline and regenerated with the list.
+const allowed = (outline.allowedNames ?? []).map(name => name.toLowerCase().slice(0, 4));
+const numbers = new Set((outline.allowedNumbers ?? []).map(String));
+function violations(text) {
+  const plain = text.replace(/«[^»]*»/gu, '');
+  const names = (plain.match(/(?<=[\p{Ll},;:)]\s+|\s—\s+)\p{Lu}[\p{Ll}-]{2,}/gu) ?? [])
+    .filter(name => !allowed.some(stem => name.toLowerCase().startsWith(stem)));
+  const digits = (plain.match(/\d+/gu) ?? []).filter(number => !numbers.has(number));
+  return [...names, ...digits];
+}
 
 const SYSTEM = `Ты пишешь реплики ИГРОКА для ролевой игры во вселенной «Ведьмака». Игрок управляет героиней ${outline.hero}; рассказчик (другая модель) отвечает за мир и всех остальных персонажей.
 Правила для каждой реплики:
@@ -19,7 +30,8 @@ const SYSTEM = `Ты пишешь реплики ИГРОКА для ролев�
 - действия героини в *звёздочках*, её прямая речь без кавычек или после тире;
 - только то, что делает и говорит сама героиня: не описывай ответы, решения и действия NPC и исход её действий — это делает рассказчик;
 - реплики продолжают друг друга и ведут сюжет главы по порядку;
-- если для реплики указан факт, героиня проговаривает его явно и полностью (имена, числа, названия — как в факте).
+- если для реплики указан факт, героиня проговаривает его явно и полностью (имена, числа, названия — как в факте);
+- не вводи новых именованных персонажей, мест и чисел: только имена и числа из главы и фактов; тон и поступки героини — строго как в описании главы.
 Ответ — только JSON: {"turns":["…","…"]} ровно с указанным числом реплик.`;
 
 async function call(user) {
@@ -48,9 +60,15 @@ for (const chapter of outline.chapters) {
   const recent = turns.filter(Boolean).slice(-4).join('\n');
   const user = `Глава (ходы ${from}–${to}, нужно ровно ${count} реплик): ${chapter.beats}
 ${facts ? `Факты, которые героиня обязана проговорить в указанных репликах:\n${facts}\n` : ''}${recent ? `Последние реплики игрока перед главой:\n${recent}\n` : ''}`;
-  let batch = await call(user);
-  if (!Array.isArray(batch) || batch.length !== count) batch = await call(`${user}\nВ прошлый раз было неверное число реплик. Нужно ровно ${count}.`);
-  if (!Array.isArray(batch) || batch.length !== count) throw new Error(`Chapter ${from}-${to}: got ${batch?.length} turns`);
+  let batch = await call(user), note = '';
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const wrongCount = !Array.isArray(batch) || batch.length !== count;
+    const found = wrongCount ? [] : [...new Set(batch.flatMap(text => violations(String(text))))];
+    if (!wrongCount && !found.length) break;
+    note = wrongCount ? `Нужно ровно ${count} реплик.` : `Убери имена и числа, которых нет в главе и фактах: ${found.join(', ')}.`;
+    if (attempt === 3) { if (wrongCount) throw new Error(`Chapter ${from}-${to}: got ${batch?.length} turns`); console.log(`chapter ${from}-${to}: kept with ${found.join(', ')}`); break; }
+    batch = await call(`${user}\nПрошлый вариант не подошёл. ${note}`);
+  }
   batch.forEach((text, index) => { turns[from - 1 + index] = String(text).trim(); });
   console.log(`chapter ${from}-${to}: ${count} turns`);
 }
