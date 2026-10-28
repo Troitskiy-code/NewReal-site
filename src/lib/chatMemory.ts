@@ -1087,6 +1087,8 @@ function rebuildSecret(): string {
 function summarySnapshot(row: { id: string; summary: string; lastSummarizedAt: Date | null } | null): string {
   return createHash("sha256").update(JSON.stringify(row ? [row.id, row.summary, row.lastSummarizedAt?.toISOString()] : null)).digest("hex");
 }
+/** How long a rebuild continuation stays valid after its latest step. */
+const REBUILD_CURSOR_TTL_MS = 15 * 60_000;
 function signRebuildCursor(cursor: RebuildCursor): string {
   const encoded = Buffer.from(JSON.stringify(cursor)).toString("base64url");
   return `${encoded}.${createHmac("sha256", rebuildSecret()).update(`memory-rebuild:${encoded}`).digest("base64url")}`;
@@ -1134,7 +1136,7 @@ export async function rebuildMemorySummaryStep(
     const total = await prisma.message.count({ where: { ...messageScopeWhere(scope), createdAt: { lte: latest.createdAt } } });
     cursor = { version: 2, userId: scope.userId, characterId: scope.characterId, threadId: scope.threadId, snapshot: summarySnapshot(current),
       historyRevision: await rebuildHistoryRevision(scope, latest.createdAt), through: latest.createdAt.toISOString(),
-      after: null, processed: 0, total, draft: "", expires: Date.now() + 15 * 60_000 };
+      after: null, processed: 0, total, draft: "", expires: Date.now() + REBUILD_CURSOR_TTL_MS };
   }
   if (summarySnapshot(current) !== cursor.snapshot
     || await rebuildHistoryRevision(scope, new Date(cursor.through)) !== cursor.historyRevision) {
@@ -1164,6 +1166,9 @@ export async function rebuildMemorySummaryStep(
   cursor.after = lastSummarizedTimestamp(chunk).toISOString();
   cursor.processed += chunk.length;
   const remaining = await prisma.message.count({ where: { ...messageScopeWhere(scope), createdAt: { gt: new Date(cursor.after), lte: new Date(cursor.through) } } });
+  // The window slides with each step: a 489-message rebuild needs ~16 steps, and with provider
+  // timeouts it outlived a fixed 15 minutes from its start and was refused at 60% (prod 2026-10-28).
+  cursor.expires = Date.now() + REBUILD_CURSOR_TTL_MS;
   if (remaining) return { status: "rebuilding" as const, updated: false, processed: cursor.processed, total: cursor.total,
     continuation: signRebuildCursor(cursor) };
   const saved = await persistMemorySummary(scope, cursor.draft, new Date(cursor.after), cursor.processed,
