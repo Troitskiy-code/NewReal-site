@@ -171,11 +171,14 @@ if (REJUDGE) {
   for (const row of results) await score(row, row.context);
 } else {
   for (const story of [...new Set(cases.map(item => item.story))]) {
-    const history = await prefix(story);
-    console.log(`prefix ${story}: ${history.length} messages`);
-    for (const item of cases.filter(entry => entry.story === story)) {
+    // A case may bring its own short history (the intimacy cards); scenario stories replay their prefix.
+    const own = cases.filter(entry => entry.story === story);
+    const shared = own.some(item => !item.history) ? await prefix(story) : [];
+    if (shared.length) console.log(`prefix ${story}: ${shared.length} messages`);
+    for (const item of own) {
+      const history = item.history ?? shared;
       // A chain plays the next scenario turns one after another; only its last reply is judged.
-      const users = item.chain ? scenario[story].slice(spec.prefixTurns, spec.prefixTurns + item.chain) : [item.user];
+      const users = item.chain ? scenario[story].slice(spec.prefixTurns, spec.prefixTurns + item.chain) : item.users ?? [item.user];
       for (const ref of VARIANTS) {
         for (let sample = 0; sample < SAMPLES; sample++) {
           const conversation = [...history];

@@ -303,6 +303,7 @@ for (const locale of ['ru', 'en']) {
   check(response.status === 200, `${locale}: actual guest handler completes`);
   const wire = wires.at(-1);
   check(wire.messages[0].content.includes(builder.PROMPT_BUILDER_VERSION) && wire.messages[0].content.includes(locale === 'en' ? 'Role: world' : 'Роль: мир'), `${locale}: actual guest wire uses v2 and pinned world role`);
+  check(wire.messages[0].content.includes(locale === 'en' ? 'never with minors' : 'никогда с несовершеннолетними'), `${locale}: the rules keep intimate scenes to adults`);
   check(wire.messages.at(-1).role === 'user' && wire.messages.at(-1).content.startsWith('Guest turn\n\n[['), `${locale}: guest current turn stays a user message`);
   check(wire.messages.at(-1).content.includes(locale === 'en' ? 'Only the user controls their hero' : 'Героем пользователя управляет только пользователь'),
     `${locale}: the turn reminder follows the guest's message, in the reply language`);
@@ -347,6 +348,8 @@ const recommendations = load('src/lib/characterRecommendations.ts', {
 });
 const characterApiDeps = {
   '@/lib/telegram/catalog': telegramCatalogOff,
+  // Search-engine notifications (IndexNow) are outside these checks.
+  '@/lib/indexNow': { scheduleIndexNowChange: () => {} },
   // Images are not part of these checks; stored values pass through unchanged.
   '@/lib/characterMedia': { persistCharacterImage: async value => value ?? null, CharacterMediaUnavailable: class extends Error {} },
   '@/lib/onboardingServer': { readOnboardingPrefs: async () => null },
