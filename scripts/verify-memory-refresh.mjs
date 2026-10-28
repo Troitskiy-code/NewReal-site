@@ -53,7 +53,7 @@ try {
   await check('refresh persists a grounded summary under the 200-token stored allowance', async () => {
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     assert.ok(result && countTokens(result) <= 200); assert.match(result, /Ключ/);
-    assert.equal(latestSummaryBody.max_tokens, policy.summaryGenerationLimit(200));
+    assert.equal(latestSummaryBody.max_tokens, policy.summaryGenerationLimit(200, policy.extraSummaryItems('chapter')));
     assert.equal(latestSummaryBody.response_format.type, 'json_object');
     const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
     assert.equal(saved.summarizedMessageCount, 45);
@@ -67,7 +67,7 @@ try {
     const summary = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     // The previous summary is the first chapter and stays as written; the new chapter follows it.
     assert.equal(summary, '## Предыстория\nПрежняя память.\nПользователь не нашёл пропавший ключ.');
-    assert.equal(latestSummaryBody.max_tokens, policy.summaryGenerationLimit(200));
+    assert.equal(latestSummaryBody.max_tokens, policy.summaryGenerationLimit(200, policy.extraSummaryItems('chapter')));
     const saved = await db.memory.findUnique({ where: { threadId: fixture.scope.threadId } });
     const mirror = await db.memoryEntry.findMany({ where: { threadId: fixture.scope.threadId, type: 'summary' } });
     assert.equal(saved.summary, summary); assert.equal(saved.summarizedMessageCount, 45);
@@ -189,7 +189,7 @@ try {
     const result = await memory.resolveChatMemorySummary(fixture.scope, 'synthetic_memory_key', fixture.user);
     assert.ok(result && countTokens(result) <= 200);
     assert.equal(latestSummaryBody.model, 'google/gemma-4-31B-it-turbo');
-    assert.equal(latestSummaryBody.max_tokens, 768); assert.equal(latestSummaryBody.response_format.type, 'json_schema');
+    assert.equal(latestSummaryBody.max_tokens, policy.summaryGenerationLimit(200, policy.extraSummaryItems('chapter'))); assert.equal(latestSummaryBody.response_format.type, 'json_schema');
     assert.equal(latestSummaryBody.response_format.json_schema.strict, true);
     process.env.MEMORY_AI_PROVIDER = 'kodikrouter';
   });

@@ -1,5 +1,5 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
-import { MemorySummaryError, PAST_BUDGET_SHARE, SUMMARY_ITEM_MAX_CHARS, pastItemLimit, type MemorySummaryDetail,
+import { MemorySummaryError, OUTCOME_ITEM_MAX_CHARS, PAST_BUDGET_SHARE, SUMMARY_ITEM_MAX_CHARS, pastItemLimit, type MemorySummaryDetail,
   type MemorySummaryItemReason } from "./memorySummaryPolicy";
 import { MEMORY_STATUSES, RETELLING_TERM_SHARE, STATUS_LABELS, hasRoleplayVoice, inferMemoryStatus, isSameMemoryName, knownMemoryNames, retellingRejection, sameMemoryMeaning,
   type MemoryStatus, type RetellingRejection } from "./memoryNarrative";
@@ -9,6 +9,7 @@ type Author = "user" | "character" | "memory";
 export type SummarySource = { id: string; author: Author; text: string; status?: MemoryStatus;
   speaker?: "user" | "character"; turn?: number; past?: boolean };
 const LABELS: Record<Author, string> = { user: "Пользователь", character: "Персонаж", memory: "Из прежней сводки" };
+export const OUTCOMES_HEADING = "Ключевые итоги";
 /** Per-rule counters of refused retelling sentences: logs show which rule refuses, never the text. */
 export const REJECTION_STAT = {
   control: "rejectedControlCount", person: "rejectedPersonCount", copy: "rejectedCopyCount", fragment: "rejectedFragmentCount",
@@ -61,7 +62,14 @@ export const CHAPTER_SUMMARY_RULES = GROUNDED_SUMMARY_RULES
     + "section=story — следующая глава только о новых сообщениях: связный пересказ от третьего лица, один пункт из 2–6 предложений. "
     + "В главе важнее всего повороты: признания, решения, изменения отношений, первые разы, конфликты, обещания и открытые линии; быт, жесты и обстановку пропускай.")
   .replace(/^При обновлении сожми прежнюю предысторию.*$/mu,
-    "Источники прежней сводки — текущая ситуация, решения и планы: перенеси ещё действующие, закрой выполненные и отменённые, не дублируй.");
+    "Источники прежней сводки — текущая ситуация, решения и планы: перенеси ещё действующие, закрой выполненные и отменённые, не дублируй.")
+  + `\nsection=outcomes — 0–3 ключевых итога новых сообщений, важных до конца истории. Обычно в главе 1–2 таких итога: если в новых сообщениях есть хоть одно из перечисленного ниже, запиши его. Итоги: кто кого нанял и зачем; гибель или уход персонажа; взятый, возвращённый или прощённый долг; сделка и её условия (что, куда, кому, за сколько, к какому сроку); раскрытая тайна, содержимое письма или находки и где она лежит; данное или нарушенное обещание; где теперь скрывается важный персонаж. Одна короткая фраза до 150 символов, с именами и числами из источников (числа не складывай), без быта, чувств и обстановки. Итог дополняет главу, а не заменяет её. Во входе outcomes — уже записанные итоги: не повторяй их; если новые сообщения меняют итог (долг возвращён, сделка выполнена), запиши новый итог. Нет таких итогов — не возвращай outcomes.`;
+/** Compression of the key-outcomes list when it outgrows its share of the allowance. */
+export const OUTCOME_COMPRESSION_RULES = `MEMORY_OUTCOME_COMPRESSION_V1
+Источники — ключевые итоги ролевой истории в хронологическом порядке. Сократи список.
+Объедини итоги об одном и том же: долг взят и возвращён — один пункт «долг … возвращён»; сделка заключена и выполнена — один пункт с её условиями и исходом. Итог, отменённый более поздним, убери.
+Остальные итоги сохрани, особенно начало истории: кто кого нанял и зачем. Не добавляй ничего, чего нет в источниках. Имена, числа и отрицания сохраняй.
+Верни только JSON: {"items":[{"section":"outcomes","text":"…","status":"reported","sources":["s1","s4"]}]}. section=outcomes, status=reported, в sources — 1–4 id. Без markdown-обёртки.`;
 /** Compression of the two oldest chapters when the summary outgrows its allowance. */
 export const CHAPTER_COMPRESSION_RULES = `MEMORY_CHAPTER_COMPRESSION_V1
 Источники — две соседние главы предыстории ролевого диалога в хронологическом порядке. Сожми их в одну главу заметно короче.
@@ -70,7 +78,8 @@ export const CHAPTER_COMPRESSION_RULES = `MEMORY_CHAPTER_COMPRESSION_V1
 Связный пересказ от третьего лица, хронология сохраняется. Не добавляй ничего, чего нет в источниках: ни событий, ни мотивов, ни чисел. Имена, отрицания и авторство сохраняй.
 Верни только JSON: {"items":[{"section":"story","text":"…","status":"reported","sources":["s1","s4"]}]}. section=story, status=reported, в sources — 1–12 id использованных предложений. Без markdown-обёртки.`;
 
-const sentences = (text: string) => text.split(/\r?\n|(?<=[.!?])\s+/u).map(line => line.trim()).filter(Boolean);
+// An initial is not a sentence end: «кольцо «И. и Т.»» was cut into «кольцо «И.» and a refused fragment.
+const sentences = (text: string) => text.split(/\r?\n|(?<=[.!?])(?<!(?:^|[\s«"(])\p{Lu}\.)\s+/u).map(line => line.trim()).filter(Boolean);
 const sourceLabel = (source: SummarySource) => source.author === "memory" && source.speaker
   ? `${LABELS[source.speaker]} (из прежней сводки)` : LABELS[source.author];
 /** The two participants by name, so a retelling can say «Артём», not «пользователь». */
@@ -136,7 +145,7 @@ function checkSummaryText(text: string, support: SummarySource[], cited: Summary
  * only widens the names a retelling may use; it is never evidence for an assertion. */
 export function renderGroundedSummary(raw: string, sources: SummarySource[], maxTokens: number,
   countTokens: (text: string) => number, diagnose?: (stats: SummaryRenderDiagnostics) => void, context = "",
-  names: SummaryParticipants = participantNames(context), mode: "merge" | "chapter" = "merge"): string {
+  names: SummaryParticipants = participantNames(context), mode: "merge" | "chapter" = "merge", outcomeTokens = 0): string {
   let parsed: unknown;
   try { parsed = JSON.parse(raw.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "")); }
   catch { throw new MemorySummaryError("MEMORY_SUMMARY_INVALID_JSON"); }
@@ -148,7 +157,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   const known = new Map(sources.map((source, index) => [source.id, { ...source, index }]));
   const turns = new Map<number, SummarySource[]>();
   for (const source of known.values()) if (source.turn !== undefined) turns.set(source.turn, [...turns.get(source.turn) ?? [], source]);
-  const headings = { story: "Предыстория", state: "Текущая ситуация", decisions: "Принятые решения", plans: "Открытые планы", events: "Недавние события" };
+  const headings = { story: "Предыстория", outcomes: OUTCOMES_HEADING, state: "Текущая ситуация", decisions: "Принятые решения", plans: "Открытые планы", events: "Недавние события" };
   type Section = keyof typeof headings;
   /** pinned: the compressed past of a merge, rendered first and fitted before new events. */
   type Row = { section: Section; text: string; status: MemoryStatus; author: string; order: number; pinned?: boolean };
@@ -163,7 +172,7 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     skippedItemCount: 0, skippedSourceLimitCount: 0, trimmedStoryCount: 0, rejectedSentenceCount: 0,
     cutItemCount: 0, duplicateSentenceCount: 0, pastItemCount: 0, pastCarriedCount: 0,
     ...Object.fromEntries(Object.values(REJECTION_STAT).map(key => [key, 0])) as Record<RejectionStat, number> };
-  const keptSentences: string[] = [];
+  const keptSentences: string[] = [], keptOutcomes: string[] = [];
   const sectionFor = (status: MemoryStatus, section: Section): Section => status === "proposed" || status === "promised" ? "plans"
     : status === "decided" ? "decisions" : status === "done" || status === "cancelled" ? "events" : section;
   const skipped: MemorySummaryDetail[] = [];
@@ -184,6 +193,12 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     // A chapter never re-tells the past: a past item there is an ordinary story item.
     const past = mode === "merge" && itemSection === "past" && memorySources.length > 0 && pastSeen++ < pastItemLimit(maxTokens);
     const narrative = itemSection === "story" || itemSection === "past";
+    // Key outcomes belong to chapters; elsewhere such an item is an ordinary event.
+    const outcome = itemSection === "outcomes" && mode === "chapter";
+    // An outcome retells its chapter in one line, so it is checked like the chapter: against the whole
+    // request. Checked as a quote of its own citations, 4 of 7 proposed outcomes were refused, true ones among
+    // them (eval 2026-10-28).
+    const retold = narrative || outcome;
     if (!MEMORY_STATUSES.includes(item.status as MemoryStatus)) throw refuse("invalid_status", { itemSection });
     if (typeof item.text !== "string") throw refuse("invalid_text", { itemSection });
     if (!Array.isArray(item.sources) || item.sources.length < 1 || item.sources.some((id) => typeof id !== "string")) {
@@ -194,7 +209,8 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     if (item.sources.some((id) => !known.has(id))) throw refuse("unknown_source", { itemSection, itemSources });
     // The provider schema cannot express per-section limits, so a schema-valid answer may
     // exceed them. Drop only that item; trimming its sources could hide a cited denial.
-    const limit: MemorySummaryItemReason | null = !item.text.trim() ? "blank_text" : item.text.length > 1200 ? "text_too_long"
+    const limit: MemorySummaryItemReason | null = !item.text.trim() ? "blank_text"
+      : item.text.length > (outcome ? OUTCOME_ITEM_MAX_CHARS : 1200) ? "text_too_long"
       : itemSources > (narrative ? 12 : 4) ? "too_many_sources" : null;
     if (limit) { skipped.push({ validationReason: limit, itemIndex: index + 1, itemSection, itemSources }); continue; }
     const selected = [...new Set(item.sources as string[])].map((id) => known.get(id)!).sort((a, b) => a.index - b.index);
@@ -208,21 +224,24 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
     const cited = [...new Map(selected.flatMap(source => source.turn === undefined ? [source] : turns.get(source.turn)!)
       .map(source => [source.id, source])).values()];
     // A past compresses the previous summary, so only that summary supports it.
-    const check = checkSummaryText(item.text, past ? memorySources : narrative ? [...known.values()] : cited, cited, knownNames,
-      narrative ? messageTexts : [], names, narrative);
+    const check = checkSummaryText(item.text, past ? memorySources : retold ? [...known.values()] : cited, cited, knownNames,
+      retold ? messageTexts : [], names, retold);
     for (const reason of check.rejected) stats[REJECTION_STAT[reason]]++;
     stats.rejectedSentenceCount += check.rejected.length;
     if (check.cut) stats.cutItemCount++;
+    // An outcome is one line: a part of it would be a fragment, so it is kept whole or not at all.
     if (check.rejected.length && !(narrative && check.supported.length)) { stats.unsupportedItemCount++; continue; }
     if (check.rejected.length) stats.trimmedStoryCount++;
     // Story items of one answer overlap («…обсуждали проекты. Артём предложил…» twice): a sentence
     // already kept from an earlier item is not repeated.
     // Repeats inside one item count too: a chapter said «Вика проснулась и обнаружила…» three times.
-    const fresh = check.supported.filter((sentence, position, all) => ![...keptSentences, ...all.slice(0, position)]
-      .some(kept => kept === sentence || sameMemoryMeaning(kept, sentence)));
+    // An outcome restates its chapter on purpose, so it is compared with other outcomes only.
+    const kept = outcome ? keptOutcomes : keptSentences;
+    const fresh = check.supported.filter((sentence, position, all) => ![...kept, ...all.slice(0, position)]
+      .some(old => old === sentence || sameMemoryMeaning(old, sentence)));
     stats.duplicateSentenceCount += check.supported.length - fresh.length;
     if (!fresh.length) { if (check.supported.length) continue; stats.unsupportedItemCount++; continue; }
-    keptSentences.push(...fresh);
+    kept.push(...fresh);
     const safeText = fresh.join(" ").replace(/\s+/g, " ").trim();
     // A chosen status cannot promote a source to an executed action. Ambiguous multi-source changes stay uncertain.
     const sourceStatuses = new Set(selected.map((source) => source.status ?? inferMemoryStatus(source.text)));
@@ -232,7 +251,8 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
       : sourceStatuses.has(asked) ? asked : [...sourceStatuses][0];
     const author = [...new Set(selected.map(sourceLabel))].join(" / ");
     if (past && story) stats.pastItemCount++;
-    rows.push({ section: story ? "story" as const : sectionFor(status, narrative ? "events" : item.section as Section), text: safeText, status, author,
+    rows.push({ section: outcome ? "outcomes" : story ? "story" as const
+      : sectionFor(status, narrative || itemSection === "outcomes" ? "events" : item.section as Section), text: safeText, status, author,
       order: past && story ? -1000 + index : Math.max(...selected.map((source) => source.index)), pinned: past && story });
   }
   stats.skippedItemCount = skipped.length;
@@ -243,12 +263,14 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   const fitted: Row[] = [];
   const render = () => (Object.keys(headings) as Section[]).map((section) => {
     const lines = fitted.filter((row) => row.section === section).sort((a, b) => a.order - b.order)
-      .map((row) => section === "story" ? row.text : `- [${STATUS_LABELS[row.status]}; ${row.author}] ${row.text}`);
+      .map((row) => section === "story" ? row.text : section === "outcomes" ? `- ${row.text}`
+        : `- [${STATUS_LABELS[row.status]}; ${row.author}] ${row.text}`);
     return lines.length ? `## ${headings[section]}\n${lines.join("\n")}` : "";
   }).filter(Boolean).join("\n\n");
   const tryFit = (row: Row, limit = maxTokens) => {
     if (!row.text || fitted.length >= 10) return false;
-    if (fitted.some(existing => existing.author === row.author && existing.status === row.status
+    if (fitted.some(existing => (existing.section === "outcomes") === (row.section === "outcomes")
+      && existing.author === row.author && existing.status === row.status
       && sameMemoryMeaning(existing.text, row.text))) return true;
     fitted.push(row);
     if (countTokens(render()) <= limit) return true;
@@ -271,7 +293,9 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   }
   // Then the newest rows, so an over-long answer loses middle scenes rather than the latest events
   // (prod 2026-10-24 dropped 3–5 of the newest items per step). Rendering keeps chronology.
-  for (const row of rows.filter(row => !row.pinned).sort((a, b) => b.order - a.order)) tryFit(row);
+  for (const row of rows.filter(row => !row.pinned && row.section !== "outcomes").sort((a, b) => b.order - a.order)) tryFit(row);
+  // Outcomes have their own allowance on top of the chapter's, so they never crowd the chapter out.
+  for (const row of rows.filter(row => row.section === "outcomes")) tryFit(row, maxTokens + outcomeTokens);
   const summary = render();
   stats.fittedCount = fitted.length; stats.renderedUsage = countTokens(summary);
   diagnose?.(stats);

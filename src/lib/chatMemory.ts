@@ -14,7 +14,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { getMemoryProvider } from "./aiProviders";
-import { groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
+import { extraSummaryItems, groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
 import { SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS, withSummaryRefreshLease } from "./memorySummaryRefresh";
 import { memoryV2Enabled } from "./memoryFacts";
 import { lockMemoryThread } from "./memoryV2";
@@ -502,11 +502,12 @@ async function requestKodikText(
   sourceIds: string[],
   names: SummaryParticipants = {}
 ): Promise<string> {
-  const generationLimit = summaryGenerationLimit(maxTokens);
+  const extraItems = extraSummaryItems(mode);
+  const generationLimit = summaryGenerationLimit(maxTokens, extraItems);
   const system = summarySystemPrompt(mode, maxTokens, names);
   if (kieSummaryEnabled()) {
     try {
-      const data = await requestKieSummary(system, userContent, generationLimit, groundedSummaryFormat(sourceIds, maxTokens));
+      const data = await requestKieSummary(system, userContent, generationLimit, groundedSummaryFormat(sourceIds, maxTokens, extraItems));
       const result = readSummaryResponse(data);
       infoLog("MemorySummary", "generation completed", { provider: "kie", finishReason: result.finishReason, generationLimit,
         storedLimit: maxTokens, outputUsage: data.usage.completion_tokens });
@@ -532,7 +533,7 @@ async function requestKodikText(
       ],
       max_tokens: generationLimit,
       response_format: getMemoryProvider() === "deepinfra"
-        ? groundedSummaryFormat(sourceIds, maxTokens) : { type: "json_object" },
+        ? groundedSummaryFormat(sourceIds, maxTokens, extraItems) : { type: "json_object" },
       temperature: 0,
     },
     {

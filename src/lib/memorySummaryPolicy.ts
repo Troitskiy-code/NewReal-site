@@ -21,10 +21,17 @@ export const SUMMARY_ITEM_MAX_CHARS = 600;
 /** The renderer enforces the stored allowance, so generation follows what the schema lets the model
  * write (~250 tokens per 600-character item with its sources). The stored allowance alone cut long
  * stories mid-answer on every attempt (prod 2026-10-24, 2634 of a 1500 allowance). */
-export function summaryGenerationLimit(storedLimit: number): number {
+export function summaryGenerationLimit(storedLimit: number, extraItems = 0): number {
   return Math.min(MAX_SUMMARY_GENERATION_TOKENS,
-    Math.max(768, Math.ceil(storedLimit * 1.5) + 384, summaryItemLimit(storedLimit) * 250));
+    Math.max(768, Math.ceil(storedLimit * 1.5) + 384, summaryItemLimit(storedLimit) * 250) + extraItems * 100);
 }
+/** Key outcomes a chapter may add on top of its items («Фальк погиб», «долг Борину возвращён»). They
+ * live in their own section that chapter compression never re-tells: in a 250-turn crash test the
+ * compressed opening chapters kept 8 of 15 key beats (2026-10-28). */
+export const OUTCOME_ITEM_LIMIT = 3;
+export const OUTCOME_ITEM_MAX_CHARS = 200;
+/** Extra answer items a mode may return: outcomes for a chapter, a whole outcome list for its compression. */
+export const extraSummaryItems = (mode: string) => mode === "chapter" ? OUTCOME_ITEM_LIMIT : mode === "outcomes" ? 10 : 0;
 
 export type MemorySummaryFailure = "MEMORY_SUMMARY_TRUNCATED" | "MEMORY_SUMMARY_EMPTY_RESPONSE"
   | "MEMORY_SUMMARY_INVALID_JSON" | "MEMORY_SUMMARY_INVALID_ITEMS" | "MEMORY_SUMMARY_UNSUPPORTED_ITEM"
@@ -48,12 +55,12 @@ export function isDeferredSummaryFailure(error: unknown): boolean {
     || error instanceof Error && error.name === "MemorySummaryInputError";
 }
 
-export function groundedSummaryFormat(sourceIds: string[], storedLimit: number) {
+export function groundedSummaryFormat(sourceIds: string[], storedLimit: number, extraItems = 0) {
   return { type: "json_schema", json_schema: { name: "grounded_memory", strict: true, schema: {
     type: "object", additionalProperties: false, required: ["items"], properties: { items: {
-      type: "array", minItems: 1, maxItems: summaryItemLimit(storedLimit),
+      type: "array", minItems: 1, maxItems: Math.min(10, summaryItemLimit(storedLimit) + extraItems),
       items: { type: "object", additionalProperties: false, required: ["section", "text", "status", "sources"], properties: {
-        section: { type: "string", enum: ["past", "story", "state", "decisions", "plans", "events"] },
+        section: { type: "string", enum: ["past", "story", "outcomes", "state", "decisions", "plans", "events"] },
         text: { type: "string", minLength: 1, maxLength: SUMMARY_ITEM_MAX_CHARS },
         status: { type: "string", enum: [...MEMORY_STATUSES] },
         sources: { type: "array", minItems: 1, maxItems: 12, items: { type: "string", enum: sourceIds } },

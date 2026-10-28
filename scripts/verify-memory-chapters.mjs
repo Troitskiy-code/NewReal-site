@@ -26,7 +26,7 @@ function stub(answers) {
 const context = (ask, maxTokens = 1500, count = countTokens) => ({ maxTokens, core, names, countTokens: count, ask });
 
 await check('chapters are the lines under «Предыстория»; a summary without headings is one legacy chapter', () => {
-  assert.deepEqual(chapters.splitSummaryChapters('Прежняя память.\nЕщё строка.'), { chapters: ['Прежняя память. Ещё строка.'], rest: '' });
+  assert.deepEqual(chapters.splitSummaryChapters('Прежняя память.\nЕщё строка.'), { chapters: ['Прежняя память. Ещё строка.'], outcomes: [], rest: '' });
   const text = '## Предыстория\nПервая глава.\nВторая глава.\n\n## Открытые планы\n- [Предложено; Пользователь] Сходить в кино.';
   const parts = chapters.splitSummaryChapters(text);
   assert.deepEqual(parts.chapters, ['Первая глава.', 'Вторая глава.']);
@@ -47,7 +47,8 @@ await check('a new chapter is appended and written chapters stay word for word; 
   assert.ok(!call.input.sources.some(source => /клубе/.test(source.text)), 'a written chapter is never a source');
   assert.ok(call.input.sources.some(source => source.author === 'memory' && /ресторан/.test(source.text)), 'open plans are sources');
   assert.equal(call.budget, 750);
-  assert.deepEqual(stats, { chapterCount: 2, newChapterCount: 1, compressedPairCount: 0, compressionFallbackCount: 0, budgetTrimmedSentenceCount: 0 });
+  assert.deepEqual(stats, { chapterCount: 2, newChapterCount: 1, compressedPairCount: 0, compressionFallbackCount: 0, budgetTrimmedSentenceCount: 0,
+    outcomeCount: 0, newOutcomeCount: 0, outcomeMergeCount: 0, outcomeDroppedCount: 0 });
 });
 
 await check('a new chapter drops sentences told before or repeated, and sees only the latest chapter', async () => {
@@ -193,6 +194,45 @@ await check('chapter prompt forbids re-telling the past; compression prompt keep
   assert.ok(merge.includes('section=past: сжатый пересказ') && merge.includes('из них past — не больше 4'));
   const compress = chapters.summarySystemPrompt('compress', 300, names);
   assert.ok(compress.includes('Сожми их в одну главу') && compress.includes('признания, решения'));
+});
+
+await check('key outcomes stay word for word across chapters and compression; only the list itself is merged', async () => {
+  // The 250-turn crash test (2026-10-28): compressed opening chapters kept 8 of 15 key beats.
+  const outcome = (text, sources = ['s1']) => ({ section: 'outcomes', text, status: 'reported', sources });
+  const first = stub({ chapter: JSON.stringify({ items: [story('Артём пригласил Вику в ресторан, и она согласилась.'),
+    outcome('Артём пригласил Вику в ресторан, и она согласилась.')] }) });
+  const one = await chapters.writeSummaryChapter('', [{ role: 'user', content: 'Я приглашаю тебя в ресторан, и ты согласилась.' }], context(first.ask));
+  assert.equal(one, '## Предыстория\nАртём пригласил Вику в ресторан, и она согласилась.\n\n## Ключевые итоги\n- Артём пригласил Вику в ресторан, и она согласилась.',
+    'an outcome may restate its chapter');
+  const second = stub({ chapter: JSON.stringify({ items: [story('Артём подарил Вике кольцо.'), outcome('Артём подарил Вике кольцо.')] }) });
+  const two = await chapters.writeSummaryChapter(one, [{ role: 'user', content: 'Я дарю тебе кольцо.' }], context(second.ask));
+  assert.deepEqual(second.calls[0].input.outcomes, ['Артём пригласил Вику в ресторан, и она согласилась.'], 'written outcomes are context');
+  assert.ok(!second.calls[0].input.sources.some(source => /ресторан/.test(source.text)), 'and never sources');
+  assert.deepEqual(chapters.splitSummaryChapters(two).outcomes, ['Артём пригласил Вику в ресторан, и она согласилась.', 'Артём подарил Вике кольцо.']);
+  // A list over its share is merged once; a list still too long loses its oldest lines after the opening.
+  const lines = ['Вика и Артём учились в одной школе.', 'Артём признался Вике в чувствах.', 'Вика отказала Артёму.',
+    'Через три года они встретились в клубе.', 'Артём подвёз Вику домой.'];
+  const words = text => text.split(/\s+/).length;
+  const merged = stub({ chapter: JSON.stringify({ items: [story('Артём подарил Вике кольцо.'), outcome('Артём подарил Вике кольцо.')] }),
+    outcomes: input => JSON.stringify({ items: [outcome('Артём признался Вике в чувствах, а Вика отказала Артёму.', [input.sources[1].id, input.sources[2].id])] }) });
+  let stats;
+  const result = await chapters.writeSummaryChapter(chapters.composeChapterSummary(['Глава.'], '', lines),
+    [{ role: 'user', content: 'Я дарю тебе кольцо.' }], context(merged.ask, 60, words), value => { stats = value; });
+  assert.deepEqual(chapters.splitSummaryChapters(result).outcomes, ['Артём признался Вике в чувствах, а Вика отказала Артёму.']);
+  assert.equal(stats.outcomeMergeCount, 1);
+  const refused = stub({ chapter: JSON.stringify({ items: [story('Артём подарил Вике кольцо.'), outcome('Артём подарил Вике кольцо.')] }),
+    outcomes: new policy.MemorySummaryError('MEMORY_SUMMARY_NO_FITTING_SOURCE') });
+  const cut = await chapters.writeSummaryChapter(chapters.composeChapterSummary(['Глава.'], '', lines),
+    [{ role: 'user', content: 'Я дарю тебе кольцо.' }], context(refused.ask, 60, words), value => { stats = value; });
+  const kept = chapters.splitSummaryChapters(cut).outcomes;
+  assert.equal(kept[0], lines[0], 'the opening outcome stays');
+  assert.equal(kept.at(-1), 'Артём подарил Вике кольцо.', 'the newest outcome stays');
+  assert.ok(stats.outcomeDroppedCount > 0);
+  // Initials are not sentence ends, and a partly refused outcome is dropped whole, never cut to a fragment.
+  const ring = stub({ chapter: JSON.stringify({ items: [story('Артём нашёл кольцо «И. и Т.» в комнате Вики.'),
+    outcome('Артём нашёл кольцо «И. и Т.» в комнате Вики.'), outcome('Артём нашёл кольцо. Петров украл у Вики машину.')] }) });
+  const found = await chapters.writeSummaryChapter('', [{ role: 'user', content: 'Я нашёл кольцо «И. и Т.» в комнате Вики.' }], context(ring.ask));
+  assert.deepEqual(chapters.splitSummaryChapters(found).outcomes, ['Артём нашёл кольцо «И. и Т.» в комнате Вики.']);
 });
 
 console.log(`Memory chapters: ${passed} checks passed`);

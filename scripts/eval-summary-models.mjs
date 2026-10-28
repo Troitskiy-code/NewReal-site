@@ -1,6 +1,6 @@
 // Paid comparison of summary models on one real story, run through the production rebuild path:
 // the same chunking, prompts, JSON schema, renderer/validator and chunk backoff; only the model changes.
-// node scripts/eval-summary-models.mjs --paid --story <story.json> --out <dir> [--models id,id] [--budget 1500] [--steps N]
+// node scripts/eval-summary-models.mjs --paid --story <story.json> --out <dir> [--models id,id] [--budget 1500] [--steps N] [--live]
 // <story.json> is {chat:{messages,character}, memory:{core}} as the chat and memory APIs return them.
 // Keys come from .env.local (DEEPINFRA_API_KEY, KIE_API_KEY). Story text and summaries are written only to
 // --out; the console gets counts, timings and costs.
@@ -45,6 +45,7 @@ for (const id of chosen) if (!MODELS[id]) throw new Error(`Unknown model ${id}`)
 // --single: the whole summarizable story in one call (experiment, not the production bound).
 const SINGLE = process.argv.includes('--single');
 const KEEP_RECENT = 25, MAX_CHUNK = SINGLE ? 10_000 : 120, MAX_INPUT = SINGLE ? 60_000 : 12_000, TIMEOUT_MS = SINGLE ? 240_000 : 90_000;
+const LIVE = process.argv.includes('--live') ? { messages: Number(arg('--live-messages') ?? 40), tokens: Number(arg('--live-tokens') ?? 4800) } : null;
 const BACKOFF = new Set(['MEMORY_SUMMARY_TRUNCATED', 'MEMORY_SUMMARY_NO_FITTING_SOURCE']);
 const tooLarge = (input, limit = MAX_INPUT) => input.length > limit * 8 || countTokens(input) > limit;
 const time = row => new Date(row.createdAt).getTime();
@@ -57,9 +58,10 @@ const unfence = text => {
   return start >= 0 && end > start ? text.slice(start, end + 1) : text;
 };
 /** One model call, answered in the chat-completions shape readSummaryResponse expects. */
-async function callModel(spec, system, user, maxTokens, sourceIds) {
-  const limit = policy.summaryGenerationLimit(maxTokens);
-  const format = policy.groundedSummaryFormat(sourceIds, maxTokens);
+async function callModel(spec, system, user, maxTokens, sourceIds, mode) {
+  const extra = policy.extraSummaryItems?.(mode) ?? 0;
+  const limit = policy.summaryGenerationLimit(maxTokens, extra);
+  const format = policy.groundedSummaryFormat(sourceIds, maxTokens, extra);
   let url, headers, body;
   if (spec.provider === 'deepinfra') {
     url = 'https://api.deepinfra.com/v1/openai/chat/completions';
@@ -133,7 +135,7 @@ async function runModel(id, messages, core, names, maxTokens) {
     let lastError;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const answer = await callModel(spec, chapterModule.summarySystemPrompt(mode, budget, names), input, budget, sourceIds);
+        const answer = await callModel(spec, chapterModule.summarySystemPrompt(mode, budget, names), input, budget, sourceIds, mode);
         record({ ...answer.usage, mode, finish: answer.finishReason, ok: true, raw: answer.text,
           ...(process.argv.includes('--keep-input') ? { request: input } : {}) });
         return answer.text;
@@ -171,6 +173,12 @@ async function runModel(id, messages, core, names, maxTokens) {
   while (index < messages.length && steps.length < stepLimit) {
     let rows = messages.slice(index, index + MAX_CHUNK + 1);
     let end = Math.min(rows.length, MAX_CHUNK);
+    // --live: chapters as a live story gets them, at the refresh threshold (universe: 40 messages or
+    // 30% of a 16k context), not the rebuild's 120-message chunks.
+    if (LIVE) {
+      let tokens = 0; end = 0;
+      while (end < rows.length && end < LIVE.messages && tokens < LIVE.tokens) tokens += countTokens(rows[end++].content);
+    }
     while (end > 0 && end < rows.length && time(rows[end - 1]) === time(rows[end])) end -= 1;
     let chunk = rows.slice(0, end);
     const fits = candidate => !tooLarge(JSON.stringify(mergeSources(draft, candidate)), MAX_INPUT - 2000);

@@ -1,5 +1,5 @@
-import { CHAPTER_COMPRESSION_RULES, CHAPTER_SUMMARY_RULES, GROUNDED_SUMMARY_RULES, makeSummarySources, renderGroundedSummary,
-  sourcesFromSummaries, type SummaryParticipants, type SummaryRenderDiagnostics } from "./memorySummaryEvidence";
+import { CHAPTER_COMPRESSION_RULES, CHAPTER_SUMMARY_RULES, GROUNDED_SUMMARY_RULES, makeSummarySources, OUTCOME_COMPRESSION_RULES,
+  OUTCOMES_HEADING, renderGroundedSummary, sourcesFromSummaries, type SummaryParticipants, type SummaryRenderDiagnostics } from "./memorySummaryEvidence";
 import { MemorySummaryError, pastItemLimit, SUMMARY_ITEM_MAX_CHARS, summaryItemLimit } from "./memorySummaryPolicy";
 import { sameMemoryMeaning } from "./memoryNarrative";
 
@@ -9,13 +9,16 @@ import { sameMemoryMeaning } from "./memoryNarrative";
  * messages and never re-told; only when the summary outgrows its allowance are the two oldest
  * chapters compressed into one. Re-telling the whole past on every merge kept ~30% of a
  * 171-message story's key beats with every model tried (eval 2026-10-24).
+ * Between them, «## Ключевые итоги» lists the lasting outcomes each chapter reported. Compression
+ * never touches them; only the list itself is merged when it outgrows OUTCOMES_SHARE.
  */
 export const SUMMARY_PROMPT = `Ты — суммаризатор ролевых диалогов. Сохрани смысл, действующие планы и изменения состояния по исходной переписке.`;
 export const MERGE_PROMPT = `Ты — суммаризатор ролевых диалогов. Обнови краткую сводку по новой части переписки. Сохрани содержание открытых планов, объедини повторы; различай предложение, решение, выполнение и отмену. При неясном противоречии не угадывай.`;
 const CHAPTER_PROMPT = `Ты — суммаризатор ролевых диалогов. Допиши следующую главу предыстории по новой части переписки и обнови текущую ситуацию, решения и планы. Различай предложение, решение, выполнение и отмену. При неясном противоречии не угадывай.`;
 const COMPRESSION_PROMPT = `Ты — редактор предыстории ролевого диалога.`;
+const OUTCOMES_PROMPT = `Ты — редактор ключевых итогов ролевого диалога.`;
 
-export type SummaryMode = "summary" | "merge" | "chapter" | "compress";
+export type SummaryMode = "summary" | "merge" | "chapter" | "compress" | "outcomes";
 /** The new chapter and the current sections share half of the allowance; written chapters keep the rest. */
 export const CHAPTER_BUDGET_SHARE = 0.5;
 /** A compressed pair keeps ~60% of its length, and at most this share of the allowance. */
@@ -26,10 +29,17 @@ const COMPRESSED_TARGET_SHARE = 0.75;
 const COMPRESSED_ACCEPT_SHARE = 0.85;
 /** «## Предыстория» counted by the renderer's budget. */
 const HEADING_TOKENS = 8;
+/** The key outcomes may fill this share of the allowance; past it the list is merged by the model. */
+const OUTCOMES_SHARE = 0.35;
+/** Room a chapter answer gets for its new outcomes on top of the chapter budget. */
+const OUTCOME_ANSWER_TOKENS = 200;
 
 export function summarySystemPrompt(mode: SummaryMode, maxTokens: number, names: SummaryParticipants = {}): string {
   const cast = [names.user && `герой пользователя — ${names.user}`, names.character && `персонаж — ${names.character}`].filter(Boolean);
   const castLine = cast.length ? `\nУчастники: ${cast.join(", ")}. В пересказе называй их по именам, а не «пользователь» и «персонаж».` : "";
+  if (mode === "outcomes") {
+    return `${OUTCOMES_PROMPT}\n\n${OUTCOME_COMPRESSION_RULES}\nСписок должен поместиться в ${maxTokens} токенов.${castLine}`;
+  }
   if (mode === "compress") {
     return `${COMPRESSION_PROMPT}\n\n${CHAPTER_COMPRESSION_RULES}\nГлава должна поместиться в ${maxTokens} токенов. Максимум ${summaryItemLimit(maxTokens)} пунктов, каждый — не длиннее ${SUMMARY_ITEM_MAX_CHARS} символов.${castLine}`;
   }
@@ -41,33 +51,45 @@ export function summarySystemPrompt(mode: SummaryMode, maxTokens: number, names:
 }
 
 const STORY_HEADING = /^#{1,3}\s*Предыстория\s*$/u;
-const sentences = (text: string) => text.split(/(?<=[.!?…])\s+/u).map(part => part.trim()).filter(Boolean);
+const OUTCOMES_LINE = new RegExp(`^#{1,3}\\s*${OUTCOMES_HEADING}\\s*$`, "u");
+const sentences = (text: string) => text.split(/(?<=[.!?…])(?<!(?:^|[\s«"(])\p{Lu}\.)\s+/u).map(part => part.trim()).filter(Boolean);
 
-/** Chapters are the lines under «## Предыстория»; a summary without headings is one legacy chapter. */
-export function splitSummaryChapters(summary: string): { chapters: string[]; rest: string } {
+/** Chapters are the lines under «## Предыстория», outcomes those under «## Ключевые итоги»; a summary
+ * without headings is one legacy chapter. */
+export function splitSummaryChapters(summary: string): { chapters: string[]; outcomes: string[]; rest: string } {
   const lines = summary.split(/\r?\n/);
   if (!lines.some(line => /^#{1,3}\s/.test(line.trim()))) {
     const text = lines.map(line => line.trim()).filter(Boolean).join(" ");
-    return { chapters: text ? [text] : [], rest: "" };
+    return { chapters: text ? [text] : [], outcomes: [], rest: "" };
   }
-  const chapters: string[] = [], rest: string[] = [];
-  let inStory = false;
+  const chapters: string[] = [], outcomes: string[] = [], rest: string[] = [];
+  let part: "story" | "outcomes" | "rest" = "rest";
   for (const line of lines) {
-    if (/^#{1,3}\s/.test(line.trim())) { inStory = STORY_HEADING.test(line.trim()); if (!inStory) rest.push(line); continue; }
-    if (inStory) { if (line.trim()) chapters.push(line.trim()); } else rest.push(line);
+    const trimmed = line.trim();
+    if (/^#{1,3}\s/.test(trimmed)) {
+      part = STORY_HEADING.test(trimmed) ? "story" : OUTCOMES_LINE.test(trimmed) ? "outcomes" : "rest";
+      if (part === "rest") rest.push(line);
+      continue;
+    }
+    if (part === "story") { if (trimmed) chapters.push(trimmed); }
+    else if (part === "outcomes") { const text = trimmed.replace(/^[-*•]\s*/u, ""); if (text) outcomes.push(text); }
+    else rest.push(line);
   }
-  return { chapters, rest: rest.join("\n").trim() };
+  return { chapters, outcomes, rest: rest.join("\n").trim() };
 }
 
-export function composeChapterSummary(chapters: string[], rest: string): string {
-  return [chapters.length ? `## Предыстория\n${chapters.join("\n")}` : "", rest.trim()].filter(Boolean).join("\n\n");
+export function composeChapterSummary(chapters: string[], rest: string, outcomes: string[] = []): string {
+  return [chapters.length ? `## Предыстория\n${chapters.join("\n")}` : "",
+    outcomes.length ? `## ${OUTCOMES_HEADING}\n${outcomes.map(line => `- ${line}`).join("\n")}` : "",
+    rest.trim()].filter(Boolean).join("\n\n");
 }
 
 /** One answer of the summary model for `mode`, already read from the provider (readSummaryResponse). */
 export type SummaryAsk = (mode: SummaryMode, input: string, maxTokens: number, sourceIds: string[]) => Promise<string>;
 /** Counters only: never chapter text. */
 export type ChapterStats = { chapterCount: number; newChapterCount: number; compressedPairCount: number;
-  compressionFallbackCount: number; budgetTrimmedSentenceCount: number };
+  compressionFallbackCount: number; budgetTrimmedSentenceCount: number; outcomeCount: number; newOutcomeCount: number;
+  outcomeMergeCount: number; outcomeDroppedCount: number };
 type ChapterContext = { maxTokens: number; core: string | null; names: SummaryParticipants;
   countTokens: (text: string) => number; ask: SummaryAsk; diagnose?: (stats: SummaryRenderDiagnostics) => void };
 
@@ -79,32 +101,59 @@ type ChapterContext = { maxTokens: number; core: string | null; names: SummaryPa
 export async function writeSummaryChapter(previous: string, messages: Array<{ role: string; content: string }>,
   context: ChapterContext, onStats?: (stats: ChapterStats) => void): Promise<string> {
   const { maxTokens, core, names, countTokens, ask, diagnose } = context;
-  const { chapters, rest } = splitSummaryChapters(previous);
+  const { chapters, outcomes, rest } = splitSummaryChapters(previous);
   const sources = [...sourcesFromSummaries(rest), ...makeSummarySources(messages)].map((source, index) => ({ ...source, id: `s${index + 1}` }));
   if (!sources.length) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   const budget = Math.min(maxTokens, Math.max(Math.min(300, maxTokens), Math.floor(maxTokens * CHAPTER_BUDGET_SHARE)));
   // Only the latest chapter, for continuity: given all of them, Mistral re-told old scenes as the
   // new chapter, and words shared with the new messages let them pass (eval 2026-10-24).
   const latest = chapters.at(-1) ?? "";
-  const raw = await ask("chapter", JSON.stringify({ sources, core, previous: latest }), budget, sources.map(source => source.id));
+  // The outcomes written so far are context too, so a chapter adds only new ones.
+  const raw = await ask("chapter", JSON.stringify({ sources, core, previous: latest, outcomes }), budget, sources.map(source => source.id));
   // Names from earlier chapters may appear again; they are never evidence for an assertion.
-  const rendered = renderGroundedSummary(raw, sources, budget, countTokens, diagnose, [core ?? "", ...chapters].join("\n"), names, "chapter");
+  const rendered = renderGroundedSummary(raw, sources, budget, countTokens, diagnose, [core ?? "", ...chapters].join("\n"), names, "chapter",
+    OUTCOME_ANSWER_TOKENS);
   if (!rendered) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
   const fresh = splitSummaryChapters(rendered);
   // A sentence already told in an earlier chapter is not told again.
   const told = chapters.flatMap(sentences);
   const chapter = fresh.chapters.flatMap(sentences).filter(sentence => !told.some(old => old === sentence || sameMemoryMeaning(old, sentence))).join(" ");
+  const added = fresh.outcomes.filter(line => !outcomes.some(old => old === line || sameMemoryMeaning(old, line)));
   const stats: ChapterStats = { chapterCount: 0, newChapterCount: chapter ? 1 : 0, compressedPairCount: 0,
-    compressionFallbackCount: 0, budgetTrimmedSentenceCount: 0 };
-  const summary = await fitChapters([...chapters, ...(chapter ? [chapter] : [])], fresh.rest, context, stats);
-  stats.chapterCount = splitSummaryChapters(summary).chapters.length;
+    compressionFallbackCount: 0, budgetTrimmedSentenceCount: 0, outcomeCount: 0, newOutcomeCount: added.length,
+    outcomeMergeCount: 0, outcomeDroppedCount: 0 };
+  const kept = await fitOutcomes([...outcomes, ...added], context, stats);
+  const summary = await fitChapters([...chapters, ...(chapter ? [chapter] : [])], fresh.rest, kept, context, stats);
+  const parts = splitSummaryChapters(summary);
+  stats.chapterCount = parts.chapters.length; stats.outcomeCount = parts.outcomes.length;
   onStats?.(stats);
   return summary;
 }
 
-async function fitChapters(chapters: string[], rest: string, context: ChapterContext, stats: ChapterStats): Promise<string> {
+/** Keeps the outcomes within OUTCOMES_SHARE: the model merges the list once; a list still too long
+ * (or a refused answer) loses its oldest lines after the first one, the story's opening. */
+async function fitOutcomes(outcomes: string[], context: ChapterContext, stats: ChapterStats): Promise<string[]> {
+  const { maxTokens, core, names, countTokens, ask, diagnose } = context;
+  const limit = Math.floor(maxTokens * OUTCOMES_SHARE);
+  const size = (lines: string[]) => countTokens(composeChapterSummary([], "", lines));
+  if (size(outcomes) <= limit) return outcomes;
+  let kept = outcomes;
+  const sources = outcomes.map((text, index) => ({ id: `s${index + 1}`, author: "memory" as const, text }));
+  try {
+    const raw = await ask("outcomes", JSON.stringify({ sources }), Math.floor(limit * COMPRESSED_TARGET_SHARE), sources.map(source => source.id));
+    const merged = splitSummaryChapters(renderGroundedSummary(raw, sources, 0, countTokens, diagnose, core ?? "", names, "chapter", limit)).outcomes;
+    if (merged.length && size(merged) < size(outcomes)) { kept = merged; stats.outcomeMergeCount++; }
+  } catch (error) {
+    // A refused or unusable answer falls back below; a transport failure defers the whole refresh.
+    if (!(error instanceof MemorySummaryError)) throw error;
+  }
+  while (size(kept) > limit && kept.length > 1) { kept = [kept[0], ...kept.slice(2)]; stats.outcomeDroppedCount++; }
+  return kept;
+}
+
+async function fitChapters(chapters: string[], rest: string, outcomes: string[], context: ChapterContext, stats: ChapterStats): Promise<string> {
   const { maxTokens, countTokens } = context;
-  const size = () => countTokens(composeChapterSummary(chapters, rest));
+  const size = () => countTokens(composeChapterSummary(chapters, rest, outcomes));
   // The newest chapter is never touched by a compression: at least three chapters are needed.
   // Once over the allowance, compress down to COMPRESSED_TARGET_SHARE of it, so the next chapters fit
   // without another round: compressing just under the limit re-compressed the story's opening on
@@ -124,7 +173,7 @@ async function fitChapters(chapters: string[], rest: string, context: ChapterCon
   }
   const restLines = rest.split("\n");
   while (size() > maxTokens && restLines.length) { restLines.pop(); rest = restLines.join("\n"); }
-  return composeChapterSummary(chapters, rest);
+  return composeChapterSummary(chapters, rest, outcomes);
 }
 
 async function compressChapters(first: string, second: string, context: ChapterContext, stats: ChapterStats, excess = 0): Promise<string> {
