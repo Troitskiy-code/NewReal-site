@@ -673,6 +673,11 @@ try {
     const handed = facts.parseFactExtraction(output([delta('запечатанное письмо Сигизмунду Дийкстре', 's1', 'possessions', 'user', 'retract')]),
       facts.factSources([{ id: 'm0', role: 'user', content: '*в Третогоре вручаю пакет капитану стражи* Вот.' }]), { partial: true });
     assert.deepEqual(handed.facts.map(fact => fact.op), ['retract']);
+    // The same check: a captain repeating the sender's name became the heroine's name.
+    const named = text => facts.parseFactExtraction(output([delta('Детмольд', 's2')]), facts.factSources([
+      { id: 'm0', role: 'user', content: '*вручаю пакет капитану стражи* Вот.' }, { id: 'm1', role: 'assistant', content: text }]), { partial: true }).facts;
+    assert.equal(named('— Детмольд, — повторяет он, словно пробуя имя на вкус.').length, 0, 'a repeated name is a mention');
+    assert.deepEqual(named('— Детмольд, подожди! — кричит капитан.').map(fact => fact.value), ['Детмольд'], 'an address still names the hero');
     const f = await setup('## Пользователь\n- Долги и обязательства: доставить письмо в Третогор за 200 крон до ночи Саовины Сигизмунду Дийкстре\n- Долги и обязательства: должна Борину 40 крон');
     await turn(f, '*вручаю пакет стражнику* Вот. Задание выполнено.');
     await run(f, output([delta('доставить письмо Дийкстры в Третогор', 's1', 'debts', 'user', 'retract')]));

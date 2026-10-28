@@ -211,8 +211,11 @@ function supportedSummaryValue(value: string, evidence: string): boolean {
 }
 // The character calling the user's hero by name («Привет, Анна!», «Анна, подожди») is evidence of that
 // name even in a question or a proposal. Only a capitalised name set off as an address qualifies.
+// A name repeated, read out or given as a password is a mention: «— Детмольд, — повторяет он, словно пробуя
+// имя на вкус» made the sender of a letter the heroine's name (prod check 2026-10-28).
+const MENTIONED_NAME = /(?:^|[^\p{L}])(?:имя|имени|именем|повтор\p{L}*|переспрос\p{L}*|переспраш\p{L}*|произн\p{L}*|прочит\p{L}*|читает|пароль)(?=$|[^\p{L}])/iu;
 function addressedName(name: string, evidence: string): boolean {
-  if (!/^\p{Lu}[\p{Ll}-]+(?: \p{Lu}[\p{Ll}-]+)?$/u.test(name)) return false;
+  if (!/^\p{Lu}[\p{Ll}-]+(?: \p{Lu}[\p{Ll}-]+)?$/u.test(name) || MENTIONED_NAME.test(evidence)) return false;
   const escaped = name.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
   return new RegExp(`(?:^|[,—–]\\s*|[«"]\\s*)${escaped}\\s*[,!]|,\\s*${escaped}\\s*(?:[.!?…»"]|$)`, "u").test(evidence.normalize("NFKC"));
 }
