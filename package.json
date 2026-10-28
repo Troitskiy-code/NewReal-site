@@ -92,6 +92,7 @@
     "i18n:add": "node scripts/i18n-add.mjs",
     "i18n:check": "node scripts/i18n-sync.mjs --check && node scripts/i18n-check.mjs",
     "verify:i18n": "node scripts/verify-i18n.mjs",
+    "verify:i18n:menu": "node scripts/verify-language-menu.mjs",
     "translate:characters:locale": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-character-locales.ts",
     "typecheck:app": "tsc --noEmit --project scripts/tsconfig.app.json",
     "translate:pack": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-localization-pack.mjs",

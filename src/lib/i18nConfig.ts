@@ -4,6 +4,8 @@ export type Locale = keyof typeof manifest.locales;
 export const LOCALES = (Object.keys(manifest.locales) as Locale[]).filter((code) => manifest.locales[code].enabled);
 export const DEFAULT_LOCALE = manifest.defaultLocale as Locale;
 export const LOCALE_COOKIE = "NEXT_LOCALE";
+// Keep the detection mode separate: API requests still need the actual page language.
+export const LOCALE_AUTO_COOKIE = "NEXT_LOCALE_AUTO";
 export const LOCALE_HEADER = "x-locale";
 
 export function isLocale(value: string | null | undefined): value is Locale {

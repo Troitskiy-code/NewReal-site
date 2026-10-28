@@ -104,6 +104,14 @@
   },
   "language": {
     "label": "Idioma",
+    "title": "Idioma de la interfaz",
+    "choose": "Elegir idioma",
+    "close": "Cerrar la selección de idioma",
+    "search": "Buscar un idioma",
+    "automatic": "Automático",
+    "browserLanguage": "Idioma del navegador · {{language}}",
+    "saved": "Tu elección se guardará para futuras visitas",
+    "empty": "No se encontró el idioma",
     "ru": "RU",
     "en": "EN"
   },

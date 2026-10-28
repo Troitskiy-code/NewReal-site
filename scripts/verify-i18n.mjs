@@ -129,6 +129,21 @@ assert.equal(new URL(rewritten.headers.get("x-middleware-rewrite")).pathname, "/
 assert.equal(rewritten.headers.get("x-middleware-request-x-locale"), "de");
 const redirected = await proxy(new NextRequest("https://example.test/genres", { headers: { "accept-language": "de-DE,en;q=.5" } }));
 assert.equal(redirected.headers.get("location"), "https://example.test/de/genres");
+assert.equal(redirected.cookies.get(locales.LOCALE_COOKIE)?.value, "de");
+assert.equal(redirected.cookies.get(locales.LOCALE_AUTO_COOKIE)?.value, "1");
+const automaticCookie = `${locales.LOCALE_COOKIE}=de; ${locales.LOCALE_AUTO_COOKIE}=1`;
+const autoNextVisit = await proxy(new NextRequest("https://example.test/genres?q=story", { headers: { cookie: automaticCookie, "accept-language": "en" } }));
+assert.equal(autoNextVisit.headers.get("location"), "https://example.test/en/genres?q=story");
+assert.equal(autoNextVisit.cookies.get(locales.LOCALE_COOKIE)?.value, "en");
+assert.equal(autoNextVisit.cookies.get(locales.LOCALE_AUTO_COOKIE)?.value, "1");
+const autoExplicitLink = await proxy(new NextRequest("https://example.test/de/genres", { headers: { cookie: automaticCookie, "accept-language": "en" } }));
+assert.equal(autoExplicitLink.headers.get("x-middleware-request-x-locale"), "de");
+assert.equal(autoExplicitLink.cookies.get(locales.LOCALE_AUTO_COOKIE), undefined, "a localized URL must not overwrite the automatic preference");
+assert.equal(autoExplicitLink.cookies.get(locales.LOCALE_COOKIE)?.value, "de");
+assert.equal(api.getApiLocale(new NextRequest("https://example.test/api/characters", { headers: { cookie: `${locales.LOCALE_COOKIE}=de; ${locales.LOCALE_AUTO_COOKIE}=1`, "accept-language": "en" } })), "de", "API responses keep the explicit page language in automatic mode");
+const manualChoice = await proxy(new NextRequest("https://example.test/genres", { headers: { cookie: `${locales.LOCALE_COOKIE}=de`, "accept-language": "en" } }));
+assert.equal(manualChoice.headers.get("location"), "https://example.test/de/genres");
+assert.equal(manualChoice.cookies.get(locales.LOCALE_COOKIE)?.value, "de");
 const db = new PGlite();
 try {
   await db.exec('CREATE TABLE "Character" ("id" TEXT PRIMARY KEY); INSERT INTO "Character" VALUES (\'hero\');');

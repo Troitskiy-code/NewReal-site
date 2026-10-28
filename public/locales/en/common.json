@@ -104,6 +104,14 @@
   },
   "language": {
     "label": "Language",
+    "title": "Interface language",
+    "choose": "Choose language",
+    "close": "Close language selection",
+    "search": "Find a language",
+    "automatic": "Automatic",
+    "browserLanguage": "Browser language · {{language}}",
+    "saved": "Your choice will be saved for future visits",
+    "empty": "No matching language",
     "ru": "RU",
     "en": "EN"
   },

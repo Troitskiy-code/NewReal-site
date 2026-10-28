@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
+/* Top-layer dialog: neither fixed headers nor the mobile drawer can clip the language menu. */
+.nv-language-dialog {
+  position: fixed;
+  inset: auto 0 0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: none;
+  max-height: calc(100dvh - 12px);
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+}
+.nv-language-dialog[open] { display: flex; flex-direction: column; }
+.nv-language-dialog button:focus-visible,
+.nv-language-trigger:focus-visible {
+  outline: 2px solid var(--color-wd-secondary);
+  outline-offset: 2px;
+}
+.nv-language-dialog::backdrop { background: rgb(0 0 0 / 60%); }
+.nv-language-foot { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  .nv-language-dialog {
+    inset: var(--language-top, 88px) auto auto var(--language-left, 12px);
+    width: 304px;
+    max-width: calc(100vw - 24px);
+    max-height: var(--language-height, calc(100dvh - 24px));
+    border-radius: 18px;
+  }
+  .nv-language-dialog::backdrop { background: transparent; }
+  .nv-language-foot { padding-bottom: 14px; }
+}
+
 @theme {
   --font-sans: var(--font-onest), sans-serif;
   --font-outfit: var(--font-onest), sans-serif;

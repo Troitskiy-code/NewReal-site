@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isPrivatePageUrl, PRIVATE_URL_HEADER } from "@/lib/urlPrivacy";
 import {
-  DEFAULT_LOCALE,
+  LOCALE_AUTO_COOKIE,
   isLocale,
   LOCALES,
   LOCALE_COOKIE,
@@ -36,7 +36,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 function resolveLocale(request) {
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
-  if (isLocale(cookieLocale)) return cookieLocale;
+  if (request.cookies.get(LOCALE_AUTO_COOKIE)?.value !== "1" && isLocale(cookieLocale)) return cookieLocale;
 
   return negotiateLocale(request.headers.get("accept-language"));
 }
@@ -235,6 +235,10 @@ export default async function proxy(request) {
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
   });
+  // Preserve automatic detection while keeping the real page language available to APIs.
+  if (request.cookies.get(LOCALE_AUTO_COOKIE)?.value === "1" || !isLocale(request.cookies.get(LOCALE_COOKIE)?.value)) {
+    response.cookies.set(LOCALE_AUTO_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  }
   return attachTelegramHeaders(attachPrivacyHeaders(request, attachAnonymousCookie(request, response, tg)), tg.context, pathname);
 }
 
