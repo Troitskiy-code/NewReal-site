@@ -669,6 +669,10 @@ try {
     }
     assert.equal(parse('*смотрю на печать письма* Дорога до Третогора долгая.', 'доставить письмо в Третогор').facts.length, 0,
       'talking about the errand does not close it');
+    // On prod the errand closed, but the handed-over letter stayed among the heroine's things.
+    const handed = facts.parseFactExtraction(output([delta('запечатанное письмо Сигизмунду Дийкстре', 's1', 'possessions', 'user', 'retract')]),
+      facts.factSources([{ id: 'm0', role: 'user', content: '*в Третогоре вручаю пакет капитану стражи* Вот.' }]), { partial: true });
+    assert.deepEqual(handed.facts.map(fact => fact.op), ['retract']);
     const f = await setup('## Пользователь\n- Долги и обязательства: доставить письмо в Третогор за 200 крон до ночи Саовины Сигизмунду Дийкстре\n- Долги и обязательства: должна Борину 40 крон');
     await turn(f, '*вручаю пакет стражнику* Вот. Задание выполнено.');
     await run(f, output([delta('доставить письмо Дийкстры в Третогор', 's1', 'debts', 'user', 'retract')]));
