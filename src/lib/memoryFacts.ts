@@ -132,13 +132,42 @@ function nameCore(subject: string): string[] {
 }
 const opensName = (short: string[], long: string[]) => short.length > 0 && short.length <= long.length
   && short.every((word, index) => isSameMemoryName(word, long[index]));
+const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
+/** An unnamed NPC filed under its role, lowercase by the extraction rules («npc:счетовод Грибо»). */
+export const isRoleSubject = (subject: string) => {
+  if (!subject.startsWith("npc:")) return false;
+  // Titles aside: «сэр Вальден» is a name.
+  const first = subject.slice(4).trim().split(/\s+/u).find(word => !NAME_TITLES.has(clean(word)));
+  return Boolean(first && /^\p{Ll}/u.test(first));
+};
+const lowerFirst = (text: string) => text.charAt(0).toLocaleLowerCase("ru") + text.slice(1);
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** «npc:Счетовод» when the turn says «счетовод» and never writes it capitalised mid-sentence is a role:
+ * Gemma capitalises roles despite the rules, and a capitalised role merged two accountants. */
+export function roleCase(subject: string, sources: Array<{ text: string }>): string {
+  if (!subject.startsWith("npc:") || isRoleSubject(subject)) return subject;
+  const name = subject.slice(4).trim();
+  const first = name.split(/\s+/u).find(word => !NAME_TITLES.has(clean(word)));
+  if (!first || !/^\p{Lu}\p{Ll}/u.test(first)) return subject;
+  const stem = escapeRegExp(lowerFirst(first).slice(0, Math.max(4, first.length - 2)));
+  const text = sources.map(source => source.text).join("\n");
+  const asRole = new RegExp(`(?<![\\p{L}])${stem}`, "u").test(text);
+  const asName = new RegExp(`(?<=[\\p{Ll}\\d,;:»)]\\s+)${escapeRegExp(first.slice(0, Math.max(4, first.length - 2)))}`, "u").test(text);
+  return asRole && !asName ? `npc:${name.replace(first, lowerFirst(first))}` : subject;
+}
 /** Maps each `npc:` subject to the fullest subject naming the same person; other subjects map to themselves. */
 export function npcAliasMap(subjects: string[]): Map<string, string> {
-  const npcs = [...new Set(subjects.filter(subject => subject.startsWith("npc:")))];
+  // A role is not a name: «счетовод склада сетей» and «счетовод Грибо» are two people. Only proper
+  // names merge by prefix; a subject that starts with a lowercase role keeps its own card. Two
+  // accountants shared one «Счетовод» card, and the narrator buried the living one (prod test 2026-10-28).
+  // A role stored capitalised before roleCase («npc:Счетовод») joins its lowercase card («npc:счетовод»).
+  const roleOf = new Map(subjects.filter(subject => subject.startsWith("npc:") && !isRoleSubject(subject))
+    .map(subject => [subject, `npc:${lowerFirst(subject.slice(4).trim())}`] as const).filter(([subject, role]) => role !== subject && subjects.includes(role)));
+  const npcs = [...new Set(subjects.filter(subject => subject.startsWith("npc:") && !isRoleSubject(subject) && !roleOf.has(subject)))];
   const cores = new Map(npcs.map(subject => [subject, nameCore(subject)]));
   const fuller = (a: string, b: string) => cores.get(a)!.length - cores.get(b)!.length
     || a.split(/\s+/u).length - b.split(/\s+/u).length || a.length - b.length || b.localeCompare(a);
-  const alias = new Map<string, string>();
+  const alias = new Map<string, string>([...subjects.filter(isRoleSubject).map(subject => [subject, subject] as const), ...roleOf]);
   for (const subject of npcs) {
     const candidates = npcs.filter(other => other !== subject && opensName(cores.get(subject)!, cores.get(other)!));
     const related = (a: string, b: string) => opensName(cores.get(a)!, cores.get(b)!) || opensName(cores.get(b)!, cores.get(a)!);
@@ -236,6 +265,11 @@ const SUSPICION = /(?:^|[^\p{L}])(?:подозрева\p{L}*|подозрени\
 const valueWords = (value: string) => clean(value).match(/\p{L}+/gu) ?? [];
 // «куртка Ники» is a clue, not clutter: a capitalised owner or place inside the value (not a «quoted» label).
 const namedInside = (value: string) => /[\p{Ll}\d,]\s+\p{Lu}/u.test(value.normalize("NFKC"));
+// Money without a sum says nothing: «серебро» (a courier's «поговорим о серебре») sat in the hero's
+// things next to the crowns he was paid, and nobody could tell how much he had (prod test 2026-10-28).
+const VAGUE_MONEY = /^(?:(?:немного|несколько|горсть|мешоч\p{L}*|мешок|кошел[её]к|кошель)\s+)?(?:(?:золот|серебрян|медн)\p{L}*\s+)?(?:серебро|золото|деньги|денег|монет\p{L}*|крон\p{L}*|флорен\p{L}*|оплата|плата|награда|жалованье)(?:\s+(?:от|за|с|у)\s+.+)?$/iu;
+const SUM = /\d|(?:^|[^\p{L}])(?:одн\p{L}*|дв\p{L}*|три|трёх|трех|четыр\p{L}*|пят\p{L}*|шест\p{L}*|сем\p{L}*|восем\p{L}*|девят\p{L}*|десят\p{L}*|сорок\p{L}*|сто|ста|сотн\p{L}*|тысяч\p{L}*)(?=$|[^\p{L}])/iu;
+const vagueMoney = (value: string) => VAGUE_MONEY.test(clean(value)) && !SUM.test(value);
 const mundaneOnly = (value: string) => {
   const words = valueWords(value);
   return words.some(word => MUNDANE_ITEM.test(word)) && !words.some(word => PLOT_ITEM.test(word)) && !namedInside(value);
@@ -259,7 +293,7 @@ export function lastingAppearance(value: string): string {
 export function slotNoiseReason(key: string, value: string): MemoryValidationReason | null {
   if (key === "appearance") return lastingAppearance(value) ? null : "transient_state";
   if (key === "health") return TRANSIENT_HEALTH.test(value) || (ACUTE_HEALTH.test(value) && !LASTING_HEALTH.test(value)) ? "transient_state" : null;
-  if (key === "possessions") return mundaneOnly(value) ? "slot_noise" : null;
+  if (key === "possessions") return mundaneOnly(value) || vagueMoney(value) ? "slot_noise" : null;
   if (key === "secrets") return SUSPICION.test(value) || (mundaneOnly(value) && !CONCEALED.test(value)) ? "slot_noise" : null;
   return null;
 }
@@ -332,6 +366,11 @@ value пиши по-русски, без английских слов.
 appearance — внешность: волосы, глаза, рост, телосложение, одежда, татуировки. Внешность не записывай в personality, likes или habits.
 appearance — только устойчивое. Сиюминутное (бледность, повязки и бинты, грязь и пятна, слёзы, выражение лица, как надета одежда) не записывай; уже записанную деталь повторяй, только если она изменилась.
 Для subject=npc:имя сохраняй, кто это и как связан с героями: relationship.status («подруга Вики из танцевальной группы», «друг Артёма, вернулся из армии») или occupation. Не сохраняй key=name, если value совпадает с именем в subject: одно имя без роли бесполезно.
+Безымянного NPC называй ролью с маленькой буквы и уточнением, чей он или где: subject=npc:счетовод Грибо, npc:счетовод склада сетей. Назвал имя — пиши по имени.
+ВАЖНО: прежде чем добавить факт к NPC из activeFacts, проверь, что это тот же человек — то же место, хозяин и приметы. Человек той же роли в другом месте (другой склад, другая каморка, другой хозяин) — другой NPC: новый subject с уточнением, а факты старой карточки, его гибель и приметы ему не переноси.
+Безымянных статистов одной сцены (нападавшие, чужая охрана, прохожие) не записывай: их судьбу передаст сводка.
+Гибель NPC сохраняй как health словами источника («зарезан в каморке у складов Грибо»). NPC, поступивший на службу к герою или получивший от него поручение, — relationship.status: герой велел громилам «стойте здесь, никого не выпускать» → subject=npc:громила с дубинкой, relationship.status «служит герою, охраняет склад сетей».
+Деньги — в possessions только с суммой («20 крон от Эрнеста за сети»); «серебро», «деньги», «плата» без суммы не записывай.
 value — короткое конкретное значение из источника. Имена и числа копируй точно; обычные падежные формы существительных допустимы. Не заменяй содержание синонимами.
 Для retract пустое value снимает весь слот, непустое — только это значение.
 Возвращённый долг, проданную, отданную, вручённую или потерянную вещь, погибшего питомца сними через retract этого значения (value с именем человека, вещи или питомца), даже если в цитате нет слова «не».
@@ -421,6 +460,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     if (Object.keys(row).some(key => !["op", "subject", "key", "value", "sourceId"].includes(key))) return reject("unexpected_fact_field");
     if (!["set", "retract"].includes(String(row.op))) return reject("invalid_operation", "op");
     detail.factOperation = String(row.op);
+    if (typeof row.subject === "string") row.subject = roleCase(row.subject, sources);
     if (typeof row.subject !== "string" || !subjectValid(row.subject)) return reject("invalid_subject", "subject");
     detail.factSubject = diagnosticSubject(row.subject);
     if (typeof row.key !== "string") return reject("invalid_key_type", "key");
@@ -576,7 +616,11 @@ export function renderFactCore(stored: RenderableFact[]): string {
   const bare = new Set([...new Set(facts.filter(fact => fact.subject.startsWith("npc:")).map(fact => fact.subject))]
     .filter(subject => facts.filter(fact => fact.subject === subject).every(bareName)));
   // Noise stored before the slot checks existed stays in the database but leaves the prompt.
-  const noise = (fact: RenderableFact) => !fact.pinned && !!slotNoiseReason(fact.key, fact.value);
+  // So does an extra known only by role and looks («кривоногий: топор», «старик у лавки: одноглазый»):
+  // a role card is shown once it holds a tie to the heroes, a debt, a secret or a death.
+  const story = new Set(facts.filter(fact => ["relationship.status", "debts", "secrets", "health"].includes(fact.key)).map(fact => fact.subject));
+  const extra = (fact: RenderableFact) => !fact.pinned && isRoleSubject(fact.subject) && !story.has(fact.subject);
+  const noise = (fact: RenderableFact) => extra(fact) || !fact.pinned && !!slotNoiseReason(fact.key, fact.value);
   // So do health lines stored before injuries were merged: only the fullest line per injury is shown.
   // Pets likewise: one line per animal.
   const same = (key: string, a: string, b: string) => key === "health" ? sameInjury(a, b) : key === "pets" && samePet(a, b);
@@ -600,7 +644,7 @@ export function renderFactCore(stored: RenderableFact[]): string {
     const value = fact.key === "appearance" ? (looks.get(fact) ?? []).filter(part => !beaten(part)).map(part => part.text).join(", ") : fact.value;
     if (!value) continue;
     const heading = fact.subject === "user" ? "Пользователь" : fact.subject === "character" ? "Персонаж"
-      : fact.subject === "relationship" ? "Отношения" : fact.subject.startsWith("npc:") ? fact.subject.slice(4) : "Мир и заметки";
+      : fact.subject === "relationship" ? "Отношения" : fact.subject.startsWith("npc:") ? capitalize(fact.subject.slice(4).trim()) : "Мир и заметки";
     const label = SLOTS[fact.key]?.label;
     const line = `- ${label ? `${label}: ` : ""}${value}`;
     sections.set(heading, [...(sections.get(heading) ?? []), line]);

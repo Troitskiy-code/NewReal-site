@@ -658,6 +658,36 @@ try {
     await run(f, output([delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]));
     assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'debts').map(fact => fact.value), ['должна Ягне 10 крон']);
   });
+  await check('unnamed NPCs with one role stay apart; money without a sum is noise; a death is kept', async () => {
+    // The owner's Witcher test (2026-10-28): two accountants shared one «Счетовод» card, the narrator buried the
+    // living one, and «серебро» sat in the hero's things next to the crowns he was paid.
+    const alias = facts.npcAliasMap(['npc:счетовод Грибо', 'npc:счетовод склада сетей', 'npc:счетовод', 'npc:Ирма', 'npc:Ирма Сол']);
+    assert.equal(alias.get('npc:счетовод'), 'npc:счетовод', 'a role never merges into a longer role');
+    assert.equal(alias.get('npc:счетовод Грибо'), 'npc:счетовод Грибо');
+    assert.equal(alias.get('npc:Ирма'), 'npc:Ирма Сол', 'proper names still merge');
+    assert.equal(facts.renderFactCore([
+      { subject: 'npc:счетовод Грибо', key: 'health', value: 'зарезан в каморке у складов Грибо', pinned: false, seq: 2 },
+      { subject: 'npc:счетовод склада сетей', key: 'relationship.status', value: 'под защитой героя', pinned: false, seq: 1 },
+    ]), '## Счетовод склада сетей\n- Статус отношений: под защитой героя\n\n## Счетовод Грибо\n- Здоровье: зарезан в каморке у складов Грибо');
+    for (const value of ['серебро', 'деньги', 'несколько золотых крон', 'плата от гонца']) {
+      assert.equal(facts.slotNoiseReason('possessions', value), 'slot_noise', value);
+    }
+    for (const value of ['20 крон от Эрнеста за сети', 'кошель с двумястами кронами', 'золотой медальон', 'сорок крон долга', 'гроссбух счетовода']) {
+      assert.equal(facts.slotNoiseReason('possessions', value), null, value);
+    }
+    assert.equal(facts.slotNoiseReason('health', 'зарезан в каморке у складов Грибо'), null);
+    // Gemma capitalises roles anyway: a word the turn writes in lowercase is a role, a mid-sentence capital is a name.
+    const turn = [{ text: 'За столом сидел счетовод Грибо.' }, { text: 'Люди Грибо ждали у двери.' }];
+    assert.equal(facts.roleCase('npc:Счетовод Грибо', turn), 'npc:счетовод Грибо');
+    assert.equal(facts.roleCase('npc:Грибо', turn), 'npc:Грибо');
+    assert.equal(facts.roleCase('npc:Ирма Сол', [{ text: 'Ирма Сол кивнула. — Ирма, подожди.' }]), 'npc:Ирма Сол');
+    assert.equal(facts.npcAliasMap(['npc:Счетовод', 'npc:счетовод']).get('npc:Счетовод'), 'npc:счетовод', 'an old capitalised role joins its card');
+    assert.equal(facts.renderFactCore([
+      { subject: 'npc:кривоногий', key: 'possessions', value: 'топор на короткой рукояти', pinned: false, seq: 3 },
+      { subject: 'npc:громила с дубинкой', key: 'possessions', value: 'дубинка', pinned: false, seq: 2 },
+      { subject: 'npc:громила с дубинкой', key: 'relationship.status', value: 'служит герою, охраняет склад сетей', pinned: false, seq: 1 },
+    ]), '## Громила с дубинкой\n- Статус отношений: служит герою, охраняет склад сетей\n- Вещи и тайники: дубинка', 'an extra known only by role and things is not shown');
+  });
   await check('a delivered or abandoned errand retracts from debts', async () => {
     // The second crash-test run (2026-10-28): «доставить письмо в Третогор» and «вернуть Илсу» stayed open to the end.
     const parse = (text, value) => facts.parseFactExtraction(output([delta(value, 's1', 'debts', 'user', 'retract')]),
