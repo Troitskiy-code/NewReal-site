@@ -627,6 +627,37 @@ try {
     await run(f, output([delta('навигатор', 's4', 'relationship.status', 'npc:Кай')]));
     assert.deepEqual((await active(f.scope)).map(fact => `${fact.subject}:${fact.key}=${fact.value}`), ['user:name=Кай Ортега']);
   });
+  await check('a closed debt retracts without «не»; recap answers add no facts or events; one pet is one line', async () => {
+    // The 250-turn crash test (2026-10-28): «долг закрыт» never retracted, a wrong retelling became a fact,
+    // and one mare was stored three times.
+    const parse = (texts, rows, events = []) => facts.parseFactExtraction(output(rows, events),
+      facts.factSources(texts.map(([role, content], index) => ({ id: `m${index}`, role, content }))), { partial: true });
+    const paid = parse([['user', 'Четыре десятка крон — долг закрыт.']], [delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]);
+    assert.deepEqual(paid.facts.map(fact => `${fact.op}:${fact.value}`), ['retract:должна Борину 40 крон']);
+    const vague = parse([['user', 'Я зашла к Борину за подковами.']], [delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]);
+    assert.equal(vague.facts.length, 0, 'no closure and no negation: nothing retracts');
+    assert.ok(facts.sharesName('должна Борину 30 новиградских флоринов', 'должна Борину 40 крон'));
+    assert.ok(!facts.sharesName('должна Борину 30 крон', 'должна Ягне 10 крон'));
+    const recap = parse([['user', 'Рассказчик, напомни: как зовут мою кобылу?'], ['assistant', 'Твоя кобыла — Вьюга, и ты шантажировала Борина.']],
+      [delta('шантажировала Борина', 's2', 'relationship.status', 'npc:Борин')], [{ sourceId: 's2', importance: 3 }]);
+    assert.deepEqual([recap.facts.length, recap.events.length], [0, 0]);
+    assert.ok(recap.rejectedCandidates.every(item => item.validationReason === 'recap_source'));
+    const intro = parse([['user', 'Как тебя зовут?'], ['assistant', 'Я травница из Вронницы.']], [delta('травница из Вронницы', 's2', 'occupation', 'npc:Ягна')]);
+    assert.deepEqual(intro.facts.map(fact => fact.value), ['травница из Вронницы'], 'an ordinary question still lets the answer in');
+    const covers = (a, b, key = 'pets') => facts.factValueCovers(a, b, key);
+    assert.ok(covers('гнедая кобыла Вьюга', 'вороная кобыла') && !covers('вороная кобыла', 'гнедая кобыла Вьюга'));
+    assert.ok(!covers('гнедая кобыла Вьюга', 'кобыла Ждана') && !covers('серый кот Пепел', 'пёс Бублик'), 'different names or kinds are different pets');
+    assert.ok(covers('шрам от когтей виверны на левом предплечье', 'шрам на левом предплечье', 'health'));
+    assert.equal(facts.renderFactCore([
+      { subject: 'user', key: 'pets', value: 'вороная кобыла', pinned: false, seq: 3 },
+      { subject: 'user', key: 'pets', value: 'гнедая кобыла Вьюга', pinned: false, seq: 1 },
+      { subject: 'user', key: 'pets', value: 'пёс Бублик', pinned: false, seq: 2 },
+    ]), '## Пользователь\n- Питомцы: пёс Бублик\n- Питомцы: гнедая кобыла Вьюга');
+    const f = await setup('## Пользователь\n- Долги и обязательства: должна Борину 30 новиградских флоринов\n- Долги и обязательства: должна Ягне 10 крон');
+    await turn(f, '*отдаю Борину кошель* Четыре десятка крон — долг закрыт.');
+    await run(f, output([delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]));
+    assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'debts').map(fact => fact.value), ['должна Ягне 10 крон']);
+  });
   await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
     const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     const late = await turn(f, 'А дальше?', 'Я живу у маяка.');

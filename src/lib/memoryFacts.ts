@@ -39,7 +39,7 @@ export type MemoryValidationReason = "invalid_response_type" | "invalid_json" | 
   | "character_fact_from_user_first_person" | "control_instruction" | "unsupported_value" | "question_source"
   | "non_factual_source" | "unsupported_number" | "empty_value" | "negated_set" | "single_slot_conflict"
   | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long" | "redundant_npc_name"
-  | "transient_state" | "slot_noise" | "npc_is_user";
+  | "transient_state" | "slot_noise" | "npc_is_user" | "recap_source";
 /** Only enums, generated source labels and sizes. Never include quotes, values or NPC names. */
 export type MemoryValidationDiagnostic = {
   validationReason?: MemoryValidationReason; validationPath?: string;
@@ -73,7 +73,22 @@ const BODY_PARTS: Array<[string, RegExp]> = [["плечо", /^плеч/], ["но
   ["запястье", /^запяст/], ["лодыжка", /^лодыж/], ["бедро", /^(?:бедр|бедер)/], ["шея", /^ше(?:я|и|ю|ей|е)$/], ["лицо", /^лиц(?:о|а|у|ом|е)$/],
   ["щека", /^щек/], ["палец", /^(?:палец|пальц)/], ["кисть", /^кист(?:ь|и|ью)$/], ["лоб", /^(?:лоб|лба|лбу|лбом)$/],
   ["висок", /^(?:висок|виск)/], ["ухо", /^(?:ухо|уха|уху|уши|ушей)$/], ["челюсть", /^челюст/], ["локоть", /^(?:локоть|локт)/],
-  ["ключица", /^ключиц/], ["позвоночник", /^позвоночн/], ["стопа", /^стоп(?:а|ы|у|ой|е)$/]];
+  ["ключица", /^ключиц/], ["позвоночник", /^позвоночн/], ["стопа", /^стоп(?:а|ы|у|ой|е)$/], ["предплечье", /^предплеч/]];
+// One mare filed three times («гнедая кобыла Вьюга», «вороная кобыла», crash test 2026-10-28). Lines about the
+// same kind of animal are one pet unless both carry different names; the fuller line stays.
+const PET_KINDS: Array<[string, RegExp]> = [["лошадь", /^(?:кобыл|конь|кон[яюеё]|лошад|жереб|мерин|скакун)/u],
+  ["собака", /^(?:п[её]с|пса|псу|псом|собак|щен)/u], ["кошка", /^(?:кот|кош|кис)/u], ["птица", /^(?:сокол|ястреб|ворон|сов[аыу]|попуга)/u]];
+function petSignature(value: string) {
+  const words: string[] = clean(value).match(/\p{L}+/gu) ?? [];
+  const kind = PET_KINDS.find(([, pattern]) => words.some(word => pattern.test(word)))?.[0];
+  const names: string[] = value.normalize("NFKC").match(/(?<=[\s«"])\p{Lu}[\p{Ll}-]+/gu) ?? [];
+  return kind ? { kind, names } : null;
+}
+function samePet(left: string, right: string): boolean {
+  const a = petSignature(left), b = petSignature(right);
+  if (!a || !b || a.kind !== b.kind) return false;
+  return !a.names.length || !b.names.length || a.names.some(name => b.names.some(other => isSameMemoryName(name, other)));
+}
 function injurySignature(value: string) {
   const words: string[] = clean(value).match(/\p{L}+/gu) ?? [];
   const parts = new Set(BODY_PARTS.filter(([, pattern]) => words.some(word => pattern.test(word))).map(([part]) => part));
@@ -161,6 +176,7 @@ export const MULTI_FACT_LIMIT = 6;
  * overlaps («красные волосы» / «красная чёлка») are different facts and stay apart. */
 export function factValueCovers(broader: string, narrower: string, key: string): boolean {
   if (key === "health" && sameInjury(broader, narrower)) return injuryFullness(broader) >= injuryFullness(narrower);
+  if (key === "pets" && samePet(broader, narrower)) return lookFullness(broader) >= lookFullness(narrower);
   if (key === "appearance") {
     const wide = lookDetails(lastingAppearance(broader));
     if (wide && wide === lookDetails(lastingAppearance(narrower))) return lookFullness(broader) >= lookFullness(narrower);
@@ -266,6 +282,27 @@ const RETRACTION_CUES: Record<string, RegExp> = {
   possessions: /отдал|продал|потерял|забрал|перепрят|достал|нашёл|нашел|украл|lost|gave/iu,
   debts: /долг|верн|отдал|расплат|должен|debt|paid/iu, secrets: /тайн|секрет|рассказ|узнал|раскрыл|secret/iu,
 };
+// A debt is closed and an item is lost without any «не»: «Четыре десятка крон — долг закрыт» never retracted,
+// so a repaid debt stayed in memory for the rest of a 250-turn story (crash test 2026-10-28). With such a cue
+// the retract value only picks the stored fact (by its value or a shared name); nothing new is asserted.
+const CLOSURE_CUES: Record<string, RegExp> = {
+  debts: /(?:^|[^\p{L}])(?:долг\p{L}*\s+(?:закрыт|погашен|прощ[её]н|уплачен|возвращ[её]н)\p{L}*|верн\p{L}*|отдал\p{L}*|расплат\p{L}*|погасил\p{L}*|рассчитал\p{L}*|в\s+расч[её]те|квиты|paid|repaid)(?=$|[^\p{L}])/iu,
+  possessions: /(?:^|[^\p{L}])(?:потерял\p{L}*|продал\p{L}*|отдал\p{L}*|подарил\p{L}*|украли|украден\p{L}*|сломал\p{L}*|выбросил\p{L}*|lost|sold|gave)(?=$|[^\p{L}])/iu,
+  pets: /(?:^|[^\p{L}])(?:умер\p{L}*|погиб\p{L}*|пал[аио]?|потерял\p{L}*|отдал\p{L}*|продал\p{L}*|died|lost)(?=$|[^\p{L}])/iu,
+};
+// A turn that asks about the past («напомни», «перескажи», «как звали…?») is answered with a retelling. Facts and
+// events taken from that answer only repeat memory, and a wrong retelling («шантажировала Борина») became a
+// «fact» of its own (crash test 2026-10-28). Such answers are not extracted.
+const RECALL_REQUEST = /(?:^|[^\p{L}])(?:напомни\p{L}*|перескажи\p{L}*|помнишь|помните|запамятовал\p{L}*|вылетел\p{L}*\s+из\s+головы|с\s+самого\s+начала)(?=$|[^\p{L}])/iu;
+const RECALL_QUESTION = /(?:^|[^\p{L}])(?:как\s+звали|что\s+было|что\s+лежало|что\s+мы\s+нашли|что\s+я\s+обещал\p{L}*|сколько\s+я\s+(?:должн|задолжал)\p{L}*|какой\s+(?:был\s+)?(?:пароль|код)|кто\s+меня\s+нанял|кто\s+погиб)(?=$|[^\p{L}])/iu;
+const isRecallTurn = (sources: FactSource[]) => sources.some(source => source.author === "user"
+  && (RECALL_REQUEST.test(source.text) || source.text.includes("?") && RECALL_QUESTION.test(source.text)));
+/** Two values name a person or thing in common (case forms count): «должна Борину 40 крон» / «Борин ждёт 30 флоринов». */
+export function sharesName(left: string, right: string): boolean {
+  const names = (text: string) => text.normalize("NFKC").match(/(?<!^)(?<=[\s«"(])\p{Lu}[\p{Ll}-]{2,}/gu) ?? [];
+  const theirs = names(right);
+  return names(left).some(name => theirs.some(other => isSameMemoryName(name, other)));
+}
 
 export function factSources(messages: Array<{ id: string; role: string; content: string }>): FactSource[] {
   return messages.flatMap(message => stripMemoryControlInstructions(message.content)
@@ -292,6 +329,8 @@ appearance — только устойчивое. Сиюминутное (бле
 Для subject=npc:имя сохраняй, кто это и как связан с героями: relationship.status («подруга Вики из танцевальной группы», «друг Артёма, вернулся из армии») или occupation. Не сохраняй key=name, если value совпадает с именем в subject: одно имя без роли бесполезно.
 value — короткое конкретное значение из источника. Имена и числа копируй точно; обычные падежные формы существительных допустимы. Не заменяй содержание синонимами.
 Для retract пустое value снимает весь слот, непустое — только это значение.
+Возвращённый долг, проданную, отданную или потерянную вещь, погибшего питомца сними через retract этого значения (value с именем человека, вещи или питомца), даже если в цитате нет слова «не».
+Если пользователь просит напомнить или пересказать прошлое, ответ персонажа — пересказ памяти: не извлекай из него ни факты, ни события.
 sourceId — один id законченной исходной цитаты. Не извлекай факты из вопросов, предложений и догадок.
 subject=user — герой пользователя ЭТОЙ истории; только из его сообщения. Ассистент не вправе придумать пользователю имя или биографию.
 Герой пользователя — не NPC: не заводи subject=npc:имя для его имени, фамилии или прозвища, даже когда персонажи обращаются к нему или говорят о нём. Имя пользователя записывай полностью, как он представился («Кай Ортега»).
@@ -356,7 +395,8 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
   const recoverable = new Set<MemoryValidationReason>(["invalid_subject", "unknown_source", "user_fact_from_character",
     "character_fact_from_user_first_person", "control_instruction", "unsupported_value", "unsupported_number",
     "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long", "redundant_npc_name",
-    "transient_state", "slot_noise", "npc_is_user"]);
+    "transient_state", "slot_noise", "npc_is_user", "recap_source"]);
+  const recap = isRecallTurn(sources);
   const candidate = <T>(kind: "fact" | "event", parse: () => T | null): T | null => {
     try { return parse(); } catch (error) {
       if (!partial || !(error instanceof MemoryExtractionError) || !error.diagnostic.validationReason
@@ -389,6 +429,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
       return reject("redundant_npc_name", "value");
     }
     if (!source) return reject("unknown_source", "sourceId");
+    if (recap && source.author !== "user") return reject("recap_source", "sourceId");
     // The hero under an NPC name: from the user it is a user fact, from a reply it is refused like any
     // user fact told by the assistant.
     if (isHeroName(row.subject, heroNames)) {
@@ -425,10 +466,11 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
             && !(SUMMARY_KEYS.has(key) && supportedSummaryValue(text, summaryEvidence(source))) ? "unsupported_value" : null;
     // A model must not remove an unmentioned city/job/etc. Refuse only that
     // destructive operation, retain grounded updates and surface the warning.
-    if (row.op === "retract" && (unsupported || !negated || !RETRACTION_CUES[key].test(source.text))) {
+    const closed = row.op === "retract" && Boolean(text) && Boolean(CLOSURE_CUES[key]?.test(source.text));
+    if (row.op === "retract" && (!RETRACTION_CUES[key].test(source.text) || !(closed || negated && !unsupported))) {
       rejectedRetractions++; return null;
     }
-    if (unsupported) return reject(unsupported, "value");
+    if (unsupported && !closed) return reject(unsupported, "value");
     if (row.op === "set" && !text) return reject("empty_value", "value");
     if (row.op === "set" && negatedValue && key !== "dislikes"
       && !/(?:^|[^\p{L}])(?:не|not)(?=$|[^\p{L}])/iu.test(text)) return reject("negated_set", "value");
@@ -477,6 +519,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     if (!source) return reject("unknown_source", "sourceId");
     if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
     detail.sourceRole = source.author; detail.sourceChars = source.text.length;
+    if (recap && source.author !== "user") return reject("recap_source", "sourceId");
     if (source.text.length > 2000) return reject("event_source_too_long", "sourceId");
     return { text: source.text, source: source.author, sourceMessageId: source.messageId, importance: Number(row.importance) };
   })).filter((event): event is ExtractedEvent => event !== null);
@@ -529,9 +572,12 @@ export function renderFactCore(stored: RenderableFact[]): string {
   // Noise stored before the slot checks existed stays in the database but leaves the prompt.
   const noise = (fact: RenderableFact) => !fact.pinned && !!slotNoiseReason(fact.key, fact.value);
   // So do health lines stored before injuries were merged: only the fullest line per injury is shown.
-  const merged = (fact: RenderableFact) => !fact.pinned && fact.key === "health" && facts.some(other => other !== fact
-    && other.subject === fact.subject && other.key === "health" && !noise(other) && sameInjury(other.value, fact.value)
-    && (injuryFullness(other.value) - injuryFullness(fact.value) || Number(other.pinned) || other.seq - fact.seq) > 0);
+  // Pets likewise: one line per animal.
+  const same = (key: string, a: string, b: string) => key === "health" ? sameInjury(a, b) : key === "pets" && samePet(a, b);
+  const fullness = (key: string, value: string) => key === "health" ? injuryFullness(value) : lookFullness(value);
+  const merged = (fact: RenderableFact) => !fact.pinned && ["health", "pets"].includes(fact.key) && facts.some(other => other !== fact
+    && other.subject === fact.subject && other.key === fact.key && !noise(other) && same(fact.key, other.value, fact.value)
+    && (fullness(fact.key, other.value) - fullness(fact.key, fact.value) || Number(other.pinned) || other.seq - fact.seq) > 0);
   // Appearance is shown part by part: passing parts are cut (stored before the check existed) and each
   // detail of a card keeps its fullest, then newest, description. Pinned parts are shown as written.
   type LookPart = { fact: RenderableFact; index: number; text: string; detail: string };

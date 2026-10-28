@@ -177,7 +177,12 @@ try {
     // The base roleplay prompt has grown since this fixture was written. Assert
     // the largest whole-message suffix that fits beside the actual system prompt:
     // memory keeps its reserve, so the small summary stays instead of one more old row.
-    let room = 6000 - countTokens(turn.system) - countTokens(turn.messages.at(-1).content);
+    // The turn reminder (chatSystemPrompt withTurnReminder) rides on the last user message after the
+    // budget is fitted: it never takes history's place, so it is measured apart from the 6000-token plan.
+    const lastContent = turn.messages.at(-1).content, reminderAt = lastContent.indexOf('\n\n[[');
+    const userText = reminderAt >= 0 ? lastContent.slice(0, reminderAt) : lastContent;
+    const reminderTokens = countTokens(lastContent) - countTokens(userText);
+    let room = 6000 - countTokens(turn.system) - countTokens(userText);
     const windowMarkers = [];
     for (const row of [...rows.slice(-24)].reverse()) {
       const tokens = countTokens(row.content);
@@ -188,7 +193,7 @@ try {
     const missing = windowMarkers.filter((m) => !text.includes(m));
     const lastUserKept = turn.messages.at(-1)?.content?.includes('ХВОСТ-32') === true;
     const coverageKept = memory?.lastSummarizedAt?.getTime() === coverage.getTime();
-    const withinLimit = turn.promptTokens <= 6000;
+    const withinLimit = turn.promptTokens - reminderTokens <= 6000;
     const summaryKept = turn.system.includes('Гость пришёл к маяку');
     record('S7', 'Ошибка обновления выжимки сохраняет доступный необработанный хвост и память', missing.length === 0 && lastUserKept && coverageKept && withinLimit && summaryKept,
       { missing, lastUserKept, coverageKept, summaryKept, promptTokens: turn.promptTokens }, metricsOf(turn));

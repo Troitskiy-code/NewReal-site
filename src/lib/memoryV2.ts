@@ -9,7 +9,7 @@ import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { inferMemoryStatus, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
-  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, npcAliasMap, isHeroName, fullNameInText, type FactDelta } from "./memoryFacts";
+  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, npcAliasMap, isHeroName, fullNameInText, sharesName, type FactDelta } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
@@ -41,7 +41,10 @@ async function applyFact(tx: Tx, threadId: string, delta: FactDelta, seq: number
     return;
   }
   if (delta.op === "retract") {
-    const ids = active.filter(fact => !delta.value || sameFactValue(fact.value, delta.value, delta.key)).map(fact => fact.id);
+    // A closed debt or a lost item may be named differently than stored («долг Борину закрыт» / «должна Борину
+    // 30 флоринов»): a shared name picks it.
+    const ids = active.filter(fact => !delta.value || sameFactValue(fact.value, delta.value, delta.key)
+      || ["debts", "possessions", "pets"].includes(delta.key) && sharesName(fact.value, delta.value)).map(fact => fact.id);
     if (ids.length) await tx.memoryFact.updateMany({ where: { id: { in: ids } }, data: { status: "retracted", supersededById: null } });
     return;
   }
