@@ -658,6 +658,22 @@ try {
     await run(f, output([delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]));
     assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'debts').map(fact => fact.value), ['должна Ягне 10 крон']);
   });
+  await check('a delivered or abandoned errand retracts from debts', async () => {
+    // The second crash-test run (2026-10-28): «доставить письмо в Третогор» and «вернуть Илсу» stayed open to the end.
+    const parse = (text, value) => facts.parseFactExtraction(output([delta(value, 's1', 'debts', 'user', 'retract')]),
+      facts.factSources([{ id: 'm0', role: 'user', content: text }]), { partial: true });
+    for (const [text, value] of [['*вручаю пакет стражнику* Вот. Задание выполнено.', 'доставить письмо в Третогор'],
+      ['Письмо доставлено, двести крон у меня.', 'доставить письмо в Третогор'],
+      ['Я отказываюсь везти её назад к отцу.', 'вернуть Илсу Вельшу']]) {
+      assert.deepEqual(parse(text, value).facts.map(fact => fact.op), ['retract'], text);
+    }
+    assert.equal(parse('*смотрю на печать письма* Дорога до Третогора долгая.', 'доставить письмо в Третогор').facts.length, 0,
+      'talking about the errand does not close it');
+    const f = await setup('## Пользователь\n- Долги и обязательства: доставить письмо в Третогор за 200 крон до ночи Саовины Сигизмунду Дийкстре\n- Долги и обязательства: должна Борину 40 крон');
+    await turn(f, '*вручаю пакет стражнику* Вот. Задание выполнено.');
+    await run(f, output([delta('доставить письмо Дийкстры в Третогор', 's1', 'debts', 'user', 'retract')]));
+    assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'debts').map(fact => fact.value), ['должна Борину 40 крон']);
+  });
   await check('changing a message after summary coverage keeps the summary; changing a covered one resets it', async () => {
     const f = await setup(), early = await turn(f, 'Расскажи о себе.', 'Меня зовут Лира.');
     const late = await turn(f, 'А дальше?', 'Я живу у маяка.');
