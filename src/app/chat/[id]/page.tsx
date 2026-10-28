@@ -16,6 +16,7 @@ export default async function ChatPage({ params }: PageProps) {
   const character = await prisma.character.findUnique({
     where: { id },
     select: {
+      translations: { select: { locale: true, name: true } },
       id: true,
       name: true,
       name_en: true,
@@ -26,8 +27,10 @@ export default async function ChatPage({ params }: PageProps) {
   });
 
   if (!character) notFound();
+  const viewerId = await getViewerId();
+  if (!character.isPublic && character.userId !== viewerId) notFound();
   // Telegram shares the public catalog; private cards are visible only to their author.
-  if (!(await isCharacterAllowedInTelegram(character, await getViewerId()))) notFound();
+  if (!(await isCharacterAllowedInTelegram(character, viewerId))) notFound();
 
   return (
     <ChatPageClient
@@ -35,6 +38,7 @@ export default async function ChatPage({ params }: PageProps) {
         id: character.id,
         name: character.name,
         name_en: character.name_en,
+        translations: character.translations,
         avatarUrl: characterAvatarPath(character.id, character.updatedAt),
       }}
     />

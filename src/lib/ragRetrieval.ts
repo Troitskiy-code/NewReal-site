@@ -113,7 +113,7 @@ export function selectDiverseRagCandidates<T extends RagMessage>(
 }
 
 export function formatRagLine(message: Pick<RagSourceMessage, "role" | "content">, locale?: string): string {
-  const english = locale === "en";
+  const english = Boolean(locale && locale !== "ru");
   const speaker = message.role === "user" ? (english ? "User" : "Пользователь") : english ? "Character" : "Персонаж";
   return `- ${speaker}: ${message.content.replace(/\s*\n\s*/gu, " ").trim()}`;
 }
@@ -124,7 +124,7 @@ function compareSources(left: RagSourceMessage, right: RagSourceMessage): number
 
 function excerptLine(messages: RagSourceMessage[], locale?: string): string {
   const at = messages[0]?.createdAt;
-  const title = locale === "en" ? "Past conversation excerpt" : "Фрагмент прошлой переписки";
+  const title = locale && locale !== "ru" ? "Past conversation excerpt" : "Фрагмент прошлой переписки";
   const date = at && Number.isFinite(at.getTime()) ? ` · ${at.toISOString()}` : "";
   return `${title}${date}\n${messages.map(message => formatRagLine(message, locale)).join("\n")}`;
 }

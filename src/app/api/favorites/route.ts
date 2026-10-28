@@ -1,4 +1,5 @@
 import { telegramVisibleCharacterIds } from "@/lib/telegram/catalog";
+import { publicTranslationSelect } from "@/lib/characterLocalization";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -8,6 +9,7 @@ import { ensureCharacterSlugColumn, isMissingSlugColumn } from "@/lib/ensureChar
 import { characterAvatarPath } from "@/lib/characterCardImage";
 
 const characterSelectNoSlug = {
+  translations: { select: publicTranslationSelect },
   id: true,
   name: true,
   name_en: true,

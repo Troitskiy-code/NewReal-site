@@ -23,8 +23,8 @@
     "verify:seo:runtime": "node scripts/verify-seo-runtime.mjs",
     "seo:audit-urls": "node scripts/audit-seo-urls.mjs",
     "preinstall": "node prisma/preinstall.cjs",
-    "dev": "node scripts/start-app.mjs --dev",
-    "build": "node scripts/prisma-generate.cjs && next build --webpack",
+    "dev": "node scripts/i18n-sync.mjs && node scripts/start-app.mjs --dev",
+    "build": "node scripts/i18n-sync.mjs && node scripts/i18n-check.mjs && node scripts/prisma-generate.cjs && next build --webpack",
     "start": "node scripts/start-app.mjs",
     "verify:startup": "node scripts/verify-app-startup.mjs",
     "verify:allvpn": "node scripts/verify-allvpn.mjs",
@@ -87,7 +87,15 @@
     "verify:telegram:accounts": "node scripts/verify-telegram-accounts.mjs",
     "verify:telegram:server": "node scripts/verify-telegram-miniapp-server.mjs",
     "telegram:bot-setup": "node scripts/telegram-bot-setup.mjs",
-    "verify:speech": "node scripts/verify-chat-speech.mjs"
+    "verify:speech": "node scripts/verify-chat-speech.mjs",
+    "i18n:sync": "node scripts/i18n-sync.mjs",
+    "i18n:add": "node scripts/i18n-add.mjs",
+    "i18n:check": "node scripts/i18n-sync.mjs --check && node scripts/i18n-check.mjs",
+    "verify:i18n": "node scripts/verify-i18n.mjs",
+    "translate:characters:locale": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-character-locales.ts",
+    "typecheck:app": "tsc --noEmit --project scripts/tsconfig.app.json",
+    "translate:pack": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-localization-pack.mjs",
+    "verify:localization:pack": "node scripts/verify-localization-pack.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

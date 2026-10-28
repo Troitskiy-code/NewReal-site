@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import localeManifest from './public/locales/manifest.json' with { type: 'json' };
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
@@ -18,7 +19,7 @@ const nextConfig = {
   async redirects() {
     return [
       // The prototype /gallery duplicated the home catalog; keep indexed links working (query is preserved).
-      { source: "/:locale(ru|en)/gallery", destination: "/:locale", permanent: true },
+      { source: `/:locale(${Object.keys(localeManifest.locales).filter(code => localeManifest.locales[code].enabled).join("|")})/gallery`, destination: "/:locale", permanent: true },
       { source: "/gallery", destination: "/", permanent: true },
     ];
   },

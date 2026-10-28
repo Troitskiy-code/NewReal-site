@@ -1,3 +1,4 @@
+import { localizedCharacterText } from "@/lib/characterLocalization";
 import type { Metadata } from "next";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
@@ -6,9 +7,9 @@ import { CharacterFaq, characterFaq, CharacterStory, SimilarCharacters } from ".
 import { getCharacterPageData, getCharacterStory, getSimilarCharacters } from "@/lib/characterPageData";
 import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL } from "@/lib/seo";
 import { translate } from "@/lib/getDictionary";
-import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
+import { getLocalizedCardDescription } from "@/lib/characterFields";
 import { absoluteAssetUrl, absoluteSiteUrl, buildCharacterJsonLd } from "@/lib/jsonLd";
-import { isEnglishLocale, withLocale } from "@/lib/i18nConfig";
+import { withLocale } from "@/lib/i18nConfig";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -32,13 +33,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const { character, locale } = await getCharacterPageData(slug);
 
-    const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name ?? "";
-    // Without its own English text the EN page would repeat the Russian description; the
-    // template keeps the two language versions distinct for search engines.
-    const hasOwnText = !isEnglishLocale(locale) || Boolean(character.descriptionCard_en?.trim() || character.description_en?.trim());
+    const name = localizedCharacterText(character, "name", locale) ?? character.name ?? "";
+    // A locale without its own card copy uses the translated metadata template.
+    const ownTranslation = character.translations?.find((text) => text.locale === locale);
+    const hasOwnText = locale === "ru" || Boolean(ownTranslation?.descriptionCard?.trim() || ownTranslation?.description?.trim())
+      || (locale === "en" && Boolean(character.descriptionCard_en?.trim() || character.description_en?.trim()));
     const description =
       (hasOwnText ? getLocalizedCardDescription(character, locale) : null) ||
-      (hasOwnText ? pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) : null) ||
+      (hasOwnText ? localizedCharacterText(character, "publicMemory", locale) : null) ||
       translate(locale, "meta.character.description", { name: name || "Character" });
     const truncatedDescription = truncateDescription(description || "");
     const image = characterOgImage(character.imageUrl);
@@ -89,10 +91,10 @@ export default async function CharacterPage({ params }: PageProps) {
   const { slug } = await params;
   const { character, locale, view } = await getCharacterPageData(slug);
   const [{ story }, similar] = await Promise.all([getCharacterStory(slug), getSimilarCharacters(character)]);
-  const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
+  const name = localizedCharacterText(character, "name", locale) ?? character.name;
   const description = truncateDescription(
     getLocalizedCardDescription(character, locale) ||
-    pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale) ||
+    localizedCharacterText(character, "publicMemory", locale) ||
     ""
   );
 

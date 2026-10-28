@@ -2,6 +2,7 @@ import { ClientInputError } from "./publicError";
 import { normalizeTagsString } from "@/lib/characterTags";
 import { parseMemoryInput, parseMemoryPermissionsInput, memoryToText } from "@/lib/persistentMemory";
 import { isEnglishLocale } from "@/lib/i18nConfig";
+import { localizedCharacterText, type LocalizableCharacter } from "./characterLocalization";
 import { parseRoleplayFields } from "./roleplayConfig";
 import { parseArtStyle } from "./onboarding";
 
@@ -84,24 +85,10 @@ export function pickLocalizedText(
 }
 
 export function getLocalizedCardDescription(
-  character: {
-    descriptionCard?: string | null;
-    descriptionCard_en?: string | null;
-    description?: string | null;
-    description_en?: string | null;
-  },
+  character: LocalizableCharacter,
   locale: string | null | undefined
 ): string | null {
-  if (isEnglishLocale(locale)) {
-    return (
-      character.descriptionCard_en?.trim() ||
-      character.description_en?.trim() ||
-      character.descriptionCard?.trim() ||
-      character.description?.trim() ||
-      null
-    );
-  }
-  return getCardDescription(character);
+  return localizedCharacterText(character, ["descriptionCard", "description"], locale);
 }
 
 /** Card blurbs often open with "Name — …"; drop the echo because the title is shown right above. */

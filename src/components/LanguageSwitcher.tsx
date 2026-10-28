@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { LOCALES, LOCALE_COOKIE, stripLocalePrefix, withLocale, type Locale } from "@/lib/i18nConfig";
+import { LOCALES, LOCALE_COOKIE, localeDefinition, resolveLocale, stripLocalePrefix, withLocale, type Locale } from "@/lib/i18nConfig";
 
 function persistLocale(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
@@ -17,7 +17,7 @@ export default function LanguageSwitcher({
 }) {
   const pathname = usePathname();
   const { i18n, t } = useTranslation();
-  const current = (LOCALES.includes(i18n.language as Locale) ? i18n.language : "ru") as Locale;
+  const current = resolveLocale(i18n.language);
   const isMenu = variant === "menu";
 
   const switchLocale = (locale: Locale) => {
@@ -25,12 +25,23 @@ export default function LanguageSwitcher({
     persistLocale(locale);
     void i18n.changeLanguage(locale);
     const path = typeof window !== "undefined" ? window.location.pathname : pathname;
-    window.location.assign(withLocale(stripLocalePrefix(path), locale));
+    window.location.assign(withLocale(stripLocalePrefix(path), locale) + window.location.search + window.location.hash);
   };
+
+  if (LOCALES.length > 3) return (
+    <select
+      aria-label={t("language.label")}
+      value={current}
+      onChange={(event) => switchLocale(event.target.value as Locale)}
+      className={`min-h-10 rounded-xl border border-wd-border bg-wd-card px-3 text-sm text-white ${isMenu ? "w-full" : "max-w-40"} ${className}`}
+    >
+      {LOCALES.map((locale) => <option key={locale} value={locale}>{localeDefinition(locale).label}</option>)}
+    </select>
+  );
 
   return (
     <div
-      className={`${isMenu ? "flex w-full" : "inline-flex"} items-center gap-0.5 rounded-full border border-wd-border bg-wd-card p-1 ${className}`}
+      className={`${isMenu ? "flex w-full" : "inline-flex"} flex-wrap items-center gap-0.5 rounded-2xl border border-wd-border bg-wd-card p-1 ${className}`}
       aria-label={t("language.label")}
     >
       {LOCALES.map((locale) => (
@@ -47,7 +58,7 @@ export default function LanguageSwitcher({
               : "text-wd-text-secondary hover:text-white"
           }`}
         >
-          {t(`language.${locale}`)}
+          {localeDefinition(locale).label}
         </button>
       ))}
     </div>

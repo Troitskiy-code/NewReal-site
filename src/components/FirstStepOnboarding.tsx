@@ -1,5 +1,10 @@
 "use client";
 
+import { resolveLocale } from "@/lib/i18nConfig";
+
+import { localizedCharacterText } from "@/lib/characterLocalization";
+
+
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -7,7 +12,7 @@ import { FaCheck, FaChevronLeft } from "react-icons/fa";
 import { reachGoal, METRIKA_GOALS } from "@/lib/metrika";
 import { withLocale } from "@/lib/i18nConfig";
 import { characterTagLabel } from "@/lib/characterTags";
-import { getLocalizedCardDescription, pickLocalizedText, stripLeadingName } from "@/lib/characterFields";
+import { getLocalizedCardDescription, stripLeadingName } from "@/lib/characterFields";
 import {
   MAX_ONBOARDING_INTERESTS, ONBOARDING_COMPLETED_MAX_AGE, ONBOARDING_COOKIE, ONBOARDING_INTERESTS, ONBOARDING_SKIPPED_MAX_AGE,
   hasOnboardingSignals, onboardingInterestTags, parseOnboardingStyle, serializeOnboardingPrefs,
@@ -59,7 +64,7 @@ export default function FirstStepOnboarding({ source, initialPrefs, onClose }: {
 }) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const locale = i18n.language === "en" ? "en" : "ru";
+  const locale = resolveLocale(i18n.language);
   const [step, setStep] = useState<Step>(1);
   const [style, setStyle] = useState<OnboardingStyle | null>(initialPrefs?.style ?? null);
   const [interests, setInterests] = useState<OnboardingInterest[]>(initialPrefs?.interests ?? []);
@@ -271,9 +276,9 @@ export default function FirstStepOnboarding({ source, initialPrefs, onClose }: {
         // "Start chatting" is visible without scrolling (down to a floor where the step scrolls instead).
         <div className={`-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] max-sm:min-h-[22rem] sm:mx-0 sm:grid sm:overflow-visible sm:px-0 md:gap-3.5 ${characters.length === 1 ? "sm:grid-cols-[minmax(0,300px)] sm:justify-center" : characters.length === 2 ? "sm:grid-cols-[repeat(2,minmax(0,280px))] sm:justify-center" : "sm:grid-cols-3"}`}>
           {characters.map((character, index) => {
-            const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
+            const name = localizedCharacterText(character, "name", locale) ?? character.name;
             const hook = getLocalizedCardDescription(character, locale);
-            const greeting = locale === "en" ? character.greeting_en ?? character.greeting : character.greeting;
+            const greeting = localizedCharacterText(character, "greeting", locale);
             return (
               <article key={character.id} className={`flex min-w-0 shrink-0 snap-center flex-col overflow-hidden rounded-[18px] border border-wd-border bg-wd-card sm:w-auto ${characters.length === 1 ? "w-full" : "w-[82%]"}`}>
                 <div className="relative isolate aspect-[4/5] max-sm:min-h-36 sm:aspect-square">

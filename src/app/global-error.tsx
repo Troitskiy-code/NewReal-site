@@ -4,29 +4,12 @@ import "./globals.css";
 import { getLocaleFromPath } from "@/lib/i18nConfig";
 import { ERROR_PRIMARY_BUTTON, ERROR_SECONDARY_BUTTON } from "@/components/ErrorState";
 
-// Inlined rather than read from common.json, which would ship both full dictionaries with this boundary.
-// Keep in sync with errorPage.* in public/locales.
-const TEXT = {
-  ru: {
-    errorTitle: "Что-то пошло не так",
-    errorText: "Мы уже знаем о проблеме. Попробуйте ещё раз или вернитесь в каталог.",
-    retry: "Попробовать снова",
-    toCatalog: "В каталог",
-    errorCode: "Код ошибки",
-  },
-  en: {
-    errorTitle: "Something went wrong",
-    errorText: "We already know about the problem. Try again or go back to the catalog.",
-    retry: "Try again",
-    toCatalog: "Go to catalog",
-    errorCode: "Error code",
-  },
-};
+import { localeErrorMessages } from "@/lib/localeErrors.generated";
 
 // Replaces the root layout when it fails, so it cannot rely on providers, i18n context or the app shell.
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   const locale = (typeof window !== "undefined" && getLocaleFromPath(window.location.pathname)) || "ru";
-  const t = TEXT[locale];
+  const t = localeErrorMessages[locale];
 
   return (
     <html lang={locale}>

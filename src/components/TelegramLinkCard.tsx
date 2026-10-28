@@ -61,7 +61,7 @@ export default function TelegramLinkCard() {
     <p className="text-xs font-bold uppercase tracking-widest text-wd-text-secondary">Telegram</p>
     <p className="text-sm text-white">{t("telegram.accountHint")}</p>
     <p className="text-sm text-wd-text-secondary">{t("telegram.manageAccountHint")}</p>
-    <button type="button" onClick={() => openOutsideTelegram(`/${i18n.language === "en" ? "en" : "ru"}/profile`)} className="rounded-[50px] border border-wd-border px-5 py-2.5 text-xs font-bold text-white">{t("telegram.openWebsiteAccount")}</button>
+    <button type="button" onClick={() => openOutsideTelegram(`/${i18n.language}/profile`)} className="rounded-[50px] border border-wd-border px-5 py-2.5 text-xs font-bold text-white">{t("telegram.openWebsiteAccount")}</button>
   </section>;
 
   const link = async () => {

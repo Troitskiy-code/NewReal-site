@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
+import { moduleLoader } from './lib/load-local-module.mjs';
+const loadLocaleModule = moduleLoader();
 import { PGlite } from '@electric-sql/pglite';
 const require = createRequire(import.meta.url);
 const { NextRequest, NextResponse } = require('next/server');
@@ -20,6 +22,8 @@ function load(file, dependencies = {}) {
   new Function('require', 'module', 'exports', code)(name => {
     if (name in dependencies) return dependencies[name];
     if (name.startsWith('node:') || ['next/server', '@prisma/client'].includes(name)) return require(name);
+    const localeModule = name.match(/(?:^|\/)(i18nConfig|characterLocalization|getDictionary)$/)?.[1];
+    if (localeModule) return loadLocaleModule(`src/lib/${localeModule}.ts`);
     throw new Error(`Missing isolated dependency ${file}: ${name}`);
   }, loadedModule, loadedModule.exports);
   return loadedModule.exports;

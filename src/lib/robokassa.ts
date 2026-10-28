@@ -182,7 +182,8 @@ export function createRobokassaCheckout(options: {
     Description: options.desc,
     SignatureValue: signature,
     Encoding: "utf-8",
-    Culture: options.locale === "en" ? "en" : "ru",
+    // The gateway's culture parameter stays RU/EN independently of the site's languages.
+    Culture: options.locale === "ru" || !options.locale ? "ru" : "en",
   };
 
   for (const [key, value] of Object.entries(shp)) {

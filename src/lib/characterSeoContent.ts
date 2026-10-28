@@ -1,4 +1,5 @@
 import { FEATURED_GENRES, recommendationTags } from "@/lib/characterTags";
+import { translate } from "@/lib/getDictionary";
 
 /**
  * Pure helpers for the indexable part of a public character page: story excerpts, the 18+ guard
@@ -29,14 +30,14 @@ export function isAdultCharacter(texts: ReadonlyArray<string | null | undefined>
   return texts.some(hasAdultText);
 }
 
-export type StoryLocale = "ru" | "en";
+export type StoryLocale = string;
 
 /**
  * A greeting or scenario as page text: chat macros resolved, roleplay asterisks dropped and long text
  * cut at a sentence end. Returns null for empty text.
  */
 export function storyExcerpt(text: string | null | undefined, name: string, locale: StoryLocale, max: number): string | null {
-  const you = locale === "en" ? "you" : "вы";
+  const you = translate(locale, "characterStory.you");
   const value = text
     ?.replace(/\{\{char\}\}/gi, name)
     // "Привет, {{user}}!" and "{{user}}, ты пришёл" read naturally without the address.

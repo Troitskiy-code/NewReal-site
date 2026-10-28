@@ -357,7 +357,7 @@ export default function SubscriptionPlans({
               <ul className="mb-6 flex-1 space-y-2.5 border-t border-wd-border pt-5 text-xs text-wd-text-secondary">
                 <li className="flex items-start gap-3 text-sm text-wd-text">
                   <FaCheck className="mt-1 shrink-0 text-wd-primary-soft" />
-                  <span>{i18n.language.startsWith("en") ? `Up to ${avatarMonthlyAllowance(plan.id)} avatars per calendar month; every model uses one generation` : `До ${avatarMonthlyAllowance(plan.id)} аватаров в календарный месяц; любая модель расходует одну генерацию`}</span>
+                  <span>{t("subscriptions.avatarAllowance", { count: avatarMonthlyAllowance(plan.id) })}</span>
                 </li>
                 {freeQuotaModelName && plan.freeDailyReplies > 0 && (
                   <li className="flex items-start gap-3 text-sm text-wd-text">

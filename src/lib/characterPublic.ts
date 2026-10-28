@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth/next";
+import { publicTranslationSelect, type CharacterTranslation } from "./characterLocalization";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildCharacterSlug } from "@/lib/characterSlug";
@@ -10,6 +11,7 @@ import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 
 export const publicCharacterSelect = {
+  translations: { select: publicTranslationSelect },
   id: true,
   slug: true,
   name: true,
@@ -38,6 +40,7 @@ export const publicCharacterSelect = {
 } as const;
 
 export type PublicCharacterRecord = {
+  translations?: CharacterTranslation[];
   id: string;
   slug: string;
   name: string;
@@ -116,6 +119,7 @@ export async function findCharacterBySlugForViewer(
 
   return {
     id: character.id,
+    translations: character.translations,
     slug: character.slug,
     name: character.name,
     name_en: character.name_en,
@@ -155,6 +159,7 @@ export async function getViewerId(): Promise<string | null> {
 
 export function toPublicCharacterPayload(character: PublicCharacterRecord, viewerId?: string | null) {
   return {
+    translations: character.translations,
     id: character.id,
     slug: character.slug,
     name: character.name,

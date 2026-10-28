@@ -1,4 +1,5 @@
 import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
+import { chatTranslationSelect } from "@/lib/characterLocalization";
 import { ClientInputError } from "@/lib/publicError";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
@@ -45,7 +46,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const session = await getServerSession(authOptions);
 
-    const character = await prisma.character.findUnique({ where: { id } });
+    const character = await prisma.character.findUnique({ where: { id }, include: { translations: { select: chatTranslationSelect } } });
 
     if (!character) {
       return NextResponse.json({ error: "Персонаж не найден" }, { status: 404 });

@@ -1,28 +1,21 @@
+import { localizedCharacterText } from "@/lib/characterLocalization";
 import LocaleLink from "@/components/LocaleLink";
 import { characterAvatarPath } from "@/lib/characterCardImage";
-import { pickLocalizedText } from "@/lib/characterFields";
 import { pickFeaturedGenre } from "@/lib/characterTags";
 import { translate } from "@/lib/getDictionary";
 import { getAnonymousMessageLimit } from "@/lib/anonymousSession";
 import { FREE_DAILY_REPLIES, FREE_DAILY_REPLIES_ONBOARDING } from "@/lib/freeDailyQuota";
 import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
-import { isEnglishLocale } from "@/lib/i18nConfig";
 import { STORY_GREETING_MAX, STORY_SCENARIO_MAX, storyExcerpt } from "@/lib/characterSeoContent";
 import type { getSimilarCharacters } from "@/lib/characterPageData";
 
 // Server-rendered page text: it reaches crawlers in the HTML and never ships in the client bundle.
 
-type Story = { greeting: string | null; greeting_en: string | null; scenario: string | null; scenario_en: string | null };
-
-/** The localized field, or the original when the card has no translation (as in the chat itself). */
-function localizedStory(original: string | null, translated: string | null, locale: string) {
-  return isEnglishLocale(locale) && translated?.trim() ? translated : original;
-}
+type Story = { greeting: string | null; greeting_en: string | null; scenario: string | null; scenario_en: string | null; translations?: import("@/lib/characterLocalization").CharacterTranslation[] };
 
 export function CharacterStory({ story, name, locale }: { story: Story; name: string; locale: string }) {
-  const storyLocale = isEnglishLocale(locale) ? "en" : "ru";
-  const scenario = storyExcerpt(localizedStory(story.scenario, story.scenario_en, locale), name, storyLocale, STORY_SCENARIO_MAX);
-  const greeting = storyExcerpt(localizedStory(story.greeting, story.greeting_en, locale), name, storyLocale, STORY_GREETING_MAX);
+  const scenario = storyExcerpt(localizedCharacterText(story, "scenario", locale), name, locale, STORY_SCENARIO_MAX);
+  const greeting = storyExcerpt(localizedCharacterText(story, "greeting", locale), name, locale, STORY_GREETING_MAX);
   if (!scenario && !greeting) return null;
   return (
     <>
@@ -69,7 +62,7 @@ export function SimilarCharacters({ characters, locale }: { characters: SimilarC
                   className="h-16 w-12 shrink-0 rounded-xl bg-wd-elevated object-cover object-[center_22%]" />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold text-white">
-                    {pickLocalizedText(character.name, character.name_en, locale) ?? character.name}
+                    {localizedCharacterText(character, "name", locale) ?? character.name}
                   </span>
                   {genre ? (
                     <span className="block truncate text-xs text-wd-text-secondary">{translate(locale, `home.genres.${genre.id}`)}</span>
@@ -85,8 +78,8 @@ export function SimilarCharacters({ characters, locale }: { characters: SimilarC
 }
 
 function messagesWord(locale: string, count: number): string {
-  const form = new Intl.PluralRules(isEnglishLocale(locale) ? "en" : "ru").select(count);
-  return translate(locale, `characterPage.messagesWord.${form === "one" || form === "few" ? form : "many"}`);
+  const form = new Intl.PluralRules(locale).select(count);
+  return translate(locale, `characterPage.messagesWord_${form}`);
 }
 
 export function characterFaq(locale: string, name: string) {

@@ -20,12 +20,11 @@ type CharacterTagPickerProps = {
 };
 
 export default function CharacterTagPicker({ value, onChange }: CharacterTagPickerProps) {
-  const { i18n } = useTranslation();
-  const en = i18n.language.startsWith("en");
+  const { i18n, t } = useTranslation();
   const [search, setSearch] = useState("");
   const selectedTags = parseTagsString(value);
   const selected = new Set(selectedTags);
-  const label = (tag: string) => characterTagLabel(tag, i18n.language);
+  const label = (tag: string) => characterTagLabel(tag, i18n.language, (key, fallback) => t(key, { defaultValue: fallback }));
   const query = search.trim().toLocaleLowerCase();
   const groups = CHARACTER_TAG_GROUPS.map(group => ({ ...group, tags: group.tags.filter(tag =>
     !query || [tag, label(tag), ...characterTagSearchTerms(tag)].some(term => term.toLocaleLowerCase().includes(query)),
@@ -34,11 +33,11 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
   return (
     <div>
       <p className="mb-3 text-xs leading-relaxed text-wd-text-secondary">
-        {en ? "Choose up to 8 accurate tags to help readers find your story." : "Выберите до 8 точных тегов: они помогают найти вашу историю."}
+        {t("characterTags.hint", { limit: MAX_SELECTED_CHARACTER_TAGS })}
         {" "}{selectedTags.length}/{MAX_SELECTED_CHARACTER_TAGS}
       </p>
       <input type="search" value={search} onChange={event => setSearch(event.target.value)}
-        aria-label={en ? "Find a tag" : "Найти тег"} placeholder={en ? "Find a tag" : "Найти тег"}
+        aria-label={t("characterTags.search")} placeholder={t("characterTags.search")}
         className="mb-4 min-h-10 w-full rounded-xl border border-wd-border bg-wd-card px-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary" />
       {selectedTags.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
@@ -47,12 +46,12 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
               key={tag}
               className="inline-flex items-center gap-1.5 rounded-full bg-wd-secondary px-3 py-1 text-xs text-wd-on-secondary"
             >
-              {label(tag)}{LEGACY_CHARACTER_TAGS.includes(tag) ? (en ? " (legacy)" : " (прежний)") : ""}
+              {label(tag)}{LEGACY_CHARACTER_TAGS.includes(tag) ? t("characterTags.legacy") : ""}
               <button
                 type="button"
                 onClick={() => onChange(removeTagFromString(value, tag))}
                 className="rounded-full p-0.5 transition-colors hover:bg-white/20"
-                aria-label={en ? `Remove tag ${label(tag)}` : `Убрать тег ${label(tag)}`}
+                aria-label={t("characterTags.remove", { tag: label(tag) })}
               >
                 <FaTimes className="text-[10px]" />
               </button>
@@ -68,7 +67,7 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
           className="mb-3 rounded-xl border border-wd-border bg-wd-card px-3 py-2"
         >
           <summary className="min-h-8 cursor-pointer text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-wd-secondary">
-            {en ? group.labelEn : group.label}
+            {t(`characterTags.groups.${group.id}`)}
             {group.tags.some(tag => selected.has(tag)) ? ` · ${group.tags.filter(tag => selected.has(tag)).length}` : ""}
           </summary>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -94,7 +93,7 @@ export default function CharacterTagPicker({ value, onChange }: CharacterTagPick
           </div>
         </details>
       ))}
-      {!groups.length && <p className="text-sm text-wd-text-secondary">{en ? "No matching tags" : "Подходящих тегов нет"}</p>}
+      {!groups.length && <p className="text-sm text-wd-text-secondary">{t("characterTags.noMatches")}</p>}
     </div>
   );
 }

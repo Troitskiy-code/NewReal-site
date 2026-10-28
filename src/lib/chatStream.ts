@@ -1,4 +1,5 @@
 import { safeErrorFields } from "./redactSensitive";
+import { isLocale } from "./i18nConfig";
 import { ChatCompletionStreamError, ChatCompletionStreamParser, extractChatStreamDelta, hasChatStreamReasoning } from "./chatCompletionStream";
 import type { ChatCompletionFinishReason } from "./chatCompletionStream";
 import type { ChatThreadSummary } from "./chatThreadShared";
@@ -252,7 +253,7 @@ export async function readChatNdjsonStream(
 
 export async function fetchChatNdjsonStream(url: string, body: unknown): Promise<Response> {
   const locale =
-    typeof document !== "undefined" && (document.documentElement.lang === "en" || document.documentElement.lang === "ru")
+    typeof document !== "undefined" && isLocale(document.documentElement.lang)
       ? document.documentElement.lang
       : "";
 

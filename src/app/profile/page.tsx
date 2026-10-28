@@ -1,5 +1,8 @@
 "use client";
 
+import { localizedCharacterText } from "@/lib/characterLocalization";
+
+
 import { useState, useEffect, useCallback } from "react";
 import LocaleLink from "@/components/LocaleLink";
 import { useSession } from "next-auth/react";
@@ -23,7 +26,7 @@ import DailyBonusCard from "@/components/DailyBonusCard";
 import { LogoMark } from "@/components/Logo";
 import TelegramLinkCard from "@/components/TelegramLinkCard";
 import { useTelegramMode } from "@/components/TelegramProvider";
-import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
+import { getLocalizedCardDescription } from "@/lib/characterFields";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "@/lib/i18nConfig";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
@@ -399,7 +402,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-6">
               {characters.map((character) => {
                 const tags = parseTags(character.tags);
-                const name = pickLocalizedText(character.name, character.name_en, i18n.language) ?? character.name;
+                const name = localizedCharacterText(character, "name", i18n.language) ?? character.name;
                 return (
                   <article key={character.id} className="wd-card overflow-hidden flex flex-col transition-transform hover:-translate-y-1">
                     <div className="aspect-square bg-[#0c0b12] overflow-hidden relative">
@@ -526,7 +529,7 @@ export default function ProfilePage() {
         title={t("common.delete")}
         description={t("profile.deleteConfirm", {
           name: deleteTarget
-            ? pickLocalizedText(deleteTarget.name, deleteTarget.name_en, i18n.language) ??
+            ? localizedCharacterText(deleteTarget, "name", i18n.language) ??
               deleteTarget.name
             : "",
         })}

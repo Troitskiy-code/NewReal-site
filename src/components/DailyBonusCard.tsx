@@ -58,7 +58,7 @@ export default function DailyBonusCard({ showBalance = true }: { showBalance?: b
     setClaiming(false);
   };
 
-  const number = (value: number) => value.toLocaleString(i18n.language === "en" ? "en-US" : "ru-RU");
+  const number = (value: number) => value.toLocaleString(i18n.language);
 
   return (
     <section data-testid="daily-bonus-card" aria-labelledby="daily-bonus-title" className="wd-card space-y-4 p-4 md:p-6">

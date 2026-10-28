@@ -1,4 +1,5 @@
 import { telegramCharacterWhere } from "@/lib/telegram/catalog";
+import { publicTranslationSelect } from "@/lib/characterLocalization";
 import { ClientInputError } from "@/lib/publicError";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { withAiCostContext, setAiCostActor } from "@/lib/aiCostTelemetry";
@@ -240,6 +241,7 @@ export async function GET(req: NextRequest) {
     const queryWhere = andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
     const characterCardSelectNoSlug = {
+      translations: { select: publicTranslationSelect },
       id: true,
       name: true,
       name_en: true,

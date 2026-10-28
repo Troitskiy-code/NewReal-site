@@ -1,0 +1,29 @@
+{
+  "defaultLocale": "ru",
+  "locales": {
+    "ru": {
+      "label": "Русский",
+      "languageName": "Russian",
+      "intl": "ru-RU",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": true
+    },
+    "en": {
+      "label": "English",
+      "languageName": "English",
+      "intl": "en-US",
+      "direction": "ltr",
+      "fallback": "ru",
+      "enabled": true
+    },
+    "es": {
+      "label": "Español",
+      "languageName": "Spanish",
+      "intl": "es-ES",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": true
+    }
+  }
+}

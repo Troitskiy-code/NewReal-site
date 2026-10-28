@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+
 import { useEffect, useId, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import { LuInfo } from "react-icons/lu";
@@ -25,6 +27,7 @@ function resizeComposer(el: HTMLTextAreaElement | null) {
 
 /** Billing note behind an info button next to send, so it does not take four lines under the composer. */
 function ComposerNote({ text }: { text: string }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const noteId = useId();
@@ -52,8 +55,8 @@ function ComposerNote({ text }: { text: string }) {
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-controls={noteId}
-        aria-label="Как списываются VC"
-        title="Как списываются VC"
+        aria-label={t("chatUi.text052")}
+        title={t("chatUi.text052")}
         className={`flex h-11 w-8 items-center justify-center rounded-full transition-colors hover:text-white ${
           open ? "text-white" : "text-secondary-text"
         }`}
@@ -87,6 +90,7 @@ export default function ChatComposer({
   /** Billing rules, shown on demand from the info button. */
   note?: string;
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -124,7 +128,7 @@ export default function ChatComposer({
                 }
               }
             }}
-            placeholder="Ваш ход…"
+            placeholder={t("chatUi.text053")}
             className={`block max-h-[7.625rem] min-h-[44px] w-full resize-none overflow-hidden rounded-[22px] border border-divider bg-bg-card py-2.5 pl-4 text-sm leading-5 outline-none transition-colors focus:border-primary/60 ${
               isDesktop ? "pr-4" : "pr-12"
             }`}
@@ -135,7 +139,7 @@ export default function ChatComposer({
               type="submit"
               data-metrika="chat-send"
               disabled={!canSend}
-              aria-label="Отправить"
+              aria-label={t("chatUi.text054")}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50"
               style={{
                 position: "absolute",
@@ -160,8 +164,7 @@ export default function ChatComposer({
           disabled={!canSend}
           className="flex min-h-[44px] shrink-0 items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50"
         >
-          Отправить
-        </button>
+          {t("chatUi.text054")}</button>
       ) : null}
     </form>
   );

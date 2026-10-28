@@ -1,0 +1,47 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { PGlite } from "@electric-sql/pglite";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { moduleLoader } from "./lib/load-local-module.mjs";
+import { protectTranslation, restoreTranslation, splitTranslationText, translationImportSql, adaptPluralForms } from "./lib/localization-pack.mjs";
+
+const text = '<0>Hello {{name}}</0>\nNewVerse & VC https://example.test/path?q=1';
+assert.deepEqual(adaptPluralForms({ message_one: 'mensaje', message_other: 'mensajes' }, 'es-ES'), { message_one: 'mensaje', message_other: 'mensajes', message_many: 'mensajes' });
+const protectedValue = protectTranslation(text);
+assert.equal(restoreTranslation(protectedValue.text.replace('Hello', 'Hola'), protectedValue.tokens), text.replace('Hello', 'Hola'));
+assert.throws(() => restoreTranslation(protectedValue.text.replace('__NV_KEEP_0__', ''), protectedValue.tokens));
+const long = ('a long sentence {{name}} with details.\n').repeat(200);
+const pieces = splitTranslationText(long);
+assert.equal(pieces.join(''), long);
+assert.ok(pieces.every(piece => piece.length <= 1400));
+assert.ok(pieces.every(piece => !piece.includes('{{') || !piece.endsWith('{{name')));
+const fields = ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt", "publicMemory"];
+const source = Object.fromEntries(fields.map(field => [field, field === 'publicMemory' ? { content: 'Public facts' } : field === 'name' ? "O'Neil; DROP TABLE Character;" : null]));
+const row = { characterId: 'public', locale: 'es', sourceHash: 'a'.repeat(64), ...Object.fromEntries(fields.map(field => [field, field === 'name' ? 'Nombre' : null])), source };
+const db = new PGlite();
+try {
+  await db.exec(`CREATE TABLE "Character" (id text PRIMARY KEY, "isPublic" boolean NOT NULL, ${fields.map(field => `"${field}" ${field === 'publicMemory' ? 'jsonb' : 'text'}`).join(',')});`);
+  await db.exec(readFileSync('prisma/migrations/20261028120000_character_translations/migration.sql','utf8'));
+  await db.query('INSERT INTO "Character" (id,"isPublic",name,"publicMemory") VALUES ($1,true,$2,$3),($4,false,$2,$3),($5,true,$6,$3)', ['public',source.name,JSON.stringify(source.publicMemory),'private','changed','Edited']);
+  const results = await db.exec(translationImportSql([row,{...row,characterId:'private'},{...row,characterId:'changed'}],fields));
+  const summary = results.find(result => result.rows?.[0]?.prepared !== undefined).rows[0];
+  assert.deepEqual(summary,{prepared:3,saved:1,changed_or_unpublished:2});
+  assert.equal((await db.query('SELECT name FROM "CharacterTranslation"')).rows[0].name,'Nombre');
+  await db.exec(translationImportSql([{...row,name:'Nuevo'}],fields));
+  assert.equal((await db.query('SELECT name FROM "CharacterTranslation"')).rows[0].name,'Nuevo');
+  assert.equal((await db.query('SELECT COUNT(*) AS count FROM "Character"')).rows[0].count,3);
+} finally { await db.close(); }
+const app = moduleLoader({ "next/navigation": { usePathname: () => "/es/chat/fixture" } });
+const dictionary = app("src/lib/getDictionary.ts");
+assert.equal(dictionary.translate("es", "chatUi.text053"), "Tu turno…");
+assert.equal(dictionary.translate("es", "chatUi.text054"), "Enviar");
+assert.equal(dictionary.translate("es", "home.hero.catalogCount_one", { count: 1 }), "1 personaje en el catálogo");
+const provider = app("src/components/I18nProvider.tsx").default;
+const composer = app("src/components/ChatComposer.tsx").default;
+const switcher = app("src/components/LanguageSwitcher.tsx").default;
+const markup = renderToStaticMarkup(createElement(provider, { locale: "es" }, createElement(composer, { value: "Hola", onChange() {}, onSubmit() {}, disabled: false, canSend: true }), createElement(switcher)));
+assert.ok(markup.includes("Tu turno…") && markup.includes("Enviar") && markup.includes("Español"));
+assert.ok(!markup.includes("Ваш ход") && !markup.includes("Отправить"));
+assert.ok(app("src/lib/chatSystemPrompt.ts").assembleRoleplayPrompt({ name: "Maren" }, "es").content.includes("Always reply in Spanish"));
+console.log('PASS protected variables/markup, lossless segmentation, SQL parameter encoding, private-card exclusion, source-change guards and idempotent import');

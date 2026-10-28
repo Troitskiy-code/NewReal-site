@@ -58,6 +58,7 @@ import {
   isSubscriptionActive,
 } from "@/lib/verseChatEconomy";
 import { getApiLocale } from "@/lib/apiI18n";
+import { previewTranslationSelect, localizedCharacterText } from "@/lib/characterLocalization";
 import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 import { getAnonymousChatPayload, handleAnonymousChatPost } from "@/lib/anonymousChat";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
@@ -227,10 +228,7 @@ async function handlePost(
     setAiCostThread(scope.threadId);
 
     const locale = getApiLocale(req);
-    const localizedGreeting =
-      locale === "en" && character.greeting_en?.trim()
-        ? character.greeting_en.trim()
-        : character.greeting?.trim();
+    const localizedGreeting = localizedCharacterText(character, "greeting", locale);
     let greetingMessage = null;
     let userMessage = null;
     let lastAssistant = null;
@@ -567,6 +565,7 @@ export async function GET(
       updatedAt: true,
       description: true,
       descriptionCard: true,
+      translations: { select: previewTranslationSelect },
       descriptionCard_en: true,
       name_en: true,
       greeting_en: true,
@@ -624,6 +623,7 @@ export async function GET(
         avatarUrl: characterAvatarPath(character.id, character.updatedAt),
         description: character.description,
         descriptionCard: character.descriptionCard,
+        translations: character.translations,
         descriptionCard_en: character.descriptionCard_en,
         name_en: character.name_en,
         greeting_en: character.greeting_en,

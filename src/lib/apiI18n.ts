@@ -1,17 +1,14 @@
 import type { NextRequest } from "next/server";
-import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, type Locale } from "./i18nConfig";
+import { isLocale, negotiateLocale, LOCALE_COOKIE, LOCALE_HEADER, type Locale } from "./i18nConfig";
 import { translate } from "./getDictionary";
 
 export function getApiLocale(req: NextRequest): Locale {
-  const cookieLocale = req.cookies.get(LOCALE_COOKIE)?.value;
-  if (isLocale(cookieLocale)) return cookieLocale;
-
-  const bodyLocale = req.headers.get("x-locale");
+  const bodyLocale = req.headers.get(LOCALE_HEADER);
   if (isLocale(bodyLocale)) return bodyLocale;
 
-  const accept = req.headers.get("accept-language")?.toLowerCase() ?? "";
-  if (accept.startsWith("en")) return "en";
-  return DEFAULT_LOCALE;
+  const cookieLocale = req.cookies.get(LOCALE_COOKIE)?.value;
+  if (isLocale(cookieLocale)) return cookieLocale;
+  return negotiateLocale(req.headers.get("accept-language"));
 }
 
 export function apiT(

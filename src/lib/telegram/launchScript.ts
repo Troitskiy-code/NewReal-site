@@ -6,6 +6,7 @@
 //     before Metrika, attribution or any request can see the fragment (SEC-04 pattern),
 //  3) campaign = first plain segment of start_param ("<campaign>__c_<slug>"), or ?tgsrc= from the bot.
 // Keep the start_param grammar in sync with parseTelegramStartParam (verify:telegram compares them).
+import { LOCALES } from "../i18nConfig";
 export const TELEGRAM_LAUNCH_SCRIPT = `(function(){try{
 var l=window.location,hp=new URLSearchParams(l.hash?l.hash.slice(1):""),qp=new URLSearchParams(l.search);
 var data=hp.get("tgWebAppData")||qp.get("tgWebAppData");
@@ -26,7 +27,7 @@ if(!label&&/^[A-Za-z0-9_-]{1,64}$/.test(src))label=src;
 var keep=new URLSearchParams();
 qp.forEach(function(v,k){if(k.indexOf("tgWebApp")!==0&&k!=="tgsrc"&&k.indexOf("utm_")!==0)keep.append(k,v);});
 keep.set("utm_source","telegram_miniapp");keep.set("utm_medium","miniapp");if(label)keep.set("utm_campaign",label);
-var entry=/^\\/(?:(?:ru|en)\\/)?tg(?:\\/|$)/.test(l.pathname);
+var entry=new RegExp("^/(?:(?:"+${JSON.stringify(LOCALES)}.join("|")+")/)?tg(?:/|$)").test(l.pathname);
 var next=(entry?l.pathname:"/tg")+"?"+keep.toString();
 history.replaceState(history.state,"",entry?next:l.pathname);
 if(!entry)l.replace(next);

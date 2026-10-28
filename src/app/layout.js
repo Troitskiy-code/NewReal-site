@@ -5,6 +5,7 @@ import AppToaster from "@/components/AppToaster";
 import YandexMetrika from "@/components/YandexMetrika";
 import { getLocalizedPageMetadata, SITE_URL, THEME_COLOR } from "@/lib/seo";
 import { getRequestLocale } from "@/lib/getRequestLocale";
+import { localeDefinition } from "@/lib/i18nConfig";
 import { isTelegramContext } from "@/lib/telegram/context";
 import { TELEGRAM_LAUNCH_SCRIPT } from "@/lib/telegram/launchScript";
 import "./globals.css";
@@ -55,7 +56,7 @@ export default async function RootLayout({ children }) {
   const telegram = await isTelegramContext();
 
   return (
-    <html lang={locale} className={`${onest.variable} ${unbounded.variable} ${literata.variable} h-full`} data-theme="wetdreams" data-telegram={telegram ? "1" : undefined}>
+    <html lang={locale} dir={localeDefinition(locale).direction} className={`${onest.variable} ${unbounded.variable} ${literata.variable} h-full`} data-theme="wetdreams" data-telegram={telegram ? "1" : undefined}>
       {telegram ? (
         <head>
           {/* Must run before Metrika and the app: removes #tgWebAppData from the address. */}

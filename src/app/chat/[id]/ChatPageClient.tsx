@@ -1,5 +1,8 @@
 "use client";
 
+import { localizedCharacterText } from "@/lib/characterLocalization";
+
+
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -34,7 +37,7 @@ import { trackSuccessfulChatTurn } from "@/lib/acquisitionGoals";
 import { useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
 import { captureCharacterReturn } from "@/lib/characterReturn";
-import { getLocalizedCardDescription, pickLocalizedText } from "@/lib/characterFields";
+import { getLocalizedCardDescription } from "@/lib/characterFields";
 import { ANONYMOUS_LIMIT_CODE, ANONYMOUS_MESSAGE_LIMIT, ANONYMOUS_TTL_DAYS, createAnonymousRequestId } from "@/lib/anonymousCookie";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useTelegramMode } from "@/components/TelegramProvider";
@@ -43,15 +46,15 @@ import { KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
 import { GuestTransferPendingError, waitForGuestTransfer } from "@/lib/guestTransferRetry";
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
-  "DeepSeek V4 Flash": "Самая быстрая модель для длинных динамичных переписок.",
-  "Gemma 4 31B": "Лёгкий старт, приятный слог, отличный русский язык.",
-  "Mistral Small 4": "Хороший баланс цены и качества, живые диалоги.",
-  "Gemini 2.5 Flash": "Креативная, для нестандартных сюжетов и идей.",
-  "Mistral Small 3.1 24B": "Хорошая модель для ролевых игр и сложных персонажей.",
-  "Claude Haiku 4.5": "Надёжный стиль, сильное мышление, без «воды».",
-  "Grok 4.20": "Максимальная реалистичность, минимум галлюцинаций.",
-  "Gemini 2.5 Pro": "Глубокое понимание контекста, построение миров.",
-  "Mistral Large 2": "Сложные рассуждения, профессиональные сценарии.",
+  "DeepSeek V4 Flash": "chatUi.model001",
+  "Gemma 4 31B": "chatUi.model002",
+  "Mistral Small 4": "chatUi.model003",
+  "Gemini 2.5 Flash": "chatUi.model004",
+  "Mistral Small 3.1 24B": "chatUi.model005",
+  "Claude Haiku 4.5": "chatUi.model006",
+  "Grok 4.20": "chatUi.model007",
+  "Gemini 2.5 Pro": "chatUi.model008",
+  "Mistral Large 2": "chatUi.model009",
 };
 
 type Message = {
@@ -91,6 +94,7 @@ function reachDailyQuotaGoal(goal: string) {
 }
 
 type ChatCharacter = {
+  translations?: import("@/lib/characterLocalization").CharacterTranslation[];
   id?: string;
   name: string;
   slug?: string | null;
@@ -105,6 +109,7 @@ type ChatCharacter = {
 };
 
 export type ChatShell = {
+  translations?: import("@/lib/characterLocalization").CharacterTranslation[];
   id: string;
   name: string | null;
   name_en: string | null;
@@ -200,6 +205,7 @@ type MessageMenuProps = {
 const MESSAGE_MENU_SPACE_PX = 110;
 
 function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenuProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -254,8 +260,8 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
         onClick={toggle}
         disabled={disabled}
         className={menuButtonClass}
-        title="Действия"
-        aria-label="Действия с сообщением"
+        title={t("chatUi.text001")}
+        aria-label={t("chatUi.text002")}
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -282,8 +288,7 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
             className={menuItemClass}
           >
             <LuPencil aria-hidden className="text-sm" />
-            Редактировать
-          </button>
+            {t("chatUi.text003")}</button>
           <button
             type="button"
             role="menuitem"
@@ -295,8 +300,7 @@ function MessageMenu({ message, disabled, align, onEdit, onDelete }: MessageMenu
             className={menuItemClass}
           >
             <LuTrash2 aria-hidden className="text-sm" />
-            Удалить
-          </button>
+            {t("chatUi.text004")}</button>
         </div>
       )}
     </div>
@@ -322,6 +326,7 @@ function MessageToolbar({
   onEdit,
   onCopy,
 }: MessageToolbarProps) {
+  const { t } = useTranslation();
   if (!isPersistedMessage(message)) {
     return null;
   }
@@ -347,8 +352,8 @@ function MessageToolbar({
           onClick={() => onCopy(message.content)}
           disabled={disabled}
           className={actionButtonClass}
-          title="Копировать"
-          aria-label="Копировать"
+          title={t("chatUi.text005")}
+          aria-label={t("chatUi.text005")}
         >
           <FaRegCopy size={16} />
         </button>
@@ -364,17 +369,16 @@ function MessageToolbar({
         onClick={onContinue}
         disabled={disabled}
         className={textButtonClass}
-        title="Продолжить"
+        title={t("chatUi.text006")}
       >
-        Продолжить
-      </button>
+        {t("chatUi.text006")}</button>
       <button
         type="button"
         onClick={() => onRegenerate(message.id)}
         disabled={disabled}
         className={actionButtonClass}
-        title="Перегенерировать"
-        aria-label="Перегенерировать"
+        title={t("chatUi.text007")}
+        aria-label={t("chatUi.text007")}
       >
         <FaRedo size={16} />
       </button>
@@ -383,8 +387,8 @@ function MessageToolbar({
         onClick={() => onCopy(message.content)}
         disabled={disabled}
         className={actionButtonClass}
-        title="Копировать"
-        aria-label="Копировать"
+        title={t("chatUi.text005")}
+        aria-label={t("chatUi.text005")}
       >
         <FaRegCopy size={16} />
       </button>
@@ -469,6 +473,7 @@ function ChatMessageItem({
   storyChoices = null,
   onChoose,
 }: ChatMessageItemProps) {
+  const { t } = useTranslation();
   const isUser = message.role === "user";
 
   // The character's name sits above its reply; the player's bubble needs no label.
@@ -505,7 +510,7 @@ function ChatMessageItem({
             disabled={actionDisabled}
           />
           {editError && (
-            <p className="mt-1 text-xs text-red-400">Сообщение не может быть пустым</p>
+            <p className="mt-1 text-xs text-red-400">{t("chatUi.text008")}</p>
           )}
           <div className={`mt-2 flex gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
             <button
@@ -514,16 +519,14 @@ function ChatMessageItem({
               disabled={actionDisabled}
               className="rounded-full px-3 py-1 text-xs text-gray-400 hover:text-gray-300 disabled:opacity-50"
             >
-              Отмена
-            </button>
+              {t("chatUi.text009")}</button>
             <button
               type="button"
               onClick={() => onEditSave(message.id)}
               disabled={actionDisabled}
               className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
             >
-              Сохранить
-            </button>
+              {t("chatUi.text010")}</button>
           </div>
         </div>
       ) : (
@@ -536,11 +539,11 @@ function ChatMessageItem({
           }`}
         >
           {isStreaming && !message.content ? (
-            <span className="animate-pulse font-sans text-sm text-wd-text-secondary">{isThinking ? "Думает..." : "Печатает..."}</span>
+            <span className="animate-pulse font-sans text-sm text-wd-text-secondary">{isThinking ? t("chatUi.text011") : t("chatUi.text012")}</span>
           ) : storyChoices ? (
             <>
               {storyChoices.before ? <span dangerouslySetInnerHTML={{ __html: formatMessageContent(storyChoices.before) }} /> : null}
-              <span role="group" aria-label="Варианты действий" className={`flex flex-col gap-2 ${storyChoices.before ? "mt-3" : ""} ${storyChoices.after ? "mb-3" : ""}`}>
+              <span role="group" aria-label={t("chatUi.text013")} className={`flex flex-col gap-2 ${storyChoices.before ? "mt-3" : ""} ${storyChoices.after ? "mb-3" : ""}`}>
                 {storyChoices.choices.map((choice, index) => (
                   <button
                     key={index}
@@ -595,11 +598,11 @@ function formatMessageContent(content: string): string {
 }
 
 function CharacterDescriptionCard({ description }: { description: string }) {
+  const { t } = useTranslation();
   return (
     <section className="w-full rounded-2xl bg-wd-bg/60 px-4 py-3 text-center backdrop-blur-sm">
       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-wd-secondary">
-        Описание персонажа
-      </p>
+        {t("chatUi.text014")}</p>
       <p className="whitespace-pre-wrap font-story text-[15px] italic leading-relaxed text-wd-story-muted">
         {description}
       </p>
@@ -660,8 +663,8 @@ function ChatSettingsMenu({
         onClick={onToggle}
         disabled={disabled}
         className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text disabled:opacity-50 md:bg-transparent md:backdrop-blur-none"
-        title="Настройки чата"
-        aria-label="Настройки чата"
+        title={t("chatUi.text015")}
+        aria-label={t("chatUi.text015")}
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -682,8 +685,7 @@ function ChatSettingsMenu({
             }}
             className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
           >
-            Модели чата
-          </button>
+            {t("chatUi.text016")}</button>
           <button
             type="button"
             role="menuitem"
@@ -701,8 +703,7 @@ function ChatSettingsMenu({
             }}
             className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
           >
-            Редактировать память
-          </button>
+            {t("chatUi.text017")}</button>
           <button
             type="button"
             role="menuitem"
@@ -712,11 +713,9 @@ function ChatSettingsMenu({
             }}
             className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]"
           >
-            Моя личность
-          </button>
+            {t("chatUi.text018")}</button>
           <button type="button" role="menuitem" onClick={() => { onClose(); onOpenPrompt(); }} className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]">
-            Тип и правила истории
-          </button>
+            {t("chatUi.text019")}</button>
           {threadsEnabled ? (
             <>
               <button type="button" role="menuitem" onClick={() => { onClose(); onOpenThreads?.(); }}
@@ -739,8 +738,7 @@ function ChatSettingsMenu({
               disabled={disabled}
               className="block w-full px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-[#2a2638] disabled:opacity-50"
             >
-              Начать новый чат
-            </button>
+              {t("chatUi.text020")}</button>
           )}
         </div>
       )}
@@ -758,6 +756,7 @@ type ModalProps = {
 };
 
 function Modal({ open, onClose, title, wide = false, dismissible = true, children }: ModalProps) {
+  const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -798,7 +797,7 @@ function Modal({ open, onClose, title, wide = false, dismissible = true, childre
             type="button"
             onClick={onClose}
             className="absolute right-3 top-3 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-2xl leading-none text-white transition-colors hover:bg-black/70 active:scale-95"
-            aria-label="Закрыть"
+            aria-label={t("chatUi.text021")}
           >
             ✕
           </button>
@@ -834,11 +833,10 @@ function ModelSettingsList({
   onModelChange,
 }: ModelSettingsListProps) {
   const [expandedModelId, setExpandedModelId] = useState<string | null>(null);
-  const { i18n } = useTranslation();
-  const english = i18n.language?.startsWith("en");
+  const { t } = useTranslation();
   const sections = [
-    { title: english ? "Main models" : "Основные модели", testing: false, items: models.filter((model) => !model.isTesting) },
-    { title: english ? "Testing" : "Тестируется", testing: true, items: models.filter((model) => model.isTesting) },
+    { title: t("chatModelGroups.main"), testing: false, items: models.filter((model) => !model.isTesting) },
+    { title: t("chatModelGroups.testing"), testing: true, items: models.filter((model) => model.isTesting) },
   ].filter((section) => section.items.length > 0);
 
   const toggleDescription = (modelId: string) => {
@@ -851,20 +849,20 @@ function ModelSettingsList({
         <section key={section.title} aria-label={section.title}>
           <h3 className="border-b border-gray-700/50 px-4 py-3 text-sm font-bold text-gray-300 md:px-6">{section.title}</h3>
           {section.testing && <p className="px-4 py-2 text-xs text-gray-400 md:px-6">
-            {english ? "New models: we are evaluating response quality and speed." : "Новые модели: оцениваем качество и скорость ответов."}
+            {t("chatModelGroups.testingHint")}
           </p>}
       {section.items.map((model) => {
         const isExpanded = expandedModelId === model.id;
         // The free daily quota only covers the base model; while it lasts the price is struck through.
         const quota = balance?.freeQuota && baseModel?.id === model.id && model.priceVC > 0 ? balance.freeQuota : null;
         const quotaNote = quota
-          ? english ? "Free replies refresh every day at 00:00 Moscow time." : "Бесплатные ответы обновляются каждый день в 00:00 МСК."
+          ? t("chatModelGroups.quotaRefresh")
           : null;
-        const baseDescription = model.description ?? MODEL_DESCRIPTIONS[model.displayName];
+        const baseDescription = MODEL_DESCRIPTIONS[model.displayName] ? t(MODEL_DESCRIPTIONS[model.displayName]) : model.description;
         const description = quotaNote ? [baseDescription, quotaNote].filter(Boolean).join(" ") : baseDescription;
         const priceLabel =
           balance && baseModel
-            ? `${getEffectiveModelPriceVC(
+            ? t("chatUi.text022", { value1: getEffectiveModelPriceVC(
                 {
                   subscriptionType: balance.subscriptionType,
                   subscriptionEnd: balance.subscriptionEnd
@@ -873,8 +871,8 @@ function ModelSettingsList({
                 },
                 model,
                 baseModel
-              )} VC/запрос`
-            : `${model.priceVC} VC/запрос`;
+              ) })
+            : t("chatUi.text022", { value1: model.priceVC });
 
         return (
           <div key={model.id} className="group border-b border-gray-700/50 last:border-b-0">
@@ -906,7 +904,7 @@ function ModelSettingsList({
                       <span className="text-sm">
                         <s className="text-gray-500">{model.priceVC} VC</s>{" "}
                         <span className="font-semibold text-wd-secondary-text">
-                          {english ? `Free · ${quota.remaining} left` : `Бесплатно · ещё ${quota.remaining}`}
+                          {t("chatModelGroups.freeLeft", { value1: quota.remaining })}
                         </span>
                       </span>
                     ) : (
@@ -925,7 +923,7 @@ function ModelSettingsList({
                     toggleDescription(model.id);
                   }}
                   className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-[#0c0b12] hover:text-white md:hidden"
-                  aria-label={isExpanded ? "Скрыть описание" : "Показать описание"}
+                  aria-label={isExpanded ? t("chatUi.text023") : t("chatUi.text024")}
                   aria-expanded={isExpanded}
                 >
                   {isExpanded ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
@@ -935,8 +933,7 @@ function ModelSettingsList({
 
             {model.name === "aion-labs/aion-2.0" && (
               <p className="px-4 pb-3 text-xs leading-relaxed text-amber-300 md:px-6">
-                {english ? "Disabling reasoning through the gateway is unverified. The output limit may shorten or prevent an answer."
-                  : "Отключение рассуждений через шлюз ещё проверяем. Лимит выхода может сократить ответ или помешать его завершению."}
+                {t("chatModelGroups.reasoningHint")}
               </p>
             )}
 
@@ -983,8 +980,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const [messages, setMessages] = useState<Message[]>([]);
   const [character, setCharacter] = useState<ChatCharacter | null>({
     id: initialShell.id,
-    name: initialShell.name ?? "Персонаж",
+    name: initialShell.name ?? t("chatUi.text025"),
     name_en: initialShell.name_en,
+    translations: initialShell.translations,
     greeting: null,
     avatarUrl: initialShell.avatarUrl,
     description: null,
@@ -1081,11 +1079,11 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       Boolean(input.trim()) &&
       !insufficientBalance;
 
-  const userDisplayName = selectedPersona?.name ?? session?.user?.name ?? session?.user?.email ?? "Вы";
+  const userDisplayName = selectedPersona?.name ?? session?.user?.name ?? session?.user?.email ?? t("chatUi.text026");
   const userAvatarUrl = selectedPersona?.avatarUrl ?? session?.user?.image ?? null;
   const characterDisplayName =
-    pickLocalizedText(character?.name, character?.name_en, locale) ?? "Персонаж";
-  const characterGreeting = pickLocalizedText(character?.greeting, character?.greeting_en, locale);
+    localizedCharacterText(character, "name", locale) ?? t("chatUi.text025");
+  const characterGreeting = localizedCharacterText(character, "greeting", locale);
   const characterCardDescription = character
     ? getLocalizedCardDescription(character, locale)
     : null;
@@ -1105,7 +1103,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       setThreadsEnabled(Boolean(data.threadsEnabled));
       setCurrentThread(data.thread ?? null);
       setThreadId(data.thread?.id ?? null);
-      const greeting = pickLocalizedText(data.character.greeting, data.character.greeting_en, locale);
+      const greeting = localizedCharacterText(data.character, "greeting", locale);
       if (data.messages.length === 0 && greeting) {
         setMessages([createGreetingMessage(greeting)]);
       } else {
@@ -1204,7 +1202,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         } else if (guest || statusCode === 401) {
           console.warn("[Chat] Failed to load history", statusCode ?? error);
         } else {
-          showError("Ошибка загрузки чата");
+          showError(t("chatUi.text027"));
         }
       } finally {
         if (!signal.aborted) setHistoryLoading(false);
@@ -1282,7 +1280,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       showError(
         axios.isAxiosError(err) && err.response?.data?.error
           ? err.response.data.error
-          : "Не удалось выбрать модель"
+          : t("chatUi.text028")
       );
     } finally {
       setChangingModel(false);
@@ -1354,7 +1352,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
 
       if (statusCode === 402) {
-        showError(telegram ? t("telegram.balanceExhausted") : message || "Недостаточно VerseCoins");
+        showError(telegram ? t("telegram.balanceExhausted") : message || t("chatUi.text029"));
       } else {
         showError(message || fallback);
       }
@@ -1377,7 +1375,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       }
 
       if (statusCode === 402) {
-        showError(telegram ? t("telegram.balanceExhausted") : message || "Недостаточно VerseCoins");
+        showError(telegram ? t("telegram.balanceExhausted") : message || t("chatUi.text029"));
       } else {
         showError(message || fallback);
       }
@@ -1433,16 +1431,16 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         setMessages((prev) =>
           prev.map((msg) => (msg.id === messageId ? original : msg))
         );
-        showError("Поток ответа прервался");
+        showError(t("chatUi.text030"));
         return;
       }
 
-      showSuccess("Ответ перегенерирован");
+      showSuccess(t("chatUi.text031"));
     } catch (error) {
       setMessages((prev) =>
         prev.map((msg) => (msg.id === messageId ? original : msg))
       );
-      handleApiError(error, "Не удалось перегенерировать ответ");
+      handleApiError(error, t("chatUi.text032"));
     } finally {
       setStreamingMessageId(null);
       setThinking(false);
@@ -1521,11 +1519,11 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             )
           );
         }
-        showError("Поток ответа прервался");
+        showError(t("chatUi.text030"));
         return;
       }
 
-      showSuccess("Ответ продолжен");
+      showSuccess(t("chatUi.text033"));
     } catch (error) {
       if (createdPlaceholder && targetId) {
         setMessages((prev) => prev.filter((msg) => msg.id !== targetId));
@@ -1536,7 +1534,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           )
         );
       }
-      handleApiError(error, "Не удалось продолжить ответ");
+      handleApiError(error, t("chatUi.text034"));
     } finally {
       setStreamingMessageId(null);
       setThinking(false);
@@ -1547,9 +1545,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const handleDelete = async (messageId: string) => {
     if (sending || actionLoading) return;
     const confirmed = await confirm({
-      title: "Удалить сообщение?",
-      description: "Сообщение исчезнет из истории чата. Это действие нельзя отменить.",
-      confirmLabel: "Удалить",
+      title: t("chatUi.text035"),
+      description: t("chatUi.text036"),
+      confirmLabel: t("chatUi.text004"),
       danger: true,
     });
     if (!confirmed) return;
@@ -1563,9 +1561,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         setEditingDraft("");
     setEditingError(false);
       }
-      showSuccess("Сообщение удалено");
+      showSuccess(t("chatUi.text037"));
     } catch (error) {
-      handleApiError(error, "Не удалось удалить сообщение");
+      handleApiError(error, t("chatUi.text038"));
     } finally {
       setActionLoading(false);
     }
@@ -1602,9 +1600,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       setEditingMessageId(null);
       setEditingDraft("");
       setEditingError(false);
-      showSuccess("Сообщение обновлено");
+      showSuccess(t("chatUi.text039"));
     } catch (error) {
-      handleApiError(error, "Не удалось сохранить сообщение");
+      handleApiError(error, t("chatUi.text040"));
     } finally {
       setActionLoading(false);
     }
@@ -1623,9 +1621,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       setEditingError(false);
       setSettingsMenuOpen(false);
       setConfirmClearChat(false);
-      showSuccess("История чата очищена");
+      showSuccess(t("chatUi.text041"));
     } catch (error) {
-      handleApiError(error, "Не удалось очистить чат");
+      handleApiError(error, t("chatUi.text042"));
     } finally {
       setClearingChat(false);
     }
@@ -1634,9 +1632,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const handleCopy = async (content: string) => {
     try {
       await navigator.clipboard.writeText(content);
-      showSuccess("Скопировано");
+      showSuccess(t("chatUi.text043"));
     } catch {
-      showError("Не удалось скопировать");
+      showError(t("chatUi.text044"));
     }
   };
 
@@ -1757,7 +1755,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
       if (!endEvent) {
         setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
-        showError("Поток ответа прервался");
+        showError(t("chatUi.text030"));
       } else {
         trackSuccessfulChatTurn(endEvent, { actor: isAnonymous ? "guest" : session?.user?.id ?? "", characterId });
       }
@@ -1783,7 +1781,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         if (!persistedUser) {
           setInput(userMessage);
         }
-        handleApiError(error, "Не удалось отправить сообщение");
+        handleApiError(error, t("chatUi.text045"));
       }
     } finally {
       setStreamingMessageId(null);
@@ -1856,7 +1854,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       if (!endEvent) {
         setMessages((prev) => prev.filter((msg) => msg.id !== streamingAssistant.id));
         setKodikUnavailable(true);
-        showError("Поток ответа прервался");
+        showError(t("chatUi.text030"));
       } else {
         trackSuccessfulChatTurn(endEvent, { actor: isAnonymous ? "guest" : session?.user?.id ?? "", characterId, userMessageId: lastSend?.userMessageId });
       }
@@ -1866,7 +1864,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         setKodikUnavailable(true);
         showError(KODIK_RETRY_ERROR_MESSAGE, 12000);
       } else {
-        handleApiError(error, "Не удалось отправить сообщение");
+        handleApiError(error, t("chatUi.text045"));
       }
     } finally {
       setStreamingMessageId(null);
@@ -1918,10 +1916,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           </div>
         </Modal>
 
-        <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Модели чата">
+        <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title={t("chatUi.text016")}>
           <div className="-mx-4 -mb-4 md:-mx-6 md:-mb-6">
             {models.length === 0 ? (
-              <p className="px-4 text-sm text-secondary-text md:px-6">Модели не найдены</p>
+              <p className="px-4 text-sm text-secondary-text md:px-6">{t("chatUi.text046")}</p>
             ) : (
               <ModelSettingsList
                 models={models}
@@ -1942,7 +1940,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         <Modal
           open={memoryEditorOpen}
           onClose={() => setMemoryEditorOpen(false)}
-          title="Редактировать память"
+          title={t("chatUi.text017")}
           wide
         >
           <MemoryEditor
@@ -1955,7 +1953,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         <Modal
           open={personaSelectorOpen}
           onClose={() => setPersonaSelectorOpen(false)}
-          title="Моя личность"
+          title={t("chatUi.text018")}
           wide
         >
           <PersonaSelector
@@ -1966,7 +1964,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           />
         </Modal>
 
-        <Modal open={promptSettingsOpen} onClose={() => setPromptSettingsOpen(false)} title="Тип и правила истории" wide>
+        <Modal open={promptSettingsOpen} onClose={() => setPromptSettingsOpen(false)} title={t("chatUi.text019")} wide>
           {!isAnonymous && <ChatStorySettings key={`${characterId}:${threadId ?? ""}`} characterId={characterId} threadId={threadId} disabled={sending || actionLoading || clearingChat} />}
         </Modal>
 
@@ -2040,8 +2038,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                     href={`/character/${character.slug}`}
                     onClick={captureCharacterReturn}
                     className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text md:bg-transparent md:backdrop-blur-none"
-                    title="О персонаже"
-                    aria-label="О персонаже"
+                    title={t("chatUi.text047")}
+                    aria-label={t("chatUi.text047")}
                   >
                     <FaInfoCircle size={18} />
                   </LocaleLink>
@@ -2096,8 +2094,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               </div>
             ) : messages.length === 0 ? (
               <div className="py-16 text-center text-sm text-secondary-text md:py-20">
-                Начните диалог с персонажем. Напишите что-нибудь!
-              </div>
+                {t("chatUi.text048")}</div>
             ) : (
               messages.map((msg, index) => (
                 <ChatMessageItem
@@ -2140,8 +2137,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                   disabled={sending || actionLoading || clearingChat}
                   className="mt-3 min-h-[40px] rounded-full bg-primary px-5 py-2 text-xs font-bold text-white transition-all hover:bg-primary-hover disabled:bg-primary/50"
                 >
-                  Повторить
-                </button>
+                  {t("chatUi.text049")}</button>
               </div>
             ) : null}
             <div ref={messagesEndRef} />
@@ -2189,9 +2185,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       </div>
       <ConfirmModal
         open={confirmClearChat}
-        title="Начать новый чат"
-        description="История и память вашего текущего чата с этим персонажем будут удалены. Новая история возьмёт тип из актуальной карточки. Продолжить?"
-        confirmLabel="Начать заново"
+        title={t("chatUi.text020")}
+        description={t("chatUi.text050")}
+        confirmLabel={t("chatUi.text051")}
         danger
         loading={clearingChat}
         onConfirm={() => void handleClearChat()}

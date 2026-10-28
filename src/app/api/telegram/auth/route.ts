@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { consumeIpRateLimit, retryAfterSeconds } from "@/lib/rateLimit";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
-import { isLocale, LOCALE_COOKIE, type Locale } from "@/lib/i18nConfig";
+import { isLocale, negotiateLocale, LOCALE_COOKIE, type Locale } from "@/lib/i18nConfig";
 import { verifyInitData } from "@/lib/telegram/initData";
 import { isTelegramMiniAppEnabled, telegramBotToken, telegramInitDataMaxAgeSeconds } from "@/lib/telegram/config";
 import { consumeInitDataReceipt, resolveTelegramUser, telegramAccountState } from "@/lib/telegram/accounts";
@@ -23,10 +23,10 @@ function targetPath(locale: Locale, startParam: string | null): string {
 }
 
 function requestLocale(req: NextRequest, languageCode: string | null): Locale {
-  // The language switcher's choice wins; otherwise Telegram's language (ru -> RU, else EN).
+  // The language switcher's choice wins; otherwise use Telegram's supported language.
   const saved = req.cookies.get(LOCALE_COOKIE)?.value;
   if (isLocale(saved)) return saved;
-  return languageCode?.toLowerCase().startsWith("ru") ? "ru" : "en";
+  return negotiateLocale(languageCode);
 }
 
 export async function POST(req: NextRequest) {

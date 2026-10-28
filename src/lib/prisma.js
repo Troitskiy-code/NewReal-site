@@ -17,6 +17,19 @@ const prisma =
   globalForPrisma.prisma ||
   basePrisma.$extends({
   query: {
+    character: {
+      async update({ args, query }) {
+        // Invalidate translations in the same write as a source edit, including admin edits.
+        // Updating counters, slugs or English compatibility fields leaves them intact.
+        const sourceFields = ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt", "publicMemory"];
+        if (sourceFields.some((field) => args.data[field] !== undefined)) {
+          args.data.translations = { ...args.data.translations, deleteMany: {} };
+        } else if (sourceFields.some((field) => args.data[`${field}_en`] !== undefined)) {
+          args.data.translations = { ...args.data.translations, deleteMany: { locale: "en" } };
+        }
+        return query(args);
+      },
+    },
     user: {
       async create({ args, query }) {
         console.log('[Prisma] User create attempt');

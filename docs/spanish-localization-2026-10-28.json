@@ -1,0 +1,31 @@
+{
+  "locale": "es",
+  "publicCharacters": 186,
+  "interfaceEntries": 1050,
+  "provider": "yandextranslate",
+  "providerCharacters": 723152,
+  "providerRequests": 83,
+  "estimatedRub": 361.87,
+  "generatedAt": "2026-10-28T13:52:37.441Z",
+  "activeLocales": [
+    "ru",
+    "en",
+    "es"
+  ],
+  "publicCharactersSaved": 186,
+  "publicCharactersMissing": 0,
+  "totalCharactersBefore": 351,
+  "totalCharactersAfter": 351,
+  "reviewedNames": 100,
+  "reviewedInterfaceEntries": 142,
+  "catalogPrivateMemoryIncluded": false,
+  "providerCostIsEstimate": true,
+  "priceSource": "https://aistudio.yandex.ru/ru/docs/translate/pricing",
+  "sqlSha256": "da92b1c9d01fed76a8edde05434fc1acc697e0cc341e7b815103a18f439240ea",
+  "costLedgerId": "localization-es-20261028-da92b1c9d01fed76",
+  "published": false,
+  "costLedgerSaved": true,
+  "costLedgerIsAggregate": true,
+  "costLedgerProviderRequests": 83,
+  "method": "Machine translation with reviewed interface corrections and character-name corrections"
+}

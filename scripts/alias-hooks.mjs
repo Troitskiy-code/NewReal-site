@@ -20,7 +20,7 @@ export async function resolve(specifier, context, nextResolve) {
     const file = candidate(specifier);
     if (file) return nextResolve(pathToFileURL(file).href, context);
   }
-  if ((specifier.startsWith("./") || specifier.startsWith("../")) && !/\.[a-z]+$/i.test(specifier) && context.parentURL) {
+  if ((specifier.startsWith("./") || specifier.startsWith("../")) && !/\.(?:[cm]?[jt]sx?|json|node)$/i.test(specifier) && context.parentURL) {
     const parent = fileURLToPath(context.parentURL);
     const file = withExtensions(join(dirname(parent), specifier));
     if (file) return nextResolve(pathToFileURL(file).href, context);

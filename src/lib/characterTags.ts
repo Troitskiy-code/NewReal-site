@@ -75,6 +75,7 @@ const EN_TAG_LABELS: Record<string, string> = {
   "Добрый": "Kind", "Заботливый": "Caring", "Сдержанный": "Reserved", "Дерзкий": "Bold", "Загадочный": "Mysterious", "Холодный": "Cold", "Ироничный": "Witty", "Флиртующий": "Flirty", "Цундере": "Tsundere",
   "Аниме": "Anime", "Ролевая игра": "Roleplay", "Медленное развитие отношений": "Slow-burn relationships", "Выборы и последствия": "Choices and consequences", "Исследование мира": "World exploration",
 };
-export function characterTagLabel(tag: string, locale: string): string {
-  return locale.startsWith("en") ? EN_TAG_LABELS[tag] ?? tag : tag;
+export function characterTagLabel(tag: string, locale: string, translate?: (key: string, fallback: string) => string): string {
+  const fallback = locale.startsWith("ru") ? tag : EN_TAG_LABELS[tag] ?? tag;
+  return translate ? translate(`characterTags.labels.${tag}`, fallback) : fallback;
 }

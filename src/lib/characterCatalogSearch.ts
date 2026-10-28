@@ -11,6 +11,7 @@ export function catalogSearchCondition(search: string) {
   return query ? { OR: [
     { name: { contains: query, mode: "insensitive" as const } },
     { name_en: { contains: query, mode: "insensitive" as const } },
+    { translations: { some: { name: { contains: query, mode: "insensitive" as const } } } },
     ...catalogTagCondition(query).OR,
   ] } : {};
 }

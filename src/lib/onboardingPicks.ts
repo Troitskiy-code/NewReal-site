@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { previewTranslationSelect, type CharacterTranslation } from "./characterLocalization";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { getViewerId } from "@/lib/characterPublic";
 import { withTelegramCharacterWhere } from "@/lib/telegram/catalog";
@@ -13,6 +14,7 @@ const GREETING_SNIPPET = 240;
 
 export type OnboardingQuery = { style: OnboardingStyle | null; interests: OnboardingInterest[]; gender: OnboardingGender | null; page: number };
 export type OnboardingCandidate = {
+  translations?: CharacterTranslation[];
   id: string; slug: string | null; name: string; name_en: string | null;
   descriptionCard: string | null; descriptionCard_en: string | null; description: string | null; description_en: string | null;
   greeting: string | null; greeting_en: string | null; tags: string | null; artStyle: string | null;
@@ -73,6 +75,7 @@ export async function getOnboardingPicks(query: OnboardingQuery, now = new Date(
     // Only cards a newcomer can open right away: public, with a page, an avatar and no moderation warning.
     where: await withTelegramCharacterWhere({ isPublic: true, slug: { not: null }, imageUrl: { not: null }, OR: [{ moderationStatus: null }, { moderationStatus: { not: "warning" } }] }, await getViewerId()),
     select: {
+      translations: { select: previewTranslationSelect },
       id: true, slug: true, name: true, name_en: true, descriptionCard: true, descriptionCard_en: true, description: true, description_en: true,
       greeting: true, greeting_en: true, tags: true, artStyle: true, totalMessages: true, createdAt: true, updatedAt: true,
     },
@@ -86,6 +89,7 @@ export async function getOnboardingPicks(query: OnboardingQuery, now = new Date(
     pages,
     characters: picks.map(({ card, matched, fallback }) => ({
       id: card.id, slug: card.slug, name: card.name, name_en: card.name_en,
+      translations: card.translations?.map((text) => ({ ...text, greeting: snippet(text.greeting) })),
       descriptionCard: card.descriptionCard, descriptionCard_en: card.descriptionCard_en,
       description: card.description, description_en: card.description_en,
       greeting: snippet(card.greeting), greeting_en: snippet(card.greeting_en),

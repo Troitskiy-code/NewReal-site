@@ -1,11 +1,14 @@
 "use client";
 
+import { localizedCharacterText } from "@/lib/characterLocalization";
+
+
 import LocaleLink from "@/components/LocaleLink";
 import { FaComment, FaUser } from "react-icons/fa";
 import { LuTriangleAlert } from "react-icons/lu";
 import { useTranslation } from "react-i18next";
 import FavoriteButton from "@/components/FavoriteButton";
-import { getLocalizedCardDescription, pickLocalizedText, stripLeadingName } from "@/lib/characterFields";
+import { getLocalizedCardDescription, stripLeadingName } from "@/lib/characterFields";
 import { pickFeaturedGenre } from "@/lib/characterTags";
 import { captureCharacterReturn } from "@/lib/characterReturn";
 import { characterAvatarPath } from "@/lib/characterCardImage";
@@ -16,6 +19,7 @@ type CharacterCardProps = {
     slug?: string | null;
     name: string;
     name_en?: string | null;
+    translations?: import("@/lib/characterLocalization").CharacterTranslation[];
     description?: string | null;
     description_en?: string | null;
     descriptionCard?: string | null;
@@ -37,7 +41,7 @@ export default function CharacterCard({ character, className = "", eager = false
   const { i18n, t } = useTranslation();
   const locale = i18n.language;
   const totalMessages = character.totalMessages ?? 0;
-  const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
+  const name = localizedCharacterText(character, "name", locale) ?? character.name;
   const rawDescription = getLocalizedCardDescription(character, locale);
   const description = rawDescription ? stripLeadingName(rawDescription, name) : t("characterCard.noDescription");
   const genre = pickFeaturedGenre(character.tags);
@@ -94,7 +98,7 @@ export default function CharacterCard({ character, className = "", eager = false
               <span>
                 {t("characterCard.messages", {
                   count: totalMessages,
-                  formatted: totalMessages.toLocaleString(locale === "en" ? "en-US" : "ru-RU"),
+                  formatted: totalMessages.toLocaleString(locale),
                 })}
               </span>
             </p>

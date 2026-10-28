@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isMissingSlugColumn } from "@/lib/ensureCharacterSlug";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { getApiLocale } from "@/lib/apiI18n";
+import { previewTranslationSelect } from "./characterLocalization";
 import {
   resolveContextTokenBudget,
   resolveChatSystemPrompt,
@@ -147,6 +148,7 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
     updatedAt: true,
     description: true,
     descriptionCard: true,
+    translations: { select: previewTranslationSelect },
     descriptionCard_en: true,
     name_en: true,
     greeting_en: true,
@@ -190,6 +192,7 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
         avatarUrl: characterAvatarPath(character.id, character.updatedAt),
         description: character.description,
         descriptionCard: character.descriptionCard,
+        translations: character.translations,
         descriptionCard_en: character.descriptionCard_en,
         name_en: character.name_en,
         greeting_en: character.greeting_en,

@@ -42,7 +42,7 @@ export function neutralizeMemoryText(text: string): string {
 }
 
 function localeKey(locale?: string): "ru" | "en" {
-  return locale === "en" ? "en" : "ru";
+  return locale && locale !== "ru" ? "en" : "ru";
 }
 
 export function formatMemoryBlock(block: MemoryBlock, locale?: string): string {

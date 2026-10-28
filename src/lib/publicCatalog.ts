@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { publicTranslationSelect } from "./characterLocalization";
 import { prisma } from "@/lib/prisma";
 import { getViewerId } from "@/lib/characterPublic";
 import { characterAvatarPath } from "@/lib/characterCardImage";
@@ -33,6 +34,7 @@ export const getPublicCatalog = cache(async (sort: string, page: number, search:
     const limit = CHARACTERS_PAGE_LIMIT;
     const total = await prisma.character.count({ where });
     const select = {
+      translations: { select: publicTranslationSelect },
       id: true, slug: true, name: true, name_en: true, description: true, description_en: true,
       descriptionCard: true, descriptionCard_en: true, tags: true, totalMessages: true, updatedAt: true,
     } as const;

@@ -4,7 +4,7 @@ import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 
 const YANDEX_TRANSLATE_URL = "https://translate.api.cloud.yandex.net/translate/v2/translate";
 
-export type TranslateTargetLang = "en" | "ru";
+export type TranslateTargetLang = string;
 
 type YandexTranslateResponse = {
   translations?: Array<{

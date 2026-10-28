@@ -1,5 +1,8 @@
 "use client";
 
+import { localizedCharacterText } from "@/lib/characterLocalization";
+
+
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -10,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { showError, showSuccess } from "@/lib/toast";
 import { FaComments, FaShareAlt, FaTimes, FaUser } from "react-icons/fa";
 import LocaleLink, { useCurrentLocale } from "@/components/LocaleLink";
-import { getLocalizedCardDescription, pickLocalizedMemory, pickLocalizedText } from "@/lib/characterFields";
+import { getLocalizedCardDescription } from "@/lib/characterFields";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 import { dateLocale, withLocale } from "@/lib/i18nConfig";
 import { closeCharacterPage } from "@/lib/characterReturn";
@@ -24,6 +27,7 @@ export type CharacterPublicViewData = {
   slug: string;
   name: string;
   name_en: string | null;
+  translations?: import("@/lib/characterLocalization").CharacterTranslation[];
   description: string | null;
   description_en: string | null;
   descriptionCard: string | null;
@@ -61,9 +65,9 @@ export default function CharacterPublicView({ character, story }: { character: C
     return () => controller.abort();
   }, [status, character.id]);
   const latestThread = status === "authenticated" && loadedThread?.characterId === character.id ? loadedThread.thread : null;
-  const name = pickLocalizedText(character.name, character.name_en, locale) ?? character.name;
+  const name = localizedCharacterText(character, "name", locale) ?? character.name;
   const description = getLocalizedCardDescription(character, locale) || "";
-  const publicMemory = pickLocalizedMemory(character.publicMemory, character.publicMemory_en, locale);
+  const publicMemory = localizedCharacterText(character, "publicMemory", locale);
   const tags = recommendationTags(character.tags).map((tag) => ({ tag, genre: FEATURED_GENRES.find((item) => item.tag === tag) }));
   const author = character.user?.name?.trim() || t("characterPage.unknownAuthor");
   const createdAt = new Date(character.createdAt).toLocaleDateString(dateLocale(locale), {
@@ -175,11 +179,11 @@ export default function CharacterPublicView({ character, story }: { character: C
                   {genre ? (
                     <LocaleLink href={genrePath(genre.id)}
                       className="inline-flex min-h-8 items-center rounded-full border border-wd-border bg-wd-elevated px-3 text-xs font-semibold text-white transition-colors hover:border-wd-secondary">
-                      {characterTagLabel(tag, locale)}
+                      {characterTagLabel(tag, locale, (key, fallback) => t(key, { defaultValue: fallback }))}
                     </LocaleLink>
                   ) : (
                     <span className="inline-flex min-h-8 items-center rounded-full bg-wd-elevated px-3 text-xs font-semibold text-wd-text-secondary">
-                      {characterTagLabel(tag, locale)}
+                      {characterTagLabel(tag, locale, (key, fallback) => t(key, { defaultValue: fallback }))}
                     </span>
                   )}
                 </li>

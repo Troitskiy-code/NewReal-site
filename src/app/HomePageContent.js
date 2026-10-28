@@ -119,7 +119,7 @@ export default function HomePageContent({ initialData, showHero = false, onboard
               totalPages={totalPages}
               onPageChange={goToPage}
               disabled={loading}
-              hrefForPage={(target) => `${withLocale("/", i18n.language === "en" ? "en" : "ru")}?${new URLSearchParams({ sort, page: String(target), ...(search ? { q: search } : {}) })}`}
+              hrefForPage={(target) => `${withLocale("/", i18n.language)}?${new URLSearchParams({ sort, page: String(target), ...(search ? { q: search } : {}) })}`}
             />
           </>
         )}

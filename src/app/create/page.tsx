@@ -2,7 +2,7 @@ import Footer from "@/components/Footer";
 import LandingFaq from "@/components/LandingFaq";
 import RoleplayModeCards from "@/components/RoleplayModeCards";
 import { getRequestLocale } from "@/lib/getRequestLocale";
-import { CREATE_LANDING } from "@/lib/landingTexts";
+import { createLanding } from "@/lib/landingTexts";
 import { getLocalizedPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
@@ -11,7 +11,7 @@ export async function generateMetadata() {
 
 /** Mode picker and the search landing page for "создать ИИ-персонажа"; the editor itself needs sign-in. */
 export default async function CreateSelectionPage() {
-  const text = CREATE_LANDING[await getRequestLocale()];
+  const text = createLanding(await getRequestLocale());
   return <div className="flex min-h-dvh flex-col bg-[#0c0b12] text-white">
     <main className="flex-1 px-4 py-8 sm:px-6 md:py-12">
       <div className="mx-auto max-w-6xl space-y-10">

@@ -22,7 +22,11 @@
       "narrator": "This story uses a male narrator by default.",
       "unknown": "The character profile does not specify a clear gender. A male voice is used by default; you can change it manually."
     },
-    "voiceGroups": { "female": "Female voices", "male": "Male voices", "other": "Additional voice" },
+    "voiceGroups": {
+      "female": "Female voices",
+      "male": "Male voices",
+      "other": "Additional voice"
+    },
     "voiceDescriptions": {
       "aoede": "Breezy and relaxed. For natural conversations and gentle delivery.",
       "kore": "Firm and composed. For confident, commanding characters.",
@@ -178,7 +182,10 @@
     "user": "User"
   },
   "home": {
-    "continue": { "label": "Continue", "you": "You" },
+    "continue": {
+      "label": "Continue",
+      "you": "You"
+    },
     "searchPlaceholder": "Search by name or tag...",
     "sort": "Sort",
     "sortTop": "Top",
@@ -243,7 +250,7 @@
       "create": "Create your character",
       "catalogCount_one": "{{count}} character in the catalog",
       "catalogCount_other": "{{count}} characters in the catalog",
-      "languages": "Russian and English"
+      "languages": "Russian, English and Spanish"
     },
     "recommendations": {
       "discoveryTitle": "Discover new stories",
@@ -272,7 +279,6 @@
     "storyStart": "How the story begins",
     "scenario": "Scenario",
     "similar": "Similar characters",
-    "messagesWord": { "one": "message", "few": "messages", "many": "messages" },
     "faq": {
       "title": "Frequently asked questions",
       "freeQ": "Can I chat with {{name}} for free?",
@@ -281,10 +287,12 @@
       "registerQ": "Do I need to sign up?",
       "registerA": "Not to start: the first {{limit}} {{messages}} can be sent as a guest. To keep going, sign in and the guest chat moves to your account.",
       "languageQ": "What language does {{name}} reply in?",
-      "languageA": "The language of the site: Russian on the Russian version, English on the English one. You can switch the language in the menu and keep the same story.",
+      "languageA": "In the selected site language: Russian, English or Spanish. You can switch languages in the menu and continue the same story.",
       "startQ": "How do I start the story?",
       "startA": "Press “Start chat”. {{name}} opens the scene with the first message, and the plot follows your replies."
-    }
+    },
+    "messagesWord_one": "message",
+    "messagesWord_other": "messages"
   },
   "errorPage": {
     "notFoundTitle": "Page not found",
@@ -325,7 +333,10 @@
     }
   },
   "profile": {
-    "wallet": { "title": "VerseCoins wallet", "topUp": "Top up" },
+    "wallet": {
+      "title": "VerseCoins wallet",
+      "topUp": "Top up"
+    },
     "title": "My profile",
     "loginPrompt": "Sign in to view your profile and characters.",
     "registeredAt": "Registered:",
@@ -480,7 +491,54 @@
     "hoursMinutes": "{{hours}} h {{minutes}} min",
     "minutes": "{{minutes}} min",
     "paymentPending": "Payment is processing. Purchased VC will appear on your balance after confirmation.",
-    "paymentConfirmed": "The VC purchase is confirmed and credited."
+    "paymentConfirmed": "The VC purchase is confirmed and credited.",
+    "shop01": "The introductory offer is no longer available. Choose a regular pack.",
+    "shop02": "Estimate",
+    "shop03": "replies with",
+    "shop04": "VC received. Your story is ready to continue.",
+    "shop05": "Return to chat",
+    "shop06": "Back to chat",
+    "shop07": "Continue your story with {{value1}}",
+    "shop08": "Your story deserves another chapter",
+    "shop09": "Top up and chat with characters at your own pace. Start small, without a subscription or commitment.",
+    "shop10": "Return to this chat after payment confirmation",
+    "shop11": "VC never expire",
+    "shop12": "Payment via Robokassa",
+    "shop13": "First introduction",
+    "shop14": "One-time top-up",
+    "shop15": "For new scenes and conversations",
+    "shop16": "One payment · no auto-renewal",
+    "shop17": " · Charged {{value1}} RUB",
+    "shop18": "Checking availability…",
+    "shop19": "Offer temporarily unavailable",
+    "shop20": "Get {{value1}} VC",
+    "shop21": "The number depends on the model you choose.",
+    "shop22": "One introductory pack per account before your first purchase. Subscription and avatar generations are not included.",
+    "shop23": "Your introductory pack is reserved: continue paying the same invoice.",
+    "shop24": "Loading…",
+    "shop25": "Today",
+    "shop26": "Tomorrow",
+    "shop27": "Tomorrow +{{value1}} VC",
+    "shop28": "More room for your story",
+    "shop29": "One-time packs for every account. Top up whenever you like.",
+    "shop30": "A few scenes",
+    "shop31": "Build your story",
+    "shop32": "Long conversations",
+    "shop33": "Multiple stories",
+    "shop34": "Bigger worlds",
+    "shop35": "Dedicated storytellers",
+    "shop36": "Chatting regularly?",
+    "shop37": "Subscriptions include monthly VC, conversation memory and avatar generations.",
+    "shop38": "Before you buy",
+    "shop39": "What can I do with VC?",
+    "shop40": "Pay for model replies in chats. Reply prices depend on the model and are shown in chat. VC packs do not activate a subscription or add avatar generations.",
+    "shop41": "Do purchased VC expire?",
+    "shop42": "VC from one-time packs never expire. Monthly subscription VC are separate and follow subscription terms.",
+    "shop43": "When will my balance update?",
+    "shop44": "After Robokassa confirms payment. You may return to the site earlier; in that case we show a pending status.",
+    "shop45": "Need help with payment?",
+    "shop46": "Contact support",
+    "checkoutTerms": "One payment. No subscription or automatic renewal. VC do not expire."
   },
   "payment": {
     "chargeLabel": "Amount due",
@@ -497,7 +555,7 @@
     },
     "create": {
       "title": "Create an AI character for free — NewVerse creator",
-      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, in English and Russian."
+      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, in Russian, English and Spanish."
     },
     "edit": {
       "title": "Edit character — NewVerse",
@@ -596,8 +654,8 @@
       "search": "Search “{{query}}” among characters",
       "pageSuffix": ", page {{page}}",
       "pageSentence": "Page {{page}}.",
-      "description": "NewVerse catalog of AI characters for roleplay in English and Russian.",
-      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in English and Russian.",
+      "description": "NewVerse catalog of AI characters for roleplay in Russian, English and Spanish.",
+      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in Russian, English and Spanish.",
       "sort": {
         "new": "New AI characters",
         "random": "Random AI characters",
@@ -793,99 +851,99 @@
     "confirmEmailToClaimBonus": "Confirm your email to claim bonuses",
     "rateLimited": "Too many requests. Please wait a moment."
   },
-    "onboarding": {
-        "eyebrow": "Welcome to NewVerse",
-        "stepLabel": "Step {{step}} of 3",
-        "back": "Back",
-        "skip": "Skip",
-        "close": "Close the picker",
-        "style": {
-            "title": "Which characters do you prefer?",
-            "text": "Answer two questions and we will show you who to start talking to. You can change this any time.",
-            "anime": "Anime",
-            "animeHint": "Vivid art, big emotions, fantasy worlds",
-            "realistic": "Realistic",
-            "realisticHint": "Lifelike faces, like in a film",
-            "any": "I like both"
-        },
-        "styleLabel": {
-            "anime": "Anime",
-            "realistic": "Realistic",
-            "any": "Both styles"
-        },
-        "interests": {
-            "title": "What stories interest you?",
-            "text": "Pick up to three. We will show the characters that fit best.",
-            "show": "Show characters",
-            "pickOne": "Pick at least one interest",
-            "limit": "You can pick up to three. Remove one to choose another.",
-            "matches_one": "{{count}} character fits · {{selected}} of 3 selected",
-            "matches_other": "{{count}} characters fit · {{selected}} of 3 selected",
-            "noMatches": "No exact matches, we will show popular ones · {{selected}} of 3 selected",
-            "genderLabel": "Show me",
-            "genderAny": "Everyone",
-            "genderMale": "Male characters",
-            "genderFemale": "Female characters"
-        },
-        "interest": {
-            "romance": {
-                "label": "Romance",
-                "hint": "Flirting, feelings, slow burn"
-            },
-            "fantasy": {
-                "label": "Fantasy and magic",
-                "hint": "Mages, elves, academies"
-            },
-            "adventure": {
-                "label": "Adventure",
-                "hint": "Journeys, ruins, action"
-            },
-            "mystic": {
-                "label": "Mystery and horror",
-                "hint": "Ghosts, secrets, gothic"
-            },
-            "detective": {
-                "label": "Detective",
-                "hint": "Investigations and thrillers"
-            },
-            "scifi": {
-                "label": "Sci-fi and cyberpunk",
-                "hint": "Space, androids, neon"
-            },
-            "everyday": {
-                "label": "Slice of life",
-                "hint": "Neighbors, friends, comfort"
-            },
-            "drama": {
-                "label": "Drama",
-                "hint": "Strong emotions and choices"
-            },
-            "comedy": {
-                "label": "Comedy",
-                "hint": "Light and funny stories"
-            }
-        },
-        "results": {
-            "loading": "Finding characters…",
-            "title_one": "Here is who to start with",
-            "title_other": "Here is who you can start with",
-            "text": "Tap “Start talking”: the character writes first.",
-            "matched": "Matches: {{list}}",
-            "popular": "Popular",
-            "start": "Start talking",
-            "more": "Show others",
-            "catalog": "Full catalog",
-            "error": "Could not load the picks.",
-            "retry": "Retry",
-            "empty": "No matching characters yet. Open the catalog: there are over a hundred stories."
-        },
-        "catalog": {
-            "applied": "Using your answers",
-            "remove": "Remove “{{label}}”",
-            "pick": "Find a character",
-            "pickAgain": "Pick again"
-        }
+  "onboarding": {
+    "eyebrow": "Welcome to NewVerse",
+    "stepLabel": "Step {{step}} of 3",
+    "back": "Back",
+    "skip": "Skip",
+    "close": "Close the picker",
+    "style": {
+      "title": "Which characters do you prefer?",
+      "text": "Answer two questions and we will show you who to start talking to. You can change this any time.",
+      "anime": "Anime",
+      "animeHint": "Vivid art, big emotions, fantasy worlds",
+      "realistic": "Realistic",
+      "realisticHint": "Lifelike faces, like in a film",
+      "any": "I like both"
     },
+    "styleLabel": {
+      "anime": "Anime",
+      "realistic": "Realistic",
+      "any": "Both styles"
+    },
+    "interests": {
+      "title": "What stories interest you?",
+      "text": "Pick up to three. We will show the characters that fit best.",
+      "show": "Show characters",
+      "pickOne": "Pick at least one interest",
+      "limit": "You can pick up to three. Remove one to choose another.",
+      "matches_one": "{{count}} character fits · {{selected}} of 3 selected",
+      "matches_other": "{{count}} characters fit · {{selected}} of 3 selected",
+      "noMatches": "No exact matches, we will show popular ones · {{selected}} of 3 selected",
+      "genderLabel": "Show me",
+      "genderAny": "Everyone",
+      "genderMale": "Male characters",
+      "genderFemale": "Female characters"
+    },
+    "interest": {
+      "romance": {
+        "label": "Romance",
+        "hint": "Flirting, feelings, slow burn"
+      },
+      "fantasy": {
+        "label": "Fantasy and magic",
+        "hint": "Mages, elves, academies"
+      },
+      "adventure": {
+        "label": "Adventure",
+        "hint": "Journeys, ruins, action"
+      },
+      "mystic": {
+        "label": "Mystery and horror",
+        "hint": "Ghosts, secrets, gothic"
+      },
+      "detective": {
+        "label": "Detective",
+        "hint": "Investigations and thrillers"
+      },
+      "scifi": {
+        "label": "Sci-fi and cyberpunk",
+        "hint": "Space, androids, neon"
+      },
+      "everyday": {
+        "label": "Slice of life",
+        "hint": "Neighbors, friends, comfort"
+      },
+      "drama": {
+        "label": "Drama",
+        "hint": "Strong emotions and choices"
+      },
+      "comedy": {
+        "label": "Comedy",
+        "hint": "Light and funny stories"
+      }
+    },
+    "results": {
+      "loading": "Finding characters…",
+      "title_one": "Here is who to start with",
+      "title_other": "Here is who you can start with",
+      "text": "Tap “Start talking”: the character writes first.",
+      "matched": "Matches: {{list}}",
+      "popular": "Popular",
+      "start": "Start talking",
+      "more": "Show others",
+      "catalog": "Full catalog",
+      "error": "Could not load the picks.",
+      "retry": "Retry",
+      "empty": "No matching characters yet. Open the catalog: there are over a hundred stories."
+    },
+    "catalog": {
+      "applied": "Using your answers",
+      "remove": "Remove “{{label}}”",
+      "pick": "Find a character",
+      "pickAgain": "Pick again"
+    }
+  },
   "telegram": {
     "webLogin": "Sign in with Telegram",
     "webLoginHint": "Open the bot, match the code and approve sign-in. Then return to this browser. No new account is created.",
@@ -949,5 +1007,359 @@
     "heroBadge": "{{onboarding}} free replies a day for your first week",
     "planFeature": "{{count}} free replies a day on {{model}}, no VC spent",
     "guestOffer": "After sign-up you get {{onboarding}} free replies a day for the first week."
+  },
+  "landing": {
+    "home": {
+      "heading": "Chat with AI characters",
+      "paragraphs": [
+        "NewVerse is a place to talk with AI characters. The catalog has heroes from many genres: romance, fantasy, anime, detective stories, science fiction and calm everyday life. Pick a character by their description and personality, open the chat and start writing — they reply in their own voice, with their own story and way of speaking.",
+        "This is more than an AI chat with questions and answers: it is AI roleplay. Every character comes with a setup, a world and a first message that opens the scene. You decide who you are in the story and where it goes. Characters remember the important details of the conversation, so you can come back a day or a week later and continue where you left off.",
+        "If you cannot find the right hero, create your own AI character: set their personality, appearance, first message and world, then chat with them yourself or publish them to the catalog. The site works in Russian, English and Spanish, and you can start without signing up."
+      ],
+      "createLink": "Create an AI character",
+      "genresLink": "All genres",
+      "faqHeading": "Frequently asked questions",
+      "faq": [
+        {
+          "question": "Can I chat with AI characters for free?",
+          "answer": "{{freeAnswer}}"
+        },
+        {
+          "question": "Do I need to sign up?",
+          "answer": "No. To try it, open a character and write your first message. An account lets you save your stories, continue them on another device and create your own characters."
+        },
+        {
+          "question": "Do characters remember what we talked about?",
+          "answer": "Yes. A character keeps track of recent messages and remembers important facts from the conversation: names, promises, plot events. So you can pick the story up where you left it."
+        },
+        {
+          "question": "Which languages can I use?",
+          "answer": "Russian, English or Spanish. Character descriptions are available in these languages, and you can change the site language in the menu."
+        },
+        {
+          "question": "How is AI roleplay different from a regular chatbot?",
+          "answer": "A regular chatbot answers questions. An AI character plays a role: they have a personality, a past and goals, react to what you do and build the plot together with you."
+        }
+      ]
+    },
+    "freeAnswer": {
+      "quota": "Yes. You can send your first messages without signing up, and once you have an account you get free replies on the base model every day. A plan adds more free replies, bonus VerseCoins and a larger context window.",
+      "noQuota": "You can start for free: the first messages need no sign-up. After that, replies are paid with VerseCoins or a plan."
+    },
+    "create": {
+      "eyebrow": "NewVerse character creator",
+      "h1": "Create an AI character",
+      "intro": "Design a hero for AI chat and roleplay: set their personality, appearance, first message and the world they live in. Creating a character is free — you only need an account.",
+      "modesHeading": "What are we creating?",
+      "modesHint": "A core idea is enough. Appearance, speaking style and story details can be added later.",
+      "stepsHeading": "How to create an AI character",
+      "steps": [
+        {
+          "title": "Pick a format",
+          "text": "A single character, a whole universe where you are the main hero, or a shared story with a cast of up to {{maxParticipants}} characters."
+        },
+        {
+          "title": "Describe the hero",
+          "text": "Name, personality, appearance and way of speaking. Start with what makes the hero recognisable: a habit, a goal, one striking trait."
+        },
+        {
+          "title": "Set how the story begins",
+          "text": "A first message and a scenario: where the meeting happens and how the scene opens. Example dialogues help the character keep their style."
+        },
+        {
+          "title": "Save and start chatting",
+          "text": "Keep the character private or publish them to the catalog so others can chat with them too."
+        }
+      ],
+      "featuresHeading": "What you can set up",
+      "features": [
+        {
+          "title": "Personality and motives",
+          "text": "What the hero wants, what they fear and how they treat the person they talk to."
+        },
+        {
+          "title": "Appearance and avatar",
+          "text": "Upload your own image or generate an avatar from the description — generation is included in a plan."
+        },
+        {
+          "title": "Speaking style",
+          "text": "Short lines or long replies, slang, politeness, an accent."
+        },
+        {
+          "title": "World and rules",
+          "text": "The setting, supporting characters and narrative rules for universes."
+        },
+        {
+          "title": "Genres and tags",
+          "text": "They help people find the character in the catalog and on genre pages."
+        },
+        {
+          "title": "Memory",
+          "text": "What the character knows about themselves and about you from the first line."
+        }
+      ],
+      "faqHeading": "Questions about creating a character",
+      "faq": [
+        {
+          "question": "How much does it cost to create an AI character?",
+          "answer": "Creating a character is free. Generating an avatar from the description is included in a plan; without one you can upload your own image."
+        },
+        {
+          "question": "Do I need to sign up?",
+          "answer": "Yes: characters are saved to your account, so you need to sign in to create one. You can chat with catalog characters without signing up."
+        },
+        {
+          "question": "Can I keep a character private?",
+          "answer": "Yes. Only you can see a private character. A public one appears in the catalog for everyone and must follow the platform rules."
+        },
+        {
+          "question": "How do I make a character's replies more interesting?",
+          "answer": "Describe not only their looks but also their motives, habits and way of speaking. Add a first message with a concrete scene and one or two example dialogues: the clearer the setup, the livelier the replies."
+        },
+        {
+          "question": "Can I change a character after creating it?",
+          "answer": "Yes. You can edit the card at any time: extend the description, change the avatar or the first message."
+        }
+      ]
+    }
+  },
+  "genreIntros": {
+    "fantasy": [
+      "Fantasy is where a conversation with a character easily turns into a whole journey. This is home to mages and mercenaries, elven guards, dragon riders, hedge witches from the edge of the kingdom and students at magic academies. You can step into the story as the hero's companion, their rival, or a passing traveller who has stumbled onto a dangerous secret.",
+      "An AI character answers in the voice of their world: they have their own oaths, fears and ideas about honour. Some stories begin by a tavern fire, others on a battlefield or in a library of forbidden spells. Pick a character by their description and personality, set the tone of the scene — from a cosy fairy tale to a grim story about the price of power — and decide for yourself how the quest ends."
+    ],
+    "romance": [
+      "Romance characters are for stories where what matters most happens between two people. It might be a slow acquaintance with a neighbour down the hall, a charged game with an old rival, an office romance, letters from another era, or feelings the character is not ready to admit even to themselves.",
+      "Every character has a personality of their own: some are warm and open, some are reserved and take time to open up, some flirt from the very first line. You set the pace, from light flirting to a slow-burn relationship where trust has to be earned. The character responds to what you say and do, so the same story can end in a confession, a quarrel or a new chapter. Choose someone by their description, start with their opening scene, or write your own."
+    ],
+    "anime": [
+      "Anime characters are recognisable at a glance: vivid looks, expressive emotions and familiar archetypes — tsunderes, unflappable top students, troublemakers with good hearts, the mysterious new kid in class. But the stories here go well beyond school corridors.",
+      "This section gathers anime-style characters from all kinds of plots: everyday school life and after-class clubs, magic academies, isekai adventures in another world, sports rivalries, romance and quests. Each character stays true to their role and reacts to your choices, so you can play out a quiet scene on the school roof or a tense duel. Pick a character from their card, read their description and begin with the ready-made scene, or suggest your own setup as if you were writing a new episode."
+    ],
+    "scifi": [
+      "Science fiction on NewVerse is about the future, technology and the people caught up in it: starship captains, androids learning to be human, scientists on distant stations, pilots, smugglers and the first witnesses of contact with an alien mind.",
+      "You can set off on a long deep-space voyage, investigate a failure in a colony's systems, or argue with an artificial intelligence about memory and free will. Characters keep to the rules of their world: the ship runs low on fuel, the station has its regulations, and the android has protocols it may decide to break. Ask questions, take risky decisions and see where the plot leads. If you want more street-level tech and neon, the cyberpunk section is right next door."
+    ],
+    "mystic": [
+      "Mystery and the supernatural are for anyone drawn to the unexplained. Here you will meet fortune-tellers and mediums, keepers of old houses, cursed aristocrats, witches, spirits and people who know far too much about other people's dreams.",
+      "These stories live on what is left unsaid: a character may speak in riddles, hide part of the truth, or test whether you are ready to hear all of it. Scenes open on a midnight train, at a séance, in an abandoned manor or in a small town where every resident keeps a secret. Unlike horror, atmosphere and the solution matter more than fear here, though the line can be thin. Choose a character by their description, listen to their hints and decide whether to open the door someone is waiting behind."
+    ],
+    "realistic": [
+      "Modern-day characters live much like we do: they study, work, rent flats, meet in coffee shops and get caught up in stories that could happen to anyone. They are colleagues and neighbours, stars and their managers, doctors, students, baristas, musicians and old classmates.",
+      "The strength of this kind of roleplay is that it feels true to life. Without magic or starships, personality, dialogue and relationships take centre stage: an awkward reunion after years apart, a hard conversation with a boss, a first date, or helping a friend through a rough evening. The character answers with their own past and habits in mind, and the plot grows from your words and choices. These stories suit both a light chat and a serious drama. Pick a character by their description and start with their scene or with something that happened to you today."
+    ],
+    "adventure": [
+      "Adventure is about motion: the open road, a map with blank spaces and a companion who will not let things get dull. This genre brings together treasure hunters, pirates, trackers, mercenaries, time travellers and heroes who always end up exactly where trouble begins.",
+      "Any scene can turn the plot: a rooftop chase, a crossing over a raging river, a deal with a suspicious merchant, or an ancient mechanism that must be opened before sunset. The character reacts to your decisions — backs a risky plan, argues, or suddenly proposes one of their own. Adventure mixes easily with other genres: a fantasy quest, a space expedition or the search for a missing friend in a modern city. Choose a companion by their description, agree on a goal and set off; the route will take shape as the story goes."
+    ],
+    "detective": [
+      "Detective characters are for anyone who loves clues, interrogations and unexpected twists. Here you will find private investigators and weary police detectives, investigative journalists, cold-blooded criminals and witnesses who are clearly holding something back.",
+      "You can work a case alongside the character, end up as a suspect yourself, or play against them and try to catch them in a contradiction. A good detective scene runs on details: the time on a clock, a mark on a windowsill, a slip of the tongue. The character keeps track of what has already been said, so an attentive player can compare statements and reach their own theory. Cases can be classic, with a locked room and a circle of suspects, or modern, with security cameras and message threads. Choose a character and ask the first question."
+    ],
+    "everyday": [
+      "Slice of life is the genre of small stories that make up a life: morning coffee with a neighbour, a shift at a bookshop, studying for exams together, moving house, a long talk in the kitchen.",
+      "Nobody has to save the world here. The value of this kind of roleplay is in natural conversation and relationships that grow over time: the character picks up on details, jokes, shares plans, can support you after a hard day or invite you on a spontaneous trip. The cast includes friends, roommates, colleagues and acquaintances you will want to talk to again. Slice-of-life stories are a good fit when you want to unwind, practise conversation or simply spend an evening in calm company. Pick a character by their personality, start with an ordinary scene and let the story unfold without hurry."
+    ],
+    "cyberpunk": [
+      "Cyberpunk means neon streets, corporations more powerful than governments and people who sell their memories, bodies and loyalty for a chance to survive. This genre is home to hackers, augmented mercenaries, back-alley doctors, big-city detectives and androids who have started to doubt their protocols.",
+      "The stories are hard and fast: cracking a secured network, a deal in an underground club, an escape from corporate security, the hunt for whoever erased part of your past. The character lives by the rules of their city — they might sell you out for the right price, or risk everything for a partner. Cyberpunk is close to science fiction, but instead of looking up at the stars it looks down at the streets, where technology has become an everyday commodity. Choose a character by their description, decide whose side you are on and make your first deal."
+    ],
+    "horror": [
+      "Horror is for those who enjoy a chill running down their spine. This section gathers characters around whom safety is never guaranteed: monsters and their victims, hunters of the unholy, residents of abandoned hospitals, survivors of a disaster and creatures that only pretend to be human.",
+      "A good horror story is built on tension, not on the amount of blood. A creaking floorboard, a torch about to go out, a voice from the next room — the character runs the scene so that you decide whether to go further or run. You can play the one investigating a disappearance, an unlucky guest in a stranger's house, or step into a dangerous conversation with the monster itself. You choose how frightening it gets, from atmospheric gothic to real survival. Pick a character by their description and turn off the lights."
+    ],
+    "comedy": [
+      "Comedy characters are for when you want laughter rather than drama: witty sidekicks, clumsy wizards, overconfident villains whose plans never work, chatty neighbours and heroes who stumble into absurd situations out of nowhere.",
+      "Humour in roleplay comes from personality: the character stays true to themselves even when everything goes sideways, and that is exactly what makes a scene funny. You can play out a disastrous date, domestic chaos in a shared flat, a parody of an epic quest, or an argument with a cat who believes it is royalty. The character picks up your jokes, answers with their own and will happily push things to the absurd if that is what you want. Comedy pairs well with slice of life, fantasy and romance. Choose a character, set up a ridiculous premise and see what happens."
+    ],
+    "drama": [
+      "Drama is the genre of stories about choice, loss, guilt and forgiveness. The characters here carry a difficult past: people who have lost someone close, former friends driven apart by life, heroes facing a hard decision, families where much has been left unsaid.",
+      "Dramatic roleplay takes time and attention: the character does not open up at once, and trust has to be earned. A scene may begin with a brief meeting at a railway station or a letter that arrived too late, and from there everything depends on what you say and what you leave unspoken. The AI character answers in light of their wounds and motives, so the conversation can lead to reconciliation or to a final parting. If you are drawn to stories that leave you quiet for a while afterwards, choose a character by their description and start with an honest question."
+    ]
+  },
+  "telegramBot": {
+    "welcome": "NewVerse is role-play stories with AI characters. Open the app to choose a character and start a story.",
+    "open": "Open NewVerse",
+    "help": "Commands:\n/start — open NewVerse\n/help — help\n/privacy — privacy policy\n\nService rules and support are behind the buttons below.",
+    "rules": "Rules",
+    "support": "Support",
+    "privacy": "NewVerse privacy policy:",
+    "privacyButton": "Open the policy",
+    "linked": "Telegram is now linked to your NewVerse account. The app uses the same account and VC balance as the website. Close and reopen the Mini App using the button below.",
+    "already_linked": "This Telegram is already linked to your NewVerse account.",
+    "invalid": "This link is not valid: it works once and for 10 minutes. Create a new one in your profile on the website.",
+    "telegram_taken": "This Telegram is already connected to another NewVerse account, for example one created in the app. Accounts are not merged automatically. Use another Telegram account or contact support.",
+    "confirmation_required": "You have a separate unused Telegram profile with 50 starter VC. Confirm switching to the website account: {{account}}. The app will use that website account's balance, characters and stories. The 50 starter VC from the unused profile will not be transferred. If this is not your account, do not confirm the link.",
+    "confirmLink": "Confirm linking the website account",
+    "merge_confirmation_required": "Merge your Telegram profile into website account {{account}}? Characters: {{characters}}, stories: {{stories}}, messages: {{messages}}, earned VC: {{vc}} will be transferred. The duplicate starter 50 VC are excluded. Existing website stories and characters are kept. Old Telegram sessions will end. Confirm only for your own account.",
+    "confirmMerge": "Transfer data and merge accounts",
+    "merge_busy": "Close the Mini App, let all generations finish, and wait 3 minutes. Then create a new link in your website profile. A separate confirmation is required before any data moves.",
+    "merged": "Your data has been transferred and accounts merged. Close and reopen the Mini App to see the shared stories, characters and balance.",
+    "profile_not_empty": "Linking was stopped because the profile has changed, has independent sign-in credentials, purchases, a subscription, or conflicting referral settings. Create a fresh website link. If transfer is still unavailable, contact support; your data is kept.",
+    "user_has_other_telegram": "Another Telegram is already linked to this NewVerse account. Unlink it in your profile on the website first.",
+    "unknown": "Use /start to open NewVerse or /help for help.",
+    "signIn01": "NewVerse website sign-in. Request code: {{value1}}.\n\nMatch this code with your browser. Approve only if you started signing in on newvers.ai. That browser will access your stories, characters and balance. Do not forward this link.",
+    "signIn02": "First create an account in the Mini App or link your existing website account.",
+    "signIn03": "This request is invalid or expired. Start again on the website.",
+    "signIn04": "Approve website sign-in",
+    "signInApproved": "Approved. Return to the browser where you started and choose “Sign in to this account”.",
+    "signInInvalid": "This request is invalid or expired. Start again on the website."
+  },
+  "globalError": {
+    "errorTitle": "Something went wrong",
+    "errorText": "We already know about the problem. Try again or go back to the catalog.",
+    "retry": "Try again",
+    "toCatalog": "Go to catalog",
+    "errorCode": "Error code"
+  },
+  "structuredData": {
+    "chatDescription": "Chat with {{name}} on NewVerse",
+    "author": "Author",
+    "home": "Home"
+  },
+  "characterStory": {
+    "you": "you"
+  },
+  "chatModelGroups": {
+    "main": "Main models",
+    "testing": "Testing",
+    "testingHint": "New models: we are evaluating response quality and speed.",
+    "quotaRefresh": "Free replies refresh every day at 00:00 Moscow time.",
+    "freeLeft": "Free · {{value1}} left",
+    "reasoningHint": "Disabling reasoning through the gateway is unverified. The output limit may shorten or prevent an answer."
+  },
+  "subscriptions": {
+    "avatarAllowance": "Up to {{count}} avatars per calendar month; every model uses one generation"
+  },
+  "characterTags": {
+    "labels": {
+      "Романтика": "Romance",
+      "Приключение": "Adventure",
+      "Фэнтези": "Fantasy",
+      "Научная фантастика": "Sci-Fi",
+      "Детектив": "Detective",
+      "Драма": "Drama",
+      "Комедия": "Comedy",
+      "Ужасы": "Horror",
+      "Триллер": "Thriller",
+      "Мистика": "Mystery",
+      "Повседневность": "Slice of life",
+      "Экшен": "Action",
+      "Современный мир": "Modern world",
+      "Исторический": "Historical",
+      "Средневековье": "Middle Ages",
+      "Постапокалипсис": "Post-apocalyptic",
+      "Киберпанк": "Cyberpunk",
+      "Космос": "Space",
+      "Магическая академия": "Magic academy",
+      "Готика": "Gothic",
+      "Мужской персонаж": "Male character",
+      "Женский персонаж": "Female character",
+      "Антропоморфный": "Anthropomorphic",
+      "Эльф": "Elf",
+      "Андроид": "Android",
+      "Монстр": "Monster",
+      "Друг": "Friend",
+      "Партнёр": "Partner",
+      "Сосед": "Neighbor",
+      "Напарник": "Companion",
+      "Наставник": "Mentor",
+      "Соперник": "Rival",
+      "Герой": "Hero",
+      "Злодей": "Villain",
+      "Враг": "Enemy",
+      "Добрый": "Kind",
+      "Заботливый": "Caring",
+      "Сдержанный": "Reserved",
+      "Дерзкий": "Bold",
+      "Загадочный": "Mysterious",
+      "Холодный": "Cold",
+      "Ироничный": "Witty",
+      "Флиртующий": "Flirty",
+      "Цундере": "Tsundere",
+      "Аниме": "Anime",
+      "Ролевая игра": "Roleplay",
+      "Медленное развитие отношений": "Slow-burn relationships",
+      "Выборы и последствия": "Choices and consequences",
+      "Исследование мира": "World exploration"
+    },
+    "groups": {
+      "genres": "Genre",
+      "world": "World and setting",
+      "character": "Character",
+      "roles": "Role and relationships",
+      "traits": "Personality",
+      "style": "Story style"
+    },
+    "hint": "Choose up to {{limit}} accurate tags to help readers find your story.",
+    "search": "Find a tag",
+    "legacy": " (legacy)",
+    "remove": "Remove tag {{tag}}",
+    "noMatches": "No matching tags"
+  },
+  "chatUi": {
+    "text001": "Actions",
+    "text002": "Message actions",
+    "text003": "Edit",
+    "text004": "Delete",
+    "text005": "Copy",
+    "text006": "Continue",
+    "text007": "Regenerate",
+    "text008": "The message cannot be empty",
+    "text009": "Cancel",
+    "text010": "Save",
+    "text011": "Thinking...",
+    "text012": "Typing...",
+    "text013": "Action choices",
+    "text014": "Character description",
+    "text015": "Chat settings",
+    "text016": "Chat models",
+    "text017": "Edit memory",
+    "text018": "My persona",
+    "text019": "Story type and rules",
+    "text020": "Start a new chat",
+    "text021": "Close",
+    "text022": "{{value1}} VC/request",
+    "text023": "Hide description",
+    "text024": "Show description",
+    "text025": "Character",
+    "text026": "You",
+    "text027": "Could not load the chat",
+    "text028": "Could not select the model",
+    "text029": "Not enough VerseCoins",
+    "text030": "The response stream was interrupted",
+    "text031": "Response regenerated",
+    "text032": "Could not regenerate the response",
+    "text033": "Response continued",
+    "text034": "Could not continue the response",
+    "text035": "Delete this message?",
+    "text036": "The message will be removed from the chat history. This cannot be undone.",
+    "text037": "Message deleted",
+    "text038": "Could not delete the message",
+    "text039": "Message updated",
+    "text040": "Could not save the message",
+    "text041": "Chat history cleared",
+    "text042": "Could not clear the chat",
+    "text043": "Copied",
+    "text044": "Could not copy",
+    "text045": "Could not send the message",
+    "text046": "No models found",
+    "text047": "About the character",
+    "text048": "Start a conversation with the character. Write something!",
+    "text049": "Retry",
+    "text050": "The history and memory of your current chat with this character will be deleted. The new story will use the type from the current character card. Continue?",
+    "text051": "Start over",
+    "text052": "How VC are charged",
+    "text053": "Your move…",
+    "text054": "Send",
+    "model001": "Fast replies for long, lively conversations.",
+    "model002": "An accessible starting point with pleasant writing and strong Russian.",
+    "model003": "A balance of price and quality for lively dialogue.",
+    "model004": "Creative, suited to unusual plots and ideas.",
+    "model005": "For roleplay and complex characters.",
+    "model006": "A reliable style with clear, focused reasoning.",
+    "model007": "Realistic scenes and fewer invented details.",
+    "model008": "For understanding context and building worlds.",
+    "model009": "For complex reasoning and detailed scenarios."
   }
 }

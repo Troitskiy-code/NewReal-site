@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { LOCALES } from "./i18nConfig";
 import config from "./indexNowConfig.json";
 import { isAdultCharacter } from "./characterSeoContent";
 import { memoryToText } from "./persistentMemory";
@@ -35,7 +36,7 @@ export function indexNowChangeUrls(before: CharacterChange | null, current: Char
     slugs.add(card.slug);
   }
   if (!slugs.size) return [];
-  return ["ru", "en"].flatMap((locale) => [
+  return LOCALES.flatMap((locale) => [
     `https://${config.host}/${locale}`,
     `https://${config.host}/${locale}/genres`,
     ...[...slugs].map((slug) => `https://${config.host}/${locale}/character/${slug}`),

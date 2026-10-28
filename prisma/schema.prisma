@@ -89,6 +89,7 @@ model Character {
   promptStates      ChatPromptState[]
   promptMigrations  PromptMigrationEntry[]
   generationItem    CharacterGenerationItem?
+  translations      CharacterTranslation[]
   moderationStatus    String?
   moderationReason    String?   @db.Text
   moderationWarnedAt  DateTime?
@@ -103,6 +104,28 @@ model Character {
   @@index([isPublic, createdAt])
   @@index([isPublic, totalMessages])
   @@index([lastActive])
+}
+
+// New languages use rows, while existing *_en fields remain compatible with old clients.
+// Private memory is deliberately excluded from this public translation store.
+model CharacterTranslation {
+  characterId     String
+  locale          String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  sourceHash      String
+  name            String?
+  description     String? @db.Text
+  descriptionCard String? @db.Text
+  appearance      String? @db.Text
+  greeting        String? @db.Text
+  scenario        String? @db.Text
+  exampleDialogs  String? @db.Text
+  avatarPrompt    String? @db.Text
+  publicMemory    String? @db.Text
+  updatedAt       DateTime @updatedAt
+
+  @@id([characterId, locale])
+  @@index([locale])
 }
 
 model Model {

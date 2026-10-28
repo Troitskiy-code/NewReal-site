@@ -1,6 +1,7 @@
 import { dateLocale, withLocale, type Locale } from "@/lib/i18nConfig";
 import { SITE_URL } from "@/lib/seo";
 import { brandAssetUrl } from "@/lib/brand.mjs";
+import { translate } from "@/lib/getDictionary";
 
 const DEFAULT_BRAND_IMAGE = `${SITE_URL}${brandAssetUrl("/logo.png")}`;
 
@@ -29,12 +30,10 @@ export function buildCharacterJsonLd(character: CharacterJsonLdInput, locale: Lo
   const pageUrl = absoluteSiteUrl(`/character/${character.slug}`, locale);
   const homeUrl = absoluteSiteUrl("/", locale);
   const fallbackDescription =
-    locale === "en"
-      ? `Chat with ${character.name} on NewVerse`
-      : `Чат с персонажем ${character.name} на NewVerse`;
+    translate(locale, "structuredData.chatDescription", { name: character.name });
   const description = character.description.trim() || fallbackDescription;
   const authorName =
-    character.authorName?.trim() || (locale === "en" ? "Author" : "Автор");
+    character.authorName?.trim() || translate(locale, "structuredData.author");
 
   return {
     "@context": "https://schema.org",
@@ -78,7 +77,7 @@ export function buildCharacterJsonLd(character: CharacterJsonLdInput, locale: Lo
           {
             "@type": "ListItem",
             position: 1,
-            name: locale === "en" ? "Home" : "Главная",
+            name: translate(locale, "structuredData.home"),
             item: homeUrl,
           },
           {
@@ -152,7 +151,7 @@ export function buildGenreJsonLd(input: GenreJsonLdInput, locale: Locale) {
         "@type": "BreadcrumbList",
         "@id": `${input.pageUrl}#breadcrumb`,
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: locale === "en" ? "Home" : "Главная", item: absoluteSiteUrl("/", locale) },
+          { "@type": "ListItem", position: 1, name: translate(locale, "structuredData.home"), item: absoluteSiteUrl("/", locale) },
           { "@type": "ListItem", position: 2, name: input.hubName, item: absoluteSiteUrl("/genres", locale) },
           { "@type": "ListItem", position: 3, name: input.name, item: input.genreUrl },
         ],

@@ -1,6 +1,7 @@
 import { meteredPost, meteredChatFetch, aiCostDiagnosticContext } from "@/lib/aiCostTelemetry";
 import { availableChatModel, chatModelNameFilter, chatTransport, getChatProvider, AiProviderConfigurationError } from "./aiProviders";
 import { countTokens } from "@/lib/tokenCount";
+import { chatTranslationSelect, localizedCharacterText, type CharacterTranslation } from "./characterLocalization";
 import { prisma } from "@/lib/prisma";
 import {
   episodicLimitForIntent,
@@ -50,6 +51,7 @@ export type ChatCompletionMessage = {
 };
 
 export type CharacterForChat = {
+  translations?: readonly CharacterTranslation[];
   id: string;
   name: string;
   description: string | null;
@@ -71,6 +73,7 @@ export type CharacterForChat = {
 };
 
 export const promptCharacterSelect = {
+  translations: { select: chatTranslationSelect },
   roleplayMode: true, roleplayStyle: true, rpConfig: true,
 } as const;
 
@@ -78,16 +81,14 @@ export function localizeCharacterForChat(
   character: CharacterForChat,
   locale: string | null | undefined
 ): CharacterForChat {
-  if (locale !== "en") return character;
-
   return {
     ...character,
-    name: character.name_en?.trim() || character.name,
-    description: character.description_en?.trim() || character.description,
-    appearance: character.appearance_en?.trim() || character.appearance,
-    greeting: character.greeting_en?.trim() || character.greeting,
-    scenario: character.scenario_en?.trim() || character.scenario,
-    exampleDialogs: character.exampleDialogs_en?.trim() || character.exampleDialogs,
+    name: localizedCharacterText(character, "name", locale) || character.name,
+    description: localizedCharacterText(character, "description", locale),
+    appearance: localizedCharacterText(character, "appearance", locale),
+    greeting: localizedCharacterText(character, "greeting", locale),
+    scenario: localizedCharacterText(character, "scenario", locale),
+    exampleDialogs: localizedCharacterText(character, "exampleDialogs", locale),
   };
 }
 

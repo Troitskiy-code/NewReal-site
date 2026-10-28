@@ -1,0 +1,612 @@
+{
+  "184c8e51-03b9-4c3d-bb42-b60b2fb37f86": {
+    "name": "Maren",
+    "replace": {
+      "Rubias": "Maren"
+    }
+  },
+  "1c3ec6d1-27a2-4e2f-995e-373253ba48e2": {
+    "name": "ECHO-7",
+    "replace": {
+      "ECO-7": "ECHO-7"
+    }
+  },
+  "39f57284-3563-41d2-bece-1e4ee876bcf6": {
+    "name": "Veronika Volt",
+    "replace": {
+      "Veronica Volt": "Veronika Volt"
+    }
+  },
+  "3bde7b25-c742-489d-b436-76f5675dedd6": {
+    "name": "Naya Run",
+    "replace": {
+      "Naya Rune": "Naya Run"
+    }
+  },
+  "4862bb36-f573-4436-97a2-736749ee1ab8": {
+    "name": "Arseny Velsky",
+    "replace": {
+      "Arsenio Velski": "Arseny Velsky"
+    }
+  },
+  "51249aa8-6e12-43fa-96a0-8d03d2b10e9c": {
+    "name": "Artyom Serov",
+    "replace": {
+      "Artem Serov": "Artyom Serov"
+    }
+  },
+  "5343fc7f-09ff-415a-b404-e9489c9a8e90": {
+    "name": "Demyan Lesnoy",
+    "replace": {
+      "Demian Forest": "Demyan Lesnoy"
+    }
+  },
+  "8d40fd65-b8da-4357-b750-8bae69c5a572": {
+    "name": "Erven Taillin — El precio del atajo",
+    "replace": {
+      "Erwen Taillin-el Precio del camino corto": "Erven Taillin — El precio del atajo"
+    }
+  },
+  "941011d2-3eb9-4841-81fb-3ac78d419a1b": {
+    "name": "Sofia Levina",
+    "replace": {
+      "Sofía Levina": "Sofia Levina"
+    }
+  },
+  "b0d81dca-2fc3-4867-a412-1b59229d2c1f": {
+    "name": "Ksenia Lavrova",
+    "replace": {
+      "Ksenia Lavrov": "Ksenia Lavrova"
+    }
+  },
+  "cmsvzj87j000j12ev337v89s0": {
+    "name": "El arquitecto de Erlion (narrador)",
+    "replace": {
+      "Arquitecto Erlion (Narrador": "El arquitecto de Erlion (narrador)"
+    }
+  },
+  "cmt174myu000s12ev1yilaswg": {
+    "name": "Hogwarts — Cartas desde la torre vacía",
+    "replace": {
+      "Hogwarts-Cartas de la torre vacía": "Hogwarts — Cartas desde la torre vacía"
+    }
+  },
+  "cmte9vap9000ht0vzirswuncs": {
+    "name": "Hana",
+    "replace": {
+      "Kan": "Hana"
+    }
+  },
+  "cmtfz1pzm000h13nncwxhimxf": {
+    "name": "La voz de las sombras",
+    "replace": {
+      "La Voz De Las Sombras": "La voz de las sombras"
+    }
+  },
+  "cmtfzjboh000j13nndbbca5r8": {
+    "name": "La voz de los espíritus",
+    "replace": {
+      "La Voz De Los Espíritus": "La voz de los espíritus"
+    }
+  },
+  "cmtu5hz760025isyc3ob7l66r": {
+    "name": "Kayne Valiant",
+    "replace": {
+      "Cain Valiant": "Kayne Valiant"
+    }
+  },
+  "cmtu68wtb002disyc5gvpk2ad": {
+    "name": "Rina «Zorra» Thorne",
+    "replace": {
+      "Rina \" Fox \" Thorne": "Rina «Zorra» Thorne"
+    }
+  },
+  "cmtu6ebe6002fisychdfiuslc": {
+    "name": "Vivien Dubois",
+    "replace": {
+      "Vivienne Dubois": "Vivien Dubois"
+    }
+  },
+  "cmtu6k4td002hisyckw9b3rt9": {
+    "name": "May Lee",
+    "replace": {
+      "Mei Li": "May Lee"
+    }
+  },
+  "cmtu7i825002lisyc2xkxe2el": {
+    "name": "Lira Teney",
+    "replace": {
+      "Lira De Sombras": "Lira Teney"
+    }
+  },
+  "cmtu7lsx6002nisyckr8f7uc2": {
+    "name": "Jacob «Jake»",
+    "replace": {
+      "Jacob\"Jake\"": "Jacob «Jake»"
+    }
+  },
+  "cmtu7yrqi002risyc5muixb2e": {
+    "name": "Lin «Eco»",
+    "replace": {
+      "Lin \"Echo\"": "Lin «Eco»"
+    }
+  },
+  "cmtu8cray002tisycp2md15rq": {
+    "name": "Kaylen «Thorn» Blackthorn",
+    "replace": {
+      "Kaylen\" Turn \" Blackthorn": "Kaylen «Thorn» Blackthorn"
+    }
+  },
+  "cmtu8ul1s002xisyce0myjezw": {
+    "name": "Lord Elric Vane",
+    "replace": {
+      "Lord Elric Wayne": "Lord Elric Vane"
+    }
+  },
+  "cmtx078og00dt9eqfvfooznow": {
+    "name": "Academia de las artes olvidadas",
+    "replace": {
+      "Academia de las artes olvidadas": "Academia de las artes olvidadas",
+      "Academy of Forgotten Arts": "Academia de las artes olvidadas"
+    }
+  },
+  "cmtx0t9qj00dv9eqfgyzmhi2v": {
+    "name": "Werndorf — La ciudad de los reflejos",
+    "replace": {
+      "Werndorf - Ciudad De Las Reflexiones": "Werndorf — La ciudad de los reflejos"
+    }
+  },
+  "cmtx1pwif0001at8w716jh42c": {
+    "name": "El puerto de las sombras lunares",
+    "replace": {
+      "Puerto De Las Sombras Lunares": "El puerto de las sombras lunares",
+      "Moon Shadow Port": "El puerto de las sombras lunares"
+    }
+  },
+  "cmtyl6ii100e0eunf41dnks6p": {
+    "name": "Senderos entre mundos",
+    "replace": {
+      "Senderos entre Mundos": "Senderos entre mundos"
+    }
+  },
+  "cmtyll4xs00e2eunftfatvdof": {
+    "name": "La encrucijada de todos los mundos",
+    "replace": {
+      "La Encrucijada De Todos Los Mundos": "La encrucijada de todos los mundos"
+    }
+  },
+  "cmtym2w1o00e5eunfzc673boi": {
+    "name": "Leonard «Leo» Hart",
+    "replace": {
+      "Leonard \" Leo \" Hart": "Leonard «Leo» Hart"
+    }
+  },
+  "cmtzdvx0b00nf2u0og3nx2cvl": {
+    "name": "Guardián de la perdición",
+    "replace": {
+      "Guardia De La Muerte": "Guardián de la perdición",
+      "Guardian of Doom": "Guardián de la perdición"
+    }
+  },
+  "cmtzr4p8r00g4ulxo5pdbb13t": {
+    "name": "VIVI-3 (Vivi)",
+    "replace": {
+      "VIVI-3 (VIVI)": "VIVI-3 (Vivi)"
+    }
+  },
+  "cmu2zmkrl02fu1fbrdf6qcd3u": {
+    "name": "Academia «El quinto elemento»",
+    "replace": {
+      "Academia\"El Quinto Elemento\"": "Academia «El quinto elemento»"
+    }
+  },
+  "cmu7l77dh023veyxi087o7bcj": {
+    "name": "Man",
+    "replace": {
+      "Maná": "Man"
+    }
+  },
+  "cmu8pzpja05p3eyxi8nr5sneg": {
+    "name": "Mia Sakura «Pincel»",
+    "replace": {
+      "Mia Sakura\"Cepillo\"": "Mia Sakura «Pincel»"
+    }
+  },
+  "cmu8q3fc205pkeyxif5iolouj": {
+    "name": "Lyra Vega «Luz de luna»",
+    "replace": {
+      "Lira Vega \"Luz De Luna\"": "Lyra Vega «Luz de luna»"
+    }
+  },
+  "cmub65g1c07dmvp5gwny8cqvf": {
+    "name": "Kira Knight",
+    "replace": {
+      "Keira Knight": "Kira Knight"
+    }
+  },
+  "cmuctvns70h6nvp5g6f2bb1v7": {
+    "name": "Antonio Ruiz",
+    "replace": {
+      "Антонио Руис": "Antonio Ruiz"
+    }
+  },
+  "cmucu2yul0h6rvp5gclc69juu": {
+    "name": "James Hart",
+    "replace": {
+      "Джеймс Харт": "James Hart"
+    }
+  },
+  "cmucuad0v0h7evp5gyl2y34dc": {
+    "name": "Victoria «Vi» Lane",
+    "replace": {
+      "Victoria \" Wee \" Lane": "Victoria «Vi» Lane"
+    }
+  },
+  "cmucumcnx0h8mvp5gzf2ci14a": {
+    "name": "Roxy «Rock» Davis",
+    "replace": {
+      "Roxy\" Rock \" Davis": "Roxy «Rock» Davis"
+    }
+  },
+  "cmucv3nde0hc9vp5gzjq8d3s3": {
+    "name": "Nika «Titán» Volkova",
+    "replace": {
+      "Nick \"Titan\" Volkov": "Nika «Titán» Volkova"
+    }
+  },
+  "cmucvc79f0he3vp5g2wjvdqbp": {
+    "name": "Nikki «Nix» Jones",
+    "replace": {
+      "Nikki \" Nix \" Jones": "Nikki «Nix» Jones"
+    }
+  },
+  "cmucvkzi10hgcvp5ga47n2dy0": {
+    "name": "Maya «La Roca» Rodríguez",
+    "replace": {
+      "Maya\" La Roca \" Rodríguez": "Maya «La Roca» Rodríguez"
+    }
+  },
+  "cmuec5phr01xp10u5eo53tcej": {
+    "name": "Marco «Sombra» Rizzi",
+    "replace": {
+      "Marco \"La Sombra\" Rizzi": "Marco «Sombra» Rizzi"
+    }
+  },
+  "cmuechfz8022u10u5544g4n2s": {
+    "name": "Alexey Volkov",
+    "replace": {
+      "Alexei Volkov": "Alexey Volkov"
+    }
+  },
+  "cmued6efr026p10u50b23vty9": {
+    "name": "Elira «Chronos»",
+    "replace": {
+      "Elira \"Chronos\"": "Elira «Chronos»"
+    }
+  },
+  "cmueddh9o026y10u5yeedxuor": {
+    "name": "Aya «Tormenta» Kurosawa",
+    "replace": {
+      "Aya \"Tormenta\" Kurosawa": "Aya «Tormenta» Kurosawa"
+    }
+  },
+  "cmuffdqfy05nv10u5f0s3q3y7": {
+    "name": "Cosmos",
+    "replace": {
+      "Cosmos": "Cosmos",
+      "Space": "Cosmos"
+    }
+  },
+  "cmufx3y530001qf17upgomta4": {
+    "name": "La ciudad de las Dos Lunas",
+    "replace": {
+      "Ciudad De Las Dos Lunas": "La ciudad de las Dos Lunas"
+    }
+  },
+  "cmufxj20o0007qf1799etgtuv": {
+    "name": "La ciudad de los engranajes",
+    "replace": {
+      "Ciudad De Los Engranajes": "La ciudad de los engranajes"
+    }
+  },
+  "cmugt9cl303o3qf17b1ikrpq7": {
+    "name": "La aldea al borde de la niebla",
+    "replace": {
+      "Pueblo al Borde de la Niebla": "La aldea al borde de la niebla"
+    }
+  },
+  "cmugtigah03rzqf17keo0i3nq": {
+    "name": "Fragmentos de realidad",
+    "replace": {
+      "Fragmentos De La Realidad": "Fragmentos de realidad"
+    }
+  },
+  "cmugtjawv03stqf17na8c81pl": {
+    "name": "Academia de San Judas",
+    "replace": {
+      "Academia De San Judas": "Academia de San Judas"
+    }
+  },
+  "cmugtnpfk03usqf17ih6viwbh": {
+    "name": "El arca «Neón»",
+    "replace": {
+      "Arca De Neón": "El arca «Neón»"
+    }
+  },
+  "cmugtozby03vnqf17hiroi0uy": {
+    "name": "Refugio tranquilo",
+    "replace": {
+      "Refugio Tranquilo": "Refugio tranquilo"
+    }
+  },
+  "cmuh69f37002cknwl6bdfj0nh": {
+    "name": "Yaelokre - Larks",
+    "replace": {
+      "yaelokre-alondras": "Yaelokre - Larks"
+    }
+  },
+  "cmuiv8c02004hmt8igdlqoyjn": {
+    "name": "Mira",
+    "replace": {
+      "Mundo": "Mira",
+      "Of the world": "Mira"
+    }
+  },
+  "cmuvs85gk0csk125w1vpmfbks": {
+    "name": "Makl",
+    "replace": {
+      "Macle": "Makl",
+      "Broker": "Makl"
+    }
+  },
+  "cmv5luv3r00zmv91ymns128ut": {
+    "name": "Los gatos guerreros: una nueva tribu",
+    "replace": {
+      "Gatos guerreros. Nueva tribu.": "Los gatos guerreros: una nueva tribu"
+    }
+  },
+  "cmv6a8sk2003p101hsdgg2upd": {
+    "name": "Arturia pedragon",
+    "replace": {
+      "Arturia pedragón": "Arturia pedragon"
+    }
+  },
+  "cmvbcx82g064dpyuyl5ur3lu8": {
+    "name": "El reino de Fort Stein",
+    "replace": {
+      "Reino De Fort Stein": "El reino de Fort Stein"
+    }
+  },
+  "cmvfkb3zw1soit1jnrgl2jrw4": {
+    "name": "Kayza",
+    "replace": {
+      "Kaiza": "Kayza"
+    }
+  },
+  "cmvh2rdjy019zazzc3hk62s91": {
+    "name": "Sarah",
+    "replace": {
+      "Sara": "Sarah"
+    }
+  },
+  "cmvja10300igi12ow53b775cs": {
+    "name": "Kohaku — Una historia a cambio de alojamiento",
+    "replace": {
+      "Kohaku-una Historia para pasar la noche": "Kohaku — Una historia a cambio de alojamiento"
+    }
+  },
+  "cmvlb68h301vfgn5ym2qvu0o9": {
+    "name": "Carter",
+    "replace": {
+      "Cárter": "Carter"
+    }
+  },
+  "cmvlj2tpd06nngn5ywmt2ff9z": {
+    "name": "Dragón",
+    "replace": {
+      "Dragón": "Dragón",
+      "Dragon": "Dragón"
+    }
+  },
+  "cmvm6gwkl0086axez8ljtv618": {
+    "name": "Nitsu",
+    "replace": {
+      "Nitsu": "Nitsu",
+      "Nice": "Nitsu"
+    }
+  },
+  "cmvm6sq7h0006vzm486b5xmw8": {
+    "name": "Laila",
+    "replace": {
+      "Layla": "Laila"
+    }
+  },
+  "cmvnps27l0dg3573yegnvyfx4": {
+    "name": "Viki",
+    "replace": {
+      "Arvejas": "Viki",
+      "Wiki": "Viki"
+    }
+  },
+  "cmvo1a9j902gqhzm5t1fq0h6v": {
+    "name": "Cassandra — El juramento del cuervo",
+    "replace": {
+      "Cassandra-El Juramento Del Cuervo": "Cassandra — El juramento del cuervo"
+    }
+  },
+  "cmvo1ed2a0393hzm5f0e4re7h": {
+    "name": "Neil — El último cliente",
+    "replace": {
+      "Neal, el último comprador": "Neil — El último cliente"
+    }
+  },
+  "cmvo1hij003tmhzm5hwh1li1f": {
+    "name": "Ava Thorne — El caso sin firma",
+    "replace": {
+      "Ava Thorne-un Caso sin firma": "Ava Thorne — El caso sin firma"
+    }
+  },
+  "cmvo1p1g204knhzm52675tztq": {
+    "name": "Task Force 141 — Después de la señal",
+    "replace": {
+      "Task Force 141-después de la señal": "Task Force 141 — Después de la señal"
+    }
+  },
+  "cmvo1u4nt04w4hzm5d02jlbzi": {
+    "name": "Pandora — Senderos del bosque vivo",
+    "replace": {
+      "Pandora-Senderos del bosque vivo": "Pandora — Senderos del bosque vivo"
+    }
+  },
+  "cmvpk468p02bpj5c78ppkeoo0": {
+    "name": "Satoru Gojo — Después de medianoche",
+    "replace": {
+      "Satoru Gojo-Después de la medianoche": "Satoru Gojo — Después de medianoche"
+    }
+  },
+  "cmvpkzvqo02muj5c7yqhbbcbk": {
+    "name": "Mark Vail — El bar después del cierre",
+    "replace": {
+      "Mark vale-Bar después del cierre": "Mark Vail — El bar después del cierre"
+    }
+  },
+  "cmvplvioh032zj5c7vhj2eofv": {
+    "name": "Faye Valentine — Una apuesta para dos",
+    "replace": {
+      "Faye Valentine-Apuesta por dos": "Faye Valentine — Una apuesta para dos"
+    }
+  },
+  "cmvpm75hr03h1j5c78l0cvqrg": {
+    "name": "Mira Morozova — La demo de otra persona",
+    "replace": {
+      "Mira Morozov-una demo Extranjera": "Mira Morozova — La demo de otra persona"
+    }
+  },
+  "cmvpmduuv03o1j5c7qcax5ree": {
+    "name": "Astarion — El precio de la libertad",
+    "replace": {
+      "Astarion-el Precio de la libertad": "Astarion — El precio de la libertad"
+    }
+  },
+  "cmvpmg5iz03pwj5c7a1sgdgip": {
+    "name": "Shadowheart — Fragmentos de memoria",
+    "replace": {
+      "Shadowhart-Fragmentos de memoria": "Shadowheart — Fragmentos de memoria"
+    }
+  },
+  "cmvpmivho03tej5c7joltzryq": {
+    "name": "Levi Ackerman — El silencio del cuartel general",
+    "replace": {
+      "Levi Ackerman - el silencio de la sede": "Levi Ackerman — El silencio del cuartel general"
+    }
+  },
+  "cmvpmqcm8044dj5c7fe4oq7l8": {
+    "name": "Lara Croft — El mapa sin leyenda",
+    "replace": {
+      "Lara Croft-Mapa sin leyenda": "Lara Croft — El mapa sin leyenda"
+    }
+  },
+  "cmvpmtwvj0488j5c7l4xuhqen": {
+    "name": "Makima — Las condiciones de la entrevista",
+    "replace": {
+      "Makima - condiciones de la entrevista": "Makima — Las condiciones de la entrevista"
+    }
+  },
+  "cmvpnbd8604spj5c785ppdnpw": {
+    "name": "Ren — El dueño de la casa de té de los zorros",
+    "replace": {
+      "Ren es el Dueño de la casa de té de zorro": "Ren — El dueño de la casa de té de los zorros"
+    }
+  },
+  "cmvpngf6l051dj5c7ecmvgz6c": {
+    "name": "Night City — Una entrega antes del amanecer",
+    "replace": {
+      "Night City-entrega hasta el amanecer": "Night City — Una entrega antes del amanecer"
+    }
+  },
+  "cmvpnh6k3052nj5c7gz1i338p": {
+    "name": "Fallout — La frecuencia de la esperanza",
+    "replace": {
+      "Fallout-Frecuencia de esperanza": "Fallout — La frecuencia de la esperanza"
+    }
+  },
+  "cmvpnkboj0587j5c76lsbb9hc": {
+    "name": "Loft 7-B — Vecinos demasiado cercanos",
+    "replace": {
+      "Loft 7-B-vecinos demasiado cercanos": "Loft 7-B — Vecinos demasiado cercanos"
+    }
+  },
+  "cmvpnlkjy05a6j5c71aby4zj3": {
+    "name": "Villa «Entre mareas» — El último fin de semana",
+    "replace": {
+      "Villa \" Entre las mareas — - Último fin de semana": "Villa «Entre mareas» — El último fin de semana"
+    }
+  },
+  "cmvpnmicy05czj5c7uqvqr58e": {
+    "name": "El gremio de los pequeños problemas — El gato, la llave y el dragón",
+    "replace": {
+      "Gremio de pequeños problemas-gato, llave y dragón": "El gremio de los pequeños problemas — El gato, la llave y el dragón"
+    }
+  },
+  "cmvpnpel505i6j5c742xauqih": {
+    "name": "Alexey Volkov — Las condiciones del trato",
+    "replace": {
+      "Alexei Volkov - términos de la transacción": "Alexey Volkov — Las condiciones del trato"
+    }
+  },
+  "cmvpo946606jmj5c7pge99ogw": {
+    "name": "Rin Aoki — Después del último plano",
+    "replace": {
+      "Rin Aoki-Después del último dibujo": "Rin Aoki — Después del último plano"
+    }
+  },
+  "d0d0468e-e91d-42aa-a122-f72c8bf71f28": {
+    "name": "Polina Granina",
+    "replace": {
+      "Paulina Granina": "Polina Granina"
+    }
+  },
+  "d21f41a9-4807-4399-aede-25dd92534c14": {
+    "name": "Runa Sever",
+    "replace": {
+      "Runa Norte": "Runa Sever"
+    }
+  },
+  "d7c46dd2-4c74-4642-8e25-015c3bf18a92": {
+    "name": "Alexey Kostrov",
+    "replace": {
+      "Alexei Kostrov": "Alexey Kostrov"
+    }
+  },
+  "dc042773-5d4a-419e-bc46-f149126949f2": {
+    "name": "Sylvan Ray",
+    "replace": {
+      "Silván Rey": "Sylvan Ray"
+    }
+  },
+  "ddc1fe60-0f00-4bc5-a71e-6310300b9b1f": {
+    "name": "Yaroslava Klyuch",
+    "replace": {
+      "Yaroslav La Llave": "Yaroslava Klyuch"
+    }
+  },
+  "f46e163a-b2e3-44de-9db3-b658322a07be": {
+    "name": "Roman Ast",
+    "replace": {
+      "Roman AST": "Roman Ast"
+    }
+  },
+  "f7945fcf-dffc-4584-b469-8ae073bebcd0": {
+    "name": "Ryo Kamijo",
+    "replace": {
+      "Ryo Kamijo": "Ryo Kamijo",
+      "Re Kamijou": "Ryo Kamijo"
+    }
+  },
+  "cmv5ehcqf00khdklia23ra6sn": {
+    "replace": {
+      "Legolena": "Legolenna"
+    },
+    "name": "Legolenna"
+  }
+}

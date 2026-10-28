@@ -7,6 +7,7 @@ import {
   LOCALE_COOKIE,
   LOCALE_HEADER,
   withLocale,
+  negotiateLocale,
 } from "@/lib/i18nConfig";
 import {
   ANONYMOUS_SESSION_COOKIE,
@@ -37,9 +38,7 @@ function resolveLocale(request) {
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   if (isLocale(cookieLocale)) return cookieLocale;
 
-  const accept = request.headers.get("accept-language")?.toLowerCase() ?? "";
-  if (accept.startsWith("en")) return "en";
-  return DEFAULT_LOCALE;
+  return negotiateLocale(request.headers.get("accept-language"));
 }
 
 function isTelegramMiniAppEnabled() {

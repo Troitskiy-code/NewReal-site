@@ -3,6 +3,7 @@
 import { I18nextProvider } from "react-i18next";
 import { useEffect, useMemo } from "react";
 import i18n from "@/lib/i18n";
+import { localeDefinition } from "@/lib/i18nConfig";
 
 type I18nProviderProps = {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ export default function I18nProvider({ children, locale }: I18nProviderProps) {
 
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.documentElement.dir = localeDefinition(locale).direction;
   }, [locale]);
 
   return <I18nextProvider i18n={instance}>{children}</I18nextProvider>;

@@ -1,3 +1,4 @@
+import { localizedCharacterText } from "@/lib/characterLocalization";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
@@ -6,9 +7,8 @@ import CharacterCard from "@/components/CharacterCard";
 import LocaleLink from "@/components/LocaleLink";
 import GenrePagination from "./GenrePagination";
 import { FEATURED_GENRES, type FeaturedGenre } from "@/lib/characterTags";
-import { pickLocalizedText } from "@/lib/characterFields";
 import { getGenrePage } from "@/lib/genreCatalog";
-import { GENRE_INTROS } from "@/lib/genreIntros";
+import { genreIntro } from "@/lib/genreIntros";
 import { findFeaturedGenre, genreIndexingMetadata, genrePageUrl, genrePath, GENRES_PATH, parseGenrePage } from "@/lib/genreSeo";
 import { translate } from "@/lib/getDictionary";
 import { getRequestLocale } from "@/lib/getRequestLocale";
@@ -82,7 +82,7 @@ export default async function GenrePage(props: PageProps) {
         offset,
         characters: characters.map((character) => ({
           slug: character.slug,
-          name: pickLocalizedText(character.name, character.name_en, locale) ?? character.name,
+          name: localizedCharacterText(character, "name", locale) ?? character.name,
         })),
       }, locale)} />
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 px-4 pb-8 pt-5 md:px-6">
@@ -98,7 +98,7 @@ export default async function GenrePage(props: PageProps) {
 
         <header className="max-w-3xl space-y-3">
           <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-white md:text-3xl">{h1}</h1>
-          {page === 1 && GENRE_INTROS[genre.id][locale].map((paragraph, index) => (
+          {page === 1 && genreIntro(genre.id, locale).map((paragraph, index) => (
             <p key={index} className="text-[15px] leading-relaxed text-wd-text/85">{paragraph}</p>
           ))}
           {data.meta.total > 0 && (

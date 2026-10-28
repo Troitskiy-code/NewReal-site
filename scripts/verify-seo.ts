@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { pageIndexingMetadata, PUBLIC_PAGE_PATHS } from "@/lib/seoIndexing";
 import { FEATURED_GENRES } from "@/lib/characterTags";
-import { GENRE_INTROS } from "@/lib/genreIntros";
+import { genreIntro } from "@/lib/genreIntros";
 import { catalogVariantText } from "@/lib/catalogMeta";
-import { CREATE_LANDING, homeAbout } from "@/lib/landingTexts";
+import { createLanding, homeAbout } from "@/lib/landingTexts";
 import {
   hasAdultText, isAdultCharacter, rankSimilarCharacters, SIMILAR_CHARACTERS_LIMIT, STORY_GREETING_MAX, STORY_SCENARIO_MAX, storyExcerpt,
 } from "@/lib/characterSeoContent";
@@ -62,7 +62,7 @@ for (const genre of FEATURED_GENRES) {
     check(thinRobots.index === false && thinRobots.follow === true, `${genre.id}: thin genre noindex,follow`);
     const text = dictionaries[locale].genrePage.items[genre.id];
     check(text?.h1 && text.description && text.description.length <= 160, `${genre.id}: ${locale} H1 and description <= 160`);
-    const words = GENRE_INTROS[genre.id][locale].join(" ").split(/\s+/).filter((word) => /[\p{L}\d]/u.test(word)).length;
+    const words = genreIntro(genre.id, locale).join(" ").split(/\s+/).filter((word) => /[\p{L}\d]/u.test(word)).length;
     check(words >= 100 && words <= 200, `${genre.id}: ${locale} intro is 100-200 words (${words})`);
   }
 }
@@ -104,7 +104,7 @@ for (const locale of ["ru", "en"] as const) {
     const words = wordCount([...about.paragraphs, ...about.faq.flatMap((item) => [item.question, item.answer])]);
     check(words >= 250 && words <= 600 && about.faq.length >= 4, `home about: ${locale} ${words} words, ${about.faq.length} FAQ`);
   }
-  const create = CREATE_LANDING[locale];
+  const create = createLanding(locale);
   const createWords = wordCount([create.intro, ...create.steps.flatMap((s) => [s.title, s.text]), ...create.features.flatMap((f) => [f.title, f.text]), ...create.faq.flatMap((f) => [f.question, f.answer])]);
   check(createWords >= 250 && createWords <= 800 && create.faq.length >= 4, `create landing: ${locale} ${createWords} words, ${create.faq.length} FAQ`);
 }
@@ -137,7 +137,7 @@ check(similar.join() === "a,b,c,e,d", `similar: shared genres first, then popula
 check(rankSimilarCharacters({ id: "self", tags: "Романтика, Аниме, Цундере" }, [...candidates].reverse()).map((card) => card.id).join() === similar.join(), "similar order does not depend on the query order");
 check(rankSimilarCharacters({ id: "x", tags: null }, Array.from({ length: 20 }, (_, i) => ({ id: `p${i}`, tags: null, totalMessages: i }))).length === SIMILAR_CHARACTERS_LIMIT, "similar fills up to the limit by popularity");
 for (const locale of ["ru", "en"] as const) {
-  for (const key of ["storyStart", "scenario", "similar", "faq.title", "faq.freeQ", "faq.freeA", "faq.freeAPaid", "faq.registerQ", "faq.registerA", "faq.languageQ", "faq.languageA", "faq.startQ", "faq.startA", "messagesWord.one", "messagesWord.few", "messagesWord.many"]) {
+  for (const key of ["storyStart", "scenario", "similar", "faq.title", "faq.freeQ", "faq.freeA", "faq.freeAPaid", "faq.registerQ", "faq.registerA", "faq.languageQ", "faq.languageA", "faq.startQ", "faq.startA", ...new Intl.PluralRules(locale).resolvedOptions().pluralCategories.map(form => `messagesWord_${form}`)]) {
     check(translate(locale, `characterPage.${key}`, { name: "Хана", limit: 5, messages: "x", onboarding: 20, daily: 5 }).length > 0, `${locale}: characterPage.${key}`);
   }
   check(!/\{\{/.test(translate(locale, "characterPage.faq.freeA", { name: "Хана", limit: 5, messages: "x", onboarding: 20, daily: 5 })), `${locale}: FAQ variables filled`);

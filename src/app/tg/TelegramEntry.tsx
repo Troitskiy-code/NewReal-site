@@ -5,7 +5,7 @@ import { Trans, useTranslation } from "react-i18next";
 import LocaleLink from "@/components/LocaleLink";
 import { loadTelegramSdk, openOutsideTelegram } from "@/components/TelegramProvider";
 import { useCurrentLocale } from "@/components/LocaleLink";
-import { isLocale } from "@/lib/i18nConfig";
+import { isLocale, getLocaleFromPath } from "@/lib/i18nConfig";
 
 type State = "loading" | "consent" | "login_disabled" | "outside" | "unavailable" | "error";
 type AuthResponse = { status?: string; redirect?: string; locale?: string };
@@ -19,7 +19,7 @@ async function launchInitData(): Promise<string> {
 }
 
 function safeRedirect(value: unknown): string | null {
-  return typeof value === "string" && /^\/(?:ru|en)(?:\/[A-Za-z0-9/_-]*)?$/.test(value) ? value : null;
+  return typeof value === "string" && /^\/[A-Za-z0-9/_-]+$/.test(value) && getLocaleFromPath(value) ? value : null;
 }
 
 export default function TelegramEntry() {

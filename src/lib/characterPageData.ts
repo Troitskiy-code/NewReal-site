@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { publicTranslationSelect, storyTranslationSelect } from "./characterLocalization";
 import { notFound, permanentRedirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { findCharacterBySlugForViewer, getViewerId, toPublicCharacterPayload } from "@/lib/characterPublic";
@@ -58,7 +59,7 @@ export const getCharacterStory = cache(async (slug: string) => {
   try {
     const story = await prisma.character.findUnique({
       where: { id: character.id },
-      select: { greeting: true, greeting_en: true, scenario: true, scenario_en: true },
+      select: { greeting: true, greeting_en: true, scenario: true, scenario_en: true, translations: { select: storyTranslationSelect } },
     });
     if (!story) return { adult: false, story: null };
     const adult = isAdultCard({ ...character, ...story });
@@ -69,7 +70,7 @@ export const getCharacterStory = cache(async (slug: string) => {
   }
 });
 
-const similarCardSelect = { id: true, slug: true, totalMessages: true, updatedAt: true } as const;
+const similarCardSelect = { id: true, slug: true, totalMessages: true, updatedAt: true, translations: { select: publicTranslationSelect } } as const;
 
 /** Public characters sharing genres or tags, in a fixed order; explicit cards are never linked. */
 export async function getSimilarCharacters(character: { id: string; tags: string | null }) {
@@ -89,7 +90,7 @@ export async function getSimilarCharacters(character: { id: string; tags: string
     ]);
     const safe = [...related, ...popular].filter((card) => !isAdultCard(card));
     return rankSimilarCharacters(character, safe).map((card) => ({
-      id: card.id, slug: card.slug ?? "", name: card.name, name_en: card.name_en, tags: card.tags, updatedAt: card.updatedAt,
+      id: card.id, slug: card.slug ?? "", name: card.name, name_en: card.name_en, translations: card.translations, tags: card.tags, updatedAt: card.updatedAt,
     }));
   } catch (error) {
     errorLog("Character", "similar characters", toSafeDiagnostic(error));
