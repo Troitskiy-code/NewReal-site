@@ -593,8 +593,9 @@ function formatMessageContent(content: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // *действие* is narration: italic and quieter than spoken lines.
-  return escaped.replace(/\*(.*?)\*/g, '<em class="text-wd-story-muted">$1</em>').replace(/\n/g, "<br />");
+  // *действие* is narration: italic and quieter than spoken lines. Models also write it as **действие** or
+  // ***действие***: a single-asterisk pattern matched each empty `**` pair and erased it, leaving the action plain.
+  return escaped.replace(/(\*{1,3})([^*\n]+?)\1/g, '<em class="text-wd-story-muted">$2</em>').replace(/\n/g, "<br />");
 }
 
 function CharacterDescriptionCard({ description }: { description: string }) {

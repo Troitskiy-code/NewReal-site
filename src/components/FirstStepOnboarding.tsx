@@ -45,10 +45,10 @@ function picksUrl(style: OnboardingStyle | null, interests: OnboardingInterest[]
   return `/api/onboarding/picks?${params}`;
 }
 
-/** *Action* spans are shown in italics; everything stays a text node, no markup is injected. */
+/** *Action* spans (also **action** and ***action***) are shown in italics; everything stays a text node, no markup is injected. */
 function Greeting({ text }: { text: string }) {
-  return <>{text.split(/(\*[^*]+\*)/g).map((part, i) => part.startsWith("*") && part.endsWith("*") && part.length > 2
-    ? <em key={i} className="text-zinc-500">{part.slice(1, -1)}</em> : <span key={i}>{part}</span>)}</>;
+  return <>{text.split(/(\*{1,3}[^*]+\*{1,3})/g).map((part, i) => /^\*+[^*]+\*+$/.test(part)
+    ? <em key={i} className="text-zinc-500">{part.replace(/^\*+|\*+$/g, "")}</em> : <span key={i}>{part}</span>)}</>;
 }
 
 function Tick({ small = false }: { small?: boolean }) {
