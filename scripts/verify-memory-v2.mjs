@@ -658,7 +658,7 @@ try {
     await run(f, output([delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]));
     assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'debts').map(fact => fact.value), ['должна Ягне 10 крон']);
   });
-  await check('unnamed NPCs with one role stay apart; money without a sum is noise; a death is kept', async () => {
+  await check('unnamed NPCs with one role stay apart; money without a sum is noise', async () => {
     // The owner's Witcher test (2026-10-28): two accountants shared one «Счетовод» card, the narrator buried the
     // living one, and «серебро» sat in the hero's things next to the crowns he was paid.
     const alias = facts.npcAliasMap(['npc:счетовод Грибо', 'npc:счетовод склада сетей', 'npc:счетовод', 'npc:Ирма', 'npc:Ирма Сол']);
@@ -668,7 +668,7 @@ try {
     assert.equal(facts.renderFactCore([
       { subject: 'npc:счетовод Грибо', key: 'health', value: 'зарезан в каморке у складов Грибо', pinned: false, seq: 2 },
       { subject: 'npc:счетовод склада сетей', key: 'relationship.status', value: 'под защитой героя', pinned: false, seq: 1 },
-    ]), '## Счетовод склада сетей\n- Статус отношений: под защитой героя\n\n## Счетовод Грибо\n- Здоровье: зарезан в каморке у складов Грибо');
+    ]), '## Счетовод склада сетей\n- Статус отношений: под защитой героя', 'a dead unnamed NPC leaves the core');
     for (const value of ['серебро', 'деньги', 'несколько золотых крон', 'плата от гонца']) {
       assert.equal(facts.slotNoiseReason('possessions', value), 'slot_noise', value);
     }
@@ -738,6 +738,19 @@ try {
     const rooms = (await active(f.scope)).filter(fact => fact.key === 'money');
     assert.deepEqual(rooms.map(fact => fact.value).sort(), ['−5 крон за комнату', '−5 крон за комнату (повторно)']);
     assert.match(facts.moneyLine(rooms), /^за историю −10 крон \(получено 0, потрачено 10\)/u);
+  });
+  await check('the dead keep one line: a named NPC its death, an unnamed one nothing', async () => {
+    const core = facts.renderFactCore([
+      { subject: 'npc:Фальк', key: 'health', value: 'погиб, закрыв собой Мирославу', pinned: false, seq: 9 },
+      { subject: 'npc:Фальк', key: 'appearance', value: 'кривая холодная усмешка', pinned: false, seq: 5 },
+      { subject: 'npc:Фальк', key: 'secrets', value: 'продал сведения реданскому шпиону', pinned: false, seq: 4 },
+      { subject: 'npc:кривоногий', key: 'health', value: 'убит в каморке', pinned: false, seq: 8 },
+      { subject: 'npc:кривоногий', key: 'possessions', value: 'топор на короткой рукояти', pinned: false, seq: 7 },
+      { subject: 'npc:Томас', key: 'health', value: 'чуть не погиб от истощения', pinned: false, seq: 6 },
+      { subject: 'npc:Томас', key: 'possessions', value: 'посох из тёмного дерева', pinned: false, seq: 3 },
+    ]);
+    assert.equal(core, '## Фальк\n- Здоровье: погиб, закрыв собой Мирославу\n\n## Томас\n- Здоровье: чуть не погиб от истощения\n- Вещи и тайники: посох из тёмного дерева');
+    assert.ok(facts.isDeath('мёртв, тело в заливе') && !facts.isDeath('едва не умер от яда') && !facts.isDeath('ранен в бедро'));
   });
   await check('a delivered or abandoned errand retracts from debts', async () => {
     // The second crash-test run (2026-10-28): «доставить письмо в Третогор» and «вернуть Илсу» stayed open to the end.

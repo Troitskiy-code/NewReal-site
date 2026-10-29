@@ -134,6 +134,10 @@ function nameCore(subject: string): string[] {
 }
 const opensName = (short: string[], long: string[]) => short.length > 0 && short.length <= long.length
   && short.every((word, index) => isSameMemoryName(word, long[index]));
+// A death stated as a fact; «чуть не погиб», «едва не умер», «не убит» are not deaths.
+const DEATH = /(?:^|[^\p{L}])(?:погиб\p{L}*|умер|умерла|умерли|мёртв\p{L}*|мертв\p{L}*|убит|убита|убиты|зарезан\p{L}*|заколот\p{L}*|застрелен\p{L}*|казн[её]н\p{L}*|скончал\p{L}*|похоронен\p{L}*|труп|dead|killed|died)(?=$|[^\p{L}])/iu;
+const NEAR_MISS = /(?:^|[^\p{L}])(?:не|чуть не|едва не|почти|чуть было не|not|nearly|almost)\s+(?:погиб|умер|убит|мёртв|мертв|зарезан|застрелен|died|killed|dead)/iu;
+export const isDeath = (value: string) => DEATH.test(value) && !NEAR_MISS.test(value);
 const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
 /** An unnamed NPC filed under its role, lowercase by the extraction rules («npc:счетовод Грибо»). */
 export const isRoleSubject = (subject: string) => {
@@ -738,7 +742,14 @@ export function renderFactCore(stored: RenderableFact[]): string {
   // a role card is shown once it holds a tie to the heroes, a debt, a secret or a death.
   const story = new Set(facts.filter(fact => ["relationship.status", "debts", "secrets", "health"].includes(fact.key)).map(fact => fact.subject));
   const extra = (fact: RenderableFact) => !fact.pinned && isRoleSubject(fact.subject) && !story.has(fact.subject);
-  const noise = (fact: RenderableFact) => extra(fact) || !fact.pinned && !!slotNoiseReason(fact.key, fact.value);
+  // The dead keep one line: a named NPC is its name and death, an unnamed one leaves the core altogether. Their
+  // looks, gear and moods filled the core of a story with nine corpses (owner's Witcher test 2026-10-29).
+  const deathOf = new Map<string, RenderableFact>();
+  for (const fact of facts) if (fact.subject.startsWith("npc:") && ["health", "relationship.status"].includes(fact.key) && isDeath(fact.value)) {
+    if (!deathOf.has(fact.subject) || fact.key === "health") deathOf.set(fact.subject, fact);
+  }
+  const buried = (fact: RenderableFact) => !fact.pinned && deathOf.has(fact.subject) && (isRoleSubject(fact.subject) || fact !== deathOf.get(fact.subject));
+  const noise = (fact: RenderableFact) => extra(fact) || buried(fact) || !fact.pinned && !!slotNoiseReason(fact.key, fact.value);
   // So do health lines stored before injuries were merged: only the fullest line per injury is shown.
   // Pets likewise: one line per animal.
   const same = (key: string, a: string, b: string) => key === "health" ? sameInjury(a, b) : key === "pets" && samePet(a, b);
