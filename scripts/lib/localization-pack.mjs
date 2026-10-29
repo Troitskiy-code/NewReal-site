@@ -45,6 +45,19 @@ export function splitTranslationText(text, limit = 1400) {
 }
 export const translationKey = (text, locale, source) => createHash("sha256").update(JSON.stringify([locale, source, text])).digest("hex");
 
+const characterFields = ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt", "publicMemory"];
+/** Editorial replacements are tied to the exact original revision, never applied to changed cards. */
+export function applyReviewedCharacterFields(row, review) {
+  if (!review?.fields) return;
+  if (review.sourceHash !== row.sourceHash) throw new Error(`Outdated editorial review for ${row.characterId}/${row.locale}`);
+  const variables = text => (String(text ?? "").match(/\{\{[^{}]+\}\}/g) || []).sort();
+  for (const [field, value] of Object.entries(review.fields)) {
+    if (!characterFields.includes(field) || typeof value !== "string" || !value.trim()) throw new Error(`Invalid reviewed character field: ${field}`);
+    if (JSON.stringify(variables(value)) !== JSON.stringify(variables(row[field]))) throw new Error(`Reviewed character field changed variables: ${field}`);
+  }
+  Object.assign(row, review.fields);
+}
+
 export function adaptPluralForms(object, intl) {
   const categories = new Intl.PluralRules(intl).resolvedOptions().pluralCategories;
   for (const [key, value] of Object.entries(object)) {

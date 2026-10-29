@@ -8,7 +8,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { moduleLoader } from "./lib/load-local-module.mjs";
-import { protectTranslation, restoreTranslation, splitTranslationText, translationImportSql, adaptPluralForms } from "./lib/localization-pack.mjs";
+import { protectTranslation, restoreTranslation, splitTranslationText, translationImportSql, adaptPluralForms, applyReviewedCharacterFields } from "./lib/localization-pack.mjs";
 
 const text = '<0>Hello {{name}}</0>\nNewVerse & VC https://example.test/path?q=1';
 assert.deepEqual(adaptPluralForms({ message_one: 'mensaje', message_other: 'mensajes' }, 'es-ES'), { message_one: 'mensaje', message_other: 'mensajes', message_many: 'mensajes' });
@@ -23,6 +23,12 @@ assert.ok(pieces.every(piece => !piece.includes('{{') || !piece.endsWith('{{name
 const fields = ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt", "publicMemory"];
 const source = Object.fromEntries(fields.map(field => [field, field === 'publicMemory' ? { content: 'Public facts' } : field === 'name' ? "O'Neil; DROP TABLE Character;" : null]));
 const row = { characterId: 'public', locale: 'es', sourceHash: 'a'.repeat(64), ...Object.fromEntries(fields.map(field => [field, field === 'name' ? 'Nombre' : null])), source };
+const edited = { ...row, greeting: 'Hello {{user}}' };
+applyReviewedCharacterFields(edited, {sourceHash:row.sourceHash,fields:{greeting:'Hola {{user}}'}});
+assert.equal(edited.greeting,'Hola {{user}}');
+assert.throws(()=>applyReviewedCharacterFields(edited,{sourceHash:'b'.repeat(64),fields:{greeting:'Hola {{user}}'}}),/Outdated editorial/);
+assert.throws(()=>applyReviewedCharacterFields(edited,{sourceHash:row.sourceHash,fields:{privateMemory:'private'}}),/Invalid reviewed character field/);
+assert.throws(()=>applyReviewedCharacterFields(edited,{sourceHash:row.sourceHash,fields:{greeting:'Hola'}}),/changed variables/);
 const db = new PGlite();
 try {
   await db.exec(`CREATE TABLE "Character" (id text PRIMARY KEY, "isPublic" boolean NOT NULL, ${fields.map(field => `"${field}" ${field === 'publicMemory' ? 'jsonb' : 'text'}`).join(',')});`);

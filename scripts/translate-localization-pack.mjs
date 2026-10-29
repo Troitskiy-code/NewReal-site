@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { characterTranslationSource, characterTranslationHash } from "../src/lib/characterTranslationData.ts";
 import { CHARACTER_TRANSLATION_FIELDS } from "../src/lib/characterLocalization.ts";
-import { protectTranslation, restoreTranslation, splitTranslationText, translationKey, translationImportSql, adaptPluralForms } from "./lib/localization-pack.mjs";
+import { protectTranslation, restoreTranslation, splitTranslationText, translationKey, translationImportSql, adaptPluralForms, applyReviewedCharacterFields } from "./lib/localization-pack.mjs";
 
 dotenv.config({ quiet: true });
 const options = new Map(process.argv.slice(2).map(arg => { const [key, ...value] = arg.replace(/^--/, "").split("="); return [key, value.join("=") || "true"]; }));
@@ -130,6 +130,7 @@ if (options.has("review")) {
       }
     }
     if (typeof review.name === "string" && review.name.trim()) row.name = review.name;
+    applyReviewedCharacterFields(row, review);
   }
 }
 writeFileSync(`public/locales/${locale}/common.json`, JSON.stringify(targetDictionary, null, 2) + "\n");

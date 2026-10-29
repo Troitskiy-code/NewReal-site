@@ -73,12 +73,12 @@
     "mainNav": "Navigazione principale",
     "bottomNav": "Navigazione rapida",
     "menuShort": {
-      "home": "Casa",
+      "home": "Home",
       "chats": "Chat",
-      "create": "Creare",
-      "coins": "Moneta",
+      "create": "Crea",
+      "coins": "Monete",
       "profile": "Profilo",
-      "favorites": "Preferito"
+      "favorites": "Preferiti"
     },
     "menu": {
       "home": "Home",
@@ -229,8 +229,8 @@
     "genresLabel": "Generi",
     "allGenres": "Tutto",
     "genres": {
-      "fantasy": "Fantasia",
-      "romance": "Romanticismo",
+      "fantasy": "Fantasy",
+      "romance": "Romantico",
       "anime": "Anime",
       "scifi": "Sci-Fi",
       "mystic": "Mistero",
@@ -240,7 +240,7 @@
       "comedy": "Commedia",
       "drama": "Dramma",
       "detective": "Detective",
-      "everyday": "Fetta di vita",
+      "everyday": "Vita quotidiana",
       "cyberpunk": "Cyberpunk"
     },
     "sectionTitle": {
@@ -277,33 +277,33 @@
   "characterPage": {
     "author": "Autore",
     "unknownAuthor": "NewVerse",
-    "messages": "Messaggio: {{count}}",
-    "knownAbout": "Conoscere il personaggio",
-    "tags": "Tag carattere",
+    "messages": "Messaggi: {{count}}",
+    "knownAbout": "Cosa sappiamo del personaggio",
+    "tags": "Tag del personaggio",
     "startChat": "Avvia chat",
-    "share": "Condividere",
+    "share": "Condividi",
     "copied": "Collegamento copiato",
     "shareFailed": "Impossibile copiare il link",
     "about": "Informazioni sul personaggio",
-    "close": "Vicino",
+    "close": "Chiudi",
     "storyStart": "Come inizia la storia",
     "scenario": "Scenario",
     "similar": "Personaggi simili",
     "faq": {
       "title": "Domande frequenti",
-      "freeQ": "Posso chattare con {{name}} gratis?",
-      "freeA": "Sì. Gli ospiti ottengono {{limit}} {{messages}} senza firmare. Dopo l'iscrizione si ottiene {{onboarding}} risposte gratuite al giorno per la prima settimana, quindi {{daily}} un giorno sul modello base.",
-      "freeAPaid": "Sì. Gli ospiti ottengono {{limit}} {{messages}} senza firmare. Dopodiché puoi continuare la storia nel tuo account con VC o un abbonamento.",
-      "registerQ": "Devo iscrivermi?",
-      "registerA": "Non iniziare: il primo {{limit}} {{messages}} può essere inviato come ospite. Per continuare, accedi e la chat ospite si sposta sul tuo account.",
-      "languageQ": "Che lingua fa {{name}} rispondi?",
-      "languageA": "Nella lingua del sito selezionata. È possibile cambiare lingua nel menu e continuare la stessa storia.",
-      "startQ": "Come posso iniziare la storia?",
-      "startA": "Premere \"Avvia chat\"” {{name}} apre la scena con il primo messaggio e la trama segue le tue risposte."
+      "freeQ": "Posso chattare gratis con {{name}}?",
+      "freeA": "Sì. Puoi inviare {{limit}} {{messages}} come ospite, senza registrarti. Dopo la registrazione ricevi {{onboarding}} risposte gratuite al giorno per la prima settimana, poi {{daily}} al giorno con il modello base.",
+      "freeAPaid": "Sì. Puoi inviare {{limit}} {{messages}} come ospite, senza registrarti. Poi puoi continuare la storia nel tuo account usando VC o un abbonamento.",
+      "registerQ": "Devo registrarmi?",
+      "registerA": "Non per iniziare: puoi inviare {{limit}} {{messages}} come ospite. Per continuare, accedi al tuo account: la conversazione verrà trasferita automaticamente.",
+      "languageQ": "In quale lingua risponde {{name}}?",
+      "languageA": "Nella lingua selezionata sul sito. Puoi cambiarla nel menu e continuare la stessa storia.",
+      "startQ": "Come inizio la storia?",
+      "startA": "Premi «Avvia chat». {{name}} apre la scena con il primo messaggio, poi la trama si sviluppa in base alle tue risposte."
     },
     "messagesWord_one": "messaggio",
-    "messagesWord_other": "messaggio",
-    "messagesWord_many": "messaggio"
+    "messagesWord_other": "messaggi",
+    "messagesWord_many": "messaggi"
   },
   "errorPage": {
     "notFoundTitle": "Pagina non trovata",
@@ -641,7 +641,7 @@
       "description": "Roleplay con {{name}}. Immergiti nella storia e continua la trama."
     },
     "character": {
-      "title": "{{name}} - AI roleplay personaggio | NewVerse",
+      "title": "{{name}} — personaggio per giochi di ruolo con IA | NewVerse",
       "description": "{{name}} su NewVerse. Inizia un gioco di ruolo e impara la loro storia.",
       "fallbackTitle": "Carattere — NewVerse",
       "fallbackDescription": "Pagina carattere pubblico su NewVerse."
@@ -1248,9 +1248,9 @@
   },
   "characterTags": {
     "labels": {
-      "Романтика": "Romanticismo",
+      "Романтика": "Romantico",
       "Приключение": "Avventura",
-      "Фэнтези": "Fantasia",
+      "Фэнтези": "Fantasy",
       "Научная фантастика": "Sci-Fi",
       "Детектив": "Detective",
       "Драма": "Dramma",
@@ -1258,7 +1258,7 @@
       "Ужасы": "Orrore",
       "Триллер": "Thriller",
       "Мистика": "Mistero",
-      "Повседневность": "Fetta di vita",
+      "Повседневность": "Vita quotidiana",
       "Экшен": "Azione",
       "Современный мир": "Mondo moderno",
       "Исторический": "Storico",
