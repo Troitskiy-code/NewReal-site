@@ -11,7 +11,7 @@ import { parseCharacterBody } from "@/lib/characterFields";
 import { persistCharacterImage, CharacterMediaUnavailable } from "@/lib/characterMedia";
 import { validateGroupConfig } from "@/lib/roleplayConfig";
 import { isCharacterSort, DEFAULT_CHARACTER_SORT } from "@/lib/characterSort";
-import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
+import { enqueueCharacterTranslations } from "@/lib/characterTranslationQueue";
 import { buildInitialPublicMemory } from "@/lib/persistentMemory";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { temporaryCharacterSlug } from "@/lib/characterSlug";
@@ -124,29 +124,9 @@ async function handlePost(req: NextRequest) {
     );
 
     try {
-      const translations = await translateCharacterFieldsToEn({
-        name,
-        description,
-        descriptionCard,
-        appearance,
-        greeting,
-        scenario,
-        exampleDialogs,
-        avatarPrompt,
-      });
-      const publicMemoryEn = await translateMemoryFieldToEn(seededPublicMemory);
-      const privateMemoryEn = await translateMemoryFieldToEn(privateMemory);
-
-      character = await prisma.character.update({
-        where: { id: character.id },
-        data: {
-          ...translations,
-          ...(publicMemoryEn ? { publicMemory_en: publicMemoryEn } : {}),
-          ...(privateMemoryEn ? { privateMemory_en: privateMemoryEn } : {}),
-        },
-      });
+      await enqueueCharacterTranslations(character.id);
     } catch (translateError) {
-      errorLog("Server", "[Translate] Failed to save character translations", toSafeDiagnostic(translateError));
+      errorLog("Server", "[Translate] Queue discovery will retry", toSafeDiagnostic(translateError));
     }
 
     // Prompt assembly is deterministic and uses the live card on each request; no AI generation here.

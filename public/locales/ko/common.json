@@ -1,1366 +1,1366 @@
 {
   "chatSpeech": {
-    "label": "Character speech",
-    "listen": "Listen",
-    "pause": "Pause",
-    "resume": "Resume playback",
-    "seek": "Seek audio",
-    "preview": "Speech text",
-    "speechOnly": "AI keeps dialogue and narration, removes stage directions and choice menus, and selects the delivery. The prepared speech text appears below the reply.",
-    "loading": "Generating audio…",
-    "player": "Character reply audio",
-    "voice": "Voice",
-    "settingsTitle": "Voice selection",
-    "settingsHint": "Automatic mode uses the character profile to select a voice. Worlds and groups use a male narrator. You can choose any voice manually.",
-    "settingsLoading": "Loading speech settings…",
-    "settingsUnavailable": "Speech is currently unavailable.",
-    "autoShort": "auto",
-    "autoVoice": "Automatic — {{voice}}",
+    "label": "캐릭터 음성",
+    "listen": "듣기",
+    "pause": "일시정지",
+    "resume": "재생 계속",
+    "seek": "오디오 이동",
+    "preview": "음성 텍스트",
+    "speechOnly": "AI가 대화와 내레이션만 유지하고 무대 지시 및 선택 메뉴를 제거하며 전달 방식을 자동으로 선택합니다. 준비된 음성 텍스트는 응답 아래에 표시됩니다.",
+    "loading": "오디오 생성 중…",
+    "player": "캐릭터 응답 오디오",
+    "voice": "음성",
+    "settingsTitle": "음성 선택",
+    "settingsHint": "자동 모드는 캐릭터 프로필을 기반으로 음성을 선택합니다. 세계관 및 그룹은 남성 내레이터를 사용합니다. 수동으로 원하는 음성을 선택할 수 있습니다.",
+    "settingsLoading": "음성 설정 불러오는 중…",
+    "settingsUnavailable": "현재 음성이 사용 불가합니다.",
+    "autoShort": "자동",
+    "autoVoice": "자동 — {{voice}}",
     "autoReasons": {
-      "female": "A female voice was selected from the character profile.",
-      "male": "A male voice was selected from the character profile.",
-      "narrator": "This story uses a male narrator by default.",
-      "unknown": "The character profile does not specify a clear gender. A male voice is used by default; you can change it manually."
+      "female": "캐릭터 프로필에서 여성 음성이 선택되었습니다.",
+      "male": "캐릭터 프로필에서 남성 음성이 선택되었습니다.",
+      "narrator": "이 스토리는 기본적으로 남성 내레이터를 사용합니다.",
+      "unknown": "캐릭터 프로필에 성별이 명확히 지정되지 않았습니다. 기본값으로 남성 음성이 사용되며, 수동으로 변경할 수 있습니다."
     },
     "voiceGroups": {
-      "female": "Female voices",
-      "male": "Male voices",
-      "other": "Additional voice"
+      "female": "여성 음성",
+      "male": "남성 음성",
+      "other": "기타 음성"
     },
     "voiceDescriptions": {
-      "aoede": "Breezy and relaxed. For natural conversations and gentle delivery.",
-      "kore": "Firm and composed. For confident, commanding characters.",
-      "leda": "Youthful and fresh. For light, lively conversations.",
-      "zephyr": "Bright and clear. For open, friendly characters.",
-      "fenrir": "Energetic and expressive. For emotional dialogue and dynamic scenes.",
-      "charon": "Calm and informative. For narration, world descriptions and measured storytelling.",
-      "orus": "Firm and confident. For serious, decisive characters.",
-      "puck": "Upbeat and lively. For outgoing, optimistic characters.",
-      "fola": "The original NewVerse conversational voice, retained for listeners who preferred it."
+      "aoede": "가볍고 여유로운 음성. 자연스러운 대화와 부드러운 전달에 적합합니다.",
+      "kore": "단단하고 침착한 음성. 자신감 있고 위엄 있는 캐릭터에 적합합니다.",
+      "leda": "젊고 상큼한 음성. 밝고 생기 있는 대화에 적합합니다.",
+      "zephyr": "밝고 명확한 음성. 개방적이고 친근한 캐릭터에 적합합니다.",
+      "fenrir": "역동적이고 감정적인 음성. 감정 표현이 풍부한 대화와 다이내믹한 장면에 적합합니다.",
+      "charon": "차분하고 명확한 음성. 내레이션, 세계관 설명 및 안정적인 이야기 전달에 적합합니다.",
+      "orus": "단단하고 자신감 있는 음성. 진지하고 결단력 있는 캐릭터에 적합합니다.",
+      "puck": "밝고 활기찬 음성. 외향적이고 낙관적인 캐릭터에 적합합니다.",
+      "fola": "기존 NewVerse 대화 음성으로, 기존 음성을 선호하는 청취자를 위해 유지되었습니다."
     },
-    "voiceSaved": "Your choice is saved for this character on this device and applies to future playbacks.",
-    "voiceChangeBusy": "Wait for the current recording to finish preparing before changing the voice.",
+    "voiceSaved": "이 캐릭터에 대한 선택은 이 기기에서 저장되며 향후 재생 시 적용됩니다.",
+    "voiceChangeBusy": "음성 변경 전 현재 녹음이 완료되기를 기다려 주세요.",
     "voices": {
       "fola": "Fola",
       "fenrir": "Fenrir"
     },
-    "unlimited": "Unlimited speech is included",
-    "daily": "Playbacks: {{remaining}} of 1 left today",
-    "reset": "One playback a day, including replays. Resets at 00:00 Moscow time. Pausing and resuming do not use another play.",
-    "upgrade": "Unlimited with a subscription",
+    "unlimited": "무제한 음성이 포함됨",
+    "daily": "재생 횟수: 오늘 남은 횟수 {{remaining}}/1",
+    "reset": "하루 한 번 재생 가능(재생 포함). 매일 00:00(모스크바 시간)에 초기화됩니다. 일시정지 및 재생은 추가 횟수를 소모하지 않습니다.",
+    "upgrade": "구독 시 무제한 이용 가능",
     "errors": {
-      "unauthorized": "Sign in to listen to this reply.",
-      "notFound": "This reply is unavailable. Refresh the chat.",
-      "empty": "This reply only contains actions or stage directions, with no words to read.",
-      "tooLong": "The text is too long: up to 16,000 characters per reply and 8,000 in the audio script.",
-      "busy": "Another reply is being generated. Please wait.",
-      "quota": "Your free playback has been used today. Replays also count. Resets at 00:00 Moscow time. Subscriptions include unlimited speech.",
-      "rateLimit": "Too many requests. Try again in a minute.",
-      "changed": "The reply has changed. Try generating its audio again.",
-      "unavailable": "Could not load the audio. Please try again later.",
-      "playback": "Press play on the audio player. There is no need to generate the audio again.",
-      "pending": "Audio is still being prepared. Try Listen again later to continue the same recording.",
-      "uncertain": "The service did not confirm whether synthesis started. Retrying this reply is temporarily unavailable; your daily playback is preserved."
+      "unauthorized": "이 응답을 듣기 위해 로그인하세요.",
+      "notFound": "이 응답을 사용할 수 없습니다. 채팅을 새로고침하세요.",
+      "empty": "이 응답에는 말하는 내용이 없으며, 행동이나 무대 지시만 포함되어 있습니다.",
+      "tooLong": "텍스트가 너무 깁니다. 응답은 최대 16,000자, 음성 스크립트는 최대 8,000자까지 가능합니다.",
+      "busy": "다른 응답이 생성 중입니다. 잠시 후 다시 시도하세요.",
+      "quota": "오늘의 무료 재생 횟수가 모두 사용되었습니다. 재생도 포함됩니다. 매일 00:00(모스크바 시간)에 초기화됩니다. 구독 시 무제한 이용 가능합니다.",
+      "rateLimit": "요청이 너무 많습니다. 잠시 후 다시 시도하세요.",
+      "changed": "응답이 변경되었습니다. 다시 음성을 생성해 보세요.",
+      "unavailable": "오디오를 불러올 수 없습니다. 나중에 다시 시도하세요.",
+      "playback": "오디오 플레이어에서 재생을 눌러주세요. 음성 재생성은 필요 없습니다.",
+      "pending": "오디오 준비 중입니다. 잠시 후 다시 듣기를 시도하면 동일한 녹음을 이어갑니다.",
+      "uncertain": "음성 합성이 시작되었는지 확인할 수 없습니다. 이 응답에 대한 재시도는 일시적으로 불가능하며, 오늘의 재생 기회는 보존됩니다."
     }
   },
   "header": {
     "title": "NewVerse",
-    "openMenu": "Open menu",
-    "closeMenu": "Close menu",
-    "collapseMenu": "Collapse menu",
-    "expandMenu": "Expand menu",
-    "profileMenu": "Profile menu",
-    "mainNav": "Main navigation",
-    "bottomNav": "Quick navigation",
+    "openMenu": "메뉴 열기",
+    "closeMenu": "메뉴 닫기",
+    "collapseMenu": "메뉴 접기",
+    "expandMenu": "메뉴 펼치기",
+    "profileMenu": "프로필 메뉴",
+    "mainNav": "기본 탐색",
+    "bottomNav": "빠른 탐색",
     "menuShort": {
-      "home": "Home",
-      "chats": "Chats",
-      "create": "Create",
-      "coins": "Coins",
-      "profile": "Profile",
-      "favorites": "Favorites"
+      "home": "홈",
+      "chats": "채팅",
+      "create": "생성",
+      "coins": "코인",
+      "profile": "프로필",
+      "favorites": "즐겨찾기"
     },
     "menu": {
-      "home": "Home",
-      "chats": "My chats",
-      "pricing": "Subscription",
+      "home": "홈",
+      "chats": "내 채팅",
+      "pricing": "구독",
       "coins": "VerseCoins",
-      "create": "Create character",
-      "profile": "Profile",
-      "favorites": "Favorites",
-      "support": "Support",
-      "updates": "Updates"
+      "create": "캐릭터 만들기",
+      "profile": "프로필",
+      "favorites": "즐겨찾기",
+      "support": "고객 지원",
+      "updates": "업데이트"
     }
   },
   "footer": {
-    "offer": "Public offer",
-    "terms": "Terms of use",
-    "privacy": "Privacy policy",
-    "refund": "Refund policy",
-    "rules": "Platform rules",
-    "support": "Support",
-    "updates": "Updates on Telegram",
-    "copyright": "© {{year}} NewVerse — Your universe of characters"
+    "offer": "이용 계약",
+    "terms": "이용 약관",
+    "privacy": "개인정보 처리방침",
+    "refund": "환불 정책",
+    "rules": "플랫폼 규칙",
+    "support": "고객 지원",
+    "updates": "텔레그램에서 업데이트 받기",
+    "copyright": "© {{year}} NewVerse — 당신의 캐릭터 우주"
   },
   "language": {
-    "label": "Language",
-    "title": "Interface language",
-    "choose": "Choose language",
-    "close": "Close language selection",
-    "search": "Find a language",
-    "automatic": "Automatic",
-    "browserLanguage": "Browser language · {{language}}",
-    "saved": "Your choice will be saved for future visits",
-    "empty": "No matching language",
+    "label": "언어",
+    "title": "표시 언어",
+    "choose": "언어 선택",
+    "close": "언어 선택 닫기",
+    "search": "언어 검색",
+    "automatic": "자동",
+    "browserLanguage": "브라우저 언어 · {{language}}",
+    "saved": "다음 방문에도 선택한 언어가 적용됩니다",
+    "empty": "일치하는 언어가 없습니다",
     "ru": "RU",
     "en": "EN"
   },
   "currency": {
-    "label": "Currency",
+    "label": "통화",
     "RUB": "RUB",
     "USD": "USD",
     "EUR": "EUR"
   },
   "auth": {
-    "login": "Sign in",
-    "loginTitle": "Sign in",
-    "register": "Sign up",
-    "registerTitle": "Sign up",
-    "email": "Email",
-    "emailPlaceholder": "Email",
-    "password": "Password",
-    "name": "Name",
-    "confirmPassword": "Confirm password",
-    "forgot_password": "Forgot password?",
-    "login_google": "Sign in with Google",
-    "register_google": "Sign up with Google",
-    "or": "or",
-    "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?",
-    "invalidCredentials": "Invalid email or password",
-    "passwordMismatch": "Passwords do not match",
-    "registerError": "Registration failed",
-    "registerSuccess": "Registration successful! We sent a confirmation email. Redirecting to sign in...",
-    "connectionError": "A server connection error occurred",
-    "passwordChanged": "Password changed successfully",
-    "forgotTitle": "Reset password",
-    "sendLink": "Send link",
-    "sending": "Sending...",
-    "linkSent": "A password reset link has been sent to your email",
-    "sendLinkError": "Could not send the link",
-    "rememberedPassword": "Remembered your password?",
-    "resetTitle": "Set a new password",
-    "newPassword": "New password",
-    "confirmNewPassword": "Confirm password",
-    "resetPassword": "Reset password",
-    "saving": "Saving...",
-    "checkingLink": "Checking the link...",
-    "invalidLink": "This link is invalid or has expired",
-    "resetFailed": "Could not reset the password",
-    "requestNewLink": "Request a new link",
-    "backToLogin": "Back to sign in",
-    "minPassword": "Password must be at least {{count}} characters",
-    "loading": "Loading...",
-    "consentTerms": "I accept the <terms>Terms of Use</terms> and consent to personal data processing under the <privacy>Privacy Policy</privacy>.",
-    "consentOffer": "I have read the <offer>Public Offer</offer> and accept its terms.",
-    "consentRules": "I have read the <rules>platform rules</rules>.",
-    "consentRequired": "Please accept all required consents to sign up.",
-    "verifyTitle": "Confirm email",
-    "verifying": "Confirming your email...",
-    "verifySuccess": "Email confirmed! You now have full access to all features.",
-    "verifyInvalid": "This link is invalid or has expired. Request a new email.",
-    "resendEmail": "Resend confirmation email",
-    "resendSuccess": "The email has been sent. Check your inbox.",
-    "resendError": "Could not send the email",
-    "goToProfile": "Go to profile",
-    "verifyBanner": "Confirm your email to unlock full access.",
-    "refreshStatus": "Refresh status",
-    "refreshStatusError": "Could not refresh the status"
+    "login": "로그인",
+    "loginTitle": "로그인",
+    "register": "회원가입",
+    "registerTitle": "회원가입",
+    "email": "이메일",
+    "emailPlaceholder": "이메일",
+    "password": "비밀번호",
+    "name": "이름",
+    "confirmPassword": "비밀번호 확인",
+    "forgot_password": "비밀번호를 잊으셨나요?",
+    "login_google": "Google로 로그인",
+    "register_google": "Google로 가입",
+    "or": "또는",
+    "noAccount": "계정이 없으신가요?",
+    "hasAccount": "이미 계정이 있으신가요?",
+    "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다",
+    "registerError": "가입 실패",
+    "registerSuccess": "가입이 완료되었습니다! 이메일 확인 링크를 보냈습니다. 로그인 페이지로 이동합니다...",
+    "connectionError": "서버 연결 오류가 발생했습니다",
+    "passwordChanged": "비밀번호가 성공적으로 변경되었습니다",
+    "forgotTitle": "비밀번호 재설정",
+    "sendLink": "링크 전송",
+    "sending": "전송 중...",
+    "linkSent": "비밀번호 재설정 링크가 이메일로 전송되었습니다",
+    "sendLinkError": "링크를 전송할 수 없습니다",
+    "rememberedPassword": "비밀번호를 기억하셨나요?",
+    "resetTitle": "새 비밀번호 설정",
+    "newPassword": "새 비밀번호",
+    "confirmNewPassword": "비밀번호 확인",
+    "resetPassword": "비밀번호 재설정",
+    "saving": "저장 중...",
+    "checkingLink": "링크 확인 중...",
+    "invalidLink": "이 링크가 유효하지 않거나 만료되었습니다",
+    "resetFailed": "비밀번호를 재설정할 수 없습니다",
+    "requestNewLink": "새 링크 요청",
+    "backToLogin": "로그인으로 돌아가기",
+    "minPassword": "비밀번호는 최소 {{count}}자 이상이어야 합니다",
+    "loading": "로딩 중...",
+    "consentTerms": "<terms>이용 약관</terms>에 동의하며, <privacy>개인정보 처리방침</privacy>에 따라 개인정보 처리에 동의합니다.",
+    "consentOffer": "<offer>공개 제안</offer>을 확인하였으며, 그 내용에 동의합니다.",
+    "consentRules": "<rules>플랫폼 규칙</rules>을 확인하였습니다.",
+    "consentRequired": "가입을 위해 모든 필수 동의를 체크해 주세요.",
+    "verifyTitle": "이메일 확인",
+    "verifying": "이메일을 확인하는 중...",
+    "verifySuccess": "이메일이 확인되었습니다! 모든 기능을 사용할 수 있습니다.",
+    "verifyInvalid": "이 링크가 유효하지 않거나 만료되었습니다. 새 이메일을 요청하세요.",
+    "resendEmail": "확인 이메일 재전송",
+    "resendSuccess": "이메일이 전송되었습니다. 받은 편지함을 확인하세요.",
+    "resendError": "이메일을 전송할 수 없습니다",
+    "goToProfile": "프로필로 이동",
+    "verifyBanner": "이메일을 확인하고 전체 기능을 사용하세요.",
+    "refreshStatus": "상태 새로고침",
+    "refreshStatusError": "상태를 새로고침할 수 없습니다"
   },
   "common": {
-    "submit": "Confirm",
-    "cancel": "Cancel",
-    "save": "Save",
-    "delete": "Delete",
-    "edit": "Edit",
-    "close": "Close",
-    "retry": "Try again",
-    "error": "Error",
-    "loading": "Loading...",
-    "user": "User"
+    "submit": "확인",
+    "cancel": "취소",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "수정",
+    "close": "닫기",
+    "retry": "다시 시도",
+    "error": "오류",
+    "loading": "불러오는 중…",
+    "user": "사용자"
   },
   "home": {
     "continue": {
-      "label": "Continue",
-      "you": "You"
+      "label": "계속하기",
+      "you": "당신"
     },
-    "searchPlaceholder": "Search by name or tag...",
-    "sort": "Sort",
-    "sortTop": "Top",
-    "sortRandom": "Random",
-    "sortNew": "New",
-    "sortForYou": "For you",
-    "found": "Characters found: ",
-    "noCharacters": "No characters",
-    "noResults": "Nothing matched your search. Try changing the filters.",
-    "noPublished": "No published characters yet. Create the first one!",
-    "loadMore": "Load more",
-    "pagination": "Page navigation",
-    "page": "Page {{page}} of {{pages}}",
-    "prevPage": "Previous page",
-    "nextPage": "Next page",
+    "searchPlaceholder": "이름 또는 태그로 검색...",
+    "sort": "정렬",
+    "sortTop": "인기순",
+    "sortRandom": "무작위",
+    "sortNew": "최신순",
+    "sortForYou": "회원님을 위해",
+    "found": "검색된 캐릭터: ",
+    "noCharacters": "캐릭터가 없습니다",
+    "noResults": "검색 결과가 없습니다. 필터를 조정해 보세요.",
+    "noPublished": "아직 공개된 캐릭터가 없습니다. 첫 번째로 만들어보세요!",
+    "loadMore": "더 불러오기",
+    "pagination": "페이지 이동",
+    "page": "{{page}}/{{pages}} 페이지",
+    "prevPage": "이전 페이지",
+    "nextPage": "다음 페이지",
     "pageChooser": {
-      "open": "Go to any page",
-      "title": "Go to page",
-      "close": "Close page chooser",
-      "prevRange": "Previous ten page numbers",
-      "nextRange": "Next ten page numbers",
-      "range": "{{start}}–{{end}} of {{pages}}",
-      "first": "First · 1",
-      "last": "Last · {{pages}}",
-      "firstLabel": "First page",
-      "lastLabel": "Last page",
-      "inputLabel": "Or enter a page number",
-      "go": "Go",
-      "invalid": "Enter a whole number from 1 to {{pages}}"
+      "open": "원하는 페이지로 이동",
+      "title": "페이지로 이동",
+      "close": "페이지 선택 닫기",
+      "prevRange": "이전 10개 페이지 번호",
+      "nextRange": "다음 10페이지",
+      "range": "{{start}}–{{end}} / {{pages}}",
+      "first": "처음 · 1",
+      "last": "마지막 · {{pages}}",
+      "firstLabel": "첫 번째 페이지",
+      "lastLabel": "마지막 페이지",
+      "inputLabel": "또는 페이지 번호 입력",
+      "go": "이동",
+      "invalid": "1에서 {{pages}} 사이의 정수를 입력하세요"
     },
-    "reset": "Reset",
-    "resetSearch": "Clear search",
-    "genresLabel": "Genres",
-    "allGenres": "All",
+    "reset": "초기화",
+    "resetSearch": "검색 초기화",
+    "genresLabel": "장르",
+    "allGenres": "전체",
     "genres": {
-      "fantasy": "Fantasy",
-      "romance": "Romance",
-      "anime": "Anime",
-      "scifi": "Sci-Fi",
-      "mystic": "Mystery",
-      "realistic": "Modern world",
-      "adventure": "Adventure",
-      "horror": "Horror",
-      "comedy": "Comedy",
-      "drama": "Drama",
-      "detective": "Detective",
-      "everyday": "Slice of life",
-      "cyberpunk": "Cyberpunk"
+      "fantasy": "판타지",
+      "romance": "로맨스",
+      "anime": "애니메",
+      "scifi": "공상과학",
+      "mystic": "미스터리",
+      "realistic": "현대 세계",
+      "adventure": "모험",
+      "horror": "공포",
+      "comedy": "코미디",
+      "drama": "드라마",
+      "detective": "추리",
+      "everyday": "일상",
+      "cyberpunk": "사이버펑크"
     },
     "sectionTitle": {
-      "top": "Popular right now",
-      "new": "New arrivals",
-      "random": "Random picks",
-      "for-you": "Picked for you",
-      "search": "Search results"
+      "top": "지금 인기 있는 이야기",
+      "new": "새로 등장한 이야기",
+      "random": "무작위 추천",
+      "for-you": "회원님을 위한 추천",
+      "search": "검색 결과"
     },
     "hero": {
-      "eyebrow": "NewVerse — chat with AI characters",
-      "title": "Stories that remember you",
-      "text": "Pick a hero or a whole world and continue the plot whenever you like. Characters remember details and grow the story with you.",
-      "start": "Start a story",
-      "create": "Create your character",
-      "catalogCount_other": "{{count}} characters in the catalog",
-      "languages": "Russian, English and Spanish"
+      "eyebrow": "NewVerse — AI 캐릭터와 채팅",
+      "title": "당신을 기억하는 이야기들",
+      "text": "원하는 캐릭터나 세계관을 선택하고, 언제든지 스토리를 이어가세요. 등장인물들은 세부 사항을 기억하며 당신과 함께 이야기를 발전시킵니다.",
+      "start": "스토리 시작하기",
+      "create": "나만의 캐릭터 만들기",
+      "catalogCount_other": "카탈로그의 캐릭터 {{count}}명",
+      "languages": "다국어 지원"
     },
     "recommendations": {
-      "discoveryTitle": "Discover new stories",
-      "personalizedHint": "Based on your favorites and recent chats, with new genres and fewer familiar characters.",
-      "discoveryHint": "A mix of genres, popular stories and new arrivals. Add favorites and chat to personalize these picks."
+      "discoveryTitle": "새로운 이야기를 발견하세요",
+      "personalizedHint": "회원님의 즐겨찾기와 최근 대화 기반. 새로운 장르를 추가하고 익숙한 캐릭터는 덜 보여드립니다.",
+      "discoveryHint": "다양한 장르, 인기 있는 이야기와 신규 작품이 모였습니다. 즐겨찾기에 추가하고 대화를 나누면 추천이 더 개인화됩니다."
     }
   },
   "characterCard": {
-    "knownAbout": "Known about the character:",
-    "noDescription": "No description",
-    "messages_other": "{{formatted}} messages"
+    "knownAbout": "캐릭터 정보:",
+    "noDescription": "설명 없음",
+    "messages_other": "{{formatted}}개의 메시지"
   },
   "characterPage": {
-    "author": "Author",
+    "author": "작성자",
     "unknownAuthor": "NewVerse",
-    "messages": "Messages: {{count}}",
-    "knownAbout": "Known about the character",
-    "tags": "Character tags",
-    "startChat": "Start chat",
-    "share": "Share",
-    "copied": "Link copied",
-    "shareFailed": "Could not copy the link",
-    "about": "About character",
-    "close": "Close",
-    "storyStart": "How the story begins",
-    "scenario": "Scenario",
-    "similar": "Similar characters",
+    "messages": "메시지: {{count}}",
+    "knownAbout": "캐릭터 정보",
+    "tags": "캐릭터 태그",
+    "startChat": "대화 시작",
+    "share": "공유",
+    "copied": "링크가 복사되었습니다",
+    "shareFailed": "링크를 복사할 수 없습니다",
+    "about": "캐릭터 소개",
+    "close": "닫기",
+    "storyStart": "스토리가 시작되는 방식",
+    "scenario": "시나리오",
+    "similar": "비슷한 캐릭터",
     "faq": {
-      "title": "Frequently asked questions",
-      "freeQ": "Can I chat with {{name}} for free?",
-      "freeA": "Yes. Guests get {{limit}} {{messages}} without signing up. After sign-up you get {{onboarding}} free replies a day for the first week, then {{daily}} a day on the base model.",
-      "freeAPaid": "Yes. Guests get {{limit}} {{messages}} without signing up. After that you can continue the story in your account with VC or a subscription.",
-      "registerQ": "Do I need to sign up?",
-      "registerA": "Not to start: the first {{limit}} {{messages}} can be sent as a guest. To keep going, sign in and the guest chat moves to your account.",
-      "languageQ": "What language does {{name}} reply in?",
-      "languageA": "In the selected site language: Russian, English or Spanish. You can switch languages in the menu and continue the same story.",
-      "startQ": "How do I start the story?",
-      "startA": "Press “Start chat”. {{name}} opens the scene with the first message, and the plot follows your replies."
+      "title": "자주 묻는 질문",
+      "freeQ": "{{name}}과(와) 무료로 채팅할 수 있나요?",
+      "freeA": "네. 비회원도 가입 없이 {{limit}}개의 {{messages}}를 사용할 수 있습니다. 가입 후 첫 주에는 매일 {{onboarding}}회의 무료 응답이 제공되며, 이후에는 기본 모델로 매일 {{daily}}회 제공됩니다.",
+      "freeAPaid": "네. 비회원도 가입 없이 {{limit}}개의 {{messages}}를 사용할 수 있습니다. 이후에는 계정에서 VC 또는 구독으로 스토리를 계속 진행할 수 있습니다.",
+      "registerQ": "가입이 필요한가요?",
+      "registerA": "시작할 때는 필요 없습니다. 처음 {{limit}}개의 {{messages}}는 비회원으로 보낼 수 있습니다. 계속 진행하려면 로그인하고, 비회원 채팅 기록이 계정으로 이전됩니다.",
+      "languageQ": "{{name}}은(는) 어떤 언어로 답장하나요?",
+      "languageA": "선택한 웹사이트 언어로 답장합니다. 메뉴에서 언어를 변경하고 동일한 스토리를 이어갈 수 있습니다.",
+      "startQ": "어떻게 스토리를 시작하나요?",
+      "startA": "「채팅 시작」을 누르세요. {{name}}이(가) 첫 메시지로 장면을 열고, 이후에는 당신의 답장에 따라 스토리가 전개됩니다."
     },
-    "messagesWord_other": "messages"
+    "messagesWord_other": "메시지"
   },
   "errorPage": {
-    "notFoundTitle": "Page not found",
-    "notFoundText": "The link may be outdated or the address has a typo. Characters and stories are waiting in the catalog.",
-    "toCatalog": "Go to catalog",
-    "errorTitle": "Something went wrong",
-    "errorText": "We already know about the problem. Try again or go back to the catalog.",
-    "retry": "Try again",
-    "errorCode": "Error code"
+    "notFoundTitle": "페이지를 찾을 수 없습니다",
+    "notFoundText": "링크가 만료되었거나 주소에 오타가 있을 수 있습니다. 캐릭터와 스토리는 카탈로그에서 기다리고 있습니다.",
+    "toCatalog": "카탈로그 가기",
+    "errorTitle": "문제가 발생했습니다",
+    "errorText": "이미 문제를 인지하고 있습니다. 다시 시도하거나 카탈로그로 돌아가세요.",
+    "retry": "다시 시도",
+    "errorCode": "오류 코드"
   },
   "support": {
-    "title": "Support",
-    "intro": "For billing, technical issues, refunds, and moderation appeals, use the form. We will contact you at the email you provide.",
-    "formTitle": "Submit a request",
-    "topic": "Topic",
-    "email": "Your email",
-    "message": "Message",
-    "messagePlaceholder": "Describe the issue or question...",
-    "submit": "Send",
-    "sending": "Sending...",
-    "success": "Your request was accepted and stored.",
-    "ticketId": "Request number: {{id}}.",
-    "error": "Could not send the request. Please try again.",
-    "invalidTopic": "Choose a topic",
-    "invalidEmail": "Enter a valid email",
-    "invalidMessage": "The message must be between 10 and 4000 characters",
-    "referenceTicket": "Previous ticket number (optional)",
-    "referenceHint": "To continue a conversation, copy the ticket number from the email and use the same email address. Support will receive the number with your new message.",
-    "invalidReference": "Check the ticket number: copy only the number from the email, without spaces or a link.",
-    "mailtoHint": "The request is stored on the server and copied to support email.",
-    "userEmailPrefix": "User email: ",
+    "title": "고객 지원",
+    "intro": "결제, 기술 문제, 환불, 모더레이션 이의 제기 등은 양식을 통해 문의해 주세요. 입력하신 이메일로 연락드리겠습니다.",
+    "formTitle": "요청 제출",
+    "topic": "문의 유형",
+    "email": "이메일",
+    "message": "메시지",
+    "messagePlaceholder": "문제나 질문을 설명해 주세요...",
+    "submit": "보내기",
+    "sending": "전송 중...",
+    "success": "요청이 접수되어 저장되었습니다.",
+    "ticketId": "요청 번호: {{id}}.",
+    "error": "요청을 보낼 수 없습니다. 다시 시도해 주세요.",
+    "invalidTopic": "문의 유형을 선택하세요",
+    "invalidEmail": "유효한 이메일을 입력하세요",
+    "invalidMessage": "메시지는 10자 이상 4000자 이하로 입력해야 합니다",
+    "referenceTicket": "이전 요청 번호(선택 사항)",
+    "referenceHint": "이전 대화를 이어가려면 이메일에 있는 요청 번호를 복사하고 동일한 이메일 주소를 사용하세요. 지원팀은 새 메시지와 함께 번호를 수신합니다.",
+    "invalidReference": "요청 번호를 확인하세요. 링크나 공백 없이 이메일에서 숫자만 복사하세요.",
+    "mailtoHint": "요청은 서버에 저장되며 지원팀 이메일로 복사됩니다.",
+    "userEmailPrefix": "사용자 이메일: ",
     "topics": {
-      "payment": "Billing question",
-      "technical": "Technical issue",
-      "refund": "Refund",
-      "moderation": "Appeal a moderation decision",
-      "other": "Other"
+      "payment": "결제 문의",
+      "technical": "기술 문제",
+      "refund": "환불",
+      "moderation": "모더레이션 이의 제기",
+      "other": "기타"
     }
   },
   "profile": {
     "wallet": {
-      "title": "VerseCoins wallet",
-      "topUp": "Top up"
+      "title": "VerseCoins 지갑",
+      "topUp": "충전하기"
     },
-    "title": "My profile",
-    "loginPrompt": "Sign in to view your profile and characters.",
-    "registeredAt": "Registered:",
-    "catalog": "Catalog",
-    "subscription": "Subscription",
-    "freePlan": "Free plan",
-    "until": "Until {{date}} · {{days}} days left",
-    "then": "Then: {{label}}",
-    "recurringOn": "Auto-renewal is on",
-    "recurringOff": "Auto-renewal is off",
-    "recurringSetup": "The new plan requires auto-renewal to be set up again.",
-    "manageSubscription": "Manage subscription",
-    "characters": "Characters",
-    "chats": "Chats",
-    "messages": "Messages",
-    "myCharacters": "My characters",
+    "title": "내 프로필",
+    "loginPrompt": "로그인하여 프로필과 캐릭터를 확인하세요.",
+    "registeredAt": "가입일:",
+    "catalog": "카탈로그",
+    "subscription": "구독",
+    "freePlan": "무료 요금제",
+    "until": "{{date}}까지 · {{days}}일 남음",
+    "then": "그 후: {{label}}",
+    "recurringOn": "자동 갱신 활성화됨",
+    "recurringOff": "자동 갱신 비활성화됨",
+    "recurringSetup": "새 요금제는 자동 갱신을 다시 설정해야 합니다.",
+    "manageSubscription": "구독 관리",
+    "characters": "캐릭터",
+    "chats": "채팅",
+    "messages": "메시지",
+    "myCharacters": "내 캐릭터",
     "count": "{{count}}",
-    "empty": "You have not created any characters yet",
-    "createFirst": "Create your first character",
-    "private": "Private",
-    "hiddenForViolation": "Hidden for a rule violation",
-    "noDescription": "No description",
-    "chat": "Chat",
-    "deleteConfirm": "Are you sure you want to delete {{name}}? This cannot be undone.",
-    "deleted": "Character deleted",
-    "deleteError": "Could not delete the character",
-    "loadError": "Could not load the profile",
-    "settingsSoon": "Settings will be available soon",
-    "notificationsSoon": "Notifications will be available soon",
-    "settings": "Settings",
-    "notifications": "Notifications",
-    "logout": "Sign out",
-    "startPlan": "No subscription"
+    "empty": "아직 캐릭터를 생성하지 않았습니다",
+    "createFirst": "첫 캐릭터 만들기",
+    "private": "비공개",
+    "hiddenForViolation": "규칙 위반으로 숨김 처리됨",
+    "noDescription": "설명 없음",
+    "chat": "채팅",
+    "deleteConfirm": "{{name}} 캐릭터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "deleted": "캐릭터가 삭제되었습니다",
+    "deleteError": "캐릭터를 삭제할 수 없습니다",
+    "loadError": "프로필을 불러올 수 없습니다",
+    "settingsSoon": "설정은 곧 이용 가능합니다",
+    "notificationsSoon": "알림은 곧 이용 가능합니다",
+    "settings": "설정",
+    "notifications": "알림",
+    "logout": "로그아웃",
+    "startPlan": "구독 없음"
   },
   "notifications": {
-    "title": "Notifications",
-    "empty": "You have no notifications yet",
-    "markAllRead": "Mark all as read",
-    "showAll": "Show all",
-    "loginPrompt": "Sign in to see your notifications",
-    "loadError": "Could not load notifications",
-    "justNow": "just now",
-    "minutesAgo": "{{count}} min ago",
-    "hoursAgo": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago",
-    "filterAll": "All",
-    "typePurchaseVc": "VC purchase",
-    "typePurchaseSubscription": "Subscription",
-    "typeDailyBonus": "Daily bonus",
-    "typeAdmin": "From the team",
-    "open": "Open notifications",
-    "markedRead": "All notifications marked as read"
+    "title": "알림",
+    "empty": "아직 알림이 없습니다",
+    "markAllRead": "모두 읽음으로 표시",
+    "showAll": "전체 보기",
+    "loginPrompt": "알림을 보려면 로그인하세요",
+    "loadError": "알림을 불러올 수 없습니다",
+    "justNow": "방금",
+    "minutesAgo": "{{count}}분 전",
+    "hoursAgo": "{{count}}시간 전",
+    "daysAgo": "{{count}}일 전",
+    "filterAll": "전체",
+    "typePurchaseVc": "VC 구매",
+    "typePurchaseSubscription": "구독",
+    "typeDailyBonus": "일일 보너스",
+    "typeAdmin": "운영팀에서",
+    "open": "알림 열기",
+    "markedRead": "모든 알림을 읽음으로 표시했습니다"
   },
   "pricing": {
-    "coinRulesTitle": "How VC are spent",
-    "coinRulesSubscription": "Subscription VC do not accumulate: activating or renewing a plan replaces the previous pack balance. Unused subscription VC expire when the subscription ends.",
-    "coinRulesPermanent": "VC purchased separately do not expire. Subscription VC are spent first, followed by purchased VC.",
-    "coinRulesActions": "A new reply, retry and continuation are separate requests, each charged for the selected model. The cost is shown before sending. VC are charged after the model response is received.",
-    "badge": "Subscriptions",
-    "title": "NewVerse plans",
-    "subtitle": "Monthly and yearly plans with bonus VerseCoins and a larger context window. Pick the level that fits your stories and chats.",
-    "activeUntil": "Your subscription: {{label}}, active until {{date}}",
-    "noActive": "You have no active subscription",
-    "pending": "The new {{label}} subscription will start after the current one ends ({{date}})",
-    "cancelling": "Cancelling...",
-    "cancelPending": "Cancel",
-    "recurringMissing": "Auto-renewal is not set up for the current plan. Subscribe again to keep payments automatic.",
-    "month": "Month",
-    "year": "Year",
-    "popular": "Popular",
-    "yearlyPlan": "Yearly subscription",
-    "monthlyPlan": "Monthly subscription",
-    "forever": "forever",
-    "perYear": "per year",
-    "perMonth": "per month",
-    "vcPerMonth": "{{count}} VC / mo",
-    "context": "Context {{tokens}} · daily bonus ×{{multiplier}}",
+    "coinRulesTitle": "VC 사용 방법",
+    "coinRulesSubscription": "구독 VC는 누적되지 않습니다. 새로운 구독을 활성화하거나 갱신하면 이전 팩 잔액이 대체됩니다. 구독 종료 시 미사용된 구독 VC는 소멸됩니다.",
+    "coinRulesPermanent": "별도로 구매한 VC는 소멸되지 않습니다. 먼저 구독 VC가 사용되고, 그 후 구매한 VC가 차감됩니다.",
+    "coinRulesActions": "새 응답, 재시도, 이어가기 요청은 각각 별도의 요청이며 선택한 모델 기준으로 요금이 부과됩니다. 전송 전에 비용을 확인할 수 있습니다. 모델 응답 수신 후 VC가 차감됩니다.",
+    "badge": "구독",
+    "title": "NewVerse 요금제",
+    "subtitle": "보너스 VerseCoins와 더 넓은 컨텍스트 창을 제공하는 월간 및 연간 요금제. 여러분의 스토리와 대화에 맞는 수준을 선택하세요.",
+    "activeUntil": "구독: {{label}}, {{date}}까지 유효",
+    "noActive": "활성화된 구독이 없습니다",
+    "pending": "새로운 {{label}} 구독이 현재 구독 종료 후 시작됩니다 ({{date}})",
+    "cancelling": "취소 중...",
+    "cancelPending": "취소",
+    "recurringMissing": "현재 요금제의 자동 갱신이 설정되지 않았습니다. 결제를 자동으로 유지하려면 다시 구독하세요.",
+    "month": "월",
+    "year": "년",
+    "popular": "인기",
+    "yearlyPlan": "연간 구독",
+    "monthlyPlan": "월간 구독",
+    "forever": "영구",
+    "perYear": "연간 결제",
+    "perMonth": "월간 결제",
+    "vcPerMonth": "{{count}} VC / 월",
+    "context": "컨텍스트 {{tokens}} · 일일 보너스 ×{{multiplier}}",
     "planFeatures": {
-      "dialog": [
-        "2,500 VC per month",
-        "For casual conversations and everyday scenes",
-        "Daily bonus multiplier ×1.5"
-      ],
-      "history": [
-        "10,000 VC per month",
-        "For long roleplay and story development",
-        "Daily bonus multiplier ×2"
-      ],
-      "universe": [
-        "30,000 VC per month",
-        "For deep worlds and complex story arcs",
-        "Daily bonus multiplier ×2.5"
-      ]
+      "dialog": {
+        "0": "월 2,500 VC",
+        "1": "일상적인 대화와 씬에 적합",
+        "2": "일일 보너스 배율 ×1.5"
+      },
+      "history": {
+        "0": "월 10,000 VC",
+        "1": "긴 롤플레이와 스토리 전개에 적합",
+        "2": "일일 보너스 배율 ×2"
+      },
+      "universe": {
+        "0": "월 30,000 VC",
+        "1": "깊이 있는 세계관과 복잡한 스토리 아크에 적합",
+        "2": "일일 보너스 배율 ×2.5"
+      }
     },
-    "redirecting": "Payment...",
-    "subscribe": "Subscribe",
-    "footnote": "Activating a plan credits bonus VC to your balance. The multiplier applies to the daily bonus. Request counts depend on the model you choose. Payments go through Robokassa and are credited after confirmation.",
-    "checkoutTitle": "Subscribe to {{name}}",
-    "applyNow": "Apply now",
-    "applyNowHint": "Your current subscription, if any, will be replaced. Remaining time is not refunded.",
-    "applyLater": "Apply after the current plan ends",
-    "applyLaterHint": "The new subscription will start automatically when the current one expires.",
-    "offerConsent": "I agree to automatic charges when the subscription renews under the terms of the",
-    "offerLink": "offer",
-    "offerConsentNote": "(you can turn this off in profile settings)",
-    "consentRequired": "You must agree to auto-renewal to subscribe",
-    "goToPayment": "Continue to payment",
-    "creatingPayment": "Creating payment...",
-    "paymentError": "Could not create the payment",
-    "cancelPendingSuccess": "Pending subscription cancelled",
-    "cancelPendingError": "Could not cancel the pending subscription",
-    "cancelPendingConfirmTitle": "Cancel the pending subscription?",
-    "cancelPendingConfirm": "The new plan will not start when the current subscription ends.",
-    "estimateTitle": "Request estimate",
-    "estimate": "About {{base}} requests on {{baseName}} ({{baseCost}} VC) or {{premium}} on {{premiumName}} ({{premiumCost}} VC) from the monthly pack. This is an estimate for a new send; actual count depends on conversation length. A technical retry after a failure is not billed as a new turn.",
-    "estimateUnavailable": "The request estimate appears after the model catalog loads.",
-    "paymentPending": "Payment is not confirmed yet. Balance and subscription will update after Robokassa notifies us.",
-    "paymentConfirmed": "Payment confirmed."
+    "redirecting": "결제 중...",
+    "subscribe": "구독하기",
+    "footnote": "구독 등록 시 잔고에 보너스 VC가 지급됩니다. 배수는 일일 보너스에 적용됩니다. 요청 횟수는 선택한 모델에 따라 달라질 수 있습니다. 결제는 Robokassa를 통해 처리되며, 확인 후 잔고에 반영됩니다.",
+    "checkoutTitle": "{{name}} 구독하기",
+    "applyNow": "지금 적용",
+    "applyNowHint": "현재 구독이 있다면 대체되며, 남은 기간은 환불되지 않습니다.",
+    "applyLater": "현재 구독 종료 후 적용",
+    "applyLaterHint": "새 구독은 현재 구독이 만료되면 자동으로 시작됩니다.",
+    "offerConsent": "구독 갱신 시 자동 결제에 동의합니다. 약관은",
+    "offerLink": "이용 약관",
+    "offerConsentNote": "(프로필 설정에서 비활성화 가능)",
+    "consentRequired": "구독하려면 자동 갱신에 동의해야 합니다",
+    "goToPayment": "결제 계속하기",
+    "creatingPayment": "결제 생성 중...",
+    "paymentError": "결제 생성에 실패했습니다",
+    "cancelPendingSuccess": "보류 중인 구독이 취소되었습니다",
+    "cancelPendingError": "보류 중인 구독을 취소할 수 없습니다",
+    "cancelPendingConfirmTitle": "보류 중인 구독을 취소하시겠습니까?",
+    "cancelPendingConfirm": "현재 구독이 종료되어도 새 요금제가 시작되지 않습니다.",
+    "estimateTitle": "요청 예상치",
+    "estimate": "월간 패키지 기준 {{baseName}}에서 약 {{base}}회 요청 ({{baseCost}} VC) 또는 {{premiumName}}에서 {{premium}}회 ({{premiumCost}} VC). 이는 새 메시지 기준 예상치이며, 실제 횟수는 대화 길이에 따라 달라질 수 있습니다. 실패 후 재시도는 새로운 요청으로 간주되지 않습니다.",
+    "estimateUnavailable": "모델 카탈로그 로드 후 요청 예상치가 표시됩니다.",
+    "paymentPending": "결제가 아직 확인되지 않았습니다. Robokassa에서 통지 후 잔고와 구독이 업데이트됩니다.",
+    "paymentConfirmed": "결제가 확인되었습니다."
   },
   "coins": {
     "title": "VerseCoins (VC)",
-    "subtitle": "Buy VC to chat with characters, claim the daily bonus, and track your subscription.",
-    "loginPrompt": "Sign in to see your balance, bonuses, and buy VC",
-    "balance": "Current balance",
-    "yourSubscription": "Your subscription: {{label}}",
-    "validUntil": "Active until {{date}}",
-    "dailyBonus": "Daily bonus",
-    "streakDay": "Streak day: {{day}} / 7",
-    "today": "Today: ",
-    "alreadyClaimed": "Bonus already claimed today",
-    "nextBonus": "Next bonus in: ",
-    "claiming": "Claiming...",
-    "claim": "Claim (+{{amount}} VC)",
-    "unavailable": "Bonus unavailable",
-    "subscriptions": "Subscriptions",
-    "packages": "VC packs",
-    "price": "Price ({{symbol}})",
-    "bonus": "Bonus",
-    "action": "Action",
-    "buy": "Buy",
-    "checkoutTitle": "Purchase {{label}}",
-    "goToPayment": "Continue to payment",
-    "paying": "Payment...",
-    "loadError": "Could not load the balance",
-    "paymentError": "Could not create the payment",
-    "createPaymentError": "Error creating the payment",
-    "bonusReceived": "Bonus claimed!",
-    "comeTomorrow": "Come back tomorrow",
-    "bonusError": "Could not claim the bonus",
-    "buyDesc": "Purchase of {{coins}} VC",
-    "min": "0 min",
-    "hoursMinutes": "{{hours}} h {{minutes}} min",
-    "minutes": "{{minutes}} min",
-    "paymentPending": "Payment is processing. Purchased VC will appear on your balance after confirmation.",
-    "paymentConfirmed": "The VC purchase is confirmed and credited.",
-    "shop01": "The introductory offer is no longer available. Choose a regular pack.",
-    "shop02": "Estimate",
-    "shop03": "replies with",
-    "shop04": "VC received. Your story is ready to continue.",
-    "shop05": "Return to chat",
-    "shop06": "Back to chat",
-    "shop07": "Continue your story with {{value1}}",
-    "shop08": "Your story deserves another chapter",
-    "shop09": "Top up and chat with characters at your own pace. Start small, without a subscription or commitment.",
-    "shop10": "Return to this chat after payment confirmation",
-    "shop11": "VC never expire",
-    "shop12": "Payment via Robokassa",
-    "shop13": "First introduction",
-    "shop14": "One-time top-up",
-    "shop15": "For new scenes and conversations",
-    "shop16": "One payment · no auto-renewal",
-    "shop17": " · Charged {{value1}} RUB",
-    "shop18": "Checking availability…",
-    "shop19": "Offer temporarily unavailable",
-    "shop20": "Get {{value1}} VC",
-    "shop21": "The number depends on the model you choose.",
-    "shop22": "One introductory pack per account before your first purchase. Subscription and avatar generations are not included.",
-    "shop23": "Your introductory pack is reserved: continue paying the same invoice.",
-    "shop24": "Loading…",
-    "shop25": "Today",
-    "shop26": "Tomorrow",
-    "shop27": "Tomorrow +{{value1}} VC",
-    "shop28": "More room for your story",
-    "shop29": "One-time packs for every account. Top up whenever you like.",
-    "shop30": "A few scenes",
-    "shop31": "Build your story",
-    "shop32": "Long conversations",
-    "shop33": "Multiple stories",
-    "shop34": "Bigger worlds",
-    "shop35": "Dedicated storytellers",
-    "shop36": "Chatting regularly?",
-    "shop37": "Subscriptions include monthly VC, conversation memory and avatar generations.",
-    "shop38": "Before you buy",
-    "shop39": "What can I do with VC?",
-    "shop40": "Pay for model replies in chats. Reply prices depend on the model and are shown in chat. VC packs do not activate a subscription or add avatar generations.",
-    "shop41": "Do purchased VC expire?",
-    "shop42": "VC from one-time packs never expire. Monthly subscription VC are separate and follow subscription terms.",
-    "shop43": "When will my balance update?",
-    "shop44": "After Robokassa confirms payment. You may return to the site earlier; in that case we show a pending status.",
-    "shop45": "Need help with payment?",
-    "shop46": "Contact support",
-    "checkoutTerms": "One payment. No subscription or automatic renewal. VC do not expire."
+    "subtitle": "캐릭터와 대화하거나, 일일 보너스를 받고, 구독 상태를 확인하려면 VC를 구매하세요.",
+    "loginPrompt": "로그인하여 잔고, 보너스 및 VC 구매를 확인하세요",
+    "balance": "현재 잔고",
+    "yourSubscription": "구독: {{label}}",
+    "validUntil": "만료일: {{date}}",
+    "dailyBonus": "일일 보너스",
+    "streakDay": "연속 일수: {{day}} / 7",
+    "today": "오늘: ",
+    "alreadyClaimed": "오늘의 보너스는 이미 수령했습니다",
+    "nextBonus": "다음 보너스까지: ",
+    "claiming": "수령 중...",
+    "claim": "수령 (+{{amount}} VC)",
+    "unavailable": "보너스를 받을 수 없습니다",
+    "subscriptions": "구독",
+    "packages": "VC 팩",
+    "price": "가격 ({{symbol}})",
+    "bonus": "보너스",
+    "action": "작업",
+    "buy": "구매",
+    "checkoutTitle": "{{label}} 구매",
+    "goToPayment": "결제 계속하기",
+    "paying": "결제 중...",
+    "loadError": "잔고를 불러올 수 없습니다",
+    "paymentError": "결제 생성에 실패했습니다",
+    "createPaymentError": "결제 생성 오류",
+    "bonusReceived": "보너스를 수령했습니다!",
+    "comeTomorrow": "내일 다시 방문하세요",
+    "bonusError": "보너스를 수령할 수 없습니다",
+    "buyDesc": "{{coins}} VC 구매",
+    "min": "0분",
+    "hoursMinutes": "{{hours}}시간 {{minutes}}분",
+    "minutes": "{{minutes}}분",
+    "paymentPending": "결제가 처리 중입니다. 확인 후 구매한 VC가 잔고에 반영됩니다.",
+    "paymentConfirmed": "VC 구매가 확인되어 잔고에 추가되었습니다.",
+    "shop01": "소개용 패키지는 더 이상 이용할 수 없습니다. 일반 팩을 선택하세요.",
+    "shop02": "예상치",
+    "shop03": "답변 가능 횟수:",
+    "shop04": "VC가 지급되었습니다. 이야기를 계속할 수 있어요.",
+    "shop05": "대화로 돌아가기",
+    "shop06": "대화로 돌아가기",
+    "shop07": "{{value1}}과(와) 이야기를 이어가세요",
+    "shop08": "당신의 이야기에 다음 장을 더해보세요",
+    "shop09": "잔액을 충전하고 구독이나 약정 없이 원하는 속도로 캐릭터와 대화하세요. 소액으로 시작해보세요.",
+    "shop10": "결제 확인 후 이 채팅으로 돌아갑니다",
+    "shop11": "VC는 만료되지 않습니다",
+    "shop12": "Robokassa를 통해 결제",
+    "shop13": "입문 패키지",
+    "shop14": "일회성 충전",
+    "shop15": "새로운 장면과 대화를 위해",
+    "shop16": "단일 결제 · 자동 갱신 없음",
+    "shop17": " · {{value1}} RUB 청구",
+    "shop18": "이용 가능 여부 확인 중…",
+    "shop19": "현재 일시적으로 제공 불가",
+    "shop20": "{{value1}} VC 받기",
+    "shop21": "수량은 선택한 모델에 따라 다릅니다.",
+    "shop22": "첫 구매 전 계정당 한 번만 사용 가능. 구독 및 아바타 생성은 포함되지 않습니다.",
+    "shop23": "첫 구매 패키지가 예약되어 있습니다: 동일한 청구서 결제를 계속 진행하세요.",
+    "shop24": "로딩 중…",
+    "shop25": "오늘",
+    "shop26": "내일",
+    "shop27": "내일 +{{value1}} VC",
+    "shop28": "이야기를 더 펼칠 공간",
+    "shop29": "모든 계정을 위한 일회성 패키지. 원할 때마다 잔액을 충전하세요.",
+    "shop30": "몇 개의 장면",
+    "shop31": "스토리 구축",
+    "shop32": "긴 대화",
+    "shop33": "다양한 스토리",
+    "shop34": "더 큰 세계관",
+    "shop35": "열정적인 스토리텔러를 위해",
+    "shop36": "자주 대화하시나요?",
+    "shop37": "구독에는 매월 제공되는 VC, 대화 기억, 아바타 생성이 포함됩니다.",
+    "shop38": "구매 전 확인",
+    "shop39": "VC로 무엇을 할 수 있나요?",
+    "shop40": "채팅에서 모델의 답변에 비용을 지불합니다. 회신 비용은 모델에 따라 달라지며 채팅에 표시됩니다. VC 패키지는 구독을 활성화하거나 아바타 생성을 추가하지 않습니다.",
+    "shop41": "구매한 VC는 만료되나요?",
+    "shop42": "일회성 패키지의 VC는 만료되지 않습니다. 월간 구독 VC는 별도로 관리되며 구독 약관을 따릅니다.",
+    "shop43": "잔액은 언제 업데이트되나요?",
+    "shop44": "Robokassa에서 결제를 확인한 후 업데이트됩니다. 사이트에 더 빨리 돌아올 수도 있으며, 이 경우 보류 중인 상태를 표시합니다.",
+    "shop45": "결제 도움이 필요하신가요?",
+    "shop46": "고객 지원에 문의",
+    "checkoutTerms": "단일 결제. 구독 없음, 자동 갱신 없음. VC는 만료되지 않습니다."
   },
   "payment": {
-    "chargeLabel": "Amount due",
-    "cbrEquivalent": "~ {{amount}} (CBR exchange rate)",
-    "ratesLoading": "Loading CBR exchange rate...",
-    "pending": "Payment is processing",
-    "confirmed": "Payment confirmed",
-    "unknown": "We could not confirm the payment from the return page. If you were charged, wait a few minutes or contact support."
+    "chargeLabel": "청구 금액",
+    "cbrEquivalent": "~ {{amount}} (러시아 중앙은행 환율 기준)",
+    "ratesLoading": "러시아 중앙은행 환율 불러오는 중...",
+    "pending": "결제 처리 중",
+    "confirmed": "결제 확인됨",
+    "unknown": "결제 페이지에서 돌아온 후 결제를 확인할 수 없습니다. 금액이 차감된 경우 몇 분 기다리거나 고객 지원에 문의하세요."
   },
   "meta": {
     "home": {
-      "title": "AI characters: chat and roleplay — NewVerse",
-      "description": "Chat with AI characters: talk, text and play roleplay stories. Characters remember the details, and you can start without signing up."
+      "title": "AI 캐릭터: 채팅과 역할놀이 — NewVerse",
+      "description": "AI 캐릭터와 채팅하세요: 대화하고, 메시지를 주고받으며 역할놀이 스토리를 즐기세요. 캐릭터는 세부 사항을 기억하며, 가입 없이 시작할 수 있습니다."
     },
     "create": {
-      "title": "Create an AI character for free — NewVerse creator",
-      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, in Russian, English and Spanish."
+      "title": "AI 캐릭터 무료로 만들기 — NewVerse 제작 도구",
+      "description": "자신만의 AI 캐릭터를 만들어 채팅과 역할놀이를 즐기세요: 성격, 외모, 첫 메시지, 세계관까지. 다국어 지원과 함께 무료로 이용 가능합니다."
     },
     "edit": {
-      "title": "Edit character — NewVerse",
-      "description": "Adjust your character's appearance, personality, and scenario."
+      "title": "캐릭터 편집 — NewVerse",
+      "description": "캐릭터의 외모, 성격, 시나리오를 조정하세요."
     },
     "profile": {
-      "title": "My profile — NewVerse",
-      "description": "Manage your subscription, personas, and account settings."
+      "title": "내 프로필 — NewVerse",
+      "description": "구독, 페르소나, 계정 설정을 관리하세요."
     },
     "pricing": {
-      "title": "NewVerse plans — subscriptions for AI roleplay",
-      "description": "Choose a plan for a larger context window, bonus VC, and avatar generation."
+      "title": "NewVerse 요금제 — AI 역할놀이를 위한 구독",
+      "description": "더 큰 컨텍스트 창, 보너스 VC, 아바타 생성을 위한 요금제를 선택하세요."
     },
     "coins": {
-      "title": "Top up VC — NewVerse",
-      "description": "Buy VerseCoins to chat with AI characters."
+      "title": "VC 충전하기 — NewVerse",
+      "description": "AI 캐릭터와 대화하기 위해 VerseCoins를 구매하세요."
     },
     "referral": {
-      "title": "Referral program — NewVerse",
-      "description": "Invite friends and earn bonuses."
+      "title": "추천 프로그램 — NewVerse",
+      "description": "친구를 초대하고 보상을 받으세요."
     },
     "subscription": {
-      "title": "Manage subscription — NewVerse",
-      "description": "View and disable subscription auto-renewal."
+      "title": "구독 관리 — NewVerse",
+      "description": "구독 자동 갱신을 확인하고 해제하세요."
     },
     "notifications": {
-      "title": "Notifications — NewVerse",
-      "description": "See purchase, bonus, and admin notifications."
+      "title": "알림 — NewVerse",
+      "description": "구매, 보너스, 관리자 알림을 확인하세요."
     },
     "offer": {
-      "title": "Public offer — NewVerse",
-      "description": "Terms of use for the NewVerse service."
+      "title": "공개 이용 약관 — NewVerse",
+      "description": "NewVerse 서비스 이용 약관."
     },
     "refund": {
-      "title": "Refund policy — NewVerse",
-      "description": "Refund terms for NewVerse."
+      "title": "환불 정책 — NewVerse",
+      "description": "NewVerse의 환불 조건."
     },
     "terms": {
-      "title": "Terms of use — NewVerse",
-      "description": "Rules for using the NewVerse platform."
+      "title": "이용 약관 — NewVerse",
+      "description": "NewVerse 플랫폼 사용 규칙."
     },
     "privacy": {
-      "title": "Privacy policy — NewVerse",
-      "description": "How NewVerse processes personal data."
+      "title": "개인정보 처리방침 — NewVerse",
+      "description": "NewVerse가 개인 정보를 처리하는 방식."
     },
     "support": {
-      "title": "Support — NewVerse",
-      "description": "Contact us to resolve your questions."
+      "title": "고객 지원 — NewVerse",
+      "description": "문의 사항을 해결하려면 문의해 주세요."
     },
     "forgotPassword": {
-      "title": "Password recovery — NewVerse",
-      "description": "Request a link to reset your NewVerse account password."
+      "title": "비밀번호 찾기 — NewVerse",
+      "description": "NewVerse 계정 비밀번호 재설정 링크를 요청하세요."
     },
     "resetPassword": {
-      "title": "Reset password — NewVerse",
-      "description": "Set a new password for your NewVerse account."
+      "title": "비밀번호 재설정 — NewVerse",
+      "description": "NewVerse 계정의 새 비밀번호를 설정하세요."
     },
     "login": {
-      "title": "Sign in — NewVerse",
-      "description": "Sign in to NewVerse to chat with AI characters."
+      "title": "로그인 — NewVerse",
+      "description": "NewVerse에 로그인하여 AI 캐릭터와 대화를 시작하세요."
     },
     "register": {
-      "title": "Sign up — NewVerse",
-      "description": "Create a NewVerse account and start roleplaying with AI characters."
+      "title": "회원가입 — NewVerse",
+      "description": "NewVerse 계정을 만들고 AI 캐릭터와의 역할극을 시작하세요."
     },
     "verifyEmail": {
-      "title": "Confirm email — NewVerse",
-      "description": "Confirm your email to unlock full access to NewVerse."
+      "title": "이메일 확인 — NewVerse",
+      "description": "이메일을 확인하여 NewVerse의 전체 기능을 이용하세요."
     },
     "chat": {
-      "title": "Chat with {{name}} — NewVerse",
-      "description": "Roleplay with {{name}}. Dive into the story and keep the plot going."
+      "title": "{{name}}과(와) 대화하기 — NewVerse",
+      "description": "{{name}}과(와) 역할극을 하세요. 스토리에 몰입하고 줄거리를 이어가세요."
     },
     "character": {
-      "title": "{{name}} — AI roleplay character | NewVerse",
-      "description": "{{name}} on NewVerse. Start a roleplay and learn their story.",
-      "fallbackTitle": "Character — NewVerse",
-      "fallbackDescription": "Public character page on NewVerse."
+      "title": "{{name}} — AI 역할극 캐릭터 | NewVerse",
+      "description": "NewVerse의 {{name}} 캐릭터. 역할극을 시작하고 그들의 이야기를 알아보세요.",
+      "fallbackTitle": "캐릭터 — NewVerse",
+      "fallbackDescription": "NewVerse의 공개 캐릭터 페이지."
     },
     "rules": {
-      "title": "Platform rules — NewVerse",
-      "description": "Character publishing rules and consequences of violations on NewVerse."
+      "title": "플랫폼 규칙 — NewVerse",
+      "description": "NewVerse의 캐릭터 게시 규칙 및 위반 시 제재 사항."
     },
     "genres": {
-      "title": "Character genres for AI roleplay — NewVerse",
-      "description": "Fantasy, romance, anime, detective, horror and more: choose the kind of story you want to live and find a character for your AI roleplay."
+      "title": "AI 역할극 캐릭터 장르 — NewVerse",
+      "description": "판타지, 로맨스, 애니메이션, 추리, 공포 등 다양한 스토리를 경험하고 AI 캐릭터와의 역할극을 시작해 보세요."
     },
     "genre": {
       "title": "{{h1}} — NewVerse",
-      "titlePage": "{{h1}}, page {{page}} — NewVerse",
-      "descriptionPage": "{{description}} Page {{page}}."
+      "titlePage": "{{h1}}, 페이지 {{page}} — NewVerse",
+      "descriptionPage": "{{description}} 페이지 {{page}}."
     },
     "catalog": {
       "title": "{{name}} — NewVerse",
-      "all": "AI character catalog",
-      "search": "Search “{{query}}” among characters",
-      "pageSuffix": ", page {{page}}",
-      "pageSentence": "Page {{page}}.",
-      "description": "NewVerse catalog of AI characters for roleplay in Russian, English and Spanish.",
-      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in Russian, English and Spanish.",
+      "all": "AI 캐릭터 카탈로그",
+      "search": "캐릭터 중 “{{query}}” 검색",
+      "pageSuffix": ", 페이지 {{page}}",
+      "pageSentence": "페이지 {{page}}.",
+      "description": "다양한 언어로 즐기는 NewVerse AI 캐릭터 역할극 카탈로그.",
+      "searchDescription": "“{{query}}” 검색 결과: 다양한 언어의 NewVerse AI 역할극 캐릭터.",
       "sort": {
-        "new": "New AI characters",
-        "random": "Random AI characters",
-        "for-you": "Characters picked for you"
+        "new": "최근 추가된 AI 캐릭터",
+        "random": "무작위 AI 캐릭터",
+        "for-you": "회원님을 위한 추천 캐릭터"
       },
       "sortDescription": {
-        "new": "New on NewVerse: recently added characters and worlds for AI roleplay.",
-        "random": "A random pick of NewVerse characters — discover an unexpected AI story.",
-        "for-you": "NewVerse characters picked for your interests, for AI roleplay."
+        "new": "NewVerse 신규 캐릭터: 최근 추가된 캐릭터와 세계관으로 AI 역할극을 시작하세요.",
+        "random": "NewVerse 무작위 캐릭터 추천 — 예측 불가능한 AI 스토리를 경험해 보세요.",
+        "for-you": "회원님의 관심사에 맞춘 NewVerse 캐릭터 추천. AI 역할극을 즐기세요."
       }
     }
   },
   "genrePage": {
-    "home": "Home",
-    "hub": "Genres",
-    "breadcrumbs": "Breadcrumbs",
-    "count": "Characters in this genre: {{count}}",
-    "otherGenres": "Other genres",
-    "empty": "This genre has only a few characters so far. Browse the full catalog or create your own.",
-    "toCatalog": "Full catalog",
-    "hubH1": "Character genres for AI roleplay",
-    "hubIntro": "Pick a genre to see characters with that tag, from fantasy quests and deep-space voyages to calm slice of life and tangled investigations. Each genre shows its most popular public characters first.",
+    "home": "홈",
+    "hub": "장르",
+    "breadcrumbs": "내비게이션 경로",
+    "count": "이 장르의 캐릭터 수: {{count}}",
+    "otherGenres": "기타 장르",
+    "empty": "이 장르에는 아직 캐릭터가 적습니다. 전체 카탈로그를 둘러보거나 직접 캐릭터를 만들어 보세요.",
+    "toCatalog": "전체 카탈로그",
+    "hubH1": "AI 역할극 캐릭터 장르",
+    "hubIntro": "장르를 선택해 판타지 모험, 우주 탐사, 일상 이야기, 복잡한 수사 등 다양한 태그의 캐릭터를 만나보세요. 각 장르는 가장 인기 있는 공개 캐릭터부터 먼저 보여줍니다.",
     "items": {
       "fantasy": {
-        "h1": "Fantasy characters for AI roleplay",
-        "description": "AI roleplay in fantasy worlds: mages, elves, mercenaries and dragon riders. Pick a character and begin your own adventure on NewVerse."
+        "h1": "AI 역할극을 위한 판타지 캐릭터",
+        "description": "마법사, 엘프, 용병, 드래곤 라이더와 함께하는 NewVerse의 판타지 세계 AI 역할극. 캐릭터를 선택하고 모험을 시작하세요."
       },
       "romance": {
-        "h1": "Romance characters for AI roleplay",
-        "description": "Romance AI roleplay: flirting, slow-burn relationships and stories about feelings. Pick a character and start chatting on NewVerse."
+        "h1": "AI 역할극을 위한 로맨스 캐릭터",
+        "description": "로맨스 AI 역할극: 플러팅, 서서히 발전하는 관계, 그리고 감정에 관한 이야기. NewVerse에서 캐릭터를 선택하고 대화를 시작하세요."
       },
       "anime": {
-        "h1": "Anime characters for AI roleplay",
-        "description": "AI roleplay with anime characters: school life, isekai, magic academies and romance. Pick your character on NewVerse."
+        "h1": "AI 역할극을 위한 애니메이션 캐릭터",
+        "description": "학교 생활, 이세계, 마법 학원, 로맨스를 다루는 AI 애니메이션 역할극. NewVerse에서 캐릭터를 선택하세요."
       },
       "scifi": {
-        "h1": "Sci-fi characters for AI roleplay",
-        "description": "Sci-fi AI roleplay: starship captains, androids and scientists on distant stations. Pick a character on NewVerse."
+        "h1": "AI 역할극을 위한 SF 캐릭터",
+        "description": "우주선 선장, 안드로이드, 외곽 기지의 과학자와 함께하는 SF AI 역할극. NewVerse에서 캐릭터를 선택하세요."
       },
       "mystic": {
-        "h1": "Mystery and supernatural characters for AI roleplay",
-        "description": "Mystery and supernatural AI roleplay: mediums, witches, cursed manors and secrets in no hurry to reveal themselves. Pick a character on NewVerse."
+        "h1": "AI 역할극을 위한 미스터리 및 초자연 캐릭터",
+        "description": "미디엄, 마녀, 저주받은 저택, 서서히 드러나는 비밀까지. NewVerse에서 미스터리한 AI 역할극을 시작하세요."
       },
       "realistic": {
-        "h1": "Modern-day characters for AI roleplay",
-        "description": "AI roleplay with modern-day characters: colleagues, neighbours, students and stars. Natural dialogue and relationships on NewVerse."
+        "h1": "AI 역할극을 위한 현대 배경 캐릭터",
+        "description": "현대를 배경으로 한 AI 역할 놀이: 동료, 이웃, 학생, 유명인과의 자연스러운 대화와 관계를 NewVerse에서 경험해 보세요."
       },
       "adventure": {
-        "h1": "Adventure characters for AI roleplay",
-        "description": "Adventure AI roleplay: treasure hunters, pirates, trackers and travellers. Choose a companion and set off on NewVerse."
+        "h1": "AI 역할 놀이를 위한 모험 캐릭터",
+        "description": "보물 사냥꾼, 해적, 정찰병, 여행자와 함께하는 AI 모험 역할 놀이. NewVerse에서 동료를 선택하고 모험을 떠나보세요."
       },
       "detective": {
-        "h1": "Detective characters for AI roleplay",
-        "description": "Detective AI roleplay: investigators, witnesses and suspects. Look for clues and solve cases with NewVerse characters."
+        "h1": "AI 역할 놀이를 위한 탐정 캐릭터",
+        "description": "수사관, 목격자, 용의자와 함께하는 AI 탐정 역할 놀이. 단서를 찾아 사건을 해결해 보세요, NewVerse 캐릭터와 함께."
       },
       "everyday": {
-        "h1": "Slice-of-life characters for AI roleplay",
-        "description": "Slice-of-life AI roleplay: friends, roommates and colleagues for calm, natural conversation. Pick a character on NewVerse."
+        "h1": "AI 역할 놀이를 위한 일상 캐릭터",
+        "description": "친구, 룸메이트, 동료와의 평온한 대화를 즐기는 AI 일상 역할 놀이. NewVerse에서 캐릭터를 선택해 보세요."
       },
       "cyberpunk": {
-        "h1": "Cyberpunk characters for AI roleplay",
-        "description": "Cyberpunk AI roleplay: hackers, augmented mercenaries and androids in a neon megacity. Pick a character on NewVerse."
+        "h1": "AI 역할 놀이를 위한 사이버펑크 캐릭터",
+        "description": "해커, 증강된 용병, 안드로이드가 등장하는 네온 빛의 대도시 속 AI 사이버펑크 역할 놀이. NewVerse에서 캐릭터를 선택해 보세요."
       },
       "horror": {
-        "h1": "Horror characters for AI roleplay",
-        "description": "Horror AI roleplay: monsters, monster hunters and abandoned houses. Pick a character and test your nerves on NewVerse."
+        "h1": "AI 역할 놀이를 위한 공포 캐릭터",
+        "description": "괴물, 괴물 사냥꾼, 버려진 집과 함께하는 AI 공포 역할 놀이. NewVerse에서 캐릭터를 선택하고 긴장감을 느껴보세요."
       },
       "comedy": {
-        "h1": "Comedy characters for AI roleplay",
-        "description": "Comedy AI roleplay: witty sidekicks, clumsy wizards and absurd situations. Pick a character on NewVerse."
+        "h1": "AI 역할 놀이를 위한 코미디 캐릭터",
+        "description": "영리한 조력자, 어색한 마법사, 터무니없는 상황이 펼쳐지는 AI 코미디 역할 놀이. NewVerse에서 캐릭터를 선택해 보세요."
       },
       "drama": {
-        "h1": "Drama characters for AI roleplay",
-        "description": "Drama AI roleplay: stories of choice, loss and forgiveness with characters who carry a difficult past. Pick one on NewVerse."
+        "h1": "AI 역할 놀이를 위한 드라마 캐릭터",
+        "description": "선택, 상실, 용서를 다루는 AI 드라마 역할 놀이. 복잡한 과거를 가진 캐릭터와 함께 이야기를 나눠보세요. NewVerse에서 선택 가능."
       }
     }
   },
   "moderation": {
-    "warningTitle": "Your character was hidden for a rule violation",
-    "warningBody": "Your character was hidden from public access for violating the platform rules. Reason: {{reason}}. Please read the <rules>rules</rules>. A repeat violation will result in the character being deleted.",
-    "unknownReason": "a platform rules violation",
-    "hiddenBadge": "Hidden for a rule violation"
+    "warningTitle": "규정 위반으로 인해 캐릭터가 비공개 처리되었습니다",
+    "warningBody": "귀하의 캐릭터는 플랫폼 규정 위반으로 인해 공개 접근이 차단되었습니다. 사유: {{reason}}. <rules>규정</rules>을 확인해 주세요. 재발 시 캐릭터가 삭제될 수 있습니다.",
+    "unknownReason": "플랫폼 규정 위반",
+    "hiddenBadge": "규정 위반으로 비공개 처리됨"
   },
   "characterForm": {
-    "rulesHint": "By creating a character, you agree to the <rules>platform rules</rules>."
+    "rulesHint": "캐릭터를 생성함으로써 <rules>플랫폼 규정</rules>에 동의하는 것으로 간주됩니다."
   },
   "rules": {
-    "title": "Platform rules",
-    "intro": "By publishing characters on NewVerse, you agree to follow these rules. Violations are reviewed by moderators.",
-    "prohibitedTitle": "Prohibited content",
-    "prohibitedItems": [
-      "Sexualized content involving minors (under Federal Law 149-FZ and Article 242 of the Criminal Code of the Russian Federation).",
-      "Promotion of drugs, extremism, or terrorism.",
-      "Detailed cruelty or violence against people or animals.",
-      "Incitement of hatred based on race, nationality, or religion.",
-      "Spam or advertising of third-party services.",
-      "Fraud and financial pyramids.",
-      "Copyright infringement (copying characters from protected works without permission)."
-    ],
-    "consequencesTitle": "Consequences of violations",
-    "consequenceItems": [
-      "1st violation — the character is hidden from public access and a warning is issued.",
-      "2nd violation — the character is deleted.",
-      "3rd violation — the account is blocked."
-    ],
-    "appealTitle": "How to appeal",
-    "appeal": "Submit a request via the",
-    "appealLink": "support page"
+    "title": "플랫폼 규정",
+    "intro": "NewVerse에 캐릭터를 게시함으로써, 다음 규정을 준수하기로 동의하는 것입니다. 위반 사항은 운영진이 검토합니다.",
+    "prohibitedTitle": "금지 콘텐츠",
+    "prohibitedItems": {
+      "0": "미성년자(러시아 연방법 149-FZ 및 형법 제242조 기준) 관련 성적 콘텐츠.",
+      "1": "마약, 극단주의, 테러리즘 조장.",
+      "2": "사람이나 동물에 대한 구체적인 잔혹 행위 또는 폭력 묘사.",
+      "3": "인종, 국적, 종교를 기반으로 한 혐오 조장.",
+      "4": "스팸 또는 타사 서비스 광고.",
+      "5": "사기 및 다단계 사기.",
+      "6": "저작권 침해(허가 없이 보호된 작품의 캐릭터를 복제하는 행위)."
+    },
+    "consequencesTitle": "위반 시 제재",
+    "consequenceItems": {
+      "0": "1차 위반 — 캐릭터 비공개 처리 및 경고 발급.",
+      "1": "2차 위반 — 캐릭터 삭제.",
+      "2": "3차 위반 — 계정 차단."
+    },
+    "appealTitle": "이의 제기 방법",
+    "appeal": "다음 페이지를 통해 요청을 제출하세요:",
+    "appealLink": "지원 페이지"
   },
   "guestChat": {
-    "remaining": "{{remaining}}/{{limit}} left",
-    "retention": "Guest chats are kept for {{days}} days. After you sign in, they move to your account.",
-    "limitTitle": "Free message limit",
-    "limitBody": "You have used all free messages. Sign up to keep chatting and save this history.",
-    "register": "Sign up",
-    "login": "Log in",
-    "expired": "The guest chat retention period has expired.",
-    "transferWaiting": "Finishing the guest reply and transferring your chat…",
-    "transferPending": "Transfer is still pending. Retry to continue this conversation.",
-    "transferRetry": "Retry transfer"
+    "remaining": "남은 메시지: {{remaining}}/{{limit}}",
+    "retention": "게스트 채팅은 {{days}}일간 보관됩니다. 로그인 후 계정으로 이전됩니다.",
+    "limitTitle": "무료 메시지 한도",
+    "limitBody": "무료 메시지를 모두 사용하셨습니다. 계속 대화하고 기록을 저장하려면 가입해 주세요.",
+    "register": "가입하기",
+    "login": "로그인",
+    "expired": "게스트 채팅 보관 기간이 만료되었습니다.",
+    "transferWaiting": "게스트 응답을 마치고 채팅을 이전하는 중…",
+    "transferPending": "이전이 아직 완료되지 않았습니다. 계속하려면 다시 시도하세요.",
+    "transferRetry": "이전 재시도"
   },
   "chatThreads": {
-    "defaultTitle": "Story {{number}}",
-    "listTitle": "Stories with {{name}}",
-    "openList": "Stories",
-    "newStory": "New story",
-    "newStoryHint": "Starts from the card's greeting and situation, with empty memory. Your persona is copied from the current story.",
-    "continue": "Continue story",
-    "continueNamed": "Continue: {{title}}",
-    "active": "Active",
-    "noActive": "No active stories. Start a new one or restore one from the archive.",
-    "archiveSection": "Archive ({{count}})",
-    "archived": "Archived",
-    "currentBadge": "Open",
-    "switchTo": "Open story “{{title}}”",
-    "messages_other": "{{count}} messages",
-    "empty": "No messages yet",
-    "lastActivity": "active {{date}}",
-    "rename": "Rename",
-    "renameLabel": "Story title",
-    "renamePlaceholder": "For example: Clan war",
-    "save": "Save",
-    "cancel": "Cancel",
-    "archive": "Archive",
-    "restore": "Restore",
-    "delete": "Delete",
-    "deleteTitle": "Delete “{{title}}”?",
-    "deleteBody": "The messages, memory and summary of this story will be deleted permanently. Other stories are not affected. To only hide the story, archive it instead.",
-    "deleteConfirm": "Delete permanently",
-    "created": "New story started",
-    "renamed": "Title saved",
-    "archivedToast": "Story archived",
-    "restoredToast": "Story restored",
-    "deletedToast": "Story deleted",
-    "loadFailed": "Could not load stories",
-    "createFailed": "Could not start a new story",
-    "updateFailed": "Could not update the story",
-    "deleteFailed": "Could not delete the story",
-    "notFound": "Story not found. The latest active story is open instead.",
-    "archivedBanner": "This story is archived. A new message makes it active again.",
-    "storiesCount_other": "{{count}} stories"
+    "defaultTitle": "스토리 {{number}}",
+    "listTitle": "{{name}}과(와)의 스토리",
+    "openList": "스토리",
+    "newStory": "새 스토리",
+    "newStoryHint": "카드의 인사말과 상황에서 시작되며, 기억은 비어 있습니다. 페르소나는 현재 스토리에서 복사됩니다.",
+    "continue": "스토리 계속하기",
+    "continueNamed": "계속하기: {{title}}",
+    "active": "진행 중",
+    "noActive": "진행 중인 스토리가 없습니다. 새 스토리를 시작하거나 보관함에서 복원하세요.",
+    "archiveSection": "보관함 ({{count}})",
+    "archived": "보관됨",
+    "currentBadge": "열림",
+    "switchTo": "스토리 “{{title}}” 열기",
+    "messages_other": "{{count}}개의 메시지",
+    "empty": "아직 메시지가 없습니다",
+    "lastActivity": "{{date}} 활동",
+    "rename": "이름 변경",
+    "renameLabel": "스토리 제목",
+    "renamePlaceholder": "예: 클랜 전쟁",
+    "save": "저장",
+    "cancel": "취소",
+    "archive": "보관",
+    "restore": "복원",
+    "delete": "삭제",
+    "deleteTitle": "“{{title}}” 삭제?",
+    "deleteBody": "이 스토리의 메시지, 기억, 요약본은 영구 삭제됩니다. 다른 스토리에는 영향이 없습니다. 단순히 숨기려면 보관하세요.",
+    "deleteConfirm": "영구 삭제",
+    "created": "새 스토리 시작됨",
+    "renamed": "제목이 저장되었습니다",
+    "archivedToast": "스토리가 보관되었습니다",
+    "restoredToast": "스토리가 복원되었습니다",
+    "deletedToast": "스토리가 삭제되었습니다",
+    "loadFailed": "스토리를 불러올 수 없습니다",
+    "createFailed": "새 스토리를 시작할 수 없습니다",
+    "updateFailed": "스토리를 업데이트할 수 없습니다",
+    "deleteFailed": "스토리를 삭제할 수 없습니다",
+    "notFound": "스토리를 찾을 수 없습니다. 가장 최근의 활성 스토리가 열립니다.",
+    "archivedBanner": "이 스토리는 보관된 상태입니다. 새 메시지를 보내면 다시 활성화됩니다.",
+    "storiesCount_other": "{{count}}개의 스토리"
   },
   "email": {
-    "resetSubject": "Password reset — NewVerse",
-    "resetText": "Follow this link to reset your password: {{url}}",
-    "resetHtmlIntro": "Follow this link to reset your password:",
-    "resetHtmlFooter": "This link is valid for 1 hour. If you did not request a password reset, you can ignore this email.",
-    "verifySubject": "Confirm your email — NewVerse",
-    "verifyText": "Hello! Confirm your email in NewVerse by following this link: {{url}}. The link is valid for 24 hours.",
-    "verifyHtmlIntro": "Hello! Confirm your email in NewVerse by following this link:",
-    "verifyHtmlFooter": "The link is valid for 24 hours. If you did not create a NewVerse account, you can ignore this email.",
-    "supportSubject": "NewVerse support request — {{topic}}",
-    "supportText": "Topic: {{topic}}\nEmail: {{email}}\n\n{{message}}"
+    "resetSubject": "비밀번호 재설정 — NewVerse",
+    "resetText": "비밀번호 재설정을 위해 다음 링크를 따라주세요: {{url}}",
+    "resetHtmlIntro": "비밀번호 재설정을 위해 다음 링크를 따라주세요:",
+    "resetHtmlFooter": "이 링크는 1시간 동안 유효합니다. 비밀번호 재설정을 요청하지 않았다면 이 메일을 무시해 주세요.",
+    "verifySubject": "이메일 확인 — NewVerse",
+    "verifyText": "안녕하세요! 다음 링크를 통해 NewVerse에서 이메일을 확인해 주세요: {{url}}. 링크는 24시간 동안 유효합니다.",
+    "verifyHtmlIntro": "안녕하세요! 다음 링크를 통해 NewVerse에서 이메일을 확인해 주세요:",
+    "verifyHtmlFooter": "이 링크는 24시간 동안 유효합니다. NewVerse 계정을 만들지 않았다면 이 메일을 무시해 주세요.",
+    "supportSubject": "NewVerse 고객 지원 요청 — {{topic}}",
+    "supportText": "주제: {{topic}}\n이메일: {{email}}\n\n{{message}}"
   },
   "api": {
-    "emailRequired": "Email is required",
-    "emailPasswordRequired": "Email and password are required",
-    "userExists": "A user with this email already exists",
-    "internalError": "Internal server error",
-    "tokenPasswordRequired": "Token and password are required",
-    "minPassword": "Password must be at least {{count}} characters",
-    "invalidLink": "This link is invalid or has expired",
-    "unauthorized": "Unauthorized",
-    "userNotFound": "User not found",
-    "missingCredentials": "Email or password is missing",
-    "consentRequired": "You must accept the terms of use, privacy policy, public offer, and platform rules",
-    "tokenRequired": "Token is required",
-    "invalidVerificationLink": "This link is invalid or has expired",
-    "emailAlreadyVerified": "Email is already confirmed",
-    "confirmEmailToPurchase": "Confirm your email to make a purchase",
-    "confirmEmailToClaimBonus": "Confirm your email to claim bonuses",
-    "rateLimited": "Too many requests. Please wait a moment."
+    "emailRequired": "이메일이 필요합니다",
+    "emailPasswordRequired": "이메일과 비밀번호가 필요합니다",
+    "userExists": "이 이메일을 가진 사용자가 이미 존재합니다",
+    "internalError": "서버 내부 오류",
+    "tokenPasswordRequired": "토큰과 비밀번호가 필요합니다",
+    "minPassword": "비밀번호는 최소 {{count}}자 이상이어야 합니다",
+    "invalidLink": "이 링크는 유효하지 않거나 만료되었습니다",
+    "unauthorized": "권한이 없습니다",
+    "userNotFound": "사용자를 찾을 수 없습니다",
+    "missingCredentials": "이메일 또는 비밀번호가 누락되었습니다",
+    "consentRequired": "이용 약관, 개인정보 처리방침, 공개 제안 및 플랫폼 규칙에 동의해야 합니다",
+    "tokenRequired": "토큰이 필요합니다",
+    "invalidVerificationLink": "이 링크는 유효하지 않거나 만료되었습니다",
+    "emailAlreadyVerified": "이메일이 이미 확인되었습니다",
+    "confirmEmailToPurchase": "구매를 위해 이메일을 확인해 주세요",
+    "confirmEmailToClaimBonus": "보너스 수령을 위해 이메일을 확인해 주세요",
+    "rateLimited": "요청이 너무 많습니다. 잠시 기다려 주세요."
   },
   "onboarding": {
-    "eyebrow": "Welcome to NewVerse",
-    "stepLabel": "Step {{step}} of 3",
-    "back": "Back",
-    "skip": "Skip",
-    "close": "Close the picker",
+    "eyebrow": "NewVerse에 오신 것을 환영합니다",
+    "stepLabel": "3단계 중 {{step}}단계",
+    "back": "뒤로",
+    "skip": "건너뛰기",
+    "close": "선택 닫기",
     "style": {
-      "title": "Which characters do you prefer?",
-      "text": "Answer two questions and we will show you who to start talking to. You can change this any time.",
-      "anime": "Anime",
-      "animeHint": "Vivid art, big emotions, fantasy worlds",
-      "realistic": "Realistic",
-      "realisticHint": "Lifelike faces, like in a film",
-      "any": "I like both"
+      "title": "어떤 캐릭터를 선호하시나요?",
+      "text": "두 가지 질문에 답하시면 대화를 시작할 캐릭터를 추천해 드립니다. 언제든지 변경할 수 있습니다.",
+      "anime": "애니메이션",
+      "animeHint": "선명한 그림체, 강렬한 감정, 판타지 세계",
+      "realistic": "실사",
+      "realisticHint": "영화 속 인물처럼 생생한 얼굴",
+      "any": "둘 다 좋아함"
     },
     "styleLabel": {
-      "anime": "Anime",
-      "realistic": "Realistic",
-      "any": "Both styles"
+      "anime": "애니메이션",
+      "realistic": "실사",
+      "any": "두 스타일 모두"
     },
     "interests": {
-      "title": "What stories interest you?",
-      "text": "Pick up to three. We will show the characters that fit best.",
-      "show": "Show characters",
-      "pickOne": "Pick at least one interest",
-      "limit": "You can pick up to three. Remove one to choose another.",
-      "matches_other": "{{count}} characters fit · {{selected}} of 3 selected",
-      "noMatches": "No exact matches, we will show popular ones · {{selected}} of 3 selected",
-      "genderLabel": "Show me",
-      "genderAny": "Everyone",
-      "genderMale": "Male characters",
-      "genderFemale": "Female characters"
+      "title": "어떤 스토리에 관심이 있나요?",
+      "text": "최대 세 가지를 선택하세요. 가장 잘 맞는 캐릭터를 추천해 드립니다.",
+      "show": "캐릭터 보기",
+      "pickOne": "관심사 최소 하나 선택",
+      "limit": "최대 세 가지까지 선택 가능합니다. 다른 선택지를 고르려면 하나를 해제하세요.",
+      "matches_other": "{{count}}개의 캐릭터와 일치 · {{selected}}개 선택됨 (3개 중)",
+      "noMatches": "정확한 일치 없음, 인기 캐릭터를 보여드립니다 · {{selected}}개 선택됨 (3개 중)",
+      "genderLabel": "보여줄 캐릭터",
+      "genderAny": "모두",
+      "genderMale": "남성 캐릭터",
+      "genderFemale": "여성 캐릭터"
     },
     "interest": {
       "romance": {
-        "label": "Romance",
-        "hint": "Flirting, feelings, slow burn"
+        "label": "로맨스",
+        "hint": "스킨십, 감정, 천천히 깊어지는 관계"
       },
       "fantasy": {
-        "label": "Fantasy and magic",
-        "hint": "Mages, elves, academies"
+        "label": "판타지와 마법",
+        "hint": "마법사, 엘프, 마법 학원"
       },
       "adventure": {
-        "label": "Adventure",
-        "hint": "Journeys, ruins, action"
+        "label": "모험",
+        "hint": "여정, 유적, 액션"
       },
       "mystic": {
-        "label": "Mystery and horror",
-        "hint": "Ghosts, secrets, gothic"
+        "label": "미스터리와 공포",
+        "hint": "유령, 비밀, 고딕"
       },
       "detective": {
-        "label": "Detective",
-        "hint": "Investigations and thrillers"
+        "label": "추리",
+        "hint": "수사와 스릴러"
       },
       "scifi": {
-        "label": "Sci-fi and cyberpunk",
-        "hint": "Space, androids, neon"
+        "label": "SF와 사이버펑크",
+        "hint": "우주, 안드로이드, 네온"
       },
       "everyday": {
-        "label": "Slice of life",
-        "hint": "Neighbors, friends, comfort"
+        "label": "일상 이야기",
+        "hint": "이웃, 친구, 따뜻한 분위기"
       },
       "drama": {
-        "label": "Drama",
-        "hint": "Strong emotions and choices"
+        "label": "드라마",
+        "hint": "강한 감정과 선택"
       },
       "comedy": {
-        "label": "Comedy",
-        "hint": "Light and funny stories"
+        "label": "코미디",
+        "hint": "가볍고 재미있는 이야기"
       }
     },
     "results": {
-      "loading": "Finding characters…",
-      "title_other": "Here is who you can start with",
-      "text": "Tap “Start talking”: the character writes first.",
-      "matched": "Matches: {{list}}",
-      "popular": "Popular",
-      "start": "Start talking",
-      "more": "Show others",
-      "catalog": "Full catalog",
-      "error": "Could not load the picks.",
-      "retry": "Retry",
-      "empty": "No matching characters yet. Open the catalog: there are over a hundred stories."
+      "loading": "캐릭터를 찾는 중…",
+      "title_other": "시작할 수 있는 캐릭터들입니다",
+      "text": "‘대화 시작’을 누르세요: 캐릭터가 먼저 메시지를 보냅니다.",
+      "matched": "일치: {{list}}",
+      "popular": "인기",
+      "start": "대화 시작",
+      "more": "다른 캐릭터 보기",
+      "catalog": "전체 카탈로그",
+      "error": "선택 항목을 불러올 수 없습니다.",
+      "retry": "다시 시도",
+      "empty": "일치하는 캐릭터가 아직 없습니다. 카탈로그를 열어보세요. 100개 이상의 캐릭터가 있습니다."
     },
     "catalog": {
-      "applied": "Using your answers",
-      "remove": "Remove “{{label}}”",
-      "pick": "Find a character",
-      "pickAgain": "Pick again"
+      "applied": "선택하신 항목 반영됨",
+      "remove": "“{{label}}” 제거",
+      "pick": "캐릭터 찾기",
+      "pickAgain": "다시 선택"
     }
   },
   "telegram": {
-    "webLogin": "Sign in with Telegram",
-    "webLoginHint": "Open the bot, match the code and approve sign-in. Then return to this browser. No new account is created.",
-    "webLoginCode": "Request code:",
-    "webLoginOpenBot": "Open bot to approve",
-    "webLoginAccount": "Approved account: {{name}}",
-    "webLoginComplete": "Sign in to this account",
-    "webLoginExpired": "This request expired or is unavailable. Start Telegram sign-in again.",
-    "webAlreadySignedIn": "You are already signed in in this browser. Open your profile or sign out first.",
-    "signedOutTitle": "You have signed out",
-    "signedOutText": "Your Mini App session has ended. To sign in again, close the app and reopen it from the bot. To use a different Telegram account, switch accounts in Telegram first.",
-    "closeApp": "Close app",
-    "accountHint": "This account is linked to your Telegram. On the website, use “Sign in with Telegram” to access it.",
-    "openWebsiteAccount": "Open website",
-    "manageAccountHint": "To merge this profile into an existing website account, sign in to it on the website and choose “Link Telegram”. A separate confirmation in the bot is required before data moves.",
-    "entryTitle": "sign in with Telegram",
-    "signingIn": "Signing in with Telegram…",
-    "welcomeTitle": "Welcome to NewVerse",
-    "welcomeText": "Your account is created from your Telegram profile. If you already have a newvers.ai account, link Telegram in your profile on the website to use the same account and VC balance here.",
-    "linkExistingAccount": "I already have an account on the website",
-    "adultNotice": "NewVerse is intended for users aged 18 and over.",
-    "continue": "Continue",
-    "loginDisabledTitle": "Telegram sign-in is off",
-    "loginDisabledText": "Telegram was unlinked from the NewVerse account. Link it again in your profile on the website to sign in with Telegram.",
-    "outsideTitle": "Open NewVerse in Telegram",
-    "outsideText": "This page works only inside the Telegram app.",
-    "errorTitle": "Could not sign in",
-    "errorText": "Close and reopen the app. If it happens again, contact support.",
-    "unavailableAppText": "The app is temporarily unavailable. Please try again later.",
-    "toCatalog": "Browse characters",
-    "balanceTitle": "VC balance",
-    "balanceText": "VC are spent on character replies. Come back every day for the daily bonus.",
-    "unavailableTitle": "Section unavailable",
-    "unavailableText": "This section is not available in Telegram.",
-    "documentText": "The document opens in your browser.",
-    "openInBrowser": "Open in browser",
-    "balanceExhausted": "Your VC balance is used up",
-    "coinRulesActions": "A new reply, a retry and a continuation are separate requests. The VC cost is shown before sending; VC are deducted after the model replies.",
-    "bonusTomorrow": "Tomorrow +{{amount}} VC",
-    "link": "Link Telegram",
-    "linkHint": "Link Telegram to open NewVerse in Telegram with this account and VC balance.",
-    "linkedSince": "Telegram linked since {{date}}",
-    "onlyLoginMethod": "Telegram is your only sign-in method. Use “Sign in with Telegram” on the website. Unlinking is unavailable to keep your account accessible.",
-    "linkPending": "Confirm in Telegram: press Start in the chat with the bot. The link works once and for 10 minutes.",
-    "linkOpenAgain": "Open the link again",
-    "linkDone": "Telegram linked",
-    "linkError": "Something went wrong. Please try again later.",
-    "linkRateLimited": "Too many attempts. Try again in an hour.",
-    "unlink": "Unlink",
-    "unlinkTitle": "Unlink Telegram?",
-    "unlinkText": "The account stays, but signing in with this Telegram is disabled until you link it again.",
-    "unlinkDone": "Telegram unlinked"
+    "webLogin": "Telegram으로 로그인",
+    "webLoginHint": "봇을 열고 코드를 확인한 후 로그인을 승인하세요. 그 후 이 브라우저로 돌아오세요. 새로운 계정은 생성되지 않습니다.",
+    "webLoginCode": "요청 코드:",
+    "webLoginOpenBot": "승인을 위해 봇 열기",
+    "webLoginAccount": "승인된 계정: {{name}}",
+    "webLoginComplete": "이 계정으로 로그인",
+    "webLoginExpired": "이 요청은 만료되었거나 사용할 수 없습니다. Telegram 로그인을 다시 시작하세요.",
+    "webAlreadySignedIn": "이 브라우저에 이미 로그인되어 있습니다. 프로필을 열거나 먼저 로그아웃하세요.",
+    "signedOutTitle": "계정에서 로그아웃했습니다",
+    "signedOutText": "Mini App 세션이 종료되었습니다. 다시 로그인하려면 앱을 닫고 봇에서 다시 여세요. 다른 Telegram 계정을 사용하려면 먼저 Telegram에서 계정을 전환하세요.",
+    "closeApp": "앱 닫기",
+    "accountHint": "이 계정은 귀하의 Telegram과 연결되어 있습니다. 웹사이트에서는 ‘Telegram으로 로그인’을 사용해 접근할 수 있습니다.",
+    "openWebsiteAccount": "웹사이트 열기",
+    "manageAccountHint": "이 프로필을 기존 웹사이트 계정에 병합하려면, 웹사이트에서 해당 계정에 로그인한 후 ‘Telegram 연결’을 선택하세요. 데이터 이전 전에 봇에서 별도의 승인이 필요합니다.",
+    "entryTitle": "Telegram으로 로그인",
+    "signingIn": "Telegram으로 로그인 중…",
+    "welcomeTitle": "NewVerse에 오신 것을 환영합니다",
+    "welcomeText": "귀하의 Telegram 프로필로 계정이 생성되었습니다. 이미 newvers.ai 계정이 있다면, 웹사이트의 프로필에서 Telegram을 연결하면 동일한 계정과 VC 잔액을 여기서 사용할 수 있습니다.",
+    "linkExistingAccount": "이미 웹사이트에 계정이 있습니다",
+    "adultNotice": "NewVerse는 만 18세 이상 사용자를 위한 서비스입니다.",
+    "continue": "계속",
+    "loginDisabledTitle": "Telegram 로그인이 비활성화됨",
+    "loginDisabledText": "Telegram이 NewVerse 계정에서 해제되었습니다. Telegram으로 다시 로그인하려면 웹사이트의 프로필에서 Telegram을 다시 연결하세요.",
+    "outsideTitle": "Telegram에서 NewVerse 열기",
+    "outsideText": "이 페이지는 Telegram 앱 내에서만 사용할 수 있습니다.",
+    "errorTitle": "로그인할 수 없음",
+    "errorText": "앱을 종료하고 다시 여세요. 문제가 반복되면 지원팀에 문의하세요.",
+    "unavailableAppText": "앱이 일시적으로 사용할 수 없습니다. 나중에 다시 시도하세요.",
+    "toCatalog": "캐릭터 둘러보기",
+    "balanceTitle": "VC 잔액",
+    "balanceText": "캐릭터의 답변에는 VC가 사용됩니다. 매일 접속하면 일일 보너스를 받을 수 있어요.",
+    "unavailableTitle": "섹션 이용 불가",
+    "unavailableText": "이 섹션은 Telegram에서 사용할 수 없습니다.",
+    "documentText": "문서는 브라우저에서 열립니다.",
+    "openInBrowser": "브라우저에서 열기",
+    "balanceExhausted": "VC 잔액이 모두 사용되었습니다",
+    "coinRulesActions": "새 답변, 재시도, 이어쓰기는 별도 요청입니다. 전송 전 VC 비용을 확인할 수 있으며, 모델 응답 후 차감됩니다.",
+    "bonusTomorrow": "내일 +{{amount}} VC",
+    "link": "Telegram 연결",
+    "linkHint": "이 계정과 VC 잔액으로 Telegram에서 NewVerse를 열 수 있도록 Telegram을 연결하세요.",
+    "linkedSince": "Telegram 연결일: {{date}}",
+    "onlyLoginMethod": "Telegram이 유일한 로그인 방법입니다. 웹사이트에서는 'Telegram으로 로그인'을 사용하세요. 계정 접근성을 위해 연결 해제는 불가능합니다.",
+    "linkPending": "Telegram에서 확인하세요: 봇과의 채팅에서 '시작'을 누르세요. 링크는 10분 동안 한 번만 유효합니다.",
+    "linkOpenAgain": "링크 다시 열기",
+    "linkDone": "Telegram이 연결되었습니다",
+    "linkError": "문제가 발생했습니다. 나중에 다시 시도하세요.",
+    "linkRateLimited": "시도 횟수가 초과되었습니다. 1시간 후 다시 시도하세요.",
+    "unlink": "연결 해제",
+    "unlinkTitle": "Telegram 연결을 해제하시겠습니까?",
+    "unlinkText": "계정은 유지되지만, 이 Telegram으로의 로그인이 비활성화됩니다. 다시 연결할 때까지 사용할 수 없습니다.",
+    "unlinkDone": "Telegram 연결이 해제되었습니다"
   },
   "freeQuota": {
-    "remaining": "Free today: {{remaining}} of {{limit}} left",
-    "exhausted": "Free replies for today are used up; new ones arrive at 00:00 Moscow time.",
-    "otherModel": "Free replies today: {{remaining}}, on the {{model}} model.",
-    "needCoins": "Not enough VC: {{cost}} needed, {{balance}} on balance.",
-    "topUp": "Top up",
-    "coinsNote": "Free every day: {{onboarding}} replies a day for the first week after sign-up, then {{daily}}, on the base model.",
-    "heroBadge": "{{onboarding}} free replies a day for your first week",
-    "planFeature": "{{count}} free replies a day on {{model}}, no VC spent",
-    "guestOffer": "After sign-up you get {{onboarding}} free replies a day for the first week."
+    "remaining": "오늘 무료: {{remaining}} / {{limit}} 남음",
+    "exhausted": "오늘의 무료 답변을 모두 사용하셨습니다. 모스크바 시간 00:00에 다시 충전됩니다.",
+    "otherModel": "오늘의 무료 답변: {{remaining}}회 ({{model}} 모델 기준)",
+    "needCoins": "VC가 부족합니다: 필요 {{cost}}, 잔액 {{balance}}",
+    "topUp": "충전하기",
+    "coinsNote": "매일 무료 제공: 가입 후 첫 주에는 매일 {{onboarding}}회, 이후에는 {{daily}}회 (기본 모델 기준)",
+    "heroBadge": "첫 주 동안 매일 {{onboarding}}회 무료 답변",
+    "planFeature": "매일 {{count}}회 무료 답변 ({{model}} 모델), VC 소모 없음",
+    "guestOffer": "가입 후 첫 주 동안 매일 {{onboarding}}회의 무료 답변을 드립니다."
   },
   "landing": {
     "home": {
-      "heading": "Chat with AI characters",
-      "paragraphs": [
-        "NewVerse is a place to talk with AI characters. The catalog has heroes from many genres: romance, fantasy, anime, detective stories, science fiction and calm everyday life. Pick a character by their description and personality, open the chat and start writing — they reply in their own voice, with their own story and way of speaking.",
-        "This is more than an AI chat with questions and answers: it is AI roleplay. Every character comes with a setup, a world and a first message that opens the scene. You decide who you are in the story and where it goes. Characters remember the important details of the conversation, so you can come back a day or a week later and continue where you left off.",
-        "If you cannot find the right hero, create your own AI character: set their personality, appearance, first message and world, then chat with them yourself or publish them to the catalog. The site works in Russian, English and Spanish, and you can start without signing up."
-      ],
-      "createLink": "Create an AI character",
-      "genresLink": "All genres",
-      "faqHeading": "Frequently asked questions",
-      "faq": [
-        {
-          "question": "Can I chat with AI characters for free?",
+      "heading": "AI 캐릭터와 대화하기",
+      "paragraphs": {
+        "0": "NewVerse는 AI 캐릭터와 대화할 수 있는 공간입니다. 로맨스, 판타지, 애니메이션, 추리, SF, 평온한 일상 등 다양한 장르의 캐릭터가 카탈로그에 있습니다. 설명과 성격을 보고 캐릭터를 선택하고, 채팅을 열어 글을 시작하세요. 캐릭터는 자신만의 목소리, 스토리, 말투로 답합니다.",
+        "1": "이곳은 단순한 질문과 답변을 주고받는 AI 채팅이 아니라 AI 롤플레잉입니다. 각 캐릭터는 설정과 세계관, 첫 메시지로 장면을 시작합니다. 당신이 스토리 속에서 어떤 역할을 할지, 어디로 전개할지 결정하세요. 캐릭터는 대화의 중요한 세부 사항을 기억하므로, 하루나 일주일 후에도 이어갈 수 있습니다.",
+        "2": "원하는 캐릭터를 찾지 못했다면, 직접 AI 캐릭터를 만들어보세요. 성격, 외모, 첫 메시지, 세계관을 설정하고, 직접 대화하거나 카탈로그에 공개할 수 있습니다. 사이트는 여러 언어를 지원하며, 가입 없이도 시작할 수 있습니다."
+      },
+      "createLink": "AI 캐릭터 만들기",
+      "genresLink": "모든 장르",
+      "faqHeading": "자주 묻는 질문",
+      "faq": {
+        "0": {
+          "question": "AI 캐릭터와 무료로 대화할 수 있나요?",
           "answer": "{{freeAnswer}}"
         },
-        {
-          "question": "Do I need to sign up?",
-          "answer": "No. To try it, open a character and write your first message. An account lets you save your stories, continue them on another device and create your own characters."
+        "1": {
+          "question": "가입이 필요한가요?",
+          "answer": "아니요. 체험하려면 캐릭터를 열고 첫 메시지를 보내보세요. 계정을 만들면 스토리를 저장하고, 다른 기기에서도 이어갈 수 있으며, 나만의 캐릭터를 만들 수 있습니다."
         },
-        {
-          "question": "Do characters remember what we talked about?",
-          "answer": "Yes. A character keeps track of recent messages and remembers important facts from the conversation: names, promises, plot events. So you can pick the story up where you left it."
+        "2": {
+          "question": "캐릭터가 우리가 나눈 대화를 기억하나요?",
+          "answer": "네. 캐릭터는 최근 메시지를 기억하며 이름, 약속, 스토리 전개 같은 중요한 내용을 기억합니다. 따라서 언제든 이전 상태에서 바로 이어갈 수 있습니다."
         },
-        {
-          "question": "Which languages can I use?",
-          "answer": "Russian, English or Spanish. Character descriptions are available in these languages, and you can change the site language in the menu."
+        "3": {
+          "question": "어떤 언어를 사용할 수 있나요?",
+          "answer": "선택한 웹사이트 언어로 사용할 수 있습니다. 메뉴에서 사용 가능한 언어를 확인할 수 있으며, 전환해도 페이지와 스토리는 유지됩니다."
         },
-        {
-          "question": "How is AI roleplay different from a regular chatbot?",
-          "answer": "A regular chatbot answers questions. An AI character plays a role: they have a personality, a past and goals, react to what you do and build the plot together with you."
+        "4": {
+          "question": "AI 롤플레잉은 일반 챗봇과 어떻게 다릅니까?",
+          "answer": "일반 챗봇은 질문에 답합니다. AI 캐릭터는 역할을 수행합니다. 성격과 과거, 목표가 있으며, 당신의 행동에 반응하고 함께 스토리를 만들어갑니다."
         }
-      ]
+      }
     },
     "freeAnswer": {
-      "quota": "Yes. You can send your first messages without signing up, and once you have an account you get free replies on the base model every day. A plan adds more free replies, bonus VerseCoins and a larger context window.",
-      "noQuota": "You can start for free: the first messages need no sign-up. After that, replies are paid with VerseCoins or a plan."
+      "quota": "네. 가입 없이도 처음 메시지를 보낼 수 있으며, 계정 생성 후에는 매일 기본 모델 기준 무료 답변이 제공됩니다. 구독을 하면 더 많은 무료 답변, 보너스 VerseCoins, 더 넓은 컨텍스트 창이 제공됩니다.",
+      "noQuota": "무료로 시작할 수 있습니다. 첫 메시지는 가입 없이도 보낼 수 있습니다. 이후에는 답변에 VerseCoins 또는 구독이 필요합니다."
     },
     "create": {
-      "eyebrow": "NewVerse character creator",
-      "h1": "Create an AI character",
-      "intro": "Design a hero for AI chat and roleplay: set their personality, appearance, first message and the world they live in. Creating a character is free — you only need an account.",
-      "modesHeading": "What are we creating?",
-      "modesHint": "A core idea is enough. Appearance, speaking style and story details can be added later.",
-      "stepsHeading": "How to create an AI character",
-      "steps": [
-        {
-          "title": "Pick a format",
-          "text": "A single character, a whole universe where you are the main hero, or a shared story with a cast of up to {{maxParticipants}} characters."
+      "eyebrow": "NewVerse 캐릭터 제작기",
+      "h1": "AI 캐릭터 만들기",
+      "intro": "AI 채팅과 롤플레잉을 위한 캐릭터를 디자인하세요. 성격, 외모, 첫 메시지, 세계관을 설정할 수 있습니다. 캐릭터 제작은 무료이며 계정만 있으면 됩니다.",
+      "modesHeading": "무엇을 만들까요?",
+      "modesHint": "핵심 아이디어만으로도 충분합니다. 외모, 말투, 스토리 세부 사항은 나중에 추가할 수 있습니다.",
+      "stepsHeading": "AI 캐릭터 만드는 방법",
+      "steps": {
+        "0": {
+          "title": "형식 선택",
+          "text": "단일 캐릭터, 주인공이 되는 전체 세계관, 또는 최대 {{maxParticipants}}명의 캐릭터가 등장하는 공유 스토리까지 선택할 수 있습니다."
         },
-        {
-          "title": "Describe the hero",
-          "text": "Name, personality, appearance and way of speaking. Start with what makes the hero recognisable: a habit, a goal, one striking trait."
+        "1": {
+          "title": "주인공 묘사",
+          "text": "이름, 성격, 외모, 말투를 입력하세요. 습관, 목표, 독특한 특징처럼 캐릭터를 구분지을 수 있는 요소부터 시작하세요."
         },
-        {
-          "title": "Set how the story begins",
-          "text": "A first message and a scenario: where the meeting happens and how the scene opens. Example dialogues help the character keep their style."
+        "2": {
+          "title": "스토리 시작 방식 설정",
+          "text": "첫 메시지와 시나리오를 정하세요. 어디서 만나는지, 어떤 장면으로 시작할지 설정하세요. 예시 대화는 캐릭터가 스타일을 유지하는 데 도움이 됩니다."
         },
-        {
-          "title": "Save and start chatting",
-          "text": "Keep the character private or publish them to the catalog so others can chat with them too."
+        "3": {
+          "title": "저장하고 채팅 시작",
+          "text": "캐릭터를 비공개로 유지하거나 카탈로그에 공개해 다른 사용자도 대화할 수 있도록 할 수 있습니다."
         }
-      ],
-      "featuresHeading": "What you can set up",
-      "features": [
-        {
-          "title": "Personality and motives",
-          "text": "What the hero wants, what they fear and how they treat the person they talk to."
+      },
+      "featuresHeading": "설정할 수 있는 항목",
+      "features": {
+        "0": {
+          "title": "성격과 동기",
+          "text": "캐릭터가 원하는 것, 두려워하는 것, 대화 상대에게 어떤 태도를 보이는지 설정하세요."
         },
-        {
-          "title": "Appearance and avatar",
-          "text": "Upload your own image or generate an avatar from the description — generation is included in a plan."
+        "1": {
+          "title": "외모와 아바타",
+          "text": "직접 이미지를 업로드하거나 설명을 바탕으로 아바타를 생성할 수 있습니다. 생성 기능은 유료 플랜에 포함되어 있습니다."
         },
-        {
-          "title": "Speaking style",
-          "text": "Short lines or long replies, slang, politeness, an accent."
+        "2": {
+          "title": "말투",
+          "text": "짧은 대사 또는 긴 답변, 슬랭 사용 여부, 정중함 정도, 악센트 등을 설정할 수 있습니다."
         },
-        {
-          "title": "World and rules",
-          "text": "The setting, supporting characters and narrative rules for universes."
+        "3": {
+          "title": "세계관과 규칙",
+          "text": "배경 설정, 보조 캐릭터, 세계관 내 서사 규칙을 정하세요."
         },
-        {
-          "title": "Genres and tags",
-          "text": "They help people find the character in the catalog and on genre pages."
+        "4": {
+          "title": "장르 및 태그",
+          "text": "카탈로그와 장르 페이지에서 캐릭터를 찾기 쉽게 도와줍니다."
         },
-        {
-          "title": "Memory",
-          "text": "What the character knows about themselves and about you from the first line."
+        "5": {
+          "title": "기억",
+          "text": "캐릭터가 자신과 당신에 대해 첫 대화에서 알고 있는 내용을 설정하세요."
         }
-      ],
-      "faqHeading": "Questions about creating a character",
-      "faq": [
-        {
-          "question": "How much does it cost to create an AI character?",
-          "answer": "Creating a character is free. Generating an avatar from the description is included in a plan; without one you can upload your own image."
+      },
+      "faqHeading": "캐릭터 생성 관련 질문",
+      "faq": {
+        "0": {
+          "question": "AI 캐릭터 생성 비용은 얼마인가요?",
+          "answer": "캐릭터 생성은 무료입니다. 설명 기반 아바타 생성은 유료 플랜에 포함되어 있으며, 이 기능 없이도 직접 이미지를 업로드할 수 있습니다."
         },
-        {
-          "question": "Do I need to sign up?",
-          "answer": "Yes: characters are saved to your account, so you need to sign in to create one. You can chat with catalog characters without signing up."
+        "1": {
+          "question": "회원가입이 필요한가요?",
+          "answer": "네. 캐릭터는 계정에 저장되므로 생성하려면 로그인이 필요합니다. 단, 카탈로그의 캐릭터와 대화하는 것은 회원가입 없이도 가능합니다."
         },
-        {
-          "question": "Can I keep a character private?",
-          "answer": "Yes. Only you can see a private character. A public one appears in the catalog for everyone and must follow the platform rules."
+        "2": {
+          "question": "캐릭터를 비공개로 유지할 수 있나요?",
+          "answer": "네. 비공개 캐릭터는 본인만 볼 수 있습니다. 공개 캐릭터는 카탈로그에 노출되며 플랫폼 규정을 따라야 합니다."
         },
-        {
-          "question": "How do I make a character's replies more interesting?",
-          "answer": "Describe not only their looks but also their motives, habits and way of speaking. Add a first message with a concrete scene and one or two example dialogues: the clearer the setup, the livelier the replies."
+        "3": {
+          "question": "캐릭터의 답변을 더 흥미롭게 만들려면 어떻게 해야 하나요?",
+          "answer": "외모뿐 아니라 동기, 습관, 말투도 상세히 기술하세요. 구체적인 장면과 예시 대화 한두 개를 포함한 첫 메시지를 추가하세요. 설정이 명확할수록 답변이 더욱 생동감 있게 변합니다."
         },
-        {
-          "question": "Can I change a character after creating it?",
-          "answer": "Yes. You can edit the card at any time: extend the description, change the avatar or the first message."
+        "4": {
+          "question": "캐릭터를 생성한 후 수정할 수 있나요?",
+          "answer": "네. 언제든지 캐릭터 카드를 편집해 설명을 보완하거나 아바타, 첫 메시지를 변경할 수 있습니다."
         }
-      ]
+      }
     }
   },
   "genreIntros": {
-    "fantasy": [
-      "Fantasy is where a conversation with a character easily turns into a whole journey. This is home to mages and mercenaries, elven guards, dragon riders, hedge witches from the edge of the kingdom and students at magic academies. You can step into the story as the hero's companion, their rival, or a passing traveller who has stumbled onto a dangerous secret.",
-      "An AI character answers in the voice of their world: they have their own oaths, fears and ideas about honour. Some stories begin by a tavern fire, others on a battlefield or in a library of forbidden spells. Pick a character by their description and personality, set the tone of the scene — from a cosy fairy tale to a grim story about the price of power — and decide for yourself how the quest ends."
-    ],
-    "romance": [
-      "Romance characters are for stories where what matters most happens between two people. It might be a slow acquaintance with a neighbour down the hall, a charged game with an old rival, an office romance, letters from another era, or feelings the character is not ready to admit even to themselves.",
-      "Every character has a personality of their own: some are warm and open, some are reserved and take time to open up, some flirt from the very first line. You set the pace, from light flirting to a slow-burn relationship where trust has to be earned. The character responds to what you say and do, so the same story can end in a confession, a quarrel or a new chapter. Choose someone by their description, start with their opening scene, or write your own."
-    ],
-    "anime": [
-      "Anime characters are recognisable at a glance: vivid looks, expressive emotions and familiar archetypes — tsunderes, unflappable top students, troublemakers with good hearts, the mysterious new kid in class. But the stories here go well beyond school corridors.",
-      "This section gathers anime-style characters from all kinds of plots: everyday school life and after-class clubs, magic academies, isekai adventures in another world, sports rivalries, romance and quests. Each character stays true to their role and reacts to your choices, so you can play out a quiet scene on the school roof or a tense duel. Pick a character from their card, read their description and begin with the ready-made scene, or suggest your own setup as if you were writing a new episode."
-    ],
-    "scifi": [
-      "Science fiction on NewVerse is about the future, technology and the people caught up in it: starship captains, androids learning to be human, scientists on distant stations, pilots, smugglers and the first witnesses of contact with an alien mind.",
-      "You can set off on a long deep-space voyage, investigate a failure in a colony's systems, or argue with an artificial intelligence about memory and free will. Characters keep to the rules of their world: the ship runs low on fuel, the station has its regulations, and the android has protocols it may decide to break. Ask questions, take risky decisions and see where the plot leads. If you want more street-level tech and neon, the cyberpunk section is right next door."
-    ],
-    "mystic": [
-      "Mystery and the supernatural are for anyone drawn to the unexplained. Here you will meet fortune-tellers and mediums, keepers of old houses, cursed aristocrats, witches, spirits and people who know far too much about other people's dreams.",
-      "These stories live on what is left unsaid: a character may speak in riddles, hide part of the truth, or test whether you are ready to hear all of it. Scenes open on a midnight train, at a séance, in an abandoned manor or in a small town where every resident keeps a secret. Unlike horror, atmosphere and the solution matter more than fear here, though the line can be thin. Choose a character by their description, listen to their hints and decide whether to open the door someone is waiting behind."
-    ],
-    "realistic": [
-      "Modern-day characters live much like we do: they study, work, rent flats, meet in coffee shops and get caught up in stories that could happen to anyone. They are colleagues and neighbours, stars and their managers, doctors, students, baristas, musicians and old classmates.",
-      "The strength of this kind of roleplay is that it feels true to life. Without magic or starships, personality, dialogue and relationships take centre stage: an awkward reunion after years apart, a hard conversation with a boss, a first date, or helping a friend through a rough evening. The character answers with their own past and habits in mind, and the plot grows from your words and choices. These stories suit both a light chat and a serious drama. Pick a character by their description and start with their scene or with something that happened to you today."
-    ],
-    "adventure": [
-      "Adventure is about motion: the open road, a map with blank spaces and a companion who will not let things get dull. This genre brings together treasure hunters, pirates, trackers, mercenaries, time travellers and heroes who always end up exactly where trouble begins.",
-      "Any scene can turn the plot: a rooftop chase, a crossing over a raging river, a deal with a suspicious merchant, or an ancient mechanism that must be opened before sunset. The character reacts to your decisions — backs a risky plan, argues, or suddenly proposes one of their own. Adventure mixes easily with other genres: a fantasy quest, a space expedition or the search for a missing friend in a modern city. Choose a companion by their description, agree on a goal and set off; the route will take shape as the story goes."
-    ],
-    "detective": [
-      "Detective characters are for anyone who loves clues, interrogations and unexpected twists. Here you will find private investigators and weary police detectives, investigative journalists, cold-blooded criminals and witnesses who are clearly holding something back.",
-      "You can work a case alongside the character, end up as a suspect yourself, or play against them and try to catch them in a contradiction. A good detective scene runs on details: the time on a clock, a mark on a windowsill, a slip of the tongue. The character keeps track of what has already been said, so an attentive player can compare statements and reach their own theory. Cases can be classic, with a locked room and a circle of suspects, or modern, with security cameras and message threads. Choose a character and ask the first question."
-    ],
-    "everyday": [
-      "Slice of life is the genre of small stories that make up a life: morning coffee with a neighbour, a shift at a bookshop, studying for exams together, moving house, a long talk in the kitchen.",
-      "Nobody has to save the world here. The value of this kind of roleplay is in natural conversation and relationships that grow over time: the character picks up on details, jokes, shares plans, can support you after a hard day or invite you on a spontaneous trip. The cast includes friends, roommates, colleagues and acquaintances you will want to talk to again. Slice-of-life stories are a good fit when you want to unwind, practise conversation or simply spend an evening in calm company. Pick a character by their personality, start with an ordinary scene and let the story unfold without hurry."
-    ],
-    "cyberpunk": [
-      "Cyberpunk means neon streets, corporations more powerful than governments and people who sell their memories, bodies and loyalty for a chance to survive. This genre is home to hackers, augmented mercenaries, back-alley doctors, big-city detectives and androids who have started to doubt their protocols.",
-      "The stories are hard and fast: cracking a secured network, a deal in an underground club, an escape from corporate security, the hunt for whoever erased part of your past. The character lives by the rules of their city — they might sell you out for the right price, or risk everything for a partner. Cyberpunk is close to science fiction, but instead of looking up at the stars it looks down at the streets, where technology has become an everyday commodity. Choose a character by their description, decide whose side you are on and make your first deal."
-    ],
-    "horror": [
-      "Horror is for those who enjoy a chill running down their spine. This section gathers characters around whom safety is never guaranteed: monsters and their victims, hunters of the unholy, residents of abandoned hospitals, survivors of a disaster and creatures that only pretend to be human.",
-      "A good horror story is built on tension, not on the amount of blood. A creaking floorboard, a torch about to go out, a voice from the next room — the character runs the scene so that you decide whether to go further or run. You can play the one investigating a disappearance, an unlucky guest in a stranger's house, or step into a dangerous conversation with the monster itself. You choose how frightening it gets, from atmospheric gothic to real survival. Pick a character by their description and turn off the lights."
-    ],
-    "comedy": [
-      "Comedy characters are for when you want laughter rather than drama: witty sidekicks, clumsy wizards, overconfident villains whose plans never work, chatty neighbours and heroes who stumble into absurd situations out of nowhere.",
-      "Humour in roleplay comes from personality: the character stays true to themselves even when everything goes sideways, and that is exactly what makes a scene funny. You can play out a disastrous date, domestic chaos in a shared flat, a parody of an epic quest, or an argument with a cat who believes it is royalty. The character picks up your jokes, answers with their own and will happily push things to the absurd if that is what you want. Comedy pairs well with slice of life, fantasy and romance. Choose a character, set up a ridiculous premise and see what happens."
-    ],
-    "drama": [
-      "Drama is the genre of stories about choice, loss, guilt and forgiveness. The characters here carry a difficult past: people who have lost someone close, former friends driven apart by life, heroes facing a hard decision, families where much has been left unsaid.",
-      "Dramatic roleplay takes time and attention: the character does not open up at once, and trust has to be earned. A scene may begin with a brief meeting at a railway station or a letter that arrived too late, and from there everything depends on what you say and what you leave unspoken. The AI character answers in light of their wounds and motives, so the conversation can lead to reconciliation or to a final parting. If you are drawn to stories that leave you quiet for a while afterwards, choose a character by their description and start with an honest question."
-    ]
+    "fantasy": {
+      "0": "판타지는 캐릭터와의 대화가 금세 거대한 여정으로 이어지는 장르입니다. 마법사와 용병, 엘프 수비대, 드래곤 라이더, 왕국 외곽의 들판 마녀, 마법 학원의 학생들까지. 주인공의 동료, 라이벌, 혹은 위험한 비밀을 우연히 알게 된 지나가는 여행자로서 이야기에 들어가 보세요.",
+      "1": "AI 캐릭터는 자신이 속한 세계관의 목소리로 답합니다. 그들만의 맹세, 두려움, 명예에 대한 신념이 있죠. 어떤 이야기는 선술집 모닥불 옆에서, 어떤 것은 전장이나 금지된 마법 주문의 도서관에서 시작됩니다. 캐릭터의 설명과 성격을 보고 선택하고, 장면의 분위기를 따뜻한 동화풍에서 권력의 대가를 다룬 어두운 이야기까지 자유롭게 설정하세요. 여정의 결말은 당신이 결정합니다."
+    },
+    "romance": {
+      "0": "로맨스 캐릭터는 두 사람 사이에서 벌어지는 이야기를 위한 캐릭터입니다. 복도 맞은편 이웃과의 천천히 깊어지는 관계, 오랜 라이벌과의 긴장감 넘치는 기싸움, 직장 로맨스, 다른 시대에서 온 편지, 혹은 자신조차 인정하지 못하는 감정까지 가능합니다.",
+      "1": "각 캐릭터는 고유한 성격을 지닙니다. 따뜻하고 열린 성격도 있고, 내성적이어 천천히 마음을 여는 캐릭터도 있으며, 첫 대사부터 바로 플러팅을 시작하는 캐릭터도 있죠. 속도는 당신이 정하세요. 가벼운 플러팅에서부터 신뢰를 쌓아야 하는 느린 관계 발전까지 가능합니다. 캐릭터는 당신의 말과 행동에 반응하므로, 같은 스토리도 고백, 다툼, 혹은 새로운 시작으로 끝날 수 있습니다. 설명을 보고 캐릭터를 선택하거나, 환영 인사 장면에서 시작하거나, 직접 스토리를 만들어 보세요."
+    },
+    "anime": {
+      "0": "애니메 캐릭터는 단번에 알아볼 수 있습니다. 뚜렷한 외모, 풍부한 감정 표현, 익숙한 캐릭터 유형 — 츤데레, 침착한 반장, 마음 좋은 문제아, 반 친구 중 미스터리한 전학생까지. 하지만 이곳의 이야기는 학교 복도를 넘어선 곳까지 펼쳐집니다.",
+      "1": "이 섹션에서는 학교 일상과 방과 후 동아리, 마법 학원, 이세계 모험, 스포츠 대결, 로맨스와 모험 등 다양한 설정의 애니메이션 스타일 캐릭터를 만날 수 있습니다. 각 캐릭터는 자신의 역할을 충실히 지키며 당신의 선택에 반응하므로, 조용한 학교 옥상 장면부터 긴장감 넘치는 결투까지 연출할 수 있습니다. 캐릭터 카드를 통해 인물을 선택하고 설명을 읽은 후 미리 준비된 장면으로 시작하거나, 마치 새로운 에피소드를 쓰는 것처럼 직접 설정을 제안해 보세요."
+    },
+    "scifi": {
+      "0": "NewVerse의 공상과학은 미래와 기술, 그리고 그 속에 휘말린 사람들에 관한 이야기입니다. 우주선 함장, 인간이 되어가려는 안드로이드, 먼 은하의 연구소에서 일하는 과학자, 파일럿, 밀수업자, 외계 지성과의 접촉을 처음 목격한 이들이 그 주인공이죠.",
+      "1": "깊은 우주로의 장거리 항해를 떠나거나, 식민지 시스템의 고장을 조사하거나, 인공지능과 기억과 자유의지에 대해 논쟁할 수 있습니다. 캐릭터들은 자신들의 세계관을 따릅니다. 우주선은 연료가 바닥나고, 기지는 규정이 있으며, 안드로이드는 어쩌면 어기고 싶은 프로토콜을 지닙니다. 질문을 던지고, 위험한 결정을 내리며 스토리가 어디로 향할지 지켜보세요. 거리의 기술과 네온을 더 원한다면 바로 옆의 사이버펑크 섹션을 확인하세요."
+    },
+    "mystic": {
+      "0": "미스터리와 초자연적 요소는 미지의 것에 끌리는 분들을 위한 장르입니다. 점쟁이와 미디움, 오래된 집을 지키는 자, 저주받은 귀족, 마녀, 영혼, 타인의 꿈에 대해 너무 많이 아는 이들이 여기에 모여 있습니다.",
+      "1": "이야기는 말하지 않은 것에서 비롯됩니다. 캐릭터는 수수께끼처럼 말하거나, 진실의 일부를 숨기거나, 당신이 진실 전체를 들을 준비가 되었는지 시험할 수 있습니다. 장면은 자정의 기차, 영매회, 폐허가 된 저택, 혹은 모든 주민이 비밀을 간직한 작은 마을에서 펼쳐집니다. 공포와는 달리, 여기서 중요한 것은 두려움보다 분위기와 해답이지만, 그 경계는 흐릿할 수 있습니다. 설명을 통해 캐릭터를 선택하고, 그들의 암시를 듣고, 누군가 기다리는 문을 열지 결정하세요."
+    },
+    "realistic": {
+      "0": "현대 캐릭터들은 우리와 비슷하게 삽니다. 공부하고, 일하며, 아파트를 전세로 구하고, 카페에서 만나며, 누구에게나 일어날 수 있는 이야기에 휘말립니다. 동료와 이웃, 스타와 매니저, 의사, 학생, 바리스타, 뮤지션, 옛 동창들이 그들입니다.",
+      "1": "이 종류의 역할놀이의 강점은 현실감에 있습니다. 마법이나 우주선 없이, 성격과 대화, 관계가 중심이 됩니다. 오랜만의 어색한 재회, 상사와의 어려운 대화, 첫 데이트, 힘든 밤을 겪는 친구를 돕는 일 등이 대표적입니다. 캐릭터는 자신의 과거와 습관을 바탕으로 반응하며, 스토리는 당신의 말과 선택에 따라 자라납니다. 가벼운 대화든 진지한 드라마든 모두 어울립니다. 설명을 통해 캐릭터를 선택하고, 준비된 장면이나 오늘 당신에게 일어난 일로 시작해 보세요."
+    },
+    "adventure": {
+      "0": "모험은 움직임에 관한 것입니다. 열린 도로, 미지의 지도, 지루할 틈 없는 동료와 함께 말이죠. 보물 사냥꾼, 해적, 추적자, 용병, 타임 트래블러, 언제나 문제의 중심에 서는 영웅들이 이 장르에 모입니다.",
+      "1": "어떤 장면이든 스토리를 바꿀 수 있습니다. 옥상 추격전, 격류를 건너는 다리, 수상한 상인과의 거래, 해질 무렵까지 열어야 할 고대 장치 등이 그 예입니다. 캐릭터는 당신의 결정에 반응합니다. 위험한 계획을 지지하거나, 반박하거나, 갑자기 자신의 계획을 제안하기도 하죠. 모험은 다른 장르와도 잘 어울립니다. 판타지 모험, 우주 탐사, 현대 도시에서 실종된 친구를 찾는 이야기 등이 가능합니다. 설명을 통해 동료를 선택하고, 목표를 정한 후 떠나세요. 이야기가 진행되며 길이 만들어질 것입니다."
+    },
+    "detective": {
+      "0": "추리 캐릭터는 단서, 심문, 예상치 못한 반전을 좋아하는 분들을 위한 것입니다. 사립 탐정, 지친 형사, 수사 기자, 냉혈한 범죄자, 뭔가 숨기고 있는 증인들을 만날 수 있습니다.",
+      "1": "캐릭터와 함께 사건을 해결하거나, 스스로 용의자가 되거나, 상대편이 되어 그들의 모순을 잡으려 시도할 수도 있습니다. 좋은 추리 장면은 세부 사항에 달려 있습니다. 시계의 시간, 창틀의 흔적, 말실수 같은 것들이죠. 캐릭터는 이미 말한 내용을 기억하므로, 주의 깊은 플레이어는 진술을 비교해 자신의 이론에 도달할 수 있습니다. 사건은 고전적인 '밀실 살인'과 용의자들로 둘러싸인 이야기일 수도 있고, 보안 카메라와 메신저 대화 기록이 등장하는 현대적인 이야기일 수도 있습니다. 캐릭터를 선택하고 첫 번째 질문을 던지세요."
+    },
+    "everyday": {
+      "0": "일상은 삶을 구성하는 작은 이야기들의 장르입니다. 이웃과의 아침 커피, 서점 아르바이트, 시험 공부, 이사, 주방에서의 긴 대화 등이 그 예입니다.",
+      "1": "여기서는 세상을 구할 필요가 없습니다. 이런 역할놀이의 가치는 자연스러운 대화와 시간이 흐르며 자라나는 관계에 있습니다. 캐릭터는 세부 사항을 기억하고, 농담을 나누며, 계획을 공유하고, 힘든 하루 후 위로하거나 즉흥적인 여행을 초대할 수 있습니다. 친구, 룸메이트, 동료, 다시 만나고 싶은 지인들이 등장합니다. 휴식을 취하거나, 대화를 연습하거나, 조용한 동행 속에서 저녁을 보내고 싶을 때 일상 스토리는 완벽한 선택입니다. 캐릭터의 성격을 보고 선택하고, 평범한 장면에서 시작해 서두르지 않고 이야기를 펼쳐보세요."
+    },
+    "cyberpunk": {
+      "0": "사이버펑크는 네온 불빛이 가득한 거리, 정부보다 강력한 기업, 생존을 위해 기억과 신체, 충성을 파는 사람들을 뜻합니다. 이 장르에는 해커, 증강된 고용병, 뒷골목 의사, 대도시 탐정, 그리고 자신의 프로토콜을 의심하기 시작한 안드로이드들이 등장합니다.",
+      "1": "이야기는 거칠고 빠릅니다. 보안 시스템 해킹, 지하 클럽에서의 거래, 기업 보안팀과의 탈출, 자신의 과거 일부를 지운 존재를 향한 추적. 캐릭터는 도시의 법칙에 따라 살아갑니다. 좋은 가격을 제시하면 당신을 배신할 수도 있고, 파트너를 위해 모든 것을 걸 수도 있죠. 사이버펑크는 공상과학과 가깝지만, 우주를 바라보는 대신 거리를 내려다봅니다. 기술이 일상 속 보통 물건이 된 세계 말입니다. 설명을 보고 캐릭터를 선택하고, 당신이 서 있는 편을 정한 뒤 첫 거래를 시작하세요."
+    },
+    "horror": {
+      "0": "공포는 등줄기를 타고 내려오는 서늘함을 즐기는 이들을 위한 장르입니다. 여기에는 안전이 보장되지 않는 캐릭터들이 모여 있습니다. 괴물과 그 희생자, 부정한 존재를 쫓는 사냥꾼, 폐병원 주민, 재난 생존자, 인간인 척하는 존재들까지.",
+      "1": "좋은 공포 이야기는 피의 양이 아니라 긴장감에서 비롯됩니다. 삐걱대는 마루판, 꺼져가는 손전등, 옆방에서 들리는 목소리. 캐릭터는 당신이 계속 나아갈지, 도망칠지 결정하게끔 장면을 이끕니다. 실종 사건을 조사하는 사람, 낯선 집에 불려온 불운한 손님, 혹은 괴물 자체와 위험한 대화를 나누는 상황을 연기할 수 있습니다. 당신이 원하는 만큼 무서움을 조절하세요. 분위기 있는 고딕 풍부터 생존을 건 긴장감까지 가능합니다. 설명을 보고 캐릭터를 선택하고, 조명을 끄세요."
+    },
+    "comedy": {
+      "0": "코미디 캐릭터는 드라마보다 웃음을 원할 때를 위한 것입니다. 날카로운 입담의 조력자, 어설픈 마법사, 계획이 매번 수포로 돌아가는 자만심 강한 악당, 수다스러운 이웃, 아무데서나 터지는 터무니없는 상황에 휘말리는 주인공들까지.",
+      "1": "역할놀이의 유머는 캐릭터성에서 나옵니다. 상황이 어수선해져도 캐릭터는 자신을 지키며, 그 자체가 웃음을 만듭니다. 실패한 데이트, 공동 주택의 일상적 혼란, 위대한 모험을 풍자한 이야기, 왕이라 믿는 고양이와의 말다툼까지 연기할 수 있습니다. 캐릭터는 당신의 농담을 받아주고, 자신만의 유머로 답하며, 원한다면 상황을 완전히 터무니없게 밀고 나갑니다. 코미디는 일상, 판타지, 로맨스와 잘 어울립니다. 캐릭터를 선택하고, 어이없는 설정을 준비한 뒤 결과를 지켜보세요."
+    },
+    "drama": {
+      "0": "드라마는 선택, 상실, 죄책감, 용서에 관한 이야기 장르입니다. 이곳의 캐릭터들은 어두운 과거를 안고 있습니다. 가까운 이를 잃은 사람, 삶에 밀려 멀어진 옛 친구, 고통스러운 결정 앞에 선 영웅, 말하지 못한 것이 많은 가족들까지.",
+      "1": "드라마틱한 역할놀이는 시간과 집중을 요구합니다. 캐릭터는 금세 마음을 열지 않으며, 신뢰는 쌓아야 합니다. 장면은 역에서의 짧은 만남이나 너무 늦게 도착한 편지로 시작할 수 있고, 이후는 당신이 무엇을 말하고 무엇을 침묵하느냐에 달렸습니다. AI 캐릭터는 자신의 상처와 동기를 바탕으로 답하므로, 대화는 화해로도, 영원한 이별로도 이어질 수 있습니다. 이야기 끝에 잠시 침묵하게 되는 이야기를 원한다면, 설명을 보고 캐릭터를 선택하고 솔직한 질문으로 시작하세요."
+    }
   },
   "telegramBot": {
-    "welcome": "NewVerse is role-play stories with AI characters. Open the app to choose a character and start a story.",
-    "open": "Open NewVerse",
-    "help": "Commands:\n/start — open NewVerse\n/help — help\n/privacy — privacy policy\n\nService rules and support are behind the buttons below.",
-    "rules": "Rules",
-    "support": "Support",
-    "privacy": "NewVerse privacy policy:",
-    "privacyButton": "Open the policy",
-    "linked": "Telegram is now linked to your NewVerse account. The app uses the same account and VC balance as the website. Close and reopen the Mini App using the button below.",
-    "already_linked": "This Telegram is already linked to your NewVerse account.",
-    "invalid": "This link is not valid: it works once and for 10 minutes. Create a new one in your profile on the website.",
-    "telegram_taken": "This Telegram is already connected to another NewVerse account, for example one created in the app. Accounts are not merged automatically. Use another Telegram account or contact support.",
-    "confirmation_required": "You have a separate unused Telegram profile with 50 starter VC. Confirm switching to the website account: {{account}}. The app will use that website account's balance, characters and stories. The 50 starter VC from the unused profile will not be transferred. If this is not your account, do not confirm the link.",
-    "confirmLink": "Confirm linking the website account",
-    "merge_confirmation_required": "Merge your Telegram profile into website account {{account}}? Characters: {{characters}}, stories: {{stories}}, messages: {{messages}}, earned VC: {{vc}} will be transferred. The duplicate starter 50 VC are excluded. Existing website stories and characters are kept. Old Telegram sessions will end. Confirm only for your own account.",
-    "confirmMerge": "Transfer data and merge accounts",
-    "merge_busy": "Close the Mini App, let all generations finish, and wait 3 minutes. Then create a new link in your website profile. A separate confirmation is required before any data moves.",
-    "merged": "Your data has been transferred and accounts merged. Close and reopen the Mini App to see the shared stories, characters and balance.",
-    "profile_not_empty": "Linking was stopped because the profile has changed, has independent sign-in credentials, purchases, a subscription, or conflicting referral settings. Create a fresh website link. If transfer is still unavailable, contact support; your data is kept.",
-    "user_has_other_telegram": "Another Telegram is already linked to this NewVerse account. Unlink it in your profile on the website first.",
-    "unknown": "Use /start to open NewVerse or /help for help.",
-    "signIn01": "NewVerse website sign-in. Request code: {{value1}}.\n\nMatch this code with your browser. Approve only if you started signing in on newvers.ai. That browser will access your stories, characters and balance. Do not forward this link.",
-    "signIn02": "First create an account in the Mini App or link your existing website account.",
-    "signIn03": "This request is invalid or expired. Start again on the website.",
-    "signIn04": "Approve website sign-in",
-    "signInApproved": "Approved. Return to the browser where you started and choose “Sign in to this account”.",
-    "signInInvalid": "This request is invalid or expired. Start again on the website."
+    "welcome": "NewVerse는 AI 캐릭터와 함께하는 역할놀이 스토리입니다. 앱을 열어 캐릭터를 선택하고 스토리를 시작하세요.",
+    "open": "NewVerse 열기",
+    "help": "명령어:\n/start — NewVerse 열기\n/help — 도움말\n/privacy — 개인정보처리방침\n\n서비스 규칙과 지원은 아래 버튼에서 확인할 수 있습니다.",
+    "rules": "규칙",
+    "support": "지원",
+    "privacy": "NewVerse 개인정보처리방침:",
+    "privacyButton": "정책 보기",
+    "linked": "Telegram이 NewVerse 계정에 연결되었습니다. 앱에서는 웹사이트와 동일한 계정과 VC 잔액을 사용합니다. 아래 버튼으로 미니앱을 닫고 다시 열어주세요.",
+    "already_linked": "이 Telegram은 이미 NewVerse 계정에 연결되어 있습니다.",
+    "invalid": "이 링크는 유효하지 않습니다. 일회용이며 10분 동안만 작동합니다. 웹사이트의 프로필에서 새 링크를 생성하세요.",
+    "telegram_taken": "이 Telegram은 이미 다른 NewVerse 계정(예: 앱에서 생성된 계정)과 연결되어 있습니다. 계정은 자동으로 통합되지 않습니다. 다른 Telegram 계정을 사용하거나 지원팀에 문의하세요.",
+    "confirmation_required": "Telegram에 사용되지 않은 별도의 프로필이 있으며, 스타터 VC 50이 있습니다. 웹사이트 계정 {{account}}으로 전환하시겠습니까? 앱에서는 해당 웹사이트 계정의 잔액, 캐릭터, 스토리를 사용하게 됩니다. 미사용 프로필의 스타터 VC 50은 이전되지 않습니다. 이 계정이 본인 것이 아니라면 연결을 확인하지 마세요.",
+    "confirmLink": "웹사이트 계정 연결 확인",
+    "merge_confirmation_required": "Telegram 프로필을 웹사이트 계정 {{account}}에 통합하시겠습니까? 캐릭터: {{characters}}, 스토리: {{stories}}, 메시지: {{messages}}, 획득한 VC: {{vc}}가 이전됩니다. 중복된 스타터 50 VC는 제외됩니다. 기존 웹사이트의 스토리와 캐릭터는 유지됩니다. 이전 Telegram 세션은 종료됩니다. 본인의 계정인 경우에만 확인하세요.",
+    "confirmMerge": "데이터 이전 및 계정 통합",
+    "merge_busy": "Mini App을 닫고 생성이 모두 완료될 때까지 기다린 후 3분간 대기하세요. 그 후 웹사이트 프로필에서 새 링크를 생성하세요. 데이터 이전 전 별도의 확인이 필요합니다.",
+    "merged": "데이터가 전송되었고 계정이 통합되었습니다. Mini App을 닫고 다시 열면 공유된 스토리, 캐릭터, 잔액을 확인할 수 있습니다.",
+    "profile_not_empty": "프로필에 변경 사항이 있거나 독립된 로그인 정보, 구매 내역, 구독, 또는 충돌하는 추천 설정이 있어 연결이 중단되었습니다. 새 웹사이트 링크를 생성하세요. 이전이 여전히 불가능한 경우 지원팀에 문의하세요. 데이터는 안전하게 보관됩니다.",
+    "user_has_other_telegram": "이 NewVerse 계정에는 이미 다른 Telegram이 연결되어 있습니다. 먼저 웹사이트 프로필에서 연결을 해제하세요.",
+    "unknown": "NewVerse를 열려면 /start를, 도움이 필요하면 /help를 사용하세요.",
+    "signIn01": "NewVerse 웹사이트 로그인. 요청 코드: {{value1}}\n\n브라우저에 표시된 코드와 일치하는지 확인하세요. newvers.ai에서 로그인을 시작한 경우에만 승인하세요. 이 브라우저가 귀하의 스토리, 캐릭터, 잔액에 접근하게 됩니다. 이 링크를 타인에게 전달하지 마세요.",
+    "signIn02": "먼저 Mini App에서 계정을 생성하거나 기존 웹사이트 계정을 연결하세요.",
+    "signIn03": "이 요청은 유효하지 않거나 만료되었습니다. 웹사이트에서 다시 시작하세요.",
+    "signIn04": "웹사이트 로그인 승인",
+    "signInApproved": "승인되었습니다. 로그인을 시작한 브라우저로 돌아가 \"이 계정에 로그인\"을 선택하세요.",
+    "signInInvalid": "이 요청은 유효하지 않거나 만료되었습니다. 웹사이트에서 다시 시작하세요."
   },
   "globalError": {
-    "errorTitle": "Something went wrong",
-    "errorText": "We already know about the problem. Try again or go back to the catalog.",
-    "retry": "Try again",
-    "toCatalog": "Go to catalog",
-    "errorCode": "Error code"
+    "errorTitle": "문제가 발생했습니다",
+    "errorText": "이미 문제를 인지하고 있습니다. 다시 시도하거나 카탈로그로 돌아가세요.",
+    "retry": "다시 시도",
+    "toCatalog": "카탈로그로 이동",
+    "errorCode": "오류 코드"
   },
   "structuredData": {
-    "chatDescription": "Chat with {{name}} on NewVerse",
-    "author": "Author",
-    "home": "Home"
+    "chatDescription": "NewVerse에서 {{name}}과(와) 채팅하기",
+    "author": "작성자",
+    "home": "홈"
   },
   "characterStory": {
-    "you": "you"
+    "you": "당신"
   },
   "chatModelGroups": {
-    "main": "Main models",
-    "testing": "Testing",
-    "testingHint": "New models: we are evaluating response quality and speed.",
-    "quotaRefresh": "Free replies refresh every day at 00:00 Moscow time.",
-    "freeLeft": "Free · {{value1}} left",
-    "reasoningHint": "Disabling reasoning through the gateway is unverified. The output limit may shorten or prevent an answer."
+    "main": "기본 모델",
+    "testing": "테스트 중",
+    "testingHint": "새 모델: 응답 품질과 속도를 평가하고 있습니다.",
+    "quotaRefresh": "무료 응답은 매일 00:00(모스크바 시간)에 새로고침됩니다.",
+    "freeLeft": "무료 · {{value1}}회 남음",
+    "reasoningHint": "게이트웨이를 통한 추론 비활성화는 아직 검증되지 않았습니다. 출력 제한으로 인해 응답이 짧아지거나 완성되지 않을 수 있습니다."
   },
   "subscriptions": {
-    "avatarAllowance": "Up to {{count}} avatars per calendar month; every model uses one generation"
+    "avatarAllowance": "매달 최대 {{count}}개의 아바타 생성 가능; 모델당 한 번의 생성을 소모합니다"
   },
   "characterTags": {
     "labels": {
-      "Романтика": "Romance",
-      "Приключение": "Adventure",
-      "Фэнтези": "Fantasy",
-      "Научная фантастика": "Sci-Fi",
-      "Детектив": "Detective",
-      "Драма": "Drama",
-      "Комедия": "Comedy",
-      "Ужасы": "Horror",
-      "Триллер": "Thriller",
-      "Мистика": "Mystery",
-      "Повседневность": "Slice of life",
-      "Экшен": "Action",
-      "Современный мир": "Modern world",
-      "Исторический": "Historical",
-      "Средневековье": "Middle Ages",
-      "Постапокалипсис": "Post-apocalyptic",
-      "Киберпанк": "Cyberpunk",
-      "Космос": "Space",
-      "Магическая академия": "Magic academy",
-      "Готика": "Gothic",
-      "Мужской персонаж": "Male character",
-      "Женский персонаж": "Female character",
-      "Антропоморфный": "Anthropomorphic",
-      "Эльф": "Elf",
-      "Андроид": "Android",
-      "Монстр": "Monster",
-      "Друг": "Friend",
-      "Партнёр": "Partner",
-      "Сосед": "Neighbor",
-      "Напарник": "Companion",
-      "Наставник": "Mentor",
-      "Соперник": "Rival",
-      "Герой": "Hero",
-      "Злодей": "Villain",
-      "Враг": "Enemy",
-      "Добрый": "Kind",
-      "Заботливый": "Caring",
-      "Сдержанный": "Reserved",
-      "Дерзкий": "Bold",
-      "Загадочный": "Mysterious",
-      "Холодный": "Cold",
-      "Ироничный": "Witty",
-      "Флиртующий": "Flirty",
-      "Цундере": "Tsundere",
-      "Аниме": "Anime",
-      "Ролевая игра": "Roleplay",
-      "Медленное развитие отношений": "Slow-burn relationships",
-      "Выборы и последствия": "Choices and consequences",
-      "Исследование мира": "World exploration"
+      "Романтика": "로맨스",
+      "Приключение": "모험",
+      "Фэнтези": "판타지",
+      "Научная фантастика": "공상과학",
+      "Детектив": "추리",
+      "Драма": "드라마",
+      "Комедия": "코미디",
+      "Ужасы": "공포",
+      "Триллер": "스릴러",
+      "Мистика": "미스터리",
+      "Повседневность": "일상",
+      "Экшен": "액션",
+      "Современный мир": "현대",
+      "Исторический": "역사",
+      "Средневековье": "중세",
+      "Постапокалипсис": "포스트아포칼립스",
+      "Киберпанк": "사이버펑크",
+      "Космос": "우주",
+      "Магическая академия": "마법 학교",
+      "Готика": "고딕",
+      "Мужской персонаж": "남성 캐릭터",
+      "Женский персонаж": "여성 캐릭터",
+      "Антропоморфный": "인간형",
+      "Эльф": "엘프",
+      "Андроид": "안드로이드",
+      "Монстр": "몬스터",
+      "Друг": "친구",
+      "Партнёр": "파트너",
+      "Сосед": "이웃",
+      "Напарник": "동료",
+      "Наставник": "멘토",
+      "Соперник": "라이벌",
+      "Герой": "영웅",
+      "Злодей": "악당",
+      "Враг": "적",
+      "Добрый": "친절한",
+      "Заботливый": "배려심 있는",
+      "Сдержанный": "내성적인",
+      "Дерзкий": "도전적인",
+      "Загадочный": "미스터리한",
+      "Холодный": "냉담한",
+      "Ироничный": "재치 있는",
+      "Флиртующий": "플러팅하는",
+      "Цундере": "츤데레",
+      "Аниме": "애니메이션",
+      "Ролевая игра": "롤플레잉",
+      "Медленное развитие отношений": "슬로우 번 관계",
+      "Выборы и последствия": "선택과 결과",
+      "Исследование мира": "세계관 탐색"
     },
     "groups": {
-      "genres": "Genre",
-      "world": "World and setting",
-      "character": "Character",
-      "roles": "Role and relationships",
-      "traits": "Personality",
-      "style": "Story style"
+      "genres": "장르",
+      "world": "세계관 및 배경",
+      "character": "캐릭터",
+      "roles": "역할 및 관계",
+      "traits": "성격",
+      "style": "스토리 스타일"
     },
-    "hint": "Choose up to {{limit}} accurate tags to help readers find your story.",
-    "search": "Find a tag",
-    "legacy": " (legacy)",
-    "remove": "Remove tag {{tag}}",
-    "noMatches": "No matching tags"
+    "hint": "독자들이 당신의 스토리를 찾는 데 도움이 되도록 최대 {{limit}}개의 정확한 태그를 선택하세요.",
+    "search": "태그 찾기",
+    "legacy": " (이전 버전)",
+    "remove": "{{tag}} 태그 제거",
+    "noMatches": "일치하는 태그가 없습니다"
   },
   "chatUi": {
-    "text001": "Actions",
-    "text002": "Message actions",
-    "text003": "Edit",
-    "text004": "Delete",
-    "text005": "Copy",
-    "text006": "Continue",
-    "text007": "Regenerate",
-    "text008": "The message cannot be empty",
-    "text009": "Cancel",
-    "text010": "Save",
-    "text011": "Thinking...",
-    "text012": "Typing...",
-    "text013": "Action choices",
-    "text014": "Character description",
-    "text015": "Chat settings",
-    "text016": "Chat models",
-    "text017": "Edit memory",
-    "text018": "My persona",
-    "text019": "Story type and rules",
-    "text020": "Start a new chat",
-    "text021": "Close",
-    "text022": "{{value1}} VC/request",
-    "text023": "Hide description",
-    "text024": "Show description",
-    "text025": "Character",
-    "text026": "You",
-    "text027": "Could not load the chat",
-    "text028": "Could not select the model",
-    "text029": "Not enough VerseCoins",
-    "text030": "The response stream was interrupted",
-    "text031": "Response regenerated",
-    "text032": "Could not regenerate the response",
-    "text033": "Response continued",
-    "text034": "Could not continue the response",
-    "text035": "Delete this message?",
-    "text036": "The message will be removed from the chat history. This cannot be undone.",
-    "text037": "Message deleted",
-    "text038": "Could not delete the message",
-    "text039": "Message updated",
-    "text040": "Could not save the message",
-    "text041": "Chat history cleared",
-    "text042": "Could not clear the chat",
-    "text043": "Copied",
-    "text044": "Could not copy",
-    "text045": "Could not send the message",
-    "text046": "No models found",
-    "text047": "About the character",
-    "text048": "Start a conversation with the character. Write something!",
-    "text049": "Retry",
-    "text050": "The history and memory of your current chat with this character will be deleted. The new story will use the type from the current character card. Continue?",
-    "text051": "Start over",
-    "text052": "How VC are charged",
-    "text053": "Your move…",
-    "text054": "Send",
-    "model001": "Fast replies for long, lively conversations.",
-    "model002": "An accessible starting point with pleasant writing and strong Russian.",
-    "model003": "A balance of price and quality for lively dialogue.",
-    "model004": "Creative, suited to unusual plots and ideas.",
-    "model005": "For roleplay and complex characters.",
-    "model006": "A reliable style with clear, focused reasoning.",
-    "model007": "Realistic scenes and fewer invented details.",
-    "model008": "For understanding context and building worlds.",
-    "model009": "For complex reasoning and detailed scenarios."
+    "text001": "행동",
+    "text002": "메시지 작업",
+    "text003": "편집",
+    "text004": "삭제",
+    "text005": "복사",
+    "text006": "계속",
+    "text007": "다시 생성",
+    "text008": "메시지는 비워둘 수 없습니다",
+    "text009": "취소",
+    "text010": "저장",
+    "text011": "생각 중...",
+    "text012": "입력 중...",
+    "text013": "행동 선택지",
+    "text014": "캐릭터 설명",
+    "text015": "채팅 설정",
+    "text016": "채팅 모델",
+    "text017": "기억 편집",
+    "text018": "내 페르소나",
+    "text019": "스토리 유형 및 규칙",
+    "text020": "새 채팅 시작",
+    "text021": "닫기",
+    "text022": "{{value1}} VC/요청",
+    "text023": "설명 숨기기",
+    "text024": "설명 표시",
+    "text025": "캐릭터",
+    "text026": "당신",
+    "text027": "채팅을 불러올 수 없습니다",
+    "text028": "모델을 선택할 수 없습니다",
+    "text029": "VerseCoins가 부족합니다",
+    "text030": "응답 스트림이 중단되었습니다",
+    "text031": "응답이 다시 생성되었습니다",
+    "text032": "응답을 다시 생성할 수 없습니다",
+    "text033": "응답이 이어졌습니다",
+    "text034": "응답을 이을 수 없습니다",
+    "text035": "이 메시지를 삭제하시겠습니까?",
+    "text036": "메시지가 채팅 기록에서 제거됩니다. 되돌릴 수 없습니다.",
+    "text037": "메시지가 삭제되었습니다",
+    "text038": "메시지를 삭제할 수 없습니다",
+    "text039": "메시지가 업데이트되었습니다",
+    "text040": "메시지를 저장할 수 없습니다",
+    "text041": "채팅 기록이 지워졌습니다",
+    "text042": "채팅을 지울 수 없습니다",
+    "text043": "복사됨",
+    "text044": "복사할 수 없습니다",
+    "text045": "메시지를 보낼 수 없습니다",
+    "text046": "모델을 찾을 수 없습니다",
+    "text047": "캐릭터 소개",
+    "text048": "캐릭터와 대화를 시작하세요. 무언가를 입력해 보세요!",
+    "text049": "다시 시도",
+    "text050": "현재 이 캐릭터와 나누는 채팅의 기록과 기억이 삭제됩니다. 새로운 스토리는 현재 캐릭터 카드의 유형을 사용합니다. 계속하시겠습니까?",
+    "text051": "다시 시작",
+    "text052": "VC 사용 방식 안내",
+    "text053": "당신의 차례예요…",
+    "text054": "보내기",
+    "model001": "길고 생동감 넘치는 대화를 위한 빠른 응답.",
+    "model002": "쾌적한 문체와 뛰어난 러시아어 능력을 갖춘 접근성 좋은 시작점.",
+    "model003": "생생한 대화를 위해 가격과 품질의 균형을 맞춘 모델.",
+    "model004": "독특한 플롯과 아이디어에 적합한 창의적인 모델.",
+    "model005": "롤플레이와 복잡한 캐릭터를 위해.",
+    "model006": "명확하고 집중된 추론 능력을 갖춘 신뢰할 수 있는 스타일.",
+    "model007": "현실적인 장면과 적은 허구적 디테일.",
+    "model008": "맥락 이해와 세계관 구축을 위해.",
+    "model009": "복잡한 추론과 세부적인 시나리오를 위해."
   }
 }

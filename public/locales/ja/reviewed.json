@@ -49,5 +49,6 @@
   "characterTags.groups.character": "キャラクター",
   "onboarding.catalog.pick": "キャラクターを探す",
   "chatSpeech.label": "キャラクターの音声",
-  "home.hero.catalogCount_other": "カタログに{{count}}人のキャラクター"
+  "home.hero.catalogCount_other": "カタログに{{count}}人のキャラクター",
+  "home.hero.text": "キャラクターやワールドを選んで、好きなときにストーリーを続けましょう。キャラクターは細部まで覚え、あなたと共に物語を育てます。"
 }

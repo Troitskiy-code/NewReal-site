@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { CHARACTER_LIMITS, parseCharacterBody } from "@/lib/characterFields";
 import { persistCharacterImage, CharacterMediaUnavailable } from "@/lib/characterMedia";
 import { validateGroupConfig } from "@/lib/roleplayConfig";
-import { translateCharacterFieldsToEn, translateMemoryFieldToEn } from "@/lib/translate";
+import { enqueueCharacterTranslations, saveManualEnglishTranslation } from "@/lib/characterTranslationQueue";
 import { sanitizeCharacterMemory } from "@/lib/persistentMemory";
 import { allocateCharacterSlug } from "@/lib/characterPublic";
 import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
@@ -151,8 +151,15 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
 
     // A failed/empty translation must never make an old EN card override a fresh edit.
     const enFields = ["name", "description", "descriptionCard", "appearance", "greeting", "scenario", "exampleDialogs", "avatarPrompt"] as const;
+    // Full editor forms also submit unchanged text when only the image/settings changed.
+    // Keep its translations rather than paying to translate the identical source again.
+    for (const field of enFields) if (data[field] === authResult.character[field]) delete data[field];
+    const stableJson = (value: unknown) => JSON.stringify(value, (_key, item) => item && typeof item === "object" && !Array.isArray(item)
+      ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+    if (body.publicMemory !== undefined && stableJson(parsed.publicMemory ?? null) === stableJson(authResult.character.publicMemory ?? null)) delete data.publicMemory;
+    if (body.privateMemory !== undefined && stableJson(parsed.privateMemory ?? null) === stableJson(authResult.character.privateMemory ?? null)) delete data.privateMemory;
     for (const field of enFields) {
-      if (body[field] !== undefined) Object.assign(data, { [`${field}_en`]: null });
+      if (data[field] !== undefined) Object.assign(data, { [`${field}_en`]: null });
     }
     // An editor may supply the English text itself (machine translation confuses pronouns and names);
     // such a field is not sent to the translator.
@@ -166,39 +173,11 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
       enOverrides[field] = typeof value === "string" ? value.trim() || null : null;
       Object.assign(data, { [`${field}_en`]: enOverrides[field] });
     }
-    const translate = (field: (typeof enFields)[number]) => body[field] !== undefined && !(field in enOverrides);
+    if (data.publicMemory !== undefined) data.publicMemory_en = Prisma.DbNull;
+    if (data.privateMemory !== undefined) data.privateMemory_en = Prisma.DbNull;
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Нет полей для обновления" }, { status: 400 });
-    }
-
-    try {
-      const translations = await translateCharacterFieldsToEn({
-        ...(translate("name") ? { name: parsed.name } : {}),
-        ...(translate("description") ? { description: parsed.description ?? undefined } : {}),
-        ...(translate("descriptionCard")
-          ? { descriptionCard: parsed.descriptionCard ?? undefined }
-          : {}),
-        ...(translate("appearance") ? { appearance: parsed.appearance ?? undefined } : {}),
-        ...(translate("greeting") ? { greeting: parsed.greeting ?? undefined } : {}),
-        ...(translate("scenario") ? { scenario: parsed.scenario ?? undefined } : {}),
-        ...(translate("exampleDialogs")
-          ? { exampleDialogs: parsed.exampleDialogs ?? undefined }
-          : {}),
-        ...(translate("avatarPrompt") ? { avatarPrompt: parsed.avatarPrompt ?? undefined } : {}),
-      });
-      Object.assign(data, translations);
-
-      if (body.publicMemory !== undefined) {
-        const publicMemoryEn = await translateMemoryFieldToEn(parsed.publicMemory);
-        data.publicMemory_en = publicMemoryEn ?? Prisma.DbNull;
-      }
-      if (body.privateMemory !== undefined) {
-        const privateMemoryEn = await translateMemoryFieldToEn(parsed.privateMemory);
-        data.privateMemory_en = privateMemoryEn ?? Prisma.DbNull;
-      }
-    } catch (translateError) {
-      errorLog("Server", "[Translate] Failed to update character translations", toSafeDiagnostic(translateError));
     }
 
     const character = await prisma.character.update({
@@ -212,6 +191,13 @@ async function handleCostedRequest(req: NextRequest, context: RouteContext) {
           : {}),
       },
     });
+
+    try {
+      if (Object.keys(enOverrides).length) await saveManualEnglishTranslation(character,enOverrides);
+      await enqueueCharacterTranslations(character.id);
+    } catch (translateError) {
+      errorLog("Server", "[Translate] Queue discovery will retry", toSafeDiagnostic(translateError));
+    }
 
     if (
       body.publicMemory !== undefined ||

@@ -1,1373 +1,1373 @@
 {
   "chatSpeech": {
-    "label": "Character speech",
-    "listen": "Listen",
-    "pause": "Pause",
-    "resume": "Resume playback",
-    "seek": "Seek audio",
-    "preview": "Speech text",
-    "speechOnly": "AI keeps dialogue and narration, removes stage directions and choice menus, and selects the delivery. The prepared speech text appears below the reply.",
-    "loading": "Generating audio…",
-    "player": "Character reply audio",
-    "voice": "Voice",
-    "settingsTitle": "Voice selection",
-    "settingsHint": "Automatic mode uses the character profile to select a voice. Worlds and groups use a male narrator. You can choose any voice manually.",
-    "settingsLoading": "Loading speech settings…",
-    "settingsUnavailable": "Speech is currently unavailable.",
-    "autoShort": "auto",
-    "autoVoice": "Automatic — {{voice}}",
+    "label": "Karakterin sesi",
+    "listen": "Dinle",
+    "pause": "Duraklat",
+    "resume": "Oynatmayı sürdür",
+    "seek": "Sesi ileri sar",
+    "preview": "Konuşma metni",
+    "speechOnly": "Yapay zeka diyalogu ve anlatımı korur, sahne yönergelerini ve seçim menülerini kaldırır ve sunumu seçer. Hazırlanan konuşma metni yanıtın altında görünür.",
+    "loading": "Ses oluşturuluyor…",
+    "player": "Karakter yanıt sesi",
+    "voice": "Ses",
+    "settingsTitle": "Ses seçimi",
+    "settingsHint": "Otomatik kip, karakter profiline göre bir ses seçer. Dünyalar ve gruplar erkek anlatıcı kullanır. İsterseniz herhangi bir sesi elle seçebilirsiniz.",
+    "settingsLoading": "Ses ayarları yükleniyor…",
+    "settingsUnavailable": "Ses şu anda kullanılamıyor.",
+    "autoShort": "oto",
+    "autoVoice": "Otomatik — {{voice}}",
     "autoReasons": {
-      "female": "A female voice was selected from the character profile.",
-      "male": "A male voice was selected from the character profile.",
-      "narrator": "This story uses a male narrator by default.",
-      "unknown": "The character profile does not specify a clear gender. A male voice is used by default; you can change it manually."
+      "female": "Karakter profiline göre kadın sesi seçildi.",
+      "male": "Karakter profiline göre erkek sesi seçildi.",
+      "narrator": "Bu hikâyede varsayılan olarak erkek anlatıcı kullanılır.",
+      "unknown": "Karakter profili cinsiyeti belirtmiyor. Varsayılan olarak erkek sesi kullanılır; elle değiştirebilirsiniz."
     },
     "voiceGroups": {
-      "female": "Female voices",
-      "male": "Male voices",
-      "other": "Additional voice"
+      "female": "Kadın sesleri",
+      "male": "Erkek sesleri",
+      "other": "Ek ses"
     },
     "voiceDescriptions": {
-      "aoede": "Breezy and relaxed. For natural conversations and gentle delivery.",
-      "kore": "Firm and composed. For confident, commanding characters.",
-      "leda": "Youthful and fresh. For light, lively conversations.",
-      "zephyr": "Bright and clear. For open, friendly characters.",
-      "fenrir": "Energetic and expressive. For emotional dialogue and dynamic scenes.",
-      "charon": "Calm and informative. For narration, world descriptions and measured storytelling.",
-      "orus": "Firm and confident. For serious, decisive characters.",
-      "puck": "Upbeat and lively. For outgoing, optimistic characters.",
-      "fola": "The original NewVerse conversational voice, retained for listeners who preferred it."
+      "aoede": "Hafif ve rahat. Doğal konuşmalar ve yumuşak sunum için.",
+      "kore": "Kararlı ve sakin. Güvenli, otoriter karakterler için.",
+      "leda": "Genç ve taze. Hafif, canlı konuşmalar için.",
+      "zephyr": "Parlak ve net. Açık, arkadaş canlısı karakterler için.",
+      "fenrir": "Enerjik ve duygulu. Duygusal diyaloglar ve dinamik sahneler için.",
+      "charon": "Sakin ve bilgilendirici. Anlatım, dünya tanımları ve dikkatli anlatım için.",
+      "orus": "Güçlü ve kararlı. Ciddi, kararlı karakterler için.",
+      "puck": "Neşeli ve canlı. Dışa dönük, iyimser karakterler için.",
+      "fola": "NewVerse'ın orijinal konuşma sesi. Eski sesi tercih edenler için korunmuştur."
     },
-    "voiceSaved": "Your choice is saved for this character on this device and applies to future playbacks.",
-    "voiceChangeBusy": "Wait for the current recording to finish preparing before changing the voice.",
+    "voiceSaved": "Seçiminiz bu karakter için bu cihazda kaydedildi ve ilerideki dinlemelerde uygulanacak.",
+    "voiceChangeBusy": "Sesi değiştirmeden önce mevcut kaydın hazırlanmasını bekleyin.",
     "voices": {
       "fola": "Fola",
       "fenrir": "Fenrir"
     },
-    "unlimited": "Unlimited speech is included",
-    "daily": "Playbacks: {{remaining}} of 1 left today",
-    "reset": "One playback a day, including replays. Resets at 00:00 Moscow time. Pausing and resuming do not use another play.",
-    "upgrade": "Unlimited with a subscription",
+    "unlimited": "Sınırsız konuşma dahil",
+    "daily": "Dinlemeler: bugün kalan {{remaining}} / 1",
+    "reset": "Günde bir dinleme hakkı, tekrarlar dahil. Moskova saatiyle 00:00'da sıfırlanır. Duraklatma ve devam ettirme yeni hak harcamaz.",
+    "upgrade": "Abonelikle sınırsız",
     "errors": {
-      "unauthorized": "Sign in to listen to this reply.",
-      "notFound": "This reply is unavailable. Refresh the chat.",
-      "empty": "This reply only contains actions or stage directions, with no words to read.",
-      "tooLong": "The text is too long: up to 16,000 characters per reply and 8,000 in the audio script.",
-      "busy": "Another reply is being generated. Please wait.",
-      "quota": "Your free playback has been used today. Replays also count. Resets at 00:00 Moscow time. Subscriptions include unlimited speech.",
-      "rateLimit": "Too many requests. Try again in a minute.",
-      "changed": "The reply has changed. Try generating its audio again.",
-      "unavailable": "Could not load the audio. Please try again later.",
-      "playback": "Press play on the audio player. There is no need to generate the audio again.",
-      "pending": "Audio is still being prepared. Try Listen again later to continue the same recording.",
-      "uncertain": "The service did not confirm whether synthesis started. Retrying this reply is temporarily unavailable; your daily playback is preserved."
+      "unauthorized": "Bu yanıtı dinlemek için oturum açın.",
+      "notFound": "Bu yanıt kullanılamıyor. Sohbeti yenileyin.",
+      "empty": "Bu yanıt yalnızca eylemler veya sahne yönergeleri içeriyor, okunacak söz yok.",
+      "tooLong": "Metin çok uzun: yanıtta 16.000 karakter, ses betiğinde 8.000 karakter sınırı var.",
+      "busy": "Başka bir yanıt hazırlanıyor. Lütfen bekleyin.",
+      "quota": "Ücretsiz dinleme hakkınız bugün için bitti. Tekrarlar da sayılır. Moskova saatiyle 00:00'da sıfırlanır. Aboneliklerde sınırsız konuşma vardır.",
+      "rateLimit": "Çok fazla istek. Bir dakika sonra tekrar deneyin.",
+      "changed": "Yanıt değişti. Sesini yeniden oluşturmayı deneyin.",
+      "unavailable": "Ses yüklenemedi. Lütfen daha sonra tekrar deneyin.",
+      "playback": "Ses oynatıcıda oynat'a basın. Sesi yeniden oluşturmak gerekmez.",
+      "pending": "Ses hâlâ hazırlanıyor. Aynı kaydı devam ettirmek için daha sonra Dinle'yi tekrar deneyin.",
+      "uncertain": "Hizmet, sentezin başlayıp başlamadığını onaylayamadı. Bu yanıt için yeniden deneme geçici olarak kullanılamaz; günlük dinleme hakkınız korunur."
     }
   },
   "header": {
     "title": "NewVerse",
-    "openMenu": "Open menu",
-    "closeMenu": "Close menu",
-    "collapseMenu": "Collapse menu",
-    "expandMenu": "Expand menu",
-    "profileMenu": "Profile menu",
-    "mainNav": "Main navigation",
-    "bottomNav": "Quick navigation",
+    "openMenu": "Menüyü aç",
+    "closeMenu": "Menüyü kapat",
+    "collapseMenu": "Menüyü daralt",
+    "expandMenu": "Menüyü genişlet",
+    "profileMenu": "Profil menüsü",
+    "mainNav": "Ana navigasyon",
+    "bottomNav": "Hızlı navigasyon",
     "menuShort": {
-      "home": "Home",
-      "chats": "Chats",
-      "create": "Create",
-      "coins": "Coins",
-      "profile": "Profile",
-      "favorites": "Favorites"
+      "home": "Ana",
+      "chats": "Sohbetler",
+      "create": "Oluştur",
+      "coins": "Jetonlar",
+      "profile": "Profil",
+      "favorites": "Favoriler"
     },
     "menu": {
-      "home": "Home",
-      "chats": "My chats",
-      "pricing": "Subscription",
+      "home": "Ana sayfa",
+      "chats": "Sohbetlerim",
+      "pricing": "Abonelik",
       "coins": "VerseCoins",
-      "create": "Create character",
-      "profile": "Profile",
-      "favorites": "Favorites",
-      "support": "Support",
-      "updates": "Updates"
+      "create": "Karakter oluştur",
+      "profile": "Profil",
+      "favorites": "Favoriler",
+      "support": "Destek",
+      "updates": "Güncellemeler"
     }
   },
   "footer": {
-    "offer": "Public offer",
-    "terms": "Terms of use",
-    "privacy": "Privacy policy",
-    "refund": "Refund policy",
-    "rules": "Platform rules",
-    "support": "Support",
-    "updates": "Updates on Telegram",
-    "copyright": "© {{year}} NewVerse — Your universe of characters"
+    "offer": "Genel Teklif",
+    "terms": "Kullanım Koşulları",
+    "privacy": "Gizlilik Politikası",
+    "refund": "İade Politikası",
+    "rules": "Platform Kuralları",
+    "support": "Destek",
+    "updates": "Telegram'da Güncellemeler",
+    "copyright": "© {{year}} NewVerse — Karakterler dünyanız"
   },
   "language": {
-    "label": "Language",
-    "title": "Interface language",
-    "choose": "Choose language",
-    "close": "Close language selection",
-    "search": "Find a language",
-    "automatic": "Automatic",
-    "browserLanguage": "Browser language · {{language}}",
-    "saved": "Your choice will be saved for future visits",
-    "empty": "No matching language",
+    "label": "Dil",
+    "title": "Arayüz dili",
+    "choose": "Dil seç",
+    "close": "Dil seçimini kapat",
+    "search": "Dil ara",
+    "automatic": "Otomatik",
+    "browserLanguage": "Tarayıcı dili · {{language}}",
+    "saved": "Seçimin sonraki ziyaretler için kaydedilecek",
+    "empty": "Eşleşen dil bulunamadı",
     "ru": "RU",
     "en": "EN"
   },
   "currency": {
-    "label": "Currency",
+    "label": "Para birimi",
     "RUB": "RUB",
     "USD": "USD",
     "EUR": "EUR"
   },
   "auth": {
-    "login": "Sign in",
-    "loginTitle": "Sign in",
-    "register": "Sign up",
-    "registerTitle": "Sign up",
-    "email": "Email",
-    "emailPlaceholder": "Email",
-    "password": "Password",
-    "name": "Name",
-    "confirmPassword": "Confirm password",
-    "forgot_password": "Forgot password?",
-    "login_google": "Sign in with Google",
-    "register_google": "Sign up with Google",
-    "or": "or",
-    "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?",
-    "invalidCredentials": "Invalid email or password",
-    "passwordMismatch": "Passwords do not match",
-    "registerError": "Registration failed",
-    "registerSuccess": "Registration successful! We sent a confirmation email. Redirecting to sign in...",
-    "connectionError": "A server connection error occurred",
-    "passwordChanged": "Password changed successfully",
-    "forgotTitle": "Reset password",
-    "sendLink": "Send link",
-    "sending": "Sending...",
-    "linkSent": "A password reset link has been sent to your email",
-    "sendLinkError": "Could not send the link",
-    "rememberedPassword": "Remembered your password?",
-    "resetTitle": "Set a new password",
-    "newPassword": "New password",
-    "confirmNewPassword": "Confirm password",
-    "resetPassword": "Reset password",
-    "saving": "Saving...",
-    "checkingLink": "Checking the link...",
-    "invalidLink": "This link is invalid or has expired",
-    "resetFailed": "Could not reset the password",
-    "requestNewLink": "Request a new link",
-    "backToLogin": "Back to sign in",
-    "minPassword": "Password must be at least {{count}} characters",
-    "loading": "Loading...",
-    "consentTerms": "I accept the <terms>Terms of Use</terms> and consent to personal data processing under the <privacy>Privacy Policy</privacy>.",
-    "consentOffer": "I have read the <offer>Public Offer</offer> and accept its terms.",
-    "consentRules": "I have read the <rules>platform rules</rules>.",
-    "consentRequired": "Please accept all required consents to sign up.",
-    "verifyTitle": "Confirm email",
-    "verifying": "Confirming your email...",
-    "verifySuccess": "Email confirmed! You now have full access to all features.",
-    "verifyInvalid": "This link is invalid or has expired. Request a new email.",
-    "resendEmail": "Resend confirmation email",
-    "resendSuccess": "The email has been sent. Check your inbox.",
-    "resendError": "Could not send the email",
-    "goToProfile": "Go to profile",
-    "verifyBanner": "Confirm your email to unlock full access.",
-    "refreshStatus": "Refresh status",
-    "refreshStatusError": "Could not refresh the status"
+    "login": "Giriş yap",
+    "loginTitle": "Giriş yap",
+    "register": "Kayıt ol",
+    "registerTitle": "Kayıt ol",
+    "email": "E-posta",
+    "emailPlaceholder": "E-posta",
+    "password": "Şifre",
+    "name": "Ad",
+    "confirmPassword": "Şifreyi onayla",
+    "forgot_password": "Şifrenizi mi unuttunuz?",
+    "login_google": "Google ile oturum aç",
+    "register_google": "Google ile kaydol",
+    "or": "veya",
+    "noAccount": "Hesabınız yok mu?",
+    "hasAccount": "Zaten hesabınız var mı?",
+    "invalidCredentials": "Geçersiz e-posta veya şifre",
+    "passwordMismatch": "Şifreler eşleşmiyor",
+    "registerError": "Kayıt başarısız oldu",
+    "registerSuccess": "Kaydolma başarılı! Onay e-postasını gönderdik. Oturum açmaya yönlendiriliyorsunuz...",
+    "connectionError": "Sunucuya bağlanırken bir hata oluştu",
+    "passwordChanged": "Şifre başarıyla değiştirildi",
+    "forgotTitle": "Şifreyi sıfırla",
+    "sendLink": "Bağlantıyı gönder",
+    "sending": "Gönderiliyor...",
+    "linkSent": "Şifre sıfırlama bağlantısı e-postanıza gönderildi",
+    "sendLinkError": "Bağlantı gönderilemedi",
+    "rememberedPassword": "Şifrenizi mi hatırladınız?",
+    "resetTitle": "Yeni şifre belirleyin",
+    "newPassword": "Yeni şifre",
+    "confirmNewPassword": "Şifreyi onayla",
+    "resetPassword": "Şifreyi sıfırla",
+    "saving": "Kaydediliyor...",
+    "checkingLink": "Bağlantı kontrol ediliyor...",
+    "invalidLink": "Bu bağlantı geçersiz veya süresi dolmuş",
+    "resetFailed": "Şifre sıfırlanamadı",
+    "requestNewLink": "Yeni bağlantı iste",
+    "backToLogin": "Girişe geri dön",
+    "minPassword": "Şifre en az {{count}} karakter olmalıdır",
+    "loading": "Yükleniyor...",
+    "consentTerms": "Tüm <terms>Kullanım Koşulları</terms>'nı kabul ediyorum ve kişisel verilerimin işlenmesine <privacy>Gizlilik Politikası</privacy> uyarınca onay veriyorum.",
+    "consentOffer": "<offer>Genel Teklif</offer>'i okudum ve koşullarını kabul ediyorum.",
+    "consentRules": "<rules>platform kurallarını</rules> okudum.",
+    "consentRequired": "Kaydolmak için tüm gerekli onayları vermeniz gerekiyor.",
+    "verifyTitle": "E-postayı onayla",
+    "verifying": "E-posta onaylanıyor...",
+    "verifySuccess": "E-posta başarıyla onaylandı! Artık tüm özelliklere tam erişiminiz var.",
+    "verifyInvalid": "Bu bağlantı geçersiz veya süresi dolmuş. Yeni bir e-posta isteyin.",
+    "resendEmail": "Onay e-postasını yeniden gönder",
+    "resendSuccess": "E-posta gönderildi. Gelen kutunuzu kontrol edin.",
+    "resendError": "E-posta gönderilemedi",
+    "goToProfile": "Profile git",
+    "verifyBanner": "Tam erişimi açmak için e-postanızı onaylayın.",
+    "refreshStatus": "Durumu yenile",
+    "refreshStatusError": "Durum yenilenemedi"
   },
   "common": {
-    "submit": "Confirm",
-    "cancel": "Cancel",
-    "save": "Save",
-    "delete": "Delete",
-    "edit": "Edit",
-    "close": "Close",
-    "retry": "Try again",
-    "error": "Error",
-    "loading": "Loading...",
-    "user": "User"
+    "submit": "Onayla",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "close": "Kapat",
+    "retry": "Tekrar dene",
+    "error": "Hata",
+    "loading": "Yükleniyor…",
+    "user": "Kullanıcı"
   },
   "home": {
     "continue": {
-      "label": "Continue",
-      "you": "You"
+      "label": "Devam et",
+      "you": "Sen"
     },
-    "searchPlaceholder": "Search by name or tag...",
-    "sort": "Sort",
-    "sortTop": "Top",
-    "sortRandom": "Random",
-    "sortNew": "New",
-    "sortForYou": "For you",
-    "found": "Characters found: ",
-    "noCharacters": "No characters",
-    "noResults": "Nothing matched your search. Try changing the filters.",
-    "noPublished": "No published characters yet. Create the first one!",
-    "loadMore": "Load more",
-    "pagination": "Page navigation",
-    "page": "Page {{page}} of {{pages}}",
-    "prevPage": "Previous page",
-    "nextPage": "Next page",
+    "searchPlaceholder": "İsme veya etikete göre ara...",
+    "sort": "Sırala",
+    "sortTop": "Popüler",
+    "sortRandom": "Rastgele",
+    "sortNew": "Yeni",
+    "sortForYou": "Sana özel",
+    "found": "Bulunan karakterler: ",
+    "noCharacters": "Karakter yok",
+    "noResults": "Aramanla eşleşen bir şey yok. Filtreleri değiştirmeyi dene.",
+    "noPublished": "Henüz yayınlanan karakter yok. İlk sen yarat!",
+    "loadMore": "Daha fazla yükle",
+    "pagination": "Sayfa gezinmesi",
+    "page": "Sayfa {{page}} / {{pages}}",
+    "prevPage": "Önceki sayfa",
+    "nextPage": "Sonraki sayfa",
     "pageChooser": {
-      "open": "Go to any page",
-      "title": "Go to page",
-      "close": "Close page chooser",
-      "prevRange": "Previous ten page numbers",
-      "nextRange": "Next ten page numbers",
-      "range": "{{start}}–{{end}} of {{pages}}",
-      "first": "First · 1",
-      "last": "Last · {{pages}}",
-      "firstLabel": "First page",
-      "lastLabel": "Last page",
-      "inputLabel": "Or enter a page number",
-      "go": "Go",
-      "invalid": "Enter a whole number from 1 to {{pages}}"
+      "open": "Herhangi bir sayfaya git",
+      "title": "Sayfaya git",
+      "close": "Sayfa seçiciyi kapat",
+      "prevRange": "Önceki on sayfa",
+      "nextRange": "Sonraki on sayfa",
+      "range": "{{start}}–{{end}} / {{pages}}",
+      "first": "İlk · 1",
+      "last": "Son · {{pages}}",
+      "firstLabel": "İlk sayfa",
+      "lastLabel": "Son sayfa",
+      "inputLabel": "Ya da bir sayfa numarası gir",
+      "go": "Git",
+      "invalid": "1 ile {{pages}} arasında bir tam sayı girin"
     },
-    "reset": "Reset",
-    "resetSearch": "Clear search",
-    "genresLabel": "Genres",
-    "allGenres": "All",
+    "reset": "Sıfırla",
+    "resetSearch": "Aramayı temizle",
+    "genresLabel": "Türler",
+    "allGenres": "Tümü",
     "genres": {
-      "fantasy": "Fantasy",
-      "romance": "Romance",
+      "fantasy": "Fantastik",
+      "romance": "Romantik",
       "anime": "Anime",
-      "scifi": "Sci-Fi",
-      "mystic": "Mystery",
-      "realistic": "Modern world",
-      "adventure": "Adventure",
-      "horror": "Horror",
-      "comedy": "Comedy",
-      "drama": "Drama",
-      "detective": "Detective",
-      "everyday": "Slice of life",
+      "scifi": "Bilim Kurgu",
+      "mystic": "Gizem",
+      "realistic": "Modern dünya",
+      "adventure": "Macera",
+      "horror": "Korku",
+      "comedy": "Komedi",
+      "drama": "Dram",
+      "detective": "Polisiye",
+      "everyday": "Günlük yaşam",
       "cyberpunk": "Cyberpunk"
     },
     "sectionTitle": {
-      "top": "Popular right now",
-      "new": "New arrivals",
-      "random": "Random picks",
-      "for-you": "Picked for you",
-      "search": "Search results"
+      "top": "Şu anda popüler",
+      "new": "Yeni gelenler",
+      "random": "Rastgele seçimler",
+      "for-you": "Sana özel",
+      "search": "Arama sonuçları"
     },
     "hero": {
-      "eyebrow": "NewVerse — chat with AI characters",
-      "title": "Stories that remember you",
-      "text": "Pick a hero or a whole world and continue the plot whenever you like. Characters remember details and grow the story with you.",
-      "start": "Start a story",
-      "create": "Create your character",
-      "catalogCount_one": "{{count}} character in the catalog",
-      "catalogCount_other": "{{count}} characters in the catalog",
-      "languages": "Russian, English and Spanish"
+      "eyebrow": "NewVerse — yapay zekâ karakterleriyle sohbet et",
+      "title": "Sizi hatırlayan hikâyeler",
+      "text": "Bir kahraman ya da tüm bir dünya seçin ve istediğiniz zaman hikâyeyi sürdürün. Karakterler detayları hatırlar ve hikâyeyi sizinle birlikte geliştirir.",
+      "start": "Bir hikâye başlat",
+      "create": "Kendi karakterini oluştur",
+      "catalogCount_one": "Katalogda {{count}} karakter",
+      "catalogCount_other": "Katalogda {{count}} karakter",
+      "languages": "Birden fazla dil"
     },
     "recommendations": {
-      "discoveryTitle": "Discover new stories",
-      "personalizedHint": "Based on your favorites and recent chats, with new genres and fewer familiar characters.",
-      "discoveryHint": "A mix of genres, popular stories and new arrivals. Add favorites and chat to personalize these picks."
+      "discoveryTitle": "Yeni hikâyeler keşfedin",
+      "personalizedHint": "Favorilerinize ve son sohbetlerinize dayanarak; yeni türler ve daha az tanıdık karakterler.",
+      "discoveryHint": "Türlerin karışımı, popüler hikâyeler ve yeni gelenler. Favori ekleyin ve sohbet edin ki bu öneriler kişiselleşsin."
     }
   },
   "characterCard": {
-    "knownAbout": "Known about the character:",
-    "noDescription": "No description",
-    "messages_one": "{{formatted}} message",
-    "messages_other": "{{formatted}} messages"
+    "knownAbout": "Karakter hakkında bilinenler:",
+    "noDescription": "Açıklama yok",
+    "messages_one": "{{formatted}} mesaj",
+    "messages_other": "{{formatted}} mesaj"
   },
   "characterPage": {
-    "author": "Author",
+    "author": "Yazar",
     "unknownAuthor": "NewVerse",
-    "messages": "Messages: {{count}}",
-    "knownAbout": "Known about the character",
-    "tags": "Character tags",
-    "startChat": "Start chat",
-    "share": "Share",
-    "copied": "Link copied",
-    "shareFailed": "Could not copy the link",
-    "about": "About character",
-    "close": "Close",
-    "storyStart": "How the story begins",
-    "scenario": "Scenario",
-    "similar": "Similar characters",
+    "messages": "Mesajlar: {{count}}",
+    "knownAbout": "Karakter hakkında bilinenler",
+    "tags": "Karakter etiketleri",
+    "startChat": "Sohbete başla",
+    "share": "Paylaş",
+    "copied": "Bağlantı kopyalandı",
+    "shareFailed": "Bağlantı kopyalanamadı",
+    "about": "Karakter hakkında",
+    "close": "Kapat",
+    "storyStart": "Hikâye nasıl başlar",
+    "scenario": "Senaryo",
+    "similar": "Benzer karakterler",
     "faq": {
-      "title": "Frequently asked questions",
-      "freeQ": "Can I chat with {{name}} for free?",
-      "freeA": "Yes. Guests get {{limit}} {{messages}} without signing up. After sign-up you get {{onboarding}} free replies a day for the first week, then {{daily}} a day on the base model.",
-      "freeAPaid": "Yes. Guests get {{limit}} {{messages}} without signing up. After that you can continue the story in your account with VC or a subscription.",
-      "registerQ": "Do I need to sign up?",
-      "registerA": "Not to start: the first {{limit}} {{messages}} can be sent as a guest. To keep going, sign in and the guest chat moves to your account.",
-      "languageQ": "What language does {{name}} reply in?",
-      "languageA": "In the selected site language: Russian, English or Spanish. You can switch languages in the menu and continue the same story.",
-      "startQ": "How do I start the story?",
-      "startA": "Press “Start chat”. {{name}} opens the scene with the first message, and the plot follows your replies."
+      "title": "Sıkça sorulan sorular",
+      "freeQ": "{{name}} ile ücretsiz sohbet edebilir miyim?",
+      "freeA": "Evet. Üye olmadan ilk {{limit}} {{messages}} ücretsizdir. Kaydolduktan sonra ilk hafta her gün {{onboarding}} ücretsiz yanıt alırsınız, ardından temel modelde her gün {{daily}}.",
+      "freeAPaid": "Evet. Üye olmadan ilk {{limit}} {{messages}} ücretsizdir. Daha sonra hikâyeyi VC veya abonelikle hesabınızda devam ettirebilirsiniz.",
+      "registerQ": "Kayıt olmam gerekir mi?",
+      "registerA": "Hayır, başlamak için gerekmez: ilk {{limit}} {{messages}} misafir olarak gönderilebilir. Devam etmek için oturum açın, misafir sohbeti hesabınıza aktarılır.",
+      "languageQ": "{{name}} hangi dilde yanıt verir?",
+      "languageA": "Seçtiğiniz site dilinde. Menüden dili değiştirebilir ve aynı hikâyeyi devam ettirebilirsiniz.",
+      "startQ": "Hikâyeyi nasıl başlatırım?",
+      "startA": "‘Sohbete başla’ya tıklayın. {{name}} ilk mesajıyla sahneyi başlatır, ardından hikâye sizin yanıtlarınıza göre ilerler."
     },
-    "messagesWord_one": "message",
-    "messagesWord_other": "messages"
+    "messagesWord_one": "mesaj",
+    "messagesWord_other": "mesajlar"
   },
   "errorPage": {
-    "notFoundTitle": "Page not found",
-    "notFoundText": "The link may be outdated or the address has a typo. Characters and stories are waiting in the catalog.",
-    "toCatalog": "Go to catalog",
-    "errorTitle": "Something went wrong",
-    "errorText": "We already know about the problem. Try again or go back to the catalog.",
-    "retry": "Try again",
-    "errorCode": "Error code"
+    "notFoundTitle": "Sayfa bulunamadı",
+    "notFoundText": "Bağlantı süresi dolmuş ya da adreste yazım hatası var olabilir. Karakterler ve hikâyeler katalogda sizi bekliyor.",
+    "toCatalog": "Kataloga git",
+    "errorTitle": "Bir şeyler yanlış gitti",
+    "errorText": "Sorunu zaten biliyoruz. Lütfen tekrar deneyin ya da kataloga geri dönün.",
+    "retry": "Tekrar dene",
+    "errorCode": "Hata kodu"
   },
   "support": {
-    "title": "Support",
-    "intro": "For billing, technical issues, refunds, and moderation appeals, use the form. We will contact you at the email you provide.",
-    "formTitle": "Submit a request",
-    "topic": "Topic",
-    "email": "Your email",
-    "message": "Message",
-    "messagePlaceholder": "Describe the issue or question...",
-    "submit": "Send",
-    "sending": "Sending...",
-    "success": "Your request was accepted and stored.",
-    "ticketId": "Request number: {{id}}.",
-    "error": "Could not send the request. Please try again.",
-    "invalidTopic": "Choose a topic",
-    "invalidEmail": "Enter a valid email",
-    "invalidMessage": "The message must be between 10 and 4000 characters",
-    "referenceTicket": "Previous ticket number (optional)",
-    "referenceHint": "To continue a conversation, copy the ticket number from the email and use the same email address. Support will receive the number with your new message.",
-    "invalidReference": "Check the ticket number: copy only the number from the email, without spaces or a link.",
-    "mailtoHint": "The request is stored on the server and copied to support email.",
-    "userEmailPrefix": "User email: ",
+    "title": "Destek",
+    "intro": "Ödeme, teknik sorunlar, iadeler ve moderasyon itirazları için formu kullanın. Size belirttiğiniz e-posta adresiyle ulaşacağız.",
+    "formTitle": "Talep gönder",
+    "topic": "Konu",
+    "email": "E-postanız",
+    "message": "Mesaj",
+    "messagePlaceholder": "Sorunu ya da soruyu açıklayın...",
+    "submit": "Gönder",
+    "sending": "Gönderiliyor...",
+    "success": "Talebiniz alındı ve kaydedildi.",
+    "ticketId": "Talep numarası: {{id}}.",
+    "error": "Talep gönderilemedi. Lütfen tekrar deneyin.",
+    "invalidTopic": "Lütfen bir konu seçin",
+    "invalidEmail": "Geçerli bir e-posta girin",
+    "invalidMessage": "Mesaj 10 ile 4000 karakter arasında olmalıdır",
+    "referenceTicket": "Önceki talep numarası (isteğe bağlı)",
+    "referenceHint": "Sohbeti devam ettirmek için e-postadan talep numarasını kopyalayın ve aynı e-posta adresini kullanın. Destek, yeni mesajınızla birlikte numarayı alacaktır.",
+    "invalidReference": "Talep numarasını kontrol edin: sadece e-postadan numarayı, boşluk veya bağlantı olmadan kopyalayın.",
+    "mailtoHint": "Talep sunucuda saklanır ve destek e-postasına kopyalanır.",
+    "userEmailPrefix": "Kullanıcı e-postası: ",
     "topics": {
-      "payment": "Billing question",
-      "technical": "Technical issue",
-      "refund": "Refund",
-      "moderation": "Appeal a moderation decision",
-      "other": "Other"
+      "payment": "Ödeme sorusu",
+      "technical": "Teknik sorun",
+      "refund": "İade",
+      "moderation": "Moderasyon kararına itiraz",
+      "other": "Diğer"
     }
   },
   "profile": {
     "wallet": {
-      "title": "VerseCoins wallet",
-      "topUp": "Top up"
+      "title": "VerseCoins cüzdanı",
+      "topUp": "Yükle"
     },
-    "title": "My profile",
-    "loginPrompt": "Sign in to view your profile and characters.",
-    "registeredAt": "Registered:",
-    "catalog": "Catalog",
-    "subscription": "Subscription",
-    "freePlan": "Free plan",
-    "until": "Until {{date}} · {{days}} days left",
-    "then": "Then: {{label}}",
-    "recurringOn": "Auto-renewal is on",
-    "recurringOff": "Auto-renewal is off",
-    "recurringSetup": "The new plan requires auto-renewal to be set up again.",
-    "manageSubscription": "Manage subscription",
-    "characters": "Characters",
-    "chats": "Chats",
-    "messages": "Messages",
-    "myCharacters": "My characters",
+    "title": "Profilim",
+    "loginPrompt": "Profilinizi ve karakterlerinizi görmek için oturum açın.",
+    "registeredAt": "Kayıt tarihi:",
+    "catalog": "Katalog",
+    "subscription": "Abonelik",
+    "freePlan": "Ücretsiz plan",
+    "until": "{{date}} tarihine kadar · {{days}} gün kaldı",
+    "then": "Sonra: {{label}}",
+    "recurringOn": "Otomatik yenileme açık",
+    "recurringOff": "Otomatik yenileme kapalı",
+    "recurringSetup": "Yeni plan için otomatik yenileme yeniden ayarlanmalıdır.",
+    "manageSubscription": "Aboneliği yönet",
+    "characters": "Karakterler",
+    "chats": "Sohbetler",
+    "messages": "Mesajlar",
+    "myCharacters": "Karakterlerim",
     "count": "{{count}}",
-    "empty": "You have not created any characters yet",
-    "createFirst": "Create your first character",
-    "private": "Private",
-    "hiddenForViolation": "Hidden for a rule violation",
-    "noDescription": "No description",
-    "chat": "Chat",
-    "deleteConfirm": "Are you sure you want to delete {{name}}? This cannot be undone.",
-    "deleted": "Character deleted",
-    "deleteError": "Could not delete the character",
-    "loadError": "Could not load the profile",
-    "settingsSoon": "Settings will be available soon",
-    "notificationsSoon": "Notifications will be available soon",
-    "settings": "Settings",
-    "notifications": "Notifications",
-    "logout": "Sign out",
-    "startPlan": "No subscription"
+    "empty": "Henüz bir karakter oluşturmamışsınız",
+    "createFirst": "İlk karakterini oluştur",
+    "private": "Özel",
+    "hiddenForViolation": "Kurallara aykırı olduğu için gizlendi",
+    "noDescription": "Açıklama yok",
+    "chat": "Sohbet",
+    "deleteConfirm": "{{name}} karakterini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "deleted": "Karakter silindi",
+    "deleteError": "Karakter silinemedi",
+    "loadError": "Profil yüklenemedi",
+    "settingsSoon": "Ayarlar yakında kullanılabilir olacak",
+    "notificationsSoon": "Bildirimler yakında kullanılabilir olacak",
+    "settings": "Ayarlar",
+    "notifications": "Bildirimler",
+    "logout": "Çıkış yap",
+    "startPlan": "Aboneliğiniz yok"
   },
   "notifications": {
-    "title": "Notifications",
-    "empty": "You have no notifications yet",
-    "markAllRead": "Mark all as read",
-    "showAll": "Show all",
-    "loginPrompt": "Sign in to see your notifications",
-    "loadError": "Could not load notifications",
-    "justNow": "just now",
-    "minutesAgo": "{{count}} min ago",
-    "hoursAgo": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago",
-    "filterAll": "All",
-    "typePurchaseVc": "VC purchase",
-    "typePurchaseSubscription": "Subscription",
-    "typeDailyBonus": "Daily bonus",
-    "typeAdmin": "From the team",
-    "open": "Open notifications",
-    "markedRead": "All notifications marked as read"
+    "title": "Bildirimler",
+    "empty": "Henüz bildiriminiz yok",
+    "markAllRead": "Tümünü okundu olarak işaretle",
+    "showAll": "Tümünü göster",
+    "loginPrompt": "Bildirimlerinizi görmek için oturum açın",
+    "loadError": "Bildirimler yüklenemedi",
+    "justNow": "şimdi",
+    "minutesAgo": "{{count}} dakika önce",
+    "hoursAgo": "{{count}}s önce",
+    "daysAgo": "{{count}}g önce",
+    "filterAll": "Tümü",
+    "typePurchaseVc": "VC satın alındı",
+    "typePurchaseSubscription": "Abonelik",
+    "typeDailyBonus": "Günlük bonus",
+    "typeAdmin": "Takımdan",
+    "open": "Bildirimleri aç",
+    "markedRead": "Tüm bildirimler okundu olarak işaretlendi"
   },
   "pricing": {
-    "coinRulesTitle": "How VC are spent",
-    "coinRulesSubscription": "Subscription VC do not accumulate: activating or renewing a plan replaces the previous pack balance. Unused subscription VC expire when the subscription ends.",
-    "coinRulesPermanent": "VC purchased separately do not expire. Subscription VC are spent first, followed by purchased VC.",
-    "coinRulesActions": "A new reply, retry and continuation are separate requests, each charged for the selected model. The cost is shown before sending. VC are charged after the model response is received.",
-    "badge": "Subscriptions",
-    "title": "NewVerse plans",
-    "subtitle": "Monthly and yearly plans with bonus VerseCoins and a larger context window. Pick the level that fits your stories and chats.",
-    "activeUntil": "Your subscription: {{label}}, active until {{date}}",
-    "noActive": "You have no active subscription",
-    "pending": "The new {{label}} subscription will start after the current one ends ({{date}})",
-    "cancelling": "Cancelling...",
-    "cancelPending": "Cancel",
-    "recurringMissing": "Auto-renewal is not set up for the current plan. Subscribe again to keep payments automatic.",
-    "month": "Month",
-    "year": "Year",
-    "popular": "Popular",
-    "yearlyPlan": "Yearly subscription",
-    "monthlyPlan": "Monthly subscription",
-    "forever": "forever",
-    "perYear": "per year",
-    "perMonth": "per month",
-    "vcPerMonth": "{{count}} VC / mo",
-    "context": "Context {{tokens}} · daily bonus ×{{multiplier}}",
+    "coinRulesTitle": "VC nasıl harcanır",
+    "coinRulesSubscription": "Abonelik VC'leri birikmez: bir planı etkinleştirirken veya yenilerken önceki paket bakiyesi sıfırlanır. Abonelik bitiminde kullanılmamış abonelik VC'leri sona erer.",
+    "coinRulesPermanent": "Ayrı satın alınan VC'ler sona ermez. Önce abonelik VC'leri harcanır, ardından satın alınan VC'ler harcanır.",
+    "coinRulesActions": "Yeni yanıt, yeniden dene ve devam et ayrı isteklerdir ve her biri seçilen modele göre ücretlendirilir. Maliyet, göndermeden önce gösterilir. Yanıt alındıktan sonra VC'ler tahsil edilir.",
+    "badge": "Abonelikler",
+    "title": "NewVerse planları",
+    "subtitle": "Bonus VerseCoin'ler ve genişletilmiş bağlam penceresiyle aylık ve yıllık planlar. Hikâyelerinize ve sohbetlerinize uygun seviyeyi seçin.",
+    "activeUntil": "Aboneliğiniz: {{label}}, {{date}} tarihine kadar etkin",
+    "noActive": "Etkin aboneliğiniz yok",
+    "pending": "Yeni {{label}} aboneliği, mevcut olanın bitiminde başlayacak ({{date}})",
+    "cancelling": "İptal ediliyor...",
+    "cancelPending": "İptal et",
+    "recurringMissing": "Mevcut plan için otomatik yenileme ayarlanmamış. Ödemelerin otomatik devam etmesi için tekrar abone olun.",
+    "month": "Ay",
+    "year": "Yıl",
+    "popular": "Popüler",
+    "yearlyPlan": "Yıllık abonelik",
+    "monthlyPlan": "Aylık abonelik",
+    "forever": "sürekli",
+    "perYear": "yılda",
+    "perMonth": "ayda",
+    "vcPerMonth": "{{count}} VC/ay",
+    "context": "Bağlam {{tokens}} · günlük bonus ×{{multiplier}}",
     "planFeatures": {
-      "dialog": [
-        "2,500 VC per month",
-        "For casual conversations and everyday scenes",
-        "Daily bonus multiplier ×1.5"
-      ],
-      "history": [
-        "10,000 VC per month",
-        "For long roleplay and story development",
-        "Daily bonus multiplier ×2"
-      ],
-      "universe": [
-        "30,000 VC per month",
-        "For deep worlds and complex story arcs",
-        "Daily bonus multiplier ×2.5"
-      ]
+      "dialog": {
+        "0": "Aylık 2.500 VC",
+        "1": "Günlük sohbetler ve sıradan sahneler için",
+        "2": "Günlük bonus çarpanı ×1,5"
+      },
+      "history": {
+        "0": "Aylık 10.000 VC",
+        "1": "Uzun süreli rol yapımı ve hikâye geliştirme için",
+        "2": "Günlük bonus çarpanı ×2"
+      },
+      "universe": {
+        "0": "Aylık 30.000 VC",
+        "1": "Derin dünyalar ve karmaşık hikâye yayını için",
+        "2": "Günlük bonus çarpanı ×2,5"
+      }
     },
-    "redirecting": "Payment...",
-    "subscribe": "Subscribe",
-    "footnote": "Activating a plan credits bonus VC to your balance. The multiplier applies to the daily bonus. Request counts depend on the model you choose. Payments go through Robokassa and are credited after confirmation.",
-    "checkoutTitle": "Subscribe to {{name}}",
-    "applyNow": "Apply now",
-    "applyNowHint": "Your current subscription, if any, will be replaced. Remaining time is not refunded.",
-    "applyLater": "Apply after the current plan ends",
-    "applyLaterHint": "The new subscription will start automatically when the current one expires.",
-    "offerConsent": "I agree to automatic charges when the subscription renews under the terms of the",
-    "offerLink": "offer",
-    "offerConsentNote": "(you can turn this off in profile settings)",
-    "consentRequired": "You must agree to auto-renewal to subscribe",
-    "goToPayment": "Continue to payment",
-    "creatingPayment": "Creating payment...",
-    "paymentError": "Could not create the payment",
-    "cancelPendingSuccess": "Pending subscription cancelled",
-    "cancelPendingError": "Could not cancel the pending subscription",
-    "cancelPendingConfirmTitle": "Cancel the pending subscription?",
-    "cancelPendingConfirm": "The new plan will not start when the current subscription ends.",
-    "estimateTitle": "Request estimate",
-    "estimate": "About {{base}} requests on {{baseName}} ({{baseCost}} VC) or {{premium}} on {{premiumName}} ({{premiumCost}} VC) from the monthly pack. This is an estimate for a new send; actual count depends on conversation length. A technical retry after a failure is not billed as a new turn.",
-    "estimateUnavailable": "The request estimate appears after the model catalog loads.",
-    "paymentPending": "Payment is not confirmed yet. Balance and subscription will update after Robokassa notifies us.",
-    "paymentConfirmed": "Payment confirmed."
+    "redirecting": "Ödeme...",
+    "subscribe": "Abone ol",
+    "footnote": "Plan etkinleştirildiğinde bakiyeye bonus VC eklenir. Çarpan, günlük bonusa uygulanır. İstek sayısı seçtiğiniz modele göre değişir. Ödemeler Robokassa üzerinden yapılır ve onaylandıktan sonra bakiyeye eklenir.",
+    "checkoutTitle": "{{name}} aboneliği başlat",
+    "applyNow": "Şimdi uygula",
+    "applyNowHint": "Geçerli aboneliğiniz varsa, değiştirilecektir. Kalan süre iade edilmez.",
+    "applyLater": "Geçerli plan bittikten sonra uygula",
+    "applyLaterHint": "Yeni abonelik, mevcut abonelik sona erdiğinde otomatik olarak başlayacak.",
+    "offerConsent": "Abonelik yenilendiğinde, şu şartlar altında otomatik ücretlendirmeyi kabul ediyorum:",
+    "offerLink": "teklif",
+    "offerConsentNote": "(profildaki ayarlardan kapatabilirsiniz)",
+    "consentRequired": "Abone olmak için otomatik yenilemeyi kabul etmeniz gerekir",
+    "goToPayment": "Ödemeye devam et",
+    "creatingPayment": "Ödeme oluşturuluyor...",
+    "paymentError": "Ödeme oluşturulamadı",
+    "cancelPendingSuccess": "Bekleyen abonelik iptal edildi",
+    "cancelPendingError": "Bekleyen abonelik iptal edilemedi",
+    "cancelPendingConfirmTitle": "Bekleyen abonelik iptal edilsin mi?",
+    "cancelPendingConfirm": "Geçerli abonelik sona erdiğinde yeni plan başlamayacak.",
+    "estimateTitle": "İstek tahmini",
+    "estimate": "Aylık paketten yaklaşık {{base}} istek {{baseName}} üzerinde ({{baseCost}} VC) ya da {{premium}} istek {{premiumName}} üzerinde ({{premiumCost}} VC). Bu, yeni bir gönderim için bir tahmindir; gerçek sayı konuşma uzunluğuna göre değişir. Bir hatanın ardından yapılan teknik yeniden deneme yeni bir tur olarak faturalandırılmaz.",
+    "estimateUnavailable": "İstek tahmini, model kataloğu yüklendikten sonra görünür.",
+    "paymentPending": "Ödeme henüz onaylanmadı. Bakiye ve abonelik, Robokassa bizi bilgilendirdikten sonra güncellenecek.",
+    "paymentConfirmed": "Ödeme onaylandı."
   },
   "coins": {
     "title": "VerseCoins (VC)",
-    "subtitle": "Buy VC to chat with characters, claim the daily bonus, and track your subscription.",
-    "loginPrompt": "Sign in to see your balance, bonuses, and buy VC",
-    "balance": "Current balance",
-    "yourSubscription": "Your subscription: {{label}}",
-    "validUntil": "Active until {{date}}",
-    "dailyBonus": "Daily bonus",
-    "streakDay": "Streak day: {{day}} / 7",
-    "today": "Today: ",
-    "alreadyClaimed": "Bonus already claimed today",
-    "nextBonus": "Next bonus in: ",
-    "claiming": "Claiming...",
-    "claim": "Claim (+{{amount}} VC)",
-    "unavailable": "Bonus unavailable",
-    "subscriptions": "Subscriptions",
-    "packages": "VC packs",
-    "price": "Price ({{symbol}})",
+    "subtitle": "Karakterlerle sohbet etmek, günlük bonusu almak ve aboneliğinizi takip etmek için VC satın alın.",
+    "loginPrompt": "Bakiyenizi, bonuslarınızı görmek ve VC satın almak için giriş yapın",
+    "balance": "Geçerli bakiye",
+    "yourSubscription": "Aboneliğiniz: {{label}}",
+    "validUntil": "{{date}} tarihine kadar aktif",
+    "dailyBonus": "Günlük bonus",
+    "streakDay": "Seri günü: {{day}} / 7",
+    "today": "Bugün: ",
+    "alreadyClaimed": "Bonus bugün zaten alındı",
+    "nextBonus": "Sonraki bonusa kalan: ",
+    "claiming": "Alınıyor...",
+    "claim": "Al (+{{amount}} VC)",
+    "unavailable": "Bonus kullanılamıyor",
+    "subscriptions": "Abonelikler",
+    "packages": "VC paketleri",
+    "price": "Fiyat ({{symbol}})",
     "bonus": "Bonus",
-    "action": "Action",
-    "buy": "Buy",
-    "checkoutTitle": "Purchase {{label}}",
-    "goToPayment": "Continue to payment",
-    "paying": "Payment...",
-    "loadError": "Could not load the balance",
-    "paymentError": "Could not create the payment",
-    "createPaymentError": "Error creating the payment",
-    "bonusReceived": "Bonus claimed!",
-    "comeTomorrow": "Come back tomorrow",
-    "bonusError": "Could not claim the bonus",
-    "buyDesc": "Purchase of {{coins}} VC",
-    "min": "0 min",
-    "hoursMinutes": "{{hours}} h {{minutes}} min",
-    "minutes": "{{minutes}} min",
-    "paymentPending": "Payment is processing. Purchased VC will appear on your balance after confirmation.",
-    "paymentConfirmed": "The VC purchase is confirmed and credited.",
-    "shop01": "The introductory offer is no longer available. Choose a regular pack.",
-    "shop02": "Estimate",
-    "shop03": "replies with",
-    "shop04": "VC received. Your story is ready to continue.",
-    "shop05": "Return to chat",
-    "shop06": "Back to chat",
-    "shop07": "Continue your story with {{value1}}",
-    "shop08": "Your story deserves another chapter",
-    "shop09": "Top up and chat with characters at your own pace. Start small, without a subscription or commitment.",
-    "shop10": "Return to this chat after payment confirmation",
-    "shop11": "VC never expire",
-    "shop12": "Payment via Robokassa",
-    "shop13": "First introduction",
-    "shop14": "One-time top-up",
-    "shop15": "For new scenes and conversations",
-    "shop16": "One payment · no auto-renewal",
-    "shop17": " · Charged {{value1}} RUB",
-    "shop18": "Checking availability…",
-    "shop19": "Offer temporarily unavailable",
-    "shop20": "Get {{value1}} VC",
-    "shop21": "The number depends on the model you choose.",
-    "shop22": "One introductory pack per account before your first purchase. Subscription and avatar generations are not included.",
-    "shop23": "Your introductory pack is reserved: continue paying the same invoice.",
-    "shop24": "Loading…",
-    "shop25": "Today",
-    "shop26": "Tomorrow",
-    "shop27": "Tomorrow +{{value1}} VC",
-    "shop28": "More room for your story",
-    "shop29": "One-time packs for every account. Top up whenever you like.",
-    "shop30": "A few scenes",
-    "shop31": "Build your story",
-    "shop32": "Long conversations",
-    "shop33": "Multiple stories",
-    "shop34": "Bigger worlds",
-    "shop35": "Dedicated storytellers",
-    "shop36": "Chatting regularly?",
-    "shop37": "Subscriptions include monthly VC, conversation memory and avatar generations.",
-    "shop38": "Before you buy",
-    "shop39": "What can I do with VC?",
-    "shop40": "Pay for model replies in chats. Reply prices depend on the model and are shown in chat. VC packs do not activate a subscription or add avatar generations.",
-    "shop41": "Do purchased VC expire?",
-    "shop42": "VC from one-time packs never expire. Monthly subscription VC are separate and follow subscription terms.",
-    "shop43": "When will my balance update?",
-    "shop44": "After Robokassa confirms payment. You may return to the site earlier; in that case we show a pending status.",
-    "shop45": "Need help with payment?",
-    "shop46": "Contact support",
-    "checkoutTerms": "One payment. No subscription or automatic renewal. VC do not expire."
+    "action": "İşlem",
+    "buy": "Satın al",
+    "checkoutTitle": "{{label}} satın alımı",
+    "goToPayment": "Ödemeye devam et",
+    "paying": "Ödeme...",
+    "loadError": "Bakiye yüklenemedi",
+    "paymentError": "Ödeme oluşturulamadı",
+    "createPaymentError": "Ödeme oluşturulurken hata",
+    "bonusReceived": "Bonus alındı!",
+    "comeTomorrow": "Yarın tekrar gelin",
+    "bonusError": "Bonus alınamadı",
+    "buyDesc": "{{coins}} VC satın alımı",
+    "min": "0 dk",
+    "hoursMinutes": "{{hours}} sa {{minutes}} dk",
+    "minutes": "{{minutes}} dk",
+    "paymentPending": "Ödeme işleniyor. Satın alınan VC'ler onaylandıktan sonra bakiyenize eklenecek.",
+    "paymentConfirmed": "VC satın alımı onaylandı ve bakiyenize eklendi.",
+    "shop01": "İlk teklif artık kullanılamıyor. Normal bir paket seçin.",
+    "shop02": "Tahmini",
+    "shop03": "cevaplar",
+    "shop04": "VC alındı. Hikâyeniz devam etmeye hazır.",
+    "shop05": "Sohbete dön",
+    "shop06": "Sohbete dön",
+    "shop07": "{{value1}} ile hikâyenize devam edin",
+    "shop08": "Hikâyeniz bir sonraki bölümü hak ediyor",
+    "shop09": "Abonelik veya taahhüt olmadan kendi hızınızda karakterlerle sohbet edin. Küçük bir miktarla başlayın.",
+    "shop10": "Ödeme onayı sonrası bu sohbete döneceğiz",
+    "shop11": "VC'nin süresi dolmaz",
+    "shop12": "Robokassa ile ödeme",
+    "shop13": "İlk tanışma",
+    "shop14": "Tek seferlik yükleme",
+    "shop15": "Yeni sahneler ve sohbetler için",
+    "shop16": "Tek ödeme · otomatik yenileme yok",
+    "shop17": " · {{value1}} RUB tahsil edilecek",
+    "shop18": "Mevcutluk kontrol ediliyor…",
+    "shop19": "Teklif geçici olarak kullanılamıyor",
+    "shop20": "{{value1}} VC alın",
+    "shop21": "Miktar seçtiğiniz modele göre değişir.",
+    "shop22": "Hesap başına ilk satın almadan önce bir kez kullanılabilir. Abonelik ve avatar oluşturma dahil değildir.",
+    "shop23": "İlk paketiniz rezerve edildi: aynı faturayı ödemeye devam edin.",
+    "shop24": "Yükleniyor…",
+    "shop25": "Bugün",
+    "shop26": "Yarın",
+    "shop27": "Yarın +{{value1}} VC",
+    "shop28": "Hikâyeniz için daha fazla alan",
+    "shop29": "Tüm hesaplar için tek seferlik paketler. İstediğiniz zaman bakiye yükleyin.",
+    "shop30": "Birkaç sahne",
+    "shop31": "Hikâyenizi geliştirin",
+    "shop32": "Uzun sohbetler",
+    "shop33": "Birden fazla hikâye",
+    "shop34": "Daha büyük dünyalar",
+    "shop35": "Özel hikâye anlatıcıları",
+    "shop36": "Düzenli mi sohbet ediyorsunuz?",
+    "shop37": "Abonelikler aylık VC, konuşma hafızası ve avatar oluşturmalarını içerir.",
+    "shop38": "Satın almadan önce",
+    "shop39": "VC ile neler yapabilirim?",
+    "shop40": "Sohbetlerde model yanıtlarını ödeyin. Yanıt ücretleri modele göre değişir ve sohbette gösterilir. VC paketleri abonelik başlatmaz veya avatar oluşturma eklemez.",
+    "shop41": "Satın alınan VC'nin süresi dolar mı?",
+    "shop42": "Tek seferlik paketlerden gelen VC'nin süresi dolmaz. Aylık abonelik VC'leri ayrı hesaplanır ve abonelik koşullarına tabidir.",
+    "shop43": "Bakiyem ne zaman güncellenir?",
+    "shop44": "Robokassa ödemenin onayından sonra. Daha erken siteye dönebilirsiniz; bu durumda bekliyor durumu gösterilir.",
+    "shop45": "Ödemeyle ilgili yardım mı gerekiyor?",
+    "shop46": "Destek ile iletişim kurun",
+    "checkoutTerms": "Tek ödeme. Abonelik veya otomatik yenileme yok. VC'nin süresi dolmaz."
   },
   "payment": {
-    "chargeLabel": "Amount due",
-    "cbrEquivalent": "~ {{amount}} (CBR exchange rate)",
-    "ratesLoading": "Loading CBR exchange rate...",
-    "pending": "Payment is processing",
-    "confirmed": "Payment confirmed",
-    "unknown": "We could not confirm the payment from the return page. If you were charged, wait a few minutes or contact support."
+    "chargeLabel": "Ödenecek tutar",
+    "cbrEquivalent": "~ {{amount}} (CBR döviz kuru)",
+    "ratesLoading": "CBR döviz kuru yükleniyor...",
+    "pending": "Ödeme işleniyor",
+    "confirmed": "Ödeme onaylandı",
+    "unknown": "Ödeme sayfasından dönüşte ödeme onaylanamadı. Eğer ücret kesildiyse birkaç dakika bekleyin veya destek ile iletişime geçin."
   },
   "meta": {
     "home": {
-      "title": "AI characters: chat and roleplay — NewVerse",
-      "description": "Chat with AI characters: talk, text and play roleplay stories. Characters remember the details, and you can start without signing up."
+      "title": "AI karakterler: sohbet et ve rol yap — NewVerse",
+      "description": "AI karakterlerle sohbet et: konuş, yazış ve rol yapma hikâyelerinde oyna. Karakterler detayları hatırlar ve kaydolmadan başlayabilirsin."
     },
     "create": {
-      "title": "Create an AI character for free — NewVerse creator",
-      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, in Russian, English and Spanish."
+      "title": "Ücretsiz AI karakter oluştur — NewVerse oluşturucu",
+      "description": "Kendi AI karakterinizi sohbet ve rol yapma için oluşturun: kişilik, görünüm, ilk mesaj ve dünya. Çoklu dil desteğiyle ücretsiz."
     },
     "edit": {
-      "title": "Edit character — NewVerse",
-      "description": "Adjust your character's appearance, personality, and scenario."
+      "title": "Karakteri düzenle — NewVerse",
+      "description": "Karakterinizin görünümünü, kişiliğini ve senaryosunu ayarlayın."
     },
     "profile": {
-      "title": "My profile — NewVerse",
-      "description": "Manage your subscription, personas, and account settings."
+      "title": "Profilim — NewVerse",
+      "description": "Aboneliğinizi, persona'larınızı ve hesap ayarlarınızı yönetin."
     },
     "pricing": {
-      "title": "NewVerse plans — subscriptions for AI roleplay",
-      "description": "Choose a plan for a larger context window, bonus VC, and avatar generation."
+      "title": "NewVerse planları — AI rol yapma için abonelikler",
+      "description": "Daha büyük bağlam penceresi, bonus VC ve avatar oluşturma için bir plan seçin."
     },
     "coins": {
-      "title": "Top up VC — NewVerse",
-      "description": "Buy VerseCoins to chat with AI characters."
+      "title": "VC yükleyin — NewVerse",
+      "description": "AI karakterlerle sohbet etmek için VerseCoins satın alın."
     },
     "referral": {
-      "title": "Referral program — NewVerse",
-      "description": "Invite friends and earn bonuses."
+      "title": "Yönlendirme programı — NewVerse",
+      "description": "Arkadaşlarınızı davet edin ve bonus kazanın."
     },
     "subscription": {
-      "title": "Manage subscription — NewVerse",
-      "description": "View and disable subscription auto-renewal."
+      "title": "Aboneliği yönet — NewVerse",
+      "description": "Abonelik otomatik yenilemeyi görüntüleyin ve devre dışı bırakın."
     },
     "notifications": {
-      "title": "Notifications — NewVerse",
-      "description": "See purchase, bonus, and admin notifications."
+      "title": "Bildirimler — NewVerse",
+      "description": "Satın alma, bonus ve yönetici bildirimlerini görün."
     },
     "offer": {
-      "title": "Public offer — NewVerse",
-      "description": "Terms of use for the NewVerse service."
+      "title": "Kullanım sözleşmesi — NewVerse",
+      "description": "NewVerse hizmetinin kullanım koşulları."
     },
     "refund": {
-      "title": "Refund policy — NewVerse",
-      "description": "Refund terms for NewVerse."
+      "title": "İade politikası — NewVerse",
+      "description": "NewVerse için iade koşulları."
     },
     "terms": {
-      "title": "Terms of use — NewVerse",
-      "description": "Rules for using the NewVerse platform."
+      "title": "Kullanım koşulları — NewVerse",
+      "description": "NewVerse platformunun kullanım kuralları."
     },
     "privacy": {
-      "title": "Privacy policy — NewVerse",
-      "description": "How NewVerse processes personal data."
+      "title": "Gizlilik politikası — NewVerse",
+      "description": "NewVerse'in kişisel verileri nasıl işlediği."
     },
     "support": {
-      "title": "Support — NewVerse",
-      "description": "Contact us to resolve your questions."
+      "title": "Destek — NewVerse",
+      "description": "Sorularınız için bize ulaşın."
     },
     "forgotPassword": {
-      "title": "Password recovery — NewVerse",
-      "description": "Request a link to reset your NewVerse account password."
+      "title": "Şifre kurtarma — NewVerse",
+      "description": "NewVerse hesabınızın şifresini sıfırlamak için bir bağlantı isteyin."
     },
     "resetPassword": {
-      "title": "Reset password — NewVerse",
-      "description": "Set a new password for your NewVerse account."
+      "title": "Şifreyi sıfırla — NewVerse",
+      "description": "NewVerse hesabınız için yeni bir şifre belirleyin."
     },
     "login": {
-      "title": "Sign in — NewVerse",
-      "description": "Sign in to NewVerse to chat with AI characters."
+      "title": "Giriş yap — NewVerse",
+      "description": "Yapay zekâ karakterleriyle sohbet etmek için NewVerse'e giriş yapın."
     },
     "register": {
-      "title": "Sign up — NewVerse",
-      "description": "Create a NewVerse account and start roleplaying with AI characters."
+      "title": "Kaydol — NewVerse",
+      "description": "Bir NewVerse hesabı oluşturun ve yapay zekâ karakterleriyle rol yapmaya başlayın."
     },
     "verifyEmail": {
-      "title": "Confirm email — NewVerse",
-      "description": "Confirm your email to unlock full access to NewVerse."
+      "title": "E-postayı onayla — NewVerse",
+      "description": "NewVerse'e tam erişim için e-postanızı onaylayın."
     },
     "chat": {
-      "title": "Chat with {{name}} — NewVerse",
-      "description": "Roleplay with {{name}}. Dive into the story and keep the plot going."
+      "title": "{{name}} ile sohbet — NewVerse",
+      "description": "{{name}} karakteriyle rol yapın. Hikâyeye dalmaya ve olay örgüsünü ilerletmeye başlayın."
     },
     "character": {
-      "title": "{{name}} — AI roleplay character | NewVerse",
-      "description": "{{name}} on NewVerse. Start a roleplay and learn their story.",
-      "fallbackTitle": "Character — NewVerse",
-      "fallbackDescription": "Public character page on NewVerse."
+      "title": "{{name}} — Yapay zekâ rol yapma karakteri | NewVerse",
+      "description": "NewVerse'teki {{name}} karakteri. Rol yapmaya başlayın ve hikâyesini keşfedin.",
+      "fallbackTitle": "Karakter — NewVerse",
+      "fallbackDescription": "NewVerse'teki genel karakter sayfası."
     },
     "rules": {
-      "title": "Platform rules — NewVerse",
-      "description": "Character publishing rules and consequences of violations on NewVerse."
+      "title": "Platform kuralları — NewVerse",
+      "description": "NewVerse'te karakter yayınlama kuralları ve ihlallerin sonuçları."
     },
     "genres": {
-      "title": "Character genres for AI roleplay — NewVerse",
-      "description": "Fantasy, romance, anime, detective, horror and more: choose the kind of story you want to live and find a character for your AI roleplay."
+      "title": "Yapay zekâ rol yapma için karakter türleri — NewVerse",
+      "description": "Fantazi, romantizm, anime, dedektif, korku ve daha fazlası: yaşamak istediğiniz hikâye türünü seçin ve yapay zekâ ile rol yapmak için bir karakter bulun."
     },
     "genre": {
       "title": "{{h1}} — NewVerse",
-      "titlePage": "{{h1}}, page {{page}} — NewVerse",
-      "descriptionPage": "{{description}} Page {{page}}."
+      "titlePage": "{{h1}}, sayfa {{page}} — NewVerse",
+      "descriptionPage": "{{description}} Sayfa {{page}}."
     },
     "catalog": {
       "title": "{{name}} — NewVerse",
-      "all": "AI character catalog",
-      "search": "Search “{{query}}” among characters",
-      "pageSuffix": ", page {{page}}",
-      "pageSentence": "Page {{page}}.",
-      "description": "NewVerse catalog of AI characters for roleplay in Russian, English and Spanish.",
-      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in Russian, English and Spanish.",
+      "all": "Yapay zekâ karakter kataloğu",
+      "search": "Karakterler arasında “{{query}}” ara",
+      "pageSuffix": ", sayfa {{page}}",
+      "pageSentence": "Sayfa {{page}}.",
+      "description": "Çok dilli rol yapma için NewVerse yapay zekâ karakter kataloğu.",
+      "searchDescription": "“{{query}}” sorgusuna uyan NewVerse karakterleri: çok dilli yapay zekâ rol yapma hikâyeleri.",
       "sort": {
-        "new": "New AI characters",
-        "random": "Random AI characters",
-        "for-you": "Characters picked for you"
+        "new": "Yeni yapay zekâ karakterleri",
+        "random": "Rastgele yapay zekâ karakterleri",
+        "for-you": "Sizin için seçilen karakterler"
       },
       "sortDescription": {
-        "new": "New on NewVerse: recently added characters and worlds for AI roleplay.",
-        "random": "A random pick of NewVerse characters — discover an unexpected AI story.",
-        "for-you": "NewVerse characters picked for your interests, for AI roleplay."
+        "new": "NewVerse'te yeni: son eklenen karakterler ve yapay zekâ ile rol yapma dünyaları.",
+        "random": "NewVerse karakterlerinden rastgele bir seçim — beklenmedik bir yapay zekâ hikâyesi keşfedin.",
+        "for-you": "İlginize göre seçilmiş NewVerse karakterleri, yapay zekâ ile rol yapmak için."
       }
     }
   },
   "genrePage": {
-    "home": "Home",
-    "hub": "Genres",
-    "breadcrumbs": "Breadcrumbs",
-    "count": "Characters in this genre: {{count}}",
-    "otherGenres": "Other genres",
-    "empty": "This genre has only a few characters so far. Browse the full catalog or create your own.",
-    "toCatalog": "Full catalog",
-    "hubH1": "Character genres for AI roleplay",
-    "hubIntro": "Pick a genre to see characters with that tag, from fantasy quests and deep-space voyages to calm slice of life and tangled investigations. Each genre shows its most popular public characters first.",
+    "home": "Ana sayfa",
+    "hub": "Türler",
+    "breadcrumbs": "Yol izleri",
+    "count": "Bu türdeki karakterler: {{count}}",
+    "otherGenres": "Diğer türler",
+    "empty": "Bu türde henüz birkaç karakter var. Tüm kataloğa göz atın ya da kendi karakterinizi oluşturun.",
+    "toCatalog": "Tüm katalog",
+    "hubH1": "Yapay zekâ ile rol yapma için karakter türleri",
+    "hubIntro": "Fantazi maceralarından uzay yolculuklarına, sakin günlük hayata ve karmaşık soruşturmalara kadar bu etikete sahip karakterleri görmek için bir tür seçin. Her tür, önce en popüler genel karakterleri gösterir.",
     "items": {
       "fantasy": {
-        "h1": "Fantasy characters for AI roleplay",
-        "description": "AI roleplay in fantasy worlds: mages, elves, mercenaries and dragon riders. Pick a character and begin your own adventure on NewVerse."
+        "h1": "Yapay zekâ ile rol yapmak için fantazi karakterleri",
+        "description": "Fantazi dünyalarında yapay zekâ ile rol yapın: büyücüler, elfler, paralı askerler ve ejderha binicileri. NewVerse'te bir karakter seçin ve kendi maceranıza başlayın."
       },
       "romance": {
-        "h1": "Romance characters for AI roleplay",
-        "description": "Romance AI roleplay: flirting, slow-burn relationships and stories about feelings. Pick a character and start chatting on NewVerse."
+        "h1": "Yapay zekâ ile rol yapmak için romantik karakterler",
+        "description": "Romantik yapay zekâ rol yapma: flört, yavaş gelişen ilişkiler ve duygular hakkında hikâyeler. NewVerse'te bir karakter seçin ve sohbete başlayın."
       },
       "anime": {
-        "h1": "Anime characters for AI roleplay",
-        "description": "AI roleplay with anime characters: school life, isekai, magic academies and romance. Pick your character on NewVerse."
+        "h1": "Yapay zekâ ile rol yapmak için anime karakterleri",
+        "description": "Anime karakterleriyle yapay zekâ ile rol yapın: okul hayatı, isekai, büyü okulları ve romantizm. NewVerse'te kahramanınızı seçin."
       },
       "scifi": {
-        "h1": "Sci-fi characters for AI roleplay",
-        "description": "Sci-fi AI roleplay: starship captains, androids and scientists on distant stations. Pick a character on NewVerse."
+        "h1": "Yapay zekâ ile rol yapmak için bilim kurgu karakterleri",
+        "description": "Bilim kurgu yapay zekâ rol yapma: uzay gemisi kaptanları, androidler ve uzak istasyonlardaki bilim insanları. NewVerse'te bir karakter seçin."
       },
       "mystic": {
-        "h1": "Mystery and supernatural characters for AI roleplay",
-        "description": "Mystery and supernatural AI roleplay: mediums, witches, cursed manors and secrets in no hurry to reveal themselves. Pick a character on NewVerse."
+        "h1": "Yapay zekâ ile rol yapmak için gizem ve doğaüstü karakterler",
+        "description": "Gizem ve doğaüstü yapay zeka rol yapma oyunu: medyumlar, cadılar, lanetli konaklar ve acele etmeyen sırlar. NewVerse'ta bir karakter seçin."
       },
       "realistic": {
-        "h1": "Modern-day characters for AI roleplay",
-        "description": "AI roleplay with modern-day characters: colleagues, neighbours, students and stars. Natural dialogue and relationships on NewVerse."
+        "h1": "Yapay zekâ ile rol yapma oyunu için modern karakterler",
+        "description": "Yapay zekâ ile rol yapma oyunu: meslektaşlar, komşular, öğrenciler ve ünlüler. NewVerse'ta doğal diyalog ve ilişkiler."
       },
       "adventure": {
-        "h1": "Adventure characters for AI roleplay",
-        "description": "Adventure AI roleplay: treasure hunters, pirates, trackers and travellers. Choose a companion and set off on NewVerse."
+        "h1": "Yapay zekâ ile rol yapma oyunu için macera karakterleri",
+        "description": "Macera temalı yapay zekâ rol yapma oyunu: hazine avcıları, korsanlar, iz sürücüler ve gezginler. Bir eşlikçi seçin ve NewVerse'ta yola çıkın."
       },
       "detective": {
-        "h1": "Detective characters for AI roleplay",
-        "description": "Detective AI roleplay: investigators, witnesses and suspects. Look for clues and solve cases with NewVerse characters."
+        "h1": "Yapay zekâ ile rol yapma oyunu için dedektif karakterleri",
+        "description": "Dedektif temalı yapay zekâ rol yapma oyunu: dedektifler, tanıklar ve şüpheliler. İpuçlarını bulun ve NewVerse karakterleriyle davaları çözün."
       },
       "everyday": {
-        "h1": "Slice-of-life characters for AI roleplay",
-        "description": "Slice-of-life AI roleplay: friends, roommates and colleagues for calm, natural conversation. Pick a character on NewVerse."
+        "h1": "Yapay zekâ ile rol yapma oyunu için günlük yaşam karakterleri",
+        "description": "Günlük yaşam temalı yapay zekâ rol yapma oyunu: arkadaşlar, oda arkadaşları ve meslektaşlar. Sakin, doğal sohbetler için NewVerse'ta bir karakter seçin."
       },
       "cyberpunk": {
-        "h1": "Cyberpunk characters for AI roleplay",
-        "description": "Cyberpunk AI roleplay: hackers, augmented mercenaries and androids in a neon megacity. Pick a character on NewVerse."
+        "h1": "Yapay zekâ ile rol yapma oyunu için cyberpunk karakterleri",
+        "description": "Cyberpunk yapay zekâ rol yapma oyunu: hackerlar, geliştirilmiş paralı askerler ve androidler, neon ışıklarla parlayan bir megakentte. NewVerse'ta bir karakter seçin."
       },
       "horror": {
-        "h1": "Horror characters for AI roleplay",
-        "description": "Horror AI roleplay: monsters, monster hunters and abandoned houses. Pick a character and test your nerves on NewVerse."
+        "h1": "Yapay zekâ ile rol yapma oyunu için korku karakterleri",
+        "description": "Korku temalı yapay zekâ rol yapma oyunu: canavarlar, canavar avcıları ve terk edilmiş evler. NewVerse'ta bir karakter seçin ve sinirlerinizi sınayın."
       },
       "comedy": {
-        "h1": "Comedy characters for AI roleplay",
-        "description": "Comedy AI roleplay: witty sidekicks, clumsy wizards and absurd situations. Pick a character on NewVerse."
+        "h1": "Yapay zekâ ile rol yapma oyunu için komedi karakterleri",
+        "description": "Komedi temalı yapay zekâ rol yapma oyunu: zeki yan karakterler, beceriksiz büyücüler ve absürd durumlar. NewVerse'ta bir karakter seçin."
       },
       "drama": {
-        "h1": "Drama characters for AI roleplay",
-        "description": "Drama AI roleplay: stories of choice, loss and forgiveness with characters who carry a difficult past. Pick one on NewVerse."
+        "h1": "Yapay zekâ ile rol yapma oyunu için dram karakterleri",
+        "description": "Dram temalı yapay zekâ rol yapma oyunu: seçimler, kayıplar ve affediliş hikâyeleri, zorlu bir geçmişe sahip karakterlerle. NewVerse'ta bir tane seçin."
       }
     }
   },
   "moderation": {
-    "warningTitle": "Your character was hidden for a rule violation",
-    "warningBody": "Your character was hidden from public access for violating the platform rules. Reason: {{reason}}. Please read the <rules>rules</rules>. A repeat violation will result in the character being deleted.",
-    "unknownReason": "a platform rules violation",
-    "hiddenBadge": "Hidden for a rule violation"
+    "warningTitle": "Karakteriniz kurallara aykırı olduğu için gizlendi",
+    "warningBody": "Karakteriniz, platform kurallarını ihlal ettiği için herkese açık erişimden kaldırıldı. Sebep: {{reason}}. Lütfen <rules>kuralları</rules> okuyun. Tekrarlı ihlal durumunda karakter silinecektir.",
+    "unknownReason": "platform kurallarına aykırı davranış",
+    "hiddenBadge": "Kural ihlali nedeniyle gizlendi"
   },
   "characterForm": {
-    "rulesHint": "By creating a character, you agree to the <rules>platform rules</rules>."
+    "rulesHint": "Bir karakter oluşturarak <rules>platform kurallarını</rules> kabul etmiş olursunuz."
   },
   "rules": {
-    "title": "Platform rules",
-    "intro": "By publishing characters on NewVerse, you agree to follow these rules. Violations are reviewed by moderators.",
-    "prohibitedTitle": "Prohibited content",
-    "prohibitedItems": [
-      "Sexualized content involving minors (under Federal Law 149-FZ and Article 242 of the Criminal Code of the Russian Federation).",
-      "Promotion of drugs, extremism, or terrorism.",
-      "Detailed cruelty or violence against people or animals.",
-      "Incitement of hatred based on race, nationality, or religion.",
-      "Spam or advertising of third-party services.",
-      "Fraud and financial pyramids.",
-      "Copyright infringement (copying characters from protected works without permission)."
-    ],
-    "consequencesTitle": "Consequences of violations",
-    "consequenceItems": [
-      "1st violation — the character is hidden from public access and a warning is issued.",
-      "2nd violation — the character is deleted.",
-      "3rd violation — the account is blocked."
-    ],
-    "appealTitle": "How to appeal",
-    "appeal": "Submit a request via the",
-    "appealLink": "support page"
+    "title": "Platform Kuralları",
+    "intro": "NewVerse'ta karakter yayınlarken bu kurallara uymayı kabul edersiniz. İhlaller, moderatörler tarafından incelenir.",
+    "prohibitedTitle": "Yasak içerik",
+    "prohibitedItems": {
+      "0": "Çocuklarda (Federal Kanun 149-FZ ve Rusya Federasyonu Ceza Kanunu Madde 242) cinsel içerik.",
+      "1": "Uyuşturucu, ekstremizm veya terörizmin teşviki.",
+      "2": "İnsanlara veya hayvanlara yönelik ayrıntılı zulüm veya şiddet.",
+      "3": "Irka, milliyete veya dine dayalı nefretin kışkırtılması.",
+      "4": "Spam veya üçüncü taraf hizmetlerin reklamı.",
+      "5": "Dolandırıcılık ve finansal piramitler.",
+      "6": "Telif hakkı ihlali (izin alınmadan korumalı eserlerden karakter kopyalamak)."
+    },
+    "consequencesTitle": "İhlallerin sonuçları",
+    "consequenceItems": {
+      "0": "1. ihlal — karakter herkese açık erişimden kaldırılır ve uyarı verilir.",
+      "1": "2. ihlal — karakter silinir.",
+      "2": "3. ihlal — hesap engellenir."
+    },
+    "appealTitle": "İtiraz nasıl yapılır",
+    "appeal": "Şu sayfa üzerinden talep gönderin:",
+    "appealLink": "destek sayfası"
   },
   "guestChat": {
-    "remaining": "{{remaining}}/{{limit}} left",
-    "retention": "Guest chats are kept for {{days}} days. After you sign in, they move to your account.",
-    "limitTitle": "Free message limit",
-    "limitBody": "You have used all free messages. Sign up to keep chatting and save this history.",
-    "register": "Sign up",
-    "login": "Log in",
-    "expired": "The guest chat retention period has expired.",
-    "transferWaiting": "Finishing the guest reply and transferring your chat…",
-    "transferPending": "Transfer is still pending. Retry to continue this conversation.",
-    "transferRetry": "Retry transfer"
+    "remaining": "{{remaining}}/{{limit}} kaldı",
+    "retention": "Misafir sohbetleri {{days}} gün boyunca saklanır. Giriş yaptıktan sonra hesabınıza aktarılır.",
+    "limitTitle": "Ücretsiz mesaj sınırı",
+    "limitBody": "Tüm ücretsiz mesajlarınızı kullandınız. Sohbet etmeye devam etmek ve bu geçmişi kaydetmek için kaydolun.",
+    "register": "Kaydol",
+    "login": "Giriş yap",
+    "expired": "Misafir sohbeti saklama süresi doldu.",
+    "transferWaiting": "Misafir yanıtını tamamlıyor ve sohbetinizi aktarıyoruz…",
+    "transferPending": "Aktarım hâlâ devam ediyor. Devam etmek için yeniden deneyin.",
+    "transferRetry": "Aktarımı yeniden dene"
   },
   "chatThreads": {
-    "defaultTitle": "Story {{number}}",
-    "listTitle": "Stories with {{name}}",
-    "openList": "Stories",
-    "newStory": "New story",
-    "newStoryHint": "Starts from the card's greeting and situation, with empty memory. Your persona is copied from the current story.",
-    "continue": "Continue story",
-    "continueNamed": "Continue: {{title}}",
-    "active": "Active",
-    "noActive": "No active stories. Start a new one or restore one from the archive.",
-    "archiveSection": "Archive ({{count}})",
-    "archived": "Archived",
-    "currentBadge": "Open",
-    "switchTo": "Open story “{{title}}”",
-    "messages_one": "{{count}} message",
-    "messages_other": "{{count}} messages",
-    "empty": "No messages yet",
-    "lastActivity": "active {{date}}",
-    "rename": "Rename",
-    "renameLabel": "Story title",
-    "renamePlaceholder": "For example: Clan war",
-    "save": "Save",
-    "cancel": "Cancel",
-    "archive": "Archive",
-    "restore": "Restore",
-    "delete": "Delete",
-    "deleteTitle": "Delete “{{title}}”?",
-    "deleteBody": "The messages, memory and summary of this story will be deleted permanently. Other stories are not affected. To only hide the story, archive it instead.",
-    "deleteConfirm": "Delete permanently",
-    "created": "New story started",
-    "renamed": "Title saved",
-    "archivedToast": "Story archived",
-    "restoredToast": "Story restored",
-    "deletedToast": "Story deleted",
-    "loadFailed": "Could not load stories",
-    "createFailed": "Could not start a new story",
-    "updateFailed": "Could not update the story",
-    "deleteFailed": "Could not delete the story",
-    "notFound": "Story not found. The latest active story is open instead.",
-    "archivedBanner": "This story is archived. A new message makes it active again.",
-    "storiesCount_one": "{{count}} story",
-    "storiesCount_other": "{{count}} stories"
+    "defaultTitle": "Hikâye {{number}}",
+    "listTitle": "{{name}} ile hikâyeler",
+    "openList": "Hikâyeler",
+    "newStory": "Yeni hikâye",
+    "newStoryHint": "Karttaki selamlama ve durumla başlar, hafıza boş olur. Persona mevcut hikâyeden kopyalanır.",
+    "continue": "Hikâyeyi sürdür",
+    "continueNamed": "Devam et: {{title}}",
+    "active": "Aktif",
+    "noActive": "Aktif hikâye yok. Yeni bir tane başlatın veya arşivden birini geri getirin.",
+    "archiveSection": "Arşiv ({{count}})",
+    "archived": "Arşivlendi",
+    "currentBadge": "Açık",
+    "switchTo": "«{{title}}» hikâyesini aç",
+    "messages_one": "{{count}} mesaj",
+    "messages_other": "{{count}} mesaj",
+    "empty": "Henüz mesaj yok",
+    "lastActivity": "{{date}} tarihinde etkin",
+    "rename": "Yeniden adlandır",
+    "renameLabel": "Hikâye başlığı",
+    "renamePlaceholder": "Örneğin: Klan savaşı",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "archive": "Arşivle",
+    "restore": "Geri yükle",
+    "delete": "Sil",
+    "deleteTitle": "“{{title}}” silinsin mi?",
+    "deleteBody": "Bu hikâyeye ait mesajlar, hafıza ve özet kalıcı olarak silinecek. Diğer hikâyeler etkilenmez. Hikâyeyi yalnızca gizlemek istiyorsanız, bunun yerine arşivleyin.",
+    "deleteConfirm": "Kalıcı olarak sil",
+    "created": "Yeni hikâye başlatıldı",
+    "renamed": "Başlık kaydedildi",
+    "archivedToast": "Hikâye arşivlendi",
+    "restoredToast": "Hikâye geri yüklendi",
+    "deletedToast": "Hikâye silindi",
+    "loadFailed": "Hikâyeler yüklenemedi",
+    "createFailed": "Yeni hikâye başlatılamadı",
+    "updateFailed": "Hikâye güncellenemedi",
+    "deleteFailed": "Hikâye silinemedi",
+    "notFound": "Hikâye bulunamadı. Bunun yerine en son etkin hikâye açıldı.",
+    "archivedBanner": "Bu hikâye arşivlendi. Yeni bir mesaj onu tekrar etkin hâle getirir.",
+    "storiesCount_one": "{{count}} hikâye",
+    "storiesCount_other": "{{count}} hikâye"
   },
   "email": {
-    "resetSubject": "Password reset — NewVerse",
-    "resetText": "Follow this link to reset your password: {{url}}",
-    "resetHtmlIntro": "Follow this link to reset your password:",
-    "resetHtmlFooter": "This link is valid for 1 hour. If you did not request a password reset, you can ignore this email.",
-    "verifySubject": "Confirm your email — NewVerse",
-    "verifyText": "Hello! Confirm your email in NewVerse by following this link: {{url}}. The link is valid for 24 hours.",
-    "verifyHtmlIntro": "Hello! Confirm your email in NewVerse by following this link:",
-    "verifyHtmlFooter": "The link is valid for 24 hours. If you did not create a NewVerse account, you can ignore this email.",
-    "supportSubject": "NewVerse support request — {{topic}}",
-    "supportText": "Topic: {{topic}}\nEmail: {{email}}\n\n{{message}}"
+    "resetSubject": "Şifre sıfırlama — NewVerse",
+    "resetText": "Şifrenizi sıfırlamak için şu linke tıklayın: {{url}}",
+    "resetHtmlIntro": "Şifrenizi sıfırlamak için şu linke tıklayın:",
+    "resetHtmlFooter": "Bu link 1 saat geçerlidir. Şifre sıfırlama isteğinde bulunmadıysanız, bu e-postayı dikkate almayın.",
+    "verifySubject": "E-postanızı onaylayın — NewVerse",
+    "verifyText": "Merhaba! NewVerse'te e-postanızı onaylamak için şu linke tıklayın: {{url}}. Link 24 saat geçerlidir.",
+    "verifyHtmlIntro": "Merhaba! NewVerse'te e-postanızı onaylamak için şu linke tıklayın:",
+    "verifyHtmlFooter": "Link 24 saat geçerlidir. NewVerse hesabınız yoksa, bu e-postayı dikkate almayın.",
+    "supportSubject": "NewVerse destek isteği — {{topic}}",
+    "supportText": "Konu: {{topic}}\nE-posta: {{email}}\n\n{{message}}"
   },
   "api": {
-    "emailRequired": "Email is required",
-    "emailPasswordRequired": "Email and password are required",
-    "userExists": "A user with this email already exists",
-    "internalError": "Internal server error",
-    "tokenPasswordRequired": "Token and password are required",
-    "minPassword": "Password must be at least {{count}} characters",
-    "invalidLink": "This link is invalid or has expired",
-    "unauthorized": "Unauthorized",
-    "userNotFound": "User not found",
-    "missingCredentials": "Email or password is missing",
-    "consentRequired": "You must accept the terms of use, privacy policy, public offer, and platform rules",
-    "tokenRequired": "Token is required",
-    "invalidVerificationLink": "This link is invalid or has expired",
-    "emailAlreadyVerified": "Email is already confirmed",
-    "confirmEmailToPurchase": "Confirm your email to make a purchase",
-    "confirmEmailToClaimBonus": "Confirm your email to claim bonuses",
-    "rateLimited": "Too many requests. Please wait a moment."
+    "emailRequired": "E-posta gereklidir",
+    "emailPasswordRequired": "E-posta ve şifre gereklidir",
+    "userExists": "Bu e-postaya sahip bir kullanıcı zaten var",
+    "internalError": "Sunucu iç hatası",
+    "tokenPasswordRequired": "Token ve şifre gereklidir",
+    "minPassword": "Şifre en az {{count}} karakter olmalıdır",
+    "invalidLink": "Bu bağlantı geçersiz veya süresi dolmuştur",
+    "unauthorized": "Yetkisiz",
+    "userNotFound": "Kullanıcı bulunamadı",
+    "missingCredentials": "E-posta veya şifre eksik",
+    "consentRequired": "Kullanım koşullarını, gizlilik politikasını, kamuya açık teklifi ve platform kurallarını kabul etmelisiniz",
+    "tokenRequired": "Token gereklidir",
+    "invalidVerificationLink": "Bu bağlantı geçersiz veya süresi dolmuştur",
+    "emailAlreadyVerified": "E-posta zaten onaylı",
+    "confirmEmailToPurchase": "Satın alım yapmak için e-postanızı onaylayın",
+    "confirmEmailToClaimBonus": "Bonus almak için e-postanızı onaylayın",
+    "rateLimited": "Çok fazla istek. Lütfen biraz bekleyin."
   },
   "onboarding": {
-    "eyebrow": "Welcome to NewVerse",
-    "stepLabel": "Step {{step}} of 3",
-    "back": "Back",
-    "skip": "Skip",
-    "close": "Close the picker",
+    "eyebrow": "NewVerse'a hoş geldiniz",
+    "stepLabel": "3 adımın {{step}}. adımı",
+    "back": "Geri",
+    "skip": "Atla",
+    "close": "Seçiciyi kapat",
     "style": {
-      "title": "Which characters do you prefer?",
-      "text": "Answer two questions and we will show you who to start talking to. You can change this any time.",
+      "title": "Hangi karakterleri tercih edersiniz?",
+      "text": "İki soruya yanıt verin, size başlayabileceğiniz karakterleri göstereceğiz. Bunu istediğiniz zaman değiştirebilirsiniz.",
       "anime": "Anime",
-      "animeHint": "Vivid art, big emotions, fantasy worlds",
-      "realistic": "Realistic",
-      "realisticHint": "Lifelike faces, like in a film",
-      "any": "I like both"
+      "animeHint": "Canlı sanat, büyük duygular, fantezi dünyaları",
+      "realistic": "Gerçekçi",
+      "realisticHint": "Filmdeki gibi gerçekçi yüzler",
+      "any": "İkisini de seviyorum"
     },
     "styleLabel": {
       "anime": "Anime",
-      "realistic": "Realistic",
-      "any": "Both styles"
+      "realistic": "Gerçekçi",
+      "any": "Her iki stil"
     },
     "interests": {
-      "title": "What stories interest you?",
-      "text": "Pick up to three. We will show the characters that fit best.",
-      "show": "Show characters",
-      "pickOne": "Pick at least one interest",
-      "limit": "You can pick up to three. Remove one to choose another.",
-      "matches_one": "{{count}} character fits · {{selected}} of 3 selected",
-      "matches_other": "{{count}} characters fit · {{selected}} of 3 selected",
-      "noMatches": "No exact matches, we will show popular ones · {{selected}} of 3 selected",
-      "genderLabel": "Show me",
-      "genderAny": "Everyone",
-      "genderMale": "Male characters",
-      "genderFemale": "Female characters"
+      "title": "Sizi hangi hikâyeler ilgilendiriyor?",
+      "text": "En fazla üçünü seçin. Size en uygun karakterleri göstereceğiz.",
+      "show": "Karakterleri göster",
+      "pickOne": "En az bir ilgi alanı seçin",
+      "limit": "En fazla üç tane seçebilirsiniz. Başka bir tane seçmek için önce birini kaldırın.",
+      "matches_one": "{{count}} karakter uyuyor · 3 üzerinden {{selected}} seçildi",
+      "matches_other": "{{count}} karakter uyuyor · 3 üzerinden {{selected}} seçildi",
+      "noMatches": "Tam eşleşme yok, popüler olanları göstereceğiz · 3 üzerinden {{selected}} seçildi",
+      "genderLabel": "Bana şunları göster",
+      "genderAny": "Herkesi",
+      "genderMale": "Erkek karakterler",
+      "genderFemale": "Kadın karakterler"
     },
     "interest": {
       "romance": {
-        "label": "Romance",
-        "hint": "Flirting, feelings, slow burn"
+        "label": "Romantizm",
+        "hint": "Flört, duygular, yavaş gelişen ilişki"
       },
       "fantasy": {
-        "label": "Fantasy and magic",
-        "hint": "Mages, elves, academies"
+        "label": "Fantastik ve büyü",
+        "hint": "Büyücüler, elfler, akademi"
       },
       "adventure": {
-        "label": "Adventure",
-        "hint": "Journeys, ruins, action"
+        "label": "Macera",
+        "hint": "Yolculuklar, harabeler, aksiyon"
       },
       "mystic": {
-        "label": "Mystery and horror",
-        "hint": "Ghosts, secrets, gothic"
+        "label": "Gizem ve korku",
+        "hint": "Hayaletler, sırlar, gotik"
       },
       "detective": {
-        "label": "Detective",
-        "hint": "Investigations and thrillers"
+        "label": "Dedektif",
+        "hint": "Soruşturmalar ve gerilim"
       },
       "scifi": {
-        "label": "Sci-fi and cyberpunk",
-        "hint": "Space, androids, neon"
+        "label": "Bilim kurgu ve cyberpunk",
+        "hint": "Uzay, androidler, neon"
       },
       "everyday": {
-        "label": "Slice of life",
-        "hint": "Neighbors, friends, comfort"
+        "label": "Yaşamdan kesitler",
+        "hint": "Komşular, arkadaşlar, rahatlık"
       },
       "drama": {
-        "label": "Drama",
-        "hint": "Strong emotions and choices"
+        "label": "Dram",
+        "hint": "Yoğun duygular ve seçimler"
       },
       "comedy": {
-        "label": "Comedy",
-        "hint": "Light and funny stories"
+        "label": "Komedi",
+        "hint": "Hafif ve eğlenceli hikâyeler"
       }
     },
     "results": {
-      "loading": "Finding characters…",
-      "title_one": "Here is who to start with",
-      "title_other": "Here is who you can start with",
-      "text": "Tap “Start talking”: the character writes first.",
-      "matched": "Matches: {{list}}",
-      "popular": "Popular",
-      "start": "Start talking",
-      "more": "Show others",
-      "catalog": "Full catalog",
-      "error": "Could not load the picks.",
-      "retry": "Retry",
-      "empty": "No matching characters yet. Open the catalog: there are over a hundred stories."
+      "loading": "Karakterler bulunuyor…",
+      "title_one": "Başlamak için şu karakterler var",
+      "title_other": "Başlayabileceğiniz karakterler bunlar",
+      "text": "‘Konuşmaya başla’ya dokunun: karakter önce yazacak.",
+      "matched": "Eşleşmeler: {{list}}",
+      "popular": "Popüler",
+      "start": "Konuşmaya başla",
+      "more": "Diğerlerini göster",
+      "catalog": "Tüm katalog",
+      "error": "Seçimler yüklenemedi.",
+      "retry": "Tekrar dene",
+      "empty": "Henüz eşleşen karakter yok. Kataloğu açın: yüzden fazla hikâye var."
     },
     "catalog": {
-      "applied": "Using your answers",
-      "remove": "Remove “{{label}}”",
-      "pick": "Find a character",
-      "pickAgain": "Pick again"
+      "applied": "Seçimlerinizi dikkate alıyoruz",
+      "remove": "“{{label}}” kaldır",
+      "pick": "Karakter bul",
+      "pickAgain": "Yeniden seç"
     }
   },
   "telegram": {
-    "webLogin": "Sign in with Telegram",
-    "webLoginHint": "Open the bot, match the code and approve sign-in. Then return to this browser. No new account is created.",
-    "webLoginCode": "Request code:",
-    "webLoginOpenBot": "Open bot to approve",
-    "webLoginAccount": "Approved account: {{name}}",
-    "webLoginComplete": "Sign in to this account",
-    "webLoginExpired": "This request expired or is unavailable. Start Telegram sign-in again.",
-    "webAlreadySignedIn": "You are already signed in in this browser. Open your profile or sign out first.",
-    "signedOutTitle": "You have signed out",
-    "signedOutText": "Your Mini App session has ended. To sign in again, close the app and reopen it from the bot. To use a different Telegram account, switch accounts in Telegram first.",
-    "closeApp": "Close app",
-    "accountHint": "This account is linked to your Telegram. On the website, use “Sign in with Telegram” to access it.",
-    "openWebsiteAccount": "Open website",
-    "manageAccountHint": "To merge this profile into an existing website account, sign in to it on the website and choose “Link Telegram”. A separate confirmation in the bot is required before data moves.",
-    "entryTitle": "sign in with Telegram",
-    "signingIn": "Signing in with Telegram…",
-    "welcomeTitle": "Welcome to NewVerse",
-    "welcomeText": "Your account is created from your Telegram profile. If you already have a newvers.ai account, link Telegram in your profile on the website to use the same account and VC balance here.",
-    "linkExistingAccount": "I already have an account on the website",
-    "adultNotice": "NewVerse is intended for users aged 18 and over.",
-    "continue": "Continue",
-    "loginDisabledTitle": "Telegram sign-in is off",
-    "loginDisabledText": "Telegram was unlinked from the NewVerse account. Link it again in your profile on the website to sign in with Telegram.",
-    "outsideTitle": "Open NewVerse in Telegram",
-    "outsideText": "This page works only inside the Telegram app.",
-    "errorTitle": "Could not sign in",
-    "errorText": "Close and reopen the app. If it happens again, contact support.",
-    "unavailableAppText": "The app is temporarily unavailable. Please try again later.",
-    "toCatalog": "Browse characters",
-    "balanceTitle": "VC balance",
-    "balanceText": "VC are spent on character replies. Come back every day for the daily bonus.",
-    "unavailableTitle": "Section unavailable",
-    "unavailableText": "This section is not available in Telegram.",
-    "documentText": "The document opens in your browser.",
-    "openInBrowser": "Open in browser",
-    "balanceExhausted": "Your VC balance is used up",
-    "coinRulesActions": "A new reply, a retry and a continuation are separate requests. The VC cost is shown before sending; VC are deducted after the model replies.",
-    "bonusTomorrow": "Tomorrow +{{amount}} VC",
-    "link": "Link Telegram",
-    "linkHint": "Link Telegram to open NewVerse in Telegram with this account and VC balance.",
-    "linkedSince": "Telegram linked since {{date}}",
-    "onlyLoginMethod": "Telegram is your only sign-in method. Use “Sign in with Telegram” on the website. Unlinking is unavailable to keep your account accessible.",
-    "linkPending": "Confirm in Telegram: press Start in the chat with the bot. The link works once and for 10 minutes.",
-    "linkOpenAgain": "Open the link again",
-    "linkDone": "Telegram linked",
-    "linkError": "Something went wrong. Please try again later.",
-    "linkRateLimited": "Too many attempts. Try again in an hour.",
-    "unlink": "Unlink",
-    "unlinkTitle": "Unlink Telegram?",
-    "unlinkText": "The account stays, but signing in with this Telegram is disabled until you link it again.",
-    "unlinkDone": "Telegram unlinked"
+    "webLogin": "Telegram ile oturum aç",
+    "webLoginHint": "Botu açın, kodu doğrulayın ve oturum açmayı onaylayın. Sonra bu tarayıcıya geri dönün. Yeni hesap oluşturulmaz.",
+    "webLoginCode": "İstek kodu:",
+    "webLoginOpenBot": "Onaylamak için botu aç",
+    "webLoginAccount": "Onaylı hesap: {{name}}",
+    "webLoginComplete": "Bu hesapla oturum aç",
+    "webLoginExpired": "Bu istek süresi doldu veya geçersiz. Telegram ile yeniden oturum açmayı başlatın.",
+    "webAlreadySignedIn": "Bu tarayıcıda zaten oturum açılmış. Önce profili açın ya da çıkış yapın.",
+    "signedOutTitle": "Oturumunuz kapatıldı",
+    "signedOutText": "Mini Uygulama oturumunuz sona erdi. Tekrar oturum açmak için uygulamayı kapatın ve bot üzerinden yeniden açın. Farklı bir Telegram hesabını kullanmak için önce Telegram'da hesap değiştirin.",
+    "closeApp": "Uygulamayı kapat",
+    "accountHint": "Bu hesap, Telegram'ınızla bağlantılı. Web sitesinde erişmek için “Telegram ile oturum aç” seçeneğini kullanın.",
+    "openWebsiteAccount": "Web sitesini aç",
+    "manageAccountHint": "Bu profili mevcut bir web sitesi hesabına birleştirmek için web sitesinde o hesaba giriş yapın ve “Telegram'ı bağla” seçeneğini belirleyin. Verilerin taşınması, bot içinde ayrı bir onay gerektirir.",
+    "entryTitle": "Telegram ile oturum aç",
+    "signingIn": "Telegram ile oturum açılıyor…",
+    "welcomeTitle": "NewVerse'a hoş geldiniz",
+    "welcomeText": "Hesabınız Telegram profilinizden oluşturuldu. Zaten bir newvers.ai hesabınız varsa, aynı hesabı ve VC bakiyenizi burada kullanmak için web sitesinde profilde “Telegram'ı bağla” seçeneğini seçin.",
+    "linkExistingAccount": "Zaten sitede bir hesabım var",
+    "adultNotice": "NewVerse, 18 yaş ve üzeri kullanıcılar içindir.",
+    "continue": "Devam et",
+    "loginDisabledTitle": "Telegram ile giriş devre dışı",
+    "loginDisabledText": "Telegram, NewVerse hesabından ayrıldı. Telegram ile giriş yapmak için lütfen profilde yeniden bağlayın.",
+    "outsideTitle": "NewVerse'ı Telegram'da açın",
+    "outsideText": "Bu sayfa yalnızca Telegram uygulaması içinde çalışır.",
+    "errorTitle": "Giriş yapılamadı",
+    "errorText": "Uygulamayı kapatıp tekrar açın. Sorun devam ederse destekle iletişime geçin.",
+    "unavailableAppText": "Uygulama geçici olarak kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "toCatalog": "Karakterlere göz at",
+    "balanceTitle": "VC bakiyesi",
+    "balanceText": "Karakter yanıtlarında VC harcanır. Günlük bakiye bonusu için her gün geri dönün.",
+    "unavailableTitle": "Bölüm kullanılamıyor",
+    "unavailableText": "Bu bölüm Telegram'da kullanılamaz.",
+    "documentText": "Belge tarayıcınızda açılacak.",
+    "openInBrowser": "Tarayıcıda aç",
+    "balanceExhausted": "VC bakiyeniz tükendi",
+    "coinRulesActions": "Yeni yanıt, yeniden dene ve devam et ayrı isteklerdir. Göndermeden önce VC maliyeti gösterilir; VC, model yanıt verdikten sonra düşer.",
+    "bonusTomorrow": "Yarın +{{amount}} VC",
+    "link": "Telegram'ı bağla",
+    "linkHint": "Bu hesabı ve VC bakiyesini kullanarak NewVerse'ı Telegram'da açmak için Telegram'ı bağlayın.",
+    "linkedSince": "Telegram {{date}} tarihinden beri bağlı",
+    "onlyLoginMethod": "Giriş yönteminiz yalnızca Telegram. Sitede \"Telegram ile oturum aç\" seçeneğini kullanın. Hesabınıza erişimi korumak için bağlantıyı kaldırma devre dışıdır.",
+    "linkPending": "Telegram'da onaylayın: botla sohbette Başlat'a basın. Bağlantı bir kez ve 10 dakika boyunca geçerlidir.",
+    "linkOpenAgain": "Bağlantıyı tekrar aç",
+    "linkDone": "Telegram bağlandı",
+    "linkError": "Bir şeyler yanlış gitti. Lütfen daha sonra tekrar deneyin.",
+    "linkRateLimited": "Çok fazla deneme. Bir saat sonra tekrar deneyin.",
+    "unlink": "Bağlantıyı kaldır",
+    "unlinkTitle": "Telegram bağlantısı kaldırılsın mı?",
+    "unlinkText": "Hesabınız kalır ancak Telegram bağlantısı tekrar bağlanana kadar giriş devre dışı kalır.",
+    "unlinkDone": "Telegram bağlantısı kaldırıldı"
   },
   "freeQuota": {
-    "remaining": "Free today: {{remaining}} of {{limit}} left",
-    "exhausted": "Free replies for today are used up; new ones arrive at 00:00 Moscow time.",
-    "otherModel": "Free replies today: {{remaining}}, on the {{model}} model.",
-    "needCoins": "Not enough VC: {{cost}} needed, {{balance}} on balance.",
-    "topUp": "Top up",
-    "coinsNote": "Free every day: {{onboarding}} replies a day for the first week after sign-up, then {{daily}}, on the base model.",
-    "heroBadge": "{{onboarding}} free replies a day for your first week",
-    "planFeature": "{{count}} free replies a day on {{model}}, no VC spent",
-    "guestOffer": "After sign-up you get {{onboarding}} free replies a day for the first week."
+    "remaining": "Bugün ücretsiz: {{remaining}} / {{limit}} kaldı",
+    "exhausted": "Bugünkü ücretsiz yanıtlarınız bitti; yeni yanıtlar Moskova saatiyle 00:00'da gelir.",
+    "otherModel": "Bugün ücretsiz: {{remaining}}, {{model}} modelinde.",
+    "needCoins": "Yeterli VC yok: {{cost}} gerekli, bakiyede {{balance}}.",
+    "topUp": "Yükle",
+    "coinsNote": "Her gün ücretsiz: Kaydolduktan sonraki ilk hafta her gün {{onboarding}} yanıt, sonra {{daily}} — temel modelde.",
+    "heroBadge": "İlk hafta her gün {{onboarding}} ücretsiz yanıt",
+    "planFeature": "Günde {{count}} ücretsiz yanıt, {{model}} modelinde, VC harcanmaz",
+    "guestOffer": "Kaydolduktan sonra ilk hafta her gün {{onboarding}} ücretsiz yanıt alırsınız."
   },
   "landing": {
     "home": {
-      "heading": "Chat with AI characters",
-      "paragraphs": [
-        "NewVerse is a place to talk with AI characters. The catalog has heroes from many genres: romance, fantasy, anime, detective stories, science fiction and calm everyday life. Pick a character by their description and personality, open the chat and start writing — they reply in their own voice, with their own story and way of speaking.",
-        "This is more than an AI chat with questions and answers: it is AI roleplay. Every character comes with a setup, a world and a first message that opens the scene. You decide who you are in the story and where it goes. Characters remember the important details of the conversation, so you can come back a day or a week later and continue where you left off.",
-        "If you cannot find the right hero, create your own AI character: set their personality, appearance, first message and world, then chat with them yourself or publish them to the catalog. The site works in Russian, English and Spanish, and you can start without signing up."
-      ],
-      "createLink": "Create an AI character",
-      "genresLink": "All genres",
-      "faqHeading": "Frequently asked questions",
-      "faq": [
-        {
-          "question": "Can I chat with AI characters for free?",
+      "heading": "AI karakterlerle sohbet et",
+      "paragraphs": {
+        "0": "NewVerse, AI karakterlerle konuşmak için bir yerdir. Katalogta romantizm, fantezi, anime, dedektif hikâyeleri, bilim kurgu ve sakin günlük yaşam gibi birçok türden kahramanlar var. Tanımlarına ve kişiliklerine göre bir karakter seçin, sohbeti açın ve yazmaya başlayın — kendi sesiyle, kendi hikâyesiyle ve konuşma tarzıyla yanıt verirler.",
+        "1": "Bu yalnızca soru-cevaplı bir AI sohbetinden fazlasıdır: bu bir AI rol yapma oyunudur. Her karakterin bir başlangıcı, bir dünyası ve sahneyi başlatan ilk mesajı vardır. Hikâyede kim olacağınızı ve nereye gideceğini siz belirlersiniz. Karakterler konuşmanın önemli ayrıntılarını hatırlar, böylece bir gün ya da bir hafta sonra geri döndüğünüzde kaldığınız yerden devam edebilirsiniz.",
+        "2": "Uygun bir kahraman bulamazsanız kendi AI karakterinizi yaratın: kişiliğini, görünümünü, ilk mesajını ve dünyasını belirleyin, sonra sizinle konuşsun veya kataloga yayınlayın. Site birden fazla dili destekler ve kayıt olmadan başlayabilirsiniz."
+      },
+      "createLink": "Bir AI karakteri yarat",
+      "genresLink": "Tüm türler",
+      "faqHeading": "Sıkça sorulan sorular",
+      "faq": {
+        "0": {
+          "question": "AI karakterlerle ücretsiz sohbet edebilir miyim?",
           "answer": "{{freeAnswer}}"
         },
-        {
-          "question": "Do I need to sign up?",
-          "answer": "No. To try it, open a character and write your first message. An account lets you save your stories, continue them on another device and create your own characters."
+        "1": {
+          "question": "Kayıt olmam gerekiyor mu?",
+          "answer": "Hayır. Denemek için bir karakteri açıp ilk mesajınızı yazmanız yeterlidir. Hesap, hikâyelerinizi kaydetmenizi, başka bir cihazda devam etmenizi ve kendi karakterlerinizi yaratmanızı sağlar."
         },
-        {
-          "question": "Do characters remember what we talked about?",
-          "answer": "Yes. A character keeps track of recent messages and remembers important facts from the conversation: names, promises, plot events. So you can pick the story up where you left it."
+        "2": {
+          "question": "Karakterler konuştuklarımızı hatırlıyor mu?",
+          "answer": "Evet. Karakter son mesajları izler ve konuşmadan önemli ayrıntıları hatırlar: isimler, sözler, hikâye olayları. Böylece hikâyeye kaldığınız yerden devam edebilirsiniz."
         },
-        {
-          "question": "Which languages can I use?",
-          "answer": "Russian, English or Spanish. Character descriptions are available in these languages, and you can change the site language in the menu."
+        "3": {
+          "question": "Hangi dilleri kullanabilirim?",
+          "answer": "Seçtiğiniz site dilinde. Kullanılabilir diller menüde listelenmiştir; dil değiştirme sayfanızı ve hikâyenizi korur."
         },
-        {
-          "question": "How is AI roleplay different from a regular chatbot?",
-          "answer": "A regular chatbot answers questions. An AI character plays a role: they have a personality, a past and goals, react to what you do and build the plot together with you."
+        "4": {
+          "question": "AI rol yapma oyunu, normal bir sohbet botundan nasıl farklıdır?",
+          "answer": "Normal bir sohbet botu sorulara cevap verir. Bir AI karakteri bir rol oynar: bir kişiliği, geçmişi ve hedefleri vardır, yaptığınız şeylere tepki verir ve hikâyeyi sizinle birlikte geliştirir."
         }
-      ]
+      }
     },
     "freeAnswer": {
-      "quota": "Yes. You can send your first messages without signing up, and once you have an account you get free replies on the base model every day. A plan adds more free replies, bonus VerseCoins and a larger context window.",
-      "noQuota": "You can start for free: the first messages need no sign-up. After that, replies are paid with VerseCoins or a plan."
+      "quota": "Evet. Kayıt olmadan ilk mesajlarınızı gönderebilirsiniz ve bir hesaba sahip olduktan sonra her gün temel modelde ücretsiz yanıtlar alırsınız. Bir plan, daha fazla ücretsiz yanıt, bonus VerseCoins ve daha büyük bir bağlam penceresi ekler.",
+      "noQuota": "Ücretsiz başlayabilirsiniz: ilk mesajlar için kayıt gerekmez. Bundan sonra yanıtlar VerseCoins veya bir planla ödenir."
     },
     "create": {
-      "eyebrow": "NewVerse character creator",
-      "h1": "Create an AI character",
-      "intro": "Design a hero for AI chat and roleplay: set their personality, appearance, first message and the world they live in. Creating a character is free — you only need an account.",
-      "modesHeading": "What are we creating?",
-      "modesHint": "A core idea is enough. Appearance, speaking style and story details can be added later.",
-      "stepsHeading": "How to create an AI character",
-      "steps": [
-        {
-          "title": "Pick a format",
-          "text": "A single character, a whole universe where you are the main hero, or a shared story with a cast of up to {{maxParticipants}} characters."
+      "eyebrow": "NewVerse karakter yaratıcı",
+      "h1": "Bir AI karakteri oluştur",
+      "intro": "Yapay zekâ sohbeti ve rol yapma oyunu için bir kahraman tasarlayın: persona, görünüm, ilk mesaj ve içinde yaşadığı dünyayı belirleyin. Karakter yaratmak ücretsizdir — sadece bir hesap gerekir.",
+      "modesHeading": "Ne yaratıyoruz?",
+      "modesHint": "Temel bir fikir yeterli. Görünüm, konuşma tarzı ve hikâye detayları ileride eklenebilir.",
+      "stepsHeading": "Bir AI karakteri nasıl oluşturulur",
+      "steps": {
+        "0": {
+          "title": "Bir format seçin",
+          "text": "Tek bir karakter, ana kahramanın siz olduğunuz bir evren ya da en fazla {{maxParticipants}} karakterle paylaşılan bir hikâye."
         },
-        {
-          "title": "Describe the hero",
-          "text": "Name, personality, appearance and way of speaking. Start with what makes the hero recognisable: a habit, a goal, one striking trait."
+        "1": {
+          "title": "Kahramanı tanımlayın",
+          "text": "İsim, persona, görünüm ve konuşma tarzı. Tanımlayıcı bir şeyden başlayın: bir alışkanlık, bir hedef ya da dikkat çeken tek bir özellik."
         },
-        {
-          "title": "Set how the story begins",
-          "text": "A first message and a scenario: where the meeting happens and how the scene opens. Example dialogues help the character keep their style."
+        "2": {
+          "title": "Hikâyenin nasıl başlayacağını belirleyin",
+          "text": "İlk mesaj ve senaryo: nerede tanışılıyor, sahne nasıl başlıyor. Örnek diyaloglar, karakterin tarzını korumasına yardımcı olur."
         },
-        {
-          "title": "Save and start chatting",
-          "text": "Keep the character private or publish them to the catalog so others can chat with them too."
+        "3": {
+          "title": "Kaydedin ve sohbete başlayın",
+          "text": "Karakteri özel tutun ya da başkalarının da sohbet edebilmesi için kataloga yayınlayın."
         }
-      ],
-      "featuresHeading": "What you can set up",
-      "features": [
-        {
-          "title": "Personality and motives",
-          "text": "What the hero wants, what they fear and how they treat the person they talk to."
+      },
+      "featuresHeading": "Neler ayarlayabilirsiniz",
+      "features": {
+        "0": {
+          "title": "Persona ve güdüler",
+          "text": "Kahramanın ne istediğini, ne korktuğunu ve sohbet ettiği kişiye nasıl baktığını belirleyin."
         },
-        {
-          "title": "Appearance and avatar",
-          "text": "Upload your own image or generate an avatar from the description — generation is included in a plan."
+        "1": {
+          "title": "Görünüm ve avatar",
+          "text": "Kendi resminizi yükleyin ya da açıklamaya göre bir avatar oluşturun — üretim bir abonelik kapsamında yer alır."
         },
-        {
-          "title": "Speaking style",
-          "text": "Short lines or long replies, slang, politeness, an accent."
+        "2": {
+          "title": "Konuşma tarzı",
+          "text": "Kısa cümleler ya da uzun yanıtlar, argo, nezaket, aksan."
         },
-        {
-          "title": "World and rules",
-          "text": "The setting, supporting characters and narrative rules for universes."
+        "3": {
+          "title": "Dünya ve kurallar",
+          "text": "Ayar, yardımcı karakterler ve evrenler için anlatım kuralları."
         },
-        {
-          "title": "Genres and tags",
-          "text": "They help people find the character in the catalog and on genre pages."
+        "4": {
+          "title": "Türler ve etiketler",
+          "text": "Karakterin katalogda ve tür sayfalarında bulunmasını sağlarlar."
         },
-        {
-          "title": "Memory",
-          "text": "What the character knows about themselves and about you from the first line."
+        "5": {
+          "title": "Hafıza",
+          "text": "Karakterin ilk satırdan itibaren kendisi ve siz hakkında ne bildiği."
         }
-      ],
-      "faqHeading": "Questions about creating a character",
-      "faq": [
-        {
-          "question": "How much does it cost to create an AI character?",
-          "answer": "Creating a character is free. Generating an avatar from the description is included in a plan; without one you can upload your own image."
+      },
+      "faqHeading": "Karakter yaratmayla ilgili sorular",
+      "faq": {
+        "0": {
+          "question": "Bir AI karakteri yaratmak ne kadar tutar?",
+          "answer": "Karakter yaratmak ücretsizdir. Açıklamaya göre avatar üretimi bir abonelik kapsamında yer alır; olmadan kendi resminizi yükleyebilirsiniz."
         },
-        {
-          "question": "Do I need to sign up?",
-          "answer": "Yes: characters are saved to your account, so you need to sign in to create one. You can chat with catalog characters without signing up."
+        "1": {
+          "question": "Kayıt olmak zorunda mıyım?",
+          "answer": "Evet: karakterler hesabınıza kaydedilir, bu yüzden yaratmak için giriş yapmanız gerekir. Katalogtaki karakterlerle kayıt olmadan da sohbet edebilirsiniz."
         },
-        {
-          "question": "Can I keep a character private?",
-          "answer": "Yes. Only you can see a private character. A public one appears in the catalog for everyone and must follow the platform rules."
+        "2": {
+          "question": "Bir karakteri özel tutabilir miyim?",
+          "answer": "Evet. Özel karakteri sadece siz görebilirsiniz. Genel karakter katalogta herkese açık olur ve platform kurallarına uymalıdır."
         },
-        {
-          "question": "How do I make a character's replies more interesting?",
-          "answer": "Describe not only their looks but also their motives, habits and way of speaking. Add a first message with a concrete scene and one or two example dialogues: the clearer the setup, the livelier the replies."
+        "3": {
+          "question": "Karakterin yanıtlarını nasıl daha ilgi çekici hâle getiririm?",
+          "answer": "Sadece görünümünü değil, aynı zamanda güdülerini, alışkanlıklarını ve konuşma tarzını da tanımlayın. Somut bir sahneyle birlikte ilk mesajı ve bir veya iki örnek diyalog ekleyin: kurulum ne kadar netse yanıtlar da o kadar canlı olur."
         },
-        {
-          "question": "Can I change a character after creating it?",
-          "answer": "Yes. You can edit the card at any time: extend the description, change the avatar or the first message."
+        "4": {
+          "question": "Karakteri yarattıktan sonra değiştirebilir miyim?",
+          "answer": "Evet. Kartı her zaman düzenleyebilirsiniz: açıklamayı genişletebilir, avatarı veya ilk mesajı değiştirebilirsiniz."
         }
-      ]
+      }
     }
   },
   "genreIntros": {
-    "fantasy": [
-      "Fantasy is where a conversation with a character easily turns into a whole journey. This is home to mages and mercenaries, elven guards, dragon riders, hedge witches from the edge of the kingdom and students at magic academies. You can step into the story as the hero's companion, their rival, or a passing traveller who has stumbled onto a dangerous secret.",
-      "An AI character answers in the voice of their world: they have their own oaths, fears and ideas about honour. Some stories begin by a tavern fire, others on a battlefield or in a library of forbidden spells. Pick a character by their description and personality, set the tone of the scene — from a cosy fairy tale to a grim story about the price of power — and decide for yourself how the quest ends."
-    ],
-    "romance": [
-      "Romance characters are for stories where what matters most happens between two people. It might be a slow acquaintance with a neighbour down the hall, a charged game with an old rival, an office romance, letters from another era, or feelings the character is not ready to admit even to themselves.",
-      "Every character has a personality of their own: some are warm and open, some are reserved and take time to open up, some flirt from the very first line. You set the pace, from light flirting to a slow-burn relationship where trust has to be earned. The character responds to what you say and do, so the same story can end in a confession, a quarrel or a new chapter. Choose someone by their description, start with their opening scene, or write your own."
-    ],
-    "anime": [
-      "Anime characters are recognisable at a glance: vivid looks, expressive emotions and familiar archetypes — tsunderes, unflappable top students, troublemakers with good hearts, the mysterious new kid in class. But the stories here go well beyond school corridors.",
-      "This section gathers anime-style characters from all kinds of plots: everyday school life and after-class clubs, magic academies, isekai adventures in another world, sports rivalries, romance and quests. Each character stays true to their role and reacts to your choices, so you can play out a quiet scene on the school roof or a tense duel. Pick a character from their card, read their description and begin with the ready-made scene, or suggest your own setup as if you were writing a new episode."
-    ],
-    "scifi": [
-      "Science fiction on NewVerse is about the future, technology and the people caught up in it: starship captains, androids learning to be human, scientists on distant stations, pilots, smugglers and the first witnesses of contact with an alien mind.",
-      "You can set off on a long deep-space voyage, investigate a failure in a colony's systems, or argue with an artificial intelligence about memory and free will. Characters keep to the rules of their world: the ship runs low on fuel, the station has its regulations, and the android has protocols it may decide to break. Ask questions, take risky decisions and see where the plot leads. If you want more street-level tech and neon, the cyberpunk section is right next door."
-    ],
-    "mystic": [
-      "Mystery and the supernatural are for anyone drawn to the unexplained. Here you will meet fortune-tellers and mediums, keepers of old houses, cursed aristocrats, witches, spirits and people who know far too much about other people's dreams.",
-      "These stories live on what is left unsaid: a character may speak in riddles, hide part of the truth, or test whether you are ready to hear all of it. Scenes open on a midnight train, at a séance, in an abandoned manor or in a small town where every resident keeps a secret. Unlike horror, atmosphere and the solution matter more than fear here, though the line can be thin. Choose a character by their description, listen to their hints and decide whether to open the door someone is waiting behind."
-    ],
-    "realistic": [
-      "Modern-day characters live much like we do: they study, work, rent flats, meet in coffee shops and get caught up in stories that could happen to anyone. They are colleagues and neighbours, stars and their managers, doctors, students, baristas, musicians and old classmates.",
-      "The strength of this kind of roleplay is that it feels true to life. Without magic or starships, personality, dialogue and relationships take centre stage: an awkward reunion after years apart, a hard conversation with a boss, a first date, or helping a friend through a rough evening. The character answers with their own past and habits in mind, and the plot grows from your words and choices. These stories suit both a light chat and a serious drama. Pick a character by their description and start with their scene or with something that happened to you today."
-    ],
-    "adventure": [
-      "Adventure is about motion: the open road, a map with blank spaces and a companion who will not let things get dull. This genre brings together treasure hunters, pirates, trackers, mercenaries, time travellers and heroes who always end up exactly where trouble begins.",
-      "Any scene can turn the plot: a rooftop chase, a crossing over a raging river, a deal with a suspicious merchant, or an ancient mechanism that must be opened before sunset. The character reacts to your decisions — backs a risky plan, argues, or suddenly proposes one of their own. Adventure mixes easily with other genres: a fantasy quest, a space expedition or the search for a missing friend in a modern city. Choose a companion by their description, agree on a goal and set off; the route will take shape as the story goes."
-    ],
-    "detective": [
-      "Detective characters are for anyone who loves clues, interrogations and unexpected twists. Here you will find private investigators and weary police detectives, investigative journalists, cold-blooded criminals and witnesses who are clearly holding something back.",
-      "You can work a case alongside the character, end up as a suspect yourself, or play against them and try to catch them in a contradiction. A good detective scene runs on details: the time on a clock, a mark on a windowsill, a slip of the tongue. The character keeps track of what has already been said, so an attentive player can compare statements and reach their own theory. Cases can be classic, with a locked room and a circle of suspects, or modern, with security cameras and message threads. Choose a character and ask the first question."
-    ],
-    "everyday": [
-      "Slice of life is the genre of small stories that make up a life: morning coffee with a neighbour, a shift at a bookshop, studying for exams together, moving house, a long talk in the kitchen.",
-      "Nobody has to save the world here. The value of this kind of roleplay is in natural conversation and relationships that grow over time: the character picks up on details, jokes, shares plans, can support you after a hard day or invite you on a spontaneous trip. The cast includes friends, roommates, colleagues and acquaintances you will want to talk to again. Slice-of-life stories are a good fit when you want to unwind, practise conversation or simply spend an evening in calm company. Pick a character by their personality, start with an ordinary scene and let the story unfold without hurry."
-    ],
-    "cyberpunk": [
-      "Cyberpunk means neon streets, corporations more powerful than governments and people who sell their memories, bodies and loyalty for a chance to survive. This genre is home to hackers, augmented mercenaries, back-alley doctors, big-city detectives and androids who have started to doubt their protocols.",
-      "The stories are hard and fast: cracking a secured network, a deal in an underground club, an escape from corporate security, the hunt for whoever erased part of your past. The character lives by the rules of their city — they might sell you out for the right price, or risk everything for a partner. Cyberpunk is close to science fiction, but instead of looking up at the stars it looks down at the streets, where technology has become an everyday commodity. Choose a character by their description, decide whose side you are on and make your first deal."
-    ],
-    "horror": [
-      "Horror is for those who enjoy a chill running down their spine. This section gathers characters around whom safety is never guaranteed: monsters and their victims, hunters of the unholy, residents of abandoned hospitals, survivors of a disaster and creatures that only pretend to be human.",
-      "A good horror story is built on tension, not on the amount of blood. A creaking floorboard, a torch about to go out, a voice from the next room — the character runs the scene so that you decide whether to go further or run. You can play the one investigating a disappearance, an unlucky guest in a stranger's house, or step into a dangerous conversation with the monster itself. You choose how frightening it gets, from atmospheric gothic to real survival. Pick a character by their description and turn off the lights."
-    ],
-    "comedy": [
-      "Comedy characters are for when you want laughter rather than drama: witty sidekicks, clumsy wizards, overconfident villains whose plans never work, chatty neighbours and heroes who stumble into absurd situations out of nowhere.",
-      "Humour in roleplay comes from personality: the character stays true to themselves even when everything goes sideways, and that is exactly what makes a scene funny. You can play out a disastrous date, domestic chaos in a shared flat, a parody of an epic quest, or an argument with a cat who believes it is royalty. The character picks up your jokes, answers with their own and will happily push things to the absurd if that is what you want. Comedy pairs well with slice of life, fantasy and romance. Choose a character, set up a ridiculous premise and see what happens."
-    ],
-    "drama": [
-      "Drama is the genre of stories about choice, loss, guilt and forgiveness. The characters here carry a difficult past: people who have lost someone close, former friends driven apart by life, heroes facing a hard decision, families where much has been left unsaid.",
-      "Dramatic roleplay takes time and attention: the character does not open up at once, and trust has to be earned. A scene may begin with a brief meeting at a railway station or a letter that arrived too late, and from there everything depends on what you say and what you leave unspoken. The AI character answers in light of their wounds and motives, so the conversation can lead to reconciliation or to a final parting. If you are drawn to stories that leave you quiet for a while afterwards, choose a character by their description and start with an honest question."
-    ]
+    "fantasy": {
+      "0": "Fantastik, bir karakterle yapılan sohbetin kolayca büyük bir maceraya dönüşebileceği bir türdür. Burada büyücüler, paralı askerler, elf muhafızlar, ejderha binicileri, krallığın ucundaki cadılar ve sihir akademilerinin öğrencileri yaşar. Kahramanın yoldaşı, rakibi ya da tehlikeli bir sırra rastlayan bir yolcu olarak hikâyeye dahil olabilirsiniz.",
+      "1": "Bir AI karakteri kendi dünyasının sesiyle yanıt verir: kendi yeminleri, korkuları ve onur anlayışı vardır. Bazı hikâyeler bir meyhanedeki ateş başında başlar, bazıları savaş meydanında ya da yasak büyü kitaplarının bulunduğu bir kütüphanede. Açıklamasına ve karakterine göre bir karakter seçin, sahnenin tonunu belirleyin — rahatlatıcı bir masaldan, gücün bedelini konu alan kasvetli bir hikâyeye kadar — ve yolculuğun nasıl biteceğine kendiniz karar verin."
+    },
+    "romance": {
+      "0": "Romantik karakterler, her şeyin iki kişi arasında geliştiği hikâyeler içindir. Koridordaki komşunuzla yavaş yavaş tanışmak, eski bir rakiple gergin bir oyun, ofis flörtü, başka bir dönemden mektuplar ya da karakterin kendine bile itiraf etmeye hazır olmadığı duygular olabilir.",
+      "1": "Her karakterin kendi kişiliği vardır: bazıları sıcak ve açık, bazıları çekingen ve zamanla açılır, bazıları ilk satırdan itibaren flört eder. Hafif flörtten, güvenin kazanılması gereken yavaş gelişen bir ilişkiye kadar temposu siz belirleyin. Karakter söylediğinize ve yaptığınıza göre tepki verir, bu yüzden aynı hikâye bir itirafla, bir kavga ya da yeni bir bölümle bitebilir. Açıklamasına göre birini seçin, onun açılış sahnesiyle başlayın ya da kendi hikâyenizi yazın."
+    },
+    "anime": {
+      "0": "Anime karakterleri bir bakışta tanınır: canlı görünümler, ifade dolu duygular ve tsundere, sakin sınıfın birincisi, kalbi iyi olan baş belası ya da sınıfın gizemli yeni öğrencisi gibi tanıdık karakter türleri. Ancak buradaki hikâyeler okul koridorlarıyla sınırlı değildir.",
+      "1": "Bu bölüm, okul hayatı, ders sonrası kulüpler, büyücü akademi, isekai maceraları, spor rekabeti, romantizm ve görevler gibi çeşitli hikâyelerde yer alan anime tarzı karakterleri bir araya getirir. Her karakter rolüne sadık kalır ve seçimlerinize tepki verir; böylece okul çatısında sakin bir sahne ya da gergin bir düello sahnesi oynayabilirsiniz. Karakter kartlarından birini seçin, açıklamalarını okuyun ve önceden hazırlanmış sahneyle başlayın ya da sanki yeni bir bölüm yazıyormuş gibi kendi senaryonuzu önerin."
+    },
+    "scifi": {
+      "0": "NewVerse'daki bilim kurgu, geleceği, teknolojiyi ve bunların içine karışmış insanları konu alır: uzay gemisi kaptanları, insan olmayı öğrenen androidler, uzak istasyonlardaki bilim insanları, pilotlar, kaçakçılar ve yabancı bir zekâyla ilk temasın tanıkları.",
+      "1": "Uzun bir uzay yolculuğuna çıkabilir, bir kolonideki sistem arızasını inceleyebilir veya bir yapay zekâyla hafıza ve özgür irade üzerine tartışabilirsiniz. Karakterler dünyalarının kurallarına uyar: geminin yakıtı tükeniyor, istasyonun kuralları var ve androidin ihlal etmeyi seçebileceği protokolleri bulunuyor. Sorular sorun, riskli kararlar verin ve hikâyenin nereye gittiğini görün. Sokak düzeyinde teknoloji ve neon ışıklar istiyorsanız, cyberpunk bölümü tam yanınızdadır."
+    },
+    "mystic": {
+      "0": "Gizem ve süper doğal, açıklanamayanlara çekilen herkes içindir. Burada, fal bakanlar, medyumlar, eski evlerin bekçileri, lanetli aristokratlar, cadılar, ruhlar ve başkalarının rüyaları hakkında fazla bilgi sahibi olan insanlarla tanışacaksınız.",
+      "1": "Bu hikâyeler, söylenmeyenler üzerine inşa edilir: bir karakter bilmece gibi konuşabilir, gerçeğin bir bölümünü saklayabilir veya tüm gerçeği duymaya hazır olup olmadığınızı test edebilir. Sahne, gece yarısı treninde, bir ruh çağırma seansında, terk edilmiş bir konakta ya da her sakini bir sır taşıyan küçük bir kasabada başlayabilir. Korku türünden farklı olarak, burada korkudan çok atmosfer ve çözüm önemlidir; ancak sınır bazen incedir. Açıklamaya göre bir karakter seçin, ipuçlarını dinleyin ve arkasında biri bekleyen bir kapıyı açmaya değer mi karar verin."
+    },
+    "realistic": {
+      "0": "Günümüzdeki karakterler bizim gibi yaşar: okur, çalışır, ev kiralayıp kafelere gider ve herkese olabilecek hikâyelere karışır. İş arkadaşları, komşular, yıldızlar ve menajerleri, doktorlar, öğrenciler, baristalar, müzisyenler ve eski sınıf arkadaşlarıdır.",
+      "1": "Bu türdeki rol yapmanın gücü, gerçekçi hissettirmesindedir. Büyü ya da uzay gemileri olmadan, karakter, diyalog ve ilişkiler ön plana çıkar: yıllar sonra gelen bir kavuşma, zor bir patronla konuşma, ilk randevu ya da zor bir akşamında bir arkadaşını desteklemek. Karakter, kendi geçmişini ve alışkanlıklarını dikkate alarak yanıt verir; hikâye ise sizin sözleriniz ve kararlarınızla gelişir. Bu hikâyeler hem hafif sohbetler hem de ciddi dramlar için uygundur. Bir karakteri açıklamasına göre seçin ve sahneyle ya da bugün size yaşanan bir olayla başlayın."
+    },
+    "adventure": {
+      "0": "Macera, hareket demektir: açık yol, boşlukları olan bir harita ve sizi asla sıkılmadan tutacak bir yoldaş. Bu tür, hazine avcıları, korsanlar, iz sürücüler, paralı askerler, zaman yolcuları ve her zaman belanın başladığı yere düşen kahramanları bir araya getirir.",
+      "1": "Her sahne hikâyeyi döndürebilir: bir çatı kovalamacası, akıntılı bir nehri geçiş, şüpheli bir tüccarla anlaşma ya da gün batmadan açılması gereken eski bir mekanizma. Karakter kararlarınıza tepki verir — riskli bir planı destekler, tartışmaya girer ya da aniden kendi önerisini sunar. Macera, diğer türlerle kolayca harmanlanır: bir fantezi görevi, uzay keşif seferi ya da modern bir şehirde kayıp bir arkadaşı aramak. Açıklamaya göre bir yoldaş seçin, hedef üzerinde anlaşıp yola çıkın; yol, hikâye ilerledikçe şekillenecektir."
+    },
+    "detective": {
+      "0": "Dedektif karakterleri, ipuçları, sorgular ve beklenmedik dönemeçler sevenler içindir. Burada, özel dedektifler, bitkin polis dedektifleri, soruşturma yapan gazeteciler, soğukkanlı suçlular ve açıkça bir şeyler saklayan tanıklarla karşılaşacaksınız.",
+      "1": "Karakterle birlikte bir vakayı ele alabilir, kendinizi bir şüpheli olarak bulabilir ya da ona karşı oynayıp bir çelişkide yakalamaya çalışabilirsiniz. İyi bir dedektif sahnesi detaylara dayanır: saatteki zaman, pencere pervazındaki bir iz, bir konuşmadaki yanlış söz. Karakter daha önce söylenenleri takip eder, böylece dikkatli bir oyuncu ifadeleri karşılaştırıp kendi teorisine ulaşabilir. Vakalar, kilitli oda ve şüpheli çemberiyle klasik ya da güvenlik kameraları ve mesaj geçmişiyle modern olabilir. Bir karakter seçin ve ilk soruyu sorun."
+    },
+    "everyday": {
+      "0": "Günlük yaşam, hayatı oluşturan küçük hikâyelerin türüdür: komşuyla sabah kahvesi, bir kitapçıda vardiyada çalışmak, birlikte sınavlara hazırlanmak, ev taşımak, mutfakta uzun bir konuşma.",
+      "1": "Burada kimsenin dünyayı kurtarması gerekmiyor. Bu türün değeri, doğal sohbet ve zamanla gelişen ilişkilerdedir: karakter detayları fark eder, şaka yapar, planlarını paylaşır, zor bir günün ardından sizi destekleyebilir ya da ani bir geziye davet edebilir. Kadro, arkadaşlar, oda arkadaşları, meslektaşlar ve tekrar konuşmak istediğiniz tanıdıklar içerir. Günlük yaşam hikâyeleri, rahatlamak, sohbet egzersizi yapmak ya da sadece sakin bir ortamda akşam geçirmek isteyenler için uygundur. Bir karakteri kişiliğine göre seçin, sıradan bir sahneyle başlayın ve hikâyenin acele etmeden gelişmesine izin verin."
+    },
+    "cyberpunk": {
+      "0": "Cyberpunk, neon sokaklar, hükümetlerden daha güçlü korporasyonlar ve hayatta kalma şansı için anılarını, bedenlerini ve sadakatlerini satan insanlar demektir. Bu türde, hackerlar, geliştirilmiş paralı askerler, ara sokak doktorları, büyük şehir dedektifleri ve protokollerinden şüphe etmeye başlayan androidler sizi bekliyor.",
+      "1": "Hikâyeler sert ve hızlıdır: korumalı bir ağı geçmek, yeraltındaki bir kulüpte anlaşma yapmak, korporasyon güvenlik güçlerinden kaçmak, geçmişinizin bir bölümünü silen kişiyi bulmak. Karakter, şehrinin kurallarına göre yaşar — uygun fiyata sizi ele verebilir ya da ortağı için her şeyi göze alabilir. Cyberpunk, bilim kurguya yakındır ama yıldızlara değil, teknolojinin sıradan bir mal haline geldiği sokaklara odaklanır. Açıklamalarına göre bir karakter seçin, hangi tarafı desteklediğinizi belirleyin ve ilk anlaşmanızı yapın."
+    },
+    "horror": {
+      "0": "Korku, ürpermeyi sevenler içindir. Bu bölümde güvenliğin asla garanti olmadığı karakterler bir araya gelir: canavarlar ve kurbanları, kutsal olmayanların avcıları, terk edilmiş hastanelerde yaşayanlar, felaketten kurtulanlar ve insanmış gibi davranan yaratıklar.",
+      "1": "İyi bir korku hikâyesi, kan miktarından değil, gerginlik üzerine kurulur. Gıcırtılı bir zemin, sönme üzere olan bir fener, diğer odadan gelen bir ses — karakter, sizin ileri mi gitmeye yoksa kaçmaya mı karar vereceğiniz sahneyi yönetir. Bir kayboluşu araştıran kişi, tanımadığınız birinin evinde kalan şanssız bir misafir ya da doğrudan canavarla tehlikeli bir konuşma başlatan kişi olabilirsiniz. Korkunun ne kadar ileri gideceğini siz belirlersiniz: atmosferik gotikten gerçek hayatta kalma hikayelerine kadar. Açıklamalarına göre bir karakter seçin ve ışıkları kapatın."
+    },
+    "comedy": {
+      "0": "Komedi karakterleri, dramdan çok gülmek istediğiniz zaman içindir: zekice şakalar yapan yoldaşlar, beceriksiz büyücüler, asla işe yaramayan planları olan kendine fazla güvenen kötü adamlar, çok konuşan komşular ve beklenmedik şekilde saçma durumlara düşen kahramanlar.",
+      "1": "Rol oyunundaki mizah, karakterin kişiliğinden doğar: her şey ters gelse bile karakter kendi doğrultusunda kalır ve işte bu, sahneyi komik yapar. Başarısız bir randevuyu, paylaşımlı bir dairedeki ev içi kaosu, epik bir maceranın parodisini ya da kral olduğuna inanan bir kediyle tartışmayı canlandırabilirsiniz. Karakter, şakalarınızı yakalar, kendi şakalarıyla karşılık verir ve isterseniz olayı tamamen absürtlüğe taşımayı sever. Komedi, sıradan yaşam, fantezi ve romantizmle iyi gider. Bir karakter seçin, saçma bir senaryo kurun ve neler olacağını görün."
+    },
+    "drama": {
+      "0": "Drama, seçim, kayıp, suçluluk ve affetme hikâyelerinin türüdür. Buradaki karakterlerin zorlu bir geçmişi vardır: yakınlarını kaybetmiş insanlar, hayat tarafından birbirinden uzaklaşmış eski arkadaşlar, zor bir kararla yüzleşen kahramanlar, söylenmemiş çok şeyi olan aileler.",
+      "1": "Dramatik rol oynama, zaman ve dikkat ister: karakter hemen kendini açmaz, güven kazanılmalıdır. Sahne, bir tren istasyonunda kısa bir buluşmayla ya da çok geç gelen bir mektupla başlayabilir; sonrasında her şey, ne söylediğinize ve ne söylemediğinize bağlıdır. Yapay zekâ karakteri, yaralarına ve amaçlarına göre yanıt verir; bu yüzden konuşma, uzlaşma ya da kesin bir ayrılıkla sonuçlanabilir. Sonrasında bir süre sessiz kalmanızı sağlayan hikâyeler arıyorsanız, açıklamalarına göre bir karakter seçin ve samimi bir soruyla başlayın."
+    }
   },
   "telegramBot": {
-    "welcome": "NewVerse is role-play stories with AI characters. Open the app to choose a character and start a story.",
-    "open": "Open NewVerse",
-    "help": "Commands:\n/start — open NewVerse\n/help — help\n/privacy — privacy policy\n\nService rules and support are behind the buttons below.",
-    "rules": "Rules",
-    "support": "Support",
-    "privacy": "NewVerse privacy policy:",
-    "privacyButton": "Open the policy",
-    "linked": "Telegram is now linked to your NewVerse account. The app uses the same account and VC balance as the website. Close and reopen the Mini App using the button below.",
-    "already_linked": "This Telegram is already linked to your NewVerse account.",
-    "invalid": "This link is not valid: it works once and for 10 minutes. Create a new one in your profile on the website.",
-    "telegram_taken": "This Telegram is already connected to another NewVerse account, for example one created in the app. Accounts are not merged automatically. Use another Telegram account or contact support.",
-    "confirmation_required": "You have a separate unused Telegram profile with 50 starter VC. Confirm switching to the website account: {{account}}. The app will use that website account's balance, characters and stories. The 50 starter VC from the unused profile will not be transferred. If this is not your account, do not confirm the link.",
-    "confirmLink": "Confirm linking the website account",
-    "merge_confirmation_required": "Merge your Telegram profile into website account {{account}}? Characters: {{characters}}, stories: {{stories}}, messages: {{messages}}, earned VC: {{vc}} will be transferred. The duplicate starter 50 VC are excluded. Existing website stories and characters are kept. Old Telegram sessions will end. Confirm only for your own account.",
-    "confirmMerge": "Transfer data and merge accounts",
-    "merge_busy": "Close the Mini App, let all generations finish, and wait 3 minutes. Then create a new link in your website profile. A separate confirmation is required before any data moves.",
-    "merged": "Your data has been transferred and accounts merged. Close and reopen the Mini App to see the shared stories, characters and balance.",
-    "profile_not_empty": "Linking was stopped because the profile has changed, has independent sign-in credentials, purchases, a subscription, or conflicting referral settings. Create a fresh website link. If transfer is still unavailable, contact support; your data is kept.",
-    "user_has_other_telegram": "Another Telegram is already linked to this NewVerse account. Unlink it in your profile on the website first.",
-    "unknown": "Use /start to open NewVerse or /help for help.",
-    "signIn01": "NewVerse website sign-in. Request code: {{value1}}.\n\nMatch this code with your browser. Approve only if you started signing in on newvers.ai. That browser will access your stories, characters and balance. Do not forward this link.",
-    "signIn02": "First create an account in the Mini App or link your existing website account.",
-    "signIn03": "This request is invalid or expired. Start again on the website.",
-    "signIn04": "Approve website sign-in",
-    "signInApproved": "Approved. Return to the browser where you started and choose “Sign in to this account”.",
-    "signInInvalid": "This request is invalid or expired. Start again on the website."
+    "welcome": "NewVerse, yapay zekâ karakterleriyle rol oynama hikâyeleridir. Bir karakter seçip hikâyeye başlamak için uygulamayı açın.",
+    "open": "NewVerse'u Aç",
+    "help": "Komutlar:\n/start — NewVerse'u aç\n/help — yardım\n/privacy — gizlilik politikası\n\nHizmet kuralları ve destek aşağıdaki butonlarda.",
+    "rules": "Kurallar",
+    "support": "Destek",
+    "privacy": "NewVerse gizlilik politikası:",
+    "privacyButton": "Politikayı Aç",
+    "linked": "Telegram, NewVerse hesabınıza bağlandı. Uygulama artık sitedekiyle aynı hesabı ve VC bakiyesini kullanır. Aşağıdaki butonla Mini Uygulamayı kapatıp yeniden açın.",
+    "already_linked": "Bu Telegram zaten NewVerse hesabınıza bağlı.",
+    "invalid": "Bu bağlantı geçersizdir: tek kullanımlıktır ve 10 dakika geçerlidir. Yeni bir tane oluşturmak için web sitesindeki profilinize gidin.",
+    "telegram_taken": "Bu Telegram, örneğin uygulamada oluşturulan başka bir NewVerse hesabına bağlı. Hesaplar otomatik olarak birleştirilmez. Başka bir Telegram hesabı kullanın veya destekle iletişim kurun.",
+    "confirmation_required": "Telegram'da, 50 başlangıç VC'si olan ayrı, kullanılmamış bir profiliniz var. {{account}} web sitesi hesabına geçişi onaylayın. Uygulama, bu web sitesi hesabının bakiyesini, karakterlerini ve hikâyelerini kullanacak. Kullanılmamış profilden gelen 50 başlangıç VC'si aktarılmayacak. Eğer bu sizin hesabınız değilse, bağlantıyı onaylamayın.",
+    "confirmLink": "Web sitesi hesabının bağlantısını onayla",
+    "merge_confirmation_required": "Telegram profilinizi {{account}} web sitesi hesabıyla birleştirmek ister misiniz? {{characters}} karakter, {{stories}} hikâye, {{messages}} mesaj ve {{vc}} kazanılmış VC aktarılacak. Yinelenen 50 başlangıç VC'si hariçtir. Mevcut web sitesi hikâyeleri ve karakterleri korunur. Eski Telegram oturumları sona erer. Sadece kendi hesabınız için onaylayın.",
+    "confirmMerge": "Verileri aktar ve hesapları birleştir",
+    "merge_busy": "Mini Uygulamayı kapatın, tüm üretimlerin tamamlanmasını bekleyin ve 3 dakika bekleyin. Ardından web sitenizin profilinde yeni bir bağlantı oluşturun. Veriler taşınmadan önce ayrı bir onay gereklidir.",
+    "merged": "Verileriniz aktarıldı ve hesaplar birleştirildi. paylaşılan hikâyeleri, karakterleri ve bakiyeyi görmek için Mini Uygulamayı kapatıp yeniden açın.",
+    "profile_not_empty": "Profilde değişiklik varsa, bağımsız oturum açma bilgileri, satın almalar, abonelik veya çakışan davet ayarları nedeniyle bağlama durduruldu. Yeni bir web sitesi bağlantısı oluşturun. Aktarım hâlâ kullanılamıyorsa destek ekibiyle iletişime geçin; verileriniz korunur.",
+    "user_has_other_telegram": "Bu NewVerse hesabına zaten başka bir Telegram bağlı. Önce web sitesindeki profilinizden bağlantıyı kaldırın.",
+    "unknown": "/start komutuyla NewVerse'u açın veya yardım için /help kullanın.",
+    "signIn01": "NewVerse web sitesine giriş. İstek kodu: {{value1}}.\n\nBu kodu tarayıcınızla karşılaştırın. Sadece newvers.ai'de oturum açmaya başladıysanız onaylayın. Bu tarayıcı, hikâyelerinize, karakterlerinize ve bakiyenize erişim sağlayacak. Bu bağlantıyı başka biriyle paylaşmayın.",
+    "signIn02": "Önce Mini Uygulamada bir hesap oluşturun veya mevcut web hesabınızı bağlayın.",
+    "signIn03": "Bu istek geçersiz veya süresi dolmuş. Web sitesinde yeniden başlatın.",
+    "signIn04": "Web sitesine giriş onayla",
+    "signInApproved": "Onaylandı. Girişe başladığınız tarayıcıya dönün ve \"Bu hesaba giriş yap\" seçeneğini seçin.",
+    "signInInvalid": "Bu istek geçersiz veya süresi dolmuş. Web sitesinde yeniden başlatın."
   },
   "globalError": {
-    "errorTitle": "Something went wrong",
-    "errorText": "We already know about the problem. Try again or go back to the catalog.",
-    "retry": "Try again",
-    "toCatalog": "Go to catalog",
-    "errorCode": "Error code"
+    "errorTitle": "Bir şeyler yanlış gitti",
+    "errorText": "Sorunun farkındayız. Lütfen tekrar deneyin veya kataloğa geri dönün.",
+    "retry": "Tekrar dene",
+    "toCatalog": "Kataloğa git",
+    "errorCode": "Hata kodu"
   },
   "structuredData": {
-    "chatDescription": "Chat with {{name}} on NewVerse",
-    "author": "Author",
-    "home": "Home"
+    "chatDescription": "{{name}} ile NewVerse'ta sohbet edin",
+    "author": "Yazar",
+    "home": "Ana sayfa"
   },
   "characterStory": {
-    "you": "you"
+    "you": "sen"
   },
   "chatModelGroups": {
-    "main": "Main models",
-    "testing": "Testing",
-    "testingHint": "New models: we are evaluating response quality and speed.",
-    "quotaRefresh": "Free replies refresh every day at 00:00 Moscow time.",
-    "freeLeft": "Free · {{value1}} left",
-    "reasoningHint": "Disabling reasoning through the gateway is unverified. The output limit may shorten or prevent an answer."
+    "main": "Ana modeller",
+    "testing": "Test ediliyor",
+    "testingHint": "Yeni modeller: Yanıt kalitesi ve hızını değerlendiriyoruz.",
+    "quotaRefresh": "Ücretsiz yanıtlar her gün Moskova saatiyle 00:00'da yenilenir.",
+    "freeLeft": "Ücretsiz · {{value1}} kaldı",
+    "reasoningHint": "Geçit üzerinden akıl yürütmenin devre dışı bırakılması doğrulanmamıştır. Çıktı sınırı yanıt süresini kısaltabilir veya tamamlanmasını engelleyebilir."
   },
   "subscriptions": {
-    "avatarAllowance": "Up to {{count}} avatars per calendar month; every model uses one generation"
+    "avatarAllowance": "Takvim ayı başına en fazla {{count}} avatar; her model bir üretim kullanır"
   },
   "characterTags": {
     "labels": {
-      "Романтика": "Romance",
-      "Приключение": "Adventure",
-      "Фэнтези": "Fantasy",
-      "Научная фантастика": "Sci-Fi",
-      "Детектив": "Detective",
-      "Драма": "Drama",
-      "Комедия": "Comedy",
-      "Ужасы": "Horror",
-      "Триллер": "Thriller",
-      "Мистика": "Mystery",
-      "Повседневность": "Slice of life",
-      "Экшен": "Action",
-      "Современный мир": "Modern world",
-      "Исторический": "Historical",
-      "Средневековье": "Middle Ages",
-      "Постапокалипсис": "Post-apocalyptic",
+      "Романтика": "Romantik",
+      "Приключение": "Macera",
+      "Фэнтези": "Fantezi",
+      "Научная фантастика": "Bilim Kurgu",
+      "Детектив": "Dedektif",
+      "Драма": "Dram",
+      "Комедия": "Komedi",
+      "Ужасы": "Korku",
+      "Триллер": "Gerilim",
+      "Мистика": "Gizem",
+      "Повседневность": "Yaşamdan kesitler",
+      "Экшен": "Aksiyon",
+      "Современный мир": "Modern dünya",
+      "Исторический": "Tarihsel",
+      "Средневековье": "Ortaçağ",
+      "Постапокалипсис": "Post-apokaliptik",
       "Киберпанк": "Cyberpunk",
-      "Космос": "Space",
-      "Магическая академия": "Magic academy",
-      "Готика": "Gothic",
-      "Мужской персонаж": "Male character",
-      "Женский персонаж": "Female character",
-      "Антропоморфный": "Anthropomorphic",
+      "Космос": "Uzay",
+      "Магическая академия": "Büyü okulu",
+      "Готика": "Gotik",
+      "Мужской персонаж": "Erkek karakter",
+      "Женский персонаж": "Kadın karakter",
+      "Антропоморфный": "Antropomorfik",
       "Эльф": "Elf",
       "Андроид": "Android",
-      "Монстр": "Monster",
-      "Друг": "Friend",
-      "Партнёр": "Partner",
-      "Сосед": "Neighbor",
-      "Напарник": "Companion",
-      "Наставник": "Mentor",
-      "Соперник": "Rival",
-      "Герой": "Hero",
-      "Злодей": "Villain",
-      "Враг": "Enemy",
-      "Добрый": "Kind",
-      "Заботливый": "Caring",
-      "Сдержанный": "Reserved",
-      "Дерзкий": "Bold",
-      "Загадочный": "Mysterious",
-      "Холодный": "Cold",
-      "Ироничный": "Witty",
-      "Флиртующий": "Flirty",
+      "Монстр": "Canavar",
+      "Друг": "Arkadaş",
+      "Партнёр": "Ortak",
+      "Сосед": "Komşu",
+      "Напарник": "Yoldaş",
+      "Наставник": "Rehber",
+      "Соперник": "Rakip",
+      "Герой": "Kahraman",
+      "Злодей": "Kötü adam",
+      "Враг": "Düşman",
+      "Добрый": "Nazik",
+      "Заботливый": "Şefkatli",
+      "Сдержанный": "Mesafeli",
+      "Дерзкий": "Küstah",
+      "Загадочный": "Gizemli",
+      "Холодный": "Soğuk",
+      "Ироничный": "Hazırcevap",
+      "Флиртующий": "Flörtöz",
       "Цундере": "Tsundere",
       "Аниме": "Anime",
-      "Ролевая игра": "Roleplay",
-      "Медленное развитие отношений": "Slow-burn relationships",
-      "Выборы и последствия": "Choices and consequences",
-      "Исследование мира": "World exploration"
+      "Ролевая игра": "Rol Yapma",
+      "Медленное развитие отношений": "Yavaş İlişki Gelişimi",
+      "Выборы и последствия": "Seçimler ve Sonuçlar",
+      "Исследование мира": "Dünya Keşfi"
     },
     "groups": {
-      "genres": "Genre",
-      "world": "World and setting",
-      "character": "Character",
-      "roles": "Role and relationships",
-      "traits": "Personality",
-      "style": "Story style"
+      "genres": "Tür",
+      "world": "Dünya ve ortam",
+      "character": "Karakter",
+      "roles": "Rol ve ilişkiler",
+      "traits": "Kişilik",
+      "style": "Hikâye tarzı"
     },
-    "hint": "Choose up to {{limit}} accurate tags to help readers find your story.",
-    "search": "Find a tag",
-    "legacy": " (legacy)",
-    "remove": "Remove tag {{tag}}",
-    "noMatches": "No matching tags"
+    "hint": "Okuyucuların hikâyenizi bulmasına yardımcı olmak için en fazla {{limit}} doğru etiket seçin.",
+    "search": "Etiket bul",
+    "legacy": " (eski)",
+    "remove": "{{tag}} etiketini kaldır",
+    "noMatches": "Eşleşen etiket yok"
   },
   "chatUi": {
-    "text001": "Actions",
-    "text002": "Message actions",
-    "text003": "Edit",
-    "text004": "Delete",
-    "text005": "Copy",
-    "text006": "Continue",
-    "text007": "Regenerate",
-    "text008": "The message cannot be empty",
-    "text009": "Cancel",
-    "text010": "Save",
-    "text011": "Thinking...",
-    "text012": "Typing...",
-    "text013": "Action choices",
-    "text014": "Character description",
-    "text015": "Chat settings",
-    "text016": "Chat models",
-    "text017": "Edit memory",
-    "text018": "My persona",
-    "text019": "Story type and rules",
-    "text020": "Start a new chat",
-    "text021": "Close",
-    "text022": "{{value1}} VC/request",
-    "text023": "Hide description",
-    "text024": "Show description",
-    "text025": "Character",
-    "text026": "You",
-    "text027": "Could not load the chat",
-    "text028": "Could not select the model",
-    "text029": "Not enough VerseCoins",
-    "text030": "The response stream was interrupted",
-    "text031": "Response regenerated",
-    "text032": "Could not regenerate the response",
-    "text033": "Response continued",
-    "text034": "Could not continue the response",
-    "text035": "Delete this message?",
-    "text036": "The message will be removed from the chat history. This cannot be undone.",
-    "text037": "Message deleted",
-    "text038": "Could not delete the message",
-    "text039": "Message updated",
-    "text040": "Could not save the message",
-    "text041": "Chat history cleared",
-    "text042": "Could not clear the chat",
-    "text043": "Copied",
-    "text044": "Could not copy",
-    "text045": "Could not send the message",
-    "text046": "No models found",
-    "text047": "About the character",
-    "text048": "Start a conversation with the character. Write something!",
-    "text049": "Retry",
-    "text050": "The history and memory of your current chat with this character will be deleted. The new story will use the type from the current character card. Continue?",
-    "text051": "Start over",
-    "text052": "How VC are charged",
-    "text053": "Your move…",
-    "text054": "Send",
-    "model001": "Fast replies for long, lively conversations.",
-    "model002": "An accessible starting point with pleasant writing and strong Russian.",
-    "model003": "A balance of price and quality for lively dialogue.",
-    "model004": "Creative, suited to unusual plots and ideas.",
-    "model005": "For roleplay and complex characters.",
-    "model006": "A reliable style with clear, focused reasoning.",
-    "model007": "Realistic scenes and fewer invented details.",
-    "model008": "For understanding context and building worlds.",
-    "model009": "For complex reasoning and detailed scenarios."
+    "text001": "Eylemler",
+    "text002": "Mesaj eylemleri",
+    "text003": "Düzenle",
+    "text004": "Sil",
+    "text005": "Kopyala",
+    "text006": "Devam et",
+    "text007": "Yeniden oluştur",
+    "text008": "Mesaj boş olamaz",
+    "text009": "İptal",
+    "text010": "Kaydet",
+    "text011": "Düşünüyor...",
+    "text012": "Yazıyor...",
+    "text013": "Eylem seçenekleri",
+    "text014": "Karakter açıklaması",
+    "text015": "Sohbet ayarları",
+    "text016": "Sohbet modelleri",
+    "text017": "Hafızayı düzenle",
+    "text018": "Personam",
+    "text019": "Hikâye türü ve kuralları",
+    "text020": "Yeni sohbet başlat",
+    "text021": "Kapat",
+    "text022": "{{value1}} VC/istek",
+    "text023": "Açıklamayı gizle",
+    "text024": "Açıklamayı göster",
+    "text025": "Karakter",
+    "text026": "Siz",
+    "text027": "Sohbet yüklenemedi",
+    "text028": "Model seçilemedi",
+    "text029": "Yetersiz VerseCoins",
+    "text030": "Yanıt akışı kesildi",
+    "text031": "Yanıt yeniden oluşturuldu",
+    "text032": "Yanıt yeniden oluşturulamadı",
+    "text033": "Yanıt devam ettirildi",
+    "text034": "Yanıt devam ettirilemedi",
+    "text035": "Bu mesaj silinsin mi?",
+    "text036": "Mesaj sohbet geçmişinden kaldırılacak. Bu işlem geri alınamaz.",
+    "text037": "Mesaj silindi",
+    "text038": "Mesaj silinemedi",
+    "text039": "Mesaj güncellendi",
+    "text040": "Mesaj kaydedilemedi",
+    "text041": "Sohbet geçmişi temizlendi",
+    "text042": "Sohbet temizlenemedi",
+    "text043": "Kopyalandı",
+    "text044": "Kopyalanamadı",
+    "text045": "Mesaj gönderilemedi",
+    "text046": "Model bulunamadı",
+    "text047": "Karakter hakkında",
+    "text048": "Karakterle sohbet etmeye başla. Bir şeyler yaz!",
+    "text049": "Tekrar dene",
+    "text050": "Bu karakterle olan mevcut sohbetinizin geçmişi ve hafızası silinecek. Yeni hikâye, mevcut karakter kartındaki türü kullanacak. Devam et?",
+    "text051": "Yeniden başla",
+    "text052": "VC nasıl ücretlendirilir",
+    "text053": "Sıra sende…",
+    "text054": "Gönder",
+    "model001": "Uzun, canlı sohbetler için hızlı yanıtlar.",
+    "model002": "Zevkli anlatım ve güçlü Rusça ile erişilebilir bir başlangıç noktası.",
+    "model003": "Canlı diyalojlar için fiyat ve kalite dengesi.",
+    "model004": "Yaratıcı; olağandışı kurgular ve fikirler için uygundur.",
+    "model005": "Rol yapma ve karmaşık karakterler için.",
+    "model006": "Net, odaklı akıl yürütme ile güvenilir bir tarz.",
+    "model007": "Gerçekçi sahneler ve daha az uydurulmuş detay.",
+    "model008": "Bağlamı anlama ve dünyalar inşa etme.",
+    "model009": "Karmaşık akıl yürütme ve ayrıntılı senaryolar için."
   }
 }

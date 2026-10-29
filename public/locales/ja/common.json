@@ -1,1366 +1,1366 @@
 {
   "chatSpeech": {
-    "label": "Character speech",
-    "listen": "Listen",
-    "pause": "Pause",
-    "resume": "Resume playback",
-    "seek": "Seek audio",
-    "preview": "Speech text",
-    "speechOnly": "AI keeps dialogue and narration, removes stage directions and choice menus, and selects the delivery. The prepared speech text appears below the reply.",
-    "loading": "Generating audio…",
-    "player": "Character reply audio",
-    "voice": "Voice",
-    "settingsTitle": "Voice selection",
-    "settingsHint": "Automatic mode uses the character profile to select a voice. Worlds and groups use a male narrator. You can choose any voice manually.",
-    "settingsLoading": "Loading speech settings…",
-    "settingsUnavailable": "Speech is currently unavailable.",
-    "autoShort": "auto",
-    "autoVoice": "Automatic — {{voice}}",
+    "label": "キャラクターの音声",
+    "listen": "聴く",
+    "pause": "一時停止",
+    "resume": "再生を再開",
+    "seek": "音声をシーク",
+    "preview": "音声用テキスト",
+    "speechOnly": "AIが会話とナレーションを保持し、舞台指示や選択肢メニューを除外して読み上げ形式にします。生成された音声用テキストは返信の下に表示されます。",
+    "loading": "音声を生成中…",
+    "player": "キャラクターの返信音声",
+    "voice": "声",
+    "settingsTitle": "声の選択",
+    "settingsHint": "自動モードでは、キャラクターのプロフィールに基づいて声が選ばれます。ワールドやグループでは男性ナレーターが使われます。手動で任意の声を選択することもできます。",
+    "settingsLoading": "音声設定を読み込み中…",
+    "settingsUnavailable": "現在、音声再生は利用できません。",
+    "autoShort": "自動",
+    "autoVoice": "自動 — {{voice}}",
     "autoReasons": {
-      "female": "A female voice was selected from the character profile.",
-      "male": "A male voice was selected from the character profile.",
-      "narrator": "This story uses a male narrator by default.",
-      "unknown": "The character profile does not specify a clear gender. A male voice is used by default; you can change it manually."
+      "female": "キャラクターのプロフィールから女性の声が選ばれました。",
+      "male": "キャラクターのプロフィールから男性の声が選ばれました。",
+      "narrator": "このストーリーでは、デフォルトで男性ナレーターが使われます。",
+      "unknown": "キャラクターの性別が明確でないため、デフォルトで男性の声が使われます。手動で変更できます。"
     },
     "voiceGroups": {
-      "female": "Female voices",
-      "male": "Male voices",
-      "other": "Additional voice"
+      "female": "女性の声",
+      "male": "男性の声",
+      "other": "その他の声"
     },
     "voiceDescriptions": {
-      "aoede": "Breezy and relaxed. For natural conversations and gentle delivery.",
-      "kore": "Firm and composed. For confident, commanding characters.",
-      "leda": "Youthful and fresh. For light, lively conversations.",
-      "zephyr": "Bright and clear. For open, friendly characters.",
-      "fenrir": "Energetic and expressive. For emotional dialogue and dynamic scenes.",
-      "charon": "Calm and informative. For narration, world descriptions and measured storytelling.",
-      "orus": "Firm and confident. For serious, decisive characters.",
-      "puck": "Upbeat and lively. For outgoing, optimistic characters.",
-      "fola": "The original NewVerse conversational voice, retained for listeners who preferred it."
+      "aoede": "さわやかでリラックス。自然な会話や柔らかい語りに適しています。",
+      "kore": "しっかりとした落ち着き。自信と威厳のあるキャラクターに適しています。",
+      "leda": "若々しくフレッシュ。軽快で活発な会話にぴったりです。",
+      "zephyr": "明るくクリア。オープンでフレンドリーなキャラクターに最適です。",
+      "fenrir": "エネルギッシュで感情豊か。感情的な会話やダイナミックな場面に適しています。",
+      "charon": "落ち着きと情報伝達。ナレーションや世界の描写、丁寧な語りに最適です。",
+      "orus": "力強く自信に満ちた声。真剣で決断力のあるキャラクターに適しています。",
+      "puck": "明るく活発。社交的で楽観的なキャラクターにぴったりです。",
+      "fola": "以前のNewVerse会話用声。好まれていたユーザー向けに維持されています。"
     },
-    "voiceSaved": "Your choice is saved for this character on this device and applies to future playbacks.",
-    "voiceChangeBusy": "Wait for the current recording to finish preparing before changing the voice.",
+    "voiceSaved": "このデバイスでのこのキャラクターの声の選択は保存され、今後の再生に反映されます。",
+    "voiceChangeBusy": "現在の録音が完了するまで、声の変更はできません。",
     "voices": {
       "fola": "Fola",
       "fenrir": "Fenrir"
     },
-    "unlimited": "Unlimited speech is included",
-    "daily": "Playbacks: {{remaining}} of 1 left today",
-    "reset": "One playback a day, including replays. Resets at 00:00 Moscow time. Pausing and resuming do not use another play.",
-    "upgrade": "Unlimited with a subscription",
+    "unlimited": "無制限音声が利用可能",
+    "daily": "再生回数：今日あと{{remaining}}回（1回中）",
+    "reset": "1日1回まで再生可能（リプレイを含む）。モスクワ時間00:00にリセットされます。一時停止と再開で回数は消費されません。",
+    "upgrade": "サブスクリプションで無制限に",
     "errors": {
-      "unauthorized": "Sign in to listen to this reply.",
-      "notFound": "This reply is unavailable. Refresh the chat.",
-      "empty": "This reply only contains actions or stage directions, with no words to read.",
-      "tooLong": "The text is too long: up to 16,000 characters per reply and 8,000 in the audio script.",
-      "busy": "Another reply is being generated. Please wait.",
-      "quota": "Your free playback has been used today. Replays also count. Resets at 00:00 Moscow time. Subscriptions include unlimited speech.",
-      "rateLimit": "Too many requests. Try again in a minute.",
-      "changed": "The reply has changed. Try generating its audio again.",
-      "unavailable": "Could not load the audio. Please try again later.",
-      "playback": "Press play on the audio player. There is no need to generate the audio again.",
-      "pending": "Audio is still being prepared. Try Listen again later to continue the same recording.",
-      "uncertain": "The service did not confirm whether synthesis started. Retrying this reply is temporarily unavailable; your daily playback is preserved."
+      "unauthorized": "この返信を聞くにはログインしてください。",
+      "notFound": "この返信は利用できません。チャットを更新してください。",
+      "empty": "この返信には発話がなく、行動や舞台指示のみです。",
+      "tooLong": "テキストが長すぎます：返信は16,000文字、音声スクリプトは8,000文字まで。",
+      "busy": "現在、他の返信を処理中です。しばらくお待ちください。",
+      "quota": "今日の無料再生回数は終了しました。リプレイも回数に含まれます。モスクワ時間00:00にリセット。サブスクリプションでは無制限です。",
+      "rateLimit": "リクエストが多すぎます。1分ほど待ってください。",
+      "changed": "返信が変更されました。音声を再生成してください。",
+      "unavailable": "音声の読み込みに失敗しました。後でもう一度試してください。",
+      "playback": "音声プレイヤーの再生ボタンを押してください。音声の再生成は不要です。",
+      "pending": "音声はまだ準備中です。後でもう一度「再生」を押して、同じ録音を続けます。",
+      "uncertain": "音声合成の開始が確認できませんでした。この返信の再試行は一時的に不可ですが、今日の再生回数は保持されます。"
     }
   },
   "header": {
     "title": "NewVerse",
-    "openMenu": "Open menu",
-    "closeMenu": "Close menu",
-    "collapseMenu": "Collapse menu",
-    "expandMenu": "Expand menu",
-    "profileMenu": "Profile menu",
-    "mainNav": "Main navigation",
-    "bottomNav": "Quick navigation",
+    "openMenu": "メニューを開く",
+    "closeMenu": "メニューを閉じる",
+    "collapseMenu": "メニューを折りたたむ",
+    "expandMenu": "メニューを展開",
+    "profileMenu": "プロフィールメニュー",
+    "mainNav": "メインナビゲーション",
+    "bottomNav": "クイックナビ",
     "menuShort": {
-      "home": "Home",
-      "chats": "Chats",
-      "create": "Create",
-      "coins": "Coins",
-      "profile": "Profile",
-      "favorites": "Favorites"
+      "home": "ホーム",
+      "chats": "チャット",
+      "create": "作成",
+      "coins": "コイン",
+      "profile": "プロフィール",
+      "favorites": "お気に入り"
     },
     "menu": {
-      "home": "Home",
-      "chats": "My chats",
-      "pricing": "Subscription",
+      "home": "ホーム",
+      "chats": "マイチャット",
+      "pricing": "サブスクリプション",
       "coins": "VerseCoins",
-      "create": "Create character",
-      "profile": "Profile",
-      "favorites": "Favorites",
-      "support": "Support",
-      "updates": "Updates"
+      "create": "キャラクターを作成",
+      "profile": "プロフィール",
+      "favorites": "お気に入り",
+      "support": "サポート",
+      "updates": "更新"
     }
   },
   "footer": {
-    "offer": "Public offer",
-    "terms": "Terms of use",
-    "privacy": "Privacy policy",
-    "refund": "Refund policy",
-    "rules": "Platform rules",
-    "support": "Support",
-    "updates": "Updates on Telegram",
-    "copyright": "© {{year}} NewVerse — Your universe of characters"
+    "offer": "公開オファー",
+    "terms": "利用規約",
+    "privacy": "プライバシーポリシー",
+    "refund": "返金ポリシー",
+    "rules": "プラットフォームルール",
+    "support": "サポート",
+    "updates": "Telegramで更新",
+    "copyright": "© {{year}} NewVerse — キャラクターであふれるあなたの宇宙"
   },
   "language": {
-    "label": "Language",
-    "title": "Interface language",
-    "choose": "Choose language",
-    "close": "Close language selection",
-    "search": "Find a language",
-    "automatic": "Automatic",
-    "browserLanguage": "Browser language · {{language}}",
-    "saved": "Your choice will be saved for future visits",
-    "empty": "No matching language",
+    "label": "言語",
+    "title": "表示言語",
+    "choose": "言語を選択",
+    "close": "言語選択を閉じる",
+    "search": "言語を検索",
+    "automatic": "自動",
+    "browserLanguage": "ブラウザーの言語 · {{language}}",
+    "saved": "選択した言語は次回以降も適用されます",
+    "empty": "一致する言語が見つかりません",
     "ru": "RU",
     "en": "EN"
   },
   "currency": {
-    "label": "Currency",
+    "label": "通貨",
     "RUB": "RUB",
     "USD": "USD",
     "EUR": "EUR"
   },
   "auth": {
-    "login": "Sign in",
-    "loginTitle": "Sign in",
-    "register": "Sign up",
-    "registerTitle": "Sign up",
-    "email": "Email",
-    "emailPlaceholder": "Email",
-    "password": "Password",
-    "name": "Name",
-    "confirmPassword": "Confirm password",
-    "forgot_password": "Forgot password?",
-    "login_google": "Sign in with Google",
-    "register_google": "Sign up with Google",
-    "or": "or",
-    "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?",
-    "invalidCredentials": "Invalid email or password",
-    "passwordMismatch": "Passwords do not match",
-    "registerError": "Registration failed",
-    "registerSuccess": "Registration successful! We sent a confirmation email. Redirecting to sign in...",
-    "connectionError": "A server connection error occurred",
-    "passwordChanged": "Password changed successfully",
-    "forgotTitle": "Reset password",
-    "sendLink": "Send link",
-    "sending": "Sending...",
-    "linkSent": "A password reset link has been sent to your email",
-    "sendLinkError": "Could not send the link",
-    "rememberedPassword": "Remembered your password?",
-    "resetTitle": "Set a new password",
-    "newPassword": "New password",
-    "confirmNewPassword": "Confirm password",
-    "resetPassword": "Reset password",
-    "saving": "Saving...",
-    "checkingLink": "Checking the link...",
-    "invalidLink": "This link is invalid or has expired",
-    "resetFailed": "Could not reset the password",
-    "requestNewLink": "Request a new link",
-    "backToLogin": "Back to sign in",
-    "minPassword": "Password must be at least {{count}} characters",
-    "loading": "Loading...",
-    "consentTerms": "I accept the <terms>Terms of Use</terms> and consent to personal data processing under the <privacy>Privacy Policy</privacy>.",
-    "consentOffer": "I have read the <offer>Public Offer</offer> and accept its terms.",
-    "consentRules": "I have read the <rules>platform rules</rules>.",
-    "consentRequired": "Please accept all required consents to sign up.",
-    "verifyTitle": "Confirm email",
-    "verifying": "Confirming your email...",
-    "verifySuccess": "Email confirmed! You now have full access to all features.",
-    "verifyInvalid": "This link is invalid or has expired. Request a new email.",
-    "resendEmail": "Resend confirmation email",
-    "resendSuccess": "The email has been sent. Check your inbox.",
-    "resendError": "Could not send the email",
-    "goToProfile": "Go to profile",
-    "verifyBanner": "Confirm your email to unlock full access.",
-    "refreshStatus": "Refresh status",
-    "refreshStatusError": "Could not refresh the status"
+    "login": "ログイン",
+    "loginTitle": "ログイン",
+    "register": "新規登録",
+    "registerTitle": "新規登録",
+    "email": "メールアドレス",
+    "emailPlaceholder": "メールアドレス",
+    "password": "パスワード",
+    "name": "名前",
+    "confirmPassword": "パスワード確認",
+    "forgot_password": "パスワードを忘れた？",
+    "login_google": "Googleでサインイン",
+    "register_google": "Googleで登録",
+    "or": "または",
+    "noAccount": "アカウントをお持ちでない方",
+    "hasAccount": "すでにアカウントをお持ちの方",
+    "invalidCredentials": "メールアドレスまたはパスワードが正しくありません",
+    "passwordMismatch": "パスワードが一致しません",
+    "registerError": "登録に失敗しました",
+    "registerSuccess": "登録が完了しました！確認メールを送信しました。ログインページに移動します…",
+    "connectionError": "サーバー接続エラーが発生しました",
+    "passwordChanged": "パスワードを変更しました",
+    "forgotTitle": "パスワードのリセット",
+    "sendLink": "リンクを送信",
+    "sending": "送信中…",
+    "linkSent": "パスワードリセット用のリンクをメールで送信しました",
+    "sendLinkError": "リンクを送信できませんでした",
+    "rememberedPassword": "パスワードを思い出しましたか？",
+    "resetTitle": "新しいパスワードを設定",
+    "newPassword": "新しいパスワード",
+    "confirmNewPassword": "パスワードを確認",
+    "resetPassword": "パスワードをリセット",
+    "saving": "保存中…",
+    "checkingLink": "リンクを確認しています…",
+    "invalidLink": "このリンクは無効または有効期限が切れています",
+    "resetFailed": "パスワードをリセットできませんでした",
+    "requestNewLink": "新しいリンクをリクエスト",
+    "backToLogin": "ログインに戻る",
+    "minPassword": "パスワードは{{count}}文字以上である必要があります",
+    "loading": "読み込み中…",
+    "consentTerms": "<terms>利用規約</terms>に同意し、<privacy>プライバシーポリシー</privacy>に基づく個人情報の取り扱いに同意します。",
+    "consentOffer": "<offer>公開オファー</offer>を読み、その内容に同意します。",
+    "consentRules": "<rules>プラットフォームルール</rules>を読みました。",
+    "consentRequired": "登録するには、必要なすべての同意にチェックを入れてください。",
+    "verifyTitle": "メールを確認",
+    "verifying": "メールを確認しています…",
+    "verifySuccess": "メールが確認されました！すべての機能をご利用いただけます。",
+    "verifyInvalid": "このリンクは無効または有効期限が切れています。新しいメールをリクエストしてください。",
+    "resendEmail": "確認メールを再送",
+    "resendSuccess": "メールを送信しました。受信ボックスをご確認ください。",
+    "resendError": "メールを送信できませんでした",
+    "goToProfile": "プロフィールへ",
+    "verifyBanner": "メールを確認して、フルアクセスを有効にしてください。",
+    "refreshStatus": "ステータスを更新",
+    "refreshStatusError": "ステータスを更新できませんでした"
   },
   "common": {
-    "submit": "Confirm",
-    "cancel": "Cancel",
-    "save": "Save",
-    "delete": "Delete",
-    "edit": "Edit",
-    "close": "Close",
-    "retry": "Try again",
-    "error": "Error",
-    "loading": "Loading...",
-    "user": "User"
+    "submit": "確認",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "close": "閉じる",
+    "retry": "再試行",
+    "error": "エラー",
+    "loading": "読み込み中…",
+    "user": "ユーザー"
   },
   "home": {
     "continue": {
-      "label": "Continue",
-      "you": "You"
+      "label": "続ける",
+      "you": "あなた"
     },
-    "searchPlaceholder": "Search by name or tag...",
-    "sort": "Sort",
-    "sortTop": "Top",
-    "sortRandom": "Random",
-    "sortNew": "New",
-    "sortForYou": "For you",
-    "found": "Characters found: ",
-    "noCharacters": "No characters",
-    "noResults": "Nothing matched your search. Try changing the filters.",
-    "noPublished": "No published characters yet. Create the first one!",
-    "loadMore": "Load more",
-    "pagination": "Page navigation",
-    "page": "Page {{page}} of {{pages}}",
-    "prevPage": "Previous page",
-    "nextPage": "Next page",
+    "searchPlaceholder": "名前またはタグで検索...",
+    "sort": "並べ替え",
+    "sortTop": "人気順",
+    "sortRandom": "ランダム",
+    "sortNew": "新着",
+    "sortForYou": "あなた向け",
+    "found": "見つかったキャラクター：",
+    "noCharacters": "キャラクターがいません",
+    "noResults": "検索に一致するものが見つかりませんでした。フィルターを変更してみてください。",
+    "noPublished": "まだ公開されたキャラクターがいません。最初のキャラクターを作成しましょう！",
+    "loadMore": "さらに読み込む",
+    "pagination": "ページナビゲーション",
+    "page": "{{pages}}ページ中{{page}}ページ目",
+    "prevPage": "前のページ",
+    "nextPage": "次のページ",
     "pageChooser": {
-      "open": "Go to any page",
-      "title": "Go to page",
-      "close": "Close page chooser",
-      "prevRange": "Previous ten page numbers",
-      "nextRange": "Next ten page numbers",
-      "range": "{{start}}–{{end}} of {{pages}}",
-      "first": "First · 1",
-      "last": "Last · {{pages}}",
-      "firstLabel": "First page",
-      "lastLabel": "Last page",
-      "inputLabel": "Or enter a page number",
-      "go": "Go",
-      "invalid": "Enter a whole number from 1 to {{pages}}"
+      "open": "任意のページに移動",
+      "title": "ページに移動",
+      "close": "ページ選択を閉じる",
+      "prevRange": "前の10ページ番号",
+      "nextRange": "次の10ページ",
+      "range": "{{pages}}中{{start}}–{{end}}",
+      "first": "先頭 · 1",
+      "last": "最終 · {{pages}}",
+      "firstLabel": "最初のページ",
+      "lastLabel": "最後のページ",
+      "inputLabel": "またはページ番号を入力",
+      "go": "移動",
+      "invalid": "1から{{pages}}までの整数を入力してください"
     },
-    "reset": "Reset",
-    "resetSearch": "Clear search",
-    "genresLabel": "Genres",
-    "allGenres": "All",
+    "reset": "リセット",
+    "resetSearch": "検索をクリア",
+    "genresLabel": "ジャンル",
+    "allGenres": "すべて",
     "genres": {
-      "fantasy": "Fantasy",
-      "romance": "Romance",
-      "anime": "Anime",
-      "scifi": "Sci-Fi",
-      "mystic": "Mystery",
-      "realistic": "Modern world",
-      "adventure": "Adventure",
-      "horror": "Horror",
-      "comedy": "Comedy",
-      "drama": "Drama",
-      "detective": "Detective",
-      "everyday": "Slice of life",
-      "cyberpunk": "Cyberpunk"
+      "fantasy": "ファンタジー",
+      "romance": "ロマンス",
+      "anime": "アニメ",
+      "scifi": "SF",
+      "mystic": "ミステリー",
+      "realistic": "現代世界",
+      "adventure": "アドベンチャー",
+      "horror": "ホラー",
+      "comedy": "コメディ",
+      "drama": "ドラマ",
+      "detective": "探偵",
+      "everyday": "日常系",
+      "cyberpunk": "サイバーパンク"
     },
     "sectionTitle": {
-      "top": "Popular right now",
-      "new": "New arrivals",
-      "random": "Random picks",
-      "for-you": "Picked for you",
-      "search": "Search results"
+      "top": "今話題のキャラクター",
+      "new": "新着キャラクター",
+      "random": "ランダムおすすめ",
+      "for-you": "あなたへのおすすめ",
+      "search": "検索結果"
     },
     "hero": {
-      "eyebrow": "NewVerse — chat with AI characters",
-      "title": "Stories that remember you",
-      "text": "Pick a hero or a whole world and continue the plot whenever you like. Characters remember details and grow the story with you.",
-      "start": "Start a story",
-      "create": "Create your character",
-      "catalogCount_other": "{{count}} characters in the catalog",
-      "languages": "Russian, English and Spanish"
+      "eyebrow": "NewVerse — AIキャラクターとチャット",
+      "title": "あなたを覚える物語",
+      "text": "キャラクターやワールドを選んで、好きなときにストーリーを続けましょう。キャラクターは細部まで覚え、あなたと共に物語を育てます。",
+      "start": "ストーリーを始める",
+      "create": "自分のキャラクターを作成",
+      "catalogCount_other": "カタログに{{count}}人のキャラクター",
+      "languages": "多言語対応"
     },
     "recommendations": {
-      "discoveryTitle": "Discover new stories",
-      "personalizedHint": "Based on your favorites and recent chats, with new genres and fewer familiar characters.",
-      "discoveryHint": "A mix of genres, popular stories and new arrivals. Add favorites and chat to personalize these picks."
+      "discoveryTitle": "新しいストーリーを発見",
+      "personalizedHint": "お気に入りや最近のチャットに基づき、新しいジャンルやあまり登場しないキャラクターをおすすめします。",
+      "discoveryHint": "さまざまなジャンル、人気ストーリー、新着作品のミックス。お気に入りを追加してチャットすれば、おすすめがさらにパーソナライズされます。"
     }
   },
   "characterCard": {
-    "knownAbout": "Known about the character:",
-    "noDescription": "No description",
-    "messages_other": "{{formatted}} messages"
+    "knownAbout": "キャラクターの情報：",
+    "noDescription": "説明なし",
+    "messages_other": "{{formatted}}件のメッセージ"
   },
   "characterPage": {
-    "author": "Author",
+    "author": "作者",
     "unknownAuthor": "NewVerse",
-    "messages": "Messages: {{count}}",
-    "knownAbout": "Known about the character",
-    "tags": "Character tags",
-    "startChat": "Start chat",
-    "share": "Share",
-    "copied": "Link copied",
-    "shareFailed": "Could not copy the link",
-    "about": "About character",
-    "close": "Close",
-    "storyStart": "How the story begins",
-    "scenario": "Scenario",
-    "similar": "Similar characters",
+    "messages": "メッセージ数：{{count}}",
+    "knownAbout": "キャラクターの情報",
+    "tags": "キャラクタータグ",
+    "startChat": "チャットを開始",
+    "share": "共有",
+    "copied": "リンクをコピーしました",
+    "shareFailed": "リンクをコピーできませんでした",
+    "about": "キャラクターについて",
+    "close": "閉じる",
+    "storyStart": "ストーリーの始まり",
+    "scenario": "シナリオ",
+    "similar": "似ているキャラクター",
     "faq": {
-      "title": "Frequently asked questions",
-      "freeQ": "Can I chat with {{name}} for free?",
-      "freeA": "Yes. Guests get {{limit}} {{messages}} without signing up. After sign-up you get {{onboarding}} free replies a day for the first week, then {{daily}} a day on the base model.",
-      "freeAPaid": "Yes. Guests get {{limit}} {{messages}} without signing up. After that you can continue the story in your account with VC or a subscription.",
-      "registerQ": "Do I need to sign up?",
-      "registerA": "Not to start: the first {{limit}} {{messages}} can be sent as a guest. To keep going, sign in and the guest chat moves to your account.",
-      "languageQ": "What language does {{name}} reply in?",
-      "languageA": "In the selected site language: Russian, English or Spanish. You can switch languages in the menu and continue the same story.",
-      "startQ": "How do I start the story?",
-      "startA": "Press “Start chat”. {{name}} opens the scene with the first message, and the plot follows your replies."
+      "title": "よくある質問",
+      "freeQ": "{{name}}と無料でチャットできますか？",
+      "freeA": "はい。ゲストでも登録不要で{{limit}} {{messages}}利用できます。登録後は初週毎日{{onboarding}}回の無料返信、その後は基本モデルで毎日{{daily}}回が利用可能です。",
+      "freeAPaid": "はい。ゲストは登録不要で{{limit}} {{messages}}利用できます。その後はアカウントでVCまたはサブスクリプションを使ってストーリーを続けられます。",
+      "registerQ": "登録は必要ですか？",
+      "registerA": "開始には不要です。最初の{{limit}} {{messages}}はゲストとして送信できます。継続するにはサインインし、ゲストチャットはアカウントに移行されます。",
+      "languageQ": "{{name}}はどの言語で返信しますか？",
+      "languageA": "選択したサイト言語で返信します。メニューで言語を切り替えて、同じストーリーを続けられます。",
+      "startQ": "ストーリーをどう始めるのですか？",
+      "startA": "「チャット開始」を押してください。{{name}}が最初のメッセージで場面を始め、その後はあなたの返信でストーリーが進みます。"
     },
-    "messagesWord_other": "messages"
+    "messagesWord_other": "メッセージ"
   },
   "errorPage": {
-    "notFoundTitle": "Page not found",
-    "notFoundText": "The link may be outdated or the address has a typo. Characters and stories are waiting in the catalog.",
-    "toCatalog": "Go to catalog",
-    "errorTitle": "Something went wrong",
-    "errorText": "We already know about the problem. Try again or go back to the catalog.",
-    "retry": "Try again",
-    "errorCode": "Error code"
+    "notFoundTitle": "ページが見つかりません",
+    "notFoundText": "リンクが古いか、アドレスにタイプミスがある可能性があります。キャラクターやストーリーはカタログにあります。",
+    "toCatalog": "カタログへ",
+    "errorTitle": "問題が発生しました",
+    "errorText": "問題については把握しています。再試行するか、カタログに戻ってください。",
+    "retry": "再試行",
+    "errorCode": "エラーコード"
   },
   "support": {
-    "title": "Support",
-    "intro": "For billing, technical issues, refunds, and moderation appeals, use the form. We will contact you at the email you provide.",
-    "formTitle": "Submit a request",
-    "topic": "Topic",
-    "email": "Your email",
-    "message": "Message",
-    "messagePlaceholder": "Describe the issue or question...",
-    "submit": "Send",
-    "sending": "Sending...",
-    "success": "Your request was accepted and stored.",
-    "ticketId": "Request number: {{id}}.",
-    "error": "Could not send the request. Please try again.",
-    "invalidTopic": "Choose a topic",
-    "invalidEmail": "Enter a valid email",
-    "invalidMessage": "The message must be between 10 and 4000 characters",
-    "referenceTicket": "Previous ticket number (optional)",
-    "referenceHint": "To continue a conversation, copy the ticket number from the email and use the same email address. Support will receive the number with your new message.",
-    "invalidReference": "Check the ticket number: copy only the number from the email, without spaces or a link.",
-    "mailtoHint": "The request is stored on the server and copied to support email.",
-    "userEmailPrefix": "User email: ",
+    "title": "サポート",
+    "intro": "課金、技術的問題、払い戻し、モデレーションの異議申し立てについてはフォームをご利用ください。入力されたメールアドレスへご連絡いたします。",
+    "formTitle": "リクエストを送信",
+    "topic": "件名",
+    "email": "メールアドレス",
+    "message": "メッセージ",
+    "messagePlaceholder": "問題または質問を説明してください…",
+    "submit": "送信",
+    "sending": "送信中…",
+    "success": "リクエストは受付され、保存されました。",
+    "ticketId": "リクエスト番号: {{id}}。",
+    "error": "リクエストを送信できませんでした。再試行してください。",
+    "invalidTopic": "件名を選択してください",
+    "invalidEmail": "有効なメールアドレスを入力してください",
+    "invalidMessage": "メッセージは10〜4000文字で入力してください",
+    "referenceTicket": "以前のリクエスト番号（任意）",
+    "referenceHint": "会話の続きの場合は、メールからリクエスト番号をコピーし、同じメールアドレスを使用してください。サポートが新しいメッセージとともに番号を受け取ります。",
+    "invalidReference": "リクエスト番号を確認してください。メールから番号のみをスペースなしでコピーしてください。",
+    "mailtoHint": "リクエストはサーバーに保存され、サポートメールにも複製されます。",
+    "userEmailPrefix": "ユーザーのメールアドレス: ",
     "topics": {
-      "payment": "Billing question",
-      "technical": "Technical issue",
-      "refund": "Refund",
-      "moderation": "Appeal a moderation decision",
-      "other": "Other"
+      "payment": "課金に関する質問",
+      "technical": "技術的問題",
+      "refund": "払い戻し",
+      "moderation": "モデレーションの異議申し立て",
+      "other": "その他"
     }
   },
   "profile": {
     "wallet": {
-      "title": "VerseCoins wallet",
-      "topUp": "Top up"
+      "title": "VerseCoinsウォレット",
+      "topUp": "チャージ"
     },
-    "title": "My profile",
-    "loginPrompt": "Sign in to view your profile and characters.",
-    "registeredAt": "Registered:",
-    "catalog": "Catalog",
-    "subscription": "Subscription",
-    "freePlan": "Free plan",
-    "until": "Until {{date}} · {{days}} days left",
-    "then": "Then: {{label}}",
-    "recurringOn": "Auto-renewal is on",
-    "recurringOff": "Auto-renewal is off",
-    "recurringSetup": "The new plan requires auto-renewal to be set up again.",
-    "manageSubscription": "Manage subscription",
-    "characters": "Characters",
-    "chats": "Chats",
-    "messages": "Messages",
-    "myCharacters": "My characters",
-    "count": "{{count}}",
-    "empty": "You have not created any characters yet",
-    "createFirst": "Create your first character",
-    "private": "Private",
-    "hiddenForViolation": "Hidden for a rule violation",
-    "noDescription": "No description",
-    "chat": "Chat",
-    "deleteConfirm": "Are you sure you want to delete {{name}}? This cannot be undone.",
-    "deleted": "Character deleted",
-    "deleteError": "Could not delete the character",
-    "loadError": "Could not load the profile",
-    "settingsSoon": "Settings will be available soon",
-    "notificationsSoon": "Notifications will be available soon",
-    "settings": "Settings",
-    "notifications": "Notifications",
-    "logout": "Sign out",
-    "startPlan": "No subscription"
+    "title": "マイプロフィール",
+    "loginPrompt": "サインインしてプロフィールとキャラクターを確認してください。",
+    "registeredAt": "登録日:",
+    "catalog": "カタログ",
+    "subscription": "サブスクリプション",
+    "freePlan": "無料プラン",
+    "until": "{{date}}まで · 残り{{days}}日",
+    "then": "その後: {{label}}",
+    "recurringOn": "自動更新あり",
+    "recurringOff": "自動更新なし",
+    "recurringSetup": "新プランでは自動更新の設定を再度行う必要があります。",
+    "manageSubscription": "サブスクリプション管理",
+    "characters": "キャラクター",
+    "chats": "チャット",
+    "messages": "メッセージ",
+    "myCharacters": "マイキャラクター",
+    "count": "{{count}}件",
+    "empty": "まだキャラクターを作成していません",
+    "createFirst": "最初のキャラクターを作成",
+    "private": "非公開",
+    "hiddenForViolation": "ルール違反のため非表示",
+    "noDescription": "説明なし",
+    "chat": "チャット",
+    "deleteConfirm": "{{name}}を削除しますか？この操作は元に戻せません。",
+    "deleted": "キャラクターを削除しました",
+    "deleteError": "キャラクターを削除できませんでした",
+    "loadError": "プロフィールを読み込めませんでした",
+    "settingsSoon": "設定は近日公開予定",
+    "notificationsSoon": "通知は近日公開予定",
+    "settings": "設定",
+    "notifications": "通知",
+    "logout": "サインアウト",
+    "startPlan": "未購読"
   },
   "notifications": {
-    "title": "Notifications",
-    "empty": "You have no notifications yet",
-    "markAllRead": "Mark all as read",
-    "showAll": "Show all",
-    "loginPrompt": "Sign in to see your notifications",
-    "loadError": "Could not load notifications",
-    "justNow": "just now",
-    "minutesAgo": "{{count}} min ago",
-    "hoursAgo": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago",
-    "filterAll": "All",
-    "typePurchaseVc": "VC purchase",
-    "typePurchaseSubscription": "Subscription",
-    "typeDailyBonus": "Daily bonus",
-    "typeAdmin": "From the team",
-    "open": "Open notifications",
-    "markedRead": "All notifications marked as read"
+    "title": "通知",
+    "empty": "通知はありません",
+    "markAllRead": "すべて既読にする",
+    "showAll": "すべて表示",
+    "loginPrompt": "サインインして通知を確認",
+    "loadError": "通知を読み込めませんでした",
+    "justNow": "さきほど",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "daysAgo": "{{count}}日前",
+    "filterAll": "すべて",
+    "typePurchaseVc": "VC購入",
+    "typePurchaseSubscription": "サブスクリプション",
+    "typeDailyBonus": "デイリーボーナス",
+    "typeAdmin": "運営から",
+    "open": "通知を開く",
+    "markedRead": "すべての通知を既読にしました"
   },
   "pricing": {
-    "coinRulesTitle": "How VC are spent",
-    "coinRulesSubscription": "Subscription VC do not accumulate: activating or renewing a plan replaces the previous pack balance. Unused subscription VC expire when the subscription ends.",
-    "coinRulesPermanent": "VC purchased separately do not expire. Subscription VC are spent first, followed by purchased VC.",
-    "coinRulesActions": "A new reply, retry and continuation are separate requests, each charged for the selected model. The cost is shown before sending. VC are charged after the model response is received.",
-    "badge": "Subscriptions",
-    "title": "NewVerse plans",
-    "subtitle": "Monthly and yearly plans with bonus VerseCoins and a larger context window. Pick the level that fits your stories and chats.",
-    "activeUntil": "Your subscription: {{label}}, active until {{date}}",
-    "noActive": "You have no active subscription",
-    "pending": "The new {{label}} subscription will start after the current one ends ({{date}})",
-    "cancelling": "Cancelling...",
-    "cancelPending": "Cancel",
-    "recurringMissing": "Auto-renewal is not set up for the current plan. Subscribe again to keep payments automatic.",
-    "month": "Month",
-    "year": "Year",
-    "popular": "Popular",
-    "yearlyPlan": "Yearly subscription",
-    "monthlyPlan": "Monthly subscription",
-    "forever": "forever",
-    "perYear": "per year",
-    "perMonth": "per month",
-    "vcPerMonth": "{{count}} VC / mo",
-    "context": "Context {{tokens}} · daily bonus ×{{multiplier}}",
+    "coinRulesTitle": "VCの使用方法",
+    "coinRulesSubscription": "サブスクリプションVCは貯められません。プランの有効化または更新により、前回のパッケージ残高はリセットされます。サブスクリプション終了時に未使用のVCは失効します。",
+    "coinRulesPermanent": "別途購入したVCは失効しません。使用順はサブスクリプションVCが優先され、その後で購入VCが使われます。",
+    "coinRulesActions": "新しい返信、再試行、続きはそれぞれ別リクエストで、選択したモデルに応じて課金されます。送信前に料金を確認できます。モデルの応答受信後にVCが差し引かれます。",
+    "badge": "サブスクリプション",
+    "title": "NewVerseのプラン",
+    "subtitle": "月額・年額プラン。ボーナスVerseCoinsと拡張コンテキスト付き。ストーリーやチャットに合ったプランを選ぼう。",
+    "activeUntil": "現在のサブスクリプション：{{label}}、{{date}}まで有効",
+    "noActive": "有効なサブスクリプションはありません",
+    "pending": "新しい{{label}}サブスクリプションは現在の契約終了後（{{date}}）に開始します",
+    "cancelling": "キャンセル中...",
+    "cancelPending": "キャンセル",
+    "recurringMissing": "現在のプランは自動更新が設定されていません。自動継続課金を維持するには、再度サブスクリプションをご購入ください。",
+    "month": "月",
+    "year": "年",
+    "popular": "人気",
+    "yearlyPlan": "年間サブスクリプション",
+    "monthlyPlan": "月額サブスクリプション",
+    "forever": "永久",
+    "perYear": "年間",
+    "perMonth": "月額",
+    "vcPerMonth": "{{count}} VC／月",
+    "context": "コンテキスト {{tokens}}・デイリーボーナス×{{multiplier}}",
     "planFeatures": {
-      "dialog": [
-        "2,500 VC per month",
-        "For casual conversations and everyday scenes",
-        "Daily bonus multiplier ×1.5"
-      ],
-      "history": [
-        "10,000 VC per month",
-        "For long roleplay and story development",
-        "Daily bonus multiplier ×2"
-      ],
-      "universe": [
-        "30,000 VC per month",
-        "For deep worlds and complex story arcs",
-        "Daily bonus multiplier ×2.5"
-      ]
+      "dialog": {
+        "0": "月間 2,500 VC",
+        "1": "日常会話や気軽なやり取りに",
+        "2": "デイリーボーナス倍率×1.5"
+      },
+      "history": {
+        "0": "月間 10,000 VC",
+        "1": "長編RPやストーリー展開に",
+        "2": "デイリーボーナス倍率×2"
+      },
+      "universe": {
+        "0": "月間 30,000 VC",
+        "1": "深淵なワールドや複雑なストーリーに",
+        "2": "デイリーボーナス倍率×2.5"
+      }
     },
-    "redirecting": "Payment...",
-    "subscribe": "Subscribe",
-    "footnote": "Activating a plan credits bonus VC to your balance. The multiplier applies to the daily bonus. Request counts depend on the model you choose. Payments go through Robokassa and are credited after confirmation.",
-    "checkoutTitle": "Subscribe to {{name}}",
-    "applyNow": "Apply now",
-    "applyNowHint": "Your current subscription, if any, will be replaced. Remaining time is not refunded.",
-    "applyLater": "Apply after the current plan ends",
-    "applyLaterHint": "The new subscription will start automatically when the current one expires.",
-    "offerConsent": "I agree to automatic charges when the subscription renews under the terms of the",
-    "offerLink": "offer",
-    "offerConsentNote": "(you can turn this off in profile settings)",
-    "consentRequired": "You must agree to auto-renewal to subscribe",
-    "goToPayment": "Continue to payment",
-    "creatingPayment": "Creating payment...",
-    "paymentError": "Could not create the payment",
-    "cancelPendingSuccess": "Pending subscription cancelled",
-    "cancelPendingError": "Could not cancel the pending subscription",
-    "cancelPendingConfirmTitle": "Cancel the pending subscription?",
-    "cancelPendingConfirm": "The new plan will not start when the current subscription ends.",
-    "estimateTitle": "Request estimate",
-    "estimate": "About {{base}} requests on {{baseName}} ({{baseCost}} VC) or {{premium}} on {{premiumName}} ({{premiumCost}} VC) from the monthly pack. This is an estimate for a new send; actual count depends on conversation length. A technical retry after a failure is not billed as a new turn.",
-    "estimateUnavailable": "The request estimate appears after the model catalog loads.",
-    "paymentPending": "Payment is not confirmed yet. Balance and subscription will update after Robokassa notifies us.",
-    "paymentConfirmed": "Payment confirmed."
+    "redirecting": "お支払い中...",
+    "subscribe": "サブスクライブ",
+    "footnote": "プランの有効化により、ボーナスVCが残高に付与されます。倍率は日次ボーナスに適用されます。リクエスト回数は選択したモデルに依存します。支払いはRobokassaを介して行われ、確認後に反映されます。",
+    "checkoutTitle": "{{name}}をサブスクライブ",
+    "applyNow": "今すぐ適用",
+    "applyNowHint": "現在のサブスクリプションは置き換えられ、残り期間は返金されません。",
+    "applyLater": "現在のプラン終了後に適用",
+    "applyLaterHint": "新しいサブスクリプションは、現在のサブスクリプションの有効期限が切れた時点で自動的に開始されます。",
+    "offerConsent": "サブスクリプション更新時に、以下の規約に基づき自動課金されることに同意します：",
+    "offerLink": "オファー",
+    "offerConsentNote": "（プロフィール設定でオフにできます）",
+    "consentRequired": "購読には自動更新への同意が必要です",
+    "goToPayment": "支払いへ進む",
+    "creatingPayment": "支払いを作成中...",
+    "paymentError": "支払いを作成できませんでした",
+    "cancelPendingSuccess": "保留中のサブスクリプションをキャンセルしました",
+    "cancelPendingError": "保留中のサブスクリプションをキャンセルできませんでした",
+    "cancelPendingConfirmTitle": "保留中のサブスクリプションをキャンセルしますか？",
+    "cancelPendingConfirm": "現在のサブスクリプション終了後、新しいプランは開始されません。",
+    "estimateTitle": "リクエストの見積もり",
+    "estimate": "月間パックから、{{baseName}}で約{{base}}回（{{baseCost}} VC）または{{premiumName}}で{{premium}}回（{{premiumCost}} VC）のリクエストが可能です。これは新しい送信の目安です。実際の回数は会話の長さによります。失敗後の技術的再試行は、新たなターンとして課金されません。",
+    "estimateUnavailable": "モデルカタログの読み込み後に、リクエストの見積もりが表示されます。",
+    "paymentPending": "まだ支払いが確認されていません。Robokassaからの通知後に、残高とサブスクリプションが更新されます。",
+    "paymentConfirmed": "支払いが確認されました。"
   },
   "coins": {
     "title": "VerseCoins (VC)",
-    "subtitle": "Buy VC to chat with characters, claim the daily bonus, and track your subscription.",
-    "loginPrompt": "Sign in to see your balance, bonuses, and buy VC",
-    "balance": "Current balance",
-    "yourSubscription": "Your subscription: {{label}}",
-    "validUntil": "Active until {{date}}",
-    "dailyBonus": "Daily bonus",
-    "streakDay": "Streak day: {{day}} / 7",
-    "today": "Today: ",
-    "alreadyClaimed": "Bonus already claimed today",
-    "nextBonus": "Next bonus in: ",
-    "claiming": "Claiming...",
-    "claim": "Claim (+{{amount}} VC)",
-    "unavailable": "Bonus unavailable",
-    "subscriptions": "Subscriptions",
-    "packages": "VC packs",
-    "price": "Price ({{symbol}})",
-    "bonus": "Bonus",
-    "action": "Action",
-    "buy": "Buy",
-    "checkoutTitle": "Purchase {{label}}",
-    "goToPayment": "Continue to payment",
-    "paying": "Payment...",
-    "loadError": "Could not load the balance",
-    "paymentError": "Could not create the payment",
-    "createPaymentError": "Error creating the payment",
-    "bonusReceived": "Bonus claimed!",
-    "comeTomorrow": "Come back tomorrow",
-    "bonusError": "Could not claim the bonus",
-    "buyDesc": "Purchase of {{coins}} VC",
-    "min": "0 min",
-    "hoursMinutes": "{{hours}} h {{minutes}} min",
-    "minutes": "{{minutes}} min",
-    "paymentPending": "Payment is processing. Purchased VC will appear on your balance after confirmation.",
-    "paymentConfirmed": "The VC purchase is confirmed and credited.",
-    "shop01": "The introductory offer is no longer available. Choose a regular pack.",
-    "shop02": "Estimate",
-    "shop03": "replies with",
-    "shop04": "VC received. Your story is ready to continue.",
-    "shop05": "Return to chat",
-    "shop06": "Back to chat",
-    "shop07": "Continue your story with {{value1}}",
-    "shop08": "Your story deserves another chapter",
-    "shop09": "Top up and chat with characters at your own pace. Start small, without a subscription or commitment.",
-    "shop10": "Return to this chat after payment confirmation",
-    "shop11": "VC never expire",
-    "shop12": "Payment via Robokassa",
-    "shop13": "First introduction",
-    "shop14": "One-time top-up",
-    "shop15": "For new scenes and conversations",
-    "shop16": "One payment · no auto-renewal",
-    "shop17": " · Charged {{value1}} RUB",
-    "shop18": "Checking availability…",
-    "shop19": "Offer temporarily unavailable",
-    "shop20": "Get {{value1}} VC",
-    "shop21": "The number depends on the model you choose.",
-    "shop22": "One introductory pack per account before your first purchase. Subscription and avatar generations are not included.",
-    "shop23": "Your introductory pack is reserved: continue paying the same invoice.",
-    "shop24": "Loading…",
-    "shop25": "Today",
-    "shop26": "Tomorrow",
-    "shop27": "Tomorrow +{{value1}} VC",
-    "shop28": "More room for your story",
-    "shop29": "One-time packs for every account. Top up whenever you like.",
-    "shop30": "A few scenes",
-    "shop31": "Build your story",
-    "shop32": "Long conversations",
-    "shop33": "Multiple stories",
-    "shop34": "Bigger worlds",
-    "shop35": "Dedicated storytellers",
-    "shop36": "Chatting regularly?",
-    "shop37": "Subscriptions include monthly VC, conversation memory and avatar generations.",
-    "shop38": "Before you buy",
-    "shop39": "What can I do with VC?",
-    "shop40": "Pay for model replies in chats. Reply prices depend on the model and are shown in chat. VC packs do not activate a subscription or add avatar generations.",
-    "shop41": "Do purchased VC expire?",
-    "shop42": "VC from one-time packs never expire. Monthly subscription VC are separate and follow subscription terms.",
-    "shop43": "When will my balance update?",
-    "shop44": "After Robokassa confirms payment. You may return to the site earlier; in that case we show a pending status.",
-    "shop45": "Need help with payment?",
-    "shop46": "Contact support",
-    "checkoutTerms": "One payment. No subscription or automatic renewal. VC do not expire."
+    "subtitle": "VCを購入してキャラクターと会話したり、毎日ボーナスを受け取ったり、サブスクリプションを確認しましょう。",
+    "loginPrompt": "ログインして残高、ボーナス、VC購入をご確認ください",
+    "balance": "現在の残高",
+    "yourSubscription": "あなたのサブスクリプション：{{label}}",
+    "validUntil": "有効期限：{{date}}まで",
+    "dailyBonus": "デイリーボーナス",
+    "streakDay": "連続日数：{{day}} / 7",
+    "today": "今日：",
+    "alreadyClaimed": "本日のボーナスは既に取得済みです",
+    "nextBonus": "次のボーナスまで：",
+    "claiming": "取得中...",
+    "claim": "取得（+{{amount}} VC）",
+    "unavailable": "ボーナスは利用できません",
+    "subscriptions": "サブスクリプション",
+    "packages": "VCパック",
+    "price": "価格（{{symbol}}）",
+    "bonus": "ボーナス",
+    "action": "操作",
+    "buy": "購入",
+    "checkoutTitle": "{{label}}を購入",
+    "goToPayment": "支払いへ進む",
+    "paying": "支払い中...",
+    "loadError": "残高の読み込みに失敗しました",
+    "paymentError": "支払いを作成できませんでした",
+    "createPaymentError": "支払いの作成中にエラーが発生しました",
+    "bonusReceived": "ボーナスを取得しました！",
+    "comeTomorrow": "また明日来てください",
+    "bonusError": "ボーナスを取得できませんでした",
+    "buyDesc": "{{coins}} VCの購入",
+    "min": "0分",
+    "hoursMinutes": "{{hours}}時間{{minutes}}分",
+    "minutes": "{{minutes}}分",
+    "paymentPending": "支払い処理中です。購入したVCは確認後に残高に反映されます。",
+    "paymentConfirmed": "VCの購入が確認され、残高に追加されました。",
+    "shop01": "導入キャンペーンは終了しました。通常パックをお選びください。",
+    "shop02": "目安",
+    "shop03": "回返信可能",
+    "shop04": "VCを受け取りました。あなたのストーリーを続けましょう。",
+    "shop05": "チャットに戻る",
+    "shop06": "チャットに戻る",
+    "shop07": "{{value1}}でストーリーを続けましょう",
+    "shop08": "あなたのストーリーには、もう一章が必要です",
+    "shop09": "チャージして、自分のペースでキャラクターと会話しましょう。サブスクリプションや契約なしで、少額から始められます。",
+    "shop10": "支払い確認後にこのチャットに戻ります",
+    "shop11": "VCは有効期限なし",
+    "shop12": "Robokassaで支払い",
+    "shop13": "はじめの一歩",
+    "shop14": "単発チャージ",
+    "shop15": "新しいシーンや会話に",
+    "shop16": "一度の支払い・自動更新なし",
+    "shop17": "・{{value1}} RUBが請求されます",
+    "shop18": "利用可能か確認中…",
+    "shop19": "現在このオファーは一時的に利用できません",
+    "shop20": "{{value1}} VCを入手",
+    "shop21": "数量は選ぶモデルによって異なります。",
+    "shop22": "初回購入前に、アカウントにつき1回のみ導入パックをご利用いただけます。サブスクリプションやアバター生成は含まれません。",
+    "shop23": "初回パックは確保済みです：同じ請求書の支払いを続けてください。",
+    "shop24": "読み込み中…",
+    "shop25": "今日",
+    "shop26": "明日",
+    "shop27": "明日 +{{value1}} VC",
+    "shop28": "ストーリーをもっと広げよう",
+    "shop29": "すべてのアカウント向けのワンタイムパック。好きなときにチャージ可能。",
+    "shop30": "いくつかのシーンに",
+    "shop31": "ストーリーを築く",
+    "shop32": "長い会話に",
+    "shop33": "複数のストーリーに",
+    "shop34": "大きなワールドに",
+    "shop35": "真剣な物語作りに",
+    "shop36": "定期的にチャットしますか？",
+    "shop37": "サブスクリプションには月額VC、会話記憶、アバター生成が含まれます。",
+    "shop38": "購入前に",
+    "shop39": "VCで何ができる？",
+    "shop40": "チャットでのモデルの返信に使用。返信価格はモデルにより異なり、チャット内に表示されます。VCパックはサブスクリプションやアバター生成の追加を含みません。",
+    "shop41": "購入したVCの有効期限は？",
+    "shop42": "単発パックのVCは有効期限がありません。月額VCは別管理で、サブスクリプション条件に従います。",
+    "shop43": "残高はいつ更新されますか？",
+    "shop44": "Robokassaが支払いを確認後。サイトに戻るのが早まる場合、保留ステータスを表示します。",
+    "shop45": "支払いについてサポートが必要ですか？",
+    "shop46": "サポートに連絡",
+    "checkoutTerms": "一度の支払い。サブスクリプションや自動更新なし。VCは有効期限なし。"
   },
   "payment": {
-    "chargeLabel": "Amount due",
-    "cbrEquivalent": "~ {{amount}} (CBR exchange rate)",
-    "ratesLoading": "Loading CBR exchange rate...",
-    "pending": "Payment is processing",
-    "confirmed": "Payment confirmed",
-    "unknown": "We could not confirm the payment from the return page. If you were charged, wait a few minutes or contact support."
+    "chargeLabel": "請求額",
+    "cbrEquivalent": "~ {{amount}} (CBR為替レート)",
+    "ratesLoading": "CBR為替レートを読み込み中…",
+    "pending": "支払い処理中",
+    "confirmed": "支払い確認済み",
+    "unknown": "返却ページから支払いを確認できませんでした。料金が引き落とされた場合は、数分待つか、サポートにご連絡ください。"
   },
   "meta": {
     "home": {
-      "title": "AI characters: chat and roleplay — NewVerse",
-      "description": "Chat with AI characters: talk, text and play roleplay stories. Characters remember the details, and you can start without signing up."
+      "title": "AIキャラクターとチャット・ロールプレイ — NewVerse",
+      "description": "AIキャラクターとチャット：会話やテキストでロールプレイストーリーを楽しめます。キャラクターは細部まで記憶し、登録不要で始められます。"
     },
     "create": {
-      "title": "Create an AI character for free — NewVerse creator",
-      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, in Russian, English and Spanish."
+      "title": "AIキャラクターを無料で作成 — NewVerseクリエイター",
+      "description": "独自のAIキャラクターをチャットやロールプレイ用に作成：ペルソナ、外見、最初のメッセージ、ワールドまで。無料で、複数言語対応。"
     },
     "edit": {
-      "title": "Edit character — NewVerse",
-      "description": "Adjust your character's appearance, personality, and scenario."
+      "title": "キャラクターを編集 — NewVerse",
+      "description": "キャラクターの外見、ペルソナ、シナリオを調整できます。"
     },
     "profile": {
-      "title": "My profile — NewVerse",
-      "description": "Manage your subscription, personas, and account settings."
+      "title": "マイプロフィール — NewVerse",
+      "description": "サブスクリプション、ペルソナ、アカウント設定を管理できます。"
     },
     "pricing": {
-      "title": "NewVerse plans — subscriptions for AI roleplay",
-      "description": "Choose a plan for a larger context window, bonus VC, and avatar generation."
+      "title": "NewVerseのプラン — AIロールプレイ用サブスクリプション",
+      "description": "より大きなコンテキストウィンドウ、ボーナスVC、アバター生成のためのプランを選択。"
     },
     "coins": {
-      "title": "Top up VC — NewVerse",
-      "description": "Buy VerseCoins to chat with AI characters."
+      "title": "VCをチャージ — NewVerse",
+      "description": "AIキャラクターとチャットするためのVerseCoinsを購入。"
     },
     "referral": {
-      "title": "Referral program — NewVerse",
-      "description": "Invite friends and earn bonuses."
+      "title": "リファラルプログラム — NewVerse",
+      "description": "友達を招待してボーナスを獲得。"
     },
     "subscription": {
-      "title": "Manage subscription — NewVerse",
-      "description": "View and disable subscription auto-renewal."
+      "title": "サブスクリプション管理 — NewVerse",
+      "description": "サブスクリプションの自動更新を確認・停止。"
     },
     "notifications": {
-      "title": "Notifications — NewVerse",
-      "description": "See purchase, bonus, and admin notifications."
+      "title": "通知 — NewVerse",
+      "description": "購入、ボーナス、管理者からの通知を確認。"
     },
     "offer": {
-      "title": "Public offer — NewVerse",
-      "description": "Terms of use for the NewVerse service."
+      "title": "公開オファー — NewVerse",
+      "description": "NewVerse サービスの利用規約。"
     },
     "refund": {
-      "title": "Refund policy — NewVerse",
-      "description": "Refund terms for NewVerse."
+      "title": "返金ポリシー — NewVerse",
+      "description": "NewVerse の返金条件。"
     },
     "terms": {
-      "title": "Terms of use — NewVerse",
-      "description": "Rules for using the NewVerse platform."
+      "title": "利用規約 — NewVerse",
+      "description": "NewVerse プラットフォームの利用ルール。"
     },
     "privacy": {
-      "title": "Privacy policy — NewVerse",
-      "description": "How NewVerse processes personal data."
+      "title": "プライバシーポリシー — NewVerse",
+      "description": "NewVerse における個人データの取り扱いについて。"
     },
     "support": {
-      "title": "Support — NewVerse",
-      "description": "Contact us to resolve your questions."
+      "title": "サポート — NewVerse",
+      "description": "ご質問はサポートまでお問い合わせください。"
     },
     "forgotPassword": {
-      "title": "Password recovery — NewVerse",
-      "description": "Request a link to reset your NewVerse account password."
+      "title": "パスワードの再設定 — NewVerse",
+      "description": "NewVerse アカウントのパスワード再設定用リンクをリクエスト。"
     },
     "resetPassword": {
-      "title": "Reset password — NewVerse",
-      "description": "Set a new password for your NewVerse account."
+      "title": "パスワードのリセット — NewVerse",
+      "description": "NewVerse アカウントの新しいパスワードを設定。"
     },
     "login": {
-      "title": "Sign in — NewVerse",
-      "description": "Sign in to NewVerse to chat with AI characters."
+      "title": "サインイン — NewVerse",
+      "description": "NewVerse にサインインして AI キャラクターとチャット。"
     },
     "register": {
-      "title": "Sign up — NewVerse",
-      "description": "Create a NewVerse account and start roleplaying with AI characters."
+      "title": "サインアップ — NewVerse",
+      "description": "NewVerse アカウントを作成し、AI キャラクターとロールプレイを開始。"
     },
     "verifyEmail": {
-      "title": "Confirm email — NewVerse",
-      "description": "Confirm your email to unlock full access to NewVerse."
+      "title": "メール確認 — NewVerse",
+      "description": "メールを確認して、NewVerse の全機能を利用。"
     },
     "chat": {
-      "title": "Chat with {{name}} — NewVerse",
-      "description": "Roleplay with {{name}}. Dive into the story and keep the plot going."
+      "title": "{{name}} とチャット — NewVerse",
+      "description": "{{name}} とロールプレイ。物語に没入し、ストーリーを進めよう。"
     },
     "character": {
-      "title": "{{name}} — AI roleplay character | NewVerse",
-      "description": "{{name}} on NewVerse. Start a roleplay and learn their story.",
-      "fallbackTitle": "Character — NewVerse",
-      "fallbackDescription": "Public character page on NewVerse."
+      "title": "{{name}} — AI ロールプレイキャラクター | NewVerse",
+      "description": "NewVerse の {{name}}。ロールプレイを始め、その物語を知ろう。",
+      "fallbackTitle": "キャラクター — NewVerse",
+      "fallbackDescription": "NewVerse の公開キャラクターページ。"
     },
     "rules": {
-      "title": "Platform rules — NewVerse",
-      "description": "Character publishing rules and consequences of violations on NewVerse."
+      "title": "プラットフォーム規則 — NewVerse",
+      "description": "NewVerse におけるキャラクター公開のルールと違反の結果。"
     },
     "genres": {
-      "title": "Character genres for AI roleplay — NewVerse",
-      "description": "Fantasy, romance, anime, detective, horror and more: choose the kind of story you want to live and find a character for your AI roleplay."
+      "title": "AI ロールプレイ用キャラクターのジャンル — NewVerse",
+      "description": "ファンタジー、ロマンス、アニメ、探偵、ホラーなど。体験したいストーリーのジャンルから、AI ロールプレイ用のキャラクターを見つけよう。"
     },
     "genre": {
       "title": "{{h1}} — NewVerse",
-      "titlePage": "{{h1}}, page {{page}} — NewVerse",
-      "descriptionPage": "{{description}} Page {{page}}."
+      "titlePage": "{{h1}}、{{page}}ページ目 — NewVerse",
+      "descriptionPage": "{{description}} ページ {{page}}。"
     },
     "catalog": {
       "title": "{{name}} — NewVerse",
-      "all": "AI character catalog",
-      "search": "Search “{{query}}” among characters",
-      "pageSuffix": ", page {{page}}",
-      "pageSentence": "Page {{page}}.",
-      "description": "NewVerse catalog of AI characters for roleplay in Russian, English and Spanish.",
-      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in Russian, English and Spanish.",
+      "all": "AI キャラクターカタログ",
+      "search": "「{{query}}」をキャラクターから検索",
+      "pageSuffix": "、{{page}}ページ目",
+      "pageSentence": "ページ {{page}}。",
+      "description": "複数言語対応の AI ロールプレイ用 NewVerse キャラクターカタログ。",
+      "searchDescription": "「{{query}}」に一致する NewVerse キャラクター：複数言語対応の AI ロールプレイストーリー。",
       "sort": {
-        "new": "New AI characters",
-        "random": "Random AI characters",
-        "for-you": "Characters picked for you"
+        "new": "新着 AI キャラクター",
+        "random": "ランダム AI キャラクター",
+        "for-you": "あなた向けのキャラクター"
       },
       "sortDescription": {
-        "new": "New on NewVerse: recently added characters and worlds for AI roleplay.",
-        "random": "A random pick of NewVerse characters — discover an unexpected AI story.",
-        "for-you": "NewVerse characters picked for your interests, for AI roleplay."
+        "new": "NewVerse 新着：最近追加されたキャラクターとワールドで AI ロールプレイを始めよう。",
+        "random": "NewVerse キャラクターをランダムに紹介。意外な AI ストーリーを発見しよう。",
+        "for-you": "あなたの興味に合わせて選ばれた NewVerse キャラクター。AI ロールプレイにぴったり。"
       }
     }
   },
   "genrePage": {
-    "home": "Home",
-    "hub": "Genres",
-    "breadcrumbs": "Breadcrumbs",
-    "count": "Characters in this genre: {{count}}",
-    "otherGenres": "Other genres",
-    "empty": "This genre has only a few characters so far. Browse the full catalog or create your own.",
-    "toCatalog": "Full catalog",
-    "hubH1": "Character genres for AI roleplay",
-    "hubIntro": "Pick a genre to see characters with that tag, from fantasy quests and deep-space voyages to calm slice of life and tangled investigations. Each genre shows its most popular public characters first.",
+    "home": "ホーム",
+    "hub": "ジャンル",
+    "breadcrumbs": "パンくず",
+    "count": "このジャンルのキャラクター数：{{count}}",
+    "otherGenres": "その他のジャンル",
+    "empty": "このジャンルにはまだキャラクターが少ないです。全カタログを閲覧するか、オリジナルキャラを作成しましょう。",
+    "toCatalog": "全カタログ",
+    "hubH1": "AI ロールプレイ用キャラクターのジャンル",
+    "hubIntro": "ジャンルを選んで、ファンタジー冒険や宇宙航行、日常系、複雑な調査ものなど、そのジャンルのキャラクターを探そう。各ジャンルでは、人気の公開キャラクターが最初に表示されます。",
     "items": {
       "fantasy": {
-        "h1": "Fantasy characters for AI roleplay",
-        "description": "AI roleplay in fantasy worlds: mages, elves, mercenaries and dragon riders. Pick a character and begin your own adventure on NewVerse."
+        "h1": "AI ロールプレイ用ファンタジーキャラクター",
+        "description": "魔法使い、エルフ、傭兵、ドラゴンライダーなど、ファンタジー世界の AI ロールプレイ。NewVerse でキャラクターを選んで、冒険を始めよう。"
       },
       "romance": {
-        "h1": "Romance characters for AI roleplay",
-        "description": "Romance AI roleplay: flirting, slow-burn relationships and stories about feelings. Pick a character and start chatting on NewVerse."
+        "h1": "AI ロールプレイ用ロマンスキャラクター",
+        "description": "恋愛、じわじわ発展する関係、感情の物語など、ロマンス系 AI ロールプレイ。NewVerse でキャラクターを選んで、チャットを始めよう。"
       },
       "anime": {
-        "h1": "Anime characters for AI roleplay",
-        "description": "AI roleplay with anime characters: school life, isekai, magic academies and romance. Pick your character on NewVerse."
+        "h1": "AI ロールプレイ用アニメキャラクター",
+        "description": "学園生活、異世界、魔法学園、恋愛など、アニメ風 AI ロールプレイ。NewVerse であなたのキャラクターを選ぼう。"
       },
       "scifi": {
-        "h1": "Sci-fi characters for AI roleplay",
-        "description": "Sci-fi AI roleplay: starship captains, androids and scientists on distant stations. Pick a character on NewVerse."
+        "h1": "AI ロールプレイ用SFキャラクター",
+        "description": "宇宙船の船長、アンドロイド、遠方の研究施設の科学者など、SF系 AI ロールプレイ。NewVerse でキャラクターを選ぼう。"
       },
       "mystic": {
-        "h1": "Mystery and supernatural characters for AI roleplay",
-        "description": "Mystery and supernatural AI roleplay: mediums, witches, cursed manors and secrets in no hurry to reveal themselves. Pick a character on NewVerse."
+        "h1": "AI ロールプレイ用ミステリー・超自然キャラクター",
+        "description": "霊能者、魔女、呪われた屋敷、明かされない秘密など、ミステリー・超自然系 AI ロールプレイ。NewVerse でキャラクターを選ぼう。"
       },
       "realistic": {
-        "h1": "Modern-day characters for AI roleplay",
-        "description": "AI roleplay with modern-day characters: colleagues, neighbours, students and stars. Natural dialogue and relationships on NewVerse."
+        "h1": "AI ロールプレイ用現代風キャラクター",
+        "description": "現代のキャラクターとAIでロールプレイ：同僚、隣人、学生、有名人。NewVerseで自然な会話と関係を築こう。"
       },
       "adventure": {
-        "h1": "Adventure characters for AI roleplay",
-        "description": "Adventure AI roleplay: treasure hunters, pirates, trackers and travellers. Choose a companion and set off on NewVerse."
+        "h1": "AIロールプレイ用アドベンチャーキャラクター",
+        "description": "AIと冒険ロールプレイ：宝探し、海賊、追跡者、旅人たち。仲間を選んでNewVerseの旅へ出発！"
       },
       "detective": {
-        "h1": "Detective characters for AI roleplay",
-        "description": "Detective AI roleplay: investigators, witnesses and suspects. Look for clues and solve cases with NewVerse characters."
+        "h1": "AIロールプレイ用探偵キャラクター",
+        "description": "AIで探偵ロールプレイ：探偵、目撃者、容疑者たち。手がかりを探し、NewVerseのキャラクターとともに事件を解決しよう。"
       },
       "everyday": {
-        "h1": "Slice-of-life characters for AI roleplay",
-        "description": "Slice-of-life AI roleplay: friends, roommates and colleagues for calm, natural conversation. Pick a character on NewVerse."
+        "h1": "AIロールプレイ用日常系キャラクター",
+        "description": "AIで日常ロールプレイ：友人、ルームメイト、同僚と落ち着いた自然な会話を。NewVerseでキャラクターを選ぼう。"
       },
       "cyberpunk": {
-        "h1": "Cyberpunk characters for AI roleplay",
-        "description": "Cyberpunk AI roleplay: hackers, augmented mercenaries and androids in a neon megacity. Pick a character on NewVerse."
+        "h1": "AIロールプレイ用サイバーパンクキャラクター",
+        "description": "AIでサイバーパンク体験：ネオンの大都市で、ハッカー、改造兵士、アンドロイドたちと冒険。NewVerseでキャラクターを選ぼう。"
       },
       "horror": {
-        "h1": "Horror characters for AI roleplay",
-        "description": "Horror AI roleplay: monsters, monster hunters and abandoned houses. Pick a character and test your nerves on NewVerse."
+        "h1": "AIロールプレイ用ホラーキャラクター",
+        "description": "AIでホラー体験：怪物、怪物ハンター、廃屋。キャラクターを選んでNewVerseで神経をすり減らそう。"
       },
       "comedy": {
-        "h1": "Comedy characters for AI roleplay",
-        "description": "Comedy AI roleplay: witty sidekicks, clumsy wizards and absurd situations. Pick a character on NewVerse."
+        "h1": "AIロールプレイ用コメディキャラクター",
+        "description": "AIでコメディロールプレイ：機知に富んだ相棒、不器用な魔法使い、お気楽な状況。NewVerseでキャラクターを選ぼう。"
       },
       "drama": {
-        "h1": "Drama characters for AI roleplay",
-        "description": "Drama AI roleplay: stories of choice, loss and forgiveness with characters who carry a difficult past. Pick one on NewVerse."
+        "h1": "AIロールプレイ用ドラマキャラクター",
+        "description": "AIでドラマ体験：選択、喪失、許しの物語。複雑な過去を持つキャラクターとNewVerseで出会いましょう。"
       }
     }
   },
   "moderation": {
-    "warningTitle": "Your character was hidden for a rule violation",
-    "warningBody": "Your character was hidden from public access for violating the platform rules. Reason: {{reason}}. Please read the <rules>rules</rules>. A repeat violation will result in the character being deleted.",
-    "unknownReason": "a platform rules violation",
-    "hiddenBadge": "Hidden for a rule violation"
+    "warningTitle": "ルール違反のためキャラクターが非公開に",
+    "warningBody": "このキャラクターはプラットフォームのルール違反により非公開にされました。理由：{{reason}}。 <rules>ルール</rules>を確認してください。再犯の場合は削除されます。",
+    "unknownReason": "プラットフォームのルール違反",
+    "hiddenBadge": "ルール違反により非公開"
   },
   "characterForm": {
-    "rulesHint": "By creating a character, you agree to the <rules>platform rules</rules>."
+    "rulesHint": "キャラクター作成により、<rules>プラットフォームのルール</rules>に同意したものとみなされます。"
   },
   "rules": {
-    "title": "Platform rules",
-    "intro": "By publishing characters on NewVerse, you agree to follow these rules. Violations are reviewed by moderators.",
-    "prohibitedTitle": "Prohibited content",
-    "prohibitedItems": [
-      "Sexualized content involving minors (under Federal Law 149-FZ and Article 242 of the Criminal Code of the Russian Federation).",
-      "Promotion of drugs, extremism, or terrorism.",
-      "Detailed cruelty or violence against people or animals.",
-      "Incitement of hatred based on race, nationality, or religion.",
-      "Spam or advertising of third-party services.",
-      "Fraud and financial pyramids.",
-      "Copyright infringement (copying characters from protected works without permission)."
-    ],
-    "consequencesTitle": "Consequences of violations",
-    "consequenceItems": [
-      "1st violation — the character is hidden from public access and a warning is issued.",
-      "2nd violation — the character is deleted.",
-      "3rd violation — the account is blocked."
-    ],
-    "appealTitle": "How to appeal",
-    "appeal": "Submit a request via the",
-    "appealLink": "support page"
+    "title": "プラットフォームのルール",
+    "intro": "NewVerseにキャラクターを公開することで、これらのルールに同意したものとみなされます。違反はモデレーターが審査します。",
+    "prohibitedTitle": "禁止コンテンツ",
+    "prohibitedItems": {
+      "0": "未成年を対象とした性的表現（ロシア連邦法149-FZおよび刑法第242条に基づく）。",
+      "1": "薬物、過激主義、テロリズムの推奨。",
+      "2": "人や動物に対する詳細な残虐行為や暴力。",
+      "3": "人種、民族、宗教に基づく憎悪の扇動。",
+      "4": "スパムや第三者サービスの広告。",
+      "5": "詐欺やネズミ講。",
+      "6": "著作権侵害（無許可で保護された作品のキャラクターを複製）。"
+    },
+    "consequencesTitle": "違反の結果",
+    "consequenceItems": {
+      "0": "1回目違反 — キャラクターを非公開にし、警告を発行。",
+      "1": "2回目違反 — キャラクターを削除。",
+      "2": "3回目違反 — アカウントをブロック。"
+    },
+    "appealTitle": "異議申し立て方法",
+    "appeal": "以下のページからリクエストを送信してください：",
+    "appealLink": "サポートページ"
   },
   "guestChat": {
-    "remaining": "{{remaining}}/{{limit}} left",
-    "retention": "Guest chats are kept for {{days}} days. After you sign in, they move to your account.",
-    "limitTitle": "Free message limit",
-    "limitBody": "You have used all free messages. Sign up to keep chatting and save this history.",
-    "register": "Sign up",
-    "login": "Log in",
-    "expired": "The guest chat retention period has expired.",
-    "transferWaiting": "Finishing the guest reply and transferring your chat…",
-    "transferPending": "Transfer is still pending. Retry to continue this conversation.",
-    "transferRetry": "Retry transfer"
+    "remaining": "{{remaining}}/{{limit}} 件残り",
+    "retention": "ゲストチャットは {{days}} 日間保存されます。ログイン後、アカウントに移行されます。",
+    "limitTitle": "無料メッセージ上限",
+    "limitBody": "無料メッセージの上限に達しました。登録して会話を続け、履歴を保存しましょう。",
+    "register": "登録",
+    "login": "ログイン",
+    "expired": "ゲストチャットの保存期間が終了しました。",
+    "transferWaiting": "ゲスト返信を完了し、チャットを移行中…",
+    "transferPending": "移行中です。再試行して会話を続けましょう。",
+    "transferRetry": "再試行"
   },
   "chatThreads": {
-    "defaultTitle": "Story {{number}}",
-    "listTitle": "Stories with {{name}}",
-    "openList": "Stories",
-    "newStory": "New story",
-    "newStoryHint": "Starts from the card's greeting and situation, with empty memory. Your persona is copied from the current story.",
-    "continue": "Continue story",
-    "continueNamed": "Continue: {{title}}",
-    "active": "Active",
-    "noActive": "No active stories. Start a new one or restore one from the archive.",
-    "archiveSection": "Archive ({{count}})",
-    "archived": "Archived",
-    "currentBadge": "Open",
-    "switchTo": "Open story “{{title}}”",
-    "messages_other": "{{count}} messages",
-    "empty": "No messages yet",
-    "lastActivity": "active {{date}}",
-    "rename": "Rename",
-    "renameLabel": "Story title",
-    "renamePlaceholder": "For example: Clan war",
-    "save": "Save",
-    "cancel": "Cancel",
-    "archive": "Archive",
-    "restore": "Restore",
-    "delete": "Delete",
-    "deleteTitle": "Delete “{{title}}”?",
-    "deleteBody": "The messages, memory and summary of this story will be deleted permanently. Other stories are not affected. To only hide the story, archive it instead.",
-    "deleteConfirm": "Delete permanently",
-    "created": "New story started",
-    "renamed": "Title saved",
-    "archivedToast": "Story archived",
-    "restoredToast": "Story restored",
-    "deletedToast": "Story deleted",
-    "loadFailed": "Could not load stories",
-    "createFailed": "Could not start a new story",
-    "updateFailed": "Could not update the story",
-    "deleteFailed": "Could not delete the story",
-    "notFound": "Story not found. The latest active story is open instead.",
-    "archivedBanner": "This story is archived. A new message makes it active again.",
-    "storiesCount_other": "{{count}} stories"
+    "defaultTitle": "ストーリー {{number}}",
+    "listTitle": "{{name}} とのストーリー",
+    "openList": "ストーリー",
+    "newStory": "新規ストーリー",
+    "newStoryHint": "カードの挨拶と状況から開始。記憶は空になります。ペルソナは現在のストーリーからコピーされます。",
+    "continue": "ストーリーを続ける",
+    "continueNamed": "続ける：{{title}}",
+    "active": "アクティブ",
+    "noActive": "アクティブなストーリーがありません。新しく作るか、アーカイブから復元してください。",
+    "archiveSection": "アーカイブ（{{count}}）",
+    "archived": "アーカイブ済",
+    "currentBadge": "開いている",
+    "switchTo": "「{{title}}」を開く",
+    "messages_other": "{{count}} 件のメッセージ",
+    "empty": "まだメッセージがありません",
+    "lastActivity": "{{date}} アクティブ",
+    "rename": "名前変更",
+    "renameLabel": "ストーリーのタイトル",
+    "renamePlaceholder": "例: クラン戦争",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "archive": "アーカイブ",
+    "restore": "復元",
+    "delete": "削除",
+    "deleteTitle": "「{{title}}」を削除しますか？",
+    "deleteBody": "このストーリーのメッセージ、記憶、要約は完全に削除されます。他のストーリーには影響しません。非表示にするだけの場合は、代わりにアーカイブしてください。",
+    "deleteConfirm": "完全に削除",
+    "created": "新しいストーリーを開始しました",
+    "renamed": "タイトルを保存しました",
+    "archivedToast": "ストーリーをアーカイブしました",
+    "restoredToast": "ストーリーを復元しました",
+    "deletedToast": "ストーリーを削除しました",
+    "loadFailed": "ストーリーを読み込めませんでした",
+    "createFailed": "新しいストーリーを開始できませんでした",
+    "updateFailed": "ストーリーを更新できませんでした",
+    "deleteFailed": "ストーリーを削除できませんでした",
+    "notFound": "ストーリーが見つかりません。最新のアクティブなストーリーが開かれました。",
+    "archivedBanner": "このストーリーはアーカイブされています。新しいメッセージで再びアクティブになります。",
+    "storiesCount_other": "{{count}}件のストーリー"
   },
   "email": {
-    "resetSubject": "Password reset — NewVerse",
-    "resetText": "Follow this link to reset your password: {{url}}",
-    "resetHtmlIntro": "Follow this link to reset your password:",
-    "resetHtmlFooter": "This link is valid for 1 hour. If you did not request a password reset, you can ignore this email.",
-    "verifySubject": "Confirm your email — NewVerse",
-    "verifyText": "Hello! Confirm your email in NewVerse by following this link: {{url}}. The link is valid for 24 hours.",
-    "verifyHtmlIntro": "Hello! Confirm your email in NewVerse by following this link:",
-    "verifyHtmlFooter": "The link is valid for 24 hours. If you did not create a NewVerse account, you can ignore this email.",
-    "supportSubject": "NewVerse support request — {{topic}}",
-    "supportText": "Topic: {{topic}}\nEmail: {{email}}\n\n{{message}}"
+    "resetSubject": "パスワードのリセット — NewVerse",
+    "resetText": "以下のリンクからパスワードをリセットしてください: {{url}}",
+    "resetHtmlIntro": "パスワードをリセットするには、以下のリンクをクリックしてください:",
+    "resetHtmlFooter": "このリンクの有効期限は1時間です。パスワードのリセットを依頼していない場合は、このメールを無視してください。",
+    "verifySubject": "メールアドレスの確認 — NewVerse",
+    "verifyText": "こんにちは！ 以下のリンクからNewVerseでメールアドレスを確認してください: {{url}}。リンクの有効期限は24時間です。",
+    "verifyHtmlIntro": "こんにちは！ NewVerseでメールアドレスを確認するには、以下のリンクをクリックしてください:",
+    "verifyHtmlFooter": "リンクの有効期限は24時間です。NewVerseのアカウント登録をした覚えがない場合は、このメールを無視してください。",
+    "supportSubject": "NewVerseサポート問い合わせ — {{topic}}",
+    "supportText": "件名: {{topic}}\nメール: {{email}}\n\n{{message}}"
   },
   "api": {
-    "emailRequired": "Email is required",
-    "emailPasswordRequired": "Email and password are required",
-    "userExists": "A user with this email already exists",
-    "internalError": "Internal server error",
-    "tokenPasswordRequired": "Token and password are required",
-    "minPassword": "Password must be at least {{count}} characters",
-    "invalidLink": "This link is invalid or has expired",
-    "unauthorized": "Unauthorized",
-    "userNotFound": "User not found",
-    "missingCredentials": "Email or password is missing",
-    "consentRequired": "You must accept the terms of use, privacy policy, public offer, and platform rules",
-    "tokenRequired": "Token is required",
-    "invalidVerificationLink": "This link is invalid or has expired",
-    "emailAlreadyVerified": "Email is already confirmed",
-    "confirmEmailToPurchase": "Confirm your email to make a purchase",
-    "confirmEmailToClaimBonus": "Confirm your email to claim bonuses",
-    "rateLimited": "Too many requests. Please wait a moment."
+    "emailRequired": "メールアドレスは必須です",
+    "emailPasswordRequired": "メールアドレスとパスワードは必須です",
+    "userExists": "このメールアドレスのユーザーは既に存在します",
+    "internalError": "サーバー内部エラー",
+    "tokenPasswordRequired": "トークンとパスワードは必須です",
+    "minPassword": "パスワードは{{count}}文字以上である必要があります",
+    "invalidLink": "このリンクは無効または有効期限が切れています",
+    "unauthorized": "認証されていません",
+    "userNotFound": "ユーザーが見つかりません",
+    "missingCredentials": "メールアドレスまたはパスワードがありません",
+    "consentRequired": "利用規約、プライバシーポリシー、公開オファー、およびプラットフォームルールに同意する必要があります",
+    "tokenRequired": "トークンは必須です",
+    "invalidVerificationLink": "このリンクは無効または有効期限が切れています",
+    "emailAlreadyVerified": "メールアドレスはすでに確認済みです",
+    "confirmEmailToPurchase": "購入するにはメールアドレスの確認が必要です",
+    "confirmEmailToClaimBonus": "ボーナスを受け取るにはメールアドレスの確認が必要です",
+    "rateLimited": "リクエストが多すぎます。しばらくお待ちください。"
   },
   "onboarding": {
-    "eyebrow": "Welcome to NewVerse",
-    "stepLabel": "Step {{step}} of 3",
-    "back": "Back",
-    "skip": "Skip",
-    "close": "Close the picker",
+    "eyebrow": "NewVerseへようこそ",
+    "stepLabel": "ステップ {{step}} / 3",
+    "back": "戻る",
+    "skip": "スキップ",
+    "close": "選択を閉じる",
     "style": {
-      "title": "Which characters do you prefer?",
-      "text": "Answer two questions and we will show you who to start talking to. You can change this any time.",
-      "anime": "Anime",
-      "animeHint": "Vivid art, big emotions, fantasy worlds",
-      "realistic": "Realistic",
-      "realisticHint": "Lifelike faces, like in a film",
-      "any": "I like both"
+      "title": "どのタイプのキャラクターが好みですか？",
+      "text": "2つの質問に答えてください。あなたにぴったりの会話相手をご紹介します。設定はいつでも変更可能です。",
+      "anime": "アニメ",
+      "animeHint": "鮮やかなアート、感情豊か、ファンタジーの世界",
+      "realistic": "リアル",
+      "realisticHint": "映画のようなリアルな顔立ち",
+      "any": "両方好き"
     },
     "styleLabel": {
-      "anime": "Anime",
-      "realistic": "Realistic",
-      "any": "Both styles"
+      "anime": "アニメ",
+      "realistic": "リアル",
+      "any": "両方"
     },
     "interests": {
-      "title": "What stories interest you?",
-      "text": "Pick up to three. We will show the characters that fit best.",
-      "show": "Show characters",
-      "pickOne": "Pick at least one interest",
-      "limit": "You can pick up to three. Remove one to choose another.",
-      "matches_other": "{{count}} characters fit · {{selected}} of 3 selected",
-      "noMatches": "No exact matches, we will show popular ones · {{selected}} of 3 selected",
-      "genderLabel": "Show me",
-      "genderAny": "Everyone",
-      "genderMale": "Male characters",
-      "genderFemale": "Female characters"
+      "title": "どんなストーリーに興味がありますか？",
+      "text": "最大3つ選択してください。最も合うキャラクターをご紹介します。",
+      "show": "キャラクターを表示",
+      "pickOne": "興味を1つ以上選択してください",
+      "limit": "最大3つまで選べます。変更するには1つ外してください",
+      "matches_other": "{{count}}人のキャラクターに該当 · {{selected}} / 3選択済",
+      "noMatches": "完全一致は見つかりません。人気のキャラクターを表示します · {{selected}} / 3選択済",
+      "genderLabel": "表示する性別",
+      "genderAny": "すべて",
+      "genderMale": "男性キャラクター",
+      "genderFemale": "女性キャラクター"
     },
     "interest": {
       "romance": {
-        "label": "Romance",
-        "hint": "Flirting, feelings, slow burn"
+        "label": "ロマンス",
+        "hint": "恋愛、感情、じっくり発展"
       },
       "fantasy": {
-        "label": "Fantasy and magic",
-        "hint": "Mages, elves, academies"
+        "label": "ファンタジー・魔法",
+        "hint": "魔法使い、エルフ、魔法学校"
       },
       "adventure": {
-        "label": "Adventure",
-        "hint": "Journeys, ruins, action"
+        "label": "アドベンチャー",
+        "hint": "旅、遺跡、アクション"
       },
       "mystic": {
-        "label": "Mystery and horror",
-        "hint": "Ghosts, secrets, gothic"
+        "label": "ミステリー・ホラー",
+        "hint": "幽霊、秘密、ゴシック"
       },
       "detective": {
-        "label": "Detective",
-        "hint": "Investigations and thrillers"
+        "label": "探偵",
+        "hint": "調査、スリラー"
       },
       "scifi": {
-        "label": "Sci-fi and cyberpunk",
-        "hint": "Space, androids, neon"
+        "label": "SF・サイバーパンク",
+        "hint": "宇宙、アンドロイド、ネオン"
       },
       "everyday": {
-        "label": "Slice of life",
-        "hint": "Neighbors, friends, comfort"
+        "label": "日常",
+        "hint": "隣人、友人、ほのぼの"
       },
       "drama": {
-        "label": "Drama",
-        "hint": "Strong emotions and choices"
+        "label": "ドラマ",
+        "hint": "強い感情と選択"
       },
       "comedy": {
-        "label": "Comedy",
-        "hint": "Light and funny stories"
+        "label": "コメディ",
+        "hint": "明るく楽しいストーリー"
       }
     },
     "results": {
-      "loading": "Finding characters…",
-      "title_other": "Here is who you can start with",
-      "text": "Tap “Start talking”: the character writes first.",
-      "matched": "Matches: {{list}}",
-      "popular": "Popular",
-      "start": "Start talking",
-      "more": "Show others",
-      "catalog": "Full catalog",
-      "error": "Could not load the picks.",
-      "retry": "Retry",
-      "empty": "No matching characters yet. Open the catalog: there are over a hundred stories."
+      "loading": "キャラクターを検索中…",
+      "title_other": "はじめにぴったりのキャラクター",
+      "text": "「会話開始」をタップ：キャラクターが最初に話しかけます",
+      "matched": "該当: {{list}}",
+      "popular": "人気",
+      "start": "会話開始",
+      "more": "ほかのキャラクターを表示",
+      "catalog": "全カタログ",
+      "error": "おすすめの読み込みに失敗しました",
+      "retry": "再試行",
+      "empty": "該当するキャラクターはまだいません。カタログを確認してください。100以上のストーリーがあります。"
     },
     "catalog": {
-      "applied": "Using your answers",
-      "remove": "Remove “{{label}}”",
-      "pick": "Find a character",
-      "pickAgain": "Pick again"
+      "applied": "選択内容を反映",
+      "remove": "「{{label}}」を外す",
+      "pick": "キャラクターを探す",
+      "pickAgain": "再選択"
     }
   },
   "telegram": {
-    "webLogin": "Sign in with Telegram",
-    "webLoginHint": "Open the bot, match the code and approve sign-in. Then return to this browser. No new account is created.",
-    "webLoginCode": "Request code:",
-    "webLoginOpenBot": "Open bot to approve",
-    "webLoginAccount": "Approved account: {{name}}",
-    "webLoginComplete": "Sign in to this account",
-    "webLoginExpired": "This request expired or is unavailable. Start Telegram sign-in again.",
-    "webAlreadySignedIn": "You are already signed in in this browser. Open your profile or sign out first.",
-    "signedOutTitle": "You have signed out",
-    "signedOutText": "Your Mini App session has ended. To sign in again, close the app and reopen it from the bot. To use a different Telegram account, switch accounts in Telegram first.",
-    "closeApp": "Close app",
-    "accountHint": "This account is linked to your Telegram. On the website, use “Sign in with Telegram” to access it.",
-    "openWebsiteAccount": "Open website",
-    "manageAccountHint": "To merge this profile into an existing website account, sign in to it on the website and choose “Link Telegram”. A separate confirmation in the bot is required before data moves.",
-    "entryTitle": "sign in with Telegram",
-    "signingIn": "Signing in with Telegram…",
-    "welcomeTitle": "Welcome to NewVerse",
-    "welcomeText": "Your account is created from your Telegram profile. If you already have a newvers.ai account, link Telegram in your profile on the website to use the same account and VC balance here.",
-    "linkExistingAccount": "I already have an account on the website",
-    "adultNotice": "NewVerse is intended for users aged 18 and over.",
-    "continue": "Continue",
-    "loginDisabledTitle": "Telegram sign-in is off",
-    "loginDisabledText": "Telegram was unlinked from the NewVerse account. Link it again in your profile on the website to sign in with Telegram.",
-    "outsideTitle": "Open NewVerse in Telegram",
-    "outsideText": "This page works only inside the Telegram app.",
-    "errorTitle": "Could not sign in",
-    "errorText": "Close and reopen the app. If it happens again, contact support.",
-    "unavailableAppText": "The app is temporarily unavailable. Please try again later.",
-    "toCatalog": "Browse characters",
-    "balanceTitle": "VC balance",
-    "balanceText": "VC are spent on character replies. Come back every day for the daily bonus.",
-    "unavailableTitle": "Section unavailable",
-    "unavailableText": "This section is not available in Telegram.",
-    "documentText": "The document opens in your browser.",
-    "openInBrowser": "Open in browser",
-    "balanceExhausted": "Your VC balance is used up",
-    "coinRulesActions": "A new reply, a retry and a continuation are separate requests. The VC cost is shown before sending; VC are deducted after the model replies.",
-    "bonusTomorrow": "Tomorrow +{{amount}} VC",
-    "link": "Link Telegram",
-    "linkHint": "Link Telegram to open NewVerse in Telegram with this account and VC balance.",
-    "linkedSince": "Telegram linked since {{date}}",
-    "onlyLoginMethod": "Telegram is your only sign-in method. Use “Sign in with Telegram” on the website. Unlinking is unavailable to keep your account accessible.",
-    "linkPending": "Confirm in Telegram: press Start in the chat with the bot. The link works once and for 10 minutes.",
-    "linkOpenAgain": "Open the link again",
-    "linkDone": "Telegram linked",
-    "linkError": "Something went wrong. Please try again later.",
-    "linkRateLimited": "Too many attempts. Try again in an hour.",
-    "unlink": "Unlink",
-    "unlinkTitle": "Unlink Telegram?",
-    "unlinkText": "The account stays, but signing in with this Telegram is disabled until you link it again.",
-    "unlinkDone": "Telegram unlinked"
+    "webLogin": "Telegramでサインイン",
+    "webLoginHint": "ボットを開き、コードを確認してサインインを承認してください。その後、このブラウザに戻ってください。新規アカウントは作成されません。",
+    "webLoginCode": "リクエストコード：",
+    "webLoginOpenBot": "承認のためボットを開く",
+    "webLoginAccount": "承認済みアカウント: {{name}}",
+    "webLoginComplete": "このアカウントにサインイン",
+    "webLoginExpired": "このリクエストは期限切れまたは利用不可です。Telegramでのサインインを再度開始してください。",
+    "webAlreadySignedIn": "このブラウザではすでにサインイン済みです。プロフィールを開くか、一度サインアウトしてください。",
+    "signedOutTitle": "サインアウトしました",
+    "signedOutText": "Mini Appのセッションが終了しました。再サインインするには、アプリを閉じてボットから再開してください。別のTelegramアカウントを使用するには、まずTelegram内で切り替えてください。",
+    "closeApp": "アプリを閉じる",
+    "accountHint": "このアカウントはTelegramに紐づいています。ウェブサイトでは「Telegramでサインイン」でアクセスできます。",
+    "openWebsiteAccount": "ウェブサイトを開く",
+    "manageAccountHint": "このプロフィールを既存のウェブサイトアカウントに統合するには、ウェブサイトでそのアカウントにサインインし、「Telegramを連携」を選択してください。データ移行にはボット内での別途承認が必要です。",
+    "entryTitle": "Telegramでサインイン",
+    "signingIn": "Telegramでサインイン中…",
+    "welcomeTitle": "NewVerseへようこそ",
+    "welcomeText": "アカウントはTelegramプロフィールから作成されます。すでにnewvers.aiアカウントをお持ちの場合は、ウェブサイトのプロフィールで「Telegramを連携」を選んで同じアカウントとVC残高を利用できます。",
+    "linkExistingAccount": "すでにウェブサイトにアカウントがある",
+    "adultNotice": "NewVerseは18歳以上向けです。",
+    "continue": "続ける",
+    "loginDisabledTitle": "Telegramサインインは無効です",
+    "loginDisabledText": "TelegramがNewVerseアカウントから解除されました。再度Telegramでサインインするには、ウェブサイトのプロフィールで再び連携してください。",
+    "outsideTitle": "NewVerseをTelegramで開く",
+    "outsideText": "このページはTelegramアプリ内でのみ利用できます。",
+    "errorTitle": "ログインできませんでした",
+    "errorText": "アプリを閉じて再起動してください。問題が繰り返される場合は、サポートにお問い合わせください。",
+    "unavailableAppText": "アプリは一時的に利用できません。後でもう一度お試しください。",
+    "toCatalog": "キャラクターを閲覧",
+    "balanceTitle": "VC残高",
+    "balanceText": "キャラクターの返信にはVCが消費されます。毎日ログインして、デイリーボーナスを受け取りましょう。",
+    "unavailableTitle": "セクションは利用できません",
+    "unavailableText": "このセクションはTelegramでは利用できません。",
+    "documentText": "ドキュメントはブラウザーで開きます。",
+    "openInBrowser": "ブラウザーで開く",
+    "balanceExhausted": "VC残高が不足しています",
+    "coinRulesActions": "新しい返信、再試行、続きはそれぞれ別リクエストです。送信前にVCコストを確認でき、モデルの返信後に差し引かれます。",
+    "bonusTomorrow": "明日 +{{amount}} VC",
+    "link": "Telegramを連携",
+    "linkHint": "このアカウントとVC残高でTelegram内からNewVerseを利用できるようになります。",
+    "linkedSince": "Telegram連携済み（{{date}}から）",
+    "onlyLoginMethod": "ログイン方法はTelegramのみです。ウェブサイトでは「Telegramでログイン」を使用してください。アカウントへのアクセスを維持するため、連携解除はできません。",
+    "linkPending": "Telegramで確認してください：ボットとのチャットで「スタート」を押してください。リンクは1回限り、10分間有効です。",
+    "linkOpenAgain": "リンクをもう一度開く",
+    "linkDone": "Telegramを連携しました",
+    "linkError": "問題が発生しました。後でもう一度お試しください。",
+    "linkRateLimited": "試行回数が多すぎます。1時間後に再試行してください。",
+    "unlink": "連携解除",
+    "unlinkTitle": "Telegramの連携を解除しますか？",
+    "unlinkText": "アカウントは残りますが、再度連携するまでこのTelegramでのログインは無効になります。",
+    "unlinkDone": "Telegramの連携を解除しました"
   },
   "freeQuota": {
-    "remaining": "Free today: {{remaining}} of {{limit}} left",
-    "exhausted": "Free replies for today are used up; new ones arrive at 00:00 Moscow time.",
-    "otherModel": "Free replies today: {{remaining}}, on the {{model}} model.",
-    "needCoins": "Not enough VC: {{cost}} needed, {{balance}} on balance.",
-    "topUp": "Top up",
-    "coinsNote": "Free every day: {{onboarding}} replies a day for the first week after sign-up, then {{daily}}, on the base model.",
-    "heroBadge": "{{onboarding}} free replies a day for your first week",
-    "planFeature": "{{count}} free replies a day on {{model}}, no VC spent",
-    "guestOffer": "After sign-up you get {{onboarding}} free replies a day for the first week."
+    "remaining": "今日の無料分：{{remaining}} / {{limit}}",
+    "exhausted": "今日の無料返信は上限に達しました。新しい返信はモスクワ時間00:00に更新されます。",
+    "otherModel": "今日の無料返信：{{remaining}}（{{model}}モデル）",
+    "needCoins": "VCが不足しています：必要{{cost}}、残高{{balance}}",
+    "topUp": "チャージ",
+    "coinsNote": "毎日無料：登録後1週間は毎日{{onboarding}}回、以降は毎日{{daily}}回（ベースモデル）",
+    "heroBadge": "初週は毎日{{onboarding}}回の無料返信",
+    "planFeature": "毎日{{count}}回の無料返信（{{model}}モデル）、VCは消費されません",
+    "guestOffer": "登録後、初週は毎日{{onboarding}}回の無料返信がもらえます。"
   },
   "landing": {
     "home": {
-      "heading": "Chat with AI characters",
-      "paragraphs": [
-        "NewVerse is a place to talk with AI characters. The catalog has heroes from many genres: romance, fantasy, anime, detective stories, science fiction and calm everyday life. Pick a character by their description and personality, open the chat and start writing — they reply in their own voice, with their own story and way of speaking.",
-        "This is more than an AI chat with questions and answers: it is AI roleplay. Every character comes with a setup, a world and a first message that opens the scene. You decide who you are in the story and where it goes. Characters remember the important details of the conversation, so you can come back a day or a week later and continue where you left off.",
-        "If you cannot find the right hero, create your own AI character: set their personality, appearance, first message and world, then chat with them yourself or publish them to the catalog. The site works in Russian, English and Spanish, and you can start without signing up."
-      ],
-      "createLink": "Create an AI character",
-      "genresLink": "All genres",
-      "faqHeading": "Frequently asked questions",
-      "faq": [
-        {
-          "question": "Can I chat with AI characters for free?",
+      "heading": "AIキャラクターとチャット",
+      "paragraphs": {
+        "0": "NewVerseはAIキャラクターと会話できる場所です。カタログにはロマンス、ファンタジー、アニメ、探偵、SF、日常系など多彩なジャンルのヒーローが登場。キャラクターの説明や個性を見て選び、チャットを開いて書き始めてください。彼らは独自の声、ストーリー、話し方で返信します。",
+        "1": "単なるAIチャットではなく、AIロールプレイです。各キャラクターには設定、世界観、シーンを始める最初のメッセージがあります。あなたが物語の中の誰になるか、どこへ進むかを決めます。キャラクターは会話の重要な点を記憶するので、1日後や1週間後に戻っても続きを楽しめます。",
+        "2": "ぴったりのヒーローが見つからない？ 自分でAIキャラクターを作れます。個性、外見、最初のメッセージ、世界を設定して、自分で使ってみたり、カタログに公開したりできます。複数の言語に対応。登録なしでも始められます。"
+      },
+      "createLink": "AIキャラクターを作成",
+      "genresLink": "全ジャンル",
+      "faqHeading": "よくある質問",
+      "faq": {
+        "0": {
+          "question": "AIキャラクターと無料でチャットできますか？",
           "answer": "{{freeAnswer}}"
         },
-        {
-          "question": "Do I need to sign up?",
-          "answer": "No. To try it, open a character and write your first message. An account lets you save your stories, continue them on another device and create your own characters."
+        "1": {
+          "question": "登録は必要ですか？",
+          "answer": "いいえ。試すにはキャラクターを開き、最初のメッセージを送るだけです。アカウントを作ると、ストーリーの保存、別の端末からの続き、オリジナルキャラクターの作成が可能になります。"
         },
-        {
-          "question": "Do characters remember what we talked about?",
-          "answer": "Yes. A character keeps track of recent messages and remembers important facts from the conversation: names, promises, plot events. So you can pick the story up where you left it."
+        "2": {
+          "question": "キャラクターは会話を覚えていますか？",
+          "answer": "はい。キャラクターは直近の会話を追跡し、名前や約束、ストーリーの出来事など重要な点を覚えています。そのため、中断したところから続きを始められます。"
         },
-        {
-          "question": "Which languages can I use?",
-          "answer": "Russian, English or Spanish. Character descriptions are available in these languages, and you can change the site language in the menu."
+        "3": {
+          "question": "どの言語が使えますか？",
+          "answer": "サイトで選択した言語で利用できます。利用可能な言語はメニューに記載。言語切替でもページやストーリーは維持されます。"
         },
-        {
-          "question": "How is AI roleplay different from a regular chatbot?",
-          "answer": "A regular chatbot answers questions. An AI character plays a role: they have a personality, a past and goals, react to what you do and build the plot together with you."
+        "4": {
+          "question": "AIロールプレイと通常のチャットボットの違いは？",
+          "answer": "通常のチャットボットは質問に答えます。AIキャラクターは役を演じます。個性、過去、目的を持ち、あなたの行動に反応し、共に物語を紡いでいきます。"
         }
-      ]
+      }
     },
     "freeAnswer": {
-      "quota": "Yes. You can send your first messages without signing up, and once you have an account you get free replies on the base model every day. A plan adds more free replies, bonus VerseCoins and a larger context window.",
-      "noQuota": "You can start for free: the first messages need no sign-up. After that, replies are paid with VerseCoins or a plan."
+      "quota": "はい。登録せずに最初のメッセージを送れます。アカウント登録後は、毎日ベースモデルでの無料返信がもらえます。有料プランではさらに多くの無料返信、ボーナスVC、大きなコンテキストウィンドウが追加されます。",
+      "noQuota": "無料で始められます：最初のメッセージは登録不要です。その後はVCまたは有料プランで返信を利用します。"
     },
     "create": {
-      "eyebrow": "NewVerse character creator",
-      "h1": "Create an AI character",
-      "intro": "Design a hero for AI chat and roleplay: set their personality, appearance, first message and the world they live in. Creating a character is free — you only need an account.",
-      "modesHeading": "What are we creating?",
-      "modesHint": "A core idea is enough. Appearance, speaking style and story details can be added later.",
-      "stepsHeading": "How to create an AI character",
-      "steps": [
-        {
-          "title": "Pick a format",
-          "text": "A single character, a whole universe where you are the main hero, or a shared story with a cast of up to {{maxParticipants}} characters."
+      "eyebrow": "NewVerseキャラクター作成",
+      "h1": "AIキャラクターを作成",
+      "intro": "AIとの会話やロールプレイ用のヒーローを作りましょう：個性、外見、最初のメッセージ、住む世界を設定します。キャラクター作成は無料。アカウントが必要です。",
+      "modesHeading": "何を作りますか？",
+      "modesHint": "核となるアイデアがあれば十分。外見や話し方、ストーリーの詳細は後から追加できます。",
+      "stepsHeading": "AIキャラクターの作り方",
+      "steps": {
+        "0": {
+          "title": "フォーマットを選択",
+          "text": "単体のキャラクター、あなたが主役のワールド、または最大{{maxParticipants}}人のキャラクターが登場する共有ストーリー。"
         },
-        {
-          "title": "Describe the hero",
-          "text": "Name, personality, appearance and way of speaking. Start with what makes the hero recognisable: a habit, a goal, one striking trait."
+        "1": {
+          "title": "キャラクターを説明",
+          "text": "名前、性格、外見、話し方。そのキャラクターを象徴する習慣や目標、目立つ特徴から書き始めてください。"
         },
-        {
-          "title": "Set how the story begins",
-          "text": "A first message and a scenario: where the meeting happens and how the scene opens. Example dialogues help the character keep their style."
+        "2": {
+          "title": "ストーリーの始まりを設定",
+          "text": "最初のメッセージとシナリオ：出会いの場所とシーンの幕開け。会話例を加えると、キャラがスタイルを保ちやすくなります。"
         },
-        {
-          "title": "Save and start chatting",
-          "text": "Keep the character private or publish them to the catalog so others can chat with them too."
+        "3": {
+          "title": "保存してチャット開始",
+          "text": "キャラを非公開にするか、カタログに公開して他のユーザーとも共有。"
         }
-      ],
-      "featuresHeading": "What you can set up",
-      "features": [
-        {
-          "title": "Personality and motives",
-          "text": "What the hero wants, what they fear and how they treat the person they talk to."
+      },
+      "featuresHeading": "設定可能な項目",
+      "features": {
+        "0": {
+          "title": "性格と動機",
+          "text": "キャラクターが何を望み、恐れ、会話相手への態度。"
         },
-        {
-          "title": "Appearance and avatar",
-          "text": "Upload your own image or generate an avatar from the description — generation is included in a plan."
+        "1": {
+          "title": "外見とアバター",
+          "text": "画像をアップロード、または説明からアバターを生成 — 生成はプランに含まれます。"
         },
-        {
-          "title": "Speaking style",
-          "text": "Short lines or long replies, slang, politeness, an accent."
+        "2": {
+          "title": "話し方",
+          "text": "短い返答か長文か、スラング、丁寧さ、アクセントの有無。"
         },
-        {
-          "title": "World and rules",
-          "text": "The setting, supporting characters and narrative rules for universes."
+        "3": {
+          "title": "世界とルール",
+          "text": "舞台設定、サブキャラ、ワールドの物語ルール。"
         },
-        {
-          "title": "Genres and tags",
-          "text": "They help people find the character in the catalog and on genre pages."
+        "4": {
+          "title": "ジャンルとタグ",
+          "text": "カタログやジャンルページでキャラを見つけやすくするためのもの。"
         },
-        {
-          "title": "Memory",
-          "text": "What the character knows about themselves and about you from the first line."
+        "5": {
+          "title": "記憶",
+          "text": "キャラが自分自身や会話相手について最初から知っていること。"
         }
-      ],
-      "faqHeading": "Questions about creating a character",
-      "faq": [
-        {
-          "question": "How much does it cost to create an AI character?",
-          "answer": "Creating a character is free. Generating an avatar from the description is included in a plan; without one you can upload your own image."
+      },
+      "faqHeading": "キャラクター作成に関するよくある質問",
+      "faq": {
+        "0": {
+          "question": "AIキャラクターの作成は有料ですか？",
+          "answer": "キャラクターの作成は無料です。説明からアバターを生成する機能はプランに含まれます。それ以外は画像を自分でアップロードできます。"
         },
-        {
-          "question": "Do I need to sign up?",
-          "answer": "Yes: characters are saved to your account, so you need to sign in to create one. You can chat with catalog characters without signing up."
+        "1": {
+          "question": "登録が必要ですか？",
+          "answer": "はい。キャラクターはアカウントに保存されるため、作成にはログインが必要です。カタログのキャラとは登録なしでチャットできます。"
         },
-        {
-          "question": "Can I keep a character private?",
-          "answer": "Yes. Only you can see a private character. A public one appears in the catalog for everyone and must follow the platform rules."
+        "2": {
+          "question": "キャラを非公開にできますか？",
+          "answer": "はい。非公開キャラはあなたにしか見えません。公開キャラはカタログに表示され、プラットフォームのルールに従う必要があります。"
         },
-        {
-          "question": "How do I make a character's replies more interesting?",
-          "answer": "Describe not only their looks but also their motives, habits and way of speaking. Add a first message with a concrete scene and one or two example dialogues: the clearer the setup, the livelier the replies."
+        "3": {
+          "question": "キャラの返答をもっと面白くするには？",
+          "answer": "外見だけでなく、動機や習慣、話し方を詳しく記述しましょう。具体的なシーンを含む最初のメッセージと、1〜2つの会話例を追加してください。設定が明確であるほど、返答はより生き生きとしたものになります。"
         },
-        {
-          "question": "Can I change a character after creating it?",
-          "answer": "Yes. You can edit the card at any time: extend the description, change the avatar or the first message."
+        "4": {
+          "question": "作成後にキャラを変更できますか？",
+          "answer": "はい。いつでも編集可能。説明の追加、アバターの変更、最初のメッセージの調整ができます。"
         }
-      ]
+      }
     }
   },
   "genreIntros": {
-    "fantasy": [
-      "Fantasy is where a conversation with a character easily turns into a whole journey. This is home to mages and mercenaries, elven guards, dragon riders, hedge witches from the edge of the kingdom and students at magic academies. You can step into the story as the hero's companion, their rival, or a passing traveller who has stumbled onto a dangerous secret.",
-      "An AI character answers in the voice of their world: they have their own oaths, fears and ideas about honour. Some stories begin by a tavern fire, others on a battlefield or in a library of forbidden spells. Pick a character by their description and personality, set the tone of the scene — from a cosy fairy tale to a grim story about the price of power — and decide for yourself how the quest ends."
-    ],
-    "romance": [
-      "Romance characters are for stories where what matters most happens between two people. It might be a slow acquaintance with a neighbour down the hall, a charged game with an old rival, an office romance, letters from another era, or feelings the character is not ready to admit even to themselves.",
-      "Every character has a personality of their own: some are warm and open, some are reserved and take time to open up, some flirt from the very first line. You set the pace, from light flirting to a slow-burn relationship where trust has to be earned. The character responds to what you say and do, so the same story can end in a confession, a quarrel or a new chapter. Choose someone by their description, start with their opening scene, or write your own."
-    ],
-    "anime": [
-      "Anime characters are recognisable at a glance: vivid looks, expressive emotions and familiar archetypes — tsunderes, unflappable top students, troublemakers with good hearts, the mysterious new kid in class. But the stories here go well beyond school corridors.",
-      "This section gathers anime-style characters from all kinds of plots: everyday school life and after-class clubs, magic academies, isekai adventures in another world, sports rivalries, romance and quests. Each character stays true to their role and reacts to your choices, so you can play out a quiet scene on the school roof or a tense duel. Pick a character from their card, read their description and begin with the ready-made scene, or suggest your own setup as if you were writing a new episode."
-    ],
-    "scifi": [
-      "Science fiction on NewVerse is about the future, technology and the people caught up in it: starship captains, androids learning to be human, scientists on distant stations, pilots, smugglers and the first witnesses of contact with an alien mind.",
-      "You can set off on a long deep-space voyage, investigate a failure in a colony's systems, or argue with an artificial intelligence about memory and free will. Characters keep to the rules of their world: the ship runs low on fuel, the station has its regulations, and the android has protocols it may decide to break. Ask questions, take risky decisions and see where the plot leads. If you want more street-level tech and neon, the cyberpunk section is right next door."
-    ],
-    "mystic": [
-      "Mystery and the supernatural are for anyone drawn to the unexplained. Here you will meet fortune-tellers and mediums, keepers of old houses, cursed aristocrats, witches, spirits and people who know far too much about other people's dreams.",
-      "These stories live on what is left unsaid: a character may speak in riddles, hide part of the truth, or test whether you are ready to hear all of it. Scenes open on a midnight train, at a séance, in an abandoned manor or in a small town where every resident keeps a secret. Unlike horror, atmosphere and the solution matter more than fear here, though the line can be thin. Choose a character by their description, listen to their hints and decide whether to open the door someone is waiting behind."
-    ],
-    "realistic": [
-      "Modern-day characters live much like we do: they study, work, rent flats, meet in coffee shops and get caught up in stories that could happen to anyone. They are colleagues and neighbours, stars and their managers, doctors, students, baristas, musicians and old classmates.",
-      "The strength of this kind of roleplay is that it feels true to life. Without magic or starships, personality, dialogue and relationships take centre stage: an awkward reunion after years apart, a hard conversation with a boss, a first date, or helping a friend through a rough evening. The character answers with their own past and habits in mind, and the plot grows from your words and choices. These stories suit both a light chat and a serious drama. Pick a character by their description and start with their scene or with something that happened to you today."
-    ],
-    "adventure": [
-      "Adventure is about motion: the open road, a map with blank spaces and a companion who will not let things get dull. This genre brings together treasure hunters, pirates, trackers, mercenaries, time travellers and heroes who always end up exactly where trouble begins.",
-      "Any scene can turn the plot: a rooftop chase, a crossing over a raging river, a deal with a suspicious merchant, or an ancient mechanism that must be opened before sunset. The character reacts to your decisions — backs a risky plan, argues, or suddenly proposes one of their own. Adventure mixes easily with other genres: a fantasy quest, a space expedition or the search for a missing friend in a modern city. Choose a companion by their description, agree on a goal and set off; the route will take shape as the story goes."
-    ],
-    "detective": [
-      "Detective characters are for anyone who loves clues, interrogations and unexpected twists. Here you will find private investigators and weary police detectives, investigative journalists, cold-blooded criminals and witnesses who are clearly holding something back.",
-      "You can work a case alongside the character, end up as a suspect yourself, or play against them and try to catch them in a contradiction. A good detective scene runs on details: the time on a clock, a mark on a windowsill, a slip of the tongue. The character keeps track of what has already been said, so an attentive player can compare statements and reach their own theory. Cases can be classic, with a locked room and a circle of suspects, or modern, with security cameras and message threads. Choose a character and ask the first question."
-    ],
-    "everyday": [
-      "Slice of life is the genre of small stories that make up a life: morning coffee with a neighbour, a shift at a bookshop, studying for exams together, moving house, a long talk in the kitchen.",
-      "Nobody has to save the world here. The value of this kind of roleplay is in natural conversation and relationships that grow over time: the character picks up on details, jokes, shares plans, can support you after a hard day or invite you on a spontaneous trip. The cast includes friends, roommates, colleagues and acquaintances you will want to talk to again. Slice-of-life stories are a good fit when you want to unwind, practise conversation or simply spend an evening in calm company. Pick a character by their personality, start with an ordinary scene and let the story unfold without hurry."
-    ],
-    "cyberpunk": [
-      "Cyberpunk means neon streets, corporations more powerful than governments and people who sell their memories, bodies and loyalty for a chance to survive. This genre is home to hackers, augmented mercenaries, back-alley doctors, big-city detectives and androids who have started to doubt their protocols.",
-      "The stories are hard and fast: cracking a secured network, a deal in an underground club, an escape from corporate security, the hunt for whoever erased part of your past. The character lives by the rules of their city — they might sell you out for the right price, or risk everything for a partner. Cyberpunk is close to science fiction, but instead of looking up at the stars it looks down at the streets, where technology has become an everyday commodity. Choose a character by their description, decide whose side you are on and make your first deal."
-    ],
-    "horror": [
-      "Horror is for those who enjoy a chill running down their spine. This section gathers characters around whom safety is never guaranteed: monsters and their victims, hunters of the unholy, residents of abandoned hospitals, survivors of a disaster and creatures that only pretend to be human.",
-      "A good horror story is built on tension, not on the amount of blood. A creaking floorboard, a torch about to go out, a voice from the next room — the character runs the scene so that you decide whether to go further or run. You can play the one investigating a disappearance, an unlucky guest in a stranger's house, or step into a dangerous conversation with the monster itself. You choose how frightening it gets, from atmospheric gothic to real survival. Pick a character by their description and turn off the lights."
-    ],
-    "comedy": [
-      "Comedy characters are for when you want laughter rather than drama: witty sidekicks, clumsy wizards, overconfident villains whose plans never work, chatty neighbours and heroes who stumble into absurd situations out of nowhere.",
-      "Humour in roleplay comes from personality: the character stays true to themselves even when everything goes sideways, and that is exactly what makes a scene funny. You can play out a disastrous date, domestic chaos in a shared flat, a parody of an epic quest, or an argument with a cat who believes it is royalty. The character picks up your jokes, answers with their own and will happily push things to the absurd if that is what you want. Comedy pairs well with slice of life, fantasy and romance. Choose a character, set up a ridiculous premise and see what happens."
-    ],
-    "drama": [
-      "Drama is the genre of stories about choice, loss, guilt and forgiveness. The characters here carry a difficult past: people who have lost someone close, former friends driven apart by life, heroes facing a hard decision, families where much has been left unsaid.",
-      "Dramatic roleplay takes time and attention: the character does not open up at once, and trust has to be earned. A scene may begin with a brief meeting at a railway station or a letter that arrived too late, and from there everything depends on what you say and what you leave unspoken. The AI character answers in light of their wounds and motives, so the conversation can lead to reconciliation or to a final parting. If you are drawn to stories that leave you quiet for a while afterwards, choose a character by their description and start with an honest question."
-    ]
+    "fantasy": {
+      "0": "ファンタジーは、キャラとの会話がすぐに壮大な冒険に変わる世界。魔法使いや傭兵、エルフの警備兵、ドラゴンライダー、王国の端に住む魔女、魔法学院の学生たちがここにいます。あなたはヒーローの仲間、ライバル、あるいは危険な秘密を知ってしまった旅人として物語に参加できます。",
+      "1": "AIキャラはその世界観に沿って話します。彼らには誓い、恐怖、名誉への考えがあります。物語は酒場の炉端から始まったり、戦場や禁断の呪文の書かれた図書館で幕を開けたりします。キャラの説明や性格で選び、シーンのトーン（ほのぼのとしたおとぎ話から、力の代償を描くダークな物語まで）を決め、あなた自身でクエストの結末を決めましょう。"
+    },
+    "romance": {
+      "0": "ロマンスキャラは、二人の関係が中心のストーリーにぴったりです。廊下の向かいの隣人とのゆっくりした交流、昔からのライバルとの駆け引き、職場恋愛、別の時代からの手紙、あるいは自分自身にも認められない感情など。",
+      "1": "キャラ一人ひとりに個性があります。温かくオープンな者もいれば、内向的で時間をかけて心を開く者、初めから積極的にアプローチする者も。ペースはあなた次第。軽いやり取りから、信頼を築いていくスローバーンまで。キャラはあなたの言動に応じて反応するので、同じ物語でも告白、喧嘩、新たな展開など、結末はさまざまです。説明を見て選んだり、キャラの最初のシーンから始めたり、自分で設定してもOK。"
+    },
+    "anime": {
+      "0": "アニメキャラは一目でわかる特徴を持ちます。鮮やかな外見、感情豊かな表現、おなじみのタイプ——ツンデレ、無感情な優等生、心優しい問題児、クラスの謎の転校生。でも、ここで展開される物語は学園の廊下にとどまりません。",
+      "1": "このセクションには、学園生活や放課後クラブ、魔法学園、異世界アドベンチャー、スポーツ対決、恋愛やクエストなど、さまざまな設定のアニメ風キャラクターが登場します。各キャラクターは自分の役割を忠実に演じ、あなたの選択に反応します。屋上の静かなシーンから緊迫した決闘まで、自由に演じてみましょう。キャラクターカードから選び、説明文を読んで用意されたシーンから始めるもよし、まるで新作エピソードを書くように、独自の展開を提案するもよしです。"
+    },
+    "scifi": {
+      "0": "NewVerseのSFは、未来とテクノロジー、そしてその中にいる人々の物語です。宇宙船の艦長、人間らしさを学ぶアンドロイド、遠宇宙の研究施設にいる科学者、パイロット、密輸業者、異星の知性との初接触を目撃する者たちが登場します。",
+      "1": "深宇宙への長期航行に出るもよし、植民地のシステム障害を調査するもよし、AIと記憶や自由意志について議論するもよし。キャラクターはそれぞれの世界のルールに従います。燃料が尽きる宇宙船、規則ある研究ステーション、遵守すべきプロトコルを持つアンドロイド。質問を投げかけ、リスクのある決断を下し、物語の行方を見届けてください。ストリートレベルのテクノロジーやネオンが気になるなら、隣のサイバーパンクセクションもおすすめです。"
+    },
+    "mystic": {
+      "0": "謎と超自然に魅せられる人のための、未解決の出来事がテーマです。占い師や霊能者、古屋の番人、呪われた貴族、魔女、幽霊、他人の夢についてあまりにも多くを知る人々に出会えます。",
+      "1": "これらの物語は「語られないこと」に息づいています。キャラクターは謎めいた言い回しをしたり、真実の一部を隠したり、あなたが真実全体を受け止められるか試すかもしれません。深夜の列車、霊能セッション、廃屋の館、すべての住人に秘密がある小さな町――そんな場所で物語は始まります。ホラーとは異なり、ここでは恐怖より雰囲気と謎解きが重視されますが、その境界はあいまいです。説明文でキャラクターを選び、彼らのほのめかしに耳を傾け、誰かが待つドアの向こうを開けるかどうか決めてください。"
+    },
+    "realistic": {
+      "0": "現代を生きるキャラクターたちは私たちとよく似ています。学校に通い、働き、アパートを借り、カフェで出会い、誰にでも起こりそうな出来事に巻き込まれます。同僚や隣人、有名人とそのマネージャー、医師、学生、バリスタ、音楽家、旧友たちが登場します。",
+      "1": "このジャンルの魅力は、リアルさにあります。魔法も宇宙船もありませんが、その分、個性、会話、人間関係が主役です。長年の別れの後のぎこちなさ、上司との難しい会話、初デート、友人が落ち込んでいる夜に寄り添うこと。キャラクターは自身の過去や習慣に基づいて応じ、物語はあなたの言葉と選択から広がっていきます。軽い会話にも、重いドラマにもぴったりです。キャラクターを説明文から選び、用意されたシーンから始めるもよし、今日あった出来事から始めてもよし。"
+    },
+    "adventure": {
+      "0": "冒険とは、動きそのものです。開けた道、未踏の地が描かれた地図、そして退屈させない相棒。宝探し、海賊、追跡者、傭兵、タイムトラベラー、トラブルの始まりにいつも現れる英雄たちが、ここに集います。",
+      "1": "どんなシーンも物語を転がすきっかけになります。屋根の上の追走戦、激流を越える渡り、怪しげな商人との取引、日没までに開かなければならない古代の装置。キャラクターはあなたの決断に反応します――危険な計画を支持したり、異議を唱えたり、突然自分から提案を出すかもしれません。冒険は他のジャンルとも融合しやすく、ファンタジーの旅、宇宙探検、現代都市での行方不明の友人探しにもなります。説明文で相棒を選び、目的を決め、出発しましょう。道は物語とともに形作られていくのです。"
+    },
+    "detective": {
+      "0": "謎解き、尋問、意外な展開が好きな人のための、探偵キャラクターたち。私立探偵、疲れ切った刑事、調査報道のジャーナリスト、冷酷な犯罪者、明らかに隠し事をしている目撃者たちが登場します。",
+      "1": "キャラクターと共に事件を追うもよし、あなた自身が容疑者になるもよし、あるいは敵対して矛盾を突くもよし。優れた探偵シーンは細部に宿ります。時計の時刻、窓枠の傷、会話の中の一言。キャラクターはこれまでに語られたことを記憶しているので、注意深いプレイヤーは発言を照らし合わせ、独自の仮説にたどり着けます。古典的な『密室殺人』と容疑者たちの輪、あるいは監視カメラやメッセージのやり取りがある現代的な事件も。キャラクターを選び、最初の質問を投げかけてください。"
+    },
+    "everyday": {
+      "0": "日常系は、人生を彩る小さな物語のジャンルです。隣人との朝コーヒー、本屋のシフト、試験勉強を一緒にする、引っ越し、台所での長話――そんな日常が舞台です。",
+      "1": "ここでは世界を救う必要はありません。このジャンルの価値は、自然な会話と、時間とともに育つ関係性にあります。キャラクターは細かいことに気づき、冗談を言い、計画を共有し、つらい日の後に支えになり、あるいは即席の旅に誘ってくれるでしょう。登場するのは友人、ルームメイト、同僚、また会いたくなるような知人たちです。リラックスしたいとき、会話の練習をしたいとき、静かな時間を過ごしたいときに最適です。キャラクターの性格で選び、ありふれた日常のシーンから始め、物語を急がずゆっくりと育てていきましょう。"
+    },
+    "cyberpunk": {
+      "0": "サイバーパンクとは、ネオンが輝く街路、政府より強大な企業、そして記憶や肉体、忠誠心を売ってでも生き延びようとする人々の世界です。ハッカー、義体改造された傭兵、路地裏の医者、大都市の探偵、あるいは自らのプロトコルに疑問を抱き始めたアンドロイドまで——このジャンルに登場するのはそんなキャラクターたちです。",
+      "1": "物語は過酷でスピーディーです。防御されたネットワークのハッキング、地下クラブでの取引、企業警備からの脱出、あなたの過去の一部を消した相手の追跡——キャラクターは街のルールに従って生きています。高値をつけばあなたを売るかもしれないし、パートナーのためにすべてを賭けるかもしれません。サイバーパンクはSFに近いですが、星空を見上げるのではなく、技術が日常品となった街の下層を見つめています。説明文からキャラクターを選び、味方を決め、最初の取引を始めましょう。"
+    },
+    "horror": {
+      "0": "ホラーは、背筋が凍るような体験を求める人のためのジャンルです。ここには安全が保証されないキャラクターたちが集います。怪物とその犠牲者、異形の狩人、廃病院の住人、災害の生き残り、人間を装うだけの存在まで。",
+      "1": "優れたホラーは血の量ではなく、緊張感で作られます。軋む床板、消えかけの懐中電灯、隣の部屋からの声——キャラクターは、あなたが先に進むか逃げるかを決める場面を演出します。失踪事件を追う調査員、見知らぬ家の不運な訪問者、あるいは怪物そのものとの危険な会話を演じることもできます。雰囲気重視のゴシックから本格サバイバルまで、恐怖の度合いはあなた次第。説明文からキャラクターを選び、照明を消して始めましょう。"
+    },
+    "comedy": {
+      "0": "コメディのキャラクターたちは、ドラマより笑いを求めるときの相手です。機知に富んだ相棒、不器用な魔法使い、計画がうまくいかない自信過剰な悪役、おしゃべりな隣人、そしてなぜか次々と馬鹿げた状況に巻き込まれる主人公たち。",
+      "1": "ロールプレイのユーモアは、キャラクターの個性から生まれます。状況がどう崩れても、彼らは自分らしく振る舞い続ける——そのズレこそが笑いを生み出します。失敗続きのデート、共同生活の日常的混沌、壮大な冒険のパロディ、王様だと思っている猫との議論まで。キャラクターはあなたの冗談に反応し、自らもジョークを返し、望むならとことん破綻へと誘います。コメディは日常、ファンタジー、恋愛と好相性です。キャラクターを選び、馬鹿げた設定を用意して、何が起こるか見てみましょう。"
+    },
+    "drama": {
+      "0": "ドラマは、選択、喪失、罪悪感、許しをテーマにした物語のジャンルです。ここにいるキャラクターたちは重い過去を抱えています。大切な人を失った者、人生に引き裂かれた元友人、困難な決断を迫られる英雄、言えなかったことが積もった家族。",
+      "1": "ドラマティックなロールプレイには時間と注意が必要です。キャラクターはすぐには心を開かず、信頼は時間をかけて築くものです。場面は駅での短い再会や、届くのが遅すぎた手紙から始まり、その後はあなたが何を話し、何を黙るかで物語が動きます。AIキャラクターは自身の傷と動機に基づいて応じるため、会話は和解にも、最後の別れにもなり得ます。物語のあとに静けさが残るようなストーリーに惹かれるなら、説明文からキャラクターを選び、正直な質問から始めましょう。"
+    }
   },
   "telegramBot": {
-    "welcome": "NewVerse is role-play stories with AI characters. Open the app to choose a character and start a story.",
-    "open": "Open NewVerse",
-    "help": "Commands:\n/start — open NewVerse\n/help — help\n/privacy — privacy policy\n\nService rules and support are behind the buttons below.",
-    "rules": "Rules",
-    "support": "Support",
-    "privacy": "NewVerse privacy policy:",
-    "privacyButton": "Open the policy",
-    "linked": "Telegram is now linked to your NewVerse account. The app uses the same account and VC balance as the website. Close and reopen the Mini App using the button below.",
-    "already_linked": "This Telegram is already linked to your NewVerse account.",
-    "invalid": "This link is not valid: it works once and for 10 minutes. Create a new one in your profile on the website.",
-    "telegram_taken": "This Telegram is already connected to another NewVerse account, for example one created in the app. Accounts are not merged automatically. Use another Telegram account or contact support.",
-    "confirmation_required": "You have a separate unused Telegram profile with 50 starter VC. Confirm switching to the website account: {{account}}. The app will use that website account's balance, characters and stories. The 50 starter VC from the unused profile will not be transferred. If this is not your account, do not confirm the link.",
-    "confirmLink": "Confirm linking the website account",
-    "merge_confirmation_required": "Merge your Telegram profile into website account {{account}}? Characters: {{characters}}, stories: {{stories}}, messages: {{messages}}, earned VC: {{vc}} will be transferred. The duplicate starter 50 VC are excluded. Existing website stories and characters are kept. Old Telegram sessions will end. Confirm only for your own account.",
-    "confirmMerge": "Transfer data and merge accounts",
-    "merge_busy": "Close the Mini App, let all generations finish, and wait 3 minutes. Then create a new link in your website profile. A separate confirmation is required before any data moves.",
-    "merged": "Your data has been transferred and accounts merged. Close and reopen the Mini App to see the shared stories, characters and balance.",
-    "profile_not_empty": "Linking was stopped because the profile has changed, has independent sign-in credentials, purchases, a subscription, or conflicting referral settings. Create a fresh website link. If transfer is still unavailable, contact support; your data is kept.",
-    "user_has_other_telegram": "Another Telegram is already linked to this NewVerse account. Unlink it in your profile on the website first.",
-    "unknown": "Use /start to open NewVerse or /help for help.",
-    "signIn01": "NewVerse website sign-in. Request code: {{value1}}.\n\nMatch this code with your browser. Approve only if you started signing in on newvers.ai. That browser will access your stories, characters and balance. Do not forward this link.",
-    "signIn02": "First create an account in the Mini App or link your existing website account.",
-    "signIn03": "This request is invalid or expired. Start again on the website.",
-    "signIn04": "Approve website sign-in",
-    "signInApproved": "Approved. Return to the browser where you started and choose “Sign in to this account”.",
-    "signInInvalid": "This request is invalid or expired. Start again on the website."
+    "welcome": "NewVerseはAIキャラクターとのロールプレイストーリーです。アプリを開いてキャラクターを選び、物語を始めましょう。",
+    "open": "NewVerseを開く",
+    "help": "コマンド:\n/start — NewVerseを開く\n/help — ヘルプ\n/privacy — プライバシーポリシー\n\nサービスルールとサポートは下のボタンから。",
+    "rules": "ルール",
+    "support": "サポート",
+    "privacy": "NewVerseのプライバシーポリシー：",
+    "privacyButton": "ポリシーを開く",
+    "linked": "TelegramがNewVerseアカウントに接続されました。アプリでは、ウェブサイトと同じアカウントとVC残高が使用されます。下のボタンからMini Appを再起動してください。",
+    "already_linked": "このTelegramはすでにあなたのNewVerseアカウントに接続されています。",
+    "invalid": "このリンクは無効です。有効期限は10分間で、一度しか使用できません。ウェブサイトのプロフィールから新しいリンクを作成してください。",
+    "telegram_taken": "このTelegramは、アプリで作成された別のNewVerseアカウントと既に連携されています。アカウントは自動で統合されません。別のTelegramアカウントを使用するか、サポートに問い合わせてください。",
+    "confirmation_required": "未使用のTelegramプロフィールに初期VC 50が付与されています。ウェブサイトアカウント {{account}} への切り替えを確認します。アプリでは、そのウェブサイトアカウントの残高、キャラクター、ストーリーが使用されます。未使用プロフィールの初期VC 50は移行されません。これが自分のアカウントでない場合は、リンクを確認しないでください。",
+    "confirmLink": "ウェブサイトアカウントの接続を確認",
+    "merge_confirmation_required": "Telegramプロフィールをウェブサイトアカウント {{account}} に統合しますか？キャラクター: {{characters}}、ストーリー: {{stories}}、メッセージ: {{messages}}、獲得VC: {{vc}} が移行されます。重複する初期VC 50は除外されます。既存のウェブサイトのストーリーとキャラクターは保持されます。古いTelegramセッションは終了します。自分のアカウントのみ確認してください。",
+    "confirmMerge": "データを移行してアカウントを統合",
+    "merge_busy": "Mini Appを閉じて、すべての生成が完了するのを待ち、3分間待機してください。その後、ウェブサイトのプロフィールで新しいリンクを作成してください。データ移行前に別途確認が必要です。",
+    "merged": "データが転送され、アカウントが統合されました。Mini Appを閉じて再起動すると、共有されたストーリー、キャラクター、残高が表示されます。",
+    "profile_not_empty": "プロフィールに変更、独立したログイン情報、購入履歴、サブスクリプション、または紛争のある紹介設定があるため、リンクは中止されました。新しいウェブサイトリンクを作成してください。引き続き転送ができない場合はサポートへお問い合わせください。データは保持されます。",
+    "user_has_other_telegram": "このNewVerseアカウントにはすでに別のTelegramが紐付けられています。まずウェブサイトのプロフィールで紐付けを解除してください。",
+    "unknown": "/start でNewVerseを開くか、/help でヘルプを表示してください。",
+    "signIn01": "NewVerseウェブサイトにログインします。認証コード: {{value1}}\n\nこのコードをブラウザと照合してください。newvers.aiでログインを開始した場合のみ承認してください。このブラウザがストーリー、キャラクター、残高にアクセスできます。このリンクを第三者に転送しないでください。",
+    "signIn02": "まずMini Appでアカウントを作成するか、既存のウェブサイトアカウントをリンクしてください。",
+    "signIn03": "このリクエストは無効または有効期限切れです。ウェブサイトで再度開始してください。",
+    "signIn04": "ウェブサイトログインを承認",
+    "signInApproved": "承認されました。ログインを開始したブラウザに戻り、「このアカウントにログイン」を選択してください。",
+    "signInInvalid": "このリクエストは無効または有効期限切れです。ウェブサイトで再度開始してください。"
   },
   "globalError": {
-    "errorTitle": "Something went wrong",
-    "errorText": "We already know about the problem. Try again or go back to the catalog.",
-    "retry": "Try again",
-    "toCatalog": "Go to catalog",
-    "errorCode": "Error code"
+    "errorTitle": "問題が発生しました",
+    "errorText": "問題は把握済みです。再度お試すか、カタログに戻ってください。",
+    "retry": "再試行",
+    "toCatalog": "カタログへ",
+    "errorCode": "エラーコード"
   },
   "structuredData": {
-    "chatDescription": "Chat with {{name}} on NewVerse",
-    "author": "Author",
-    "home": "Home"
+    "chatDescription": "NewVerseで{{name}}とチャット",
+    "author": "作成者",
+    "home": "ホーム"
   },
   "characterStory": {
-    "you": "you"
+    "you": "あなた"
   },
   "chatModelGroups": {
-    "main": "Main models",
-    "testing": "Testing",
-    "testingHint": "New models: we are evaluating response quality and speed.",
-    "quotaRefresh": "Free replies refresh every day at 00:00 Moscow time.",
-    "freeLeft": "Free · {{value1}} left",
-    "reasoningHint": "Disabling reasoning through the gateway is unverified. The output limit may shorten or prevent an answer."
+    "main": "メインモデル",
+    "testing": "テスト中",
+    "testingHint": "新モデル：応答の質と速度を評価中です。",
+    "quotaRefresh": "無料リプライは毎日00:00（モスクワ時間）にリセットされます。",
+    "freeLeft": "無料 · 残り{{value1}}",
+    "reasoningHint": "ゲートウェイ経由での推論無効化は未検証です。出力制限により回答が短くなるか、完了しない可能性があります。"
   },
   "subscriptions": {
-    "avatarAllowance": "Up to {{count}} avatars per calendar month; every model uses one generation"
+    "avatarAllowance": "暦月あたり最大{{count}}個のアバターまで。モデルごとに1回の生成を消費します"
   },
   "characterTags": {
     "labels": {
-      "Романтика": "Romance",
-      "Приключение": "Adventure",
-      "Фэнтези": "Fantasy",
-      "Научная фантастика": "Sci-Fi",
-      "Детектив": "Detective",
-      "Драма": "Drama",
-      "Комедия": "Comedy",
-      "Ужасы": "Horror",
-      "Триллер": "Thriller",
-      "Мистика": "Mystery",
-      "Повседневность": "Slice of life",
-      "Экшен": "Action",
-      "Современный мир": "Modern world",
-      "Исторический": "Historical",
-      "Средневековье": "Middle Ages",
-      "Постапокалипсис": "Post-apocalyptic",
-      "Киберпанк": "Cyberpunk",
-      "Космос": "Space",
-      "Магическая академия": "Magic academy",
-      "Готика": "Gothic",
-      "Мужской персонаж": "Male character",
-      "Женский персонаж": "Female character",
-      "Антропоморфный": "Anthropomorphic",
-      "Эльф": "Elf",
-      "Андроид": "Android",
-      "Монстр": "Monster",
-      "Друг": "Friend",
-      "Партнёр": "Partner",
-      "Сосед": "Neighbor",
-      "Напарник": "Companion",
-      "Наставник": "Mentor",
-      "Соперник": "Rival",
-      "Герой": "Hero",
-      "Злодей": "Villain",
-      "Враг": "Enemy",
-      "Добрый": "Kind",
-      "Заботливый": "Caring",
-      "Сдержанный": "Reserved",
-      "Дерзкий": "Bold",
-      "Загадочный": "Mysterious",
-      "Холодный": "Cold",
-      "Ироничный": "Witty",
-      "Флиртующий": "Flirty",
-      "Цундере": "Tsundere",
-      "Аниме": "Anime",
-      "Ролевая игра": "Roleplay",
-      "Медленное развитие отношений": "Slow-burn relationships",
-      "Выборы и последствия": "Choices and consequences",
-      "Исследование мира": "World exploration"
+      "Романтика": "ロマンス",
+      "Приключение": "アドベンチャー",
+      "Фэнтези": "ファンタジー",
+      "Научная фантастика": "SF",
+      "Детектив": "ミステリー",
+      "Драма": "ドラマ",
+      "Комедия": "コメディ",
+      "Ужасы": "ホラー",
+      "Триллер": "スリラー",
+      "Мистика": "ミステリック",
+      "Повседневность": "日常",
+      "Экшен": "アクション",
+      "Современный мир": "現代世界",
+      "Исторический": "歴史",
+      "Средневековье": "中世",
+      "Постапокалипсис": "ポストアポカリプス",
+      "Киберпанк": "サイバーパンク",
+      "Космос": "宇宙",
+      "Магическая академия": "魔法学園",
+      "Готика": "ゴシック",
+      "Мужской персонаж": "男性キャラクター",
+      "Женский персонаж": "女性キャラクター",
+      "Антропоморфный": "アントロポモルフィック",
+      "Эльф": "エルフ",
+      "Андроид": "アンドロイド",
+      "Монстр": "モンスター",
+      "Друг": "友人",
+      "Партнёр": "パートナー",
+      "Сосед": "隣人",
+      "Напарник": "相棒",
+      "Наставник": "導師",
+      "Соперник": "ライバル",
+      "Герой": "ヒーロー",
+      "Злодей": "悪役",
+      "Враг": "敵",
+      "Добрый": "優しい",
+      "Заботливый": "思いやりがある",
+      "Сдержанный": "控えめ",
+      "Дерзкий": "大胆",
+      "Загадочный": "謎めいた",
+      "Холодный": "クール",
+      "Ироничный": "機知に富んだ",
+      "Флиртующий": "思わせぶり",
+      "Цундере": "ツンデレ",
+      "Аниме": "アニメ",
+      "Ролевая игра": "ロールプレイ",
+      "Медленное развитие отношений": "スローバーン",
+      "Выборы и последствия": "選択と結果",
+      "Исследование мира": "ワールド探索"
     },
     "groups": {
-      "genres": "Genre",
-      "world": "World and setting",
-      "character": "Character",
-      "roles": "Role and relationships",
-      "traits": "Personality",
-      "style": "Story style"
+      "genres": "ジャンル",
+      "world": "世界と設定",
+      "character": "キャラクター",
+      "roles": "役割と関係性",
+      "traits": "性格",
+      "style": "ストーリースタイル"
     },
-    "hint": "Choose up to {{limit}} accurate tags to help readers find your story.",
-    "search": "Find a tag",
-    "legacy": " (legacy)",
-    "remove": "Remove tag {{tag}}",
-    "noMatches": "No matching tags"
+    "hint": "読者が見つけやすいように、最大{{limit}}個の適切なタグを選んでください。",
+    "search": "タグを検索",
+    "legacy": " (レガシー)",
+    "remove": "タグ「{{tag}}」を削除",
+    "noMatches": "一致するタグがありません"
   },
   "chatUi": {
-    "text001": "Actions",
-    "text002": "Message actions",
-    "text003": "Edit",
-    "text004": "Delete",
-    "text005": "Copy",
-    "text006": "Continue",
-    "text007": "Regenerate",
-    "text008": "The message cannot be empty",
-    "text009": "Cancel",
-    "text010": "Save",
-    "text011": "Thinking...",
-    "text012": "Typing...",
-    "text013": "Action choices",
-    "text014": "Character description",
-    "text015": "Chat settings",
-    "text016": "Chat models",
-    "text017": "Edit memory",
-    "text018": "My persona",
-    "text019": "Story type and rules",
-    "text020": "Start a new chat",
-    "text021": "Close",
-    "text022": "{{value1}} VC/request",
-    "text023": "Hide description",
-    "text024": "Show description",
-    "text025": "Character",
-    "text026": "You",
-    "text027": "Could not load the chat",
-    "text028": "Could not select the model",
-    "text029": "Not enough VerseCoins",
-    "text030": "The response stream was interrupted",
-    "text031": "Response regenerated",
-    "text032": "Could not regenerate the response",
-    "text033": "Response continued",
-    "text034": "Could not continue the response",
-    "text035": "Delete this message?",
-    "text036": "The message will be removed from the chat history. This cannot be undone.",
-    "text037": "Message deleted",
-    "text038": "Could not delete the message",
-    "text039": "Message updated",
-    "text040": "Could not save the message",
-    "text041": "Chat history cleared",
-    "text042": "Could not clear the chat",
-    "text043": "Copied",
-    "text044": "Could not copy",
-    "text045": "Could not send the message",
-    "text046": "No models found",
-    "text047": "About the character",
-    "text048": "Start a conversation with the character. Write something!",
-    "text049": "Retry",
-    "text050": "The history and memory of your current chat with this character will be deleted. The new story will use the type from the current character card. Continue?",
-    "text051": "Start over",
-    "text052": "How VC are charged",
-    "text053": "Your move…",
-    "text054": "Send",
-    "model001": "Fast replies for long, lively conversations.",
-    "model002": "An accessible starting point with pleasant writing and strong Russian.",
-    "model003": "A balance of price and quality for lively dialogue.",
-    "model004": "Creative, suited to unusual plots and ideas.",
-    "model005": "For roleplay and complex characters.",
-    "model006": "A reliable style with clear, focused reasoning.",
-    "model007": "Realistic scenes and fewer invented details.",
-    "model008": "For understanding context and building worlds.",
-    "model009": "For complex reasoning and detailed scenarios."
+    "text001": "アクション",
+    "text002": "メッセージ操作",
+    "text003": "編集",
+    "text004": "削除",
+    "text005": "コピー",
+    "text006": "続ける",
+    "text007": "再生成",
+    "text008": "メッセージは空にできません",
+    "text009": "キャンセル",
+    "text010": "保存",
+    "text011": "考え中...",
+    "text012": "入力中...",
+    "text013": "アクション選択",
+    "text014": "キャラクターの説明",
+    "text015": "チャット設定",
+    "text016": "チャットモデル",
+    "text017": "記憶を編集",
+    "text018": "私のペルソナ",
+    "text019": "ストーリーの種類とルール",
+    "text020": "新しいチャットを開始",
+    "text021": "閉じる",
+    "text022": "{{value1}} VC/リクエスト",
+    "text023": "説明を非表示",
+    "text024": "説明を表示",
+    "text025": "キャラクター",
+    "text026": "あなた",
+    "text027": "チャットの読み込みに失敗しました",
+    "text028": "モデルを選択できませんでした",
+    "text029": "VerseCoinsが不足しています",
+    "text030": "応答のストリームが中断されました",
+    "text031": "応答が再生成されました",
+    "text032": "応答の再生成に失敗しました",
+    "text033": "応答を継続しました",
+    "text034": "応答の継続に失敗しました",
+    "text035": "このメッセージを削除しますか？",
+    "text036": "メッセージはチャット履歴から削除されます。この操作は元に戻せません。",
+    "text037": "メッセージを削除しました",
+    "text038": "メッセージの削除に失敗しました",
+    "text039": "メッセージを更新しました",
+    "text040": "メッセージの保存に失敗しました",
+    "text041": "チャット履歴をクリアしました",
+    "text042": "チャットのクリアに失敗しました",
+    "text043": "コピーしました",
+    "text044": "コピーに失敗しました",
+    "text045": "メッセージの送信に失敗しました",
+    "text046": "モデルが見つかりません",
+    "text047": "キャラクターについて",
+    "text048": "キャラクターと会話を始めましょう。何か書いてください！",
+    "text049": "再試行",
+    "text050": "このキャラクターとの現在のチャットの履歴と記憶は削除されます。新しいストーリーでは、現在のキャラクターカードのタイプが使用されます。続けますか？",
+    "text051": "最初からやり直す",
+    "text052": "VCの消費について",
+    "text053": "あなたの番です…",
+    "text054": "送信",
+    "model001": "長くて活気ある会話に最適な高速応答。",
+    "model002": "読みやすく、自然なロシア語表現が特長の入門向けモデル。",
+    "model003": "価格と品質のバランスが良く、生き生きとした対話が可能。",
+    "model004": "斬新なプロットやアイデアに適した創造的なモデル。",
+    "model005": "ロールプレイや複雑なキャラクターに最適。",
+    "model006": "明確で的を射た推論が得意な信頼性の高いスタイル。",
+    "model007": "現実味のある描写を重視し、虚構の情報を最小限に抑える。",
+    "model008": "文脈の理解力が高く、ワールド構築に適している。",
+    "model009": "複雑な推論や詳細なシナリオ作成に適したモデル。"
   }
 }

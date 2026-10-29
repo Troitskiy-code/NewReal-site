@@ -6,6 +6,10 @@ import dictionary3 from "../../public/locales/de/common.json" with { type: "json
 import dictionary4 from "../../public/locales/fr/common.json" with { type: "json" };
 import dictionary5 from "../../public/locales/it/common.json" with { type: "json" };
 import dictionary6 from "../../public/locales/pl/common.json" with { type: "json" };
+import dictionary7 from "../../public/locales/pt/common.json" with { type: "json" };
+import dictionary8 from "../../public/locales/tr/common.json" with { type: "json" };
+import dictionary9 from "../../public/locales/ja/common.json" with { type: "json" };
+import dictionary10 from "../../public/locales/ko/common.json" with { type: "json" };
 export const localeResources: Record<string, { common: Record<string, unknown> }> = {
   "ru": { common: dictionary0 },
   "en": { common: dictionary1 },
@@ -14,4 +18,8 @@ export const localeResources: Record<string, { common: Record<string, unknown> }
   "fr": { common: dictionary4 },
   "it": { common: dictionary5 },
   "pl": { common: dictionary6 },
+  "pt": { common: dictionary7 },
+  "tr": { common: dictionary8 },
+  "ja": { common: dictionary9 },
+  "ko": { common: dictionary10 },
 };

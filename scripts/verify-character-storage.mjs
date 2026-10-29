@@ -92,6 +92,7 @@ class TrackedClient extends s3Sdk.S3Client {
 const cache = new Map();
 function load(file) {
   file = resolve(file); if (cache.has(file)) return cache.get(file);
+  if (file.endsWith('.json')) { const value=JSON.parse(readFileSync(file,'utf8'));cache.set(file,value);return value; }
   const module = { exports: {} }; cache.set(file, module.exports);
   const code = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true,
@@ -104,6 +105,7 @@ function load(file) {
     if (name === '@/lib/auth') return { authOptions: {} };
     if (name === 'next-auth/next') return { getServerSession: async () => actor ? { user: { id: actor } } : null };
     if (name === '@/lib/translate') return { translateCharacterFieldsToEn: async () => ({}), translateMemoryFieldToEn: async () => null };
+    if (name === '@/lib/characterTranslationQueue') return { enqueueCharacterTranslations: async () => {}, saveManualEnglishTranslation: async () => {} };
     if (name === '@/lib/aiCostTelemetry') return { withAiCostContext: fn => fn(), setAiCostActor() {} };
     if (name === '@/lib/logger' || name === './logger') return { errorLog() {}, toSafeDiagnostic: () => ({}) };
     if (name === '@/lib/ensureCharacterSlug') return { ensureCharacterSlugColumn: async () => {} };

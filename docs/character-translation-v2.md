@@ -1,0 +1,39 @@
+# Public-card localization
+
+The production pipeline translates the complete nine-field public card with `Qwen/Qwen3-235B-A22B-Instruct-2507`, then reviews it with `google/gemma-4-31B-it-turbo`. Both stages use the same contextual glossary and canonical character names from `src/lib/characterTranslationPipeline.ts`. Original Russian text remains the source of truth. Private cards, private memory, chats and archived system prompts are excluded.
+
+The editor returns individual replacements, each supported by an exact quote from the original and a unique quote from the draft. An empty edit list preserves the draft verbatim. Invalid evidence gets one bounded correction attempt. The final card must preserve null fields, template variables, HTML, links, source numbers and greeting/dialogue Markdown. Untranslated Russian passages and truncated fields are rejected. This is automatic quality control, not a guarantee of native-editor quality.
+
+The glossary distinguishes student dormitories from hostels, household spirits from ordinary houses, male merpeople from female mermaids, jewellery boxes from coffins, remote places from deserts, and Hogwarts Apparition from ordinary transgression. Context matching excludes words such as Russian “глушит”. Lira’s refuge is explicitly a refuge for people. Add contextual meanings and all ten target terms in the pipeline; bump the policy revision when changing glossary meaning, canonical names or model policy. The resulting policy hash invalidates completed old-policy work.
+
+## Production
+
+Apply `prisma/migrations/20261029140000_character_translation_pipeline/migration.sql` before deploying. This additive, idempotent migration adds translation provenance, durable jobs and a shared daily budget. Do not run Prisma migration deployment against an unbaselined database.
+
+Public-card creation and editing enqueue work without waiting for an AI response. `npm start` runs the loopback worker when `DEEPINFRA_API_KEY` and `CRON_SECRET` exist. It periodically discovers missing translations, including cards published through admin tools. Enabled languages come from the locale manifest. The switches `CHARACTER_TRANSLATION_ENABLED=0` and `CHARACTER_TRANSLATION_WORKER_ENABLED=0` stop translation requests and the built-in poller respectively. No paid poller runs under `npm run dev`.
+
+`CHARACTER_TRANSLATION_DAILY_BUDGET_USD` defaults to `1`. A PostgreSQL reservation made before each provider request prevents concurrent workers from exceeding the shared UTC-day ceiling. Confirmed usage settles the reservation; timeouts and unconfirmed usage retain the conservative upper estimate. This cap covers this character queue, not other DeepInfra features. Exhausted jobs defer to the next day without consuming their failure-attempt allowance.
+
+`POST /api/cron/translate-characters` claims one job; `GET` returns status without starting paid work. Both require `CRON_SECRET` using the existing cron authentication conventions. Leases, exact-source hashes and a final locked source check prevent duplicate or stale publication. Drafts and review checkpoints survive restarts. Failed jobs stop after three processing attempts. Inspect `CharacterTranslationJob.errorCode`; retry deliberately after fixing the cause rather than resetting failed jobs on every poll. Complete manual English versions take precedence. Partial explicit English edits are retained while the queue fills the remaining fields.
+
+Only a complete validated translation is upserted. Any original-field edit invalidates its translations, and changed or unpublished sources cannot receive a stale worker result. Already complete translations with matching source and policy hashes do not make provider calls. Source-field updates that happen to repeat an earlier revision can requeue missing rows even when that revision’s old job already completed.
+
+## Bounded one-off catalog rollout
+
+Export only `id`, `isPublic` and the nine approved public fields through Adminer into `.runtime/localization-v2/catalog-public-2026-10-29.json`. The runner rejects private or extra fields and duplicate IDs.
+
+`npm run translate:characters:v2` is a dry run. Paid execution requires `-- --apply --max-total-usd=4.45 --concurrency=64`. The cumulative limit includes earlier runs in the same directory, failed requests and uncertain reservations. Never remove its usage journal to get around a limit. Use one runner per work directory. Creating `stop-after-current` in that directory drains current jobs without interrupting provider requests; remove it before resuming. Successful results and stage checkpoints are reused. No production database credentials are read and no Yandex API calls occur.
+
+Each generated `import-<locale>.sql` compares all raw original public fields against the live card and locks the matching source before upsert. Preserve a public translation export for rollback before importing. Check `prepared`, `saved` and `changed_or_unpublished`, then verify coverage and the current policy hash. Review changed-source exceptions separately. Imported rows carry `pipelineHash` and `qualityReviewedAt`, so the production queue skips completed catalog work.
+
+After the runner stops, `node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/prepare-character-translation-import.mjs` revalidates saved results without provider calls and creates batches of 50 rows plus `hold-unreviewed.sql`. Import the holds before deploying the enabled worker: they mark this exact source/policy's unfinished variants as requiring manual review, avoiding further automatic spend beyond the one-off budget. A later source edit has a new identity and queues normally. Keep the runtime usage journals, pre-import backup and import receipts; do not commit those operational artifacts.
+
+The 2026-10-29 rollout published 1,825 reviewed variants out of 1,870 planned (187 public cards × ten target languages). The remaining 45 variants retain their previous translation or normal locale fallback and have terminal review-hold jobs. All eleven interface languages are enabled. The checked production counts and conservative cost receipt are recorded in `docs/character-translation-rollout-2026-10-29.json`.
+
+The separate interface runner completes the four pending dictionaries (`pt`, `tr`, `ja`, `ko`), keeping manually reviewed interface strings. It uses its own persistent journal and a cumulative maximum of `$0.17`. Its default is also a dry run; execution requires `npm run translate:interface:v2 -- --apply --max-total-usd=0.17`. It writes complete dictionaries into its runtime directory for review before they are copied into `public/locales`. Together, the card cap `$4.45` and interface cap `$0.17` are at most 499.85 RUB using the project’s accounting rate 108.192 RUB/USD. Actual provider debits are in USD; unconfirmed reserves are not reported as confirmed charges.
+
+Published model rates checked on 2026-10-29: [Qwen](https://deepinfra.com/Qwen/Qwen3-235B-A22B-Instruct-2507) `$0.09/$0.55` input/output per million tokens; [Gemma](https://deepinfra.com/google/gemma-4-31B-it-turbo) `$0.09/$0.34`. The cost ceiling uses the full input rate without assuming cache discounts. Yandex hourly character quotas do not apply to this pipeline. The older Yandex pack utility remains a separate legacy tool.
+
+## Verification
+
+Run `npm run verify:translation:v2`, `npm run verify:i18n`, `npm run verify:localization:pack`, `npm run i18n:check`, lint on changed source files and `npm run typecheck:app`. Queue checks execute the real PostgreSQL claim/budget statements in an isolated PGlite database and cover private-source exclusion, duplicate claims, cost reservations, source races, terminal retries and abandoned leases. These checks do not contact a paid provider or run a Next build.

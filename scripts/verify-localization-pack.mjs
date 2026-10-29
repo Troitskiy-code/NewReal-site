@@ -33,6 +33,8 @@ const db = new PGlite();
 try {
   await db.exec(`CREATE TABLE "Character" (id text PRIMARY KEY, "isPublic" boolean NOT NULL, ${fields.map(field => `"${field}" ${field === 'publicMemory' ? 'jsonb' : 'text'}`).join(',')});`);
   await db.exec(readFileSync('prisma/migrations/20261028120000_character_translations/migration.sql','utf8'));
+  const pipelineMigration=readFileSync('prisma/migrations/20261029140000_character_translation_pipeline/migration.sql','utf8');
+  await db.exec(pipelineMigration);await db.exec(pipelineMigration);
   await db.query('INSERT INTO "Character" (id,"isPublic",name,"publicMemory") VALUES ($1,true,$2,$3),($4,false,$2,$3),($5,true,$6,$3)', ['public',source.name,JSON.stringify(source.publicMemory),'private','changed','Edited']);
   const results = await db.exec(translationImportSql([row,{...row,characterId:'private'},{...row,characterId:'changed'}],fields));
   const summary = results.find(result => result.rows?.[0]?.prepared !== undefined).rows[0];
@@ -40,6 +42,11 @@ try {
   assert.equal((await db.query('SELECT name FROM "CharacterTranslation"')).rows[0].name,'Nombre');
   await db.exec(translationImportSql([{...row,name:'Nuevo'}],fields));
   assert.equal((await db.query('SELECT name FROM "CharacterTranslation"')).rows[0].name,'Nuevo');
+  await db.exec(translationImportSql([{...row,name:'Reviewed'}],fields,{pipelineHash:'c'.repeat(64)}));
+  const metadata=(await db.query('SELECT "pipelineHash","qualityReviewedAt" FROM "CharacterTranslation"')).rows[0];
+  assert.equal(metadata.pipelineHash,'c'.repeat(64));assert.ok(metadata.qualityReviewedAt);
+  await db.exec(translationImportSql([{...row,name:'Legacy'}],fields));
+  assert.deepEqual((await db.query('SELECT "pipelineHash","qualityReviewedAt" FROM "CharacterTranslation"')).rows[0],{pipelineHash:null,qualityReviewedAt:null});
   assert.equal((await db.query('SELECT COUNT(*) AS count FROM "Character"')).rows[0].count,3);
 } finally { await db.close(); }
 const app = moduleLoader({ "next/navigation": { usePathname: () => "/es/chat/fixture" } });

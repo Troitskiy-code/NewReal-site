@@ -1,0 +1,553 @@
+{
+  "generatedAt": "2026-10-29T14:46:52.713Z",
+  "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+  "publicCharacters": 187,
+  "plannedVariants": 1870,
+  "validatedVariants": 1825,
+  "coverage": {
+    "en": {
+      "prepared": 180,
+      "remaining": 7
+    },
+    "es": {
+      "prepared": 183,
+      "remaining": 4
+    },
+    "de": {
+      "prepared": 186,
+      "remaining": 1
+    },
+    "fr": {
+      "prepared": 184,
+      "remaining": 3
+    },
+    "it": {
+      "prepared": 181,
+      "remaining": 6
+    },
+    "pl": {
+      "prepared": 175,
+      "remaining": 12
+    },
+    "pt": {
+      "prepared": 187,
+      "remaining": 0
+    },
+    "tr": {
+      "prepared": 178,
+      "remaining": 9
+    },
+    "ja": {
+      "prepared": 185,
+      "remaining": 2
+    },
+    "ko": {
+      "prepared": 186,
+      "remaining": 1
+    }
+  },
+  "recovered": [],
+  "invalid": [],
+  "missing": [
+    {
+      "id": "d0efbc05e5b5a811458f39761db60425159dfa3e3a169454df04f7794f5a3262",
+      "characterId": "cmtzqs2ev00g2ulxomk0kp3sx",
+      "name": "Рин Аоки",
+      "locale": "en",
+      "sourceHash": "ee743f4d4ddc76c625964f073de602e509a824850775e366e317fd7bf1b0b3e7",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_format_tokens:greeting"
+    },
+    {
+      "id": "97e4030d959a511ed120a01993181335c67829fba1f12ce4033234cf56d97665",
+      "characterId": "cmub5f2vo07dhvp5gyba5loub",
+      "name": "Мияко Фудзита",
+      "locale": "en",
+      "sourceHash": "12631ab7cb39502a2256fc5f1fae62e5f9fe5d890ce7561718ae523ed80daf59",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "afeb282edb903afebf7a592e26f18078caa65f338c64ca9e922d6ae1486785a2",
+      "characterId": "cmuecuqlr024y10u5vawh1j2f",
+      "name": "Кайла Морган",
+      "locale": "en",
+      "sourceHash": "6563fa5bf723a631d262786b480cb82524f1e4ade319036d034e358c49d40ae9",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "badbe037d16cc9a8eb4d38b66de23370e4f7d893da9e226dfd3537b23e69729d",
+      "characterId": "cmufx40en0003qf17g5y9xe5c",
+      "name": "Последний трамвай",
+      "locale": "en",
+      "sourceHash": "b17c4687d43dce7b4b39d269ac1dbb45032f4816a4429929564bc51b1299044e",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "2f3c015a9f5b51c98b0944f840c00bb8f616a0dec7b884f4b209bd6d6a5c3dda",
+      "characterId": "cmugscbgx03jjqf17qa5oj8fy",
+      "name": "Дэниэл «Дэн» Кроу",
+      "locale": "en",
+      "sourceHash": "190e59ba36e96beb69db33d5e61960c927646236f66b842055f045836fd47ce8",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "9f34d9b68350ff6799a41b7535eec6974b7d2fef47b3bd9d131c236eb6249823",
+      "characterId": "cmuh69f37002cknwl6bdfj0nh",
+      "name": "yaelokre - жаворонки",
+      "locale": "en",
+      "sourceHash": "76c5219048f38a57af2406b4d2d3d1384fe2d3d64e3a65c366a70ba05b7ba41b",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "7531fe9790b8ec7b1b4955b0977625e4a2c0c710007b64e1a5aeaa9f919a0776",
+      "characterId": "cmvpnlkjy05a6j5c71aby4zj3",
+      "name": "Вилла «Между приливами» — Последний уикенд",
+      "locale": "en",
+      "sourceHash": "872876147a0c817d32eb146164684539bd18a475f74292074fe701ec258039b2",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "103f9351070cd3e484779eb47379af8ab3c558806d76333085f902cd0f675d57",
+      "characterId": "cmu177ng500qwbp68nu4v60al",
+      "name": "Алина Рейнхарт",
+      "locale": "es",
+      "sourceHash": "ddca4e17702a41e1e2acfc24b46425089b9d912f17ec742e7a72bf086a70c895",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "provider_incomplete"
+    },
+    {
+      "id": "f5358f80abf46de0b9d0489fa13e373aa3fcde9ef675d34aab17e5ffd420c419",
+      "characterId": "cmu2zmkrl02fu1fbrdf6qcd3u",
+      "name": "Академия «Пятый Элемент»",
+      "locale": "es",
+      "sourceHash": "d016218b1984686c64138d1f53279c81aab12a49c3c2b4703efabf54751e2502",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_format_tokens:exampleDialogs"
+    },
+    {
+      "id": "ca014c9d466cf70846d60e592dbab0507445ce90dd41217e365775cee1cffc98",
+      "characterId": "cmu8qc6pr05q3eyxi16p5hw42",
+      "name": "Дэмиен Кросс",
+      "locale": "es",
+      "sourceHash": "97d624e15d11fdb5b452220db3f3d77f29ecd9184fa68a61a86d3fd3b5cde6e3",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_untranslated"
+    },
+    {
+      "id": "55a0170e36c313c6957ddcb87665c0694e18c4363479da201d231a64e698b684",
+      "characterId": "cmuh69f37002cknwl6bdfj0nh",
+      "name": "yaelokre - жаворонки",
+      "locale": "es",
+      "sourceHash": "76c5219048f38a57af2406b4d2d3d1384fe2d3d64e3a65c366a70ba05b7ba41b",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "b764b4da3d38a2f7555b32d5fb87508a55cee6c226e823724408397ab1cb092e",
+      "characterId": "cmu8qc6pr05q3eyxi16p5hw42",
+      "name": "Дэмиен Кросс",
+      "locale": "de",
+      "sourceHash": "97d624e15d11fdb5b452220db3f3d77f29ecd9184fa68a61a86d3fd3b5cde6e3",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "1d77f05d1787b3c5a7881a9a209e81348190c6ca30da5886ae15c0b0d8d4f852",
+      "characterId": "cmtx0t9qj00dv9eqfgyzmhi2v",
+      "name": "Верндорф — Город Отражений",
+      "locale": "fr",
+      "sourceHash": "816d67b68fae80d14eed67a8739824b171d5fd4f8818f34113fcd660fef7752e",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "provider_timeout"
+    },
+    {
+      "id": "2e101b87f5838a5c133d03917b757943d1192cff842aae3517ffdb9db534fc49",
+      "characterId": "cmufx40en0003qf17g5y9xe5c",
+      "name": "Последний трамвай",
+      "locale": "fr",
+      "sourceHash": "b17c4687d43dce7b4b39d269ac1dbb45032f4816a4429929564bc51b1299044e",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "f344b1876eb673e683961f08fbcf89d6f496a75fb8f8d81e88995b93cef6ec04",
+      "characterId": "cmulolw820005fcihqetq3fs8",
+      "name": "Майлз Харпер",
+      "locale": "fr",
+      "sourceHash": "ffc007a8c3f12f5097bfe81724e52198cb101ce72075263f0548ba7678eda497",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "39d98a066c021f64f583f2527b0dbcf8ea69aafde4fa7039a1943c7153ee46a2",
+      "characterId": "cmtu8cray002tisycp2md15rq",
+      "name": "Кэйлен «Тёрн» Блэкторн",
+      "locale": "it",
+      "sourceHash": "a3820a31f78b0e6cafb7c63f9cca7dace72e76627ac606551e647cfd4818543f",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_untranslated"
+    },
+    {
+      "id": "e2a9121837fa8e1d0a3f2d222278e5bd01ddcb15b793e880dfff1c17d8ede4d8",
+      "characterId": "cmtu8ul1s002xisyce0myjezw",
+      "name": "Лорд Элрик Вэйн",
+      "locale": "it",
+      "sourceHash": "f89a15ef7b44539a8ee83c391357ce1b72498c2be84801e9a59c594135dd6258",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_emphasis:greeting"
+    },
+    {
+      "id": "5803f2aaf131f3921f9253ce8a360414f7e331183856eb3732d2f9eb0fdbf4c0",
+      "characterId": "cmtyll4xs00e2eunftfatvdof",
+      "name": "Перекрёсток Всех Миров",
+      "locale": "it",
+      "sourceHash": "a2a7cc38a968d3e0f4b3a0a53d0663f236785897d5f648ed7f5023188853fe7d",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_untranslated"
+    },
+    {
+      "id": "cb30e8a2d1c1d73d92ba268f32acb6d07d9c911fd79dfcf583a289edc0facf40",
+      "characterId": "cmugtozby03vnqf17hiroi0uy",
+      "name": "Тихий Приют",
+      "locale": "it",
+      "sourceHash": "6344d017c4b10faaa3e1b61f3497c9601910df6aec66dfabd29131e1480a7924",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "cf8f2b77e21d0ef04abfedacf4d6d01bb8b8ab2a2fb92a69a5ec935e6ad719f3",
+      "characterId": "cmuh69f37002cknwl6bdfj0nh",
+      "name": "yaelokre - жаворонки",
+      "locale": "it",
+      "sourceHash": "76c5219048f38a57af2406b4d2d3d1384fe2d3d64e3a65c366a70ba05b7ba41b",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "723df14eff14fb2f4f3e8f6797cec41a68a1d4d5264c44296956ba587e551fec",
+      "characterId": "cmvpk468p02bpj5c78ppkeoo0",
+      "name": "Сатору Годжо — После полуночи",
+      "locale": "it",
+      "sourceHash": "b37b6fbb9bec08a869932b8d27fc7d69c97a516bf09052a1f161dd32ae2214dd",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "7f94bcc3cd0965737ae2825407a7dd4d271bfd7fc507759159e5e40bc3e05ca0",
+      "characterId": "cmt174myu000s12ev1yilaswg",
+      "name": "Хогвартс — Письма из пустой башни",
+      "locale": "pl",
+      "sourceHash": "319f8d52e0dddc4ce6a7dd5bf176d15eeb750f331d7952c75abc3366ba61094f",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "provider_or_response_error"
+    },
+    {
+      "id": "a6306365b7102f84b2cdeb8dcd2a5ba9205844127a1172af26bdda7e8db76827",
+      "characterId": "cmte8ileh0001t0vzhkihvq10",
+      "name": "Анна",
+      "locale": "pl",
+      "sourceHash": "c9d8d6778c283644ad2547ff32b6544e19fe399593f564b6a0f40829863ac32a",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_patch_source_quote"
+    },
+    {
+      "id": "abb42ae22f3457f18b1575a7328fb72ab0592d574ffeaf971cf2d123bd3e1999",
+      "characterId": "cmtfz1pzm000h13nncwxhimxf",
+      "name": "Голос Теней",
+      "locale": "pl",
+      "sourceHash": "078385053d7d12edbd2f9b425b325bd4f2c41236b1213647b7b895619577f563",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_patch_draft_quote"
+    },
+    {
+      "id": "1c30128aa82bee702fe9129aca936a8e9c1d77e4297ddfcd4e450d7623d2e7cc",
+      "characterId": "cmtye30h600qz3v7gycgazm0e",
+      "name": "Юки Танака",
+      "locale": "pl",
+      "sourceHash": "c606221bcedf748188510747fb30838e4409e28326fd03349764b923281060f2",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_patch_draft_quote"
+    },
+    {
+      "id": "56ed0741d9aa6ed7f00604546138d75f9f9cd22df5659544d7acf3ce4e1c868d",
+      "characterId": "cmu16k7fo00q7bp681lbw4m16",
+      "name": "Хикари Сато",
+      "locale": "pl",
+      "sourceHash": "64024b084ee49dfdb60a7f48344af9ef87e847efa6961040777e0acdcd19132c",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_patch_draft_quote"
+    },
+    {
+      "id": "580539b64987966ca3a434f74f9b75a0d2efa18c20a350a1739746230a68d877",
+      "characterId": "cmu8qc6pr05q3eyxi16p5hw42",
+      "name": "Дэмиен Кросс",
+      "locale": "pl",
+      "sourceHash": "97d624e15d11fdb5b452220db3f3d77f29ecd9184fa68a61a86d3fd3b5cde6e3",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "c130912586702f996dad54e820ca98b36fadbd35ca24eb76ac0104ff5c8c9481",
+      "characterId": "cmuecsdg5024w10u5h6nr7jyq",
+      "name": "Рейвен Кросс",
+      "locale": "pl",
+      "sourceHash": "d4853b73030bb247e3be60d47f697eb8e1569ad49389546f7943ecd23028151c",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "02a181a0af179951208f8b5a1f5a9f3ef72d5a99bf65d701e92b37f2d76f82ca",
+      "characterId": "cmuiuti7x0044mt8isgvp4hck",
+      "name": "Люми «Неон» Асакура",
+      "locale": "pl",
+      "sourceHash": "928073837b3a09f437e76e56464d3723ddc98ad51fc8983366c2d95538b28814",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "8035f5969ec7a48d91c5ff297f333bb26cc2c3170faac6bea6e4dfb64c676f04",
+      "characterId": "cmuivczj0005amt8il2bder5l",
+      "name": "Аяка",
+      "locale": "pl",
+      "sourceHash": "654f7215b0dcee163b3a8ba1b0a2de7e27b0fb8e0df13cf87997db243d99eeea",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "d63aa6735a8c50eb21e0e2e27631b6deb0e8e72272c5fbb7639f519c14611e29",
+      "characterId": "cmvh2rdjy019zazzc3hk62s91",
+      "name": "Сара",
+      "locale": "pl",
+      "sourceHash": "36a89a2d09dce28a7f357059c0de38ad04933857331e0429c01adff8d5457171",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "bc368435c581ce699c640d4efc6efd6c92c9170aaa95aca07c8e8721e1f81431",
+      "characterId": "d0d0468e-e91d-42aa-a122-f72c8bf71f28",
+      "name": "Полина Гранина",
+      "locale": "pl",
+      "sourceHash": "9457465bff5e1625c812f065bc77bafbc397847fc644315a7caf6d94bcccc5e5",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "dc39cccce4d6121b107ac54a19f5c5d6d76b52951f28ce6c5b477174314e107b",
+      "characterId": "d7c46dd2-4c74-4642-8e25-015c3bf18a92",
+      "name": "Алексей Костров",
+      "locale": "pl",
+      "sourceHash": "0c3c461a2446f04b5b29901b0b140d9009fae92fbcf0f9c2a2bc85c1e18bf318",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "ce5571b5488d467d813cf475681ceccc47a60dc924bf869fcc92c1b7f9fa27bc",
+      "characterId": "cmsx7r4oo000q12evld2t0s16",
+      "name": "Мир будущего",
+      "locale": "tr",
+      "sourceHash": "222ce18a66dc59f4441b9592d8a7ad5b6d9052d0168c8ebb5ba671604c8fe3df",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_numbers:greeting"
+    },
+    {
+      "id": "8af800ca5b3b7128dc195d3be9e61d3759518f4c0186968d293553e1310b0868",
+      "characterId": "cmtu7lsx6002nisyckr8f7uc2",
+      "name": "Джейкоб «Джейк»",
+      "locale": "tr",
+      "sourceHash": "580e1051fb0c52f717fb899ddf1b67c97e1c4c92d2a29f3ed713f0ba46d88758",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_patch_draft_quote"
+    },
+    {
+      "id": "50def2ccf705df6951d536e2ce402d3b4c212bb66739860be7b4d7802c3cb526",
+      "characterId": "cmtx1pwif0001at8w716jh42c",
+      "name": "Порт Лунных Теней",
+      "locale": "tr",
+      "sourceHash": "45b6cc0e695e3de4c5e11fa2c01bb035923e8120e88e1cf8c728b37b4ab6e27d",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_patch_draft_quote"
+    },
+    {
+      "id": "027019d5c605a1028310245cf055fd4b561a81cf21ea104ac02bec3211a39f7b",
+      "characterId": "cmu16k7fo00q7bp681lbw4m16",
+      "name": "Хикари Сато",
+      "locale": "tr",
+      "sourceHash": "64024b084ee49dfdb60a7f48344af9ef87e847efa6961040777e0acdcd19132c",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "rollout_budget_exhausted"
+    },
+    {
+      "id": "e16c8bc5569a8dbae7956ac35fac1b7266b8f7a4fff7ece4079f05c70daaa540",
+      "characterId": "cmu16v8nm00q9bp68b5icp1f6",
+      "name": "Аэлиндел Сильверхолл",
+      "locale": "tr",
+      "sourceHash": "fef366c544ea02379710e0310c3149840b992b47480ba0d858c9cb715266bf18",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "rollout_halted"
+    },
+    {
+      "id": "b7508b3b23caa41fbb034cde22e423c1231e59ae5d118c700f32a3c747228912",
+      "characterId": "cmu8pv46r05oyeyxi5vf2o2c8",
+      "name": "Кайри Накамура",
+      "locale": "tr",
+      "sourceHash": "221069602bfadbe7fb51167e3c87a133ee4c44bda4d63731b682b5889a84467a",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_untranslated"
+    },
+    {
+      "id": "20f316973d6a89b3eeec8f66d8ec78c9ae190ac78a57960d448da0ae7787f3f6",
+      "characterId": "cmuh69f37002cknwl6bdfj0nh",
+      "name": "yaelokre - жаворонки",
+      "locale": "tr",
+      "sourceHash": "76c5219048f38a57af2406b4d2d3d1384fe2d3d64e3a65c366a70ba05b7ba41b",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "a20b8acb8450a9f7592fa06c52a87ceda6050f6437cd0261f187579063c1065e",
+      "characterId": "cmuiuti7x0044mt8isgvp4hck",
+      "name": "Люми «Неон» Асакура",
+      "locale": "tr",
+      "sourceHash": "928073837b3a09f437e76e56464d3723ddc98ad51fc8983366c2d95538b28814",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "d9cde3cdfd97852953069941fa5b7d0b8a24d630511b37b413188f9e8f46cb72",
+      "characterId": "cmvpo946606jmj5c7pge99ogw",
+      "name": "Рин Аоки — После последнего чертежа",
+      "locale": "tr",
+      "sourceHash": "ee7777e6bfa60ef2f7830ab3e069933040a53fdea316a486b0a957716942f183",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "dc7e293c60d2ddbb1474aac2304cb77d046732dc0d4998855cdbcc1c66ac04f2",
+      "characterId": "cmuh69f37002cknwl6bdfj0nh",
+      "name": "yaelokre - жаворонки",
+      "locale": "ja",
+      "sourceHash": "76c5219048f38a57af2406b4d2d3d1384fe2d3d64e3a65c366a70ba05b7ba41b",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "dcbf7ee66bcaecaeb2aee1fd1e147abd6e3a694af740d56f2e2f118385c0958a",
+      "characterId": "cmvh2rdjy019zazzc3hk62s91",
+      "name": "Сара",
+      "locale": "ja",
+      "sourceHash": "36a89a2d09dce28a7f357059c0de38ad04933857331e0429c01adff8d5457171",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    },
+    {
+      "id": "4c8f5dd990b52fe575e8a22d73cc14dca53d2ae2e2e94c5c0c71e67bfbd5b747",
+      "characterId": "cmugw25vi04l9qf17fg4fwsxw",
+      "name": "Гонки любви",
+      "locale": "ko",
+      "sourceHash": "5edeb3227d0c39f80f3f20b78e01a376f96cec939b19a3a94183f3d4aad71ac1",
+      "policyHash": "94512b22d6160e2421c8bff08d91de92d966eb89764bd110fbee20f2496ee9e0",
+      "errorCode": "translation_not_completed"
+    }
+  ],
+  "cost": {
+    "cards": {
+      "requests": 6651,
+      "usageEstimateUsd": 3.829872709999996,
+      "upperWithUnconfirmedUsd": 4.4462665700000015
+    },
+    "interface": {
+      "requests": 297,
+      "usageEstimateUsd": 0.16925484000000016,
+      "upperWithUnconfirmedUsd": 0.16925484000000016
+    },
+    "accountingUsdRub": 108.192,
+    "totalUsageEstimateUsd": 3.9991275499999963,
+    "totalUpperWithUnconfirmedUsd": 4.615521410000001,
+    "note": "Upper estimate retains unconfirmed request reservations; it is not a claim that all reserved amounts were billed."
+  },
+  "production": {
+    "verifiedAt": "2026-10-29T17:32:58.389Z",
+    "publishedVariants": 1825,
+    "manualReviewHolds": 45,
+    "coverage": {
+      "de": {
+        "publicCards": 187,
+        "reviewed": 186,
+        "pendingReview": 1
+      },
+      "en": {
+        "publicCards": 187,
+        "reviewed": 180,
+        "pendingReview": 7
+      },
+      "es": {
+        "publicCards": 187,
+        "reviewed": 183,
+        "pendingReview": 4
+      },
+      "fr": {
+        "publicCards": 187,
+        "reviewed": 184,
+        "pendingReview": 3
+      },
+      "it": {
+        "publicCards": 187,
+        "reviewed": 181,
+        "pendingReview": 6
+      },
+      "ja": {
+        "publicCards": 187,
+        "reviewed": 185,
+        "pendingReview": 2
+      },
+      "ko": {
+        "publicCards": 187,
+        "reviewed": 186,
+        "pendingReview": 1
+      },
+      "pl": {
+        "publicCards": 187,
+        "reviewed": 175,
+        "pendingReview": 12
+      },
+      "pt": {
+        "publicCards": 187,
+        "reviewed": 187,
+        "pendingReview": 0
+      },
+      "tr": {
+        "publicCards": 187,
+        "reviewed": 178,
+        "pendingReview": 9
+      }
+    }
+  },
+  "interface": {
+    "enabledLocales": [
+      "ru",
+      "en",
+      "es",
+      "de",
+      "fr",
+      "it",
+      "pl",
+      "pt",
+      "tr",
+      "ja",
+      "ko"
+    ],
+    "newDictionaries": [
+      "pt",
+      "tr",
+      "ja",
+      "ko"
+    ]
+  },
+  "qualityNote": "Automated translation and editorial review with invariant validation. Remaining variants keep prior content or locale fallback and are held for manual review; no further paid requests were made."
+}

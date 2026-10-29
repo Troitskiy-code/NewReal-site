@@ -96,7 +96,10 @@
     "translate:characters:locale": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-character-locales.ts",
     "typecheck:app": "tsc --noEmit --project scripts/tsconfig.app.json",
     "translate:pack": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-localization-pack.mjs",
-    "verify:localization:pack": "node scripts/verify-localization-pack.mjs"
+    "verify:localization:pack": "node scripts/verify-localization-pack.mjs",
+    "verify:translation:v2": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/verify-character-translation-v2.mjs && node scripts/verify-character-translation-queue.mjs && node scripts/verify-character-translation-worker.mjs",
+    "translate:characters:v2": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-character-pack-v2.mjs",
+    "translate:interface:v2": "node --experimental-strip-types --import ./scripts/alias-register.mjs scripts/translate-interface-v2.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

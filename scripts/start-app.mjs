@@ -3,10 +3,11 @@ import dotenv from 'dotenv';
 import { startAllvpnGateway } from './lib/allvpn-runtime.mjs';
 import { startCharacterGenerationWorker } from './lib/character-generation-worker.mjs';
 import { startMemoryWorker } from './lib/memory-worker.mjs';
+import { startCharacterTranslationWorker } from './lib/character-translation-worker.mjs';
 
 // Match Next's local precedence while keeping deployment variables authoritative.
 dotenv.config({ path: ['.env.local', '.env'], quiet: true });
-let app, characterWorker, memoryWorker, gateway, gatewayTimer, starting = false, stopping = false;
+let app, characterWorker, memoryWorker, translationWorker, gateway, gatewayTimer, starting = false, stopping = false;
 const enabled = process.env.ALLVPN_ENABLED === '1';
 const forced = process.env.DEEPINFRA_NETWORK_MODE === 'allvpn';
 const report = event => console.log(JSON.stringify(event));
@@ -28,6 +29,7 @@ async function shutdown(code = 0) {
   clearInterval(gatewayTimer);
   characterWorker?.stop();
   memoryWorker?.stop();
+  translationWorker?.stop();
   app?.kill();
   await gateway?.stop();
   process.exitCode = code;
@@ -60,6 +62,9 @@ async function main() {
     characterWorker = startCharacterGenerationWorker({ onEvent: report });
   if (mode === 'start' && ['1', 'true'].includes(process.env.MEMORY_V2_ENABLED)
     && process.env.MEMORY_V2_WORKER_ENABLED !== '0') memoryWorker = startMemoryWorker({ onEvent: report });
+  if (mode === 'start' && process.env.CRON_SECRET && process.env.DEEPINFRA_API_KEY
+    && process.env.CHARACTER_TRANSLATION_ENABLED !== '0' && process.env.CHARACTER_TRANSLATION_WORKER_ENABLED !== '0')
+    translationWorker = startCharacterTranslationWorker({ onEvent: report });
 }
 
 main().catch(() => { report({ event: 'app_start_failed' }); void shutdown(1); });

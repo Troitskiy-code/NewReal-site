@@ -48,5 +48,33 @@ export const localeErrorMessages = {
     "retry": "Spróbuj ponownie",
     "toCatalog": "Przejdź do katalogu",
     "errorCode": "Kod błędu"
+  },
+  "pt": {
+    "errorTitle": "Ocorreu um problema",
+    "errorText": "Já temos conhecimento do problema. Tente novamente ou volte ao catálogo.",
+    "retry": "Tentar novamente",
+    "toCatalog": "Ir para o catálogo",
+    "errorCode": "Código de erro"
+  },
+  "tr": {
+    "errorTitle": "Bir şeyler yanlış gitti",
+    "errorText": "Sorunun farkındayız. Lütfen tekrar deneyin veya kataloğa geri dönün.",
+    "retry": "Tekrar dene",
+    "toCatalog": "Kataloğa git",
+    "errorCode": "Hata kodu"
+  },
+  "ja": {
+    "errorTitle": "問題が発生しました",
+    "errorText": "問題は把握済みです。再度お試すか、カタログに戻ってください。",
+    "retry": "再試行",
+    "toCatalog": "カタログへ",
+    "errorCode": "エラーコード"
+  },
+  "ko": {
+    "errorTitle": "문제가 발생했습니다",
+    "errorText": "이미 문제를 인지하고 있습니다. 다시 시도하거나 카탈로그로 돌아가세요.",
+    "retry": "다시 시도",
+    "toCatalog": "카탈로그로 이동",
+    "errorCode": "오류 코드"
   }
 };

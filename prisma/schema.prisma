@@ -90,6 +90,7 @@ model Character {
   promptMigrations  PromptMigrationEntry[]
   generationItem    CharacterGenerationItem?
   translations      CharacterTranslation[]
+  translationJobs   CharacterTranslationJob[]
   moderationStatus    String?
   moderationReason    String?   @db.Text
   moderationWarnedAt  DateTime?
@@ -113,6 +114,8 @@ model CharacterTranslation {
   locale          String
   character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   sourceHash      String
+  pipelineHash    String?
+  qualityReviewedAt DateTime?
   name            String?
   description     String? @db.Text
   descriptionCard String? @db.Text
@@ -126,6 +129,31 @@ model CharacterTranslation {
 
   @@id([characterId, locale])
   @@index([locale])
+}
+
+model CharacterTranslationJob {
+  id String @id
+  characterId String
+  character Character @relation(fields:[characterId],references:[id],onDelete:Cascade)
+  locale String
+  sourceHash String
+  policyHash String
+  state String @default("queued")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  leaseToken String?
+  leaseUntil DateTime?
+  checkpoint Json @default("{}")
+  errorCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([characterId,locale,sourceHash,policyHash],map:"CharacterTranslationJob_identity_key")
+  @@index([state,nextAttemptAt,leaseUntil])
+}
+
+model CharacterTranslationBudget {
+  id String @id
+  usedUsd Float @default(0)
 }
 
 model Model {

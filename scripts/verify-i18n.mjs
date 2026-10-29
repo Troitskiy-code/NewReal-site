@@ -83,18 +83,20 @@ const ru = i18n.cloneInstance({ lng: "ru", initAsync: false });
 assert.equal(de.t("common.cancel"), "Abbrechen");
 // Translation generation is isolated from the real provider and excludes private source data.
 const translatedInputs = [];
-const serviceLoad = moduleLoader({ "src/lib/translate.ts": { translateText: async (text, language) => { translatedInputs.push(text); return `${language}:${text}`; } } });
+const serviceLoad = moduleLoader({ "src/lib/aiCostTelemetry.ts": { meteredPost: async () => { throw new Error("Unexpected provider request"); } } });
 const service = serviceLoad("src/lib/characterTranslationService.ts");
 const source = { name: "Герой", description: "Описание", publicMemory: { content: "Открытая память" }, privateMemory: { content: "PRIVATE DO NOT SEND" } };
-const content = await service.translateCharacterContent(source, "de");
-assert.equal(content.name, "de:Герой");
+const content = await service.translateCharacterContent(source, "de",{ask:async(stage,body)=>{
+  translatedInputs.push(JSON.stringify(body));
+  return stage==="draft"?{...service.characterTranslationSource(source),name:"Held",description:"Beschreibung",publicMemory:"Öffentliche Erinnerung"}:{patches:[]};
+}});
+assert.equal(content.name, "Held");
 assert.equal(content.greeting, null);
 assert.ok(!translatedInputs.join(" ").includes("PRIVATE"));
 assert.equal(service.characterTranslationHash(source), service.characterTranslationHash({ ...source, privateMemory: "changed" }));
 assert.notEqual(service.characterTranslationHash(source), service.characterTranslationHash({ ...source, name: "Другой" }));
 assert.notEqual(service.characterTranslationHash({ ...source, name_en: "Old" }, "en"), service.characterTranslationHash({ ...source, name_en: "New" }, "en"));
-const failureLoad = moduleLoader({ "src/lib/translate.ts": { translateText: async () => { throw new Error("Synthetic provider failure"); } } });
-await assert.rejects(failureLoad("src/lib/characterTranslationService.ts").translateCharacterContent(source, "de"));
+await assert.rejects(service.translateCharacterContent(source,"de",{ask:async()=>{throw new Error("Synthetic provider failure");}}));
 // Exercise the actual Prisma extension without a database or environment credentials.
 let extension;
 const savedGlobal = { prisma: globalThis.prisma, prismaBase: globalThis.prismaBase };

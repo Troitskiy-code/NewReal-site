@@ -72,7 +72,7 @@ export function adaptPluralForms(object, intl) {
 }
 
 /** Parameter values are JSON encoded as base64, so card text can never become SQL syntax. */
-export function translationImportSql(records, fields) {
+export function translationImportSql(records, fields, options = {}) {
   if (!records.length) throw new Error("No translations to import");
   if (records.some(row => !row.characterId || !/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(row.locale) || !/^[a-f0-9]{64}$/.test(row.sourceHash))) throw new Error("Invalid translation record");
   const payload = Buffer.from(JSON.stringify(records)).toString("base64");
@@ -80,5 +80,10 @@ export function translationImportSql(records, fields) {
   if (JSON.stringify(fields) !== JSON.stringify(safeFields)) throw new Error("Unexpected source field projection");
   const originals = fields.map(field => `'${field}', c."${field}"`).join(", ");
   const quoted = fields.map(field => `"${field}"`);
-  return `BEGIN;\nSET LOCAL lock_timeout='5s';\nSET LOCAL statement_timeout='60s';\nWITH input AS (\n  SELECT * FROM jsonb_to_recordset(convert_from(decode('${payload}','base64'),'UTF8')::jsonb) AS r("characterId" text, locale text, "sourceHash" text, ${quoted.map(field => `${field} text`).join(", ")}, source jsonb)\n), eligible AS MATERIALIZED (\n  SELECT r.* FROM input r JOIN public."Character" c ON c.id=r."characterId"\n  WHERE c."isPublic"=true AND jsonb_build_object(${originals})=r.source\n  FOR UPDATE OF c\n), saved AS (\n  INSERT INTO public."CharacterTranslation" ("characterId",locale,"sourceHash",${quoted.join(",")},"updatedAt")\n  SELECT "characterId",locale,"sourceHash",${quoted.join(",")},CURRENT_TIMESTAMP FROM eligible\n  ON CONFLICT ("characterId",locale) DO UPDATE SET "sourceHash"=EXCLUDED."sourceHash",${quoted.map(field=>`${field}=EXCLUDED.${field}`).join(",")},"updatedAt"=CURRENT_TIMESTAMP\n  RETURNING "characterId"\n) SELECT (SELECT COUNT(*) FROM input) AS prepared,(SELECT COUNT(*) FROM saved) AS saved,(SELECT COUNT(*) FROM input)-(SELECT COUNT(*) FROM saved) AS changed_or_unpublished;\nCOMMIT;\n`;
+  if(options.pipelineHash && !/^[a-f0-9]{64}$/.test(options.pipelineHash))throw new Error("Invalid translation policy hash");
+  const extraColumns=options.pipelineHash?',"pipelineHash","qualityReviewedAt"':'';
+  const extraValues=options.pipelineHash?`, '${options.pipelineHash}', CURRENT_TIMESTAMP`:'';
+  // A legacy import must not inherit the quality stamp of the v2 row it replaces.
+  const extraUpdate=options.pipelineHash?',"pipelineHash"=EXCLUDED."pipelineHash","qualityReviewedAt"=EXCLUDED."qualityReviewedAt"':',"pipelineHash"=NULL,"qualityReviewedAt"=NULL';
+  return `BEGIN;\nSET LOCAL lock_timeout='5s';\nSET LOCAL statement_timeout='60s';\nWITH input AS (\n  SELECT * FROM jsonb_to_recordset(convert_from(decode('${payload}','base64'),'UTF8')::jsonb) AS r("characterId" text, locale text, "sourceHash" text, ${quoted.map(field => `${field} text`).join(", ")}, source jsonb)\n), eligible AS MATERIALIZED (\n  SELECT r.* FROM input r JOIN public."Character" c ON c.id=r."characterId"\n  WHERE c."isPublic"=true AND jsonb_build_object(${originals})=r.source\n  FOR UPDATE OF c\n), saved AS (\n  INSERT INTO public."CharacterTranslation" ("characterId",locale,"sourceHash",${quoted.join(",")},"updatedAt"${extraColumns})\n  SELECT "characterId",locale,"sourceHash",${quoted.join(",")},CURRENT_TIMESTAMP${extraValues} FROM eligible\n  ON CONFLICT ("characterId",locale) DO UPDATE SET "sourceHash"=EXCLUDED."sourceHash",${quoted.map(field=>`${field}=EXCLUDED.${field}`).join(",")},"updatedAt"=CURRENT_TIMESTAMP${extraUpdate}\n  RETURNING "characterId"\n) SELECT (SELECT COUNT(*) FROM input) AS prepared,(SELECT COUNT(*) FROM saved) AS saved,(SELECT COUNT(*) FROM input)-(SELECT COUNT(*) FROM saved) AS changed_or_unpublished;\nCOMMIT;\n`;
 }

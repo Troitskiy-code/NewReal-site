@@ -63,7 +63,7 @@
       "intl": "pt-PT",
       "direction": "ltr",
       "fallback": "en",
-      "enabled": false
+      "enabled": true
     },
     "tr": {
       "label": "Türkçe",
@@ -71,7 +71,7 @@
       "intl": "tr-TR",
       "direction": "ltr",
       "fallback": "en",
-      "enabled": false
+      "enabled": true
     },
     "ja": {
       "label": "日本語",
@@ -79,7 +79,7 @@
       "intl": "ja-JP",
       "direction": "ltr",
       "fallback": "en",
-      "enabled": false
+      "enabled": true
     },
     "ko": {
       "label": "한국어",
@@ -87,7 +87,7 @@
       "intl": "ko-KR",
       "direction": "ltr",
       "fallback": "en",
-      "enabled": false
+      "enabled": true
     }
   }
 }

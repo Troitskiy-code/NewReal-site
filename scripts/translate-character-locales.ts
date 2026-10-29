@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import { translateCharacterContent } from "../src/lib/characterTranslationService.ts";
 import { characterTranslationHash, characterTranslationSourceSelect } from "../src/lib/characterTranslationData.ts";
+import { TRANSLATION_POLICY_HASH } from "../src/lib/characterTranslationPipeline.ts";
 
 const args = new Map(process.argv.slice(2).map((arg) => { const [key, ...value] = arg.replace(/^--/, "").split("="); return [key, value.join("=") || "true"]; }));
 for (const flag of ["apply", "force"]) if (args.has(flag) && !["true", "false"].includes(args.get(flag)!)) throw new Error(`--${flag} must be true or false`);
@@ -20,15 +21,15 @@ try {
   let cursor: string | undefined;
   while (pending < limit) {
     const rows = await prisma.character.findMany({
-      where: args.has("id") ? { id: args.get("id") } : { isPublic: true },
-      select: { ...characterTranslationSourceSelect, translations: { where: { locale }, select: { locale: true, sourceHash: true } } },
+      where: { isPublic:true,...(args.has("id")?{id:args.get("id")}: {}) },
+      select: { ...characterTranslationSourceSelect, translations: { where: { locale }, select: { locale: true, sourceHash: true,pipelineHash:true } } },
       orderBy: { id: "asc" }, take: 100, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
     if (!rows.length) break;
     for (const row of rows) {
       cursor = row.id;
-      const sourceHash = characterTranslationHash(row, locale);
-      if (!force && row.translations[0]?.sourceHash === sourceHash) continue;
+      const sourceHash = characterTranslationHash(row);
+      if (!force && row.translations[0]?.sourceHash === sourceHash && [TRANSLATION_POLICY_HASH,"manual"].includes(row.translations[0].pipelineHash||"")) continue;
       pending++;
       if (!apply) { console.log(`Pending: ${row.id} -> ${locale}`); }
       else {
@@ -38,11 +39,11 @@ try {
             // Lock only for the final save, never while waiting for the translation provider.
             await tx.$queryRaw`SELECT "id" FROM "Character" WHERE "id" = ${row.id} FOR UPDATE`;
             const current = await tx.character.findUnique({ where: { id: row.id }, select: characterTranslationSourceSelect });
-            if (!current || characterTranslationHash(current, locale) !== sourceHash) return false;
+            if (!current?.isPublic || characterTranslationHash(current) !== sourceHash) return false;
             await tx.characterTranslation.upsert({
               where: { characterId_locale: { characterId: row.id, locale } },
-              create: { characterId: row.id, locale, sourceHash, ...content },
-              update: { sourceHash, ...content },
+              create: { characterId: row.id, locale, sourceHash,pipelineHash:TRANSLATION_POLICY_HASH,qualityReviewedAt:new Date(), ...content },
+              update: { sourceHash,pipelineHash:TRANSLATION_POLICY_HASH,qualityReviewedAt:new Date(), ...content },
             });
             return true;
           });

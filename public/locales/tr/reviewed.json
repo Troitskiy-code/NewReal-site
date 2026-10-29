@@ -50,5 +50,6 @@
   "onboarding.catalog.pick": "Karakter bul",
   "chatSpeech.label": "Karakterin sesi",
   "home.hero.catalogCount_one": "Katalogda {{count}} karakter",
-  "home.hero.catalogCount_other": "Katalogda {{count}} karakter"
+  "home.hero.catalogCount_other": "Katalogda {{count}} karakter",
+  "home.hero.text": "Bir kahraman ya da tüm bir dünya seçin ve istediğiniz zaman hikâyeyi sürdürün. Karakterler detayları hatırlar ve hikâyeyi sizinle birlikte geliştirir."
 }

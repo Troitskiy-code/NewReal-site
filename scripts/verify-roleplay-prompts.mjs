@@ -145,7 +145,7 @@ const deps = {
   '@/lib/promptState': states, '@/lib/promptDiagnostics': diagnostics, '@/lib/persona': persona,
   '@/lib/tokenCount': { countTokens }, '@/lib/testingChatModels': policy, '@/lib/logger': logger, '@/lib/chatThreads': threads,
   '@/lib/verseChatEconomy': { ...economy, isSubscriptionActive: () => false },
-  '@/lib/advancedMemory': { loadMemoryCandidates: async () => ({ core: null, episodic: [] }), rankEpisodicCandidates: () => [], sortEpisodicChronologically: rows => rows, episodicLimitForIntent: () => 3, formatEpisodicLine: () => '' },
+  '@/lib/advancedMemory': { loadMemoryCandidates: async () => ({ core: null, episodic: [] }), withMeaningCandidates: async value => value, rankEpisodicCandidates: () => [], sortEpisodicChronologically: rows => rows, episodicLimitForIntent: () => 3, formatEpisodicLine: () => '' },
   '@/lib/chatMemory': { readChatMemoryState: async () => ({ summary: null, coveredUntil: null }) },
   '@/lib/personaService': { getSelectedChatPersona: async () => ({ id: 'persona', name: 'Пользователь', description: 'USER_PRIVATE_PERSONA' }) },
   '@/lib/memoryPromptFormat': format, '@/lib/freeDailyQuota': load('src/lib/freeDailyQuota.ts', { './chatEconomy': economy }), '@/lib/memoryNarrative': load('src/lib/memoryNarrative.ts', { './memorySafety': safety }), '@/lib/messageEmbeddings': { isRagEligible: () => false, shouldUseRag: () => ({ use: false, reason: 'test' }) },
@@ -368,6 +368,7 @@ const characterApiDeps = {
   ...apiDeps, '@/lib/publicError': errorType, '@/lib/aiCostTelemetry': { withAiCostContext: fn => fn(), setAiCostActor: () => {} },
   '@/lib/characterFields': fields, '@/lib/characterSort': {},
   '@/lib/translate': { translateCharacterFieldsToEn: async () => { throw new Error('synthetic translator unavailable'); } },
+  '@/lib/characterTranslationQueue': { enqueueCharacterTranslations: async () => {}, saveManualEnglishTranslation: async () => {} },
   '@/lib/persistentMemory': persistent, '@/lib/characterPublic': { allocateCharacterSlug: async () => 'new-card-slug' },
   '@/lib/characterSlug': { temporaryCharacterSlug: () => 'temporary' },
   '@/lib/ensureCharacterSlug': { ensureCharacterSlugColumn: async () => {} }, '@/lib/charactersList': {}, '@/lib/characterCardImage': {},
@@ -387,6 +388,9 @@ const updateApi = load('src/app/api/characters/[id]/route.ts', { ...characterApi
   '@/lib/prisma': { prisma: { character: { findUnique: async () => oldCard, update: async ({ data }) => { updatedData = data; return { ...oldCard, ...data }; } } } },
 });
 check((await updateApi.PUT(request({ description: 'Fresh biography' }), context)).status === 200 && updatedData.description_en === null && updatedData.description === 'Fresh biography', 'actual update clears stale EN data when translator fails');
+check((await updateApi.PUT(request({ name: oldCard.name, description: oldCard.description }), context)).status === 200
+  && updatedData.name === undefined && updatedData.description === undefined && updatedData.name_en === undefined && updatedData.description_en === undefined,
+  'submitting unchanged source text preserves translations and avoids paid retranslation');
 check((await updateApi.PUT(request({ systemPrompt: 'Overwrite unknown legacy' }), context)).status === 400, 'actual PUT cannot overwrite original legacy prompt');
 check((await updateApi.PUT(request({ appearance: 'Высокий мужчина', appearance_en: 'A tall man. His eyes are grey.' }), context)).status === 200
   && updatedData.appearance === 'Высокий мужчина' && updatedData.appearance_en === 'A tall man. His eyes are grey.', 'editor-supplied English text is kept instead of a machine translation');
