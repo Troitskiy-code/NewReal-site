@@ -5,7 +5,7 @@ import { debugLog, errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { mergeCoreMemoryFacts, normalizeManualCoreMemory, sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
 import { stripMemoryControlInstructions } from "@/lib/memorySafety";
 import { hasDistinctKeyTokens, isSemanticDuplicate } from "@/lib/memoryEmbeddings";
-import { STATUS_LABELS, inferMemoryStatus, memoryOverlap, safeMemoryParaphrase, sameMemoryMeaning } from "@/lib/memoryNarrative";
+import { STATUS_LABELS, inferMemoryStatus, memoryOverlap, memoryTerms, safeMemoryParaphrase, sameMemoryMeaning } from "@/lib/memoryNarrative";
 import { makeSummarySources } from "@/lib/memorySummaryEvidence";
 import { memoryScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { memoryV2Enabled } from "./memoryFacts";
@@ -617,13 +617,22 @@ export function episodicLimitForIntent(intent: UserIntent): number {
     case "story":
     case "action":
       return 10;
+    // «Напомни, как зовут кобылу и сколько я должна Борину?» needs one event per part; two events left
+    // 17 of 19 stored answers out of the crash-test probes (eval 2026-10-29).
     case "fact":
     case "question":
-      return 2;
+      return 6;
     default:
-      return 3;
+      return 4;
   }
 }
+
+/** Question words and addresses (memoryTerms stems) that match any event and say nothing about it. */
+const QUERY_WORDS = new Set(["расск", "напом", "зовут", "звали", "зовет", "сколь", "какой", "какая", "какое", "какие", "каким",
+  "откуд", "почем", "тепер", "значи", "нибуд", "скажи", "помни", "помнишь", "расск", "было", "были", "была", "кому", "чего", "чему",
+  "когда", "зачем", "where", "what", "remin", "tell"]);
+/** Events matching the user's message are looked up over the whole story, not only the newest ones. */
+const QUERY_POOL_SCAN = 400, QUERY_POOL_SIZE = 12;
 
 /** Largest per-intent limit: enough candidates to choose for any intent once it is known. */
 export const EPISODIC_CANDIDATE_LIMIT = Math.max(
@@ -653,16 +662,36 @@ export function selectRelevantMemories(candidates: MemoryCandidates, intent: Use
   return memories;
 }
 
-/** Query relevance + recency + importance; duplicate copies never consume several prompt slots. */
+/**
+ * Query relevance + recency + importance; duplicate copies never consume several prompt slots. With a query,
+ * each next event is scored by the query terms it adds: a two-part question gets an event for each part
+ * instead of several about one.
+ */
 export function rankEpisodicCandidates(items: EpisodicMemoryItem[], query = ""): EpisodicMemoryItem[] {
   const newest = Math.max(0, ...items.map((item) => item.timestamp.getTime()));
-  const ranked = [...items].sort((a, b) => {
-    const score = (item: EpisodicMemoryItem) => item.importance * 0.2
-      + 1 / (1 + Math.max(0, newest - item.timestamp.getTime()) / 86_400_000)
-      + (query ? memoryOverlap(query, item.event) * 3 : 0);
-    return score(b) - score(a) || b.timestamp.getTime() - a.timestamp.getTime() || b.id.localeCompare(a.id);
-  });
-  return ranked.filter((item, index) => !ranked.slice(0, index).some((prior) => sameMemoryMeaning(prior.event, item.event)));
+  const base = (item: EpisodicMemoryItem) => item.importance * 0.2 + 1 / (1 + Math.max(0, newest - item.timestamp.getTime()) / 86_400_000);
+  const order = (a: EpisodicMemoryItem, b: EpisodicMemoryItem, score: (item: EpisodicMemoryItem) => number) =>
+    score(b) - score(a) || b.timestamp.getTime() - a.timestamp.getTime() || b.id.localeCompare(a.id);
+  const unique = (ranked: EpisodicMemoryItem[]) =>
+    ranked.filter((item, index) => !ranked.slice(0, index).some((prior) => sameMemoryMeaning(prior.event, item.event)));
+  const asked = new Set([...(query ? memoryTerms(query) : [])].filter(term => !QUERY_WORDS.has(term)));
+  if (!asked.size) return unique([...items].sort((a, b) => order(a, b, base)));
+  const terms = new Map(items.map(item => [item, memoryTerms(item.event)]));
+  const covered = new Set<string>(), ranked: EpisodicMemoryItem[] = [];
+  let rest = [...items];
+  while (rest.length) {
+    const matched = (item: EpisodicMemoryItem) => [...terms.get(item)!].filter(term => asked.has(term));
+    const fresh = (item: EpisodicMemoryItem) => matched(item).filter(term => !covered.has(term)).length;
+    // Any event that shares a word with the message comes before those that share none: recency barely differs
+    // inside one story, so a fresh unrelated line outranked the debt the user asked about.
+    const score = (item: EpisodicMemoryItem) => (matched(item).length ? 2 : 0) + 3 * fresh(item) / asked.size
+      + matched(item).length / asked.size + base(item) * 0.3;
+    rest.sort((a, b) => order(a, b, score));
+    const next = rest.shift()!;
+    ranked.push(next);
+    for (const term of terms.get(next)!) if (asked.has(term)) covered.add(term);
+  }
+  return unique(ranked);
 }
 
 export function formatEpisodicLine(item: EpisodicMemoryItem): string {
@@ -691,7 +720,7 @@ export async function loadMemoryCandidates(
   const { userId, characterId } = scope;
   const minImportance = episodicImportanceThreshold(maxContextTokens);
 
-  const [core, important, recent] = await Promise.all([
+  const [core, important, recent, matched] = await Promise.all([
     readFactCore(scope, query).then(content => content !== null ? { content } : prisma.coreMemory.findUnique({
       where: { threadId: scope.threadId },
       select: { content: true },
@@ -707,8 +736,17 @@ export async function loadMemoryCandidates(
       orderBy: [{ timestamp: "desc" }, { id: "desc" }], take: 30,
       select: { id: true, event: true, timestamp: true, importance: true },
     }),
+    // The candidates above are the newest and most important only: an old event answering the user's
+    // question (a deal made 90 turns ago) never reached the prompt. Match the message over the whole story.
+    query.trim() ? prisma.episodicMemory.findMany({
+      where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
+      orderBy: [{ timestamp: "desc" }, { id: "desc" }], take: QUERY_POOL_SCAN,
+      select: { id: true, event: true, timestamp: true, importance: true },
+    }).then(rows => rows.map(row => ({ row, overlap: memoryOverlap(query, row.event) })).filter(match => match.overlap > 0)
+      .sort((a, b) => b.overlap - a.overlap || b.row.importance - a.row.importance).slice(0, QUERY_POOL_SIZE).map(match => match.row))
+      : Promise.resolve([]),
   ]);
-  const episodic = rankEpisodicCandidates([...new Map([...important, ...recent].map((row) => [row.id, row])).values()]);
+  const episodic = rankEpisodicCandidates([...new Map([...important, ...recent, ...matched].map((row) => [row.id, row])).values()]);
 
   const candidates: MemoryCandidates = {
     core: core?.content ? sanitizeCoreMemory(core.content, { log: false }) || null : null,

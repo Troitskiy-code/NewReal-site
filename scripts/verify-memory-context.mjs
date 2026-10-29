@@ -63,7 +63,7 @@ group('context', () => {
   // Intent-aware episodic selection.
   const episodic = Array.from({ length: 10 }, (_, i) => ({ id: `e${String(i).padStart(2, '0')}`, event: `Событие ${i}`, importance: i < 6 ? 3 : 2, timestamp: at(60 - i) }));
   const candidates = { core: null, episodic };
-  for (const [intent, limit] of [['story', 10], ['action', 10], ['general', 3], ['fact', 2], ['question', 2]]) {
+  for (const [intent, limit] of [['story', 10], ['action', 10], ['general', 4], ['fact', 6], ['question', 6]]) {
     const chosen = advanced.selectRelevantMemories(candidates, intent).episodic;
     const chronological = chosen.every((item, index) => index === 0 || item.timestamp >= chosen[index - 1].timestamp);
     check(chosen.length === limit && chronological, `episodic: ${intent} picks ${limit} by rank and shows them chronologically`);
@@ -71,6 +71,19 @@ group('context', () => {
   const tie = advanced.sortEpisodicChronologically([{ id: 'b', timestamp: at(1) }, { id: 'a', timestamp: at(1) }, { id: 'c', timestamp: at(0) }]);
   check(tie.map((item) => item.id).join('') === 'cab', 'episodic: equal timestamps keep a stable id order');
   check(advanced.EPISODIC_CANDIDATE_LIMIT === 10, 'episodic: candidate pool covers the largest intent limit');
+  // The crash-test probes (2026-10-29): an old event that answers the question outranks fresh unrelated ones,
+  // and a two-part question gets an event for each part.
+  const story = [
+    { id: 'deal', event: 'Сделка с Дийкстрой: доставить письмо в Третогор за 200 крон', importance: 2, timestamp: at(1) },
+    { id: 'mare', event: 'Кобыла Вьюга захромала на переправе', importance: 2, timestamp: at(2) },
+    { id: 'debt', event: 'Борин одолжил мне 40 крон до Саовины', importance: 2, timestamp: at(3) },
+    { id: 'debt2', event: 'Борин ворчит про долги кузена', importance: 2, timestamp: at(4) },
+    ...Array.from({ length: 6 }, (_, i) => ({ id: `fresh${i}`, event: `Бард играет песню номер ${i}`, importance: 3, timestamp: at(50 + i) })),
+  ];
+  const asked = advanced.rankEpisodicCandidates(story, 'Рассказчик, какую сделку я заключила с Дийкстрой?');
+  check(asked[0].id === 'deal', 'episodic: the old matching event comes first');
+  const twoParts = advanced.rankEpisodicCandidates(story, 'Напомни, как зовут мою кобылу и сколько я должна Борину?').slice(0, 2).map(item => item.id);
+  check(twoParts.includes('mare') && twoParts.some(id => id.startsWith('debt')), 'episodic: a two-part question gets both parts');
 
   // RAG decision matrix.
   const decide = (args) => rag.shouldUseRag({ ragEligible: true, userQuery: 'Я иду дальше', intent: 'story', historyTokens: 100, ...args });

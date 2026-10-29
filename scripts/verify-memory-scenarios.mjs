@@ -94,7 +94,7 @@ try {
     provider.intent = 'general';
     const generalTurn = await chat(user.id, character.id, { message: 'Я присаживаюсь у огня и молчу' });
     const generalShown = markerIndexes(generalTurn.system, 'Событие-', 12);
-    record('S1b', 'General по-прежнему получает 3 эпизода', generalShown.length === 3, { shown: generalShown.map((x) => x.i) }, metricsOf(generalTurn));
+    record('S1b', 'General получает 4 эпизода', generalShown.length === 4, { shown: generalShown.map((x) => x.i) }, metricsOf(generalTurn));
   }
 
   // S3: RAG finds a fact stated by the assistant outside the recent window.
