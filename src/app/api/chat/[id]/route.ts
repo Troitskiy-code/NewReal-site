@@ -30,7 +30,7 @@ import {
   type RagMessage,
 } from "@/lib/messageEmbeddings";
 import { analyzeIntent, type UserIntent } from "@/lib/intentAnalyzer";
-import { ingestChatTurnMemory } from "@/lib/advancedMemory";
+import { ingestChatTurnMemory, withMeaningCandidates } from "@/lib/advancedMemory";
 import { memoryV2Enabled } from "@/lib/memoryFacts";
 import { attachMemoryReply, drainMemoryJobs, enqueueMemoryTurn, finishMemoryTurn, invalidateMessageMemory, lockMemoryThread } from "@/lib/memoryV2";
 import { resolveChatMemorySummary } from "@/lib/chatMemory";
@@ -392,7 +392,10 @@ async function handlePost(
     }
     console.log(`[ChatTTFT] RAG quotes: ${ragMessages.length}`);
 
-    const { messages: trimmedMessages } = assemblePreparedChatMessages(fastContext, intent, ragMessages);
+    const meaningStarted = Date.now();
+    const memoryCandidates = await withMeaningCandidates(fastContext.memoryCandidates);
+    console.log(`[ChatTTFT] Meaning search waited ${Date.now() - meaningStarted}ms`);
+    const { messages: trimmedMessages } = assemblePreparedChatMessages({ ...fastContext, memoryCandidates }, intent, ragMessages);
 
     if (!continueChat && !retryLast && typeof message === "string") {
       const userText = message;

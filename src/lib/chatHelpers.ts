@@ -8,6 +8,7 @@ import {
   formatEpisodicLine,
   loadMemoryCandidates,
   rankEpisodicCandidates,
+  withMeaningCandidates,
   sortEpisodicChronologically,
   type EpisodicMemoryItem,
   type MemoryCandidates,
@@ -870,7 +871,8 @@ export async function prepareChatMessages(options: PrepareChatMessagesOptions): 
     historyRows: fastContext.historyRows,
     historyBefore: fastContext.historyBefore,
   });
-  return assemblePreparedChatMessages(fastContext, intent, ragMessages);
+  return assemblePreparedChatMessages({ ...fastContext, memoryCandidates: await withMeaningCandidates(fastContext.memoryCandidates) },
+    intent, ragMessages);
 }
 
 // Provider-neutral: the chat may run on KodikRouter or DeepInfra.

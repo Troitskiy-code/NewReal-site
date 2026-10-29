@@ -646,6 +646,8 @@ export type MemoryCandidates = {
   core: string | null;
   /** Ranked by importance, then recency, then id (stable). */
   episodic: EpisodicMemoryItem[];
+  /** Events close in meaning to the message, still being searched; applied by withMeaningCandidates. */
+  meaning?: Promise<EpisodicMemoryItem[]>;
 };
 
 function compareChronologically(left: EpisodicMemoryItem, right: EpisodicMemoryItem): number {
@@ -728,7 +730,10 @@ export async function loadMemoryCandidates(
 
   // New events get their vectors in the background; this turn uses those already stored.
   if (query.trim() && scope.threadId) void backfillEpisodicEmbeddings(scope.threadId);
-  const [core, important, recent, scanned, similarity] = await Promise.all([
+  // The message's vector takes 0.5–5 s at DeepInfra (prod 2026-10-29), longer than the rest of the context:
+  // started here, awaited only before the prompt is assembled, in parallel with intent analysis and RAG.
+  const similarityPromise = query.trim() && scope.threadId ? episodicSimilarities(scope.threadId, query) : null;
+  const [core, important, recent, scanned] = await Promise.all([
     readFactCore(scope, query).then(content => content !== null ? { content } : prisma.coreMemory.findUnique({
       where: { threadId: scope.threadId },
       select: { content: true },
@@ -751,26 +756,35 @@ export async function loadMemoryCandidates(
       orderBy: [{ timestamp: "desc" }, { id: "desc" }], take: QUERY_POOL_SCAN,
       select: { id: true, event: true, timestamp: true, importance: true },
     }) : Promise.resolve([]),
-    query.trim() && scope.threadId ? episodicSimilarities(scope.threadId, query) : Promise.resolve(new Map<string, number>()),
   ]);
-  // Over the whole story: the events sharing the most words with the message and those closest in meaning.
+  // Over the whole story: the events sharing the most words with the message (and, below, closest in meaning).
   const byWords = scanned.map(row => ({ row, overlap: memoryOverlap(query, row.event) })).filter(match => match.overlap > 0)
     .sort((a, b) => b.overlap - a.overlap || b.row.importance - a.row.importance).slice(0, QUERY_POOL_SIZE).map(match => match.row);
-  const byMeaning = scanned.filter(row => similarity.has(row.id))
-    .sort((a, b) => similarity.get(b.id)! - similarity.get(a.id)!).slice(0, QUERY_POOL_SIZE);
-  const pool = [...new Map([...important, ...recent, ...byWords, ...byMeaning].map((row) => [row.id, row])).values()]
-    .map(row => similarity.has(row.id) ? { ...row, similarity: similarity.get(row.id) } : row);
+  const pool = [...new Map([...important, ...recent, ...byWords].map((row) => [row.id, row])).values()];
   const episodic = rankEpisodicCandidates(pool);
 
   const candidates: MemoryCandidates = {
     core: core?.content ? sanitizeCoreMemory(core.content, { log: false }) || null : null,
     episodic,
+    ...(similarityPromise ? { meaning: similarityPromise.then(similarity => {
+      const byMeaning = scanned.filter(row => similarity.has(row.id))
+        .sort((a, b) => similarity.get(b.id)! - similarity.get(a.id)!).slice(0, QUERY_POOL_SIZE);
+      return [...new Map([...pool, ...byMeaning].map((row) => [row.id, row])).values()]
+        .map(row => similarity.has(row.id) ? { ...row, similarity: similarity.get(row.id) } : row);
+    }) } : {}),
   };
 
   debugLog("CoreMemory", `retrieved user=${userId} character=${characterId} present=${candidates.core ? "yes" : "no"}`);
   debugLog("Episodic", `candidates minImportance=${minImportance} events=${episodic.length}`);
 
   return candidates;
+}
+
+/** Candidates with the meaning search applied; unchanged when it found nothing or failed. */
+export async function withMeaningCandidates(candidates: MemoryCandidates): Promise<MemoryCandidates> {
+  if (!candidates.meaning) return candidates;
+  const pool = await candidates.meaning.catch(() => null);
+  return { core: candidates.core, episodic: pool ? rankEpisodicCandidates(pool) : candidates.episodic };
 }
 
 export async function getRelevantMemories(

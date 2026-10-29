@@ -9,7 +9,9 @@ import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
  * answers, word overlap plus these similarities 16 (eval 2026-10-29). Vectors live in the
  * Qwen3-Embedding-0.6B space of MessageEmbeddingDeepinfra; other providers keep word overlap only.
  */
-const QUERY_TIMEOUT_MS = 1200;
+// The message's vector takes 0.5–5 s (prod 2026-10-29: a 1.2 s budget failed on most turns). It runs while
+// the intent is analysed and RAG searches, so a longer budget with a hedged second request rarely delays the reply.
+const QUERY_TIMEOUT_MS = 4000;
 /** Events embedded per chat turn, newest first: old stories catch up in the background. */
 const BACKFILL_BATCH = 32;
 let tableMissing = false;

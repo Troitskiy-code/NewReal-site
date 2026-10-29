@@ -22,6 +22,8 @@ const check = (condition, label, details) => {
   if (condition) { passed += 1; console.log(`  ✓ ${label}`); }
   else { failed += 1; console.error(`  ✗ ${label}${details === undefined ? '' : ` ${JSON.stringify(details)}`}`); }
 };
+// Async checks of a group finish before the totals are printed.
+const pending = [];
 const group = (name, fn) => { if (!groupArg || groupArg === name) { console.log(`\n[${name}]`); fn(); } };
 
 // Seeded PRNG so property checks are repeatable.
@@ -90,6 +92,14 @@ group('context', () => {
     { id: 'hire', event: 'Договорились, господин Вельш: я ищу вашу дочь', importance: 2, timestamp: at(1), similarity: 0.62 },
   ], 'Кто меня нанял?');
   check(hired[0].id === 'hire', 'episodic: a close meaning ranks first without shared words');
+  // The meaning search finishes after the rest of the context; its pool replaces the word-only one.
+  const words = { core: 'ядро', episodic: [story[0]] };
+  pending.push((async () => {
+    const meant = await advanced.withMeaningCandidates({ ...words, meaning: Promise.resolve([story[0], story[1]]) });
+    check(meant.episodic.length === 2 && meant.core === 'ядро' && !('meaning' in meant), 'episodic: the meaning pool is applied before assembly');
+    const lost = await advanced.withMeaningCandidates({ ...words, meaning: Promise.reject(new Error('timeout')) });
+    check(lost.episodic === words.episodic && (await advanced.withMeaningCandidates(words)) === words, 'episodic: without a meaning result the word pool stays');
+  })());
 
   // RAG decision matrix.
   const decide = (args) => rag.shouldUseRag({ ragEligible: true, userQuery: 'Я иду дальше', intent: 'story', historyTokens: 100, ...args });
@@ -291,5 +301,6 @@ group('safety', () => {
   check(rerendered === rendered, 'summary: merging retains source author without nested attribution');
 });
 
+await Promise.all(pending);
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
