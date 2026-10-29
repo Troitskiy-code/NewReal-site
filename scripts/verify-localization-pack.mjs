@@ -8,9 +8,13 @@ import { PGlite } from "@electric-sql/pglite";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { moduleLoader } from "./lib/load-local-module.mjs";
-import { protectTranslation, restoreTranslation, splitTranslationText, translationImportSql, adaptPluralForms, applyReviewedCharacterFields } from "./lib/localization-pack.mjs";
+import { protectTranslation, restoreTranslation, splitTranslationText, translationImportSql, adaptPluralForms, applyReviewedCharacterFields, dictionaryFromTranslations } from "./lib/localization-pack.mjs";
 
 const text = '<0>Hello {{name}}</0>\nNewVerse & VC https://example.test/path?q=1';
+assert.deepEqual(dictionaryFromTranslations({ paragraphs: ['Hello'], faq: [{ question: 'Why?', answer: 'Because.' }], numericObject: { '0': 'Zero' }, empty: [] }, {
+  'paragraphs.0': 'Olá', 'faq.0.question': 'Porquê?', 'faq.0.answer': 'Porque sim.', 'numericObject.0': 'Zero',
+}), { paragraphs: ['Olá'], faq: [{ question: 'Porquê?', answer: 'Porque sim.' }], numericObject: { '0': 'Zero' }, empty: [] });
+assert.throws(() => dictionaryFromTranslations({ faq: ['Question'] }, {}), /Missing or invalid translated leaf/);
 assert.deepEqual(adaptPluralForms({ message_one: 'mensaje', message_other: 'mensajes' }, 'es-ES'), { message_one: 'mensaje', message_other: 'mensajes', message_many: 'mensajes' });
 const protectedValue = protectTranslation(text);
 assert.equal(restoreTranslation(protectedValue.text.replace('Hello', 'Hola'), protectedValue.tokens), text.replace('Hello', 'Hola'));

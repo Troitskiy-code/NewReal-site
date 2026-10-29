@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
 
+/** Rebuild translated leaves using the source containers, including real JSON arrays. */
+export function dictionaryFromTranslations(template, translations, prefix = "") {
+  if (Array.isArray(template)) return template.map((value, index) => dictionaryFromTranslations(value, translations, `${prefix}.${index}`));
+  if (template && typeof template === "object") return Object.fromEntries(Object.entries(template).map(([key, value]) => [key, dictionaryFromTranslations(value, translations, prefix ? `${prefix}.${key}` : key)]));
+  if (!Object.hasOwn(translations, prefix) || typeof translations[prefix] !== typeof template) throw new Error(`Missing or invalid translated leaf: ${prefix}`);
+  return translations[prefix];
+}
+
 const protectedText = /\{\{[^{}]+\}\}|<\/?[^>]+>|https?:\/\/[^\s<>]+|\b(?:NewVerse|VerseCoins|Robokassa|Stripe|VC|Yandex|Telegram|Google)\b|\r?\n/g;
 const escapeHtml = value => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 export function protectTranslation(text) {

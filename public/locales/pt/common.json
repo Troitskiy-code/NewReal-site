@@ -426,21 +426,21 @@
     "vcPerMonth": "{{count}} VC / mês",
     "context": "Contexto {{tokens}} · bónus diário ×{{multiplier}}",
     "planFeatures": {
-      "dialog": {
-        "0": "2 500 VC por mês",
-        "1": "Para conversas casuais e cenas do dia a dia",
-        "2": "Multiplicador de bónus diário ×1,5"
-      },
-      "history": {
-        "0": "10 000 VC por mês",
-        "1": "Para roleplay longo e desenvolvimento de histórias",
-        "2": "Multiplicador de bónus diário ×2"
-      },
-      "universe": {
-        "0": "30 000 VC por mês",
-        "1": "Para mundos profundos e arcos de história complexos",
-        "2": "Multiplicador de bónus diário ×2,5"
-      }
+      "dialog": [
+        "2 500 VC por mês",
+        "Para conversas casuais e cenas do dia a dia",
+        "Multiplicador de bónus diário ×1,5"
+      ],
+      "history": [
+        "10 000 VC por mês",
+        "Para roleplay longo e desenvolvimento de histórias",
+        "Multiplicador de bónus diário ×2"
+      ],
+      "universe": [
+        "30 000 VC por mês",
+        "Para mundos profundos e arcos de história complexos",
+        "Multiplicador de bónus diário ×2,5"
+      ]
     },
     "redirecting": "Pagamento...",
     "subscribe": "Subscrever",
@@ -757,21 +757,21 @@
     "title": "Regras da plataforma",
     "intro": "Ao publicar personagens na NewVerse, concorda em cumprir estas regras. As violações são analisadas pelos moderadores.",
     "prohibitedTitle": "Conteúdo proibido",
-    "prohibitedItems": {
-      "0": "Conteúdo sexualizado envolvendo menores (sob a Lei Federal 149-FZ e Artigo 242 do Código Penal da Federação Russa).",
-      "1": "Promoção de drogas, extremismo ou terrorismo.",
-      "2": "Violência ou crueldade detalhada contra pessoas ou animais.",
-      "3": "Incitação ao ódio com base em raça, nacionalidade ou religião.",
-      "4": "Spam ou publicidade de serviços externos.",
-      "5": "Fraude e pirâmides financeiras.",
-      "6": "Violação de direitos de autor (copiar personagens de obras protegidas sem autorização)."
-    },
+    "prohibitedItems": [
+      "Conteúdo sexualizado envolvendo menores (sob a Lei Federal 149-FZ e Artigo 242 do Código Penal da Federação Russa).",
+      "Promoção de drogas, extremismo ou terrorismo.",
+      "Violência ou crueldade detalhada contra pessoas ou animais.",
+      "Incitação ao ódio com base em raça, nacionalidade ou religião.",
+      "Spam ou publicidade de serviços externos.",
+      "Fraude e pirâmides financeiras.",
+      "Violação de direitos de autor (copiar personagens de obras protegidas sem autorização)."
+    ],
     "consequencesTitle": "Consequências das violações",
-    "consequenceItems": {
-      "0": "1.ª violação — o personagem é ocultado do acesso público e é emitido um aviso.",
-      "1": "2.ª violação — o personagem é eliminado.",
-      "2": "3.ª violação — a conta é bloqueada."
-    },
+    "consequenceItems": [
+      "1.ª violação — o personagem é ocultado do acesso público e é emitido um aviso.",
+      "2.ª violação — o personagem é eliminado.",
+      "3.ª violação — a conta é bloqueada."
+    ],
     "appealTitle": "Como recorrer",
     "appeal": "Envie um pedido através da",
     "appealLink": "página de suporte"
@@ -1026,36 +1026,36 @@
   "landing": {
     "home": {
       "heading": "Converse com personagens de IA",
-      "paragraphs": {
-        "0": "O NewVerse é um espaço para conversar com personagens de IA. O catálogo inclui heróis de vários géneros: romance, fantasia, anime, histórias detetives, ficção científica e vida quotidiana calma. Escolha um personagem pela descrição e personalidade, abra a conversa e comece a escrever — eles respondem com a sua própria voz, história e estilo de fala.",
-        "1": "Isto vai além de um simples chat com IA: é roleplay com IA. Cada personagem vem com uma configuração, um mundo e uma mensagem inicial que dá início à cena. Você decide quem é na história e para onde ela vai. Os personagens recordam os detalhes importantes da conversa, por isso pode voltar um dia ou uma semana depois e continuar exatamente onde parou.",
-        "2": "Se não encontrar o herói ideal, crie o seu próprio personagem de IA: defina a personalidade, aparência, mensagem inicial e mundo, depois converse com ele ou publique-o no catálogo. O site suporta múltiplos idiomas e pode começar sem se registar."
-      },
+      "paragraphs": [
+        "O NewVerse é um espaço para conversar com personagens de IA. O catálogo inclui heróis de vários géneros: romance, fantasia, anime, histórias detetives, ficção científica e vida quotidiana calma. Escolha um personagem pela descrição e personalidade, abra a conversa e comece a escrever — eles respondem com a sua própria voz, história e estilo de fala.",
+        "Isto vai além de um simples chat com IA: é roleplay com IA. Cada personagem vem com uma configuração, um mundo e uma mensagem inicial que dá início à cena. Você decide quem é na história e para onde ela vai. Os personagens recordam os detalhes importantes da conversa, por isso pode voltar um dia ou uma semana depois e continuar exatamente onde parou.",
+        "Se não encontrar o herói ideal, crie o seu próprio personagem de IA: defina a personalidade, aparência, mensagem inicial e mundo, depois converse com ele ou publique-o no catálogo. O site suporta múltiplos idiomas e pode começar sem se registar."
+      ],
       "createLink": "Criar um personagem de IA",
       "genresLink": "Todos os géneros",
       "faqHeading": "Perguntas frequentes",
-      "faq": {
-        "0": {
+      "faq": [
+        {
           "question": "Posso conversar com personagens de IA gratuitamente?",
           "answer": "{{freeAnswer}}"
         },
-        "1": {
+        {
           "question": "Preciso de me registar?",
           "answer": "Não. Para experimentar, basta abrir um personagem e escrever a sua primeira mensagem. Uma conta permite-lhe guardar as suas histórias, continuar em outro dispositivo e criar os seus próprios personagens."
         },
-        "2": {
+        {
           "question": "Os personagens lembram-se do que conversámos?",
           "answer": "Sim. Um personagem acompanha as mensagens recentes e recorda factos importantes da conversa: nomes, promessas, eventos da trama. Assim, pode retomar a história exatamente onde a deixou."
         },
-        "3": {
+        {
           "question": "Que idiomas posso usar?",
           "answer": "No idioma do site que escolher. Os idiomas disponíveis estão listados no menu; mudar mantém a sua página e história."
         },
-        "4": {
+        {
           "question": "Em que é que o roleplay com IA difere de um chatbot comum?",
           "answer": "Um chatbot comum responde perguntas. Um personagem de IA interpreta um papel: tem personalidade, passado e objetivos, reage ao que fazes e constrói a história contigo."
         }
-      }
+      ]
     },
     "freeAnswer": {
       "quota": "Sim. Podes enviar as tuas primeiras mensagens sem registo, e, ao criares uma conta, recebes respostas grátis no modelo base todos os dias. Um plano acrescenta mais respostas grátis, VerseCoins bónus e uma janela de contexto maior.",
@@ -1068,129 +1068,129 @@
       "modesHeading": "O que estamos a criar?",
       "modesHint": "Uma ideia principal chega. Aparência, estilo de fala e detalhes da história podem ser adicionados mais tarde.",
       "stepsHeading": "Como criar um personagem de IA",
-      "steps": {
-        "0": {
+      "steps": [
+        {
           "title": "Escolhe um formato",
           "text": "Um personagem individual, um universo inteiro onde tu és o herói principal, ou uma história partilhada com um elenco de até {{maxParticipants}} personagens."
         },
-        "1": {
+        {
           "title": "Descreve o herói",
           "text": "Nome, personalidade, aparência e estilo de fala. Começa pelo que torna o herói reconhecível: um hábito, um objetivo, uma característica marcante."
         },
-        "2": {
+        {
           "title": "Define como começa a história",
           "text": "Uma primeira mensagem e um cenário: onde acontece o encontro e como a cena começa. Diálogos de exemplo ajudam o personagem a manter o estilo."
         },
-        "3": {
+        {
           "title": "Guarda e começa a conversar",
           "text": "Mantém o personagem privado ou publica-o no catálogo para que outros também possam conversar com ele."
         }
-      },
+      ],
       "featuresHeading": "O que podes configurar",
-      "features": {
-        "0": {
+      "features": [
+        {
           "title": "Personalidade e motivações",
           "text": "O que o herói quer, o que teme e como trata quem fala com ele."
         },
-        "1": {
+        {
           "title": "Aparência e avatar",
           "text": "Carrega a tua própria imagem ou gera um avatar a partir da descrição — a geração está incluída num plano."
         },
-        "2": {
+        {
           "title": "Estilo de fala",
           "text": "Respostas curtas ou longas, gíria, cortesia, sotaque."
         },
-        "3": {
+        {
           "title": "Mundo e regras",
           "text": "O cenário, personagens secundários e regras narrativas para universos."
         },
-        "4": {
+        {
           "title": "Géneros e etiquetas",
           "text": "Ajudam as pessoas a encontrar o personagem no catálogo e nas páginas por género."
         },
-        "5": {
+        {
           "title": "Memória",
           "text": "O que o personagem sabe sobre si mesmo e sobre ti desde a primeira linha."
         }
-      },
+      ],
       "faqHeading": "Perguntas sobre criar um personagem",
-      "faq": {
-        "0": {
+      "faq": [
+        {
           "question": "Quanto custa criar um personagem de IA?",
           "answer": "Criar um personagem é gratuito. A geração de um avatar a partir da descrição está incluída num plano; sem isso, podes carregar a tua própria imagem."
         },
-        "1": {
+        {
           "question": "Preciso de me registar?",
           "answer": "Sim: os personagens são guardados na tua conta, por isso precisas de iniciar sessão para criar um. Podes conversar com personagens do catálogo sem registo."
         },
-        "2": {
+        {
           "question": "Posso manter um personagem privado?",
           "answer": "Sim. Só tu vês um personagem privado. Um personagem público aparece no catálogo para todos e deve seguir as regras da plataforma."
         },
-        "3": {
+        {
           "question": "Como tornar as respostas do personagem mais interessantes?",
           "answer": "Descreve não só a aparência, mas também as motivações, hábitos e estilo de fala. Adiciona uma primeira mensagem com uma cena concreta e um ou dois diálogos de exemplo: quanto mais clara a premissa, mais vivas as respostas."
         },
-        "4": {
+        {
           "question": "Posso alterar um personagem depois de o criar?",
           "answer": "Sim. Podes editar a ficha a qualquer momento: expandir a descrição, mudar o avatar ou a primeira mensagem."
         }
-      }
+      ]
     }
   },
   "genreIntros": {
-    "fantasy": {
-      "0": "Fantasia é onde uma conversa com um personagem facilmente se transforma numa jornada completa. Aqui vivem magos e mercenários, guardas élficos, cavaleiros de dragão, bruxas da aldeia e estudantes de academias mágicas. Podes entrar na história como companheiro do herói, o seu rival, ou um viajante ocasional que descobriu um segredo perigoso.",
-      "1": "Um personagem de IA responde com a voz do seu mundo: tem os seus juramentos, medos e ideias sobre honra. Algumas histórias começam junto à lareira de uma taberna, outras num campo de batalha ou numa biblioteca de feitiços proibidos. Escolhe um personagem pela descrição e personalidade, define o tom da cena — de conto encantado a história sombria sobre o preço do poder — e decide tu como acaba a missão."
-    },
-    "romance": {
-      "0": "Personagens românticos são para histórias onde o essencial acontece entre duas pessoas. Pode ser um lento convívio com um vizinho do corredor, um jogo intenso com um antigo rival, um romance de escritório, cartas de outra era, ou sentimentos que o personagem ainda não está pronto para admitir, nem a si próprio.",
-      "1": "Cada personagem tem uma personalidade única: há quem seja caloroso e aberto, quem seja reservado e demore a abrir-se, ou quem flerte já na primeira frase. É você quem define o ritmo, desde um ligeiro flerte até um romance progressivo onde a confiança tem de ser conquistada. O personagem reage ao que diz e faz, por isso a mesma história pode terminar numa declaração, numa discussão ou num novo capítulo. Escolha alguém pela descrição, comece pela sua cena de abertura ou crie a sua própria."
-    },
-    "anime": {
-      "0": "Os personagens de anime são reconhecíveis à primeira vista: aparência marcante, emoções expressivas e arquétipos familiares — tsunderes, alunos perfeitos imperturbáveis, encrenqueiros com bom coração, o misterioso novo aluno da turma. Mas as histórias aqui vão muito além dos corredores da escola.",
-      "1": "Esta secção reúne personagens no estilo anime de todos os tipos de enredos: vida escolar, clubes pós-aula, academias de magia, aventuras isekai em outros mundos, rivalidades desportivas, romance e missões. Cada personagem mantém-se fiel ao seu papel e reage às suas escolhas, permitindo-lhe viver desde uma cena tranquila no telhado da escola até um duelo tenso. Escolha um personagem pelo seu cartão, leia a descrição e comece com a cena pronta ou sugira o seu próprio cenário, como se estivesse a escrever um novo episódio."
-    },
-    "scifi": {
-      "0": "A ficção científica na NewVerse foca-se no futuro, na tecnologia e nas pessoas envolvidas: capitães de naves estelares, androides a aprenderem a ser humanos, cientistas em estações distantes, pilotos, contrabandistas e os primeiros a testemunharem o contacto com uma mente alienígena.",
-      "1": "Pode embarcar numa longa viagem pelo espaço profundo, investigar uma falha nos sistemas de uma colónia ou discutir com uma inteligência artificial sobre memória e livre-arbítrio. Os personagens respeitam as regras do seu mundo: a nave fica sem combustível, a estação tem as suas normas, e o androide tem protocolos que pode optar por quebrar. Faça perguntas, tome decisões arriscadas e veja para onde a história o leva. Se preferir tecnologia urbana com néon, a secção cyberpunk está mesmo ao lado."
-    },
-    "mystic": {
-      "0": "Mistério e sobrenatural são para quem se sente atraído pelo inexplicável. Aqui encontrará videntes e médiuns, guardiões de casas antigas, aristocratas amaldiçoados, bruxas, espíritos e pessoas que sabem demasiado sobre os sonhos alheios.",
-      "1": "Estas histórias alimentam-se do que não é dito: um personagem pode falar em enigmas, esconder parte da verdade ou testar se está pronto para ouvir tudo. As cenas começam num comboio à meia-noite, numa sessão espírita, numa mansão abandonada ou numa cidade pequena onde cada habitante esconde um segredo. Ao contrário do terror, aqui importa mais a atmosfera e a resolução do que o medo, embora a linha possa ser ténue. Escolha um personagem pela descrição, escute os seus indícios e decida se deve abrir a porta atrás da qual alguém espera."
-    },
-    "realistic": {
-      "0": "Personagens da vida moderna vivem quase como nós: estudam, trabalham, alugam apartamentos, encontram-se em cafés e envolvem-se em histórias que podiam acontecer a qualquer um. São colegas e vizinhos, estrelas e seus gestores, médicos, estudantes, baristas, músicos e ex-colegas de turma.",
-      "1": "A força deste tipo de roleplay é a sensação de realismo. Sem magia nem naves espaciais, a personalidade, o diálogo e os relacionamentos são o centro da ação: um reencontro constrangedor após anos, uma conversa difícil com o chefe, um primeiro encontro ou ajudar um amigo numa noite difícil. O personagem responde com base no seu passado e hábitos, e a trama desenvolve-se com as suas palavras e escolhas. Estas histórias servem tanto para conversas leves como para dramas sérios. Escolha um personagem pela descrição e comece com a sua cena ou com algo que lhe aconteceu hoje."
-    },
-    "adventure": {
-      "0": "Aventura é movimento: a estrada aberta, um mapa com territórios por descobrir e um companheiro que não deixa o tédio avançar. Este género reúne caçadores de tesouros, piratas, rastreadores, mercenários, viajantes no tempo e heróis que sempre acabam onde começa a confusão.",
-      "1": "Qualquer cena pode mudar a trama: uma perseguição em telhados, uma travessia sobre um rio em cheia, um acordo com um comerciante suspeito ou um mecanismo antigo que precisa de ser aberto antes do pôr do sol. O personagem reage às suas decisões — apoia um plano arriscado, discute ou propõe inesperadamente um seu. A aventura combina-se facilmente com outros géneros: uma missão de fantasia, uma expedição espacial ou a procura de um amigo desaparecido numa cidade moderna. Escolha um companheiro pela descrição, acerte sobre um objetivo e parta — a rota irá surgindo ao longo da história."
-    },
-    "detective": {
-      "0": "Personagens detetive são para quem adora pistas, interrogatórios e reviravoltas inesperadas. Aqui encontra investigadores privados e detetives da polícia cansados, jornalistas investigativos, criminosos impiedosos e testemunhas que obviamente escondem algo.",
-      "1": "Pode investigar ao lado do personagem, tornar-se suspeito ou jogar contra ele, tentando apanhá-lo numa contradição. Uma boa cena de detetive baseia-se em detalhes: a hora num relógio, uma marca na soleira da janela, um lapso de linguagem. O personagem recorda tudo o que já foi dito, por isso um jogador atento pode comparar declarações e chegar à sua própria teoria. Os casos podem ser clássicos, com uma sala fechada e um círculo de suspeitos, ou modernos, com câmaras de segurança e trocas de mensagens. Escolha um personagem e faça a primeira pergunta."
-    },
-    "everyday": {
-      "0": "Slice of life é o género das pequenas histórias que compõem uma vida: um café matinal com um vizinho, um turno numa livraria, estudar para exames em conjunto, mudar de casa, uma longa conversa na cozinha.",
-      "1": "Ninguém precisa salvar o mundo aqui. O valor deste tipo de roleplay está na conversa natural e nas relações que crescem ao longo do tempo: o personagem repara em pormenores, faz piadas, partilha planos, pode apoiar-te depois de um dia difícil ou convidar-te para uma viagem espontânea. O elenco inclui amigos, colegas de quarto, colegas de trabalho e conhecidos com quem gostarás de voltar a falar. As histórias de slice-of-life são ideais para descontrair, praticar conversação ou simplesmente passar uma noite em companhia tranquila. Escolhe um personagem pela sua personalidade, começa com uma cena comum e deixa a história desenrolar-se sem pressa."
-    },
-    "cyberpunk": {
-      "0": "Cyberpunk significa ruas de néon, corporações mais poderosas que governos e pessoas que vendem as suas memórias, corpos e lealdade por uma hipótese de sobrevivência. Este género acolhe hackers, mercenários aumentados, médicos de becos, detetives de grandes cidades e andróides que começaram a duvidar dos seus protocolos.",
-      "1": "As histórias são duras e rápidas: invadir uma rede segura, um negócio num clube clandestino, escapar da segurança corporativa, caçar quem apagou parte do teu passado. O personagem vive pelas regras da sua cidade — pode entregar-te pelo preço certo ou arriscar tudo por um parceiro. O cyberpunk está próximo da ficção científica, mas em vez de olhar para as estrelas, olha para as ruas, onde a tecnologia se tornou um bem comum. Escolhe um personagem pela descrição, decide de que lado estás e faz o teu primeiro acordo."
-    },
-    "horror": {
-      "0": "O terror é para quem gosta de sentir um arrepio na espinha. Esta secção reúne personagens em torno dos quais a segurança nunca está garantida: monstros e suas vítimas, caçadores do profano, habitantes de hospitais abandonados, sobreviventes de um desastre e criaturas que apenas fingem ser humanas.",
-      "1": "Uma boa história de terror é construída na tensão, não na quantidade de sangue. Um rangido no soalho, uma lanterna prestes a apagar, uma voz da divisão ao lado — o personagem conduz a cena para que decidas se avanças ou foges. Podes interpretar quem investiga um desaparecimento, um hóspede infortunado numa casa estranha ou envolver-te numa conversa perigosa com o próprio monstro. Escolhe o nível de medo, desde o gótico atmosférico até à luta pela sobrevivência. Escolhe um personagem pela descrição e desliga as luzes."
-    },
-    "comedy": {
-      "0": "Personagens cómicos são para quando queres riso em vez de drama: companheiros espirituosos, magos desastrados, vilões excessivamente confiantes cujos planos nunca funcionam, vizinhos tagarelas e heróis que tropeçam em situações absurdas do nada.",
-      "1": "O humor no roleplay vem da personalidade: o personagem mantém-se fiel a si mesmo mesmo quando tudo corre mal, e é precisamente isso que torna a cena divertida. Podes representar um encontro desastroso, o caos doméstico num apartamento partilhado, uma paródia de uma missão épica ou uma discussão com um gato que acha que é da realeza. O personagem apanha as tuas piadas, responde com outras e levará a situação ao absurdo se for isso que queres. A comédia combina bem com slice of life, fantasia e romance. Escolhe um personagem, cria uma premissa ridícula e vê o que acontece."
-    },
-    "drama": {
-      "0": "Drama é o género das histórias sobre escolhas, perdas, culpa e perdão. Os personagens aqui carregam um passado difícil: pessoas que perderam alguém próximo, ex-amigos afastados pela vida, heróis diante de decisões difíceis, famílias onde muito ficou por dizer.",
-      "1": "O roleplay dramático exige tempo e atenção: o personagem não se abre logo, e a confiança tem de ser conquistada. Uma cena pode começar com um breve encontro numa estação de comboios ou com uma carta que chegou tarde demais, e a partir daí tudo depende do que dizes e do que calas. O personagem de IA responde à luz das suas feridas e motivações, por isso a conversa pode levar à reconciliação ou a uma separação definitiva. Se te atraem histórias que te deixam em silêncio depois, escolhe um personagem pela descrição e começa com uma pergunta sincera."
-    }
+    "fantasy": [
+      "Fantasia é onde uma conversa com um personagem facilmente se transforma numa jornada completa. Aqui vivem magos e mercenários, guardas élficos, cavaleiros de dragão, bruxas da aldeia e estudantes de academias mágicas. Podes entrar na história como companheiro do herói, o seu rival, ou um viajante ocasional que descobriu um segredo perigoso.",
+      "Um personagem de IA responde com a voz do seu mundo: tem os seus juramentos, medos e ideias sobre honra. Algumas histórias começam junto à lareira de uma taberna, outras num campo de batalha ou numa biblioteca de feitiços proibidos. Escolhe um personagem pela descrição e personalidade, define o tom da cena — de conto encantado a história sombria sobre o preço do poder — e decide tu como acaba a missão."
+    ],
+    "romance": [
+      "Personagens românticos são para histórias onde o essencial acontece entre duas pessoas. Pode ser um lento convívio com um vizinho do corredor, um jogo intenso com um antigo rival, um romance de escritório, cartas de outra era, ou sentimentos que o personagem ainda não está pronto para admitir, nem a si próprio.",
+      "Cada personagem tem uma personalidade única: há quem seja caloroso e aberto, quem seja reservado e demore a abrir-se, ou quem flerte já na primeira frase. É você quem define o ritmo, desde um ligeiro flerte até um romance progressivo onde a confiança tem de ser conquistada. O personagem reage ao que diz e faz, por isso a mesma história pode terminar numa declaração, numa discussão ou num novo capítulo. Escolha alguém pela descrição, comece pela sua cena de abertura ou crie a sua própria."
+    ],
+    "anime": [
+      "Os personagens de anime são reconhecíveis à primeira vista: aparência marcante, emoções expressivas e arquétipos familiares — tsunderes, alunos perfeitos imperturbáveis, encrenqueiros com bom coração, o misterioso novo aluno da turma. Mas as histórias aqui vão muito além dos corredores da escola.",
+      "Esta secção reúne personagens no estilo anime de todos os tipos de enredos: vida escolar, clubes pós-aula, academias de magia, aventuras isekai em outros mundos, rivalidades desportivas, romance e missões. Cada personagem mantém-se fiel ao seu papel e reage às suas escolhas, permitindo-lhe viver desde uma cena tranquila no telhado da escola até um duelo tenso. Escolha um personagem pelo seu cartão, leia a descrição e comece com a cena pronta ou sugira o seu próprio cenário, como se estivesse a escrever um novo episódio."
+    ],
+    "scifi": [
+      "A ficção científica na NewVerse foca-se no futuro, na tecnologia e nas pessoas envolvidas: capitães de naves estelares, androides a aprenderem a ser humanos, cientistas em estações distantes, pilotos, contrabandistas e os primeiros a testemunharem o contacto com uma mente alienígena.",
+      "Pode embarcar numa longa viagem pelo espaço profundo, investigar uma falha nos sistemas de uma colónia ou discutir com uma inteligência artificial sobre memória e livre-arbítrio. Os personagens respeitam as regras do seu mundo: a nave fica sem combustível, a estação tem as suas normas, e o androide tem protocolos que pode optar por quebrar. Faça perguntas, tome decisões arriscadas e veja para onde a história o leva. Se preferir tecnologia urbana com néon, a secção cyberpunk está mesmo ao lado."
+    ],
+    "mystic": [
+      "Mistério e sobrenatural são para quem se sente atraído pelo inexplicável. Aqui encontrará videntes e médiuns, guardiões de casas antigas, aristocratas amaldiçoados, bruxas, espíritos e pessoas que sabem demasiado sobre os sonhos alheios.",
+      "Estas histórias alimentam-se do que não é dito: um personagem pode falar em enigmas, esconder parte da verdade ou testar se está pronto para ouvir tudo. As cenas começam num comboio à meia-noite, numa sessão espírita, numa mansão abandonada ou numa cidade pequena onde cada habitante esconde um segredo. Ao contrário do terror, aqui importa mais a atmosfera e a resolução do que o medo, embora a linha possa ser ténue. Escolha um personagem pela descrição, escute os seus indícios e decida se deve abrir a porta atrás da qual alguém espera."
+    ],
+    "realistic": [
+      "Personagens da vida moderna vivem quase como nós: estudam, trabalham, alugam apartamentos, encontram-se em cafés e envolvem-se em histórias que podiam acontecer a qualquer um. São colegas e vizinhos, estrelas e seus gestores, médicos, estudantes, baristas, músicos e ex-colegas de turma.",
+      "A força deste tipo de roleplay é a sensação de realismo. Sem magia nem naves espaciais, a personalidade, o diálogo e os relacionamentos são o centro da ação: um reencontro constrangedor após anos, uma conversa difícil com o chefe, um primeiro encontro ou ajudar um amigo numa noite difícil. O personagem responde com base no seu passado e hábitos, e a trama desenvolve-se com as suas palavras e escolhas. Estas histórias servem tanto para conversas leves como para dramas sérios. Escolha um personagem pela descrição e comece com a sua cena ou com algo que lhe aconteceu hoje."
+    ],
+    "adventure": [
+      "Aventura é movimento: a estrada aberta, um mapa com territórios por descobrir e um companheiro que não deixa o tédio avançar. Este género reúne caçadores de tesouros, piratas, rastreadores, mercenários, viajantes no tempo e heróis que sempre acabam onde começa a confusão.",
+      "Qualquer cena pode mudar a trama: uma perseguição em telhados, uma travessia sobre um rio em cheia, um acordo com um comerciante suspeito ou um mecanismo antigo que precisa de ser aberto antes do pôr do sol. O personagem reage às suas decisões — apoia um plano arriscado, discute ou propõe inesperadamente um seu. A aventura combina-se facilmente com outros géneros: uma missão de fantasia, uma expedição espacial ou a procura de um amigo desaparecido numa cidade moderna. Escolha um companheiro pela descrição, acerte sobre um objetivo e parta — a rota irá surgindo ao longo da história."
+    ],
+    "detective": [
+      "Personagens detetive são para quem adora pistas, interrogatórios e reviravoltas inesperadas. Aqui encontra investigadores privados e detetives da polícia cansados, jornalistas investigativos, criminosos impiedosos e testemunhas que obviamente escondem algo.",
+      "Pode investigar ao lado do personagem, tornar-se suspeito ou jogar contra ele, tentando apanhá-lo numa contradição. Uma boa cena de detetive baseia-se em detalhes: a hora num relógio, uma marca na soleira da janela, um lapso de linguagem. O personagem recorda tudo o que já foi dito, por isso um jogador atento pode comparar declarações e chegar à sua própria teoria. Os casos podem ser clássicos, com uma sala fechada e um círculo de suspeitos, ou modernos, com câmaras de segurança e trocas de mensagens. Escolha um personagem e faça a primeira pergunta."
+    ],
+    "everyday": [
+      "Slice of life é o género das pequenas histórias que compõem uma vida: um café matinal com um vizinho, um turno numa livraria, estudar para exames em conjunto, mudar de casa, uma longa conversa na cozinha.",
+      "Ninguém precisa salvar o mundo aqui. O valor deste tipo de roleplay está na conversa natural e nas relações que crescem ao longo do tempo: o personagem repara em pormenores, faz piadas, partilha planos, pode apoiar-te depois de um dia difícil ou convidar-te para uma viagem espontânea. O elenco inclui amigos, colegas de quarto, colegas de trabalho e conhecidos com quem gostarás de voltar a falar. As histórias de slice-of-life são ideais para descontrair, praticar conversação ou simplesmente passar uma noite em companhia tranquila. Escolhe um personagem pela sua personalidade, começa com uma cena comum e deixa a história desenrolar-se sem pressa."
+    ],
+    "cyberpunk": [
+      "Cyberpunk significa ruas de néon, corporações mais poderosas que governos e pessoas que vendem as suas memórias, corpos e lealdade por uma hipótese de sobrevivência. Este género acolhe hackers, mercenários aumentados, médicos de becos, detetives de grandes cidades e andróides que começaram a duvidar dos seus protocolos.",
+      "As histórias são duras e rápidas: invadir uma rede segura, um negócio num clube clandestino, escapar da segurança corporativa, caçar quem apagou parte do teu passado. O personagem vive pelas regras da sua cidade — pode entregar-te pelo preço certo ou arriscar tudo por um parceiro. O cyberpunk está próximo da ficção científica, mas em vez de olhar para as estrelas, olha para as ruas, onde a tecnologia se tornou um bem comum. Escolhe um personagem pela descrição, decide de que lado estás e faz o teu primeiro acordo."
+    ],
+    "horror": [
+      "O terror é para quem gosta de sentir um arrepio na espinha. Esta secção reúne personagens em torno dos quais a segurança nunca está garantida: monstros e suas vítimas, caçadores do profano, habitantes de hospitais abandonados, sobreviventes de um desastre e criaturas que apenas fingem ser humanas.",
+      "Uma boa história de terror é construída na tensão, não na quantidade de sangue. Um rangido no soalho, uma lanterna prestes a apagar, uma voz da divisão ao lado — o personagem conduz a cena para que decidas se avanças ou foges. Podes interpretar quem investiga um desaparecimento, um hóspede infortunado numa casa estranha ou envolver-te numa conversa perigosa com o próprio monstro. Escolhe o nível de medo, desde o gótico atmosférico até à luta pela sobrevivência. Escolhe um personagem pela descrição e desliga as luzes."
+    ],
+    "comedy": [
+      "Personagens cómicos são para quando queres riso em vez de drama: companheiros espirituosos, magos desastrados, vilões excessivamente confiantes cujos planos nunca funcionam, vizinhos tagarelas e heróis que tropeçam em situações absurdas do nada.",
+      "O humor no roleplay vem da personalidade: o personagem mantém-se fiel a si mesmo mesmo quando tudo corre mal, e é precisamente isso que torna a cena divertida. Podes representar um encontro desastroso, o caos doméstico num apartamento partilhado, uma paródia de uma missão épica ou uma discussão com um gato que acha que é da realeza. O personagem apanha as tuas piadas, responde com outras e levará a situação ao absurdo se for isso que queres. A comédia combina bem com slice of life, fantasia e romance. Escolhe um personagem, cria uma premissa ridícula e vê o que acontece."
+    ],
+    "drama": [
+      "Drama é o género das histórias sobre escolhas, perdas, culpa e perdão. Os personagens aqui carregam um passado difícil: pessoas que perderam alguém próximo, ex-amigos afastados pela vida, heróis diante de decisões difíceis, famílias onde muito ficou por dizer.",
+      "O roleplay dramático exige tempo e atenção: o personagem não se abre logo, e a confiança tem de ser conquistada. Uma cena pode começar com um breve encontro numa estação de comboios ou com uma carta que chegou tarde demais, e a partir daí tudo depende do que dizes e do que calas. O personagem de IA responde à luz das suas feridas e motivações, por isso a conversa pode levar à reconciliação ou a uma separação definitiva. Se te atraem histórias que te deixam em silêncio depois, escolhe um personagem pela descrição e começa com uma pergunta sincera."
+    ]
   },
   "telegramBot": {
     "welcome": "NewVerse é histórias de roleplay com personagens de IA. Abre a aplicação para escolher um personagem e começar uma história.",

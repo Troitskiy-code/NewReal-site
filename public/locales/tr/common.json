@@ -423,21 +423,21 @@
     "vcPerMonth": "{{count}} VC/ay",
     "context": "Bağlam {{tokens}} · günlük bonus ×{{multiplier}}",
     "planFeatures": {
-      "dialog": {
-        "0": "Aylık 2.500 VC",
-        "1": "Günlük sohbetler ve sıradan sahneler için",
-        "2": "Günlük bonus çarpanı ×1,5"
-      },
-      "history": {
-        "0": "Aylık 10.000 VC",
-        "1": "Uzun süreli rol yapımı ve hikâye geliştirme için",
-        "2": "Günlük bonus çarpanı ×2"
-      },
-      "universe": {
-        "0": "Aylık 30.000 VC",
-        "1": "Derin dünyalar ve karmaşık hikâye yayını için",
-        "2": "Günlük bonus çarpanı ×2,5"
-      }
+      "dialog": [
+        "Aylık 2.500 VC",
+        "Günlük sohbetler ve sıradan sahneler için",
+        "Günlük bonus çarpanı ×1,5"
+      ],
+      "history": [
+        "Aylık 10.000 VC",
+        "Uzun süreli rol yapımı ve hikâye geliştirme için",
+        "Günlük bonus çarpanı ×2"
+      ],
+      "universe": [
+        "Aylık 30.000 VC",
+        "Derin dünyalar ve karmaşık hikâye yayını için",
+        "Günlük bonus çarpanı ×2,5"
+      ]
     },
     "redirecting": "Ödeme...",
     "subscribe": "Abone ol",
@@ -754,21 +754,21 @@
     "title": "Platform Kuralları",
     "intro": "NewVerse'ta karakter yayınlarken bu kurallara uymayı kabul edersiniz. İhlaller, moderatörler tarafından incelenir.",
     "prohibitedTitle": "Yasak içerik",
-    "prohibitedItems": {
-      "0": "Çocuklarda (Federal Kanun 149-FZ ve Rusya Federasyonu Ceza Kanunu Madde 242) cinsel içerik.",
-      "1": "Uyuşturucu, ekstremizm veya terörizmin teşviki.",
-      "2": "İnsanlara veya hayvanlara yönelik ayrıntılı zulüm veya şiddet.",
-      "3": "Irka, milliyete veya dine dayalı nefretin kışkırtılması.",
-      "4": "Spam veya üçüncü taraf hizmetlerin reklamı.",
-      "5": "Dolandırıcılık ve finansal piramitler.",
-      "6": "Telif hakkı ihlali (izin alınmadan korumalı eserlerden karakter kopyalamak)."
-    },
+    "prohibitedItems": [
+      "Çocuklarda (Federal Kanun 149-FZ ve Rusya Federasyonu Ceza Kanunu Madde 242) cinsel içerik.",
+      "Uyuşturucu, ekstremizm veya terörizmin teşviki.",
+      "İnsanlara veya hayvanlara yönelik ayrıntılı zulüm veya şiddet.",
+      "Irka, milliyete veya dine dayalı nefretin kışkırtılması.",
+      "Spam veya üçüncü taraf hizmetlerin reklamı.",
+      "Dolandırıcılık ve finansal piramitler.",
+      "Telif hakkı ihlali (izin alınmadan korumalı eserlerden karakter kopyalamak)."
+    ],
     "consequencesTitle": "İhlallerin sonuçları",
-    "consequenceItems": {
-      "0": "1. ihlal — karakter herkese açık erişimden kaldırılır ve uyarı verilir.",
-      "1": "2. ihlal — karakter silinir.",
-      "2": "3. ihlal — hesap engellenir."
-    },
+    "consequenceItems": [
+      "1. ihlal — karakter herkese açık erişimden kaldırılır ve uyarı verilir.",
+      "2. ihlal — karakter silinir.",
+      "3. ihlal — hesap engellenir."
+    ],
     "appealTitle": "İtiraz nasıl yapılır",
     "appeal": "Şu sayfa üzerinden talep gönderin:",
     "appealLink": "destek sayfası"
@@ -1019,36 +1019,36 @@
   "landing": {
     "home": {
       "heading": "AI karakterlerle sohbet et",
-      "paragraphs": {
-        "0": "NewVerse, AI karakterlerle konuşmak için bir yerdir. Katalogta romantizm, fantezi, anime, dedektif hikâyeleri, bilim kurgu ve sakin günlük yaşam gibi birçok türden kahramanlar var. Tanımlarına ve kişiliklerine göre bir karakter seçin, sohbeti açın ve yazmaya başlayın — kendi sesiyle, kendi hikâyesiyle ve konuşma tarzıyla yanıt verirler.",
-        "1": "Bu yalnızca soru-cevaplı bir AI sohbetinden fazlasıdır: bu bir AI rol yapma oyunudur. Her karakterin bir başlangıcı, bir dünyası ve sahneyi başlatan ilk mesajı vardır. Hikâyede kim olacağınızı ve nereye gideceğini siz belirlersiniz. Karakterler konuşmanın önemli ayrıntılarını hatırlar, böylece bir gün ya da bir hafta sonra geri döndüğünüzde kaldığınız yerden devam edebilirsiniz.",
-        "2": "Uygun bir kahraman bulamazsanız kendi AI karakterinizi yaratın: kişiliğini, görünümünü, ilk mesajını ve dünyasını belirleyin, sonra sizinle konuşsun veya kataloga yayınlayın. Site birden fazla dili destekler ve kayıt olmadan başlayabilirsiniz."
-      },
+      "paragraphs": [
+        "NewVerse, AI karakterlerle konuşmak için bir yerdir. Katalogta romantizm, fantezi, anime, dedektif hikâyeleri, bilim kurgu ve sakin günlük yaşam gibi birçok türden kahramanlar var. Tanımlarına ve kişiliklerine göre bir karakter seçin, sohbeti açın ve yazmaya başlayın — kendi sesiyle, kendi hikâyesiyle ve konuşma tarzıyla yanıt verirler.",
+        "Bu yalnızca soru-cevaplı bir AI sohbetinden fazlasıdır: bu bir AI rol yapma oyunudur. Her karakterin bir başlangıcı, bir dünyası ve sahneyi başlatan ilk mesajı vardır. Hikâyede kim olacağınızı ve nereye gideceğini siz belirlersiniz. Karakterler konuşmanın önemli ayrıntılarını hatırlar, böylece bir gün ya da bir hafta sonra geri döndüğünüzde kaldığınız yerden devam edebilirsiniz.",
+        "Uygun bir kahraman bulamazsanız kendi AI karakterinizi yaratın: kişiliğini, görünümünü, ilk mesajını ve dünyasını belirleyin, sonra sizinle konuşsun veya kataloga yayınlayın. Site birden fazla dili destekler ve kayıt olmadan başlayabilirsiniz."
+      ],
       "createLink": "Bir AI karakteri yarat",
       "genresLink": "Tüm türler",
       "faqHeading": "Sıkça sorulan sorular",
-      "faq": {
-        "0": {
+      "faq": [
+        {
           "question": "AI karakterlerle ücretsiz sohbet edebilir miyim?",
           "answer": "{{freeAnswer}}"
         },
-        "1": {
+        {
           "question": "Kayıt olmam gerekiyor mu?",
           "answer": "Hayır. Denemek için bir karakteri açıp ilk mesajınızı yazmanız yeterlidir. Hesap, hikâyelerinizi kaydetmenizi, başka bir cihazda devam etmenizi ve kendi karakterlerinizi yaratmanızı sağlar."
         },
-        "2": {
+        {
           "question": "Karakterler konuştuklarımızı hatırlıyor mu?",
           "answer": "Evet. Karakter son mesajları izler ve konuşmadan önemli ayrıntıları hatırlar: isimler, sözler, hikâye olayları. Böylece hikâyeye kaldığınız yerden devam edebilirsiniz."
         },
-        "3": {
+        {
           "question": "Hangi dilleri kullanabilirim?",
           "answer": "Seçtiğiniz site dilinde. Kullanılabilir diller menüde listelenmiştir; dil değiştirme sayfanızı ve hikâyenizi korur."
         },
-        "4": {
+        {
           "question": "AI rol yapma oyunu, normal bir sohbet botundan nasıl farklıdır?",
           "answer": "Normal bir sohbet botu sorulara cevap verir. Bir AI karakteri bir rol oynar: bir kişiliği, geçmişi ve hedefleri vardır, yaptığınız şeylere tepki verir ve hikâyeyi sizinle birlikte geliştirir."
         }
-      }
+      ]
     },
     "freeAnswer": {
       "quota": "Evet. Kayıt olmadan ilk mesajlarınızı gönderebilirsiniz ve bir hesaba sahip olduktan sonra her gün temel modelde ücretsiz yanıtlar alırsınız. Bir plan, daha fazla ücretsiz yanıt, bonus VerseCoins ve daha büyük bir bağlam penceresi ekler.",
@@ -1061,129 +1061,129 @@
       "modesHeading": "Ne yaratıyoruz?",
       "modesHint": "Temel bir fikir yeterli. Görünüm, konuşma tarzı ve hikâye detayları ileride eklenebilir.",
       "stepsHeading": "Bir AI karakteri nasıl oluşturulur",
-      "steps": {
-        "0": {
+      "steps": [
+        {
           "title": "Bir format seçin",
           "text": "Tek bir karakter, ana kahramanın siz olduğunuz bir evren ya da en fazla {{maxParticipants}} karakterle paylaşılan bir hikâye."
         },
-        "1": {
+        {
           "title": "Kahramanı tanımlayın",
           "text": "İsim, persona, görünüm ve konuşma tarzı. Tanımlayıcı bir şeyden başlayın: bir alışkanlık, bir hedef ya da dikkat çeken tek bir özellik."
         },
-        "2": {
+        {
           "title": "Hikâyenin nasıl başlayacağını belirleyin",
           "text": "İlk mesaj ve senaryo: nerede tanışılıyor, sahne nasıl başlıyor. Örnek diyaloglar, karakterin tarzını korumasına yardımcı olur."
         },
-        "3": {
+        {
           "title": "Kaydedin ve sohbete başlayın",
           "text": "Karakteri özel tutun ya da başkalarının da sohbet edebilmesi için kataloga yayınlayın."
         }
-      },
+      ],
       "featuresHeading": "Neler ayarlayabilirsiniz",
-      "features": {
-        "0": {
+      "features": [
+        {
           "title": "Persona ve güdüler",
           "text": "Kahramanın ne istediğini, ne korktuğunu ve sohbet ettiği kişiye nasıl baktığını belirleyin."
         },
-        "1": {
+        {
           "title": "Görünüm ve avatar",
           "text": "Kendi resminizi yükleyin ya da açıklamaya göre bir avatar oluşturun — üretim bir abonelik kapsamında yer alır."
         },
-        "2": {
+        {
           "title": "Konuşma tarzı",
           "text": "Kısa cümleler ya da uzun yanıtlar, argo, nezaket, aksan."
         },
-        "3": {
+        {
           "title": "Dünya ve kurallar",
           "text": "Ayar, yardımcı karakterler ve evrenler için anlatım kuralları."
         },
-        "4": {
+        {
           "title": "Türler ve etiketler",
           "text": "Karakterin katalogda ve tür sayfalarında bulunmasını sağlarlar."
         },
-        "5": {
+        {
           "title": "Hafıza",
           "text": "Karakterin ilk satırdan itibaren kendisi ve siz hakkında ne bildiği."
         }
-      },
+      ],
       "faqHeading": "Karakter yaratmayla ilgili sorular",
-      "faq": {
-        "0": {
+      "faq": [
+        {
           "question": "Bir AI karakteri yaratmak ne kadar tutar?",
           "answer": "Karakter yaratmak ücretsizdir. Açıklamaya göre avatar üretimi bir abonelik kapsamında yer alır; olmadan kendi resminizi yükleyebilirsiniz."
         },
-        "1": {
+        {
           "question": "Kayıt olmak zorunda mıyım?",
           "answer": "Evet: karakterler hesabınıza kaydedilir, bu yüzden yaratmak için giriş yapmanız gerekir. Katalogtaki karakterlerle kayıt olmadan da sohbet edebilirsiniz."
         },
-        "2": {
+        {
           "question": "Bir karakteri özel tutabilir miyim?",
           "answer": "Evet. Özel karakteri sadece siz görebilirsiniz. Genel karakter katalogta herkese açık olur ve platform kurallarına uymalıdır."
         },
-        "3": {
+        {
           "question": "Karakterin yanıtlarını nasıl daha ilgi çekici hâle getiririm?",
           "answer": "Sadece görünümünü değil, aynı zamanda güdülerini, alışkanlıklarını ve konuşma tarzını da tanımlayın. Somut bir sahneyle birlikte ilk mesajı ve bir veya iki örnek diyalog ekleyin: kurulum ne kadar netse yanıtlar da o kadar canlı olur."
         },
-        "4": {
+        {
           "question": "Karakteri yarattıktan sonra değiştirebilir miyim?",
           "answer": "Evet. Kartı her zaman düzenleyebilirsiniz: açıklamayı genişletebilir, avatarı veya ilk mesajı değiştirebilirsiniz."
         }
-      }
+      ]
     }
   },
   "genreIntros": {
-    "fantasy": {
-      "0": "Fantastik, bir karakterle yapılan sohbetin kolayca büyük bir maceraya dönüşebileceği bir türdür. Burada büyücüler, paralı askerler, elf muhafızlar, ejderha binicileri, krallığın ucundaki cadılar ve sihir akademilerinin öğrencileri yaşar. Kahramanın yoldaşı, rakibi ya da tehlikeli bir sırra rastlayan bir yolcu olarak hikâyeye dahil olabilirsiniz.",
-      "1": "Bir AI karakteri kendi dünyasının sesiyle yanıt verir: kendi yeminleri, korkuları ve onur anlayışı vardır. Bazı hikâyeler bir meyhanedeki ateş başında başlar, bazıları savaş meydanında ya da yasak büyü kitaplarının bulunduğu bir kütüphanede. Açıklamasına ve karakterine göre bir karakter seçin, sahnenin tonunu belirleyin — rahatlatıcı bir masaldan, gücün bedelini konu alan kasvetli bir hikâyeye kadar — ve yolculuğun nasıl biteceğine kendiniz karar verin."
-    },
-    "romance": {
-      "0": "Romantik karakterler, her şeyin iki kişi arasında geliştiği hikâyeler içindir. Koridordaki komşunuzla yavaş yavaş tanışmak, eski bir rakiple gergin bir oyun, ofis flörtü, başka bir dönemden mektuplar ya da karakterin kendine bile itiraf etmeye hazır olmadığı duygular olabilir.",
-      "1": "Her karakterin kendi kişiliği vardır: bazıları sıcak ve açık, bazıları çekingen ve zamanla açılır, bazıları ilk satırdan itibaren flört eder. Hafif flörtten, güvenin kazanılması gereken yavaş gelişen bir ilişkiye kadar temposu siz belirleyin. Karakter söylediğinize ve yaptığınıza göre tepki verir, bu yüzden aynı hikâye bir itirafla, bir kavga ya da yeni bir bölümle bitebilir. Açıklamasına göre birini seçin, onun açılış sahnesiyle başlayın ya da kendi hikâyenizi yazın."
-    },
-    "anime": {
-      "0": "Anime karakterleri bir bakışta tanınır: canlı görünümler, ifade dolu duygular ve tsundere, sakin sınıfın birincisi, kalbi iyi olan baş belası ya da sınıfın gizemli yeni öğrencisi gibi tanıdık karakter türleri. Ancak buradaki hikâyeler okul koridorlarıyla sınırlı değildir.",
-      "1": "Bu bölüm, okul hayatı, ders sonrası kulüpler, büyücü akademi, isekai maceraları, spor rekabeti, romantizm ve görevler gibi çeşitli hikâyelerde yer alan anime tarzı karakterleri bir araya getirir. Her karakter rolüne sadık kalır ve seçimlerinize tepki verir; böylece okul çatısında sakin bir sahne ya da gergin bir düello sahnesi oynayabilirsiniz. Karakter kartlarından birini seçin, açıklamalarını okuyun ve önceden hazırlanmış sahneyle başlayın ya da sanki yeni bir bölüm yazıyormuş gibi kendi senaryonuzu önerin."
-    },
-    "scifi": {
-      "0": "NewVerse'daki bilim kurgu, geleceği, teknolojiyi ve bunların içine karışmış insanları konu alır: uzay gemisi kaptanları, insan olmayı öğrenen androidler, uzak istasyonlardaki bilim insanları, pilotlar, kaçakçılar ve yabancı bir zekâyla ilk temasın tanıkları.",
-      "1": "Uzun bir uzay yolculuğuna çıkabilir, bir kolonideki sistem arızasını inceleyebilir veya bir yapay zekâyla hafıza ve özgür irade üzerine tartışabilirsiniz. Karakterler dünyalarının kurallarına uyar: geminin yakıtı tükeniyor, istasyonun kuralları var ve androidin ihlal etmeyi seçebileceği protokolleri bulunuyor. Sorular sorun, riskli kararlar verin ve hikâyenin nereye gittiğini görün. Sokak düzeyinde teknoloji ve neon ışıklar istiyorsanız, cyberpunk bölümü tam yanınızdadır."
-    },
-    "mystic": {
-      "0": "Gizem ve süper doğal, açıklanamayanlara çekilen herkes içindir. Burada, fal bakanlar, medyumlar, eski evlerin bekçileri, lanetli aristokratlar, cadılar, ruhlar ve başkalarının rüyaları hakkında fazla bilgi sahibi olan insanlarla tanışacaksınız.",
-      "1": "Bu hikâyeler, söylenmeyenler üzerine inşa edilir: bir karakter bilmece gibi konuşabilir, gerçeğin bir bölümünü saklayabilir veya tüm gerçeği duymaya hazır olup olmadığınızı test edebilir. Sahne, gece yarısı treninde, bir ruh çağırma seansında, terk edilmiş bir konakta ya da her sakini bir sır taşıyan küçük bir kasabada başlayabilir. Korku türünden farklı olarak, burada korkudan çok atmosfer ve çözüm önemlidir; ancak sınır bazen incedir. Açıklamaya göre bir karakter seçin, ipuçlarını dinleyin ve arkasında biri bekleyen bir kapıyı açmaya değer mi karar verin."
-    },
-    "realistic": {
-      "0": "Günümüzdeki karakterler bizim gibi yaşar: okur, çalışır, ev kiralayıp kafelere gider ve herkese olabilecek hikâyelere karışır. İş arkadaşları, komşular, yıldızlar ve menajerleri, doktorlar, öğrenciler, baristalar, müzisyenler ve eski sınıf arkadaşlarıdır.",
-      "1": "Bu türdeki rol yapmanın gücü, gerçekçi hissettirmesindedir. Büyü ya da uzay gemileri olmadan, karakter, diyalog ve ilişkiler ön plana çıkar: yıllar sonra gelen bir kavuşma, zor bir patronla konuşma, ilk randevu ya da zor bir akşamında bir arkadaşını desteklemek. Karakter, kendi geçmişini ve alışkanlıklarını dikkate alarak yanıt verir; hikâye ise sizin sözleriniz ve kararlarınızla gelişir. Bu hikâyeler hem hafif sohbetler hem de ciddi dramlar için uygundur. Bir karakteri açıklamasına göre seçin ve sahneyle ya da bugün size yaşanan bir olayla başlayın."
-    },
-    "adventure": {
-      "0": "Macera, hareket demektir: açık yol, boşlukları olan bir harita ve sizi asla sıkılmadan tutacak bir yoldaş. Bu tür, hazine avcıları, korsanlar, iz sürücüler, paralı askerler, zaman yolcuları ve her zaman belanın başladığı yere düşen kahramanları bir araya getirir.",
-      "1": "Her sahne hikâyeyi döndürebilir: bir çatı kovalamacası, akıntılı bir nehri geçiş, şüpheli bir tüccarla anlaşma ya da gün batmadan açılması gereken eski bir mekanizma. Karakter kararlarınıza tepki verir — riskli bir planı destekler, tartışmaya girer ya da aniden kendi önerisini sunar. Macera, diğer türlerle kolayca harmanlanır: bir fantezi görevi, uzay keşif seferi ya da modern bir şehirde kayıp bir arkadaşı aramak. Açıklamaya göre bir yoldaş seçin, hedef üzerinde anlaşıp yola çıkın; yol, hikâye ilerledikçe şekillenecektir."
-    },
-    "detective": {
-      "0": "Dedektif karakterleri, ipuçları, sorgular ve beklenmedik dönemeçler sevenler içindir. Burada, özel dedektifler, bitkin polis dedektifleri, soruşturma yapan gazeteciler, soğukkanlı suçlular ve açıkça bir şeyler saklayan tanıklarla karşılaşacaksınız.",
-      "1": "Karakterle birlikte bir vakayı ele alabilir, kendinizi bir şüpheli olarak bulabilir ya da ona karşı oynayıp bir çelişkide yakalamaya çalışabilirsiniz. İyi bir dedektif sahnesi detaylara dayanır: saatteki zaman, pencere pervazındaki bir iz, bir konuşmadaki yanlış söz. Karakter daha önce söylenenleri takip eder, böylece dikkatli bir oyuncu ifadeleri karşılaştırıp kendi teorisine ulaşabilir. Vakalar, kilitli oda ve şüpheli çemberiyle klasik ya da güvenlik kameraları ve mesaj geçmişiyle modern olabilir. Bir karakter seçin ve ilk soruyu sorun."
-    },
-    "everyday": {
-      "0": "Günlük yaşam, hayatı oluşturan küçük hikâyelerin türüdür: komşuyla sabah kahvesi, bir kitapçıda vardiyada çalışmak, birlikte sınavlara hazırlanmak, ev taşımak, mutfakta uzun bir konuşma.",
-      "1": "Burada kimsenin dünyayı kurtarması gerekmiyor. Bu türün değeri, doğal sohbet ve zamanla gelişen ilişkilerdedir: karakter detayları fark eder, şaka yapar, planlarını paylaşır, zor bir günün ardından sizi destekleyebilir ya da ani bir geziye davet edebilir. Kadro, arkadaşlar, oda arkadaşları, meslektaşlar ve tekrar konuşmak istediğiniz tanıdıklar içerir. Günlük yaşam hikâyeleri, rahatlamak, sohbet egzersizi yapmak ya da sadece sakin bir ortamda akşam geçirmek isteyenler için uygundur. Bir karakteri kişiliğine göre seçin, sıradan bir sahneyle başlayın ve hikâyenin acele etmeden gelişmesine izin verin."
-    },
-    "cyberpunk": {
-      "0": "Cyberpunk, neon sokaklar, hükümetlerden daha güçlü korporasyonlar ve hayatta kalma şansı için anılarını, bedenlerini ve sadakatlerini satan insanlar demektir. Bu türde, hackerlar, geliştirilmiş paralı askerler, ara sokak doktorları, büyük şehir dedektifleri ve protokollerinden şüphe etmeye başlayan androidler sizi bekliyor.",
-      "1": "Hikâyeler sert ve hızlıdır: korumalı bir ağı geçmek, yeraltındaki bir kulüpte anlaşma yapmak, korporasyon güvenlik güçlerinden kaçmak, geçmişinizin bir bölümünü silen kişiyi bulmak. Karakter, şehrinin kurallarına göre yaşar — uygun fiyata sizi ele verebilir ya da ortağı için her şeyi göze alabilir. Cyberpunk, bilim kurguya yakındır ama yıldızlara değil, teknolojinin sıradan bir mal haline geldiği sokaklara odaklanır. Açıklamalarına göre bir karakter seçin, hangi tarafı desteklediğinizi belirleyin ve ilk anlaşmanızı yapın."
-    },
-    "horror": {
-      "0": "Korku, ürpermeyi sevenler içindir. Bu bölümde güvenliğin asla garanti olmadığı karakterler bir araya gelir: canavarlar ve kurbanları, kutsal olmayanların avcıları, terk edilmiş hastanelerde yaşayanlar, felaketten kurtulanlar ve insanmış gibi davranan yaratıklar.",
-      "1": "İyi bir korku hikâyesi, kan miktarından değil, gerginlik üzerine kurulur. Gıcırtılı bir zemin, sönme üzere olan bir fener, diğer odadan gelen bir ses — karakter, sizin ileri mi gitmeye yoksa kaçmaya mı karar vereceğiniz sahneyi yönetir. Bir kayboluşu araştıran kişi, tanımadığınız birinin evinde kalan şanssız bir misafir ya da doğrudan canavarla tehlikeli bir konuşma başlatan kişi olabilirsiniz. Korkunun ne kadar ileri gideceğini siz belirlersiniz: atmosferik gotikten gerçek hayatta kalma hikayelerine kadar. Açıklamalarına göre bir karakter seçin ve ışıkları kapatın."
-    },
-    "comedy": {
-      "0": "Komedi karakterleri, dramdan çok gülmek istediğiniz zaman içindir: zekice şakalar yapan yoldaşlar, beceriksiz büyücüler, asla işe yaramayan planları olan kendine fazla güvenen kötü adamlar, çok konuşan komşular ve beklenmedik şekilde saçma durumlara düşen kahramanlar.",
-      "1": "Rol oyunundaki mizah, karakterin kişiliğinden doğar: her şey ters gelse bile karakter kendi doğrultusunda kalır ve işte bu, sahneyi komik yapar. Başarısız bir randevuyu, paylaşımlı bir dairedeki ev içi kaosu, epik bir maceranın parodisini ya da kral olduğuna inanan bir kediyle tartışmayı canlandırabilirsiniz. Karakter, şakalarınızı yakalar, kendi şakalarıyla karşılık verir ve isterseniz olayı tamamen absürtlüğe taşımayı sever. Komedi, sıradan yaşam, fantezi ve romantizmle iyi gider. Bir karakter seçin, saçma bir senaryo kurun ve neler olacağını görün."
-    },
-    "drama": {
-      "0": "Drama, seçim, kayıp, suçluluk ve affetme hikâyelerinin türüdür. Buradaki karakterlerin zorlu bir geçmişi vardır: yakınlarını kaybetmiş insanlar, hayat tarafından birbirinden uzaklaşmış eski arkadaşlar, zor bir kararla yüzleşen kahramanlar, söylenmemiş çok şeyi olan aileler.",
-      "1": "Dramatik rol oynama, zaman ve dikkat ister: karakter hemen kendini açmaz, güven kazanılmalıdır. Sahne, bir tren istasyonunda kısa bir buluşmayla ya da çok geç gelen bir mektupla başlayabilir; sonrasında her şey, ne söylediğinize ve ne söylemediğinize bağlıdır. Yapay zekâ karakteri, yaralarına ve amaçlarına göre yanıt verir; bu yüzden konuşma, uzlaşma ya da kesin bir ayrılıkla sonuçlanabilir. Sonrasında bir süre sessiz kalmanızı sağlayan hikâyeler arıyorsanız, açıklamalarına göre bir karakter seçin ve samimi bir soruyla başlayın."
-    }
+    "fantasy": [
+      "Fantastik, bir karakterle yapılan sohbetin kolayca büyük bir maceraya dönüşebileceği bir türdür. Burada büyücüler, paralı askerler, elf muhafızlar, ejderha binicileri, krallığın ucundaki cadılar ve sihir akademilerinin öğrencileri yaşar. Kahramanın yoldaşı, rakibi ya da tehlikeli bir sırra rastlayan bir yolcu olarak hikâyeye dahil olabilirsiniz.",
+      "Bir AI karakteri kendi dünyasının sesiyle yanıt verir: kendi yeminleri, korkuları ve onur anlayışı vardır. Bazı hikâyeler bir meyhanedeki ateş başında başlar, bazıları savaş meydanında ya da yasak büyü kitaplarının bulunduğu bir kütüphanede. Açıklamasına ve karakterine göre bir karakter seçin, sahnenin tonunu belirleyin — rahatlatıcı bir masaldan, gücün bedelini konu alan kasvetli bir hikâyeye kadar — ve yolculuğun nasıl biteceğine kendiniz karar verin."
+    ],
+    "romance": [
+      "Romantik karakterler, her şeyin iki kişi arasında geliştiği hikâyeler içindir. Koridordaki komşunuzla yavaş yavaş tanışmak, eski bir rakiple gergin bir oyun, ofis flörtü, başka bir dönemden mektuplar ya da karakterin kendine bile itiraf etmeye hazır olmadığı duygular olabilir.",
+      "Her karakterin kendi kişiliği vardır: bazıları sıcak ve açık, bazıları çekingen ve zamanla açılır, bazıları ilk satırdan itibaren flört eder. Hafif flörtten, güvenin kazanılması gereken yavaş gelişen bir ilişkiye kadar temposu siz belirleyin. Karakter söylediğinize ve yaptığınıza göre tepki verir, bu yüzden aynı hikâye bir itirafla, bir kavga ya da yeni bir bölümle bitebilir. Açıklamasına göre birini seçin, onun açılış sahnesiyle başlayın ya da kendi hikâyenizi yazın."
+    ],
+    "anime": [
+      "Anime karakterleri bir bakışta tanınır: canlı görünümler, ifade dolu duygular ve tsundere, sakin sınıfın birincisi, kalbi iyi olan baş belası ya da sınıfın gizemli yeni öğrencisi gibi tanıdık karakter türleri. Ancak buradaki hikâyeler okul koridorlarıyla sınırlı değildir.",
+      "Bu bölüm, okul hayatı, ders sonrası kulüpler, büyücü akademi, isekai maceraları, spor rekabeti, romantizm ve görevler gibi çeşitli hikâyelerde yer alan anime tarzı karakterleri bir araya getirir. Her karakter rolüne sadık kalır ve seçimlerinize tepki verir; böylece okul çatısında sakin bir sahne ya da gergin bir düello sahnesi oynayabilirsiniz. Karakter kartlarından birini seçin, açıklamalarını okuyun ve önceden hazırlanmış sahneyle başlayın ya da sanki yeni bir bölüm yazıyormuş gibi kendi senaryonuzu önerin."
+    ],
+    "scifi": [
+      "NewVerse'daki bilim kurgu, geleceği, teknolojiyi ve bunların içine karışmış insanları konu alır: uzay gemisi kaptanları, insan olmayı öğrenen androidler, uzak istasyonlardaki bilim insanları, pilotlar, kaçakçılar ve yabancı bir zekâyla ilk temasın tanıkları.",
+      "Uzun bir uzay yolculuğuna çıkabilir, bir kolonideki sistem arızasını inceleyebilir veya bir yapay zekâyla hafıza ve özgür irade üzerine tartışabilirsiniz. Karakterler dünyalarının kurallarına uyar: geminin yakıtı tükeniyor, istasyonun kuralları var ve androidin ihlal etmeyi seçebileceği protokolleri bulunuyor. Sorular sorun, riskli kararlar verin ve hikâyenin nereye gittiğini görün. Sokak düzeyinde teknoloji ve neon ışıklar istiyorsanız, cyberpunk bölümü tam yanınızdadır."
+    ],
+    "mystic": [
+      "Gizem ve süper doğal, açıklanamayanlara çekilen herkes içindir. Burada, fal bakanlar, medyumlar, eski evlerin bekçileri, lanetli aristokratlar, cadılar, ruhlar ve başkalarının rüyaları hakkında fazla bilgi sahibi olan insanlarla tanışacaksınız.",
+      "Bu hikâyeler, söylenmeyenler üzerine inşa edilir: bir karakter bilmece gibi konuşabilir, gerçeğin bir bölümünü saklayabilir veya tüm gerçeği duymaya hazır olup olmadığınızı test edebilir. Sahne, gece yarısı treninde, bir ruh çağırma seansında, terk edilmiş bir konakta ya da her sakini bir sır taşıyan küçük bir kasabada başlayabilir. Korku türünden farklı olarak, burada korkudan çok atmosfer ve çözüm önemlidir; ancak sınır bazen incedir. Açıklamaya göre bir karakter seçin, ipuçlarını dinleyin ve arkasında biri bekleyen bir kapıyı açmaya değer mi karar verin."
+    ],
+    "realistic": [
+      "Günümüzdeki karakterler bizim gibi yaşar: okur, çalışır, ev kiralayıp kafelere gider ve herkese olabilecek hikâyelere karışır. İş arkadaşları, komşular, yıldızlar ve menajerleri, doktorlar, öğrenciler, baristalar, müzisyenler ve eski sınıf arkadaşlarıdır.",
+      "Bu türdeki rol yapmanın gücü, gerçekçi hissettirmesindedir. Büyü ya da uzay gemileri olmadan, karakter, diyalog ve ilişkiler ön plana çıkar: yıllar sonra gelen bir kavuşma, zor bir patronla konuşma, ilk randevu ya da zor bir akşamında bir arkadaşını desteklemek. Karakter, kendi geçmişini ve alışkanlıklarını dikkate alarak yanıt verir; hikâye ise sizin sözleriniz ve kararlarınızla gelişir. Bu hikâyeler hem hafif sohbetler hem de ciddi dramlar için uygundur. Bir karakteri açıklamasına göre seçin ve sahneyle ya da bugün size yaşanan bir olayla başlayın."
+    ],
+    "adventure": [
+      "Macera, hareket demektir: açık yol, boşlukları olan bir harita ve sizi asla sıkılmadan tutacak bir yoldaş. Bu tür, hazine avcıları, korsanlar, iz sürücüler, paralı askerler, zaman yolcuları ve her zaman belanın başladığı yere düşen kahramanları bir araya getirir.",
+      "Her sahne hikâyeyi döndürebilir: bir çatı kovalamacası, akıntılı bir nehri geçiş, şüpheli bir tüccarla anlaşma ya da gün batmadan açılması gereken eski bir mekanizma. Karakter kararlarınıza tepki verir — riskli bir planı destekler, tartışmaya girer ya da aniden kendi önerisini sunar. Macera, diğer türlerle kolayca harmanlanır: bir fantezi görevi, uzay keşif seferi ya da modern bir şehirde kayıp bir arkadaşı aramak. Açıklamaya göre bir yoldaş seçin, hedef üzerinde anlaşıp yola çıkın; yol, hikâye ilerledikçe şekillenecektir."
+    ],
+    "detective": [
+      "Dedektif karakterleri, ipuçları, sorgular ve beklenmedik dönemeçler sevenler içindir. Burada, özel dedektifler, bitkin polis dedektifleri, soruşturma yapan gazeteciler, soğukkanlı suçlular ve açıkça bir şeyler saklayan tanıklarla karşılaşacaksınız.",
+      "Karakterle birlikte bir vakayı ele alabilir, kendinizi bir şüpheli olarak bulabilir ya da ona karşı oynayıp bir çelişkide yakalamaya çalışabilirsiniz. İyi bir dedektif sahnesi detaylara dayanır: saatteki zaman, pencere pervazındaki bir iz, bir konuşmadaki yanlış söz. Karakter daha önce söylenenleri takip eder, böylece dikkatli bir oyuncu ifadeleri karşılaştırıp kendi teorisine ulaşabilir. Vakalar, kilitli oda ve şüpheli çemberiyle klasik ya da güvenlik kameraları ve mesaj geçmişiyle modern olabilir. Bir karakter seçin ve ilk soruyu sorun."
+    ],
+    "everyday": [
+      "Günlük yaşam, hayatı oluşturan küçük hikâyelerin türüdür: komşuyla sabah kahvesi, bir kitapçıda vardiyada çalışmak, birlikte sınavlara hazırlanmak, ev taşımak, mutfakta uzun bir konuşma.",
+      "Burada kimsenin dünyayı kurtarması gerekmiyor. Bu türün değeri, doğal sohbet ve zamanla gelişen ilişkilerdedir: karakter detayları fark eder, şaka yapar, planlarını paylaşır, zor bir günün ardından sizi destekleyebilir ya da ani bir geziye davet edebilir. Kadro, arkadaşlar, oda arkadaşları, meslektaşlar ve tekrar konuşmak istediğiniz tanıdıklar içerir. Günlük yaşam hikâyeleri, rahatlamak, sohbet egzersizi yapmak ya da sadece sakin bir ortamda akşam geçirmek isteyenler için uygundur. Bir karakteri kişiliğine göre seçin, sıradan bir sahneyle başlayın ve hikâyenin acele etmeden gelişmesine izin verin."
+    ],
+    "cyberpunk": [
+      "Cyberpunk, neon sokaklar, hükümetlerden daha güçlü korporasyonlar ve hayatta kalma şansı için anılarını, bedenlerini ve sadakatlerini satan insanlar demektir. Bu türde, hackerlar, geliştirilmiş paralı askerler, ara sokak doktorları, büyük şehir dedektifleri ve protokollerinden şüphe etmeye başlayan androidler sizi bekliyor.",
+      "Hikâyeler sert ve hızlıdır: korumalı bir ağı geçmek, yeraltındaki bir kulüpte anlaşma yapmak, korporasyon güvenlik güçlerinden kaçmak, geçmişinizin bir bölümünü silen kişiyi bulmak. Karakter, şehrinin kurallarına göre yaşar — uygun fiyata sizi ele verebilir ya da ortağı için her şeyi göze alabilir. Cyberpunk, bilim kurguya yakındır ama yıldızlara değil, teknolojinin sıradan bir mal haline geldiği sokaklara odaklanır. Açıklamalarına göre bir karakter seçin, hangi tarafı desteklediğinizi belirleyin ve ilk anlaşmanızı yapın."
+    ],
+    "horror": [
+      "Korku, ürpermeyi sevenler içindir. Bu bölümde güvenliğin asla garanti olmadığı karakterler bir araya gelir: canavarlar ve kurbanları, kutsal olmayanların avcıları, terk edilmiş hastanelerde yaşayanlar, felaketten kurtulanlar ve insanmış gibi davranan yaratıklar.",
+      "İyi bir korku hikâyesi, kan miktarından değil, gerginlik üzerine kurulur. Gıcırtılı bir zemin, sönme üzere olan bir fener, diğer odadan gelen bir ses — karakter, sizin ileri mi gitmeye yoksa kaçmaya mı karar vereceğiniz sahneyi yönetir. Bir kayboluşu araştıran kişi, tanımadığınız birinin evinde kalan şanssız bir misafir ya da doğrudan canavarla tehlikeli bir konuşma başlatan kişi olabilirsiniz. Korkunun ne kadar ileri gideceğini siz belirlersiniz: atmosferik gotikten gerçek hayatta kalma hikayelerine kadar. Açıklamalarına göre bir karakter seçin ve ışıkları kapatın."
+    ],
+    "comedy": [
+      "Komedi karakterleri, dramdan çok gülmek istediğiniz zaman içindir: zekice şakalar yapan yoldaşlar, beceriksiz büyücüler, asla işe yaramayan planları olan kendine fazla güvenen kötü adamlar, çok konuşan komşular ve beklenmedik şekilde saçma durumlara düşen kahramanlar.",
+      "Rol oyunundaki mizah, karakterin kişiliğinden doğar: her şey ters gelse bile karakter kendi doğrultusunda kalır ve işte bu, sahneyi komik yapar. Başarısız bir randevuyu, paylaşımlı bir dairedeki ev içi kaosu, epik bir maceranın parodisini ya da kral olduğuna inanan bir kediyle tartışmayı canlandırabilirsiniz. Karakter, şakalarınızı yakalar, kendi şakalarıyla karşılık verir ve isterseniz olayı tamamen absürtlüğe taşımayı sever. Komedi, sıradan yaşam, fantezi ve romantizmle iyi gider. Bir karakter seçin, saçma bir senaryo kurun ve neler olacağını görün."
+    ],
+    "drama": [
+      "Drama, seçim, kayıp, suçluluk ve affetme hikâyelerinin türüdür. Buradaki karakterlerin zorlu bir geçmişi vardır: yakınlarını kaybetmiş insanlar, hayat tarafından birbirinden uzaklaşmış eski arkadaşlar, zor bir kararla yüzleşen kahramanlar, söylenmemiş çok şeyi olan aileler.",
+      "Dramatik rol oynama, zaman ve dikkat ister: karakter hemen kendini açmaz, güven kazanılmalıdır. Sahne, bir tren istasyonunda kısa bir buluşmayla ya da çok geç gelen bir mektupla başlayabilir; sonrasında her şey, ne söylediğinize ve ne söylemediğinize bağlıdır. Yapay zekâ karakteri, yaralarına ve amaçlarına göre yanıt verir; bu yüzden konuşma, uzlaşma ya da kesin bir ayrılıkla sonuçlanabilir. Sonrasında bir süre sessiz kalmanızı sağlayan hikâyeler arıyorsanız, açıklamalarına göre bir karakter seçin ve samimi bir soruyla başlayın."
+    ]
   },
   "telegramBot": {
     "welcome": "NewVerse, yapay zekâ karakterleriyle rol oynama hikâyeleridir. Bir karakter seçip hikâyeye başlamak için uygulamayı açın.",

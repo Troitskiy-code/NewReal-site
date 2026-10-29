@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { PGlite } from "@electric-sql/pglite";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { moduleLoader } from "./lib/load-local-module.mjs";
 const json = file => JSON.parse(readFileSync(file, "utf8"));
 const manifest = json("public/locales/manifest.json");
@@ -12,6 +14,23 @@ fixture.locales.de = { label: "Deutsch", languageName: "German", intl: "de-DE", 
 fixture.locales.ar = { label: "العربية", languageName: "Arabic", intl: "ar", direction: "rtl", fallback: "en", enabled: true };
 fixture.locales.fr = { label: "Français", languageName: "French", intl: "fr-FR", direction: "ltr", fallback: "en", enabled: false };
 const resources = Object.fromEntries(Object.keys(manifest.locales).filter(code => manifest.locales[code].enabled).map(code => [code, { common: json(`public/locales/${code}/common.json`) }]));
+// Exercise the real structured copy for every enabled language, before the fallback fixtures.
+const actualLoad = moduleLoader({ "src/lib/localeResources.generated.ts": { localeResources: structuredClone(resources) }, "@/components/LocaleLink": { __esModule: true, default: "a" } });
+const actualLanding = actualLoad("src/lib/landingTexts.ts");
+const actualGenres = actualLoad("src/lib/genreIntros.ts");
+const ActualHomeAbout = actualLoad("src/components/HomeAbout.tsx").default;
+for (const code of Object.keys(resources)) {
+  for (const freeQuota of [true, false]) {
+    const about = actualLanding.homeAbout(code, freeQuota);
+    assert.ok(Array.isArray(about.paragraphs), `${code}: home paragraphs must be a list`);
+    assert.ok(Array.isArray(about.faq), `${code}: home FAQ must be a list`);
+    const html = renderToStaticMarkup(createElement(ActualHomeAbout, { locale: code, freeQuota }));
+    assert.equal((html.match(/<details\b/g) || []).length, about.faq.length, `${code}: all home FAQ entries render on the server`);
+  }
+  const create = actualLanding.createLanding(code);
+  for (const key of ["steps", "features", "faq"]) assert.ok(Array.isArray(create[key]), `${code}: creation ${key} must be a list`);
+  assert.ok(Array.isArray(actualGenres.genreIntro("fantasy", code)), `${code}: genre introduction must be a list`);
+}
 resources.de = { common: { common: { cancel: "Abbrechen" }, landing: { home: { heading: "Deutsche Figuren" } } } };
 resources.ar = { common: {} };
 const load = moduleLoader({ "public/locales/manifest.json": fixture, "src/lib/localeResources.generated.ts": { localeResources: resources } });
@@ -177,6 +196,12 @@ try {
   assert.ok(readFileSync(path.join(temporary, "src/lib/localeResources.generated.ts"), "utf8").includes("locales/de/common.json"));
   assert.equal(run("i18n-sync.mjs", ["--check"]).status, 0);
   const file = path.join(temporary, "public/locales/de/common.json"), incomplete = JSON.parse(readFileSync(file, "utf8"));
+  const brokenStructure = structuredClone(incomplete);
+  brokenStructure.landing.home.faq = Object.assign({}, brokenStructure.landing.home.faq);
+  writeFileSync(file, JSON.stringify(brokenStructure));
+  const structureCheck = run("i18n-check.mjs");
+  assert.equal(structureCheck.status, 1, "numeric-keyed FAQ objects must fail even when every leaf is present");
+  assert.match(structureCheck.stderr, /invalid structure: landing\.home\.faq/);
   incomplete.structuredData.chatDescription = "Missing interpolation"; writeFileSync(file, JSON.stringify(incomplete));
   assert.equal(run("i18n-check.mjs").status, 1);
 } finally {

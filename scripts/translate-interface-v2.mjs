@@ -3,14 +3,13 @@ import {readFileSync,writeFileSync,appendFileSync,mkdirSync,existsSync,openSync,
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {parse} from 'dotenv';
-import {adaptPluralForms} from './lib/localization-pack.mjs';
+import {adaptPluralForms,dictionaryFromTranslations} from './lib/localization-pack.mjs';
 import {TRANSLATION_MODELS,translationNumbersPreserved} from '../src/lib/characterTranslationPipeline.ts';
 const args=new Map(process.argv.slice(2).map(v=>{const[k,...rest]=v.replace(/^--/,'').split('=');return[k,rest.join('=')||'true'];}));
 const directory=path.resolve(args.get('workdir')||'.runtime/localization-v2-ui');mkdirSync(directory,{recursive:true});
 const manifest=JSON.parse(readFileSync('public/locales/manifest.json','utf8'));
 const base=JSON.parse(readFileSync('public/locales/en/common.json','utf8')),ru=JSON.parse(readFileSync('public/locales/ru/common.json','utf8'));
 const flatten=(object,prefix='',result={})=>{for(const[k,v]of Object.entries(object)){const key=prefix?prefix+'.'+k:k;if(typeof v==='string')result[key]=v;else flatten(v,key,result);}return result;};
-const unflatten=flat=>{const result={};for(const[key,value]of Object.entries(flat)){const parts=key.split('.'),leaf=parts.pop();let parent=result;for(const part of parts)parent=parent[part]??={};parent[leaf]=value;}return result;};
 const russian=flatten(ru),jobs=[];
 const glossary={pt:'character=personagem; world=mundo; group=grupo; persona=persona; story=história; memory=memória. European Portuguese (pt-PT), address the user consistently.',tr:'character=karakter; world=dünya; group=grup; persona=persona; story=hikâye; memory=hafıza.',ja:'character=キャラクター; world=ワールド; group=グループ; persona=ペルソナ; story=ストーリー; memory=記憶; private=非公開. Natural concise Japanese UI.',ko:'character=캐릭터; world=세계관; group=그룹; persona=페르소나; story=스토리; memory=기억; private=비공개. Natural polite Korean UI.'};
 const dictionaries={};
@@ -103,7 +102,7 @@ await Promise.all(Array.from({length:6},worker));
 for(const[locale,flat]of Object.entries(dictionaries))if(jobs.filter(j=>j.locale===locale).every(j=>outcomes.some(o=>o.id===j.id&&o.ok))){
   // Existing reviewed strings are authoritative; validate the complete resulting dictionary.
   validate(flat,flatten(adaptPluralForms(structuredClone(base),manifest.locales[locale].intl)),locale);
-  writeFileSync(path.join(directory,locale+'-common.json'),JSON.stringify(unflatten(flat),null,2)+'\n');
+  writeFileSync(path.join(directory,locale+'-common.json'),JSON.stringify(dictionaryFromTranslations(adaptPluralForms(structuredClone(base),manifest.locales[locale].intl),flat),null,2)+'\n');
 }
 writeFileSync(path.join(directory,'outcomes.json'),JSON.stringify(outcomes));
 writeFileSync(path.join(directory,'progress.json'),JSON.stringify({completed,failed,total:jobs.length,spentUpperUsd:cost(),running:false,updatedAt:new Date().toISOString()}));
