@@ -688,6 +688,29 @@ try {
       { subject: 'npc:громила с дубинкой', key: 'relationship.status', value: 'служит герою, охраняет склад сетей', pinned: false, seq: 1 },
     ]), '## Громила с дубинкой\n- Статус отношений: служит герою, охраняет склад сетей\n- Вещи и тайники: дубинка', 'an extra known only by role and things is not shown');
   });
+  await check('the server tells unnamed NPCs of one role apart; the hero\'s money is a ledger of movements', async () => {
+    // The owner's Witcher test (2026-10-29): every model filed Gribo's accountant under the hero's own.
+    const own = { subject: 'npc:счетовод', lastSeq: 34, text: 'худощав, бледная прозрачная кожа, тонкие пальцы; записи спрятаны за гнилыми сетями; сейф под половицей' };
+    const gribo = { subject: 'npc:счетовод 2', lastSeq: 58, text: 'щуплый, седые волосы, бородавка на щеке, пальцы в чернилах' };
+    const resolve = (subject, cards, text, seq) => facts.resolveRoleSubject(subject, cards, text, seq);
+    assert.equal(resolve('npc:счетовод', [own], 'За столом сидел щуплый мужичонка и поднял голову от гроссбуха.', 57), 'npc:счетовод 2', 'unseen for 23 turns and nothing shared: a new person');
+    assert.equal(resolve('npc:счетовод', [own], 'Счетовод кивнул и снова уткнулся в бумаги.', 40), 'npc:счетовод', 'seen 6 turns ago: the same scene');
+    assert.equal(resolve('npc:счетовод', [own, gribo], 'Счетовод не закричал и уткнулся лицом в бумаги.', 59), 'npc:счетовод 2', 'the most recent of two');
+    assert.equal(resolve('npc:счетовод', [own, gribo], 'Склад сетей. Бледная прозрачная кожа счетовода, тонкие пальцы.', 68), 'npc:счетовод', 'words of the card win over recency');
+    assert.equal(resolve('npc:счетовод', [own, { ...gribo, subject: 'npc:счетовод Грибо' }], 'Я сел ждать Грибо.', 70), 'npc:счетовод Грибо', 'a named qualifier wins');
+    assert.equal(resolve('npc:счетовод склада Грибо', [own], 'Каморка у складов.', 57), 'npc:счетовод склада Грибо', 'the model\'s own qualifier for a new person stays');
+    assert.equal(resolve('npc:Грибо', [own], 'Грибо пришёл.', 60), 'npc:Грибо', 'names are not roles');
+    const ledger = (texts, value, subject = 'user') => facts.parseFactExtraction(output([delta(value, 's2', 'money', subject)]),
+      facts.factSources(texts.map(([role, content], index) => ({ id: `m${index}`, role, content }))), { partial: true }).facts.map(fact => fact.value);
+    const paid = [['user', '*протягиваю руку*'], ['assistant', 'Он отсчитал десять крон и вложил их в вашу ладонь.']];
+    assert.deepEqual(ledger(paid, '+10 крон от гонца на заставе'), ['+10 крон от гонца на заставе'], 'the narrator may report income');
+    assert.deepEqual(ledger(paid, '-10 крон гонцу'), ['−10 крон гонцу'], 'a minus is normalised');
+    assert.deepEqual(ledger([['user', 'Беру.'], ['assistant', 'Купец отсчитал несколько золотых крон.']], '+несколько золотых крон от купца'), ['+несколько золотых крон от купца']);
+    assert.deepEqual(ledger(paid, '+40 крон от гонца'), [], 'an invented sum is refused');
+    assert.deepEqual(ledger(paid, '10 крон'), [], 'a total is not a movement');
+    assert.deepEqual(ledger([['user', 'Сколько?'], ['assistant', 'Предлагаю двадцать крон за сети.']], '+20 крон от купца'), [], 'an offer is not money moved');
+    assert.deepEqual(ledger(paid, '+10 крон', 'npc:гонец'), [], 'only the hero has a ledger');
+  });
   await check('a delivered or abandoned errand retracts from debts', async () => {
     // The second crash-test run (2026-10-28): «доставить письмо в Третогор» and «вернуть Илсу» stayed open to the end.
     const parse = (text, value) => facts.parseFactExtraction(output([delta(value, 's1', 'debts', 'user', 'retract')]),

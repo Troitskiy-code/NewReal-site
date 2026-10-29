@@ -7,9 +7,10 @@ import { setAiCostActor, setAiCostThread, withAiCostContext } from "./aiCostTele
 import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
 import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
+import { stripMemoryControlInstructions } from "./memorySafety";
 import { inferMemoryStatus, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
-  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, sameFactValue, slotNoiseReason, npcAliasMap, isHeroName, fullNameInText, sharesName, type FactDelta } from "./memoryFacts";
+  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, resolveRoleSubject, sameFactValue, slotNoiseReason, npcAliasMap, type RoleCard, isHeroName, fullNameInText, sharesName, type FactDelta } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
@@ -157,6 +158,18 @@ async function jobMessages(tx: Tx | typeof prisma, job: MemoryJob) {
   return [user, ...assistants.filter((row): row is NonNullable<typeof row> => Boolean(row))];
 }
 
+/** Messages before the turn shown to the extractor as scene context only. With 4, both replays of the owner's
+ * story kept the two accountants apart with the death on the right one and a fuller money ledger, for ~17%
+ * more extraction cost; without, one replay of two did (2026-10-29). */
+const SCENE_MESSAGES = Number(process.env.MEMORY_SCENE_MESSAGES ?? 4);
+async function previousScene(user: { threadId: string | null; createdAt: Date }): Promise<string> {
+  if (!user.threadId || !SCENE_MESSAGES) return "";
+  const rows = await prisma.message.findMany({ where: { threadId: user.threadId, createdAt: { lt: user.createdAt } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: SCENE_MESSAGES, select: { role: true, content: true } });
+  const clip = (text: string, limit: number) => text.length > limit ? `…${text.slice(-limit)}` : text;
+  return rows.reverse().map(row => `${row.role === "user" ? "Пользователь" : "Персонаж"}: ${clip(stripMemoryControlInstructions(row.content), row.role === "user" ? 400 : 900)}`).join("\n");
+}
+
 async function advanceWatermark(tx: Tx, threadId: string) {
   const firstPending = await tx.memoryJob.findFirst({ where: { threadId, status: { notIn: ["succeeded", "cancelled"] } }, orderBy: { seq: "asc" }, select: { seq: true } });
   const prefix = { threadId, ...(firstPending ? { seq: { lt: firstPending.seq } } : {}) };
@@ -192,8 +205,8 @@ async function claimJob(threadId: string) {
 
 /** Facts are context for the extractor, not its source: pinned and recent ones are kept while they fit.
  * A fixed count made every story that reached ~150 facts exceed the token limit and block its queue. */
-export function fitExtractionInput<T>(sources: unknown[], facts: T[]) {
-  const render = (count: number) => JSON.stringify({ sources, activeFacts: facts.slice(0, count) });
+export function fitExtractionInput<T>(sources: unknown[], facts: T[], scene = "") {
+  const render = (count: number) => JSON.stringify({ ...(scene ? { scene } : {}), sources, activeFacts: facts.slice(0, count) });
   const measure = (text: string) => text.length > MAX_INPUT_CHARS ? Infinity : countTokens(text);
   if (measure(render(0)) > MAX_INPUT_TOKENS) return null;
   let low = 0, high = facts.length;
@@ -224,15 +237,19 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
     const completedName = introduced && fullName && fullName !== hero?.value ? { value: fullName, messageId: introduced.id } : null;
     const heroNames = [hero?.value, completedName?.value].filter((name): name is string => Boolean(name));
     const activeFacts = await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active" },
-      select: { subject: true, key: true, value: true, pinned: true, source: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] })
+      select: { subject: true, key: true, value: true, pinned: true, source: true, seq: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] })
       // Stored noise would teach the extractor to file more of it; two names of one NPC, to keep two cards;
       // an NPC card of the hero, to keep filing the user's facts there.
       .then(rows => {
         const alias = npcAliasMap(rows.map(fact => fact.subject));
+        // How long ago each NPC was last seen, so the model can tell a returning NPC from a new one of the same role.
+        const lastSeen = new Map<string, number>();
+        for (const fact of rows) if (fact.subject.startsWith("npc:")) lastSeen.set(fact.subject, Math.max(lastSeen.get(fact.subject) ?? 0, fact.seq));
         return rows.filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value) && !isHeroName(fact.subject, heroNames))
-          .map(fact => ({ ...fact, subject: alias.get(fact.subject) ?? fact.subject }));
+          .map(({ seq: _seq, ...fact }) => ({ ...fact, subject: alias.get(fact.subject) ?? fact.subject,
+            ...(lastSeen.has(fact.subject) ? { turnsAgo: Math.max(0, job.seq - lastSeen.get(fact.subject)!) } : {}) }));
       });
-    const fitted = fitExtractionInput(sources, activeFacts);
+    const fitted = fitExtractionInput(sources, activeFacts, await previousScene(messages[0]));
     if (!fitted) throw new MemoryExtractionError("MEMORY_EXTRACT_INPUT_TOO_LARGE");
     const input = fitted.input;
     diagnostic.inputChars = input.length; diagnostic.inputTokens = fitted.tokens;
@@ -269,11 +286,24 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       if (completedName) await applyFact(tx, thread.id, { op: "set", subject: "user", key: "name", value: completedName.value, source: "user_msg",
         sourceMessageId: completedName.messageId, confidence: 1, pinned: false }, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
       // A fact about «Ирма» goes to the card already stored as «Ирма Сол» (and the reverse is joined when rendered).
-      const npcs = (await tx.memoryFact.findMany({ where: { threadId: thread.id, status: "active", subject: { startsWith: "npc:" } },
-        select: { subject: true }, distinct: ["subject"] })).map(fact => fact.subject);
+      const npcFacts = await tx.memoryFact.findMany({ where: { threadId: thread.id, status: "active", subject: { startsWith: "npc:" } },
+        select: { subject: true, value: true, seq: true } });
+      const npcs: string[] = Array.from(new Set<string>(npcFacts.map(fact => fact.subject)));
+      // Unnamed NPCs are told apart by the server: qualifier, shared words, recency (resolveRoleSubject).
+      const cards = new Map<string, RoleCard>();
+      for (const fact of npcFacts) {
+        const card = cards.get(fact.subject) ?? { subject: fact.subject, lastSeq: 0, text: "" };
+        cards.set(fact.subject, { ...card, lastSeq: Math.max(card.lastSeq, fact.seq), text: `${card.text} ${fact.value}` });
+      }
+      const turnText = sources.map(source => source.text).join("\n");
       for (const extracted of extraction.facts) {
-        const subject = npcAliasMap([...npcs, extracted.subject]).get(extracted.subject) ?? extracted.subject;
+        const resolved = resolveRoleSubject(extracted.subject, [...cards.values()], turnText, job.seq);
+        const subject = npcAliasMap([...npcs, resolved]).get(resolved) ?? resolved;
         if (subject.startsWith("npc:") && !npcs.includes(subject)) npcs.push(subject);
+        if (subject.startsWith("npc:")) {
+          const card = cards.get(subject) ?? { subject, lastSeq: 0, text: "" };
+          cards.set(subject, { ...card, lastSeq: job.seq, text: `${card.text} ${extracted.value}` });
+        }
         const delta = { ...extracted, subject };
         await applyFact(tx, thread.id, delta, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
       }

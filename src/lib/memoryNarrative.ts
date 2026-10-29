@@ -126,7 +126,7 @@ const NUMBER_WORD = new Map(NUMBER_WORDS.flatMap(([value, forms]) => forms.split
  * «двести пятьдесят» → 200, 50, 250; «тысяча двести» → 1000, 200, 1200. «Двести кредитов» retold
  * as «200 кредитов» lost a crew member's debt from the summary (prod test 2026-10-24).
  */
-function evidenceNumbers(text: string): Set<string> {
+export function evidenceNumbers(text: string): Set<string> {
   const found = new Set(memoryNumbers(text));
   const words = text.toLowerCase().replace(/ё/g, "е").match(/\p{L}+/gu) ?? [];
   let total = 0, last = Infinity;
