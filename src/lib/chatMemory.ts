@@ -41,6 +41,8 @@ export type SubscriptionType = "start" | "dialog" | "story" | "universe" | null 
 
 export type SummaryConfig = {
   maxTokens: number;
+  /** Allowance of a long story (see summaryAllowance); the prompt shows at most SUMMARY_SLOT_MAX_SHARE of it. */
+  grownMaxTokens: number;
   thresholdRatio: number;
   refreshMessageThreshold: number;
   refreshTokenThreshold: number;
@@ -49,29 +51,45 @@ export type SummaryConfig = {
 export const SUMMARY_CONFIG: Record<string, SummaryConfig> = {
   start: {
     maxTokens: 200,
+    grownMaxTokens: 200,
     thresholdRatio: 0.5,
     refreshMessageThreshold: 15,
     refreshTokenThreshold: 1500,
   },
   dialog: {
     maxTokens: 500,
+    grownMaxTokens: 800,
     thresholdRatio: 0.5,
     refreshMessageThreshold: 20,
     refreshTokenThreshold: 2000,
   },
   story: {
     maxTokens: 800,
+    grownMaxTokens: 1400,
     thresholdRatio: 0.6,
     refreshMessageThreshold: 30,
     refreshTokenThreshold: 2500,
   },
   universe: {
     maxTokens: 1500,
+    grownMaxTokens: 2600,
     thresholdRatio: 0.7,
     refreshMessageThreshold: 40,
     refreshTokenThreshold: 3000,
   },
 };
+
+/** A fixed allowance kept a 500-message story at ~3k characters: its compressed opening chapters lost
+ * the letter scene and half the key beats (crash test 2026-10-28). Past SUMMARY_GROWTH_START_MESSAGES
+ * the allowance grows linearly to grownMaxTokens at SUMMARY_GROWTH_FULL_MESSAGES; only more chapters
+ * are kept, each new chapter is written within the base allowance. */
+export const SUMMARY_GROWTH_START_MESSAGES = 150;
+export const SUMMARY_GROWTH_FULL_MESSAGES = 500;
+export function summaryAllowance(config: SummaryConfig, coveredMessages: number): number {
+  const progress = Math.min(1, Math.max(0, (coveredMessages - SUMMARY_GROWTH_START_MESSAGES)
+    / (SUMMARY_GROWTH_FULL_MESSAGES - SUMMARY_GROWTH_START_MESSAGES)));
+  return Math.round(config.maxTokens + Math.max(0, config.grownMaxTokens - config.maxTokens) * progress);
+}
 
 export function getSummaryConfig(subscriptionType: string | null | undefined): SummaryConfig {
   const normalized = subscriptionType === "history" ? "story" : subscriptionType;
@@ -579,8 +597,8 @@ async function requestSummary(apiKey: string, messages: DialogMessage[], maxToke
 
 /** The next chapter of `previous` from `messages`: written chapters are context and never re-told. */
 async function requestChapterSummary(apiKey: string, previous: string, messages: DialogMessage[], maxTokens: number,
-  coreText: string | null, names: SummaryParticipants = {}): Promise<string> {
-  return writeSummaryChapter(previous, messages, { maxTokens, core: coreText, names, countTokens,
+  coreText: string | null, names: SummaryParticipants = {}, chapterTokens = maxTokens): Promise<string> {
+  return writeSummaryChapter(previous, messages, { maxTokens, chapterTokens, core: coreText, names, countTokens,
     ask: async (mode, input, budget, sourceIds) => {
       if (summaryInputTooLarge(input)) throw new MemorySummaryInputError();
       return requestKodikText(apiKey, mode, input, budget, sourceIds, names);
@@ -791,16 +809,17 @@ async function updateArcWithChapter(
   const chapterText = formatDialogForSummary(chapterMessages);
   const chapterTokens = countTokens(chapterText);
   const arcTokens = countTokens(existingSummary);
-  const arcRatio = config.maxTokens > 0 ? arcTokens / config.maxTokens : 0;
-  const eventsLimit = getRecentEventsLimit(arcTokens, config.maxTokens);
+  const allowance = summaryAllowance(config, existingCount + chapterMessages.length);
+  const arcRatio = allowance > 0 ? arcTokens / allowance : 0;
+  const eventsLimit = getRecentEventsLimit(arcTokens, allowance);
   infoLog(
     "Memory",
-    `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}) → eventsLimit: ${eventsLimit}`
+    `Arc size: ${arcTokens} tokens (ratio: ${arcRatio.toFixed(2)}, allowance: ${allowance}) → eventsLimit: ${eventsLimit}`
   );
   // One grounded update sees the actual new messages, not a twice-compressed chapter.
   const names = await summaryParticipants(scope, coreText);
   const attempt = await summarizeChunk(chapterMessages, chunk => requestChapterSummary(apiKey, sourceSummary, chunk,
-    config.maxTokens, coreText, names));
+    allowance, coreText, names, config.maxTokens));
   chapterMessages = attempt.used;
   // A skipped chunk keeps the previous retelling; coverage still moves on.
   const mergedSummary = attempt.summary ?? sourceSummary;
@@ -823,7 +842,7 @@ async function updateArcWithChapter(
   );
   infoLog(
     "Memory",
-    `Summary generated (subscription: ${plan}, maxTokens: ${config.maxTokens}, messageCount: ${chapterMessages.length}, summaryTokens: ${countTokens(mergedSummary)})`
+    `Summary generated (subscription: ${plan}, maxTokens: ${allowance}, messageCount: ${chapterMessages.length}, summaryTokens: ${countTokens(mergedSummary)})`
   );
   infoLog("Memory", `Active lines count: ${countActiveLines(mergedSummary)}`);
   return mergedSummary;
@@ -1160,7 +1179,8 @@ export async function rebuildMemorySummaryStep(
   const { config } = getSummaryConfigForUser(user);
   const coreText = await loadCoreMemoryText(scope);
   const names = await summaryParticipants(scope, coreText), draft = cursor.draft;
-  const attempt = await summarizeChunk(chunk, part => requestChapterSummary(apiKey, draft, part, config.maxTokens, coreText, names));
+  const attempt = await summarizeChunk(chunk, part => requestChapterSummary(apiKey, draft, part,
+    summaryAllowance(config, cursor.processed + part.length), coreText, names, config.maxTokens));
   chunk = attempt.used;
   cursor.draft = attempt.summary ?? draft;
   cursor.after = lastSummarizedTimestamp(chunk).toISOString();

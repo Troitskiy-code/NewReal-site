@@ -246,16 +246,22 @@ export function trimSummaryToTokenLimit(text: string, maxTokens: number): string
   return render(rows).trim();
 }
 
+/** A long story's grown summary (summaryAllowance) may take up to this share of the context left after the
+ * system prompt. The extra room comes out of the recent history share, so the prompt as a whole does not grow. */
+export const SUMMARY_SLOT_MAX_SHARE = 0.25;
+
 export function allocateTokens(
   _messages: ChatCompletionMessage[],
   maxContextTokens: number,
   reservedTokens = 0,
-  intent: UserIntent = "general"
+  intent: UserIntent = "general",
+  summaryTokens = 0
 ) {
   const available = Math.max(0, maxContextTokens - reservedTokens);
   const ratios = getMemoryTokenRatios(intent);
-  const recentChat = Math.floor(available * ratios.recentChat);
-  const summary = Math.floor(available * ratios.summary);
+  const share = Math.floor(available * ratios.summary);
+  const summary = Math.max(share, Math.min(summaryTokens, Math.floor(available * SUMMARY_SLOT_MAX_SHARE)));
+  const recentChat = Math.max(0, Math.floor(available * ratios.recentChat) - (summary - share));
   const retrieved = Math.floor(available * ratios.retrieved);
   const coreEpisodic = Math.max(0, available - recentChat - summary - retrieved);
 
@@ -631,7 +637,8 @@ export function assemblePreparedChatMessages(
   ragMessages: RagMessage[] | null = null
 ): PreparedChatMessages {
   const { locale, maxContextTokens } = context;
-  const allocations = allocateTokens([], maxContextTokens, countTokens(context.systemPromptBase), intent);
+  const allocations = allocateTokens([], maxContextTokens, countTokens(context.systemPromptBase), intent,
+    context.memorySummary ? countTokens(context.memorySummary) : 0);
 
   // Episodic: pick by rank for the actual intent, keep what fits, show in story order.
   const coreText = context.memoryCandidates.core

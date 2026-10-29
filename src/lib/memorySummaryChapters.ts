@@ -90,7 +90,9 @@ export type SummaryAsk = (mode: SummaryMode, input: string, maxTokens: number, s
 export type ChapterStats = { chapterCount: number; newChapterCount: number; compressedPairCount: number;
   compressionFallbackCount: number; budgetTrimmedSentenceCount: number; outcomeCount: number; newOutcomeCount: number;
   outcomeMergeCount: number; outcomeDroppedCount: number };
-type ChapterContext = { maxTokens: number; core: string | null; names: SummaryParticipants;
+/** maxTokens is the whole summary's allowance; chapterTokens (the plan's base allowance) sizes one new chapter, so a
+ * grown allowance keeps more chapters without longer, slower chapter answers. */
+type ChapterContext = { maxTokens: number; chapterTokens?: number; core: string | null; names: SummaryParticipants;
   countTokens: (text: string) => number; ask: SummaryAsk; diagnose?: (stats: SummaryRenderDiagnostics) => void };
 
 /**
@@ -100,11 +102,12 @@ type ChapterContext = { maxTokens: number; core: string | null; names: SummaryPa
  */
 export async function writeSummaryChapter(previous: string, messages: Array<{ role: string; content: string }>,
   context: ChapterContext, onStats?: (stats: ChapterStats) => void): Promise<string> {
-  const { maxTokens, core, names, countTokens, ask, diagnose } = context;
+  const { core, names, countTokens, ask, diagnose } = context;
+  const base = Math.min(context.chapterTokens ?? context.maxTokens, context.maxTokens);
   const { chapters, outcomes, rest } = splitSummaryChapters(previous);
   const sources = [...sourcesFromSummaries(rest), ...makeSummarySources(messages)].map((source, index) => ({ ...source, id: `s${index + 1}` }));
   if (!sources.length) throw new MemorySummaryError("MEMORY_SUMMARY_NO_FITTING_SOURCE");
-  const budget = Math.min(maxTokens, Math.max(Math.min(300, maxTokens), Math.floor(maxTokens * CHAPTER_BUDGET_SHARE)));
+  const budget = Math.min(base, Math.max(Math.min(300, base), Math.floor(base * CHAPTER_BUDGET_SHARE)));
   // Only the latest chapter, for continuity: given all of them, Mistral re-told old scenes as the
   // new chapter, and words shared with the new messages let them pass (eval 2026-10-24).
   const latest = chapters.at(-1) ?? "";

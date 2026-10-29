@@ -261,6 +261,19 @@ group('summary', () => {
   const parsed = summary.parseSummarySections('## Активные линии\n- A\n- B\n\n## Недавние события\n1. X\n2. Y\n\n## Эмоциональный фон\nСпокойно');
   check(parsed.activeLines && parsed.events && parsed.emotion && summary.rebuildSummary(parsed).includes('## Недавние события'), 'parse/rebuild: known sections round-trip');
   check(summary.getSummaryConfig('history').maxTokens === summary.getSummaryConfig('story').maxTokens, 'config: legacy "history" maps to story');
+  const universe = summary.getSummaryConfig('universe');
+  check(summary.summaryAllowance(universe, 150) === 1500 && summary.summaryAllowance(universe, 325) === 2050
+    && summary.summaryAllowance(universe, 500) === 2600 && summary.summaryAllowance(universe, 5000) === 2600,
+    'allowance: grows from 150 to 500 covered messages, then stays at the plan cap');
+  check(summary.summaryAllowance(summary.getSummaryConfig('start'), 5000) === 200, 'allowance: the free plan does not grow');
+  // The grown summary's prompt room comes out of the history share and is capped.
+  const plain16 = helpers.allocateTokens([], 16000, 4000, 'story');
+  const grown = helpers.allocateTokens([], 16000, 4000, 'story', 2600);
+  check(plain16.summary === 1800 && grown.summary === 2600 && grown.recentChat === plain16.recentChat - 800
+    && grown.coreEpisodic === plain16.coreEpisodic, 'allocation: a grown summary takes its room from recent history');
+  const capped = helpers.allocateTokens([], 16000, 4000, 'story', 9000);
+  check(capped.summary === 3000 && capped.recentChat + capped.summary + capped.retrieved + capped.coreEpisodic === capped.available,
+    'allocation: the summary never takes more than a quarter of the context');
 
   const raw = 'Пользователя зовут Мирон.\nОн боится высоты.\n## Отношения\n- Тип: дружеские\n- Признался в чувствах вчера\n## Персонаж\n- данных недостаточно';
   const normalized = sanitize.normalizeManualCoreMemory(raw);

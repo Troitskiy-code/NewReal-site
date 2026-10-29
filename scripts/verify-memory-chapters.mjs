@@ -235,4 +235,22 @@ await check('key outcomes stay word for word across chapters and compression; on
   assert.deepEqual(chapters.splitSummaryChapters(found).outcomes, ['Артём нашёл кольцо «И. и Т.» в комнате Вики.']);
 });
 
+await check('a grown allowance keeps more chapters, but a new chapter is still written within the base allowance', async () => {
+  const old = Array.from({ length: 6 }, (_, i) => `Глава ${i + 1}: Вика и Артём ${'долго бродили по старому городу и спорили о прошлом, '.repeat(10)}и пришли к площади номер ${i + 1}.`);
+  const provider = stub({ chapter: JSON.stringify({ items: [story('Вика и Артём поужинали в ресторане.')] }),
+    compress: input => JSON.stringify({ items: [{ ...story('Вика и Артём бродили по городу.'), sources: [input.sources[0].id] }] }) });
+  const messages = [{ role: 'assistant', content: 'Мы поужинали в ресторане.' }];
+  const size = countTokens(`## Предыстория\n${old.join('\n')}`);
+  assert.ok(size > 1500 && size < 2400, `test story fits between the base and the grown allowance (${size})`);
+  const grown = await chapters.writeSummaryChapter(`## Предыстория\n${old.join('\n')}`, messages,
+    { ...context(provider.ask, 2600), chapterTokens: 1500 });
+  assert.equal(provider.calls[0].budget, 750, 'the chapter answer keeps the base budget');
+  assert.ok(!provider.calls.some(call => call.mode === 'compress'), 'no chapter is compressed while the grown allowance holds them');
+  assert.equal(chapters.splitSummaryChapters(grown).chapters.length, 7);
+  const base = stub({ chapter: JSON.stringify({ items: [story('Вика и Артём поужинали в ресторане.')] }),
+    compress: input => JSON.stringify({ items: [{ ...story('Вика и Артём бродили по городу.'), sources: [input.sources[0].id] }] }) });
+  await chapters.writeSummaryChapter(`## Предыстория\n${old.join('\n')}`, messages, context(base.ask, 1500));
+  assert.ok(base.calls.some(call => call.mode === 'compress'), 'the base allowance compresses the oldest chapters');
+});
+
 console.log(`Memory chapters: ${passed} checks passed`);
