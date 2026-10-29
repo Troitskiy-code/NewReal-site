@@ -312,6 +312,11 @@ for (const locale of ['ru', 'en']) {
   check(wire.messages.at(-1).content.includes(locale === 'en' ? 'Only the user controls their hero' : 'Героем пользователя управляет только пользователь'),
     `${locale}: the turn reminder follows the guest's message, in the reply language`);
 }
+// The money line joins the reminder only on turns about money.
+const reminded = text => builder.withTurnReminder([{ role: 'user', content: text }], 'ru').at(-1).content;
+check(reminded('*Достаю кошель и спрашиваю, сколько стоит комната.*').includes('Деньги называй числом'), 'a money turn gets the money line');
+check(!reminded('*Беру её за руку.*').includes('Деньги называй числом'), 'other turns do not');
+check(builder.withTurnReminder([{ role: 'user', content: 'How much for the room? I pay in crowns.' }], 'en').at(-1).content.includes('Name money as numbers'), 'en: the money line in English');
 
 // Run the real transfer function with the existing ownership/lease boundary stubbed.
 guestHistory = [{ id: 'guest-transfer', characterId: 'card', role: 'user', content: 'Transferred turn', createdAt: new Date(), requestId: 'completed-request' }];

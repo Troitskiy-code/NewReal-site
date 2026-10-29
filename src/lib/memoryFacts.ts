@@ -409,7 +409,7 @@ appearance — только устойчивое. Сиюминутное (бле
 ВАЖНО: прежде чем добавить факт к NPC из activeFacts, проверь, что это тот же человек — то же место, хозяин и приметы. Человек той же роли в другом месте (другой склад, другая каморка, другой хозяин) — другой NPC: новый subject с уточнением, а факты старой карточки, его гибель и приметы ему не переноси.
 Безымянных статистов одной сцены (нападавшие, чужая охрана, прохожие) не записывай: их судьбу передаст сводка.
 Гибель NPC сохраняй как health словами источника («зарезан в каморке у складов Грибо»). NPC, поступивший на службу к герою или получивший от него поручение, — relationship.status: герой велел громилам «стойте здесь, никого не выпускать» → subject=npc:громила с дубинкой, relationship.status «служит герою, охраняет склад сетей».
-money — движение денег героя пользователя (subject=user): знак, сумма как в источнике или «несколько», валюта, от кого или за что («+10 крон от гонца на заставе», «−5 крон за комнату в корчме», «+несколько золотых крон от купца»). Только деньги, которые герой реально получил или отдал (в том числе по словам рассказчика); цены, обещания и предложения не записывай. Итог не считай. Деньги героя не записывай в possessions; «серебро», «плата» без движения не записывай.
+money — движение денег героя пользователя (subject=user): знак, сумма как в источнике или «несколько», валюта, от кого или за что («+10 крон от гонца на заставе», «−5 крон за комнату в корчме», «+несколько золотых крон от купца»). Только деньги, которые герой реально получил или отдал (в том числе по словам рассказчика); цены, обещания и предложения не записывай. Итог не считай. Если прямо названо, сколько денег у героя сейчас («в кошельке у вас двадцать три кроны», «у меня 50 крон»), запиши остаток со знаком «=»: «=23 кроны в кошельке». Деньги героя не записывай в possessions; «серебро», «плата» без движения не записывай.
 turnsAgo в activeFacts — сколько ходов назад NPC упоминался последний раз. Безымянный NPC той же роли, давно не появлявшийся, в новом месте — скорее другой человек.
 value — короткое конкретное значение из источника. Имена и числа копируй точно; обычные падежные формы существительных допустимы. Не заменяй содержание синонимами.
 Для retract пустое value снимает весь слот, непустое — только это значение.
@@ -446,6 +446,58 @@ export function factExtractionFormat(sourceIds: string[]) {
 
 const MONEY_WORD = /(?:^|[^\p{L}])(?:крон\p{L}*|флорен\p{L}*|оренов|оренов\p{L}*|дукат\p{L}*|монет\p{L}*|серебр\p{L}*|золот\p{L}*|медяк\p{L}*|грош\p{L}*|кредит\p{L}*|рубл\p{L}*|доллар\p{L}*|евро|деньг\p{L}*|денег)(?=$|[^\p{L}])/iu;
 const VAGUE_SUM = /(?:^|[^\p{L}])(?:несколько|немного|горсть|пару|пара|мешоч\p{L}*|кошел\p{L}*|кошель|кучу|всё|все)(?=$|[^\p{L}])/iu;
+/** The sum of a ledger line, in digits or words («+двенадцать крон» → 12); null when vague. */
+export function moneyAmount(value: string): number | null {
+  // The first sum in the line: «−5 крон за комнату (повторно 2)» is 5.
+  const digits = /\d+(?:[.,]\d+)?/u.exec(value);
+  if (digits) return Number(digits[0].replace(",", "."));
+  const words = [...evidenceNumbers(value.replace(/\(повторно[^)]*\)/u, ""))].map(Number).filter(Number.isFinite);
+  return words.length ? Math.max(...words) : null;
+}
+// Currencies are kept apart: crowns and silver coins are never converted into each other.
+const CURRENCIES: Array<[RegExp, [string, string, string]]> = [
+  [/крон/iu, ["крона", "кроны", "крон"]], [/флорен/iu, ["флорен", "флорена", "флоренов"]], [/орен/iu, ["орен", "орена", "оренов"]],
+  [/дукат/iu, ["дукат", "дуката", "дукатов"]], [/кредит/iu, ["кредит", "кредита", "кредитов"]], [/рубл/iu, ["рубль", "рубля", "рублей"]],
+  [/доллар/iu, ["доллар", "доллара", "долларов"]], [/серебр/iu, ["серебряная монета", "серебряные монеты", "серебряных монет"]],
+  [/золот\p{L}*\s+монет/iu, ["золотая монета", "золотые монеты", "золотых монет"]], [/медяк|медн|грош/iu, ["медяк", "медяка", "медяков"]],
+  [/монет/iu, ["монета", "монеты", "монет"]],
+];
+const currencyOf = (value: string) => CURRENCIES.find(([pattern]) => pattern.test(value))?.[1] ?? ["монета", "монеты", "монет"];
+function plural(count: number, forms: [string, string, string]): string {
+  const n = Math.abs(count) % 100, last = n % 10;
+  return `${count} ${n > 10 && n < 20 ? forms[2] : last === 1 ? forms[0] : last >= 2 && last <= 4 ? forms[1] : forms[2]}`;
+}
+/**
+ * The hero's money as one core line, computed by the server from the ledger: the last named balance plus the
+ * movements after it («в кошельке ≈ 18 крон»), or, while no balance was named, the change over the story
+ * («за историю +15 крон»), since nobody knows the purse the hero started with. The last two movements stay
+ * visible. Six raw movement lines filled the hero's card, and a total kept by the model went negative.
+ */
+export function moneyLine(entries: Array<{ value: string; seq: number }>): string | null {
+  if (!entries.length) return null;
+  const ordered = entries.map((entry, index) => ({ ...entry, index })).sort((a, b) => a.seq - b.seq || a.index - b.index);
+  const lastBalance = ordered.map(entry => entry.value.startsWith("=")).lastIndexOf(true);
+  const totals = new Map<string, { forms: [string, string, string]; base: number | null; got: number; spent: number }>();
+  const vague = new Set<string>();
+  for (const entry of lastBalance >= 0 ? ordered.slice(lastBalance) : ordered) {
+    const forms = currencyOf(entry.value), amount = moneyAmount(entry.value), sign = entry.value[0];
+    const total = totals.get(forms[2]) ?? { forms, base: null, got: 0, spent: 0 };
+    if (amount === null) { vague.add(`${sign === "−" ? "минус" : "ещё"} несколько: ${forms[2]}`); continue; }
+    if (sign === "=") total.base = amount; else if (sign === "+") total.got += amount; else total.spent += amount;
+    totals.set(forms[2], total);
+  }
+  const parts = [...totals.values()].map(total => {
+    const net = total.got - total.spent;
+    if (total.base !== null) {
+      const left = total.base + net;
+      return left >= 0 ? `в кошельке ≈ ${plural(left, total.forms)}` : `в кошельке почти ничего (расходы по записям превысили названные ${plural(total.base, total.forms)})`;
+    }
+    return `за историю ${net >= 0 ? "+" : "−"}${plural(Math.abs(net), total.forms)} (получено ${total.got}, потрачено ${total.spent})`;
+  });
+  const recent = ordered.filter(entry => !entry.value.startsWith("=")).slice(-2).map(entry => entry.value);
+  const notes = [...vague].map(note => note.replace(/: (.+)$/u, " $1"));
+  return [[...parts, ...notes].join(", "), recent.length ? `последнее: ${recent.join("; ")}` : ""].filter(Boolean).join("; ");
+}
 /**
  * One line of the hero's money ledger: «+10 крон от гонца на заставе», «−5 крон за комнату». A running total
  * went negative, missed income and mixed silver with crowns on every model tried (owner's Witcher test
@@ -458,10 +510,13 @@ function moneyDelta(op: string, subject: string, text: string, source: FactSourc
   if (/\?[»"')]*$/u.test(source.text)) return reject("question_source", "sourceId");
   if (["proposed", "promised", "uncertain"].includes(inferMemoryStatus(source.text))) return reject("non_factual_source", "sourceId");
   const value = text.replace(/^[-–—]\s*/u, "−").replace(/^\+\s*/u, "+");
-  if (!/^[+−]/u.test(value) || !MONEY_WORD.test(value)) return reject("unsupported_value", "value");
+  if (!/^[+−=]/u.test(value) || !MONEY_WORD.test(value)) return reject("unsupported_value", "value");
   const turn = evidenceNumbers(sources.map(row => row.text).join("\n"));
-  const amounts = memoryNumbers(value);
-  if (amounts.some(amount => !turn.has(amount)) || !amounts.length && !VAGUE_SUM.test(value)) return reject("unsupported_number", "value");
+  const amount = moneyAmount(value);
+  // A balance («=23 кроны в кошельке») needs its sum; a movement may be vague («+несколько золотых крон»).
+  if (amount !== null && !turn.has(String(amount)) || amount === null && (value.startsWith("=") || !VAGUE_SUM.test(value))) {
+    return reject("unsupported_number", "value");
+  }
   return { op: "set", subject: "user", key: "money", value, sourceMessageId: source.messageId,
     source: source.author === "user" ? "user_msg" : "assistant_msg", confidence: 1, pinned: false };
 }
@@ -701,8 +756,10 @@ export function renderFactCore(stored: RenderableFact[]): string {
     && (part.detail ? other.detail === part.detail : clean(other.text) === clean(part.text))
     && (lookFullness(other.text) - lookFullness(part.text) || Number(other.fact.pinned) || other.fact.seq - part.fact.seq
       || facts.indexOf(other.fact) - facts.indexOf(part.fact) || other.index - part.index) > 0);
+  const money = moneyLine(facts.filter(fact => fact.subject === "user" && fact.key === "money"));
+  if (money) sections.set("Пользователь", [`- ${SLOTS.money.label}: ${money}`]);
   for (const fact of rankFacts(facts)) {
-    if (bare.has(fact.subject) || noise(fact) || merged(fact)) continue;
+    if (fact.key === "money" || bare.has(fact.subject) || noise(fact) || merged(fact)) continue;
     if (repeated(fact) && joined(fact)) continue;
     const value = fact.key === "appearance" ? (looks.get(fact) ?? []).filter(part => !beaten(part)).map(part => part.text).join(", ") : fact.value;
     if (!value) continue;

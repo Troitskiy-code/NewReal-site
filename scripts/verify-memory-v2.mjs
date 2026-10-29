@@ -710,6 +710,34 @@ try {
     assert.deepEqual(ledger(paid, '10 крон'), [], 'a total is not a movement');
     assert.deepEqual(ledger([['user', 'Сколько?'], ['assistant', 'Предлагаю двадцать крон за сети.']], '+20 крон от купца'), [], 'an offer is not money moved');
     assert.deepEqual(ledger(paid, '+10 крон', 'npc:гонец'), [], 'only the hero has a ledger');
+    const purse = [['user', 'Пересчитываю монеты.'], ['assistant', 'В кошельке у вас двадцать три кроны.']];
+    assert.deepEqual(ledger(purse, '=23 кроны в кошельке'), ['=23 кроны в кошельке'], 'a named balance is kept');
+    assert.deepEqual(ledger(paid, '=23 кроны в кошельке'), [], 'a balance needs its sum in the turn');
+    assert.deepEqual(ledger(purse, '=несколько крон'), [], 'a vague balance is refused');
+    // The server folds the ledger into one line; it never trusts a model's arithmetic.
+    const line = entries => facts.moneyLine(entries.map(([value, seq]) => ({ value, seq })));
+    assert.equal(line([['+10 крон от гонца', 1], ['−5 крон за комнату', 2]]),
+      'за историю +5 крон (получено 10, потрачено 5); последнее: +10 крон от гонца; −5 крон за комнату', 'no balance yet: the change over the story');
+    assert.equal(line([['+40 крон от Борина', 1], ['=23 кроны в кошельке', 2], ['−5 крон за комнату', 3], ['+несколько золотых крон от купца', 4]]),
+      'в кошельке ≈ 18 крон, ещё несколько крон; последнее: −5 крон за комнату; +несколько золотых крон от купца', 'the last balance plus later movements');
+    assert.equal(line([['=3 кроны в кошельке', 1], ['−10 крон Златке', 2]]),
+      'в кошельке почти ничего (расходы по записям превысили названные 3 кроны); последнее: −10 крон Златке', 'never a negative purse');
+    assert.equal(line([['+2 серебряные монеты от громилы', 1], ['+10 крон от гонца', 2]]),
+      'за историю +2 серебряные монеты (получено 2, потрачено 0), за историю +10 крон (получено 10, потрачено 0); последнее: +2 серебряные монеты от громилы; +10 крон от гонца', 'currencies stay apart');
+    assert.equal(facts.renderFactCore([
+      { subject: 'user', key: 'name', value: 'Мирослава', pinned: false, seq: 1 },
+      { subject: 'user', key: 'money', value: '+10 крон от гонца', pinned: false, seq: 2 },
+      { subject: 'user', key: 'money', value: '−5 крон за комнату', pinned: false, seq: 3 },
+    ]), '## Пользователь\n- Деньги: за историю +5 крон (получено 10, потрачено 5); последнее: +10 крон от гонца; −5 крон за комнату\n- Имя: Мирослава');
+    // Two rooms for 5 crowns are two movements.
+    const f = await setup();
+    await turn(f, 'Плачу за комнату.', 'Хозяин сгрёб пять крон.');
+    await run(f, output([delta('−5 крон за комнату', 's2', 'money')]));
+    await turn(f, 'Плачу ещё за сутки.', 'Хозяин снова сгрёб пять крон.');
+    await run(f, output([delta('−5 крон за комнату', 's2', 'money')]));
+    const rooms = (await active(f.scope)).filter(fact => fact.key === 'money');
+    assert.deepEqual(rooms.map(fact => fact.value).sort(), ['−5 крон за комнату', '−5 крон за комнату (повторно)']);
+    assert.match(facts.moneyLine(rooms), /^за историю −10 крон \(получено 0, потрачено 10\)/u);
   });
   await check('a delivered or abandoned errand retracts from debts', async () => {
     // The second crash-test run (2026-10-28): «доставить письмо в Третогор» and «вернуть Илсу» stayed open to the end.

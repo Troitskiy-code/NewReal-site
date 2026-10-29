@@ -21,6 +21,7 @@ const MAX_INPUT_TOKENS = 8000, MAX_INPUT_CHARS = 64_000, FACT_CONTEXT_LIMIT = 15
 // Background work nobody waits for: Mistral writes ~400-600 JSON tokens at ~36-45 tok/s, so 40 s cut off
 // about 2% of turns (prod 2026-10-18..20). The 180 s lease still bounds a stuck worker.
 const EXTRACTION_TIMEOUT_MS = 75_000;
+const MONEY_LEDGER_LIMIT = 40;
 // A turn that cannot fit even without fact context fails identically on every retry.
 const SKIPPED_OVERSIZED_TURN = "MEMORY_EXTRACT_SKIPPED_INPUT_TOO_LARGE";
 const toJson = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -49,7 +50,14 @@ async function applyFact(tx: Tx, threadId: string, delta: FactDelta, seq: number
     if (ids.length) await tx.memoryFact.updateMany({ where: { id: { in: ids } }, data: { status: "retracted", supersededById: null } });
     return;
   }
-  const repeated = active.find(fact => sameFactValue(fact.value, delta.value, delta.key));
+  // Two rooms for 5 crowns are two movements; only the same line from the same message is a repeat. The
+  // active-value unique index allows one copy of a text, so a second one is marked «(повторно)».
+  const ledger = delta.key === "money";
+  const repeated = active.find(fact => sameFactValue(fact.value, delta.value, delta.key) && (!ledger || fact.sourceMessageId === delta.sourceMessageId));
+  if (ledger && !repeated) {
+    const base = delta.value;
+    for (let copy = 1; active.some(fact => fact.value === delta.value); copy++) delta = { ...delta, value: `${base} (повторно${copy > 1 ? ` ${copy}` : ""})` };
+  }
   if (repeated) {
     await tx.memoryFact.update({ where: { id: repeated.id }, data: {
       seq, source: delta.source, sourceMessageId: delta.sourceMessageId, pinned: delta.pinned, confidence: delta.confidence,
@@ -59,9 +67,9 @@ async function applyFact(tx: Tx, threadId: string, delta: FactDelta, seq: number
   const multi = factCardinality(delta.key) === "multi";
   // A value already contained in a fuller one adds nothing; a fuller value replaces the narrower
   // unpinned ones it contains. Without this a slot only grew («танцы», «танцы и косплеи», …).
-  if (multi && active.some(fact => factValueCovers(fact.value, delta.value, delta.key))) return;
+  if (multi && !ledger && active.some(fact => factValueCovers(fact.value, delta.value, delta.key))) return;
   // Free the single-valued slot before inserting its successor (partial SQL index).
-  const replaced = multi ? active.filter(fact => !fact.pinned && factValueCovers(delta.value, fact.value, delta.key)) : active;
+  const replaced = ledger ? [] : multi ? active.filter(fact => !fact.pinned && factValueCovers(delta.value, fact.value, delta.key)) : active;
   if (replaced.length) await tx.memoryFact.updateMany({ where: { id: { in: replaced.map(fact => fact.id) } }, data: { status: "superseded" } });
   const previous = !record ? (await tx.memoryFact.findMany({ where: slot })).find(fact => sameFactValue(fact.value, delta.value, delta.key)) : null;
   const data = { ...slot, value: delta.value, cardinality: factCardinality(delta.key), status: "active", supersededById: null,
@@ -73,7 +81,9 @@ async function applyFact(tx: Tx, threadId: string, delta: FactDelta, seq: number
   // manual pinned facts are never evicted.
   const kept = (await tx.memoryFact.findMany({ where: { ...slot, status: "active" }, orderBy: [{ seq: "desc" }, { id: "desc" }] }))
     .sort((a, b) => Number(!a.pinned && !!slotNoiseReason(a.key, a.value)) - Number(!b.pinned && !!slotNoiseReason(b.key, b.value)));
-  const evicted = kept.filter(fact => !fact.pinned && fact.id !== next.id).slice(Math.max(0, MULTI_FACT_LIMIT - kept.filter(fact => fact.pinned).length - (next.pinned ? 0 : 1)));
+  // The money ledger is folded into one core line, so it keeps more movements than other slots.
+  const limit = ledger ? MONEY_LEDGER_LIMIT : MULTI_FACT_LIMIT;
+  const evicted = kept.filter(fact => !fact.pinned && fact.id !== next.id).slice(Math.max(0, limit - kept.filter(fact => fact.pinned).length - (next.pinned ? 0 : 1)));
   if (evicted.length) await tx.memoryFact.updateMany({ where: { id: { in: evicted.map(fact => fact.id) } }, data: { status: "superseded", supersededById: next.id } });
 }
 
@@ -245,7 +255,10 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         // How long ago each NPC was last seen, so the model can tell a returning NPC from a new one of the same role.
         const lastSeen = new Map<string, number>();
         for (const fact of rows) if (fact.subject.startsWith("npc:")) lastSeen.set(fact.subject, Math.max(lastSeen.get(fact.subject) ?? 0, fact.seq));
-        return rows.filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value) && !isHeroName(fact.subject, heroNames))
+        // Only the newest money movements: the whole ledger would crowd out the facts the model must not repeat.
+        let movements = 0;
+        return rows.filter(fact => fact.key !== "money" || ++movements <= 3)
+          .filter(fact => fact.pinned || !slotNoiseReason(fact.key, fact.value) && !isHeroName(fact.subject, heroNames))
           .map(({ seq: _seq, ...fact }) => ({ ...fact, subject: alias.get(fact.subject) ?? fact.subject,
             ...(lastSeen.has(fact.subject) ? { turnsAgo: Math.max(0, job.seq - lastSeen.get(fact.subject)!) } : {}) }));
       });

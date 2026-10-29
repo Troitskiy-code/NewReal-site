@@ -3,7 +3,7 @@ import { neutralizeMemoryText } from "./memoryPromptFormat";
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { localeDefinition, resolveLocale } from "./i18nConfig";
 
-export const PROMPT_BUILDER_VERSION = "rp-v2.3";
+export const PROMPT_BUILDER_VERSION = "rp-v2.4";
 export type ChatCharacterProfile = {
   name: string; appearance?: string | null; description?: string | null;
   greeting?: string | null; scenario?: string | null; exampleDialogs?: string | null;
@@ -101,11 +101,20 @@ const TURN_REMINDER = {
 — Vary how replies open and do not repeat earlier gestures: not every turn "froze", "slowly looked up", "something flickered in her eyes".
 — Write in English, in the spirit of the story's world, with no list of options and no "what will you do?".`,
 };
+// Only when the user's turn is about money: the rule among the core rules did not make the narrator name the
+// hero's purse (0 of 3 replies, eval 2026-10-29), and a standing line would cost tokens on every turn.
+const MONEY_TURN = /(?:^|[^\p{L}])(?:кошел\p{L}*|кошель|крон\p{L}*|монет\p{L}*|деньг\p{L}*|денег|серебр\p{L}*|золот\p{L}*|флорен\p{L}*|оренов|медяк\p{L}*|грош\p{L}*|кредит\p{L}*|плат\p{L}*|заплат\p{L}*|цен[аыуе]|стоит|расплат\p{L}*|купить|покуп\p{L}*|прода\p{L}*|purse|coins?|money|gold|silver|crowns?|pay|paid|price|cost|buy)(?=$|[^\p{L}])/iu;
+const MONEY_REMINDER = {
+  ru: "— Деньги называй числом: сколько платят, получают и сколько у героя в кошельке («двенадцать крон»), а не «несколько монет». Если сумма у героя ещё не названа ни в истории, ни в памяти, назови её сам по ситуации и роли героя — это факт мира, а не решение героя: «в кошельке у вас четырнадцать золотых». Дальше держись её и денег героя из памяти.",
+  en: "— Name money as numbers: what is paid, received and how much the hero has (\"twelve crowns\"), not \"a few coins\". If the hero's purse is named neither in the history nor in memory, set it yourself to suit the situation and the hero's role — it is a fact of the world, not the hero's decision: \"your purse holds fourteen gold pieces\". Then keep to it and to the hero's money in memory.",
+};
 export function withTurnReminder<T extends { role: string; content: string }>(messages: T[], locale?: string | null): T[] {
   const last = messages[messages.length - 1];
   if (!last || last.role !== "user") return messages;
-  const reminder = resolveLocale(locale) === "ru" ? TURN_REMINDER.ru
+  const ru = resolveLocale(locale) === "ru";
+  const base = ru ? TURN_REMINDER.ru
     : TURN_REMINDER.en.replace("Write in English", `Write in ${localeDefinition(locale).languageName}`);
+  const reminder = MONEY_TURN.test(last.content) ? `${base}\n${ru ? MONEY_REMINDER.ru : MONEY_REMINDER.en}` : base;
   return [...messages.slice(0, -1), { ...last, content: `${last.content}\n\n${reminder}` }];
 }
 export function buildChatSystemPrompt(character: ChatCharacterProfile, locale?: string): string {
