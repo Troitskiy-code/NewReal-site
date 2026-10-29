@@ -964,5 +964,59 @@ try {
     assert.equal((await memory.drainMemoryJobs()).processed, 0);
     assert.match((await legacy.loadMemoryCandidates(fixture.scope)).core, /Артём/);
   });
+  await check('a turn keeps who was near the hero; a regenerated reply drops it', async () => {
+    // Owner's Witcher story 12 (2026-10-29): Трисс knew the informer's request, Йеннифэр the old woman's words.
+    process.env.MEMORY_V2_ENABLED = '1';
+    const f = await setup();
+    const t = await turn(f, '*сажусь за стол к информатору* Ну привет.', 'Информатор вздрагивает и прячет кубок.');
+    await run(f, JSON.stringify({ facts: [], events: [], presence: { place: 'таверна «Слепая крыса», Новиград', present: ['информатор', 'Геральт'] } }));
+    const note = await memory.loadTurnPresence(f.scope.threadId, [t.user.id]);
+    assert.deepEqual(note.get(t.user.id), { place: 'таверна «Слепая крыса», Новиград', present: ['информатор', 'Геральт'] });
+    assert.equal(facts.turnPresenceNote(note.get(t.user.id)), '[[Сцена: таверна «Слепая крыса», Новиград. Рядом с героем: информатор, Геральт]]');
+    assert.equal((await active(f.scope)).length, 0, 'presence is not a fact of the core');
+    await db.$transaction(tx => memory.invalidateMessageMemory(tx, f.scope, t.assistant.id));
+    assert.equal((await memory.loadTurnPresence(f.scope.threadId, [t.user.id])).size, 0);
+    // The hero is never listed near himself; a malformed presence never refuses the turn.
+    const source = facts.factSources([{ id: 'm0', role: 'user', content: 'Иду в порт.' }]);
+    const parsed = facts.parseFactExtraction(JSON.stringify({ facts: [], events: [], presence: { place: ' порт ', present: ['Геральт', 'Йеннифэр', 'Йеннифэр'] } }), source, { partial: true, heroNames: ['Геральт'] });
+    assert.deepEqual(parsed.presence, { place: 'порт', present: ['Йеннифэр'] });
+    assert.equal(facts.parseFactExtraction(JSON.stringify({ facts: [], events: [], presence: 'склад' }), source, { partial: true }).presence, null);
+    assert.equal(facts.turnPresenceNote({ place: 'дорога', present: [] }), '[[Сцена: дорога. Рядом с героем: никого]]');
+    // The spot and its town or region are asked for apart; the region is not repeated.
+    const split = facts.parseFactExtraction(JSON.stringify({ facts: [], events: [], presence: { spot: 'дом вдовы Марии у кладбища', area: 'Велен', present: [] } }), source, { partial: true });
+    assert.equal(split.presence.place, 'дом вдовы Марии у кладбища, Велен');
+    assert.equal(facts.parseFactExtraction(JSON.stringify({ facts: [], events: [], presence: { spot: 'порт Новиграда', area: 'Новиград', present: [] } }), source, { partial: true }).presence.place, 'порт Новиграда');
+  });
+  await check('an NPC with a card near the hero gets where they were last seen together', async () => {
+    process.env.MEMORY_V2_ENABLED = '1';
+    const f = await setup();
+    await turn(f, 'Иду в подземелье.', 'Трисс сидит в камере, на руках железные кандалы.');
+    await run(f, output([delta('железные кандалы', 's2', 'possessions', 'npc:Трисс')]));
+    await turn(f, 'Веду Трисс к причалу.', 'Трисс идёт рядом.');
+    await run(f, JSON.stringify({ facts: [], events: [], presence: { spot: 'склад у причалов', area: 'Новиград', present: ['Трисс', 'стражник у ворот'] } }));
+    const places = (await active(f.scope)).filter(fact => fact.key === 'place').map(fact => `${fact.subject}: ${fact.value}`);
+    assert.deepEqual(places, ['npc:Трисс: последний раз с героем: склад у причалов, Новиград'], 'only NPCs with a card get a place');
+    // A freed prisoner loses the shackles; a retracted place never breaks the turn (TypeError in the replay of story 12).
+    const freed = facts.parseFactExtraction(output([delta('кандалы', 's1', 'possessions', 'npc:Трисс', 'retract'), delta('', 's1', 'place', 'npc:Трисс', 'retract')]),
+      facts.factSources([{ id: 'm0', role: 'assistant', content: 'Замок щёлкнул, и Геральт снял с Трисс кандалы. Она покинула камеру.' }]), { partial: true });
+    // A place changes by a new value; an empty retraction is refused like any unsupported one, without an error.
+    assert.deepEqual(freed.facts.map(fact => `${fact.op} ${fact.key}`), ['retract possessions']);
+    const opened = facts.parseFactExtraction(output([delta('железные кандалы', 's1', 'possessions', 'npc:Трисс', 'retract')]),
+      facts.factSources([{ id: 'm0', role: 'assistant', content: 'Когда замок на кандалах с сухим щелчком открылся, Трисс с облегчением выдохнула.' }]), { partial: true });
+    assert.equal(opened.facts.length, 1, 'shackles that came off are retracted');
+    const kept = facts.parseFactExtraction(output([delta('железные кандалы', 's1', 'possessions', 'npc:Трисс', 'retract')]),
+      facts.factSources([{ id: 'm0', role: 'assistant', content: 'Трисс сидит в камере, кандалы тускло мерцают.' }]), { partial: true });
+    assert.equal(kept.facts.length, 0, 'shackles still on stay');
+  });
+  await check('an NPC card shows where the NPC lives or is now', async () => {
+    // The Velen widow «у старого кладбища» was sent for in Novigrad: her card had no place (story 12).
+    assert.equal(facts.canonicalFactKey('место'), 'place');
+    const core = facts.renderFactCore([
+      { subject: 'npc:Вдова Мария', key: 'appearance', value: 'сгорбленная старуха в серых платках', pinned: false, seq: 9 },
+      { subject: 'npc:Вдова Мария', key: 'place', value: 'дом на отшибе у старого кладбища, деревня у переправы в Велене', pinned: false, seq: 3 },
+    ]);
+    assert.equal(core, '## Вдова Мария\n- Где: дом на отшибе у старого кладбища, деревня у переправы в Велене\n- Внешность: сгорбленная старуха в серых платках');
+    assert.equal(facts.factCardinality('place'), 'single', 'a new place replaces the old one');
+  });
   console.log(`Memory v2: ${passed} checks passed`);
 } finally { delete process.env.MEMORY_V2_ENABLED; await h.stop(); }

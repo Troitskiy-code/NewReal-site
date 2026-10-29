@@ -8,9 +8,9 @@ import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
 import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { stripMemoryControlInstructions } from "./memorySafety";
-import { inferMemoryStatus, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
+import { inferMemoryStatus, isSameMemoryName, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
-  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, resolveRoleSubject, sameFactValue, slotNoiseReason, npcAliasMap, type RoleCard, isHeroName, fullNameInText, sharesName, type FactDelta } from "./memoryFacts";
+  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, resolveRoleSubject, sameFactValue, slotNoiseReason, npcAliasMap, type RoleCard, isHeroName, fullNameInText, sharesName, type FactDelta, type TurnPresence } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
@@ -25,6 +25,14 @@ const MONEY_LEDGER_LIMIT = 40;
 // A turn that cannot fit even without fact context fails identically on every retry.
 const SKIPPED_OVERSIZED_TURN = "MEMORY_EXTRACT_SKIPPED_INPUT_TOO_LARGE";
 const toJson = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+const PRESENCE_SUBJECT = "@scene";
+/** Presence of the given user turns (by user message id); turns not yet processed are absent. */
+export async function loadTurnPresence(threadId: string, userMessageIds: string[]): Promise<Map<string, TurnPresence>> {
+  if (!memoryV2Enabled() || !userMessageIds.length) return new Map();
+  const rows = await prisma.memoryChange.findMany({ where: { threadId, subject: PRESENCE_SUBJECT, invalidated: false,
+    job: { userMessageId: { in: userMessageIds } } }, orderBy: { seq: "asc" }, select: { after: true, job: { select: { userMessageId: true } } } });
+  return new Map(rows.flatMap(row => row.job?.userMessageId ? [[row.job.userMessageId, row.after as unknown as TurnPresence] as const] : []));
+}
 export async function lockMemoryThread(tx: Tx, threadId: string) {
   await tx.$queryRaw`SELECT id FROM "ChatThread" WHERE id = ${threadId} FOR UPDATE`;
 }
@@ -269,7 +277,7 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
     const input = fitted.input;
     diagnostic.inputChars = input.length; diagnostic.inputTokens = fitted.tokens;
     diagnostic.factsIncluded = fitted.factsIncluded; diagnostic.factsOmitted = activeFacts.length - fitted.factsIncluded;
-    let extraction: ReturnType<typeof parseFactExtraction> = { facts: [], events: [], rejectedRetractions: 0,
+    let extraction: ReturnType<typeof parseFactExtraction> = { facts: [], events: [], presence: null, rejectedRetractions: 0,
       rejectedFacts: 0, rejectedEvents: 0, rejectedCandidates: [] };
     if (sources.length) {
       stage = "provider_request";
@@ -322,6 +330,14 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         const delta = { ...extracted, subject };
         await applyFact(tx, thread.id, delta, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
       }
+      // Where an NPC with a card is, from who was near the hero: the extraction model seldom wrote place itself,
+      // and the Velen widow was later sent for in Novigrad (owner's Witcher story 12, 2026-10-29).
+      if (extraction.presence?.place) {
+        const placed = new Set(extraction.facts.filter(fact => fact.key === "place").map(fact => fact.subject));
+        const near = npcs.filter(subject => !placed.has(subject) && extraction.presence!.present.some(name => isSameMemoryName(name, subject.slice(4))));
+        for (const subject of near) await applyFact(tx, thread.id, { op: "set", subject, key: "place", value: `последний раз с героем: ${extraction.presence.place}`,
+          source: "assistant_msg", sourceMessageId: messages[0].id, confidence: 1, pinned: false }, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
+      }
       const existing = await tx.episodicMemory.findMany({ where: { threadId: thread.id }, orderBy: { timestamp: "desc" }, take: 300 });
       for (const event of extraction.events) {
         // A two-word quote («Можешь.», «За спину.») is a gesture, not an event: 49 of 104 events of
@@ -335,6 +351,10 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         existing.push(projection);
         await tx.memoryEntry.create({ data: { ...memoryScopeWhere(scope), type: "episodic", content: text } });
       }
+      // Who was near the hero in this turn, kept in the change journal of the turn: a regenerated reply
+      // invalidates it with the turn's facts, and no schema change is needed.
+      if (extraction.presence) await tx.memoryChange.create({ data: { threadId: thread.id, subject: PRESENCE_SUBJECT, key: "presence",
+        op: "scene", seq: job.seq, jobId: job.id, actor: "extractor", after: toJson(extraction.presence) } });
       // Retain the existing episode cap while the StoryEvent lifecycle is deferred.
       const overflow = await tx.episodicMemory.findMany({ where: { threadId: thread.id }, orderBy: [{ importance: "desc" }, { timestamp: "desc" }], skip: 300, select: { id: true } });
       if (overflow.length) await tx.episodicMemory.deleteMany({ where: { id: { in: overflow.map(row => row.id) } } });

@@ -178,6 +178,21 @@ group('context', () => {
     && lifecycleSystem.includes('признался Вике') && lifecycleSystem.includes('красный корсет') && lifecycleSystem.includes('пригласила Артёма'),
   'events: trivial quotes never show, summarized ordinary events yield unless important or asked about', lifecycle.stats);
 
+  // A past user turn shows who was near the hero; the stored message and the newest turn stay as written.
+  const noted = helpers.assemblePreparedChatMessages({
+    userId: 'u', locale: 'ru', maxContextTokens: 16000, historyLimit: 60, subscriptionLogType: 'universe', ragEligible: true,
+    systemPromptBase: 'Ты — рассказчик.', memorySummary: null, summaryCoveredUntil: null, memoryCandidates: { core: null, episodic: [] },
+    historyRows: [
+      { id: 'p1', role: 'user', createdAt: at(1), content: 'Ну привет.', note: '[[Сцена: таверна «Слепая крыса». Рядом с героем: информатор]]' },
+      { id: 'p2', role: 'assistant', createdAt: at(2), content: 'Информатор вздрагивает.' },
+      { id: 'p3', role: 'user', createdAt: at(3), content: 'Куда идём, Трисс?' },
+    ], totalHistoryTokens: 0,
+  }, 'general');
+  check(noted.messages[1].content === 'Ну привет.\n\n[[Сцена: таверна «Слепая крыса». Рядом с героем: информатор]]'
+    && noted.messages[3].content === 'Куда идём, Трисс?', 'history: a past user turn carries its presence note', noted.messages);
+  const notedCost = helpers.selectRecentHistory([{ id: 'n', role: 'user', createdAt: at(1), content: 'аааа', note: 'бббб' }], null, { base: 99, extended: 99 }, text => text.length);
+  check(notedCost.tokens === 'аааа\n\nбббб'.length, 'history: the note counts toward the history budget', notedCost);
+
   // After a coverage loss every recent row is unprocessed. The tail must not take memory's reserve:
   // on prod this sent ~20% of a 196-message story without summary, events or core.
   const lostRows = Array.from({ length: 100 }, (_, index) => ({

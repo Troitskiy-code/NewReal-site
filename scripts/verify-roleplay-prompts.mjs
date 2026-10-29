@@ -147,6 +147,7 @@ const deps = {
   '@/lib/verseChatEconomy': { ...economy, isSubscriptionActive: () => false },
   '@/lib/advancedMemory': { loadMemoryCandidates: async () => ({ core: null, episodic: [] }), withMeaningCandidates: async value => value, rankEpisodicCandidates: () => [], sortEpisodicChronologically: rows => rows, episodicLimitForIntent: () => 3, formatEpisodicLine: () => '' },
   '@/lib/chatMemory': { readChatMemoryState: async () => ({ summary: null, coveredUntil: null }) },
+  '@/lib/memoryV2': { loadTurnPresence: async () => new Map() }, '@/lib/memoryFacts': { turnPresenceNote: () => '' },
   '@/lib/personaService': { getSelectedChatPersona: async () => ({ id: 'persona', name: 'Пользователь', description: 'USER_PRIVATE_PERSONA' }) },
   '@/lib/memoryPromptFormat': format, '@/lib/freeDailyQuota': load('src/lib/freeDailyQuota.ts', { './chatEconomy': economy }), '@/lib/memoryNarrative': load('src/lib/memoryNarrative.ts', { './memorySafety': safety }), '@/lib/messageEmbeddings': { isRagEligible: () => false, shouldUseRag: () => ({ use: false, reason: 'test' }) },
   '@/lib/ragRetrieval': { fitRagExcerpts: () => [] }, '@/lib/subscriptionState': {}, '@/lib/verseCoins': {},

@@ -14,6 +14,8 @@ import {
   type MemoryCandidates,
 } from "@/lib/advancedMemory";
 import { getSelectedChatPersona } from "@/lib/personaService";
+import { loadTurnPresence } from "@/lib/memoryV2";
+import { turnPresenceNote, type TurnPresence } from "@/lib/memoryFacts";
 import { assembleRoleplayPrompt, fitPromptAssembly, type PromptAssemblyOptions, type PromptAssembly } from "@/lib/chatSystemPrompt";
 import { roleplayMode } from "./roleplayConfig";
 import { getOrCreateThreadPromptState, assertPromptStateAvailable, type PromptState } from "@/lib/promptState";
@@ -394,7 +396,11 @@ export type ChatHistoryRow = {
   role: string;
   content: string;
   createdAt: Date;
+  /** Who was near the hero in this user turn (turnPresenceNote); added to the prompt only, never stored. */
+  note?: string;
 };
+/** A history row as the model sees it: the message, then its presence note. */
+const promptContent = (row: ChatHistoryRow) => row.note ? `${row.content}\n\n${row.note}` : row.content;
 
 export type FastChatContext = {
   userId: string;
@@ -451,7 +457,7 @@ export function selectRecentHistory(
 
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index];
-    const rowTokens = count(row.content);
+    const rowTokens = count(promptContent(row));
     const unprocessed = !coveredUntil || row.createdAt.getTime() >= coveredUntil.getTime();
     if (unprocessed) unprocessedInWindow += 1;
     const limit = unprocessed ? budget.extended : budget.base;
@@ -622,7 +628,13 @@ async function loadChatHistoryRows({
     }),
     prisma.message.count({ where }),
   ]);
-  return { rows: rows.reverse(), olderCount: Math.max(0, total - rows.length), historyBefore: cutoff };
+  const ordered = rows.reverse();
+  // Past user turns carry who was near the hero: without it the narrator let characters use what was said
+  // without them (owner's Witcher story 12, 2026-10-29; leak eval 20 → 7 of 96 replies with the reminder rule).
+  const presence = await loadTurnPresence(scope.threadId, ordered.filter(row => row.role === "user").map(row => row.id))
+    .catch((error) => { errorLog("Memory", "turn presence unavailable", toSafeDiagnostic(error)); return new Map<string, TurnPresence>(); });
+  const withNotes = ordered.map(row => presence.has(row.id) ? { ...row, note: turnPresenceNote(presence.get(row.id)!) } : row);
+  return { rows: withNotes, olderCount: Math.max(0, total - rows.length), historyBefore: cutoff };
 }
 
 /** Core (names, relationships, key facts) is never dropped: a 16k prompt without it lost the
@@ -714,7 +726,7 @@ export function assemblePreparedChatMessages(
     { role: "system", content: systemPrompt },
     ...recent.rows.map((row) => ({
       role: (row.role === "user" ? "user" : "assistant") as "user" | "assistant",
-      content: row.content,
+      content: promptContent(row),
     })),
   ];
   const totalTokens = systemTokens + recent.tokens;
