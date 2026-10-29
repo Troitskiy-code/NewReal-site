@@ -51,5 +51,9 @@ export function chatModelStreamTimeouts(modelName: string): ChatStreamTimeouts {
   // Production Mistral streams have started promptly, then hit our 20 s idle watchdog.
   // Allow a bounded pause for this route only; the absolute attempt deadline still applies.
   const mistral = modelName === "deepinfra:mistralai/Mistral-Small-3.2-24B-Instruct-2506";
-  return { firstByteMs: 15_000, idleMs: reasoning || mistral ? 45_000 : 20_000, totalMs: 120_000 };
+  // Gemma 4 Ultra sends headers only once the whole reply is written, then the reply in one burst: headers
+  // took 6–14 s (p90 12–13.5 s) on both network routes, and the 15 s limit failed replies twice in a row
+  // (prod 2026-10-29). Other models answer headers in ~1 s.
+  const buffered = modelName === "deepinfra:google/gemma-4-31B-it-Ultra";
+  return { firstByteMs: buffered ? 45_000 : 15_000, idleMs: reasoning || mistral ? 45_000 : 20_000, totalMs: 120_000 };
 }

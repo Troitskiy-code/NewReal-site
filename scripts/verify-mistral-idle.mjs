@@ -165,7 +165,9 @@ try {
   const policies = loadPolicies(current);
   for (const name of policies) {
     const limits = current.policy.chatModelStreamTimeouts(name), old = baseline.policy.chatModelStreamTimeouts(name);
-    check(limits.firstByteMs === 15_000 && limits.totalMs === 120_000, `${name}: headers and absolute limit unchanged`);
+    // Gemma 4 Ultra writes the whole reply before its headers: it alone waits 45 s for them.
+    const firstByte = name === 'deepinfra:google/gemma-4-31B-it-Ultra' ? 45_000 : 15_000;
+    check(limits.firstByteMs === firstByte && limits.totalMs === 120_000, `${name}: headers and absolute limit as set`);
     if (name !== model) check(limits.idleMs === old.idleMs, `${name}: unrelated model idle limit unchanged`);
   }
   const delayed = [{ at: 0, bytes: content('private_answer') }, { at: 30_000, bytes: content(' продолжение') + terminal('stop') }];
