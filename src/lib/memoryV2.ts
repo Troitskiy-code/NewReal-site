@@ -171,7 +171,9 @@ async function jobMessages(tx: Tx | typeof prisma, job: MemoryJob) {
 /** Messages before the turn shown to the extractor as scene context only. With 4, both replays of the owner's
  * story kept the two accountants apart with the death on the right one and a fuller money ledger, for ~17%
  * more extraction cost; without, one replay of two did (2026-10-29). */
-const SCENE_MESSAGES = Number(process.env.MEMORY_SCENE_MESSAGES ?? 4);
+// Bracket access: Relaxdev replaces a dotted read of an unset variable with a stub, which made this NaN
+// and switched the scene off on prod (29.10).
+const SCENE_MESSAGES = (value => Number.isFinite(value) && value >= 0 ? value : 4)(Number(process.env['MEMORY_SCENE_MESSAGES'] ?? 4));
 async function previousScene(user: { threadId: string | null; createdAt: Date }): Promise<string> {
   if (!user.threadId || !SCENE_MESSAGES) return "";
   const rows = await prisma.message.findMany({ where: { threadId: user.threadId, createdAt: { lt: user.createdAt } },
