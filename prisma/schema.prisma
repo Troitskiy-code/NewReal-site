@@ -265,6 +265,15 @@ model MessageEmbeddingDeepinfra {
   createdAt DateTime @default(now())
 }
 
+// Qwen/Qwen3-Embedding-0.6B vector of a memory event, the space of MessageEmbeddingDeepinfra (episodicEmbeddings).
+model EpisodicEmbeddingDeepinfra {
+  id         String         @id @default(cuid())
+  episodicId String         @unique
+  episodic   EpisodicMemory @relation(fields: [episodicId], references: [id], onDelete: Cascade)
+  embedding  Unsupported("vector(1024)")
+  createdAt  DateTime       @default(now())
+}
+
 model EmbeddingBackfillLease {
   id         String @id
   owner      String
@@ -340,6 +349,7 @@ model EpisodicMemory {
   importance  Int       @default(1)
   sourceMemoryJobId String?
   sourceMemoryJob MemoryJob? @relation(fields: [sourceMemoryJobId], references: [id], onDelete: SetNull)
+  embedding   EpisodicEmbeddingDeepinfra?
 
   @@index([userId, characterId, timestamp])
   @@index([threadId, timestamp])

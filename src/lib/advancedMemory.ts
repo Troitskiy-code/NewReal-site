@@ -10,6 +10,7 @@ import { makeSummarySources } from "@/lib/memorySummaryEvidence";
 import { memoryScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { memoryV2Enabled } from "./memoryFacts";
 import { clearFactMemory, lockMemoryThread, readFactCore, replaceManualFactCore } from "./memoryV2";
+import { backfillEpisodicEmbeddings, episodicSimilarities } from "./episodicEmbeddings";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
 const CORE_MEMORY_MODEL = "google/gemma-4-31b-it";
@@ -388,6 +389,8 @@ export type EpisodicMemoryItem = {
   event: string;
   timestamp: Date;
   importance: number;
+  /** Cosine similarity to the user's message, when the event has a vector (episodicEmbeddings). */
+  similarity?: number;
 };
 
 export type RelevantMemories = {
@@ -674,8 +677,11 @@ export function rankEpisodicCandidates(items: EpisodicMemoryItem[], query = ""):
     score(b) - score(a) || b.timestamp.getTime() - a.timestamp.getTime() || b.id.localeCompare(a.id);
   const unique = (ranked: EpisodicMemoryItem[]) =>
     ranked.filter((item, index) => !ranked.slice(0, index).some((prior) => sameMemoryMeaning(prior.event, item.event)));
+  // Meaning counts on top of shared words: an event close to the message (cosine above 0.3) gains up to a
+  // few points, which lifts answers worded differently from the question (eval 2026-10-29: 11 → 16 of 19).
+  const meaning = (item: EpisodicMemoryItem) => Math.max(0, (item.similarity ?? 0) - 0.3) * 12;
   const asked = new Set([...(query ? memoryTerms(query) : [])].filter(term => !QUERY_WORDS.has(term)));
-  if (!asked.size) return unique([...items].sort((a, b) => order(a, b, base)));
+  if (!asked.size) return unique([...items].sort((a, b) => order(a, b, item => base(item) + meaning(item))));
   const terms = new Map(items.map(item => [item, memoryTerms(item.event)]));
   const covered = new Set<string>(), ranked: EpisodicMemoryItem[] = [];
   let rest = [...items];
@@ -685,7 +691,7 @@ export function rankEpisodicCandidates(items: EpisodicMemoryItem[], query = ""):
     // Any event that shares a word with the message comes before those that share none: recency barely differs
     // inside one story, so a fresh unrelated line outranked the debt the user asked about.
     const score = (item: EpisodicMemoryItem) => (matched(item).length ? 2 : 0) + 3 * fresh(item) / asked.size
-      + matched(item).length / asked.size + base(item) * 0.3;
+      + matched(item).length / asked.size + meaning(item) + base(item) * 0.3;
     rest.sort((a, b) => order(a, b, score));
     const next = rest.shift()!;
     ranked.push(next);
@@ -720,7 +726,9 @@ export async function loadMemoryCandidates(
   const { userId, characterId } = scope;
   const minImportance = episodicImportanceThreshold(maxContextTokens);
 
-  const [core, important, recent, matched] = await Promise.all([
+  // New events get their vectors in the background; this turn uses those already stored.
+  if (query.trim() && scope.threadId) void backfillEpisodicEmbeddings(scope.threadId);
+  const [core, important, recent, scanned, similarity] = await Promise.all([
     readFactCore(scope, query).then(content => content !== null ? { content } : prisma.coreMemory.findUnique({
       where: { threadId: scope.threadId },
       select: { content: true },
@@ -742,11 +750,17 @@ export async function loadMemoryCandidates(
       where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
       orderBy: [{ timestamp: "desc" }, { id: "desc" }], take: QUERY_POOL_SCAN,
       select: { id: true, event: true, timestamp: true, importance: true },
-    }).then(rows => rows.map(row => ({ row, overlap: memoryOverlap(query, row.event) })).filter(match => match.overlap > 0)
-      .sort((a, b) => b.overlap - a.overlap || b.row.importance - a.row.importance).slice(0, QUERY_POOL_SIZE).map(match => match.row))
-      : Promise.resolve([]),
+    }) : Promise.resolve([]),
+    query.trim() && scope.threadId ? episodicSimilarities(scope.threadId, query) : Promise.resolve(new Map<string, number>()),
   ]);
-  const episodic = rankEpisodicCandidates([...new Map([...important, ...recent, ...matched].map((row) => [row.id, row])).values()]);
+  // Over the whole story: the events sharing the most words with the message and those closest in meaning.
+  const byWords = scanned.map(row => ({ row, overlap: memoryOverlap(query, row.event) })).filter(match => match.overlap > 0)
+    .sort((a, b) => b.overlap - a.overlap || b.row.importance - a.row.importance).slice(0, QUERY_POOL_SIZE).map(match => match.row);
+  const byMeaning = scanned.filter(row => similarity.has(row.id))
+    .sort((a, b) => similarity.get(b.id)! - similarity.get(a.id)!).slice(0, QUERY_POOL_SIZE);
+  const pool = [...new Map([...important, ...recent, ...byWords, ...byMeaning].map((row) => [row.id, row])).values()]
+    .map(row => similarity.has(row.id) ? { ...row, similarity: similarity.get(row.id) } : row);
+  const episodic = rankEpisodicCandidates(pool);
 
   const candidates: MemoryCandidates = {
     core: core?.content ? sanitizeCoreMemory(core.content, { log: false }) || null : null,

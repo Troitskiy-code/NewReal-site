@@ -84,6 +84,12 @@ group('context', () => {
   check(asked[0].id === 'deal', 'episodic: the old matching event comes first');
   const twoParts = advanced.rankEpisodicCandidates(story, 'Напомни, как зовут мою кобылу и сколько я должна Борину?').slice(0, 2).map(item => item.id);
   check(twoParts.includes('mare') && twoParts.some(id => id.startsWith('debt')), 'episodic: a two-part question gets both parts');
+  // Meaning lifts an answer worded unlike the question («кто меня нанял» / «договорились, господин Вельш»).
+  const hired = advanced.rankEpisodicCandidates([
+    ...story.filter(item => item.id.startsWith('fresh')),
+    { id: 'hire', event: 'Договорились, господин Вельш: я ищу вашу дочь', importance: 2, timestamp: at(1), similarity: 0.62 },
+  ], 'Кто меня нанял?');
+  check(hired[0].id === 'hire', 'episodic: a close meaning ranks first without shared words');
 
   // RAG decision matrix.
   const decide = (args) => rag.shouldUseRag({ ragEligible: true, userQuery: 'Я иду дальше', intent: 'story', historyTokens: 100, ...args });
