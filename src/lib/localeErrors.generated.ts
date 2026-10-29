@@ -20,5 +20,33 @@ export const localeErrorMessages = {
     "retry": "Inténtalo de nuevo",
     "toCatalog": "Ir al catálogo",
     "errorCode": "Código de error"
+  },
+  "de": {
+    "errorTitle": "Etwas ist schief gelaufen",
+    "errorText": "Wir kennen das Problem bereits. Versuchen Sie es erneut oder gehen Sie zurück zum Katalog.",
+    "retry": "Versuchen Sie es erneut",
+    "toCatalog": "Zum Katalog",
+    "errorCode": "Fehlercode"
+  },
+  "fr": {
+    "errorTitle": "Quelque chose s'est mal passé",
+    "errorText": "Nous connaissons déjà le problème. Réessayez ou revenez au catalogue.",
+    "retry": "Essaie encore",
+    "toCatalog": "Aller au catalogue",
+    "errorCode": "Code d'erreur"
+  },
+  "it": {
+    "errorTitle": "Qualcosa è andato storto",
+    "errorText": "Sappiamo già del problema. Riprova o torna al catalogo.",
+    "retry": "Riprova",
+    "toCatalog": "Vai al catalogo",
+    "errorCode": "Codice di errore"
+  },
+  "pl": {
+    "errorTitle": "Coś poszło nie tak",
+    "errorText": "Wiemy już o problemie. Spróbuj ponownie lub wróć do katalogu.",
+    "retry": "Spróbuj ponownie",
+    "toCatalog": "Przejdź do katalogu",
+    "errorCode": "Kod błędu"
   }
 };

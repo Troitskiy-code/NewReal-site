@@ -2,8 +2,16 @@
 import dictionary0 from "../../public/locales/ru/common.json" with { type: "json" };
 import dictionary1 from "../../public/locales/en/common.json" with { type: "json" };
 import dictionary2 from "../../public/locales/es/common.json" with { type: "json" };
+import dictionary3 from "../../public/locales/de/common.json" with { type: "json" };
+import dictionary4 from "../../public/locales/fr/common.json" with { type: "json" };
+import dictionary5 from "../../public/locales/it/common.json" with { type: "json" };
+import dictionary6 from "../../public/locales/pl/common.json" with { type: "json" };
 export const localeResources: Record<string, { common: Record<string, unknown> }> = {
   "ru": { common: dictionary0 },
   "en": { common: dictionary1 },
   "es": { common: dictionary2 },
+  "de": { common: dictionary3 },
+  "fr": { common: dictionary4 },
+  "it": { common: dictionary5 },
+  "pl": { common: dictionary6 },
 };

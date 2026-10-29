@@ -10,6 +10,8 @@ import tailwind from "@tailwindcss/postcss";
 const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack");
 const root = process.cwd();
+const configuredManifest = JSON.parse(readFileSync(path.join(root, "public/locales/manifest.json"), "utf8"));
+const enabledCount = Object.values(configuredManifest.locales).filter(locale => locale.enabled).length;
 const runtime = path.join(root, ".runtime/language-menu");
 mkdirSync(runtime, { recursive: true });
 writeFileSync(path.join(runtime, "tsx-loader.cjs"), `module.exports = function(source) {
@@ -25,6 +27,7 @@ import manifest from '../../public/locales/manifest.json';
 import { LOCALES, resolveLocale } from '@/lib/i18nConfig';
 if (new URLSearchParams(location.search).has('ten')) {
   const extra = [['pt','Português','Portuguese'],['de','Deutsch','German'],['fr','Français','French'],['it','Italiano','Italian'],['tr','Türkçe','Turkish'],['ja','日本語','Japanese'],['ko','한국어','Korean']];
+  LOCALES.splice(0, LOCALES.length, 'ru', 'en', 'es');
   for (const [code,label,languageName] of extra) {
     manifest.locales[code] = {label,languageName,intl:code,direction:'ltr',fallback:'en',enabled:true};
     if (!LOCALES.includes(code)) LOCALES.push(code);
@@ -69,7 +72,7 @@ try {
   await trigger.click();
   const dialog=page.getByRole("dialog");
   await dialog.waitFor();
-  assert.equal(await dialog.locator("li").count(),3,"only enabled languages appear");
+  assert.equal(await dialog.locator("li").count(),enabledCount,"only enabled languages appear");
   assert.equal(await dialog.getByRole("button",{name:"Русский Russian",exact:true}).getAttribute("aria-pressed"),"true");
   assert.equal(await page.getByRole("searchbox").evaluate(el=>el===document.activeElement),true);
   await page.getByRole("searchbox").fill("испан");

@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -44,4 +48,32 @@ const markup = renderToStaticMarkup(createElement(provider, { locale: "es" }, cr
 assert.ok(markup.includes("Tu turno…") && markup.includes("Enviar") && markup.includes("Español"));
 assert.ok(!markup.includes("Ваш ход") && !markup.includes("Отправить"));
 assert.ok(app("src/lib/chatSystemPrompt.ts").assembleRoleplayPrompt({ name: "Maren" }, "es").content.includes("Always reply in Spanish"));
+// A resumed job includes previous attempts in its budget and must fail before any request.
+const checkpointDirectory = mkdtempSync(path.join(tmpdir(), "nv-translation-budget-"));
+try {
+  writeFileSync(path.join(checkpointDirectory, "es-cache.json"), JSON.stringify({version:1,values:{},characters:99,requests:1}));
+  const run = spawnSync(process.execPath, ["--experimental-strip-types","--import","./scripts/alias-register.mjs","scripts/translate-localization-pack.mjs","--locale=es",`--workdir=${checkpointDirectory}`,"--max-total-characters=0","--apply"], {
+    encoding:"utf8",env:{...process.env,YANDEX_API_KEY:"synthetic-budget-test",YANDEX_FOLDER_ID:"synthetic-budget-test"},
+  });
+  assert.equal(run.status,1);
+  assert.ok(run.stderr.includes("including previous attempts; no requests sent"));
+  assert.equal(JSON.parse(readFileSync(path.join(checkpointDirectory, "es-cache.json"), "utf8")).characters,99);
+  // Simulate a transport failure without contacting the provider. Its possible charge must remain reserved.
+  writeFileSync(path.join(checkpointDirectory, "es-cache.json"), JSON.stringify({version:1,values:{},characters:0,requests:0}));
+  const transportFixture=path.join(checkpointDirectory,"reject-fetch.mjs");
+  writeFileSync(transportFixture,'globalThis.fetch = async () => { throw new Error("synthetic transport timeout"); };');
+  const failed = spawnSync(process.execPath,["--experimental-strip-types","--import","./scripts/alias-register.mjs","--import",pathToFileURL(transportFixture).href,"scripts/translate-localization-pack.mjs","--locale=es",`--workdir=${checkpointDirectory}`,"--max-total-characters=1000000","--apply"],{
+    encoding:"utf8",env:{...process.env,YANDEX_API_KEY:"synthetic-budget-test",YANDEX_FOLDER_ID:"synthetic-budget-test"},
+  });
+  assert.equal(failed.status,1);
+  assert.ok(failed.stderr.includes("synthetic transport timeout"));
+  const failedCheckpoint=JSON.parse(readFileSync(path.join(checkpointDirectory,"es-cache.json"),"utf8"));
+  assert.equal(failedCheckpoint.requests,1);
+  assert.equal(failedCheckpoint.unconfirmedRequests,1);
+  assert.ok(failedCheckpoint.characters>0 && failedCheckpoint.characters<=9500);
+} finally {
+  const allowedParent = path.resolve(tmpdir()) + path.sep;
+  if(!path.resolve(checkpointDirectory).startsWith(allowedParent) || !path.basename(checkpointDirectory).startsWith("nv-translation-budget-")) throw new Error("Unexpected checkpoint cleanup directory");
+  rmSync(checkpointDirectory,{recursive:true,force:true});
+}
 console.log('PASS protected variables/markup, lossless segmentation, SQL parameter encoding, private-card exclusion, source-change guards and idempotent import');

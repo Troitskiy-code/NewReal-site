@@ -258,7 +258,7 @@
       "create": "Crea tu personaje",
       "catalogCount_one": "{{count}} personaje en el catálogo",
       "catalogCount_other": "{{count}} personajes en el catálogo",
-      "languages": "Ruso, inglés y español",
+      "languages": "Varios idiomas",
       "catalogCount_many": "{{count}} personajes en el catálogo"
     },
     "recommendations": {
@@ -297,7 +297,7 @@
       "registerQ": "¿Necesito registrarme?",
       "registerA": "Para empezar, no: puedes enviar los primeros {{limit}} {{messages}} como invitado. Para continuar, inicia sesión y el chat se trasladará a tu cuenta.",
       "languageQ": "¿En qué idioma responde {{name}}?",
-      "languageA": "En el idioma que elijas para el sitio: ruso, inglés o español. Puedes cambiarlo en el menú y continuar la misma historia.",
+      "languageA": "En el idioma que elijas para el sitio. Puedes cambiarlo en el menú y continuar la misma historia.",
       "startQ": "¿Cómo empiezo la historia?",
       "startA": "Pulsa «Iniciar chat». {{name}} abrirá la escena con el primer mensaje y la historia continuará a partir de tus respuestas."
     },
@@ -566,7 +566,7 @@
     },
     "create": {
       "title": "Crea un personaje de IA gratis — NewVerse creador",
-      "description": "Crea tu propio personaje de IA para chatear y jugar historias de rol: personalidad, apariencia, primer mensaje y mundo. Gratis, en ruso, inglés y español."
+      "description": "Crea tu propio personaje de IA para chatear y jugar historias de rol: personalidad, apariencia, primer mensaje y mundo. Gratis y con varios idiomas disponibles."
     },
     "edit": {
       "title": "Editar personaje — NewVerse",
@@ -665,8 +665,8 @@
       "search": "Busca «{{query}}» entre los personajes",
       "pageSuffix": ", página {{page}}",
       "pageSentence": "Página {{page}}.",
-      "description": "Catálogo de personajes de IA de NewVerse para historias de rol en ruso, inglés y español.",
-      "searchDescription": "Personajes de NewVerse relacionados con «{{query}}»: historias de rol con IA en ruso, inglés y español.",
+      "description": "Catálogo de personajes de IA de NewVerse para historias de rol en varios idiomas.",
+      "searchDescription": "Personajes de NewVerse relacionados con «{{query}}»: historias de rol con IA en varios idiomas.",
       "sort": {
         "new": "Nuevos personajes de IA",
         "random": "Personajes aleatorios de IA",
@@ -1029,7 +1029,7 @@
       "paragraphs": [
         "NewVerse es un lugar para hablar con personajes de IA. El catálogo tiene héroes de muchos géneros: romance, fantasía, anime, historias de detectives, ciencia ficción y tranquila vida cotidiana. Elige un personaje por su descripción y personalidad, abre el chat y comienza a escribir; ellos responden con su propia voz, con su propia historia y forma de hablar.",
         "Esto es más que un chat de IA con preguntas y respuestas: es un juego de roles de IA. Cada personaje viene con una configuración, un mundo y un primer mensaje que abre la escena. Tú decides quién eres en la historia y a dónde va. Los personajes recuerdan los detalles importantes de la conversación, para que puedas volver un día o una semana después y continuar donde lo dejaste.",
-        "Si no encuentras al héroe adecuado, crea tu propio personaje de IA: define su personalidad, apariencia, primer mensaje y mundo. Después podrás chatear con él en privado o publicarlo en el catálogo. El sitio está disponible en ruso, inglés y español, y puedes empezar sin registrarte."
+        "Si no encuentras al héroe adecuado, crea tu propio personaje de IA: define su personalidad, apariencia, primer mensaje y mundo. Después podrás chatear con él en privado o publicarlo en el catálogo. El sitio admite varios idiomas y puedes empezar sin registrarte."
       ],
       "createLink": "Crea un personaje de IA",
       "genresLink": "Todos los géneros",
@@ -1049,7 +1049,7 @@
         },
         {
           "question": "¿Qué idiomas puedo usar?",
-          "answer": "Ruso, inglés o español. Las fichas de los personajes están disponibles en estos idiomas y puedes elegir el idioma del sitio en el menú."
+          "answer": "En el idioma que elijas para el sitio. Los idiomas disponibles aparecen en el menú; al cambiar conservas la página y la historia."
         },
         {
           "question": "¿En qué se diferencian las historias de rol con IA de un chatbot normal?",

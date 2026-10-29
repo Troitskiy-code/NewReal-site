@@ -1,0 +1,1373 @@
+{
+  "chatSpeech": {
+    "label": "Stimme des Charakters",
+    "listen": "Hören",
+    "pause": "Pause",
+    "resume": "Wiedergabe fortsetzen",
+    "seek": "Audio suchen",
+    "preview": "Sprechtext",
+    "speechOnly": "KI behält Dialog und Erzählung bei, entfernt Regieanweisungen und Auswahlmenüs und wählt die Lieferung aus. Der vorbereitete Sprechtext erscheint unter der Antwort.",
+    "loading": "Audio erzeugen…",
+    "player": "Audio der Zeichenantwort",
+    "voice": "Stimme",
+    "settingsTitle": "Sprachauswahl",
+    "settingsHint": "Der automatische Modus verwendet das Charakterprofil, um eine Stimme auszuwählen. Welten und Gruppen verwenden einen männlichen Erzähler. Sie können jede Stimme manuell auswählen.",
+    "settingsLoading": "Spracheinstellungen laden…",
+    "settingsUnavailable": "Sprache ist derzeit nicht verfügbar.",
+    "autoShort": "Auto",
+    "autoVoice": "Automatisch — {{voice}}",
+    "autoReasons": {
+      "female": "Eine weibliche Stimme wurde aus dem Charakterprofil ausgewählt.",
+      "male": "Aus dem Charakterprofil wurde eine männliche Stimme ausgewählt.",
+      "narrator": "Diese Geschichte verwendet standardmäßig einen männlichen Erzähler.",
+      "unknown": "Das Charakterprofil gibt kein eindeutiges Geschlecht an. Standardmäßig wird eine männliche Stimme verwendet, die Sie manuell ändern können."
+    },
+    "voiceGroups": {
+      "female": "Frauenstimmen",
+      "male": "Männerstimme",
+      "other": "Zusätzliche Stimme"
+    },
+    "voiceDescriptions": {
+      "aoede": "Luftig und entspannt. Für natürliche Gespräche und sanfte Lieferung.",
+      "kore": "Fest und gelassen. Für selbstbewusste, souveräne Charaktere.",
+      "leda": "Jugendlich und frisch. Für leichte, lebendige Gespräche.",
+      "zephyr": "Hell und klar. Für offene, freundliche Charaktere.",
+      "fenrir": "Energisch und ausdrucksstark. Für emotionale Dialoge und dynamische Szenen.",
+      "charon": "Ruhig und informativ. Für Erzählungen, Weltbeschreibungen und gemessenes Geschichtenerzählen.",
+      "orus": "Fest und selbstbewusst. Für ernsthafte, entscheidende Charaktere.",
+      "puck": "Fröhlich und lebhaft. Für aufgeschlossene, optimistische Charaktere.",
+      "fola": "Original NewVerse Konversationsstimme, beibehalten für Zuhörer, die es vorzogen."
+    },
+    "voiceSaved": "Ihre Auswahl wird für diesen Charakter auf diesem Gerät gespeichert und gilt für zukünftige Wiedergaben.",
+    "voiceChangeBusy": "Warten Sie, bis die Vorbereitung der aktuellen Aufnahme abgeschlossen ist, bevor Sie die Stimme ändern.",
+    "voices": {
+      "fola": "Folas",
+      "fenrir": "Fenrir"
+    },
+    "unlimited": "Unbegrenzte Rede ist enthalten",
+    "daily": "Wiedergabe: {{remaining}} von 1 heute noch übrig",
+    "reset": "Eine Wiedergabe pro Tag, einschließlich Wiederholungen. Wird um 00:00 Uhr Moskauer Zeit zurückgesetzt. Anhalten und Fortsetzen Verwenden Sie kein anderes Spiel.",
+    "upgrade": "Unbegrenzt mit einem Abonnement",
+    "errors": {
+      "unauthorized": "Melden Sie sich an, um diese Antwort anzuhören.",
+      "notFound": "Diese Antwort ist nicht verfügbar. Aktualisieren Sie den Chat.",
+      "empty": "Diese Antwort enthält nur Handlungen oder Regieanweisungen, ohne Worte zu lesen.",
+      "tooLong": "Der Text ist zu lang: bis zu 16.000 Zeichen pro Antwort und 8.000 im Audioskript.",
+      "busy": "Eine weitere Antwort wird generiert. Bitte warten Sie.",
+      "quota": "Ihre kostenlose Wiedergabe wurde heute verwendet. Wiederholungen zählen auch. Wird um 00:00 Uhr Moskauer Zeit zurückgesetzt. Abonnements beinhalten unbegrenzte Rede.",
+      "rateLimit": "Zu viele Anfragen. Versuchen Sie es in einer Minute noch einmal.",
+      "changed": "Die Antwort hat sich geändert. Versuchen Sie erneut, das Audio zu generieren.",
+      "unavailable": "Das Audio konnte nicht geladen werden. Bitte versuchen Sie es später noch einmal.",
+      "playback": "Drücken Sie Wiedergabe auf dem Audioplayer. Es ist nicht erforderlich, das Audio erneut zu generieren.",
+      "pending": "Audio wird noch vorbereitet. Versuchen Sie es später erneut, um dieselbe Aufnahme fortzusetzen.",
+      "uncertain": "Der Dienst bestätigte nicht, ob die Synthese gestartet wurde. Das Wiederholen dieser Antwort ist vorübergehend nicht verfügbar. Ihre tägliche Wiedergabe bleibt erhalten."
+    }
+  },
+  "header": {
+    "title": "NewVerse",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen",
+    "collapseMenu": "Menü einklappen",
+    "expandMenu": "Menü erweitern",
+    "profileMenu": "Menü Profil",
+    "mainNav": "Hauptnavigation",
+    "bottomNav": "Schnelle Navigation",
+    "menuShort": {
+      "home": "Startseite",
+      "chats": "Chat",
+      "create": "Erstellen",
+      "coins": "Münzen",
+      "profile": "Profil",
+      "favorites": "Favoriten"
+    },
+    "menu": {
+      "home": "Startseite",
+      "chats": "Meine Chats",
+      "pricing": "Abonnement",
+      "coins": "VerseCoins",
+      "create": "Charakter erstellen",
+      "profile": "Profil",
+      "favorites": "Favoriten",
+      "support": "Support",
+      "updates": "Aktualisierungen"
+    }
+  },
+  "footer": {
+    "offer": "Öffentliches Angebot",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutzerklärung",
+    "refund": "Rückzahlungspolitik",
+    "rules": "Plattformregeln",
+    "support": "Unterstützung",
+    "updates": "Updates auf Telegram",
+    "copyright": "© {{year}} NewVerse — Dein Universum an Charakteren"
+  },
+  "language": {
+    "label": "Sprache",
+    "title": "Sprache der Benutzeroberfläche",
+    "choose": "Sprache wählen",
+    "close": "Sprachauswahl schließen",
+    "search": "Sprache suchen",
+    "automatic": "Automatisch",
+    "browserLanguage": "Browsersprache · {{language}}",
+    "saved": "Deine Auswahl wird für zukünftige Besuche gespeichert",
+    "empty": "Keine passende Sprache gefunden",
+    "ru": "RU",
+    "en": "EN"
+  },
+  "currency": {
+    "label": "Währung",
+    "RUB": "REIBEN",
+    "USD": "USD",
+    "EUR": "EUR"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "loginTitle": "Anmelden",
+    "register": "Registrieren",
+    "registerTitle": "Registrieren",
+    "email": "Email",
+    "emailPlaceholder": "Email",
+    "password": "Passwort",
+    "name": "Name",
+    "confirmPassword": "Passwort bestätigen",
+    "forgot_password": "Passwort vergessen?",
+    "login_google": "Anmelden mit Google",
+    "register_google": "Registrieren mit Google",
+    "or": "oder",
+    "noAccount": "Sie haben noch kein Konto?",
+    "hasAccount": "Haben Sie bereits ein Konto?",
+    "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort",
+    "passwordMismatch": "Passwörter stimmen nicht überein",
+    "registerError": "Registrierung fehlgeschlagen",
+    "registerSuccess": "Registrierung erfolgreich! Wir haben eine Bestätigungs-E-Mail gesendet. Weiterleitung zur Anmeldung...",
+    "connectionError": "Ein Serververbindungsfehler ist aufgetreten",
+    "passwordChanged": "Passwort erfolgreich geändert",
+    "forgotTitle": "Passwort zurücksetzen",
+    "sendLink": "Link senden",
+    "sending": "Senden...",
+    "linkSent": "Ein Link zum Zurücksetzen des Passworts wurde an Ihre E-Mail-Adresse gesendet",
+    "sendLinkError": "Der Link konnte nicht gesendet werden",
+    "rememberedPassword": "Erinnerst du dich an dein Passwort?",
+    "resetTitle": "Legen Sie ein neues Passwort fest",
+    "newPassword": "Neues Passwort",
+    "confirmNewPassword": "Passwort bestätigen",
+    "resetPassword": "Passwort zurücksetzen",
+    "saving": "Einsparung...",
+    "checkingLink": "Überprüfen Sie den Link...",
+    "invalidLink": "Dieser Link ist ungültig oder abgelaufen",
+    "resetFailed": "Das Passwort konnte nicht zurückgesetzt werden",
+    "requestNewLink": "Neuen Link anfordern",
+    "backToLogin": "Zurück zur Anmeldung",
+    "minPassword": "Das Passwort muss mindestens sein {{count}} Zeichen",
+    "loading": "Laden...",
+    "consentTerms": "Ich akzeptiere die <terms>Nutzungsbedingungen</terms> und Zustimmung zur Verarbeitung personenbezogener Daten unter der <privacy>Datenschutzerklärung</privacy>.",
+    "consentOffer": "Ich habe das gelesen <offer>Öffentliches Angebot</offer> und akzeptiere seine Bedingungen.",
+    "consentRules": "Ich habe das gelesen <rules>plattformregeln</rules>.",
+    "consentRequired": "Bitte akzeptieren Sie alle erforderlichen Einwilligungen, um sich anzumelden.",
+    "verifyTitle": "E-Mail bestätigen",
+    "verifying": "Bestätigen Sie Ihre E-Mail...",
+    "verifySuccess": "E-Mail bestätigt! Sie haben jetzt vollen Zugriff auf alle Funktionen.",
+    "verifyInvalid": "Dieser Link ist ungültig oder abgelaufen. Fordern Sie eine neue E-Mail an.",
+    "resendEmail": "Bestätigungs-E-Mail erneut senden",
+    "resendSuccess": "Die E-Mail wurde gesendet. Überprüfen Sie Ihren Posteingang.",
+    "resendError": "Die E-Mail konnte nicht gesendet werden",
+    "goToProfile": "Zum Profil gehen",
+    "verifyBanner": "Bestätigen Sie Ihre E-Mail-Adresse, um den vollen Zugriff freizuschalten.",
+    "refreshStatus": "Status aktualisieren",
+    "refreshStatusError": "Der Status konnte nicht aktualisiert werden"
+  },
+  "common": {
+    "submit": "Bestätigen",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "retry": "Erneut versuchen",
+    "error": "Fehler",
+    "loading": "Wird geladen…",
+    "user": "Nutzer"
+  },
+  "home": {
+    "continue": {
+      "label": "Weiterhin",
+      "you": "Sie"
+    },
+    "searchPlaceholder": "Suche nach Name oder Tag...",
+    "sort": "Sortieren",
+    "sortTop": "Oberen",
+    "sortRandom": "Zufällig",
+    "sortNew": "Neu",
+    "sortForYou": "Für dich",
+    "found": "Gefundene Charaktere: ",
+    "noCharacters": "Keine Charaktere",
+    "noResults": "Nichts entsprach Ihrer Suche. Versuchen Sie, die Filter zu wechseln.",
+    "noPublished": "Noch keine veröffentlichten Charaktere. Erstelle den ersten!",
+    "loadMore": "Mehr laden",
+    "pagination": "Seitennavigation",
+    "page": "Seite {{page}} von {{pages}}",
+    "prevPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "pageChooser": {
+      "open": "Gehe zu einer beliebigen Seite",
+      "title": "Gehe zu Seite",
+      "close": "Seitenauswahl schließen",
+      "prevRange": "Vorherige zehn Seitenzahlen",
+      "nextRange": "Nächste zehn Seitenzahlen",
+      "range": "{{start}}–{{end}} von {{pages}}",
+      "first": "Erste · 1",
+      "last": "Letzt · {{pages}}",
+      "firstLabel": "Erste Seite",
+      "lastLabel": "Letzte Seite",
+      "inputLabel": "Oder geben Sie eine Seitenzahl ein",
+      "go": "Gehen",
+      "invalid": "Geben Sie eine ganze Zahl von 1 bis {{pages}}"
+    },
+    "reset": "Zurücksetzen",
+    "resetSearch": "Suche löschen",
+    "genresLabel": "Musikrichtungen",
+    "allGenres": "Aller",
+    "genres": {
+      "fantasy": "Phantasie",
+      "romance": "Romance",
+      "anime": "Zeichentrick",
+      "scifi": "Sci-Fi",
+      "mystic": "Geheimnis",
+      "realistic": "Moderne Welt",
+      "adventure": "Abenteuer",
+      "horror": "Schrecken",
+      "comedy": "Komödie",
+      "drama": "Drama",
+      "detective": "Detektiv",
+      "everyday": "Ein Stück Leben",
+      "cyberpunk": "Cyberpunk"
+    },
+    "sectionTitle": {
+      "top": "Im Moment beliebt",
+      "new": "Neuankömmling",
+      "random": "Zufällige Auswahl",
+      "for-you": "Für dich ausgesucht",
+      "search": "Suchergebnisse"
+    },
+    "hero": {
+      "eyebrow": "NewVerse — mit KI-Charakteren chatten",
+      "title": "Geschichten, die sich an dich erinnern",
+      "text": "Wähle einen Helden oder eine ganze Welt und setze die Handlung fort, wann immer du willst. Charaktere erinnern sich an Details und erweitern die Geschichte mit Ihnen.",
+      "start": "Beginnen Sie eine Geschichte",
+      "create": "Erstelle deinen Charakter",
+      "catalogCount_one": "{{count}} Charakter im Katalog",
+      "catalogCount_other": "{{count}} Charaktere im Katalog",
+      "languages": "Mehrere Sprachen"
+    },
+    "recommendations": {
+      "discoveryTitle": "Entdecke neue Geschichten",
+      "personalizedHint": "Basierend auf Ihren Favoriten und den letzten Chats, mit neuen Genres und weniger bekannten Charakteren.",
+      "discoveryHint": "Eine Mischung aus Genres, beliebten Geschichten und Neuankömmlingen. Fügen Sie Favoriten hinzu und chatten Sie, um diese Tipps zu personalisieren."
+    }
+  },
+  "characterCard": {
+    "knownAbout": "Bekannt über den Charakter:",
+    "noDescription": "Keine Beschreibung",
+    "messages_one": "{{formatted}} Nachricht",
+    "messages_other": "{{formatted}} Mails"
+  },
+  "characterPage": {
+    "author": "Autor",
+    "unknownAuthor": "NewVerse",
+    "messages": "Mails: {{count}}",
+    "knownAbout": "Bekannt über den Charakter",
+    "tags": "Zeichen-Tags",
+    "startChat": "Chat starten",
+    "share": "Teilen",
+    "copied": "Link kopiert",
+    "shareFailed": "Der Link konnte nicht kopiert werden",
+    "about": "Über den Charakter",
+    "close": "Schließen",
+    "storyStart": "Wie die Geschichte beginnt",
+    "scenario": "Szenario",
+    "similar": "Ähnliche Charaktere",
+    "faq": {
+      "title": "Häufig gestellte Fragen",
+      "freeQ": "Kann ich mit chatten {{name}} kostenlos?",
+      "freeA": "Ja. Gäste erhalten {{limit}} {{messages}} ohne Anmeldung. Nach der Anmeldung erhalten Sie {{onboarding}} kostenlose Antworten pro Tag für die erste Woche, dann {{daily}} ein Tag auf dem Basismodell.",
+      "freeAPaid": "Ja. Gäste erhalten {{limit}} {{messages}} ohne Anmeldung. Danach können Sie die Geschichte in Ihrem Konto mit fortsetzen VC oder ein Abonnement.",
+      "registerQ": "Muss ich mich anmelden?",
+      "registerA": "Nicht anfangen: der erste {{limit}} {{messages}} kann als Gast gesendet werden. Um weiterzumachen, melden Sie sich an und der Gast-Chat wird in Ihr Konto verschoben.",
+      "languageQ": "Welche Sprache macht {{name}} antwort in?",
+      "languageA": "In der von Ihnen ausgewählten Site-Sprache. Sie können die Sprache im Menü wechseln und die gleiche Geschichte fortsetzen.",
+      "startQ": "Wie beginne ich die Geschichte?",
+      "startA": "Drücken Sie auf \"Chat starten\". {{name}} öffnet die Szene mit der ersten Nachricht und die Handlung folgt Ihren Antworten."
+    },
+    "messagesWord_one": "Nachricht",
+    "messagesWord_other": "Mails"
+  },
+  "errorPage": {
+    "notFoundTitle": "Seite nicht gefunden",
+    "notFoundText": "Der Link ist möglicherweise veraltet oder die Adresse hat einen Tippfehler. Charaktere und Geschichten warten im Katalog.",
+    "toCatalog": "Zum Katalog",
+    "errorTitle": "Etwas ist schief gelaufen",
+    "errorText": "Wir kennen das Problem bereits. Versuchen Sie es erneut oder gehen Sie zurück zum Katalog.",
+    "retry": "Versuchen Sie es erneut",
+    "errorCode": "Fehlercode"
+  },
+  "support": {
+    "title": "Unterstützung",
+    "intro": "Für Abrechnungen, technische Probleme, Rückerstattungen und Moderationsbeschwerden verwenden Sie das Formular. Wir werden Sie unter der von Ihnen angegebenen E-Mail-Adresse kontaktieren.",
+    "formTitle": "Senden Sie eine Anfrage",
+    "topic": "Thema",
+    "email": "Ihre E-Mail-Adresse",
+    "message": "Nachricht",
+    "messagePlaceholder": "Beschreiben Sie das Problem oder die Frage...",
+    "submit": "Senden",
+    "sending": "Senden...",
+    "success": "Ihre Anfrage wurde angenommen und gespeichert.",
+    "ticketId": "Anfragenummer: {{id}}.",
+    "error": "Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+    "invalidTopic": "Wählen Sie ein Thema",
+    "invalidEmail": "Geben Sie eine gültige E-Mail-Adresse ein",
+    "invalidMessage": "Die Nachricht muss zwischen 10 und 4000 Zeichen lang sein",
+    "referenceTicket": "Vorherige Ticketnummer (optional)",
+    "referenceHint": "Um eine Konversation fortzusetzen, kopieren Sie die Ticketnummer aus der E-Mail und verwenden Sie dieselbe E-Mail-Adresse. Der Support erhält die Nummer mit Ihrer neuen Nachricht.",
+    "invalidReference": "Überprüfen Sie die Ticketnummer: Kopieren Sie nur die Nummer aus der E-Mail, ohne Leerzeichen oder einen Link.",
+    "mailtoHint": "Die Anfrage wird auf dem Server gespeichert und in die Support-E-Mail kopiert.",
+    "userEmailPrefix": "Benutzer-E-Mail: ",
+    "topics": {
+      "payment": "Frage zur Abrechnung",
+      "technical": "Technisches Problem",
+      "refund": "Rückerstattung",
+      "moderation": "Einspruch gegen eine Moderationsentscheidung einlegen",
+      "other": "Andere"
+    }
+  },
+  "profile": {
+    "wallet": {
+      "title": "VerseCoins Brieftasche",
+      "topUp": "Aufladen"
+    },
+    "title": "Mein Profil",
+    "loginPrompt": "Melde dich an, um dein Profil und deine Charaktere anzuzeigen.",
+    "registeredAt": "Registriert:",
+    "catalog": "Katalog",
+    "subscription": "Abonnement",
+    "freePlan": "Kostenloser Plan",
+    "until": "Bis {{date}} · {{days}} verbleibende Tage",
+    "then": "Dann: {{label}}",
+    "recurringOn": "Die automatische Verlängerung ist aktiviert",
+    "recurringOff": "Automatische Verlängerung ist deaktiviert",
+    "recurringSetup": "Für den neuen Plan muss die automatische Verlängerung erneut eingerichtet werden.",
+    "manageSubscription": "Abonnement verwalten",
+    "characters": "Charaktere",
+    "chats": "Chat",
+    "messages": "Mails",
+    "myCharacters": "Meine Charaktere",
+    "count": "{{count}}",
+    "empty": "Du hast noch keine Charaktere erstellt",
+    "createFirst": "Erstelle deinen ersten Charakter",
+    "private": "Privat",
+    "hiddenForViolation": "Versteckt für einen Regelverstoß",
+    "noDescription": "Keine Beschreibung",
+    "chat": "Chat",
+    "deleteConfirm": "Sind Sie sicher, dass Sie löschen möchten {{name}}? Dies kann nicht rückgängig gemacht werden.",
+    "deleted": "Zeichen gelöscht",
+    "deleteError": "Das Zeichen konnte nicht gelöscht werden",
+    "loadError": "Das Profil konnte nicht geladen werden",
+    "settingsSoon": "Einstellungen werden in Kürze verfügbar sein",
+    "notificationsSoon": "Benachrichtigungen werden in Kürze verfügbar sein",
+    "settings": "Einstellung",
+    "notifications": "Benachrichtigung",
+    "logout": "Abmelden",
+    "startPlan": "Kein Abonnement"
+  },
+  "notifications": {
+    "title": "Benachrichtigung",
+    "empty": "Sie haben noch keine Benachrichtigungen",
+    "markAllRead": "Alles als gelesen markieren",
+    "showAll": "Alle anzeigen",
+    "loginPrompt": "Melden Sie sich an, um Ihre Benachrichtigungen zu sehen",
+    "loadError": "Benachrichtigungen konnten nicht geladen werden",
+    "justNow": "gerade jetzt",
+    "minutesAgo": "{{count}} vor min",
+    "hoursAgo": "{{count}}h vor",
+    "daysAgo": "{{count}}d vor",
+    "filterAll": "Aller",
+    "typePurchaseVc": "VC Kauf",
+    "typePurchaseSubscription": "Abonnement",
+    "typeDailyBonus": "Täglicher Bonus",
+    "typeAdmin": "Aus dem Team",
+    "open": "Offene Benachrichtigungen",
+    "markedRead": "Alle Benachrichtigungen als gelesen markiert"
+  },
+  "pricing": {
+    "coinRulesTitle": "Wie VC ausgegeben werden",
+    "coinRulesSubscription": "Abonnement VC nicht akkumulieren: Die Aktivierung oder Erneuerung eines Plans ersetzt das vorherige Paketguthaben. Ungenutztes Abonnement VC läuft ab, wenn das Abonnement endet.",
+    "coinRulesPermanent": "VC separat erworbene Produkte verfallen nicht. Abonnement VC werden zuerst ausgegeben, gefolgt von gekauft VC.",
+    "coinRulesActions": "Eine neue Antwort, ein erneuter Versuch und eine Fortsetzung sind separate Anfragen, die jeweils für das ausgewählte Modell berechnet werden. Die Kosten werden vor dem Versand angezeigt. VC werden nach Erhalt der Modellantwort berechnet.",
+    "badge": "Abonnement",
+    "title": "NewVerse nen",
+    "subtitle": "Monats- und Jahrespläne mit Bonus VerseCoins und ein größeres Kontextfenster. Wählen Sie das Level, das zu Ihren Geschichten und Chats passt.",
+    "activeUntil": "Ihr Abonnement: {{label}}, aktiv bis {{date}}",
+    "noActive": "Sie haben kein aktives Abonnement",
+    "pending": "Neu {{label}} das Abonnement beginnt nach Ablauf des aktuellen Abonnements ({{date}})",
+    "cancelling": "Stornieren...",
+    "cancelPending": "Stornieren",
+    "recurringMissing": "Die automatische Verlängerung ist für den aktuellen Plan nicht eingerichtet. Abonnieren Sie erneut, um Zahlungen automatisch zu halten.",
+    "month": "Monat",
+    "year": "Jahr",
+    "popular": "Beliebt",
+    "yearlyPlan": "Jahresabonnement",
+    "monthlyPlan": "Monatsabonnement",
+    "forever": "immer",
+    "perYear": "jährlich",
+    "perMonth": "pro Monat",
+    "vcPerMonth": "{{count}} VC / Monat",
+    "context": "Kontext {{tokens}} * täglicher Bonus ×{{multiplier}}",
+    "planFeatures": {
+      "dialog": [
+        "2,500 VC pro Monat",
+        "Für ungezwungene Gespräche und Alltagsszenen",
+        "Täglicher Bonusmultiplikator × 1,5"
+      ],
+      "history": [
+        "10,000 VC pro Monat",
+        "Für langes Rollenspiel und Story-Entwicklung",
+        "Täglicher Bonusmultiplikator ×2"
+      ],
+      "universe": [
+        "30,000 VC pro Monat",
+        "Für tiefe Welten und komplexe Handlungsstränge",
+        "Täglicher Bonusmultiplikator × 2,5"
+      ]
+    },
+    "redirecting": "Zahlung...",
+    "subscribe": "Abonnieren",
+    "footnote": "Aktivierung eines Plan-Credits-Bonus VC auf dein Guthaben. Der Multiplikator gilt für den täglichen Bonus. Die Anzahl der Anfragen hängt von dem von Ihnen gewählten Modell ab. Zahlungen gehen durch Robokassa und werden nach Bestätigung gutgeschrieben.",
+    "checkoutTitle": "Abonnieren Sie {{name}}",
+    "applyNow": "Jetzt bewerben",
+    "applyNowHint": "Ihr aktuelles Abonnement, falls vorhanden, wird ersetzt. Verbleibende Zeit wird nicht zurückerstattet.",
+    "applyLater": "Bewerben Sie sich nach Ablauf des aktuellen Plans",
+    "applyLaterHint": "Das neue Abonnement wird automatisch gestartet, wenn das aktuelle abläuft.",
+    "offerConsent": "Ich stimme den automatischen Gebühren zu, wenn das Abonnement gemäß den Bedingungen der verlängert wird",
+    "offerLink": "bieten",
+    "offerConsentNote": "(sie können dies in den Profileinstellungen deaktivieren)",
+    "consentRequired": "Sie müssen der automatischen Verlängerung zustimmen, um sich anzumelden",
+    "goToPayment": "Weiter zur Zahlung",
+    "creatingPayment": "Zahlung erstellen...",
+    "paymentError": "Die Zahlung konnte nicht erstellt werden",
+    "cancelPendingSuccess": "Ausstehendes Abonnement gekündigt",
+    "cancelPendingError": "Das ausstehende Abonnement konnte nicht gekündigt werden",
+    "cancelPendingConfirmTitle": "Das ausstehende Abonnement kündigen?",
+    "cancelPendingConfirm": "Der neue Plan wird nicht gestartet, wenn das aktuelle Abonnement endet.",
+    "estimateTitle": "Kostenvoranschlag anfordern",
+    "estimate": "Über {{base}} anfragen auf {{baseName}} ({{baseCost}} VC) oder {{premium}} auf {{premiumName}} ({{premiumCost}} VC) aus der Monatspackung. Dies ist eine Schätzung für einen neuen Versand; Die tatsächliche Anzahl hängt von der Gesprächsdauer ab. Ein technischer Wiederholungsversuch nach einem Ausfall wird nicht als neuer Zug abgerechnet.",
+    "estimateUnavailable": "Die Anforderungsschätzung wird angezeigt, nachdem der Modellkatalog geladen wurde.",
+    "paymentPending": "Die Zahlung ist noch nicht bestätigt. Guthaben und Abonnement werden danach aktualisiert Robokassa benachrichtigt uns.",
+    "paymentConfirmed": "Zahlung bestätigt."
+  },
+  "coins": {
+    "title": "VerseCoins (VC)",
+    "subtitle": "Kaufen VC um mit Charakteren zu chatten, den täglichen Bonus zu beanspruchen und Ihr Abonnement zu verfolgen.",
+    "loginPrompt": "Melden Sie sich an, um Ihr Guthaben, Boni und Einkäufe anzuzeigen VC",
+    "balance": "Leistungsbilanz",
+    "yourSubscription": "Ihr Abonnement: {{label}}",
+    "validUntil": "Aktiv bis {{date}}",
+    "dailyBonus": "Täglicher Bonus",
+    "streakDay": "Streak-Tag: {{day}} / 7",
+    "today": "Heute: ",
+    "alreadyClaimed": "Bonus bereits heute beansprucht",
+    "nextBonus": "Nächster Bonus in: ",
+    "claiming": "Behaupten...",
+    "claim": "Anspruch (+{{amount}} VC)",
+    "unavailable": "Bonus nicht verfügbar",
+    "subscriptions": "Abonnement",
+    "packages": "VC Packs",
+    "price": "Preis ({{symbol}})",
+    "bonus": "Bonus",
+    "action": "Aktion",
+    "buy": "Kaufen",
+    "checkoutTitle": "Kauf {{label}}",
+    "goToPayment": "Weiter zur Zahlung",
+    "paying": "Zahlung...",
+    "loadError": "Guthaben konnte nicht geladen werden",
+    "paymentError": "Die Zahlung konnte nicht erstellt werden",
+    "createPaymentError": "Fehler beim Erstellen der Zahlung",
+    "bonusReceived": "Bonus beansprucht!",
+    "comeTomorrow": "Komm morgen wieder",
+    "bonusError": "Konnte den Bonus nicht beanspruchen",
+    "buyDesc": "Kauf von {{coins}} VC",
+    "min": "0 minuten",
+    "hoursMinutes": "{{hours}} h {{minutes}} min",
+    "minutes": "{{minutes}} min",
+    "paymentPending": "Die Zahlung wird bearbeitet. Kaufen VC wird nach Bestätigung auf Ihrem Guthaben angezeigt.",
+    "paymentConfirmed": "Der VC der Kauf wird bestätigt und gutgeschrieben.",
+    "shop01": "Das Einführungsangebot ist nicht mehr verfügbar. Wählen Sie eine normale Packung.",
+    "shop02": "Schätzung",
+    "shop03": "antwortet mit",
+    "shop04": "VC empfangen. Ihre Geschichte ist bereit, fortzufahren.",
+    "shop05": "Zurück zum Chat",
+    "shop06": "Zurück zum Chat",
+    "shop07": "Setzen Sie Ihre Geschichte fort mit {{value1}}",
+    "shop08": "Ihre Geschichte verdient ein weiteres Kapitel",
+    "shop09": "Lade auf und chatte mit Charakteren in deinem eigenen Tempo. Fangen Sie klein an, ohne Abonnement oder Verpflichtung.",
+    "shop10": "Kehren Sie nach Zahlungsbestätigung zu diesem Chat zurück",
+    "shop11": "VC nie ablaufen",
+    "shop12": "Zahlung per Robokassa",
+    "shop13": "Erste Einführung",
+    "shop14": "Einmalige Aufladung",
+    "shop15": "Für neue Szenen und Gespräche",
+    "shop16": "Einmalige Zahlung · keine automatische Verlängerung",
+    "shop17": " · Charged {{value1}} REIBEN",
+    "shop18": "Verfügbarkeit prüfen…",
+    "shop19": "Angebot vorübergehend nicht verfügbar",
+    "shop20": "Bekommen {{value1}} VC",
+    "shop21": "Die Anzahl hängt vom gewählten Modell ab.",
+    "shop22": "Ein Einführungspaket pro Konto vor Ihrem ersten Kauf. Abonnement- und Avatar-Generationen sind nicht enthalten.",
+    "shop23": "Ihr Einführungspaket ist reserviert: Bezahlen Sie weiterhin dieselbe Rechnung.",
+    "shop24": "Laden…",
+    "shop25": "Heute",
+    "shop26": "Morgen",
+    "shop27": "Morgen +{{value1}} VC",
+    "shop28": "Mehr Platz für Ihre Geschichte",
+    "shop29": "Einmalige Pakete für jedes Konto. Laden Sie auf, wann immer Sie möchten.",
+    "shop30": "Ein paar Szenen",
+    "shop31": "Bauen Sie Ihre Geschichte auf",
+    "shop32": "Lange Gespräche",
+    "shop33": "Mehrere Geschichten",
+    "shop34": "Größere Welten",
+    "shop35": "Engagierte Geschichtenerzähler",
+    "shop36": "Regelmäßig chatten?",
+    "shop37": "Abonnements beinhalten monatlich VC, Konversationsgedächtnis und Avatar-Generationen.",
+    "shop38": "Bevor Sie kaufen",
+    "shop39": "Was kann ich damit machen VC?",
+    "shop40": "Bezahlen Sie für Modellantworten in Chats. Antwortpreise hängen vom Modell ab und werden im Chat angezeigt. VC pakete aktivieren kein Abonnement oder fügen Avatar-Generationen hinzu.",
+    "shop41": "Gekauft haben VC verfallen?",
+    "shop42": "VC von Einmalpackungen verfallen nie. Monatsabonnement VC sind getrennt und folgen den Abonnementbedingungen.",
+    "shop43": "Wann wird mein Guthaben aktualisiert?",
+    "shop44": "Nach Robokassa bestätigt die Zahlung. Sie können früher zur Site zurückkehren. In diesem Fall zeigen wir einen ausstehenden Status an.",
+    "shop45": "Benötigen Sie Hilfe bei der Zahlung?",
+    "shop46": "Support kontaktieren",
+    "checkoutTerms": "Eine Zahlung. Kein Abonnement oder automatische Verlängerung. VC verfallen Sie nicht."
+  },
+  "payment": {
+    "chargeLabel": "Fällige",
+    "cbrEquivalent": "~ {{amount}} (Wechselkurs CBR)",
+    "ratesLoading": "Laden des CBR-Wechselkurses...",
+    "pending": "Zahlung wird bearbeitet",
+    "confirmed": "Zahlung bestätigt",
+    "unknown": "Wir konnten die Zahlung auf der Rücksendeseite nicht bestätigen. Wenn Sie belastet wurden, warten Sie einige Minuten oder wenden Sie sich an den Support."
+  },
+  "meta": {
+    "home": {
+      "title": "KI-Charaktere: Chat und Rollenspiel — NewVerse",
+      "description": "Chatte mit KI-Charakteren: Sprich, schreibe und spiele Rollenspielgeschichten. Charaktere merken sich die Details und Sie können ohne Anmeldung beginnen."
+    },
+    "create": {
+      "title": "Erstelle kostenlos einen KI-Charakter — NewVerse Schöpfer",
+      "description": "Erstelle deinen eigenen KI-Charakter für Chat und Rollenspiel: Persönlichkeit, Aussehen, erste Nachricht und Welt. Kostenlos, mit Unterstützung für mehrere Sprachen."
+    },
+    "edit": {
+      "title": "Charakter bearbeiten — NewVerse",
+      "description": "Passen Sie das Aussehen, die Persönlichkeit und das Szenario Ihres Charakters an."
+    },
+    "profile": {
+      "title": "Mein Profil — NewVerse",
+      "description": "Verwalten Sie Ihr Abonnement, Ihre Personas und Ihre Kontoeinstellungen."
+    },
+    "pricing": {
+      "title": "NewVerse pläne - Abonnements für KI-Rollenspiele",
+      "description": "Wählen Sie einen Plan für ein größeres Kontextfenster, Bonus VC und Avatar-Generierung."
+    },
+    "coins": {
+      "title": "Aufladen VC — NewVerse",
+      "description": "Kaufen VerseCoins mit KI-Charakteren chatten."
+    },
+    "referral": {
+      "title": "Empfehlungsprogramm — NewVerse",
+      "description": "Lade Freunde ein und verdiene Boni."
+    },
+    "subscription": {
+      "title": "Abonnement verwalten — NewVerse",
+      "description": "Automatische Verlängerung des Abonnements anzeigen und deaktivieren."
+    },
+    "notifications": {
+      "title": "Benachrichtigung — NewVerse",
+      "description": "Siehe Kauf-, Bonus- und Administratorbenachrichtigungen."
+    },
+    "offer": {
+      "title": "Öffentliches Angebot — NewVerse",
+      "description": "Nutzungsbedingungen für die NewVerse Service."
+    },
+    "refund": {
+      "title": "Rückzahlungspolitik — NewVerse",
+      "description": "Rückerstattungsbedingungen für NewVerse."
+    },
+    "terms": {
+      "title": "Nutzungsbedingungen — NewVerse",
+      "description": "Regeln für die Verwendung des NewVerse Plattform."
+    },
+    "privacy": {
+      "title": "Datenschutzerklärung — NewVerse",
+      "description": "Wie NewVerse verarbeitet personenbezogene Daten."
+    },
+    "support": {
+      "title": "Unterstützung — NewVerse",
+      "description": "Kontaktieren Sie uns, um Ihre Fragen zu lösen."
+    },
+    "forgotPassword": {
+      "title": "Passwort-Wiederherstellung — NewVerse",
+      "description": "Fordern Sie einen Link zum Zurücksetzen Ihres NewVerse Kontokennwort."
+    },
+    "resetPassword": {
+      "title": "Passwort zurücksetzen — NewVerse",
+      "description": "Legen Sie ein neues Passwort für Ihre NewVerse Konto."
+    },
+    "login": {
+      "title": "Anmelden — NewVerse",
+      "description": "Anmelden bei NewVerse mit KI-Charakteren chatten."
+    },
+    "register": {
+      "title": "Anmelden — NewVerse",
+      "description": "Erstellen Sie eine NewVerse konto und beginne mit dem Rollenspiel mit KI-Charakteren."
+    },
+    "verifyEmail": {
+      "title": "E-Mail bestätigen — NewVerse",
+      "description": "Bestätigen Sie Ihre E-Mail-Adresse, um den vollen Zugriff auf freizuschalten NewVerse."
+    },
+    "chat": {
+      "title": "Chatten Sie mit {{name}} — NewVerse",
+      "description": "Rollenspiel mit {{name}}. Tauche in die Geschichte ein und halte die Handlung am Laufen."
+    },
+    "character": {
+      "title": "{{name}} - KI-Rollenspielcharakter | NewVerse",
+      "description": "{{name}} auf NewVerse. Starte ein Rollenspiel und lerne ihre Geschichte.",
+      "fallbackTitle": "Charakter — NewVerse",
+      "fallbackDescription": "Öffentliche Charakterseite auf NewVerse."
+    },
+    "rules": {
+      "title": "Plattformregeln — NewVerse",
+      "description": "Regeln für die Veröffentlichung von Charakteren und Konsequenzen von Verstößen gegen NewVerse."
+    },
+    "genres": {
+      "title": "Charaktergenres für KI-Rollenspiele — NewVerse",
+      "description": "Fantasie, Romantik, Anime, Detektiv, Horror und mehr: Wählen Sie die Art von Geschichte, die Sie leben möchten, und finden Sie einen Charakter für Ihr KI-Rollenspiel."
+    },
+    "genre": {
+      "title": "{{h1}} — NewVerse",
+      "titlePage": "{{h1}}, Seite {{page}} — NewVerse",
+      "descriptionPage": "{{description}} Seite {{page}}."
+    },
+    "catalog": {
+      "title": "{{name}} — NewVerse",
+      "all": "KI-Charakterkatalog",
+      "search": "Suche “{{query}}\" unter den Charakteren",
+      "pageSuffix": ", Seite {{page}}",
+      "pageSentence": "Seite {{page}}.",
+      "description": "NewVerse katalog von KI-Charakteren für Rollenspiele in mehreren Sprachen.",
+      "searchDescription": "NewVerse passende Zeichen “{{query}}\": KI-Rollenspielgeschichten in mehreren Sprachen.",
+      "sort": {
+        "new": "Neue KI-Charaktere",
+        "random": "Zufällige KI-Charaktere",
+        "for-you": "Charaktere für dich ausgewählt"
+      },
+      "sortDescription": {
+        "new": "Neu auf NewVerse: kürzlich hinzugefügte Charaktere und Welten für das KI-Rollenspiel.",
+        "random": "Eine zufällige Auswahl von NewVerse charaktere - entdecke eine unerwartete KI-Geschichte.",
+        "for-you": "NewVerse charaktere, die für Ihre Interessen ausgewählt wurden, für KI-Rollenspiele."
+      }
+    }
+  },
+  "genrePage": {
+    "home": "Startseite",
+    "hub": "Musikrichtungen",
+    "breadcrumbs": "Brotkrumen",
+    "count": "Charaktere in diesem Genre: {{count}}",
+    "otherGenres": "Andere Genres",
+    "empty": "Dieses Genre hat bisher nur wenige Charaktere. Durchsuchen Sie den vollständigen Katalog oder erstellen Sie Ihren eigenen.",
+    "toCatalog": "Vollständiger Katalog",
+    "hubH1": "Charaktergenres für KI-Rollenspiele",
+    "hubIntro": "Wählen Sie ein Genre aus, um Charaktere mit diesem Tag zu sehen, von Fantasy-Quests und Weltraumreisen bis hin zu ruhigen Lebensabschnitten und verworrenen Ermittlungen. Jedes Genre zeigt zuerst seine beliebtesten öffentlichen Charaktere.",
+    "items": {
+      "fantasy": {
+        "h1": "Fantasy-Charaktere für KI-Rollenspiele",
+        "description": "KI-Rollenspiel in Fantasiewelten: Magier, Elfen, Söldner und Drachenreiter. Wähle einen Charakter und beginne dein eigenes Abenteuer auf NewVerse."
+      },
+      "romance": {
+        "h1": "Romantische Charaktere für KI-Rollenspiele",
+        "description": "Romantisches KI-Rollenspiel: Flirten, langsame Beziehungen und Geschichten über Gefühle. Wähle einen Charakter aus und fang an zu chatten NewVerse."
+      },
+      "anime": {
+        "h1": "Anime-Charaktere für KI-Rollenspiele",
+        "description": "KI-Rollenspiel mit Anime-Charakteren: Schulleben, Isekai, Zauberakademien und Romantik. Wähle deinen Charakter auf NewVerse."
+      },
+      "scifi": {
+        "h1": "Science-Fiction-Charaktere für KI-Rollenspiele",
+        "description": "Science-Fiction-KI-Rollenspiel: Raumschiffkapitäne, Androiden und Wissenschaftler auf entfernten Stationen. Wähle einen Charakter auf NewVerse."
+      },
+      "mystic": {
+        "h1": "Mysteriöse und übernatürliche Charaktere für KI-Rollenspiele",
+        "description": "Mysteriöses und übernatürliches KI-Rollenspiel: Medien, Hexen, verfluchte Herrenhäuser und Geheimnisse, die es nicht eilig haben, sich zu offenbaren. Wähle einen Charakter auf NewVerse."
+      },
+      "realistic": {
+        "h1": "Moderne Charaktere für KI-Rollenspiele",
+        "description": "KI-Rollenspiel mit modernen Charakteren: Kollegen, Nachbarn, Studenten und Stars. Natürlicher Dialog und Beziehungen auf NewVerse."
+      },
+      "adventure": {
+        "h1": "Abenteuercharaktere für KI-Rollenspiele",
+        "description": "Abenteuer-KI-Rollenspiel: Schatzsucher, Piraten, Fährtenleser und Reisende. Wählen Sie einen Begleiter und machen Sie sich auf den Weg NewVerse."
+      },
+      "detective": {
+        "h1": "Detektivcharaktere für KI-Rollenspiele",
+        "description": "Detektiv-KI-Rollenspiel: Ermittler, Zeugen und Verdächtige. Suche nach Hinweisen und löse Fälle mit NewVerse Zeichen."
+      },
+      "everyday": {
+        "h1": "Slice-of-Life-Charaktere für KI-Rollenspiele",
+        "description": "KI-Rollenspiel aus dem Leben: Freunde, Mitbewohner und Kollegen für ruhige, natürliche Gespräche. Wähle einen Charakter auf NewVerse."
+      },
+      "cyberpunk": {
+        "h1": "Cyberpunk-Charaktere für KI-Rollenspiele",
+        "description": "Cyberpunk-KI-Rollenspiel: Hacker, erweiterte Söldner und Androiden in einer Neon-Megacity. Wähle einen Charakter auf NewVerse."
+      },
+      "horror": {
+        "h1": "Horrorfiguren für KI-Rollenspiele",
+        "description": "Horror-KI-Rollenspiel: Monster, Monsterjäger und verlassene Häuser. Wähle einen Charakter und teste deine Nerven auf NewVerse."
+      },
+      "comedy": {
+        "h1": "Comedy-Charaktere für KI-Rollenspiele",
+        "description": "Comedy-KI-Rollenspiel: witzige Kumpels, tollpatschige Zauberer und absurde Situationen. Wähle einen Charakter auf NewVerse."
+      },
+      "drama": {
+        "h1": "Drama-Charaktere für KI-Rollenspiele",
+        "description": "Drama-KI-Rollenspiel: Geschichten über Wahl, Verlust und Vergebung mit Charakteren, die eine schwierige Vergangenheit haben. Wählen Sie eine auf NewVerse."
+      }
+    }
+  },
+  "moderation": {
+    "warningTitle": "Dein Charakter wurde wegen eines Regelverstoßes versteckt",
+    "warningBody": "Dein Charakter wurde wegen Verstoßes gegen die Plattformregeln vor dem öffentlichen Zugriff verborgen. Grund: {{reason}}. Bitte lesen Sie die <rules>Geschäftsregeln</rules>. Ein wiederholter Verstoß führt dazu, dass der Charakter gelöscht wird.",
+    "unknownReason": "ein Verstoß gegen die Plattformregeln",
+    "hiddenBadge": "Versteckt für einen Regelverstoß"
+  },
+  "characterForm": {
+    "rulesHint": "Indem du einen Charakter erstellst, stimmst du dem zu <rules>plattformregeln</rules>."
+  },
+  "rules": {
+    "title": "Plattformregeln",
+    "intro": "Durch die Veröffentlichung von Charakteren auf NewVerse, Sie stimmen zu, diese Regeln zu befolgen. Verstöße werden von Moderatoren überprüft.",
+    "prohibitedTitle": "Verbotene Inhalte",
+    "prohibitedItems": [
+      "Sexualisierte Inhalte mit Minderjährigen (gemäß Bundesgesetz 149-FZ und Artikel 242 des Strafgesetzbuches der Russischen Föderation).",
+      "Förderung von Drogen, Extremismus oder Terrorismus.",
+      "Detaillierte Grausamkeit oder Gewalt gegen Menschen oder Tiere.",
+      "Aufstachelung zu Hass aufgrund von Rasse, Nationalität oder Religion.",
+      "Spam oder Werbung für Dienste von Drittanbietern.",
+      "Betrug und Finanzpyramiden.",
+      "Urheberrechtsverletzung (Kopieren von Zeichen aus geschützten Werken ohne Erlaubnis)."
+    ],
+    "consequencesTitle": "Folgen von Verstößen",
+    "consequenceItems": [
+      "1. Verstoß - Der Charakter wird vor dem öffentlichen Zugriff verborgen und es wird eine Warnung ausgegeben.",
+      "2. Verstoß — der Charakter wird gelöscht.",
+      "3. Verstoß — das Konto ist gesperrt."
+    ],
+    "appealTitle": "Wie man Berufung einlegt",
+    "appeal": "Senden Sie eine Anfrage über die",
+    "appealLink": "Supportseite"
+  },
+  "guestChat": {
+    "remaining": "{{remaining}}/{{limit}} Links",
+    "retention": "Gast-Chats werden aufbewahrt für {{days}} Days. Nachdem Sie sich angemeldet haben, werden sie zu Ihrem Konto verschoben.",
+    "limitTitle": "Kostenloses Nachrichtenlimit",
+    "limitBody": "Sie haben alle kostenlosen Nachrichten verwendet. Melde dich an, um weiter zu chatten und diesen Verlauf zu speichern.",
+    "register": "Anmelden",
+    "login": "Anmelden",
+    "expired": "Die Aufbewahrungsfrist für den Gastchat ist abgelaufen.",
+    "transferWaiting": "Beenden der Gastantwort und Übertragen Ihres Chats…",
+    "transferPending": "Die Übertragung steht noch aus. Versuchen Sie erneut, dieses Gespräch fortzusetzen.",
+    "transferRetry": "Übertragung wiederholen"
+  },
+  "chatThreads": {
+    "defaultTitle": "Geschichte {{number}}",
+    "listTitle": "Geschichten mit {{name}}",
+    "openList": "Erfolgsgeschichten",
+    "newStory": "Neue Geschichte",
+    "newStoryHint": "Beginnt mit der Begrüßung und Situation der Karte mit leerem Speicher. Ihre Persona wird aus der aktuellen Story kopiert.",
+    "continue": "Geschichte fortsetzen",
+    "continueNamed": "Weiterhin: {{title}}",
+    "active": "Aktiv",
+    "noActive": "Keine aktiven Geschichten. Starten Sie eine neue oder stellen Sie eine aus dem Archiv wieder her.",
+    "archiveSection": "Archiv ({{count}})",
+    "archived": "Archivieren",
+    "currentBadge": "Öffnen",
+    "switchTo": "Geschichte öffnen “{{title}}”",
+    "messages_one": "{{count}} Nachricht",
+    "messages_other": "{{count}} Mails",
+    "empty": "Noch keine Nachrichten",
+    "lastActivity": "aktiv {{date}}",
+    "rename": "Umbenennen",
+    "renameLabel": "Titel der Geschichte",
+    "renamePlaceholder": "Zum Beispiel: Clankrieg",
+    "save": "Speichern",
+    "cancel": "Stornieren",
+    "archive": "Archiv",
+    "restore": "Wiederherstellen",
+    "delete": "Löschen",
+    "deleteTitle": "Löschen “{{title}}”?",
+    "deleteBody": "Die Nachrichten, die Erinnerung und die Zusammenfassung dieser Geschichte werden dauerhaft gelöscht. Andere Geschichten sind nicht betroffen. Um die Geschichte nur auszublenden, archivieren Sie sie stattdessen.",
+    "deleteConfirm": "Dauerhaft löschen",
+    "created": "Neue Geschichte hat begonnen",
+    "renamed": "Titel gespeichert",
+    "archivedToast": "Geschichte archiviert",
+    "restoredToast": "Geschichte restauriert",
+    "deletedToast": "Geschichte gelöscht",
+    "loadFailed": "Geschichten konnten nicht geladen werden",
+    "createFailed": "Konnte keine neue Geschichte beginnen",
+    "updateFailed": "Die Geschichte konnte nicht aktualisiert werden",
+    "deleteFailed": "Die Geschichte konnte nicht gelöscht werden",
+    "notFound": "Geschichte nicht gefunden. Stattdessen ist die neueste aktive Story geöffnet.",
+    "archivedBanner": "Diese Geschichte ist archiviert. Eine neue Nachricht macht es wieder aktiv.",
+    "storiesCount_one": "{{count}} Geschichte",
+    "storiesCount_other": "{{count}} Erfolgsgeschichten"
+  },
+  "email": {
+    "resetSubject": "Passwort zurücksetzen — NewVerse",
+    "resetText": "Folgen Sie diesem Link, um Ihr Passwort zurückzusetzen: {{url}}",
+    "resetHtmlIntro": "Folgen Sie diesem Link, um Ihr Passwort zurückzusetzen:",
+    "resetHtmlFooter": "Dieser Link ist 1 Stunde lang gültig. Wenn Sie keine Passwortzurücksetzung angefordert haben, können Sie diese E-Mail ignorieren.",
+    "verifySubject": "Bestätige deine E-Mail-Adresse — NewVerse",
+    "verifyText": "Hallo! Bestätigen Sie Ihre E-Mail-Adresse in NewVerse indem Sie diesem Link folgen: {{url}}. Der Link ist 24 Stunden gültig.",
+    "verifyHtmlIntro": "Hallo! Bestätigen Sie Ihre E-Mail-Adresse in NewVerse indem Sie diesem Link folgen:",
+    "verifyHtmlFooter": "Der Link ist 24 Stunden gültig. Wenn Sie keine erstellt haben NewVerse konto, können Sie diese E-Mail ignorieren.",
+    "supportSubject": "NewVerse Supportanfrage — {{topic}}",
+    "supportText": "Thema: {{topic}}\nEmail: {{email}}\n\n{{message}}"
+  },
+  "api": {
+    "emailRequired": "E-Mail ist erforderlich",
+    "emailPasswordRequired": "E-Mail und Passwort sind erforderlich",
+    "userExists": "Ein Benutzer mit dieser E-Mail-Adresse existiert bereits",
+    "internalError": "Interner Serverfehler",
+    "tokenPasswordRequired": "Token und Passwort sind erforderlich",
+    "minPassword": "Das Passwort muss mindestens sein {{count}} Zeichen",
+    "invalidLink": "Dieser Link ist ungültig oder abgelaufen",
+    "unauthorized": "Unerlaubter",
+    "userNotFound": "Benutzer nicht gefunden",
+    "missingCredentials": "E-Mail oder Passwort fehlt",
+    "consentRequired": "Sie müssen die Nutzungsbedingungen, die Datenschutzrichtlinie, das öffentliche Angebot und die Plattformregeln akzeptieren",
+    "tokenRequired": "Token ist erforderlich",
+    "invalidVerificationLink": "Dieser Link ist ungültig oder abgelaufen",
+    "emailAlreadyVerified": "E-Mail ist bereits bestätigt",
+    "confirmEmailToPurchase": "Bestätigen Sie Ihre E-Mail-Adresse, um einen Kauf zu tätigen",
+    "confirmEmailToClaimBonus": "Bestätige deine E-Mail-Adresse, um Boni zu erhalten",
+    "rateLimited": "Zu viele Anfragen. Bitte warten Sie einen Moment."
+  },
+  "onboarding": {
+    "eyebrow": "Willkommen bei NewVerse",
+    "stepLabel": "Schritt {{step}} von 3",
+    "back": "Zurück",
+    "skip": "Überspringen",
+    "close": "Schließen Sie den Picker",
+    "style": {
+      "title": "Welche Charaktere bevorzugen Sie?",
+      "text": "Beantworten Sie zwei Fragen und wir zeigen Ihnen, mit wem Sie anfangen können zu reden. Sie können dies jederzeit ändern.",
+      "anime": "Zeichentrick",
+      "animeHint": "Lebendige Kunst, große Emotionen, Fantasiewelten",
+      "realistic": "Realistisch",
+      "realisticHint": "Lebensechte Gesichter, wie in einem Film",
+      "any": "Ich mag beides"
+    },
+    "styleLabel": {
+      "anime": "Zeichentrick",
+      "realistic": "Realistisch",
+      "any": "Beide Stile"
+    },
+    "interests": {
+      "title": "Welche Geschichten interessieren dich?",
+      "text": "Nimm bis zu drei auf. Wir werden die Charaktere zeigen, die am besten passen.",
+      "show": "Charaktere anzeigen",
+      "pickOne": "Wählen Sie mindestens ein Interesse aus",
+      "limit": "Sie können bis zu drei auswählen. Entfernen Sie eine, um eine andere auszuwählen.",
+      "matches_one": "{{count}} charakter passt · {{selected}} von 3 ausgewählt",
+      "matches_other": "{{count}} zeichen passen · {{selected}} von 3 ausgewählt",
+      "noMatches": "Keine genauen Übereinstimmungen, wir werden beliebte anzeigen · {{selected}} von 3 ausgewählt",
+      "genderLabel": "Zeig es mir",
+      "genderAny": "Jeder",
+      "genderMale": "Männliche Charaktere",
+      "genderFemale": "Weibliche Charaktere"
+    },
+    "interest": {
+      "romance": {
+        "label": "Romance",
+        "hint": "Flirten, Gefühle, langsames Brennen"
+      },
+      "fantasy": {
+        "label": "Fantasie und Magie",
+        "hint": "Magier, Elfen, Akademien"
+      },
+      "adventure": {
+        "label": "Abenteuer",
+        "hint": "Reisen, Ruinen, Action"
+      },
+      "mystic": {
+        "label": "Geheimnis und Horror",
+        "hint": "Geister, Geheimnisse, gothic"
+      },
+      "detective": {
+        "label": "Detektiv",
+        "hint": "Ermittlungen und Thriller"
+      },
+      "scifi": {
+        "label": "Sci-Fi und Cyberpunk",
+        "hint": "Weltraum, Androiden, Neon"
+      },
+      "everyday": {
+        "label": "Ein Stück Leben",
+        "hint": "Nachbarn, Freunde, Komfort"
+      },
+      "drama": {
+        "label": "Drama",
+        "hint": "Starke Emotionen und Entscheidungen"
+      },
+      "comedy": {
+        "label": "Komödie",
+        "hint": "Leichte und lustige Geschichten"
+      }
+    },
+    "results": {
+      "loading": "Charaktere finden…",
+      "title_one": "Hier ist, mit wem Sie anfangen sollen",
+      "title_other": "Hier ist, mit wem Sie beginnen können",
+      "text": "Tippe auf \"Beginne zu sprechen\": Der Charakter schreibt zuerst.",
+      "matched": "League: {{list}}",
+      "popular": "Beliebt",
+      "start": "Fangen Sie an zu reden",
+      "more": "Anderen zeigen",
+      "catalog": "Vollständiger Katalog",
+      "error": "Die Picks konnten nicht geladen werden.",
+      "retry": "Retry",
+      "empty": "Noch keine passenden Charaktere. Öffnen Sie den Katalog: Es gibt über hundert Geschichten."
+    },
+    "catalog": {
+      "applied": "Verwenden Sie Ihre Antworten",
+      "remove": "Entfernen “{{label}}”",
+      "pick": "Charakter finden",
+      "pickAgain": "Wählen Sie erneut"
+    }
+  },
+  "telegram": {
+    "webLogin": "Anmelden mit Telegram",
+    "webLoginHint": "Öffnen Sie den Bot, passen Sie den Code an und genehmigen Sie die Anmeldung. Kehren Sie dann zu diesem Browser zurück. Es wird kein neues Konto erstellt.",
+    "webLoginCode": "Code anfordern:",
+    "webLoginOpenBot": "Bot zum Genehmigen öffnen",
+    "webLoginAccount": "Genehmigtes Konto: {{name}}",
+    "webLoginComplete": "Melden Sie sich bei diesem Konto an",
+    "webLoginExpired": "Diese Anfrage ist abgelaufen oder nicht verfügbar. Beginnen Telegram melden Sie sich erneut an.",
+    "webAlreadySignedIn": "Sie sind bereits in diesem Browser angemeldet. Öffnen Sie zuerst Ihr Profil oder melden Sie sich ab.",
+    "signedOutTitle": "Du hast dich abgemeldet",
+    "signedOutText": "Ihre Mini-App-Sitzung ist beendet. Um sich erneut anzumelden, schließen Sie die App und öffnen Sie sie erneut über den Bot. Um eine andere zu verwenden Telegram konto, Konten wechseln in Telegram erst.",
+    "closeApp": "App schließen",
+    "accountHint": "Dieses Konto ist mit Ihrem verknüpft Telegram. Verwenden Sie auf der Website “Anmelden mit Telegram\" um darauf zuzugreifen.",
+    "openWebsiteAccount": "Webseite öffnen",
+    "manageAccountHint": "Um dieses Profil mit einem bestehenden Website-Konto zusammenzuführen, melden Sie sich auf der Website an und wählen Sie “Link Telegram”. Bevor Daten verschoben werden, ist eine separate Bestätigung im Bot erforderlich.",
+    "entryTitle": "anmelden mit Telegram",
+    "signingIn": "Anmelden mit Telegram…",
+    "welcomeTitle": "Willkommen bei NewVerse",
+    "welcomeText": "Ihr Konto wird von Ihrem erstellt Telegram Profil. Wenn Sie bereits eine haben newvers.ai konto, verknüpfung Telegram in Ihrem Profil auf der Website dasselbe Konto zu verwenden und VC gleichgewicht hier.",
+    "linkExistingAccount": "Ich habe bereits ein Konto auf der Website",
+    "adultNotice": "NewVerse ist für Benutzer ab 18 Jahren gedacht.",
+    "continue": "Weiterhin",
+    "loginDisabledTitle": "Telegram anmeldung ist deaktiviert",
+    "loginDisabledText": "Telegram wurde von der Verknüpfung getrennt NewVerse Konto. Verlinke es erneut in deinem Profil auf der Website, um dich anzumelden Telegram.",
+    "outsideTitle": "Öffnen NewVerse in Telegram",
+    "outsideText": "Diese Seite funktioniert nur innerhalb der Telegram App.",
+    "errorTitle": "Konnte sich nicht anmelden",
+    "errorText": "Schließen Sie die App und öffnen Sie sie erneut. Wenn es erneut passiert, wenden Sie sich an den Support.",
+    "unavailableAppText": "Die App ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später noch einmal.",
+    "toCatalog": "Charaktere durchsuchen",
+    "balanceTitle": "VC Gleichgewicht",
+    "balanceText": "VC werden für Zeichenantworten ausgegeben. Kommen Sie jeden Tag für den täglichen Bonus zurück.",
+    "unavailableTitle": "Abschnitt nicht verfügbar",
+    "unavailableText": "Dieser Abschnitt ist nicht verfügbar in Telegram.",
+    "documentText": "Das Dokument wird in Ihrem Browser geöffnet.",
+    "openInBrowser": "Im Browser öffnen",
+    "balanceExhausted": "Ihrer VC guthaben ist aufgebraucht",
+    "coinRulesActions": "Eine neue Antwort, ein Wiederholungsversuch und eine Fortsetzung sind separate Anfragen. Der VC die Kosten werden vor dem Versand angezeigt; VC werden abgezogen, nachdem das Modell geantwortet hat.",
+    "bonusTomorrow": "Morgen +{{amount}} VC",
+    "link": "Verknüpfen Telegram",
+    "linkHint": "Verknüpfen Telegram öffnen NewVerse in Telegram mit diesem Konto und VC Gleichgewicht.",
+    "linkedSince": "Telegram verlinkt seit {{date}}",
+    "onlyLoginMethod": "Telegram ist Ihre einzige Anmeldemethode. Verwenden Sie “Anmelden mit Telegram\" auf der Website. Das Aufheben der Verknüpfung ist nicht möglich, um den Zugriff auf Ihr Konto zu gewährleisten.",
+    "linkPending": "Bestätigen in Telegram: drücken Sie im Chat mit dem Bot auf Start. Der Link funktioniert einmal und für 10 Minuten.",
+    "linkOpenAgain": "Öffnen Sie den Link erneut",
+    "linkDone": "Telegram verlinkten",
+    "linkError": "Irgendwas ist schief gelaufen. Bitte versuchen Sie es später noch einmal.",
+    "linkRateLimited": "Zu viele Versuche. Versuchen Sie es in einer Stunde noch einmal.",
+    "unlink": "Unlink",
+    "unlinkTitle": "Unlink Telegram?",
+    "unlinkText": "Das Konto bleibt bestehen, meldet sich aber damit an Telegram ist deaktiviert, bis Sie es erneut verknüpfen.",
+    "unlinkDone": "Telegram unlink"
+  },
+  "freeQuota": {
+    "remaining": "Heute kostenlos: {{remaining}} von {{limit}} Links",
+    "exhausted": "Kostenlose Antworten für heute sind aufgebraucht, neue kommen um 00:00 Uhr Moskauer Zeit an.",
+    "otherModel": "Kostenlose Antworten heute: {{remaining}}, auf der {{model}} Modell.",
+    "needCoins": "Nicht genug VC: {{cost}} benötigen, {{balance}} alles in allem.",
+    "topUp": "Aufladen",
+    "coinsNote": "Jeden Tag kostenlos: {{onboarding}} antwortet in der ersten Woche nach der Anmeldung täglich, dann {{daily}}, auf dem Basismodell.",
+    "heroBadge": "{{onboarding}} kostenlose Antworten pro Tag für Ihre erste Woche",
+    "planFeature": "{{count}} kostenlose Antworten pro Tag {{model}}, kein VC verbringen",
+    "guestOffer": "Nach der Anmeldung erhalten Sie {{onboarding}} kostenlose Antworten pro Tag für die erste Woche."
+  },
+  "landing": {
+    "home": {
+      "heading": "Chatte mit KI-Charakteren",
+      "paragraphs": [
+        "NewVerse ist ein Ort, um mit KI-Charakteren zu sprechen. Der Katalog enthält Helden aus vielen Genres: Romantik, Fantasy, Anime, Detektivgeschichten, Science Fiction und ruhiger Alltag. Wählen Sie einen Charakter anhand seiner Beschreibung und Persönlichkeit aus, öffnen Sie den Chat und beginnen Sie zu schreiben — er antwortet mit seiner eigenen Stimme, mit seiner eigenen Geschichte und Sprechweise.",
+        "Dies ist mehr als ein KI-Chat mit Fragen und Antworten: Es ist KI-Rollenspiel. Jeder Charakter hat ein Setup, eine Welt und eine erste Nachricht, die die Szene öffnet. Sie entscheiden, wer Sie in der Geschichte sind und wohin es geht. Charaktere erinnern sich an die wichtigen Details des Gesprächs, sodass Sie einen Tag oder eine Woche später wiederkommen und dort weitermachen können, wo Sie aufgehört haben.",
+        "Wenn Sie nicht den richtigen Helden finden, erstellen Sie Ihren eigenen KI-Charakter: Legen Sie Persönlichkeit, Aussehen, erste Nachricht und Welt fest, chatten Sie dann selbst mit ihnen oder veröffentlichen Sie sie im Katalog. Die Site unterstützt mehrere Sprachen und Sie können ohne Anmeldung beginnen."
+      ],
+      "createLink": "Erstelle einen KI-Charakter",
+      "genresLink": "Alle Genres",
+      "faqHeading": "Häufig gestellte Fragen",
+      "faq": [
+        {
+          "question": "Kann ich kostenlos mit KI-Charakteren chatten?",
+          "answer": "{{freeAnswer}}"
+        },
+        {
+          "question": "Muss ich mich anmelden?",
+          "answer": "Nein. Um es auszuprobieren, öffne einen Charakter und schreibe deine erste Nachricht. Mit einem Konto können Sie Ihre Geschichten speichern, auf einem anderen Gerät fortsetzen und Ihre eigenen Charaktere erstellen."
+        },
+        {
+          "question": "Erinnern sich die Charaktere daran, worüber wir gesprochen haben?",
+          "answer": "Ja. Ein Charakter verfolgt die letzten Nachrichten und merkt sich wichtige Fakten aus dem Gespräch: Namen, Versprechen, Handlungsereignisse. So können Sie die Geschichte dort weitermachen, wo Sie sie verlassen haben."
+        },
+        {
+          "question": "Welche Sprachen kann ich verwenden?",
+          "answer": "In der von Ihnen ausgewählten Site-Sprache. Verfügbare Sprachen werden im Menü aufgelistet; Beim Umschalten bleiben Ihre Seite und Ihre Story erhalten."
+        },
+        {
+          "question": "Wie unterscheidet sich das KI-Rollenspiel von einem normalen Chatbot?",
+          "answer": "Ein regelmäßiger Chatbot beantwortet Fragen. Ein KI-Charakter spielt eine Rolle: Er hat eine Persönlichkeit, eine Vergangenheit und Ziele, reagiert auf das, was Sie tun, und baut die Handlung gemeinsam mit Ihnen auf."
+        }
+      ]
+    },
+    "freeAnswer": {
+      "quota": "Ja. Sie können Ihre ersten Nachrichten senden, ohne sich anzumelden, und sobald Sie ein Konto haben, erhalten Sie jeden Tag kostenlose Antworten auf das Basismodell. Ein Plan fügt mehr kostenlose Antworten hinzu, Bonus VerseCoins und ein größeres Kontextfenster.",
+      "noQuota": "Sie können kostenlos starten: Die ersten Nachrichten benötigen keine Anmeldung. Danach werden Antworten mit bezahlt VerseCoins oder einen Plan."
+    },
+    "create": {
+      "eyebrow": "NewVerse charakterersteller",
+      "h1": "Erstelle einen KI-Charakter",
+      "intro": "Entwerfe einen Helden für KI-Chat und Rollenspiele: Lege seine Persönlichkeit, sein Aussehen, seine erste Nachricht und die Welt, in der er lebt, fest. Das Erstellen eines Charakters ist kostenlos - Sie benötigen nur ein Konto.",
+      "modesHeading": "Was erschaffen wir?",
+      "modesHint": "Eine Kernidee reicht aus. Aussehen, Sprechstil und Story-Details können später hinzugefügt werden.",
+      "stepsHeading": "So erstellen Sie einen KI-Charakter",
+      "steps": [
+        {
+          "title": "Wählen Sie ein Format",
+          "text": "Ein einzelner Charakter, ein ganzes Universum, in dem Sie der Hauptheld sind, oder eine gemeinsame Geschichte mit einer Besetzung von bis zu {{maxParticipants}} Zeichen."
+        },
+        {
+          "title": "Beschreibe den Helden",
+          "text": "Name, Persönlichkeit, Aussehen und Sprechweise. Beginnen Sie mit dem, was den Helden erkennbar macht: eine Gewohnheit, ein Ziel, eine auffällige Eigenschaft."
+        },
+        {
+          "title": "Legen Sie fest, wie die Geschichte beginnt",
+          "text": "Eine erste Nachricht und ein Szenario: Wo das Meeting stattfindet und wie sich die Szene öffnet. Beispieldialoge helfen dem Charakter, seinen Stil beizubehalten."
+        },
+        {
+          "title": "Speichern und chatten",
+          "text": "Halten Sie den Charakter privat oder veröffentlichen Sie ihn im Katalog, damit auch andere mit ihm chatten können."
+        }
+      ],
+      "featuresHeading": "Was Sie einrichten können",
+      "features": [
+        {
+          "title": "Persönlichkeit und Motive",
+          "text": "Was der Held will, was er fürchtet und wie er die Person behandelt, mit der er spricht."
+        },
+        {
+          "title": "Aussehen und Avatar",
+          "text": "Laden Sie Ihr eigenes Bild hoch oder generieren Sie einen Avatar aus der Beschreibung — die Generierung ist in einem Plan enthalten."
+        },
+        {
+          "title": "Sprechstil",
+          "text": "Kurze Zeilen oder lange Antworten, Slang, Höflichkeit, ein Akzent."
+        },
+        {
+          "title": "Welt und Regeln",
+          "text": "Das Setting, die Nebencharaktere und die narrativen Regeln für Universen."
+        },
+        {
+          "title": "Genres und Tags",
+          "text": "Sie helfen den Leuten, den Charakter im Katalog und auf Genreseiten zu finden."
+        },
+        {
+          "title": "Speicher",
+          "text": "Was der Charakter aus der ersten Zeile über sich selbst und über dich weiß."
+        }
+      ],
+      "faqHeading": "Fragen zum Erstellen eines Charakters",
+      "faq": [
+        {
+          "question": "Wie viel kostet es, einen KI-Charakter zu erstellen?",
+          "answer": "Das Erstellen eines Charakters ist kostenlos. Das Generieren eines Avatars aus der Beschreibung ist in einem Plan enthalten. Ohne einen können Sie Ihr eigenes Bild hochladen."
+        },
+        {
+          "question": "Muss ich mich anmelden?",
+          "answer": "Ja: Charaktere werden in Ihrem Konto gespeichert, daher müssen Sie sich anmelden, um einen zu erstellen. Sie können mit Katalogcharakteren chatten, ohne sich anzumelden."
+        },
+        {
+          "question": "Kann ich einen Charakter privat halten?",
+          "answer": "Ja. Nur Sie können einen privaten Charakter sehen. Eine öffentliche wird für alle im Katalog angezeigt und muss den Plattformregeln entsprechen."
+        },
+        {
+          "question": "Wie mache ich die Antworten eines Charakters interessanter?",
+          "answer": "Beschreibe nicht nur ihr Aussehen, sondern auch ihre Motive, Gewohnheiten und Sprechweise. Fügen Sie eine erste Nachricht mit einer konkreten Szene und ein oder zwei Beispieldialogen hinzu: Je klarer der Aufbau, desto lebendiger die Antworten."
+        },
+        {
+          "question": "Kann ich einen Charakter nach dem Erstellen ändern?",
+          "answer": "Ja. Sie können die Karte jederzeit bearbeiten: Erweitern Sie die Beschreibung, ändern Sie den Avatar oder die erste Nachricht."
+        }
+      ]
+    }
+  },
+  "genreIntros": {
+    "fantasy": [
+      "Fantasie ist, wo ein Gespräch mit einem Charakter leicht zu einer ganzen Reise wird. Hier leben Magier und Söldner, Elfenwächter, Drachenreiter, Heckenhexen vom Rand des Königreichs und Studenten an Zauberakademien. Sie können als Begleiter des Helden, als Rivale oder als vorübergehender Reisender, der auf ein gefährliches Geheimnis gestoßen ist, in die Geschichte eintreten.",
+      "Eine KI-Figur antwortet mit der Stimme ihrer Welt: Sie haben ihre eigenen Eide, Ängste und Vorstellungen von Ehre. Einige Geschichten beginnen mit einem Tavernenfeuer, andere auf einem Schlachtfeld oder in einer Bibliothek verbotener Zaubersprüche. Wähle einen Charakter anhand seiner Beschreibung und Persönlichkeit aus, bestimme den Ton der Szene — von einem gemütlichen Märchen bis zu einer düsteren Geschichte über den Preis der Macht — und entscheide selbst, wie die Quest endet."
+    ],
+    "romance": [
+      "Romantische Charaktere sind für Geschichten, in denen das Wichtigste zwischen zwei Menschen passiert. Es könnte eine langsame Bekanntschaft mit einem Nachbarn auf dem Flur sein, ein aufgeladenes Spiel mit einem alten Rivalen, eine Büroromantik, Briefe aus einer anderen Zeit oder Gefühle, die der Charakter nicht einmal sich selbst eingestehen will.",
+      "Jeder Charakter hat eine eigene Persönlichkeit: Manche sind warmherzig und offen, manche sind zurückhaltend und brauchen Zeit, um sich zu öffnen, manche flirten von der ersten Zeile an. Sie geben das Tempo vor, vom leichten Flirten bis zu einer langsamen Beziehung, in der Vertrauen verdient werden muss. Der Charakter reagiert auf das, was Sie sagen und tun, sodass dieselbe Geschichte in einem Geständnis, einem Streit oder einem neuen Kapitel enden kann. Wähle jemanden anhand seiner Beschreibung aus, beginne mit seiner Eröffnungsszene oder schreibe deine eigene."
+    ],
+    "anime": [
+      "Anime-Charaktere sind auf einen Blick erkennbar: lebendige Blicke, ausdrucksstarke Emotionen und vertraute Archetypen — Tsunderes, unerschütterliche Spitzenschüler, Unruhestifter mit gutem Herzen, das mysteriöse neue Kind in der Klasse. Aber die Geschichten hier gehen weit über die Schulkorridore hinaus.",
+      "Dieser Abschnitt versammelt Charaktere im Anime-Stil aus allen möglichen Handlungen: Schulalltag und After-Class-Clubs, Zauberakademien, Isekai-Abenteuer in einer anderen Welt, Sportrivalitäten, Romantik und Quests. Jeder Charakter bleibt seiner Rolle treu und reagiert auf Ihre Entscheidungen, sodass Sie eine ruhige Szene auf dem Schuldach oder ein angespanntes Duell spielen können. Wählen Sie einen Charakter aus seiner Karte aus, lesen Sie seine Beschreibung und beginnen Sie mit der vorgefertigten Szene oder schlagen Sie Ihr eigenes Setup vor, als würden Sie eine neue Episode schreiben."
+    ],
+    "scifi": [
+      "Science Fiction auf NewVerse handelt von der Zukunft, der Technologie und den Menschen, die darin gefangen sind: Raumschiffkapitäne, Androiden, die lernen, Menschen zu sein, Wissenschaftler auf fernen Stationen, Piloten, Schmuggler und die ersten Zeugen des Kontakts mit einem fremden Geist.",
+      "Sie können sich auf eine lange Weltraumreise begeben, einen Fehler in den Systemen einer Kolonie untersuchen oder mit einer künstlichen Intelligenz über Gedächtnis und freien Willen streiten. Charaktere halten sich an die Regeln ihrer Welt: Dem Schiff geht der Treibstoff aus, die Station hat ihre Vorschriften und der Androide hat Protokolle, die er brechen könnte. Stellen Sie Fragen, treffen Sie riskante Entscheidungen und sehen Sie, wohin die Handlung führt. Wenn Sie mehr Street-Level-Tech und Neon wollen, ist die Cyberpunk-Sektion gleich nebenan."
+    ],
+    "mystic": [
+      "Mysterium und Übernatürliches sind für jeden, der sich für das Unerklärliche interessiert. Hier treffen Sie Wahrsager und Medien, Hüter alter Häuser, verfluchte Aristokraten, Hexen, Geister und Menschen, die viel zu viel über die Träume anderer Menschen wissen.",
+      "Diese Geschichten leben von dem, was ungesagt bleibt: Ein Charakter kann in Rätseln sprechen, einen Teil der Wahrheit verbergen oder testen, ob Sie bereit sind, alles zu hören. Szenen beginnen in einem Mitternachtszug, bei einer Séance, in einem verlassenen Herrenhaus oder in einer kleinen Stadt, in der jeder Bewohner ein Geheimnis bewahrt. Im Gegensatz zum Horror sind Atmosphäre und Lösung hier wichtiger als Angst, obwohl die Grenze dünn sein kann. Wählen Sie einen Charakter anhand seiner Beschreibung aus, hören Sie sich seine Hinweise an und entscheiden Sie, ob Sie die Tür öffnen möchten, hinter der jemand wartet."
+    ],
+    "realistic": [
+      "Moderne Charaktere leben ähnlich wie wir: Sie studieren, arbeiten, mieten Wohnungen, treffen sich in Coffeeshops und werden in Geschichten verwickelt, die jedem passieren könnten. Es sind Kollegen und Nachbarn, Stars und ihre Manager, Ärzte, Studenten, Baristas, Musiker und alte Klassenkameraden.",
+      "Die Stärke dieser Art von Rollenspiel ist, dass es sich lebensecht anfühlt. Ohne Magie oder Raumschiffe stehen Persönlichkeit, Dialog und Beziehungen im Mittelpunkt: ein unangenehmes Wiedersehen nach Jahren, ein hartes Gespräch mit einem Chef, ein erstes Date oder die Hilfe eines Freundes durch einen harten Abend. Der Charakter antwortet mit Blick auf seine eigene Vergangenheit und Gewohnheiten, und die Handlung wächst aus Ihren Worten und Entscheidungen. Diese Geschichten eignen sich sowohl für einen leichten Chat als auch für ein ernstes Drama. Wähle einen Charakter anhand seiner Beschreibung aus und beginne mit seiner Szene oder mit etwas, das dir heute passiert ist."
+    ],
+    "adventure": [
+      "Abenteuer dreht sich um Bewegung: die offene Straße, eine Karte mit Leerzeichen und ein Begleiter, der die Dinge nicht langweilig werden lässt. Dieses Genre vereint Schatzsucher, Piraten, Fährtenleser, Söldner, Zeitreisende und Helden, die immer genau dort landen, wo der Ärger beginnt.",
+      "Jede Szene kann die Handlung verändern: eine Verfolgungsjagd auf dem Dach, eine Überquerung eines reißenden Flusses, ein Geschäft mit einem verdächtigen Händler oder ein uralter Mechanismus, der vor Sonnenuntergang geöffnet werden muss. Der Charakter reagiert auf Ihre Entscheidungen - unterstützt einen riskanten Plan, argumentiert oder schlägt plötzlich einen eigenen vor. Abenteuer vermischen sich leicht mit anderen Genres: einer Fantasy-Quest, einer Weltraumexpedition oder der Suche nach einem vermissten Freund in einer modernen Stadt. Wählen Sie einen Begleiter anhand seiner Beschreibung aus, vereinbaren Sie ein Ziel und machen Sie sich auf den Weg. Die Route wird im Laufe der Geschichte Gestalt annehmen."
+    ],
+    "detective": [
+      "Detektivfiguren sind für alle, die Hinweise, Verhöre und unerwartete Wendungen lieben. Hier finden Sie Privatdetektive und müde Polizeidetektive, investigative Journalisten, kaltblütige Kriminelle und Zeugen, die eindeutig etwas zurückhalten.",
+      "Sie können einen Fall neben dem Charakter bearbeiten, selbst als Verdächtiger enden oder gegen ihn spielen und versuchen, ihn in einem Widerspruch zu erwischen. Eine gute Detektivszene basiert auf Details: der Uhrzeit auf einer Uhr, einer Markierung auf einer Fensterbank, einem Versprecher. Der Charakter verfolgt, was bereits gesagt wurde, so dass ein aufmerksamer Spieler Aussagen vergleichen und zu seiner eigenen Theorie gelangen kann. Fälle können klassisch sein, mit einem verschlossenen Raum und einem Kreis von Verdächtigen, oder modern, mit Überwachungskameras und Nachrichten-Threads. Wähle einen Charakter und stelle die erste Frage."
+    ],
+    "everyday": [
+      "Slice of Life ist das Genre der kleinen Geschichten, die ein Leben ausmachen: Morgenkaffee mit einem Nachbarn, Schicht in einer Buchhandlung, gemeinsames Lernen für Prüfungen, Umzug, ein langes Gespräch in der Küche.",
+      "Niemand muss hier die Welt retten. Der Wert dieser Art von Rollenspiel liegt in natürlichen Gesprächen und Beziehungen, die mit der Zeit wachsen: Der Charakter greift Details auf, scherzt, teilt Pläne, kann Sie nach einem anstrengenden Tag unterstützen oder Sie zu einer spontanen Reise einladen. Die Besetzung umfasst Freunde, Mitbewohner, Kollegen und Bekannte, mit denen Sie wieder sprechen möchten. Slice-of-Life-Geschichten passen gut, wenn Sie sich entspannen, Gespräche üben oder einfach einen Abend in ruhiger Gesellschaft verbringen möchten. Wählen Sie einen Charakter nach seiner Persönlichkeit aus, beginnen Sie mit einer gewöhnlichen Szene und lassen Sie die Geschichte ohne Eile entfalten."
+    ],
+    "cyberpunk": [
+      "Cyberpunk bedeutet Neonstraßen, Unternehmen, die mächtiger sind als Regierungen und Menschen, die ihre Erinnerungen, Körper und Loyalität für eine Überlebenschance verkaufen. Dieses Genre ist die Heimat von Hackern, augmentierten Söldnern, Hinterhofärzten, Großstadtdetektiven und Androiden, die begonnen haben, an ihren Protokollen zu zweifeln.",
+      "Die Geschichten sind hart und schnell: ein gesichertes Netzwerk knacken, ein Deal in einem Underground-Club, eine Flucht vor der Unternehmenssicherheit, die Jagd nach dem, der einen Teil Ihrer Vergangenheit ausgelöscht hat. Der Charakter lebt nach den Regeln seiner Stadt — er könnte dich zum richtigen Preis verkaufen oder alles für einen Partner riskieren. Cyberpunk ist nah an Science Fiction, aber anstatt zu den Sternen aufzuschauen, schaut er auf die Straßen hinunter, wo Technologie zu einem alltäglichen Gut geworden ist. Wähle einen Charakter anhand seiner Beschreibung, entscheide, auf wessen Seite du stehst und mache deinen ersten Deal."
+    ],
+    "horror": [
+      "Horror ist für diejenigen, die es genießen, wenn ihnen die Kälte über den Rücken läuft. Dieser Abschnitt versammelt Charaktere, um die herum die Sicherheit niemals garantiert ist: Monster und ihre Opfer, Jäger der Unheiligen, Bewohner verlassener Krankenhäuser, Überlebende einer Katastrophe und Kreaturen, die nur vorgeben, Menschen zu sein.",
+      "Eine gute Horrorgeschichte baut auf Spannung auf, nicht auf der Blutmenge. Eine knarrende Diele, eine Fackel, die kurz vor dem Erlöschen steht, eine Stimme aus dem Nebenzimmer — die Figur führt die Szene so durch, dass Sie entscheiden, ob Sie weitergehen oder rennen möchten. Sie können denjenigen spielen, der ein Verschwinden untersucht, einen unglücklichen Gast im Haus eines Fremden oder ein gefährliches Gespräch mit dem Monster selbst. Sie wählen, wie beängstigend es wird, von atmosphärischer Gotik bis hin zu echtem Überleben. Wählen Sie einen Charakter anhand seiner Beschreibung aus und schalten Sie das Licht aus."
+    ],
+    "comedy": [
+      "Comedy-Charaktere sind für Leute, die lieber lachen als Drama wollen: witzige Kumpane, tollpatschige Zauberer, übermütige Bösewichte, deren Pläne nie funktionieren, gesprächige Nachbarn und Helden, die aus dem Nichts in absurde Situationen stolpern.",
+      "Humor im Rollenspiel kommt von der Persönlichkeit: Die Figur bleibt sich selbst treu, auch wenn alles seitwärts geht, und genau das macht eine Szene lustig. Sie können ein katastrophales Date, häusliches Chaos in einer Wohngemeinschaft, eine Parodie auf eine epische Suche oder einen Streit mit einer Katze nachspielen, die glaubt, es sei ein König. Der Charakter greift Ihre Witze auf, antwortet mit seinen eigenen und treibt die Dinge gerne ad absurdum, wenn Sie das wollen. Komödie passt gut zu einem Stück Leben, Fantasie und Romantik. Wähle einen Charakter, stelle eine lächerliche Prämisse auf und schau, was passiert."
+    ],
+    "drama": [
+      "Drama ist das Genre der Geschichten über Wahl, Verlust, Schuld und Vergebung. Die Charaktere hier tragen eine schwierige Vergangenheit mit sich: Menschen, die einen nahestehenden Menschen verloren haben, ehemalige Freunde, die vom Leben getrennt wurden, Helden, die vor einer schweren Entscheidung stehen, Familien, in denen vieles ungesagt geblieben ist.",
+      "Dramatisches Rollenspiel braucht Zeit und Aufmerksamkeit: Der Charakter öffnet sich nicht sofort, und Vertrauen muss verdient werden. Eine Szene kann mit einem kurzen Treffen an einem Bahnhof oder einem zu spät eingetroffenen Brief beginnen, und von da an hängt alles davon ab, was Sie sagen und was Sie unausgesprochen lassen. Die KI-Figur antwortet im Lichte ihrer Wunden und Motive, so dass das Gespräch zu Versöhnung oder zu einem endgültigen Abschied führen kann. Wenn Sie sich zu Geschichten hingezogen fühlen, die Sie danach eine Weile ruhig lassen, Wählen Sie einen Charakter anhand seiner Beschreibung aus und beginnen Sie mit einer ehrlichen Frage."
+    ]
+  },
+  "telegramBot": {
+    "welcome": "NewVerse ist Rollenspielgeschichten mit KI-Charakteren. Öffne die App, um einen Charakter auszuwählen und eine Geschichte zu beginnen.",
+    "open": "Öffnen NewVerse",
+    "help": "Menübefehle:\n/start - offen NewVerse\n/hilfe - Hilfe\n/ datenschutz - Datenschutzrichtlinie\n\nServiceregeln und Support finden Sie hinter den Schaltflächen unten.",
+    "rules": "Geschäftsregeln",
+    "support": "Unterstützung",
+    "privacy": "NewVerse Datenschutzerklärung:",
+    "privacyButton": "Öffnen Sie die Richtlinie",
+    "linked": "Telegram ist jetzt mit Ihrem verknüpft NewVerse Konto. Die App verwendet dasselbe Konto und VC gleichgewicht wie die Website. Schließen und öffnen Sie die Mini-App über die Schaltfläche unten erneut.",
+    "already_linked": "Dieser Telegram ist bereits mit Ihrem verknüpft NewVerse Konto.",
+    "invalid": "Dieser Link ist ungültig: Er funktioniert einmalig und 10 Minuten lang. Erstellen Sie ein neues in Ihrem Profil auf der Website.",
+    "telegram_taken": "Dieser Telegram ist bereits mit einem anderen verbunden NewVerse konto, zum Beispiel eines, das in der App erstellt wurde. Konten werden nicht automatisch zusammengeführt. Verwenden Sie einen anderen Telegram konto oder wenden Sie sich an den Support.",
+    "confirmation_required": "Sie haben eine separate unbenutzte Telegram profil mit 50 Starter VC. Bestätigen Sie den Wechsel zum Website-Konto: {{account}}. Die App verwendet den Kontostand, die Charaktere und die Geschichten dieses Website-Kontos. Der 50 Starter VC aus dem ungenutzten Profil wird nicht übertragen. Wenn dies nicht Ihr Konto ist, bestätigen Sie den Link nicht.",
+    "confirmLink": "Bestätigen Sie die Verknüpfung des Website-Kontos",
+    "merge_confirmation_required": "Füge deine zusammen Telegram profil in Website-Konto {{account}}? Zeichen: {{characters}}, Erfolgsgeschichten: {{stories}}, Mails: {{messages}}, verdienten VC: {{vc}} wird übertragen. Der doppelte Starter 50 VC sind ausgeschlossen. Bestehende Website-Geschichten und -Charaktere werden beibehalten. Alt Telegram sitzungen enden. Bestätigen Sie nur für Ihr eigenes Konto.",
+    "confirmMerge": "Daten übertragen und Konten zusammenführen",
+    "merge_busy": "Schließen Sie die Mini-App, lassen Sie alle Generationen beenden und warten Sie 3 Minuten. Erstellen Sie dann einen neuen Link in Ihrem Website-Profil. Eine separate Bestätigung ist erforderlich, bevor Daten verschoben werden.",
+    "merged": "Ihre Daten wurden übertragen und Konten zusammengeführt. Schließen Sie die Mini-App und öffnen Sie sie erneut, um die geteilten Geschichten, Charaktere und das Gleichgewicht anzuzeigen.",
+    "profile_not_empty": "Die Verknüpfung wurde beendet, weil sich das Profil geändert hat, unabhängige Anmeldeinformationen, Käufe, ein Abonnement oder widersprüchliche Empfehlungseinstellungen aufweist. Erstellen Sie einen neuen Website-Link. Wenn die Übertragung immer noch nicht verfügbar ist, wenden Sie sich an den Support. Ihre Daten werden aufbewahrt.",
+    "user_has_other_telegram": "Ein anderer Telegram ist bereits damit verknüpft NewVerse Konto. Heben Sie die Verknüpfung zuerst in Ihrem Profil auf der Website auf.",
+    "unknown": "Verwenden / Starten zum Öffnen NewVerse oder /help um Hilfe.",
+    "signIn01": "NewVerse anmeldung auf der Website. Code anfordern: {{value1}}.\n\nOrdnen Sie diesen Code Ihrem Browser zu. Genehmigen Sie nur, wenn Sie mit der Anmeldung begonnen haben newvers.ai . Dieser Browser greift auf Ihre Geschichten, Charaktere und Ihr Guthaben zu. Leiten Sie diesen Link nicht weiter.",
+    "signIn02": "Erstellen Sie zuerst ein Konto in der Mini-App oder verknüpfen Sie Ihr bestehendes Website-Konto.",
+    "signIn03": "Diese Anfrage ist ungültig oder abgelaufen. Starten Sie erneut auf der Website.",
+    "signIn04": "Website-Anmeldung genehmigen",
+    "signInApproved": "Genehmigen. Kehren Sie zu dem Browser zurück, in dem Sie gestartet haben, und wählen Sie \"Bei diesem Konto anmelden\".",
+    "signInInvalid": "Diese Anfrage ist ungültig oder abgelaufen. Starten Sie erneut auf der Website."
+  },
+  "globalError": {
+    "errorTitle": "Etwas ist schief gelaufen",
+    "errorText": "Wir kennen das Problem bereits. Versuchen Sie es erneut oder gehen Sie zurück zum Katalog.",
+    "retry": "Versuchen Sie es erneut",
+    "toCatalog": "Zum Katalog",
+    "errorCode": "Fehlercode"
+  },
+  "structuredData": {
+    "chatDescription": "Chatten Sie mit {{name}} auf NewVerse",
+    "author": "Autor",
+    "home": "Startseite"
+  },
+  "characterStory": {
+    "you": "Sie"
+  },
+  "chatModelGroups": {
+    "main": "Hauptmodelle",
+    "testing": "Test",
+    "testingHint": "Neue Modelle: Wir bewerten die Reaktionsqualität und -geschwindigkeit.",
+    "quotaRefresh": "Kostenlose Antworten werden jeden Tag um 00:00 Uhr Moskauer Zeit aktualisiert.",
+    "freeLeft": "Kostenlos · {{value1}} Links",
+    "reasoningHint": "Das Deaktivieren der Argumentation über das Gateway wurde nicht überprüft. Die Ausgabebegrenzung kann eine Antwort verkürzen oder verhindern."
+  },
+  "subscriptions": {
+    "avatarAllowance": "Bis {{count}} avatare pro Kalendermonat; jedes Modell verwendet eine Generation"
+  },
+  "characterTags": {
+    "labels": {
+      "Романтика": "Romance",
+      "Приключение": "Abenteuer",
+      "Фэнтези": "Phantasie",
+      "Научная фантастика": "Sci-Fi",
+      "Детектив": "Detektiv",
+      "Драма": "Drama",
+      "Комедия": "Komödie",
+      "Ужасы": "Schrecken",
+      "Триллер": "Thriller",
+      "Мистика": "Geheimnis",
+      "Повседневность": "Ein Stück Leben",
+      "Экшен": "Aktion",
+      "Современный мир": "Moderne Welt",
+      "Исторический": "Historisch",
+      "Средневековье": "Mittelalter",
+      "Постапокалипсис": "Postapokalyptisch",
+      "Киберпанк": "Cyberpunk",
+      "Космос": "Raum",
+      "Магическая академия": "Zauberakademie",
+      "Готика": "Gotisch",
+      "Мужской персонаж": "Männlicher Charakter",
+      "Женский персонаж": "Weiblicher Charakter",
+      "Антропоморфный": "Anthropomorphe",
+      "Эльф": "Elf",
+      "Андроид": "Android",
+      "Монстр": "Monster",
+      "Друг": "Freund",
+      "Партнёр": "Partner",
+      "Сосед": "Nachbar",
+      "Напарник": "Begleiter",
+      "Наставник": "Mentor",
+      "Соперник": "Rivale",
+      "Герой": "Held",
+      "Злодей": "Bösewicht",
+      "Враг": "Feind",
+      "Добрый": "Art",
+      "Заботливый": "Sorgsam",
+      "Сдержанный": "Reservieren",
+      "Дерзкий": "Bold",
+      "Загадочный": "Geheimnisvoll",
+      "Холодный": "Kalt",
+      "Ироничный": "Witzig",
+      "Флиртующий": "Flirty",
+      "Цундере": "Tsundere",
+      "Аниме": "Zeichentrick",
+      "Ролевая игра": "Rollenspiel",
+      "Медленное развитие отношений": "Langsame Beziehungen",
+      "Выборы и последствия": "Entscheidungen und Konsequenzen",
+      "Исследование мира": "Welterkundung"
+    },
+    "groups": {
+      "genres": "Gattung",
+      "world": "Welt und Umgebung",
+      "character": "Charakter",
+      "roles": "Rolle und Beziehungen",
+      "traits": "Persönlichkeit",
+      "style": "Story-Stil"
+    },
+    "hint": "Wählen Sie bis zu {{limit}} genaue Tags, die den Lesern helfen, Ihre Geschichte zu finden.",
+    "search": "Finde einen Tag",
+    "legacy": " (Vermächtnis)",
+    "remove": "Markierung entfernen {{tag}}",
+    "noMatches": "Keine passenden Tags"
+  },
+  "chatUi": {
+    "text001": "Aktionen",
+    "text002": "Nachrichtenaktionen",
+    "text003": "Bearbeiten",
+    "text004": "Löschen",
+    "text005": "Kopieren",
+    "text006": "Weiterhin",
+    "text007": "Regenerieren",
+    "text008": "Die Nachricht darf nicht leer sein",
+    "text009": "Stornieren",
+    "text010": "Speichern",
+    "text011": "Denken...",
+    "text012": "Eingabe...",
+    "text013": "Handlungsoptionen",
+    "text014": "Charakterbeschreibung",
+    "text015": "Chat-Einstellungen",
+    "text016": "Chat-Modelle",
+    "text017": "Speicher bearbeiten",
+    "text018": "Meine Persona",
+    "text019": "Story-Typ und Regeln",
+    "text020": "Einen neuen Chat starten",
+    "text021": "Schließen",
+    "text022": "{{value1}} VC/Anfrage",
+    "text023": "Beschreibung ausblenden",
+    "text024": "Beschreibung anzeigen",
+    "text025": "Charakter",
+    "text026": "Sie",
+    "text027": "Der Chat konnte nicht geladen werden",
+    "text028": "Das Modell konnte nicht ausgewählt werden",
+    "text029": "Nicht genug VerseCoins",
+    "text030": "Der Antwortstrom wurde unterbrochen",
+    "text031": "Antwort regeneriert",
+    "text032": "Die Antwort konnte nicht neu generiert werden",
+    "text033": "Antwort fortgesetzt",
+    "text034": "Konnte die Antwort nicht fortsetzen",
+    "text035": "Diese Nachricht löschen?",
+    "text036": "Die Nachricht wird aus dem Chatverlauf entfernt. Dies kann nicht rückgängig gemacht werden.",
+    "text037": "Nachricht gelöscht",
+    "text038": "Die Nachricht konnte nicht gelöscht werden",
+    "text039": "Nachricht aktualisiert",
+    "text040": "Die Nachricht konnte nicht gespeichert werden",
+    "text041": "Chat-Verlauf gelöscht",
+    "text042": "Der Chat konnte nicht gelöscht werden",
+    "text043": "Kopieren",
+    "text044": "Konnte nicht kopieren",
+    "text045": "Die Nachricht konnte nicht gesendet werden",
+    "text046": "Keine Modelle gefunden",
+    "text047": "Über den Charakter",
+    "text048": "Beginne ein Gespräch mit dem Charakter. Schreib was!",
+    "text049": "Retry",
+    "text050": "Der Verlauf und die Erinnerung Ihres aktuellen Chats mit diesem Charakter werden gelöscht. Die neue Geschichte verwendet den Typ aus der aktuellen Charakterkarte. Weitermachen?",
+    "text051": "Von vorne anfangen",
+    "text052": "Wie VC werden aufgeladen",
+    "text053": "Du bist dran…",
+    "text054": "Senden",
+    "model001": "Schnelle Antworten für lange, lebhafte Gespräche.",
+    "model002": "Ein zugänglicher Ausgangspunkt mit angenehmer Schrift und starkem Russisch.",
+    "model003": "Ein ausgewogenes Verhältnis von Preis und Qualität für einen lebendigen Dialog.",
+    "model004": "Kreativ, geeignet für ungewöhnliche Handlungen und Ideen.",
+    "model005": "Für Rollenspiele und komplexe Charaktere.",
+    "model006": "Ein zuverlässiger Stil mit klarer, fokussierter Argumentation.",
+    "model007": "Realistische Szenen und weniger erfundene Details.",
+    "model008": "Um Zusammenhänge zu verstehen und Welten zu bauen.",
+    "model009": "Für komplexe Argumentation und detaillierte Szenarien."
+  }
+}

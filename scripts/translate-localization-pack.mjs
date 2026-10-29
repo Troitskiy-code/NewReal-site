@@ -69,17 +69,26 @@ console.log(JSON.stringify({ dryRun: !apply, ...plan }));
 if (!apply) process.exit(0);
 const ceiling = Number(options.get("max-characters") || 1_000_000);
 if (!Number.isFinite(ceiling) || ceiling < 0 || additionalCharacters > ceiling) throw new Error("Translation plan exceeds --max-characters; no requests sent");
+const totalCeiling = options.has("max-total-characters") ? Number(options.get("max-total-characters")) : Infinity;
+if ((options.has("max-total-characters") && (!Number.isSafeInteger(totalCeiling) || totalCeiling < 0)) || cache.characters + additionalCharacters > totalCeiling) throw new Error("Translation plan exceeds --max-total-characters including previous attempts; no requests sent");
 const apiKey = process.env.YANDEX_API_KEY?.trim(), folderId = process.env.YANDEX_FOLDER_ID?.trim();
 if (!apiKey || !folderId) throw new Error("YANDEX_API_KEY and YANDEX_FOLDER_ID are required");
 const checkpoint = () => writeFileSync(cacheFile, JSON.stringify(cache));
 for (let index = 0; index < batches.length; index++) {
   const batch = batches[index];
-  const response = await fetch("https://translate.api.cloud.yandex.net/translate/v2/translate", {
+  const requestedCharacters = batch.reduce((sum, job) => sum + Array.from(job.text).length, 0);
+  if (cache.characters + requestedCharacters > totalCeiling) throw new Error("Translation budget exhausted; no request sent");
+  // Reserve usage before sending: a timeout may still have been billed by the provider.
+  cache.characters += requestedCharacters;
+  cache.requests++;
+  checkpoint();
+  let response;
+  try { response = await fetch("https://translate.api.cloud.yandex.net/translate/v2/translate", {
     method: "POST", headers: { Authorization: `Api-Key ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ targetLanguageCode: locale, ...(batch[0].sourceLanguage ? { sourceLanguageCode: batch[0].sourceLanguage } : {}), format: "HTML", texts: batch.map(job => job.text), folderId }),
     signal: AbortSignal.timeout(60_000),
-  });
-  if (!response.ok) { await response.body?.cancel(); throw new Error(`Translation provider returned HTTP ${response.status}; completed batches remain checkpointed`); }
+  }); } catch (error) { cache.unconfirmedRequests = (cache.unconfirmedRequests || 0) + 1; checkpoint(); throw error; }
+  if (!response.ok) { cache.rejectedRequests = (cache.rejectedRequests || 0) + 1; checkpoint(); await response.body?.cancel(); throw new Error(`Translation provider returned HTTP ${response.status}; completed batches remain checkpointed`); }
   const data = await response.json();
   if (!Array.isArray(data.translations) || data.translations.length !== batch.length) throw new Error("Translation provider returned an incomplete batch");
   let invalid = 0;
@@ -90,13 +99,12 @@ for (let index = 0; index < batches.length; index++) {
       cache.values[batch[item].key] = restoreTranslation(text, batch[item].tokens);
     } catch { invalid++; }
   }
-  cache.characters += batch.reduce((sum, job) => sum + Array.from(job.text).length, 0);
-  cache.requests++;
   checkpoint();
   if (invalid) throw new Error(`Provider changed protected tokens in ${invalid} segments; valid results were checkpointed`);
   console.log(`Completed batch ${index + 1}/${batches.length}; checkpoint segments=${Object.keys(cache.values).length}`);
 }
 for (const leaf of dictionaryLeaves) leaf.target[leaf.key] = leaf.render();
+adaptPluralForms(targetDictionary, manifest.locales[locale].intl);
 if (existsSync(reviewedPath)) {
   for (const [key, value] of Object.entries(reviewedInterface)) {
     const segments = key.split("."); let target = targetDictionary;
@@ -109,7 +117,6 @@ if (existsSync(reviewedPath)) {
     target[leaf] = value;
   }
 }
-adaptPluralForms(targetDictionary, manifest.locales[locale].intl);
 const translations = records.map(({ row, source, values }) => ({ characterId: row.id, locale, sourceHash: characterTranslationHash(row, locale), ...Object.fromEntries(Object.entries(values).map(([field, render]) => [field, render()])), source }));
 if (options.has("review")) {
   const reviewed = JSON.parse(readFileSync(options.get("review"), "utf8"));
@@ -128,6 +135,6 @@ if (options.has("review")) {
 writeFileSync(`public/locales/${locale}/common.json`, JSON.stringify(targetDictionary, null, 2) + "\n");
 writeFileSync(path.join(directory, `${locale}-translations.json`), JSON.stringify(translations));
 if (translations.length) writeFileSync(path.join(directory, `import-${locale}.sql`), translationImportSql(translations, CHARACTER_TRANSLATION_FIELDS));
-const receipt = { locale, publicCharacters: records.length, interfaceEntries: dictionaryLeaves.length, provider: "yandextranslate", providerCharacters: cache.characters, providerRequests: cache.requests, estimatedRub: Number((cache.characters * rate / 1e6).toFixed(2)), generatedAt: new Date().toISOString() };
+const receipt = { locale, publicCharacters: records.length, interfaceEntries: dictionaryLeaves.length, provider: "yandextranslate", providerCharacters: cache.characters, providerRequests: cache.requests, unconfirmedRequests: cache.unconfirmedRequests || 0, rejectedRequests: cache.rejectedRequests || 0, estimatedRub: Number((cache.characters * rate / 1e6).toFixed(2)), generatedAt: new Date().toISOString() };
 writeFileSync(path.join(directory, `${locale}-receipt.json`), JSON.stringify(receipt, null, 2));
 console.log(JSON.stringify({ completed: true, ...receipt }));

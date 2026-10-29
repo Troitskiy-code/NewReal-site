@@ -1,0 +1,182 @@
+{
+  "date": "2026-10-29",
+  "enabled": [
+    "ru",
+    "en",
+    "es",
+    "de",
+    "fr",
+    "it",
+    "pl"
+  ],
+  "drafts": [
+    "pt",
+    "tr",
+    "ja",
+    "ko"
+  ],
+  "publicCharacters": 187,
+  "coverage": [
+    {
+      "locale": "de",
+      "prepared": 187,
+      "saved": 187,
+      "missing": 0
+    },
+    {
+      "locale": "fr",
+      "prepared": 187,
+      "saved": 187,
+      "missing": 0
+    },
+    {
+      "locale": "it",
+      "prepared": 187,
+      "saved": 187,
+      "missing": 0
+    },
+    {
+      "locale": "pl",
+      "prepared": 187,
+      "saved": 187,
+      "missing": 0
+    }
+  ],
+  "approvedBudgetRub": 3200,
+  "estimatedUpperBoundRub": 1483.58,
+  "rateRubPerMillion": 500.4,
+  "receipts": [
+    {
+      "locale": "de",
+      "publicCharacters": 187,
+      "interfaceEntries": 1051,
+      "provider": "yandextranslate",
+      "providerCharacters": 735978,
+      "providerRequests": 86,
+      "unconfirmedRequests": 0,
+      "rejectedRequests": 1,
+      "estimatedRub": 368.28,
+      "generatedAt": "2026-10-28T21:04:14.522Z"
+    },
+    {
+      "locale": "fr",
+      "publicCharacters": 187,
+      "interfaceEntries": 1051,
+      "provider": "yandextranslate",
+      "providerCharacters": 736294,
+      "providerRequests": 86,
+      "unconfirmedRequests": 0,
+      "rejectedRequests": 1,
+      "estimatedRub": 368.44,
+      "generatedAt": "2026-10-28T21:04:14.870Z"
+    },
+    {
+      "locale": "it",
+      "publicCharacters": 187,
+      "interfaceEntries": 1051,
+      "provider": "yandextranslate",
+      "providerCharacters": 739629,
+      "providerRequests": 86,
+      "unconfirmedRequests": 0,
+      "rejectedRequests": 2,
+      "estimatedRub": 370.11,
+      "generatedAt": "2026-10-29T06:45:06.869Z"
+    },
+    {
+      "locale": "pl",
+      "publicCharacters": 187,
+      "interfaceEntries": 1051,
+      "provider": "yandextranslate",
+      "providerCharacters": 738444,
+      "providerRequests": 86,
+      "unconfirmedRequests": 0,
+      "rejectedRequests": 2,
+      "estimatedRub": 369.52,
+      "generatedAt": "2026-10-29T06:45:56.177Z"
+    }
+  ],
+  "ledger": [
+    {
+      "id": "localization-de-europe-asia-20261028",
+      "locale": "de",
+      "outcome": "completed",
+      "charactersUpperBound": 735978,
+      "requests": 86,
+      "rejectedRequests": 1,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 368.28
+    },
+    {
+      "id": "localization-fr-europe-asia-20261028",
+      "locale": "fr",
+      "outcome": "completed",
+      "charactersUpperBound": 736294,
+      "requests": 86,
+      "rejectedRequests": 1,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 368.44
+    },
+    {
+      "id": "localization-it-europe-asia-20261028",
+      "locale": "it",
+      "outcome": "completed",
+      "charactersUpperBound": 739629,
+      "requests": 86,
+      "rejectedRequests": 2,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 370.11
+    },
+    {
+      "id": "localization-pl-europe-asia-20261028",
+      "locale": "pl",
+      "outcome": "completed",
+      "charactersUpperBound": 738444,
+      "requests": 86,
+      "rejectedRequests": 2,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 369.52
+    },
+    {
+      "id": "localization-pt-europe-asia-20261028",
+      "locale": "pt",
+      "outcome": "quota_limited",
+      "charactersUpperBound": 3609,
+      "requests": 1,
+      "rejectedRequests": 1,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 1.81
+    },
+    {
+      "id": "localization-tr-europe-asia-20261028",
+      "locale": "tr",
+      "outcome": "quota_limited",
+      "charactersUpperBound": 3609,
+      "requests": 1,
+      "rejectedRequests": 1,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 1.81
+    },
+    {
+      "id": "localization-ja-europe-asia-20261028",
+      "locale": "ja",
+      "outcome": "quota_limited",
+      "charactersUpperBound": 3609,
+      "requests": 1,
+      "rejectedRequests": 1,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 1.81
+    },
+    {
+      "id": "localization-ko-europe-asia-20261028",
+      "locale": "ko",
+      "outcome": "quota_limited",
+      "charactersUpperBound": 3609,
+      "requests": 1,
+      "rejectedRequests": 1,
+      "unconfirmedRequests": 0,
+      "estimatedUpperBoundRub": 1.81
+    }
+  ],
+  "supportTicket": "DS014011854",
+  "note": "Conservative estimate includes rejected attempts; not an invoice. Public character content only. Production import used source-change and public-visibility guards."
+}

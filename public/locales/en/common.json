@@ -258,7 +258,7 @@
       "create": "Create your character",
       "catalogCount_one": "{{count}} character in the catalog",
       "catalogCount_other": "{{count}} characters in the catalog",
-      "languages": "Russian, English and Spanish"
+      "languages": "Multiple languages"
     },
     "recommendations": {
       "discoveryTitle": "Discover new stories",
@@ -295,7 +295,7 @@
       "registerQ": "Do I need to sign up?",
       "registerA": "Not to start: the first {{limit}} {{messages}} can be sent as a guest. To keep going, sign in and the guest chat moves to your account.",
       "languageQ": "What language does {{name}} reply in?",
-      "languageA": "In the selected site language: Russian, English or Spanish. You can switch languages in the menu and continue the same story.",
+      "languageA": "In your selected site language. You can switch languages in the menu and continue the same story.",
       "startQ": "How do I start the story?",
       "startA": "Press “Start chat”. {{name}} opens the scene with the first message, and the plot follows your replies."
     },
@@ -563,7 +563,7 @@
     },
     "create": {
       "title": "Create an AI character for free — NewVerse creator",
-      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, in Russian, English and Spanish."
+      "description": "Create your own AI character for chat and roleplay: personality, appearance, first message and world. Free, with support for multiple languages."
     },
     "edit": {
       "title": "Edit character — NewVerse",
@@ -662,8 +662,8 @@
       "search": "Search “{{query}}” among characters",
       "pageSuffix": ", page {{page}}",
       "pageSentence": "Page {{page}}.",
-      "description": "NewVerse catalog of AI characters for roleplay in Russian, English and Spanish.",
-      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in Russian, English and Spanish.",
+      "description": "NewVerse catalog of AI characters for roleplay in multiple languages.",
+      "searchDescription": "NewVerse characters matching “{{query}}”: AI roleplay stories in multiple languages.",
       "sort": {
         "new": "New AI characters",
         "random": "Random AI characters",
@@ -1022,7 +1022,7 @@
       "paragraphs": [
         "NewVerse is a place to talk with AI characters. The catalog has heroes from many genres: romance, fantasy, anime, detective stories, science fiction and calm everyday life. Pick a character by their description and personality, open the chat and start writing — they reply in their own voice, with their own story and way of speaking.",
         "This is more than an AI chat with questions and answers: it is AI roleplay. Every character comes with a setup, a world and a first message that opens the scene. You decide who you are in the story and where it goes. Characters remember the important details of the conversation, so you can come back a day or a week later and continue where you left off.",
-        "If you cannot find the right hero, create your own AI character: set their personality, appearance, first message and world, then chat with them yourself or publish them to the catalog. The site works in Russian, English and Spanish, and you can start without signing up."
+        "If you cannot find the right hero, create your own AI character: set their personality, appearance, first message and world, then chat with them yourself or publish them to the catalog. The site supports multiple languages, and you can start without signing up."
       ],
       "createLink": "Create an AI character",
       "genresLink": "All genres",
@@ -1042,7 +1042,7 @@
         },
         {
           "question": "Which languages can I use?",
-          "answer": "Russian, English or Spanish. Character descriptions are available in these languages, and you can change the site language in the menu."
+          "answer": "In your selected site language. Available languages are listed in the menu; switching keeps your page and story."
         },
         {
           "question": "How is AI roleplay different from a regular chatbot?",

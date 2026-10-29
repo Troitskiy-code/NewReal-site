@@ -24,6 +24,70 @@
       "direction": "ltr",
       "fallback": "en",
       "enabled": true
+    },
+    "de": {
+      "label": "Deutsch",
+      "languageName": "German",
+      "intl": "de-DE",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": true
+    },
+    "fr": {
+      "label": "Français",
+      "languageName": "French",
+      "intl": "fr-FR",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": true
+    },
+    "it": {
+      "label": "Italiano",
+      "languageName": "Italian",
+      "intl": "it-IT",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": true
+    },
+    "pl": {
+      "label": "Polski",
+      "languageName": "Polish",
+      "intl": "pl-PL",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": true
+    },
+    "pt": {
+      "label": "Português",
+      "languageName": "Portuguese",
+      "intl": "pt-PT",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": false
+    },
+    "tr": {
+      "label": "Türkçe",
+      "languageName": "Turkish",
+      "intl": "tr-TR",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": false
+    },
+    "ja": {
+      "label": "日本語",
+      "languageName": "Japanese",
+      "intl": "ja-JP",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": false
+    },
+    "ko": {
+      "label": "한국어",
+      "languageName": "Korean",
+      "intl": "ko-KR",
+      "direction": "ltr",
+      "fallback": "en",
+      "enabled": false
     }
   }
 }
