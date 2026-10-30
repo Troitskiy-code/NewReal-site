@@ -2,8 +2,8 @@
 // PGlite + pgvector for vector SQL, and an in-process fake AI provider.
 // Never loads .env, never touches DATABASE_URL, never calls real providers.
 import { createRequire } from 'node:module';
-import { readFileSync, writeFileSync, mkdtempSync, existsSync } from 'node:fs';
-import { join, resolve, dirname, relative } from 'node:path';
+import { readFileSync, writeFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { join, resolve, dirname, relative, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:net';
@@ -261,22 +261,35 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
     });
   });
   const directory = mkdtempSync(join(tmpdir(), `nv-${label}-`));
+  // Each run's cluster is ~60 MB; remove it with the fixture so the temp folder does not grow.
+  const removeDirectory = () => {
+    if (dirname(resolve(directory)) !== resolve(tmpdir()) || !basename(directory).startsWith(`nv-${label}-`)) {
+      throw new Error('Unsafe fixture cleanup path');
+    }
+    rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  };
   const pg = new EmbeddedPostgres({
     databaseDir: join(directory, 'db'), user: 'postgres', password: 'synthetic_memory_only', port,
     persistent: true, onLog() {}, initdbFlags: ['--encoding=UTF8'],
   });
   const url = `postgresql://postgres:synthetic_memory_only@127.0.0.1:${port}/nv_memory_test`;
-  await pg.initialise();
-  await pg.start();
-  await pg.createDatabase('nv_memory_test');
-  const schema = join(directory, 'schema.prisma');
-  writeFileSync(schema, readFileSync(join(root, 'prisma/schema.prisma'), 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes'));
-  const push = spawnSync(process.execPath, [join(root, 'node_modules/prisma/build/index.js'), 'db', 'push', '--skip-generate', '--schema', schema], {
-    // Prisma CLI must not discover the repository .env; the schema and working
-    // directory are both isolated, with every database override pointing locally.
-    cwd: directory, env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url, MIGRATION_DATABASE_URL: url }, encoding: 'utf8',
-  });
-  if (push.status !== 0) throw new Error(`prisma db push failed: ${push.stderr || push.stdout}`);
+  try {
+    await pg.initialise();
+    await pg.start();
+    await pg.createDatabase('nv_memory_test');
+    const schema = join(directory, 'schema.prisma');
+    writeFileSync(schema, readFileSync(join(root, 'prisma/schema.prisma'), 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes'));
+    const push = spawnSync(process.execPath, [join(root, 'node_modules/prisma/build/index.js'), 'db', 'push', '--skip-generate', '--schema', schema], {
+      // Prisma CLI must not discover the repository .env; the schema and working
+      // directory are both isolated, with every database override pointing locally.
+      cwd: directory, env: { ...process.env, DATABASE_URL: url, DIRECT_URL: url, MIGRATION_DATABASE_URL: url }, encoding: 'utf8',
+    });
+    if (push.status !== 0) throw new Error(`prisma db push failed: ${push.stderr || push.stdout}`);
+  } catch (error) {
+    await pg.stop().catch(() => {});
+    try { removeDirectory(); } catch {}
+    throw error;
+  }
   const db = new PrismaClient({ datasourceUrl: url, log: [] });
 
   const vectorDb = new PGlite({ extensions: { vector } });
@@ -527,6 +540,7 @@ export async function startHarness({ label = 'memory', realProvider = false, sou
       await closed;
       pg.process = undefined;
     } else await pg.stop();
+    removeDirectory();
   }
 
   return { root, databaseUrl: url, db, vectorDb, provider, session, load, helpers, chat, settle, countTokens, mirrorMessages, stop, observedWrites };
