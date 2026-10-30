@@ -67,26 +67,3 @@ export function clientKeyFromRequest(req: HeaderSource): string {
   }
   return "unknown";
 }
-
-const PRIVATE_ADDRESS = /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|::1$|f[cd][0-9a-f]{2}:|::ffff:(10|127|192\.168)\.)/i;
-
-/**
- * TEMPORARY (guest IP quota rollout): the shape of the proxy's client-address headers, never the addresses.
- * Shows whether the proxy overwrites or appends X-Forwarded-For, so the right entry can be trusted.
- */
-export function describeForwardedHeaders(req: HeaderSource) {
-  const entries = (req.headers.get("x-forwarded-for") ?? "").split(",").map((part) => part.trim()).filter(Boolean);
-  const realIp = req.headers.get("x-real-ip")?.trim() || null;
-  const kind = (value: string | null | undefined) => (value ? (PRIVATE_ADDRESS.test(value) ? "private" : "public") : "none");
-  return {
-    trustProxy: process.env["TRUST_PROXY"] === "1",
-    forwardedEntries: entries.length,
-    forwardedFirst: kind(entries[0]),
-    forwardedLast: kind(entries.at(-1)),
-    realIp: kind(realIp),
-    realIpIs: !realIp ? "none" : realIp === entries.at(-1) ? "last" : realIp === entries[0] ? "first" : "other",
-    // 203.0.113.0/24 is the documentation range a probe sends as a spoofed client header.
-    spoofedAt: entries.findIndex((entry) => entry.startsWith("203.0.113.")),
-    realIpSpoofed: Boolean(realIp?.startsWith("203.0.113.")),
-  };
-}

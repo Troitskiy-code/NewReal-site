@@ -35,7 +35,7 @@ import {
   createAnonymousSessionId,
   isValidAnonymousRequestId,
 } from "@/lib/anonymousCookie";
-import { clientKeyFromRequest, consumeRateLimit, describeForwardedHeaders } from "@/lib/rateLimit";
+import { clientKeyFromRequest, consumeRateLimit } from "@/lib/rateLimit";
 import { MAX_ANONYMOUS_HISTORY, normalizeGuestMessage } from "@/lib/guestRequestPolicy";
 import {
   GuestSchemaMissingError,
@@ -47,7 +47,7 @@ import {
   recoverGuestSession,
   renewGuestGeneration,
 } from "@/lib/guestRequestStore";
-import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 import { getOrCreatePromptState, assertPromptStateAvailable, GroupPromptUnavailableError } from "@/lib/promptState";
 import { PromptBudgetError, withTurnReminder } from "@/lib/chatSystemPrompt";
@@ -267,8 +267,6 @@ export async function handleAnonymousChatPost(
     throw error;
   }
 
-  // TEMPORARY (guest IP quota rollout): header shape only, no addresses.
-  infoLog("GuestIp", "forwarded headers", describeForwardedHeaders(req));
   const limited = await consumeRateLimit(`anon-post:${clientKeyFromRequest(req)}`, ANON_POST_LIMIT, ANON_POST_WINDOW_MS);
   if (!limited.ok) {
     return withCookie(NextResponse.json({ error: "Слишком много запросов. Подождите немного." }, { status: 429 }), sessionId);

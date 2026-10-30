@@ -150,7 +150,7 @@ try {
     '@/lib/apiI18n': { getApiLocale: () => 'ru' },
     '@/lib/chatHelpers': { resolveChatSystemPrompt: () => 'Test', trimMessagesToTokenLimit: messages => ({ messages }),
       streamChatCompletion: async () => { throw new Error('synthetic upstream failure'); } },
-    '@/lib/logger': { errorLog() {}, infoLog() {}, toSafeDiagnostic: () => ({ category: 'error' }) },
+    '@/lib/logger': { errorLog() {}, toSafeDiagnostic: () => ({ category: 'error' }) },
   });
   const request = (sessionId) => new NextRequest('http://localhost/api/chat/test', {
     method: 'POST', headers: { cookie: `anonymousSessionId=${sessionId}` },
@@ -172,7 +172,6 @@ try {
   await db.model.delete({ where: { id: model.id } });
   // Per-IP daily guest quota: a fresh cookie from the same address does not restart the allowance.
   const guestSession = load('src/lib/anonymousSession.ts');
-  const rate = load('src/lib/rateLimit.ts');
   const fromIp = (ip, sessionId = 'unused') => new NextRequest('http://localhost/api/chat/test', {
     method: 'POST', headers: { cookie: `anonymousSessionId=${sessionId}`, 'x-forwarded-for': ip } });
   const previousTrust = process.env['TRUST_PROXY'];
@@ -193,9 +192,6 @@ try {
       && await guestSession.guestIpQuota(fromIp('198.51.100.8')).remaining() === 14, 'IP allowance can be read without spending it');
     const payload = await handler.getAnonymousChatPayload(fromIp('198.51.100.7', 'guest-ip-payload'), character.id);
     check((await payload.json()).remainingMessages === 0, 'chat page shows zero guest messages for an exhausted IP');
-    const shape = rate.describeForwardedHeaders({ headers: new Headers({ 'x-forwarded-for': '203.0.113.9, 198.51.100.7', 'x-real-ip': '198.51.100.7' }) });
-    check(shape.forwardedEntries === 2 && shape.spoofedAt === 0 && shape.realIpIs === 'last' && !JSON.stringify(shape).includes('198.51'),
-      'forwarded header diagnostics describe the shape without addresses');
   } finally {
     if (previousTrust === undefined) delete process.env['TRUST_PROXY']; else process.env['TRUST_PROXY'] = previousTrust;
   }
