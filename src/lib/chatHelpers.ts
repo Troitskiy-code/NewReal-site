@@ -165,8 +165,11 @@ export function getMemoryTokenRatios(intent: UserIntent = "general"): MemoryToke
     return { recentChat: 0.4, summary: 0.15, retrieved: 0.05, coreEpisodic: 0.4 };
   }
 
-  if (intent === "fact") {
-    return { recentChat: 0.45, summary: 0.15, retrieved: 0.3, coreEpisodic: 0.1 };
+  // A question about the past is answered from memory: with 10% for core and events the core alone filled it, so
+  // events got nothing, and the found quotes were then dropped for the recent tail (crash test 3, turn 181:
+  // «episodic=0 rag=0», the bribe event in memory was never shown).
+  if (intent === "fact" || intent === "question") {
+    return { recentChat: 0.35, summary: 0.15, retrieved: 0.25, coreEpisodic: 0.25 };
   }
 
   return MEMORY_TOKEN_RATIOS;
@@ -640,8 +643,9 @@ async function loadChatHistoryRows({
 /** Core (names, relationships, key facts) is never dropped: a 16k prompt without it lost the
  * names of everyone in a 196-message story (prod 2026-10-24). Events are cheaper than the summary. */
 const DROP_ORDER_WHEN_OVER_LIMIT: MemoryBlockKind[] = ["quotes", "events", "summary"];
-/** Share of the context that memory keeps even against a long unprocessed tail. */
+/** Share of the context that memory keeps even against a long unprocessed tail; more for a question about the past. */
 const MEMORY_RESERVE_SHARE = 0.3;
+const QUESTION_MEMORY_RESERVE_SHARE = 0.45;
 
 export function assemblePreparedChatMessages(
   context: FastChatContext,
@@ -660,10 +664,13 @@ export function assemblePreparedChatMessages(
   const keptEvents: EpisodicMemoryItem[] = [];
   const query = [...context.historyRows].reverse().find((row) => row.role === "user")?.content ?? "";
   // Event lifecycle: trivial quotes never take a line, and an ordinary event the summary already
-  // retells gives its line to newer ones unless it is important or about the current message.
+  // retells gives its line to newer ones unless it is important or about the current message — by its words or
+  // by its meaning. Words alone dropped «вкладываю седому 2 кроны» for «кто взял взятку?» (crash test 3, turn 181);
+  // the closest events to a question score 0.45–0.8, the rest of a story about 0.3 (eval 2026-10-29).
   const covered = context.summaryCoveredUntil?.getTime();
   const liveEvents = context.memoryCandidates.episodic.filter(item => !isTrivialEvent(item.event)
-    && (item.importance >= 3 || covered === undefined || item.timestamp.getTime() > covered || memoryOverlap(query, item.event) >= 0.5));
+    && (item.importance >= 3 || covered === undefined || item.timestamp.getTime() > covered || memoryOverlap(query, item.event) >= 0.5
+      || (item.similarity ?? 0) >= 0.45));
   for (const item of rankEpisodicCandidates(liveEvents, query).slice(0, episodicLimitForIntent(intent))) {
     const itemTokens = countTokens(formatEpisodicLine(item)) + 1;
     if (itemTokens > episodicRoom) continue;
@@ -693,7 +700,8 @@ export function assemblePreparedChatMessages(
   // reported as dropped; the timestamp never pretends that they were summarized.
   const baseTokens = countTokens(context.systemPromptBase);
   const memoryTokens = countTokens(compose(quotesOutside(new Set()))) - baseTokens;
-  const memoryReserve = Math.min(Math.max(0, memoryTokens), Math.floor(maxContextTokens * MEMORY_RESERVE_SHARE));
+  const reserveShare = intent === "fact" || intent === "question" ? QUESTION_MEMORY_RESERVE_SHARE : MEMORY_RESERVE_SHARE;
+  const memoryReserve = Math.min(Math.max(0, memoryTokens), Math.floor(maxContextTokens * reserveShare));
   const protectedTail = selectRecentHistory(rows, coverage, {
     base: 0,
     extended: Math.max(0, maxContextTokens - baseTokens - memoryReserve),

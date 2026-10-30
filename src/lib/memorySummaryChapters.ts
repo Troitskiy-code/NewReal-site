@@ -46,7 +46,7 @@ export function summarySystemPrompt(mode: SummaryMode, maxTokens: number, names:
   const chapter = mode === "chapter";
   const prompt = chapter ? CHAPTER_PROMPT : mode === "merge" ? MERGE_PROMPT : SUMMARY_PROMPT;
   return prompt + "\n\n" + (chapter ? CHAPTER_SUMMARY_RULES : GROUNDED_SUMMARY_RULES)
-    + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${summaryItemLimit(maxTokens)} пунктов${chapter ? "" : `, из них past — не больше ${pastItemLimit(maxTokens)}`}. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии.${chapter ? "" : " Старые сцены при обновлении сжимай сильнее, чем новые."} JSON полностью закрой; без markdown-обёртки.`
+    + `\nИтоговая сводка после удаления JSON-полей должна поместиться в ${maxTokens} токенов, включая заголовки и метки. Максимум ${summaryItemLimit(maxTokens)} пунктов${chapter ? "" : `, из них past — не больше ${pastItemLimit(maxTokens)}`}. Текст пунктов — не более ${Math.max(40, maxTokens - 80)} токенов суммарно. Каждый пункт — не длиннее ${SUMMARY_ITEM_MAX_CHARS} символов. Сжимай: одно-два коротких предложения на сцену; пропускай жесты, взгляды, обстановку и проходные реплики; сохраняй события, решения, изменения отношений и открытые линии; условия сделок, долгов и обещаний — с суммами, сроками и местами.${chapter ? "" : " Старые сцены при обновлении сжимай сильнее, чем новые."} JSON полностью закрой; без markdown-обёртки.`
     + castLine;
 }
 

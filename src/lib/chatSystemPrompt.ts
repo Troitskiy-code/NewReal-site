@@ -3,7 +3,7 @@ import { neutralizeMemoryText } from "./memoryPromptFormat";
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { localeDefinition, resolveLocale } from "./i18nConfig";
 
-export const PROMPT_BUILDER_VERSION = "rp-v2.5";
+export const PROMPT_BUILDER_VERSION = "rp-v2.6";
 export type ChatCharacterProfile = {
   name: string; appearance?: string | null; description?: string | null;
   greeting?: string | null; scenario?: string | null; exampleDialogs?: string | null;
@@ -116,13 +116,23 @@ const MONEY_REMINDER = {
   ru: "— Деньги называй числом: сколько платят, получают и сколько у героя в кошельке («двенадцать крон»), а не «несколько монет». Если сумма у героя ещё не названа ни в истории, ни в памяти, назови её сам по ситуации и роли героя — это факт мира, а не решение героя: «в кошельке у вас четырнадцать золотых». Дальше держись её и денег героя из памяти.",
   en: "— Name money as numbers: what is paid, received and how much the hero has (\"twelve crowns\"), not \"a few coins\". If the hero's purse is named neither in the history nor in memory, set it yourself to suit the situation and the hero's role — it is a fact of the world, not the hero's decision: \"your purse holds fourteen gold pieces\". Then keep to it and to the hero's money in memory.",
 };
+// Only when the user addresses the narrator by name or out of character («Рассказчик, кто меня нанял?»): with an
+// NPC in the scene the narrator answered none of three such questions and went on as that NPC (crash test 3,
+// turn 61, 2026-10-30), while later probes were answered out of the scene.
+const NARRATOR_TURN = /(?:^|[\n.!?*]\s*)(?:рассказчик|ведущий|narrator)\s*[,:—-]|\(\s*(?:ooc|вне игры)|(?:^|[^\p{L}])ooc(?=$|[^\p{L}])/iu;
+const NARRATOR_REMINDER = {
+  ru: "— Пользователь обратился к рассказчику вне сцены. Ответь сам, от лица рассказчика и вне игры: прямо и по пунктам на каждый вопрос, по истории и памяти. Если чего-то нет ни в истории, ни в памяти, так и скажи. Не отвечай голосом NPC и не продолжай сцену в этом ответе.",
+  en: "— The user addressed the narrator outside the scene. Answer yourself, as the narrator and out of character: directly, point by point, each question, from the history and memory. If something is in neither, say so. Do not answer through an NPC and do not continue the scene in this reply.",
+};
 export function withTurnReminder<T extends { role: string; content: string }>(messages: T[], locale?: string | null): T[] {
   const last = messages[messages.length - 1];
   if (!last || last.role !== "user") return messages;
   const ru = resolveLocale(locale) === "ru";
   const base = ru ? TURN_REMINDER.ru
     : TURN_REMINDER.en.replace("Write in English", `Write in ${localeDefinition(locale).languageName}`);
-  const reminder = MONEY_TURN.test(last.content) ? `${base}\n${ru ? MONEY_REMINDER.ru : MONEY_REMINDER.en}` : base;
+  const extra = [MONEY_TURN.test(last.content) ? (ru ? MONEY_REMINDER.ru : MONEY_REMINDER.en) : "",
+    NARRATOR_TURN.test(last.content) ? (ru ? NARRATOR_REMINDER.ru : NARRATOR_REMINDER.en) : ""].filter(Boolean);
+  const reminder = [base, ...extra].join("\n");
   return [...messages.slice(0, -1), { ...last, content: `${last.content}\n\n${reminder}` }];
 }
 export function buildChatSystemPrompt(character: ChatCharacterProfile, locale?: string): string {

@@ -193,6 +193,27 @@ group('context', () => {
   const notedCost = helpers.selectRecentHistory([{ id: 'n', role: 'user', createdAt: at(1), content: 'аааа', note: 'бббб' }], null, { base: 99, extended: 99 }, text => text.length);
   check(notedCost.tokens === 'аааа\n\nбббб'.length, 'history: the note counts toward the history budget', notedCost);
 
+  // A question about the past keeps its events and quotes against a long unprocessed tail (crash test 3, turn 181:
+  // «episodic=0 rag=0», the event that answered the question was in memory and never shown).
+  const longTail = Array.from({ length: 24 }, (_, index) => ({ id: `t${index}`, role: index % 2 ? 'assistant' : 'user', createdAt: at(200 + index),
+    content: `Ход ${index}. ${'бой у старой башни '.repeat(28)}` }));
+  longTail.push({ id: 'ask', role: 'user', createdAt: at(230), content: 'Рассказчик, кто из двух храмовников взял у меня взятку и сколько?' });
+  const askContext = {
+    userId: 'u', locale: 'ru', maxContextTokens: 16000, historyLimit: 100, subscriptionLogType: 'universe', ragEligible: true,
+    systemPromptBase: 'Ты — рассказчик. ' + 'правило мира '.repeat(900),
+    memorySummary: `## Предыстория\n${'Мирослава ищет Илсу и спорит с наёмниками. '.repeat(90)}`, summaryCoveredUntil: at(150),
+    memoryCandidates: { core: `## Пользователь\n${'- Вещи и тайники: снаряжение охотницы\n'.repeat(60)}`, episodic: [
+      { id: 'bribe', event: '[Сообщено] *незаметно вкладываю седому в ладонь 2 кроны* Мы с тобой поняли друг друга, отец.', importance: 2, timestamp: at(12), similarity: 0.7 },
+    ] },
+    historyRows: longTail, totalHistoryTokens: 0,
+  };
+  const quotesFor = [{ id: 'q12', role: 'assistant', content: `Седой храмовник молниеносно сжал пальцы, перехватывая две кроны. ${'Туман над заставой. '.repeat(40)}`, similarity: 0.8 }];
+  const answered = helpers.assemblePreparedChatMessages(askContext, 'fact', quotesFor);
+  check(answered.messages[0].content.includes("вкладываю седому") && answered.messages[0].content.includes("перехватывая две кроны")
+    && !answered.stats.droppedMemoryBlocks.length, "fact: the event and the quote that answer survive a long unprocessed tail", answered.stats);
+  const fact = helpers.allocateTokens([], 16000, 4000, 'fact'), question = helpers.allocateTokens([], 16000, 4000, 'question');
+  check(fact.coreEpisodic === 3000 && fact.retrieved === 3000 && question.coreEpisodic === 3000, 'fact/question: a quarter each for core with events and for quotes', fact);
+
   // After a coverage loss every recent row is unprocessed. The tail must not take memory's reserve:
   // on prod this sent ~20% of a 196-message story without summary, events or core.
   const lostRows = Array.from({ length: 100 }, (_, index) => ({

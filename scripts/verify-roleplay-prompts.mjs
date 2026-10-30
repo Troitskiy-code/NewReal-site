@@ -318,6 +318,10 @@ const reminded = text => builder.withTurnReminder([{ role: 'user', content: text
 check(reminded('*Достаю кошель и спрашиваю, сколько стоит комната.*').includes('Деньги называй числом'), 'a money turn gets the money line');
 check(!reminded('*Беру её за руку.*').includes('Деньги называй числом'), 'other turns do not');
 check(builder.withTurnReminder([{ role: 'user', content: 'How much for the room? I pay in crowns.' }], 'en').at(-1).content.includes('Name money as numbers'), 'en: the money line in English');
+// The narrator line joins only when the user addresses the narrator (crash test 3, turn 61).
+check(reminded('Рассказчик, напомни: как зовут мою кобылу и сколько я должна Борину?').includes('Пользователь обратился к рассказчику'), 'a question to the narrator gets the narrator line');
+check(reminded('(OOC: где мы сейчас?)').includes('Пользователь обратился к рассказчику'), 'an OOC line gets it too');
+check(!reminded('Борин, сколько я тебе должна?').includes('Пользователь обратился к рассказчику') && !reminded('Я рассказчик своей судьбы.').includes('Пользователь обратился'), 'a question to an NPC does not');
 
 // Run the real transfer function with the existing ownership/lease boundary stubbed.
 guestHistory = [{ id: 'guest-transfer', characterId: 'card', role: 'user', content: 'Transferred turn', createdAt: new Date(), requestId: 'completed-request' }];

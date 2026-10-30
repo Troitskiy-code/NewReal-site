@@ -387,8 +387,14 @@ const CLOSURE_CUES: Record<string, RegExp> = {
 // «fact» of its own (crash test 2026-10-28). Such answers are not extracted.
 const RECALL_REQUEST = /(?:^|[^\p{L}])(?:напомни\p{L}*|перескажи\p{L}*|помнишь|помните|запамятовал\p{L}*|вылетел\p{L}*\s+из\s+головы|с\s+самого\s+начала)(?=$|[^\p{L}])/iu;
 const RECALL_QUESTION = /(?:^|[^\p{L}])(?:как\s+звали|что\s+было|что\s+лежало|что\s+мы\s+нашли|что\s+я\s+обещал\p{L}*|сколько\s+я\s+(?:должн|задолжал)\p{L}*|какой\s+(?:был\s+)?(?:пароль|код)|кто\s+меня\s+нанял|кто\s+погиб)(?=$|[^\p{L}])/iu;
+// A question put to the narrator by name or out of character, and a reply given out of the game («(Вне игрового
+// пространства: …)»), are a retelling too: one such answer became the event «[Решено] Сделка с Дийкстрой…»
+// (crash test 3, turn 181, 2026-10-30).
+const NARRATOR_QUESTION = /(?:^|[.!?*]\s*)(?:рассказчик|ведущий|narrator)\s*[,:—-]|\(\s*(?:ooc|вне\s+игры)/iu;
+const OUT_OF_GAME_REPLY = /\(\s*(?:вне\s+игр\p{L}*|ooc)/iu;
 const isRecallTurn = (sources: FactSource[]) => sources.some(source => source.author === "user"
-  && (RECALL_REQUEST.test(source.text) || source.text.includes("?") && RECALL_QUESTION.test(source.text)));
+  && (RECALL_REQUEST.test(source.text) || source.text.includes("?") && (RECALL_QUESTION.test(source.text) || NARRATOR_QUESTION.test(source.text)))
+  || source.author !== "user" && OUT_OF_GAME_REPLY.test(source.text));
 /** Two values name a person or thing in common (case forms count): «должна Борину 40 крон» / «Борин ждёт 30 флоринов». */
 export function sharesName(left: string, right: string): boolean {
   const names = (text: string) => text.normalize("NFKC").match(/(?<!^)(?<=[\s«"(])\p{Lu}[\p{Ll}-]{2,}/gu) ?? [];
@@ -410,7 +416,7 @@ scene — предыдущие сообщения, только контекст
 facts: до 12 объектов {op:"set"|"retract",subject:"user"|"character"|"relationship"|"world"|"npc:имя",key,value,sourceId}.
 Допустимые key: name, age, city, place, occupation, relationship.status, communication_style, personality, likes, dislikes, habits, skills, world.rule, appearance, pets, health, possessions, debts, secrets, money.
 pets — питомцы: вид и кличка, где они («пёс Бублик, оставлен в гостинице «Чайка»»). health — здоровье: аллергии, болезни, ранения («аллергия на кошек», «ранение в левое плечо»).
-possessions — важные вещи и тайники: что, у кого или где спрятано («ключ от кладовой спрятан под третьей ступенькой лестницы»). debts — долги и обязательства: кто кому сколько должен («Тоби должен Каю 200 кредитов»). secrets — тайны: суть и кто о ней знает.
+possessions — важные вещи и тайники: что, у кого или где спрятано («ключ от кладовой спрятан под третьей ступенькой лестницы»). debts — долги и обязательства: кто кому сколько должен («Тоби должен Каю 200 кредитов»). Взятые в долг деньги — и money (+40 крон от Борина), и debts с суммой и сроком («должна Борину 40 крон, вернуть до Саовины»). Принятый заказ или сделка — debts со всеми условиями: что, для кого, куда, сколько уже получено и сколько обещано, до какого срока («найти Илсу для купца Вельша: аванс 100 крон получен, ещё 300 по возвращении», «доставить письмо Дийкстры в Третогор за 200 крон до ночи Саовины»). Суммы и сроки не опускай. secrets — тайны: суть и кто о ней знает.
 Такие личные факты пользователя сохраняй, даже если он сказал их мимоходом в действии или реплике. Питомцев не записывай в likes, болезни — в dislikes.
 possessions — только сюжетно важное: ключи, документы, артефакты, оружие, деньги, тайники, отданные, полученные и украденные вещи. Быт не записывай: инструменты, посуду, еду, мебель, мелкие запчасти; одежда и украшения — это appearance.
 health — только длительное: аллергии, болезни, ранения и их последствия. Сиюминутные состояния (устал, спит, под лекарствами, стабилизирован, голоден) не записывай.
@@ -663,9 +669,12 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     const negatedValue = negated && negationNear(text, source.text);
     detail.sourceStatus = inferMemoryStatus(source.text);
     // Numbers spoken in words count: «мне двадцать девять» supports age 29.
+    // An obligation is a promise or a decision by nature: «одалживает мне 40 крон; я обещаю вернуть до Саовины» was
+    // refused as «promised», so the loan was never a debt (crash test 3). Offers and doubts stay out.
+    const nonFactual = key === "debts" ? ["proposed", "uncertain"] : ["proposed", "promised", "decided", "uncertain"];
     const unsupported: MemoryValidationReason | null = !retellingNumbersSupported(text, source.text)
       ? "unsupported_number" : /\?[»"')]*$/u.test(source.text) ? "question_source"
-        : ["proposed", "promised", "decided", "uncertain"].includes(detail.sourceStatus) ? "non_factual_source"
+        : nonFactual.includes(detail.sourceStatus) ? "non_factual_source"
           : text && !supportedFactValue(text, source.text, key)
             && !(SUMMARY_KEYS.has(key) && supportedSummaryValue(text, summaryEvidence(source))) ? "unsupported_value" : null;
     // A model must not remove an unmentioned city/job/etc. Refuse only that

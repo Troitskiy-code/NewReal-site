@@ -642,6 +642,18 @@ try {
       [delta('шантажировала Борина', 's2', 'relationship.status', 'npc:Борин')], [{ sourceId: 's2', importance: 3 }]);
     assert.deepEqual([recap.facts.length, recap.events.length], [0, 0]);
     assert.ok(recap.rejectedCandidates.every(item => item.validationReason === 'recap_source'));
+    // A question put to the narrator by name, and a reply given out of the game, are retellings too (crash test 3).
+    const toNarrator = parse([['user', 'Рассказчик, какую сделку я заключила с Дийкстрой?'], ['assistant', '*(Вне игрового пространства)* Сделка с Дийкстрой: ты согласилась доставить письмо.']],
+      [], [{ sourceId: 's2', importance: 3 }]);
+    assert.deepEqual(toNarrator.events.length, 0, 'a narrator answer is no event');
+    const ooc = parse([['user', 'Где мы сейчас?'], ['assistant', '(Вне игры: вы в Новиграде, у пристани.)']], [], [{ sourceId: 's2', importance: 2 }]);
+    assert.equal(ooc.events.length, 0, 'an out-of-game reply is no event');
+    // A loan taken with a promise to return it is a debt; an offer of one is not (crash test 3, turn 6).
+    const loan = parse([['user', 'Краснолюд-кузнец Борин Тяжеловес одалживает мне 40 крон на дорогу; я обещаю вернуть до Саовины — честное слово.']],
+      [delta('должна Борину 40 крон, вернуть до Саовины', 's1', 'debts')]);
+    assert.deepEqual(loan.facts.map(fact => fact.value), ['должна Борину 40 крон, вернуть до Саовины']);
+    const offer = parse([['user', 'Может, одолжишь мне 40 крон до Саовины?']], [delta('должна Борину 40 крон', 's1', 'debts')]);
+    assert.equal(offer.facts.length, 0, 'an offer or a question is no debt');
     const intro = parse([['user', 'Как тебя зовут?'], ['assistant', 'Я травница из Вронницы.']], [delta('травница из Вронницы', 's2', 'occupation', 'npc:Ягна')]);
     assert.deepEqual(intro.facts.map(fact => fact.value), ['травница из Вронницы'], 'an ordinary question still lets the answer in');
     const covers = (a, b, key = 'pets') => facts.factValueCovers(a, b, key);
