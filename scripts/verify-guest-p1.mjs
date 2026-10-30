@@ -150,7 +150,7 @@ try {
     '@/lib/apiI18n': { getApiLocale: () => 'ru' },
     '@/lib/chatHelpers': { resolveChatSystemPrompt: () => 'Test', trimMessagesToTokenLimit: messages => ({ messages }),
       streamChatCompletion: async () => { throw new Error('synthetic upstream failure'); } },
-    '@/lib/logger': { errorLog() {}, toSafeDiagnostic: () => ({ category: 'error' }) },
+    '@/lib/logger': { errorLog() {}, infoLog() {}, toSafeDiagnostic: () => ({ category: 'error' }) },
   });
   const request = (sessionId) => new NextRequest('http://localhost/api/chat/test', {
     method: 'POST', headers: { cookie: `anonymousSessionId=${sessionId}` },
@@ -170,6 +170,36 @@ try {
   finally { db.anonymousMessage.findMany = originalHistory; }
   check(response.status === 500 && await quota('guest-handler-history') === 0, 'real handler history failure refunds quota');
   await db.model.delete({ where: { id: model.id } });
+  // Per-IP daily guest quota: a fresh cookie from the same address does not restart the allowance.
+  const guestSession = load('src/lib/anonymousSession.ts');
+  const rate = load('src/lib/rateLimit.ts');
+  const fromIp = (ip, sessionId = 'unused') => new NextRequest('http://localhost/api/chat/test', {
+    method: 'POST', headers: { cookie: `anonymousSessionId=${sessionId}`, 'x-forwarded-for': ip } });
+  const previousTrust = process.env['TRUST_PROXY'];
+  process.env['TRUST_PROXY'] = '1';
+  try {
+    const ipClaim = (sessionId, ip, n) => store.claimGuestGeneration({ ...input, sessionId, requestId: `ip-${sessionId}-${n}`,
+      message: `ip ${n}`, extraQuota: guestSession.guestIpQuota(fromIp(ip)) });
+    const ipRuns = [];
+    for (let n = 0; n < 3; n++) ipRuns.push(await ipClaim('guest-ip-a1', '198.51.100.7', n));
+    for (let n = 3; n < 5; n++) ipRuns.push(await ipClaim('guest-ip-a1', '198.51.100.7', n));
+    check(ipRuns.every(r => r.kind === 'run'), 'one cookie still gets its five guest messages under the IP cap');
+    for (let n = 0; n < 10; n++) ipRuns.push(await ipClaim(`guest-ip-a${n + 2}`, '198.51.100.7', 0));
+    check(ipRuns.filter(r => r.kind === 'run').length === 15 && ipRuns.at(-1).remaining === 0, 'fresh cookies share one 15-message daily IP allowance');
+    const blocked = await ipClaim('guest-ip-fresh', '198.51.100.7', 0);
+    check(blocked.kind === 'quota' && await quota('guest-ip-fresh') === 0, 'a new cookie from an exhausted IP is refused without spending session quota');
+    check((await ipClaim('guest-ip-b', '198.51.100.8', 0)).kind === 'run', 'another IP keeps its own allowance');
+    check(await guestSession.guestIpQuota(fromIp('198.51.100.7')).remaining() === 0
+      && await guestSession.guestIpQuota(fromIp('198.51.100.8')).remaining() === 14, 'IP allowance can be read without spending it');
+    const payload = await handler.getAnonymousChatPayload(fromIp('198.51.100.7', 'guest-ip-payload'), character.id);
+    check((await payload.json()).remainingMessages === 0, 'chat page shows zero guest messages for an exhausted IP');
+    const shape = rate.describeForwardedHeaders({ headers: new Headers({ 'x-forwarded-for': '203.0.113.9, 198.51.100.7', 'x-real-ip': '198.51.100.7' }) });
+    check(shape.forwardedEntries === 2 && shape.spoofedAt === 0 && shape.realIpIs === 'last' && !JSON.stringify(shape).includes('198.51'),
+      'forwarded header diagnostics describe the shape without addresses');
+  } finally {
+    if (previousTrust === undefined) delete process.env['TRUST_PROXY']; else process.env['TRUST_PROXY'] = previousTrust;
+  }
+  check(guestSession.guestIpQuota(fromIp('198.51.100.7')) === null, 'without a trusted proxy the IP cap stays off instead of sharing one bucket');
   if (process.env['GUEST_TEST_BROWSER'] === '1') {
     const { verifyGuestBrowser } = await import('./browser-guest-p1.mjs');
     await verifyGuestBrowser({ db, databaseUrl: browserDatabaseUrl, store, character, user, check });

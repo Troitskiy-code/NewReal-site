@@ -98,6 +98,8 @@ export async function claimGuestGeneration(params: {
   characterId: string;
   message: string;
   quotaLimit: number;
+  /** A further allowance (the per-IP guest quota) charged only when this claim spends session quota. */
+  extraQuota?: { consume(client: Prisma.TransactionClient): Promise<{ ok: boolean; remaining: number }> } | null;
   now?: Date;
 }): Promise<ClaimResult> {
   const now = params.now ?? new Date();
@@ -134,6 +136,13 @@ export async function claimGuestGeneration(params: {
       return decision;
     }
 
+    let extraRemaining = Number.POSITIVE_INFINITY;
+    if (decision.consumeQuota && params.extraQuota) {
+      const extra = await params.extraQuota.consume(tx);
+      if (!extra.ok) return { kind: "quota" as const };
+      extraRemaining = extra.remaining;
+    }
+
     if (decision.consumeQuota) {
       const claimed = await tx.anonymousSession.updateMany({
         where: {
@@ -152,7 +161,7 @@ export async function claimGuestGeneration(params: {
       where: { sessionId: params.sessionId },
       select: { messagesCount: true },
     });
-    const remaining = Math.max(0, params.quotaLimit - (next?.messagesCount ?? params.quotaLimit));
+    const remaining = Math.min(extraRemaining, Math.max(0, params.quotaLimit - (next?.messagesCount ?? params.quotaLimit)));
 
     if (decision.mode === "create") {
       const created = await tx.anonymousChatRequest.create({

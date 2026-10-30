@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
@@ -12,6 +13,7 @@ import {
   isValidAnonymousSessionId,
 } from "@/lib/anonymousCookie";
 import { assertGuestSchemaReady } from "@/lib/guestRequestStore";
+import { clientKeyFromRequest, consumeRateLimit, peekRateLimit } from "@/lib/rateLimit";
 
 const ANONYMOUS_LIMIT = (() => {
   const parsed = parseInt(process.env['ANONYMOUS_MESSAGE_LIMIT'] || "5", 10);
@@ -20,6 +22,35 @@ const ANONYMOUS_LIMIT = (() => {
 
 export function getAnonymousMessageLimit(): number {
   return ANONYMOUS_LIMIT;
+}
+
+const IP_DAILY_LIMIT = (() => {
+  const parsed = parseInt(process.env['ANONYMOUS_IP_DAILY_LIMIT'] || "15", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15;
+})();
+const IP_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export type GuestIpQuota = {
+  consume(client: Prisma.TransactionClient): Promise<{ ok: boolean; remaining: number }>;
+  remaining(): Promise<number>;
+};
+
+/**
+ * Guest messages per client IP per 24 h, across every guest cookie from that address, so a fresh
+ * cookie (incognito, another browser, cleared cookies) does not restart the free allowance.
+ * Null when the client IP is unknown (no trusted proxy): a shared bucket would block every guest.
+ */
+export function guestIpQuota(req: NextRequest): GuestIpQuota | null {
+  const ip = clientKeyFromRequest(req);
+  if (ip === "unknown") return null;
+  const key = `anon-ip-day:${ip}`;
+  return {
+    consume: async (client) => {
+      const result = await consumeRateLimit(key, IP_DAILY_LIMIT, IP_WINDOW_MS, client);
+      return { ok: result.ok, remaining: result.remaining };
+    },
+    remaining: () => peekRateLimit(key, IP_DAILY_LIMIT),
+  };
 }
 
 export { ANONYMOUS_LIMIT_CODE, ANONYMOUS_LIMIT_MESSAGE };

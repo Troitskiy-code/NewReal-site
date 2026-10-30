@@ -27,6 +27,7 @@ import {
   ensureAnonymousSession,
   getAnonymousMessageLimit,
   getAnonymousRemaining,
+  guestIpQuota,
   resolveAnonymousSessionId,
 } from "@/lib/anonymousSession";
 import {
@@ -34,7 +35,7 @@ import {
   createAnonymousSessionId,
   isValidAnonymousRequestId,
 } from "@/lib/anonymousCookie";
-import { clientKeyFromRequest, consumeRateLimit } from "@/lib/rateLimit";
+import { clientKeyFromRequest, consumeRateLimit, describeForwardedHeaders } from "@/lib/rateLimit";
 import { MAX_ANONYMOUS_HISTORY, normalizeGuestMessage } from "@/lib/guestRequestPolicy";
 import {
   GuestSchemaMissingError,
@@ -46,7 +47,7 @@ import {
   recoverGuestSession,
   renewGuestGeneration,
 } from "@/lib/guestRequestStore";
-import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { NON_DEFAULT_CHAT_MODEL_NAMES } from "@/lib/testingChatModels";
 import { getOrCreatePromptState, assertPromptStateAvailable, GroupPromptUnavailableError } from "@/lib/promptState";
 import { PromptBudgetError, withTurnReminder } from "@/lib/chatSystemPrompt";
@@ -139,7 +140,11 @@ export async function getAnonymousChatPayload(req: NextRequest, characterId: str
   }
 
   await recoverGuestSession(sessionId);
-  const remainingMessages = await getAnonymousRemaining(sessionId);
+  const ipQuota = guestIpQuota(req);
+  const remainingMessages = Math.min(
+    await getAnonymousRemaining(sessionId),
+    ipQuota ? await ipQuota.remaining() : Number.POSITIVE_INFINITY
+  );
   const characterSelectNoSlug = {
     id: true,
     isPublic: true,
@@ -262,6 +267,8 @@ export async function handleAnonymousChatPost(
     throw error;
   }
 
+  // TEMPORARY (guest IP quota rollout): header shape only, no addresses.
+  infoLog("GuestIp", "forwarded headers", describeForwardedHeaders(req));
   const limited = await consumeRateLimit(`anon-post:${clientKeyFromRequest(req)}`, ANON_POST_LIMIT, ANON_POST_WINDOW_MS);
   if (!limited.ok) {
     return withCookie(NextResponse.json({ error: "Слишком много запросов. Подождите немного." }, { status: 429 }), sessionId);
@@ -317,6 +324,7 @@ export async function handleAnonymousChatPost(
     characterId,
     message,
     quotaLimit: getAnonymousMessageLimit(),
+    extraQuota: guestIpQuota(req),
   });
 
   if (claimed.kind === "revoked") {
