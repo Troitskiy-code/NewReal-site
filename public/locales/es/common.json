@@ -429,17 +429,20 @@
       "dialog": [
         "2,500 VC por mes",
         "Para conversaciones informales y escenas cotidianas",
-        "Multiplicador de bonificación diaria ×1.5"
+        "Multiplicador de bonificación diaria ×1.5",
+        "Voces expresivas de personajes ilimitadas"
       ],
       "history": [
         "10,000 VC por mes",
         "Para largos juegos de rol y desarrollo de historias",
-        "Multiplicador de bonificación diaria ×2"
+        "Multiplicador de bonificación diaria ×2",
+        "Voces expresivas de personajes ilimitadas"
       ],
       "universe": [
         "30,000 VC por mes",
         "Para mundos profundos y arcos narrativos complejos",
-        "Multiplicador de bonificación diaria ×2.5"
+        "Multiplicador de bonificación diaria ×2.5",
+        "Voces expresivas de personajes ilimitadas"
       ]
     },
     "redirecting": "Pago...",

@@ -429,17 +429,20 @@
       "dialog": [
         "2,500 VC al mese",
         "Per conversazioni casuali e scene di tutti i giorni",
-        "Moltiplicatore bonus giornaliero ×1.5"
+        "Moltiplicatore bonus giornaliero ×1.5",
+        "Voci espressive dei personaggi illimitate"
       ],
       "history": [
         "10,000 VC al mese",
         "Per un lungo gioco di ruolo e lo sviluppo della storia",
-        "Moltiplicatore bonus giornaliero ×2"
+        "Moltiplicatore bonus giornaliero ×2",
+        "Voci espressive dei personaggi illimitate"
       ],
       "universe": [
         "30,000 VC al mese",
         "Per mondi profondi e archi narrativi complessi",
-        "Moltiplicatore bonus giornaliero ×2.5"
+        "Moltiplicatore bonus giornaliero ×2.5",
+        "Voci espressive dei personaggi illimitate"
       ]
     },
     "redirecting": "Pagamento...",
