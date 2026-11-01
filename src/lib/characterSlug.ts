@@ -54,6 +54,22 @@ export function characterSlugSuffix(characterId: string): string {
   return characterId.replace(/[^a-z0-9]/gi, "").slice(-8).toLowerCase() || "id";
 }
 
+/** Id-suffix candidates of a slug built by buildCharacterSlug: `name-<suffix>` or `name-<suffix>-<extra>`. */
+export function renamedSlugSuffixes(slug: string): string[] {
+  const parts = slug.toLowerCase().split("-");
+  return parts.slice(-2).filter(part => /^[a-z0-9]{8}$/.test(part)).reverse();
+}
+
+/** Query string of a page request (with "?"), so redirects keep UTM tags and other parameters. */
+export function pageQueryString(searchParams: Record<string, string | string[] | undefined>): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) query.append(key, item);
+  }
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
 export function buildCharacterSlug(name: string, characterId: string, extra?: string): string {
   const base = slugifyCharacterName(name);
   const suffix = characterSlugSuffix(characterId);

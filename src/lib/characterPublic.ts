@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { publicTranslationSelect, type CharacterTranslation } from "./characterLocalization";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildCharacterSlug } from "@/lib/characterSlug";
+import { buildCharacterSlug, characterSlugSuffix, renamedSlugSuffixes } from "@/lib/characterSlug";
 import { ensureCharacterSlugColumn } from "@/lib/ensureCharacterSlug";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { characterAvatarPath } from "@/lib/characterCardImage";
@@ -88,6 +88,19 @@ export async function allocateCharacterSlug(name: string, characterId: string): 
   return `${preferred}-${Date.now().toString(36)}`;
 }
 
+async function findCharacterByRenamedSlug(slug: string) {
+  for (const suffix of renamedSlugSuffixes(slug)) {
+    const matches = await prisma.character.findMany({
+      where: { OR: [{ slug: { endsWith: `-${suffix}` } }, { slug: { contains: `-${suffix}-` } }] },
+      select: publicCharacterSelect, take: 3,
+    });
+    const owned = matches.filter(match => characterSlugSuffix(match.id) === suffix);
+    // Only an unambiguous match redirects; anything else stays a plain 404.
+    if (owned.length === 1) return owned[0];
+  }
+  return null;
+}
+
 export async function findCharacterBySlugForViewer(
   slug: string,
   viewerId: string | null
@@ -109,6 +122,9 @@ export async function findCharacterBySlugForViewer(
   if (!character) character = await prisma.character.findUnique({
     where: { id: normalizedSlug }, select: publicCharacterSelect,
   });
+
+  // A rename rebuilds the slug but keeps its id suffix: an old link must reach the card, not a 404.
+  if (!character) character = await findCharacterByRenamedSlug(normalizedSlug);
 
   if (!character) return null;
 

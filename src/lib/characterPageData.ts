@@ -11,7 +11,7 @@ import { withLocale } from "@/lib/i18nConfig";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { memoryToText } from "@/lib/persistentMemory";
 
-export const getCharacterPageData = cache(async (slug: string) => {
+export const getCharacterPageData = cache(async (slug: string, query = "") => {
   const locale = await getRequestLocale();
   const viewerId = await getViewerId();
   let character;
@@ -23,7 +23,7 @@ export const getCharacterPageData = cache(async (slug: string) => {
     throw new Error("Public character temporarily unavailable");
   }
   if (!character) notFound();
-  if (slug !== character.slug) permanentRedirect(withLocale(`/character/${character.slug}`, locale));
+  if (slug !== character.slug) permanentRedirect(`${withLocale(`/character/${character.slug}`, locale)}${query}`);
   return { character, locale, view: {
     ...toPublicCharacterPayload(character, viewerId),
     createdAt: character.createdAt.toISOString(),

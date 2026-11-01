@@ -12,6 +12,7 @@ import {
 import {
   findFeaturedGenre, GENRE_INDEX_MIN_CHARACTERS, genreIndexingMetadata, indexableGenreIds, parseGenrePage,
 } from "@/lib/genreSeo";
+import { buildCharacterSlug, characterSlugSuffix, pageQueryString, renamedSlugSuffixes } from "@/lib/characterSlug";
 
 let checks = 0;
 function check(condition: unknown, label: string) { assert.ok(condition, label); checks++; }
@@ -143,6 +144,15 @@ for (const locale of ["ru", "en"] as const) {
   check(!/\{\{/.test(translate(locale, "characterPage.faq.freeA", { name: "Хана", limit: 5, messages: "x", onboarding: 20, daily: 5 })), `${locale}: FAQ variables filled`);
 }
 check(translate("ru", "characterPage.faq.freeQ") !== translate("en", "characterPage.faq.freeQ"), "FAQ differs between RU and EN");
+
+// Renamed cards: the old slug keeps the id suffix, so it resolves (and redirects with its query) instead of 404.
+const renamedId = "cmvja10300igi12ow53b775cs";
+check(characterSlugSuffix(renamedId) === "53b775cs", "slug suffix is the id tail");
+check(renamedSlugSuffixes("kohaku-53b775cs").join() === "53b775cs", "old slug yields its id suffix");
+check(renamedSlugSuffixes(buildCharacterSlug("Кохаку", renamedId, "2")).includes("53b775cs"), "suffix found before an extra part");
+check(renamedSlugSuffixes("kohaku").length === 0 && renamedSlugSuffixes("a-b").length === 0, "slugs without an id suffix stay 404");
+check(pageQueryString({ utm_source: "vk", utm_medium: "clips", tag: ["a", "b"], none: undefined }) === "?utm_source=vk&utm_medium=clips&tag=a&tag=b", "redirect keeps UTM and repeated parameters");
+check(pageQueryString({}) === "", "no query adds nothing");
 
 if (process.argv.includes("--http")) {
   const result = spawnSync(process.execPath, ["scripts/verify-seo-runtime.mjs"], { stdio: "inherit", windowsHide: true });

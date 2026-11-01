@@ -5,6 +5,7 @@ import JsonLd from "@/components/JsonLd";
 import CharacterPublicView from "./CharacterPublicView";
 import { CharacterFaq, characterFaq, CharacterStory, SimilarCharacters } from "./CharacterPageSections";
 import { getCharacterPageData, getCharacterStory, getSimilarCharacters } from "@/lib/characterPageData";
+import { pageQueryString } from "@/lib/characterSlug";
 import { createPageMetadata, OG_IMAGE, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, SITE_URL } from "@/lib/seo";
 import { translate } from "@/lib/getDictionary";
 import { getLocalizedCardDescription } from "@/lib/characterFields";
@@ -13,6 +14,7 @@ import { withLocale } from "@/lib/i18nConfig";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function characterOgImage(imageUrl: string | null | undefined): string {
@@ -28,10 +30,10 @@ function truncateDescription(text: string, max = 160): string {
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-    const { character, locale } = await getCharacterPageData(slug);
+    const { character, locale } = await getCharacterPageData(slug, pageQueryString(await searchParams));
 
     const name = localizedCharacterText(character, "name", locale) ?? character.name ?? "";
     // A locale without its own card copy uses the translated metadata template.
@@ -87,9 +89,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return result;
 }
 
-export default async function CharacterPage({ params }: PageProps) {
+export default async function CharacterPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { character, locale, view } = await getCharacterPageData(slug);
+  const { character, locale, view } = await getCharacterPageData(slug, pageQueryString(await searchParams));
   const [{ story }, similar] = await Promise.all([getCharacterStory(slug), getSimilarCharacters(character)]);
   const name = localizedCharacterText(character, "name", locale) ?? character.name;
   const description = truncateDescription(
