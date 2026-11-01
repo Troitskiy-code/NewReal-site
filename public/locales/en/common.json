@@ -426,17 +426,20 @@
       "dialog": [
         "2,500 VC per month",
         "For casual conversations and everyday scenes",
-        "Daily bonus multiplier ×1.5"
+        "Daily bonus multiplier ×1.5",
+        "Unlimited expressive character voices"
       ],
       "history": [
         "10,000 VC per month",
         "For long roleplay and story development",
-        "Daily bonus multiplier ×2"
+        "Daily bonus multiplier ×2",
+        "Unlimited expressive character voices"
       ],
       "universe": [
         "30,000 VC per month",
         "For deep worlds and complex story arcs",
-        "Daily bonus multiplier ×2.5"
+        "Daily bonus multiplier ×2.5",
+        "Unlimited expressive character voices"
       ]
     },
     "redirecting": "Payment...",

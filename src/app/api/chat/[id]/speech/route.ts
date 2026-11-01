@@ -8,7 +8,7 @@ import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { ChatSpeechError, attachSpeechTask, deferSpeech, failSpeech, finishSpeech, getSpeechQuota, reserveSpeech,
   getPreparedSpeechText, markSpeechSubmitting, saveSpeechPreparation } from "@/lib/chatSpeech";
 import { prepareSpeechText, SpeechPreparationError } from "@/lib/speechPreparation";
-import { downloadSpeech, getSpeechTask, SPEECH_MODEL, SpeechProviderError, submitSpeech, speechEnabled } from "@/lib/speechProvider";
+import { downloadSpeech, getSpeechTask, SpeechProviderError, submitSpeech, speechEnabled } from "@/lib/speechProvider";
 import { isSpeechVoice, isSpeechVoiceChoice, type SpeechQuota } from "@/lib/speech";
 import { getAutomaticSpeechVoice } from "@/lib/speechVoiceSelection";
 import { consumeRateLimit } from "@/lib/rateLimit";
@@ -114,21 +114,25 @@ export async function POST(req: NextRequest, context: Context) {
       if (reservation.uncertain) throw new ChatSpeechError("uncertain", 503);
       if (!reservation.providerTaskId) {
         stage = "prepare";
-        if (reservation.preparedText === null || reservation.preparedTurns === null)
-          await saveSpeechPreparation(reservation, await prepareSpeechText(reservation.text));
+        if (reservation.preparedText === null || reservation.preparedTurns === null) {
+          // The card tells the preparation who is speaking, so the casting note matches the character.
+          const character = await prisma.character.findUnique({ where: { id: characterId },
+            select: { name: true, description: true, appearance: true } });
+          await saveSpeechPreparation(reservation, await prepareSpeechText(reservation.text, character ?? undefined));
+        }
         if (!reservation.preparedText) throw new ChatSpeechError("empty", 400);
         stage = "submit";
         await markSpeechSubmitting(reservation);
-        await recordKieSpeechCost(reservation, SPEECH_MODEL, "pending");
-        const taskId = await submitSpeech(reservation.preparedTurns!, reservation.voice);
+        await recordKieSpeechCost(reservation, reservation.model, "pending");
+        const taskId = await submitSpeech(reservation.preparedTurns!, reservation.voice, reservation.model);
         await attachSpeechTask(reservation, taskId);
         // Keep preparation/submission and result download in separate bounded requests.
         await deferSpeech(reservation);
         return pendingResponse(reservation.preparedText, reservation.voice);
       }
       stage = "poll";
-      const task = await getSpeechTask(reservation.providerTaskId!);
-      await recordKieSpeechCost(reservation, SPEECH_MODEL, task.state === "ready" ? "completed" : task.state === "failed" ? "failed" : "pending", task.credits);
+      const task = await getSpeechTask(reservation.providerTaskId!, reservation.model);
+      await recordKieSpeechCost(reservation, reservation.model, task.state === "ready" ? "completed" : task.state === "failed" ? "failed" : "pending", task.credits);
       if (task.state === "failed") { terminalFailure = true; throw new SpeechProviderError(); }
       if (task.state === "pending") {
         await deferSpeech(reservation);
@@ -142,7 +146,7 @@ export async function POST(req: NextRequest, context: Context) {
       if (job?.kind === "reserved") {
         if (terminalFailure || (error instanceof SpeechProviderError && error.definitive && !job.reservation.providerTaskId)
           || (error instanceof ChatSpeechError && error.code === "changed")) {
-          if (!job.reservation.providerTaskId) await recordKieSpeechCost(job.reservation, SPEECH_MODEL, "failed");
+          if (!job.reservation.providerTaskId) await recordKieSpeechCost(job.reservation, job.reservation.model, "failed");
           await failSpeech(job.reservation).catch(() => {});
         } else await deferSpeech(job.reservation).catch(() => {});
       }

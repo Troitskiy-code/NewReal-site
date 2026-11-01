@@ -2,7 +2,16 @@ import { isSpeechVoice, SPEECH_MAX_CHARACTERS, type SpeechTurn, type SpeechVoice
 import { speechWavToMp3, SPEECH_WAV_LIMIT } from "./speechAudio";
 
 export const SPEECH_MODEL = "google/gemini-3-8-flash-lite-tts";
-export const SPEECH_CACHE_VERSION = "gemini-lite-native-v1-mp3-64";
+/** Paid plans: the fuller Gemini model (~1.7x the audio price), clearly more expressive in a blind comparison (2026-11-01). */
+export const SPEECH_EXPRESSIVE_MODEL = "google/gemini-3-8-flash-tts";
+export type SpeechModel = typeof SPEECH_MODEL | typeof SPEECH_EXPRESSIVE_MODEL;
+export function speechModelFor(unlimited: boolean): SpeechModel {
+  return unlimited ? SPEECH_EXPRESSIVE_MODEL : SPEECH_MODEL;
+}
+export function isSpeechModel(value: unknown): value is SpeechModel {
+  return value === SPEECH_MODEL || value === SPEECH_EXPRESSIVE_MODEL;
+}
+export const SPEECH_CACHE_VERSION = "gemini-native-v2-mp3-64";
 const API = "https://api.kie.ai/api/v1/jobs";
 export function speechEnabled(): boolean {
   return process.env.CHAT_SPEECH_ENABLED !== "false" && Boolean(process.env.KIE_API_KEY?.trim());
@@ -54,14 +63,15 @@ export function speechInput(input: string | SpeechTurn[], voice: SpeechVoice) {
   const turns = typeof input === "string" ? [{ text: input, style: "" }] : input;
   const text = turns.map(turn => turn.text).join(" ");
   if (!isSpeechVoice(voice) || !text.trim() || turns.length > 32 || Array.from(text).length > SPEECH_MAX_CHARACTERS + 512) throw new SpeechProviderError(undefined, true);
+  // An acted performance, not neutral narration: the turn style carries the character brief and the line's emotion.
   const style = /[а-яё]/i.test(text)
-    ? "Говори по-русски как носитель русского языка из России, с естественным нейтральным русским произношением без иностранного акцента. Разговорная речь, естественные интонации. Все числа, дату, время и сумму произноси по-русски. Озвучь только переданный текст, ничего не добавляй."
-    : "Speak in the original language of the script as a native speaker, with natural pronunciation and conversational intonation. Read numbers, dates, times and amounts in that language. Speak only the provided text, without additions.";
+    ? "Говори по-русски как носитель русского языка из России, без иностранного акцента. Это актёрская игра, а не дикторское чтение: живая выразительная подача с ясно слышимыми эмоциями персонажа. Все числа, дату, время и сумму произноси по-русски. Озвучь только переданный текст, ничего не добавляй."
+    : "Speak in the original language of the script as a native speaker. This is an acted performance, not neutral narration: lively delivery with clearly audible emotion. Read numbers, dates, times and amounts in that language. Speak only the provided text, without additions.";
   return { temperature: 1, filler_words: false, speakers: [{ speaker_id: "Speaker 1", voice_name: voice }],
-    dialogue_turns: turns.map(turn => ({ speaker_id: "Speaker 1", style: `${style}${turn.style ? ` Delivery: ${turn.style}.` : ""}`, text: turn.text })) };
+    dialogue_turns: turns.map(turn => ({ speaker_id: "Speaker 1", style: `${style}${turn.style ? ` ${turn.style}` : ""}`, text: turn.text })) };
 }
-export async function submitSpeech(text: string | SpeechTurn[], voice: SpeechVoice): Promise<string> {
-  const data = await request("createTask", { model: SPEECH_MODEL, input: speechInput(text, voice) });
+export async function submitSpeech(text: string | SpeechTurn[], voice: SpeechVoice, model: SpeechModel = SPEECH_MODEL): Promise<string> {
+  const data = await request("createTask", { model, input: speechInput(text, voice) });
   if (!isTaskId(data.taskId)) throw new SpeechProviderError();
   return data.taskId;
 }
@@ -74,10 +84,10 @@ export function isSpeechAudioUrl(value: unknown): value is string {
       && ["kie.ai", "redpandaai.co", "aiquickdraw.com"].some(domain => url.hostname === domain || url.hostname.endsWith(`.${domain}`));
   } catch { return false; }
 }
-export async function getSpeechTask(taskId: string): Promise<SpeechTask> {
+export async function getSpeechTask(taskId: string, model: SpeechModel = SPEECH_MODEL): Promise<SpeechTask> {
   if (!isTaskId(taskId)) throw new SpeechProviderError();
   const data = await request(`recordInfo?taskId=${encodeURIComponent(taskId)}`);
-  if (data.taskId !== taskId || data.model !== SPEECH_MODEL) throw new SpeechProviderError();
+  if (data.taskId !== taskId || data.model !== model) throw new SpeechProviderError();
   const credits = typeof data.creditsConsumed === "number" && Number.isFinite(data.creditsConsumed) && data.creditsConsumed >= 0 ? data.creditsConsumed : null;
   if (data.state === "fail") return { state: "failed", credits };
   if (["waiting", "queuing", "generating"].includes(data.state)) return { state: "pending", credits };
