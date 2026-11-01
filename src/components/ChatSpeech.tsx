@@ -8,6 +8,7 @@ import { useTelegramMode } from "./TelegramProvider";
 import { DEFAULT_SPEECH_VOICE, isSpeechVoice, isSpeechVoiceChoice, SPEECH_VOICES, type SpeechQuota, type SpeechVoice,
   type SpeechVoiceChoice, type SpeechVoiceDefault } from "@/lib/speech";
 import { withThread } from "@/lib/chatThreadShared";
+import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
 
 type Clip = { messageId: string; content: string; voice: SpeechVoice; choice: SpeechVoiceChoice; url: string };
 type SpeechContextValue = {
@@ -146,6 +147,13 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       const actualVoice = response.headers.get("X-Speech-Voice");
       const playedVoice = isSpeechVoice(actualVoice) ? actualVoice : voice;
       setClip({ messageId: id, content, voice: playedVoice, choice, url: URL.createObjectURL(blob) });
+      // Once per tab session: did the visitor actually hear a character (the feature the promo videos sell)?
+      try {
+        if (!sessionStorage.getItem("nv:goal:speech_play")) {
+          reachGoal(METRIKA_GOALS.speechPlay, { voice: playedVoice });
+          sessionStorage.setItem("nv:goal:speech_play", "1");
+        }
+      } catch {}
       // Read the actual cached script; do not offer a local heuristic as an exact preview.
       const metadataUrl = new URL(endpoint, window.location.origin);
       metadataUrl.searchParams.set("messageId", id); metadataUrl.searchParams.set("voice", playedVoice);

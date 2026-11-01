@@ -38,6 +38,7 @@ export const METRIKA_GOALS = {
   freeQuotaUsedFirst: "free_quota_used_first",
   freeQuotaExhausted: "free_quota_exhausted",
   freeQuotaUpsellClick: "free_quota_upsell_click",
+  speechPlay: "speech_play",
 } as const;
 
 export type MetrikaGoal = (typeof METRIKA_GOALS)[keyof typeof METRIKA_GOALS];
