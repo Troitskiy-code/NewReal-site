@@ -41,7 +41,12 @@ export async function POST(req: NextRequest) {
       if (!name || name.length > 200) return json({ error: "Укажите имя или название до 200 символов" }, 400);
       if (!validScope(scope) || !validKey(clientKey)) return json({ error: "Некорректный идентификатор генерации. Обновите страницу." }, 400);
       withReference = Boolean(reference);
-      if (reference && !isSafeAvatarReference(reference)) return json({ error: "Загрузите PNG, JPEG, WebP или GIF размером до 5 МБ" }, 400);
+      if (reference && !isSafeAvatarReference(reference)) {
+        // Only the declared type and size, never the image: tells a format problem from a size one.
+        const mime = /^data:([a-z0-9.+-]{1,40}\/[a-z0-9.+-]{1,60})?[;,]/i.exec(reference);
+        infoLog("KieAvatar", "Reference rejected", { declared: mime ? mime[1] ?? "none" : "not_data_url", length: reference.length });
+        return json({ error: "Загрузите PNG, JPEG, WebP или GIF размером до 5 МБ" }, 400);
+      }
       stage = "prepare_reference";
       const prepared = reference ? await prepareKieReference(reference) : undefined;
       stage = "reserve";
