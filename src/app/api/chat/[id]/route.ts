@@ -612,6 +612,9 @@ export async function GET(
         // Flag off before the story exists: rows still waiting for the backfill remain visible.
         : resolution.legacy ? { userId: session.user.id, characterId: id, threadId: null } : { id: { in: [] } },
       orderBy: { createdAt: "asc" },
+      // Recognition scripts are fetched explicitly; keep their leases and duplicate text out of history payloads.
+      select: { id: true, characterId: true, chatId: true, threadId: true, userId: true, role: true,
+        content: true, finishReason: true, createdAt: true, isAutoEvent: true },
     });
 
     return NextResponse.json({

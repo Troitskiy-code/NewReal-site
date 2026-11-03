@@ -1,0 +1,403 @@
+{
+  "date": "2026-11-03",
+  "syntheticOnly": true,
+  "databaseAccess": false,
+  "ttsCalls": 0,
+  "model": "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+  "passed": 7,
+  "total": 7,
+  "receipts": [
+    {
+      "scene": "single-with-npc",
+      "passed": true,
+      "durationMs": 4200,
+      "usage": {
+        "prompt_tokens": 1181,
+        "total_tokens": 1295,
+        "completion_tokens": 114,
+        "estimated_cost": 0.00011137500000000001,
+        "prompt_tokens_details": null
+      },
+      "result": {
+        "version": "scene-speakers-v1",
+        "mode": "character",
+        "segments": [
+          {
+            "text": "За окном шумит дождь.",
+            "start": 0,
+            "end": 21,
+            "speakerId": "narrator",
+            "kind": "narration",
+            "confidence": "certain"
+          },
+          {
+            "text": "Ты вернулся!",
+            "start": 30,
+            "end": 42,
+            "speakerId": "main",
+            "kind": "dialogue",
+            "confidence": "certain"
+          },
+          {
+            "text": "Я обещал зайти",
+            "start": 67,
+            "end": 81,
+            "speakerId": "npc:1cf09710e735d94ac3b46187",
+            "kind": "dialogue",
+            "confidence": "certain"
+          }
+        ],
+        "speakers": [
+          {
+            "id": "narrator",
+            "name": "",
+            "kind": "narrator",
+            "aliases": []
+          },
+          {
+            "id": "main",
+            "name": "Алиса",
+            "kind": "character",
+            "aliases": [
+              "Alice"
+            ]
+          },
+          {
+            "id": "npc:1cf09710e735d94ac3b46187",
+            "name": "Иван",
+            "kind": "npc",
+            "aliases": []
+          }
+        ]
+      }
+    },
+    {
+      "scene": "group",
+      "passed": true,
+      "durationMs": 5819,
+      "usage": {
+        "prompt_tokens": 1199,
+        "total_tokens": 1344,
+        "completion_tokens": 145,
+        "estimated_cost": 0.000118925,
+        "prompt_tokens_details": null
+      },
+      "result": {
+        "version": "scene-speakers-v1",
+        "mode": "group",
+        "segments": [
+          {
+            "text": "В комнате погас свет.",
+            "start": 0,
+            "end": 21,
+            "speakerId": "narrator",
+            "kind": "narration",
+            "confidence": "certain"
+          },
+          {
+            "text": "Я проверю щиток",
+            "start": 30,
+            "end": 45,
+            "speakerId": "participant:bob",
+            "kind": "dialogue",
+            "confidence": "certain"
+          },
+          {
+            "text": "Подожди меня",
+            "start": 55,
+            "end": 67,
+            "speakerId": "participant:anna",
+            "kind": "dialogue",
+            "confidence": "certain"
+          }
+        ],
+        "speakers": [
+          {
+            "id": "narrator",
+            "name": "",
+            "kind": "narrator",
+            "aliases": []
+          },
+          {
+            "id": "participant:bob",
+            "name": "Борис",
+            "kind": "participant",
+            "aliases": []
+          },
+          {
+            "id": "participant:anna",
+            "name": "Анна",
+            "kind": "participant",
+            "aliases": []
+          }
+        ]
+      }
+    },
+    {
+      "scene": "world",
+      "passed": true,
+      "durationMs": 5385,
+      "usage": {
+        "prompt_tokens": 1162,
+        "total_tokens": 1320,
+        "completion_tokens": 158,
+        "estimated_cost": 0.00011875,
+        "prompt_tokens_details": null
+      },
+      "result": {
+        "version": "scene-speakers-v1",
+        "mode": "world",
+        "segments": [
+          {
+            "text": "Трактирщик Олег поставил кружку на стол.",
+            "start": 0,
+            "end": 40,
+            "speakerId": "narrator",
+            "kind": "narration",
+            "confidence": "certain"
+          },
+          {
+            "text": "Дорога закрыта,",
+            "start": 43,
+            "end": 58,
+            "speakerId": "npc:b8493ed671370afe7a2f3bd6",
+            "kind": "dialogue",
+            "confidence": "certain"
+          },
+          {
+            "text": "Тогда останемся здесь,",
+            "start": 76,
+            "end": 98,
+            "speakerId": "npc:17a4482a3dff9af605ab6124",
+            "kind": "dialogue",
+            "confidence": "certain"
+          }
+        ],
+        "speakers": [
+          {
+            "id": "narrator",
+            "name": "",
+            "kind": "narrator",
+            "aliases": []
+          },
+          {
+            "id": "npc:b8493ed671370afe7a2f3bd6",
+            "name": "Олег",
+            "kind": "npc",
+            "aliases": []
+          },
+          {
+            "id": "npc:17a4482a3dff9af605ab6124",
+            "name": "Мира",
+            "kind": "npc",
+            "aliases": []
+          }
+        ]
+      }
+    },
+    {
+      "scene": "returning-npc-pronouns",
+      "passed": true,
+      "durationMs": 4391,
+      "usage": {
+        "prompt_tokens": 1241,
+        "total_tokens": 1360,
+        "completion_tokens": 119,
+        "estimated_cost": 0.000116875,
+        "prompt_tokens_details": null
+      },
+      "result": {
+        "version": "scene-speakers-v1",
+        "mode": "character",
+        "segments": [
+          {
+            "text": "— Я вернулся,",
+            "start": 0,
+            "end": 13,
+            "speakerId": "npc:111111111111111111111111",
+            "kind": "dialogue",
+            "confidence": "certain"
+          },
+          {
+            "text": "— Проходи,",
+            "start": 45,
+            "end": 55,
+            "speakerId": "main",
+            "kind": "dialogue",
+            "confidence": "certain"
+          }
+        ],
+        "speakers": [
+          {
+            "id": "main",
+            "name": "Алиса",
+            "kind": "character",
+            "aliases": [
+              "Alice"
+            ]
+          },
+          {
+            "id": "npc:111111111111111111111111",
+            "name": "Иван",
+            "kind": "npc",
+            "aliases": []
+          }
+        ]
+      }
+    },
+    {
+      "scene": "ambiguous-voice",
+      "passed": true,
+      "durationMs": 4109,
+      "usage": {
+        "prompt_tokens": 1159,
+        "total_tokens": 1225,
+        "completion_tokens": 66,
+        "estimated_cost": 0.00010012500000000001,
+        "prompt_tokens_details": null
+      },
+      "result": {
+        "version": "scene-speakers-v1",
+        "mode": "character",
+        "segments": [
+          {
+            "text": "За дверью послышалось:",
+            "start": 0,
+            "end": 22,
+            "speakerId": "narrator",
+            "kind": "narration",
+            "confidence": "certain"
+          },
+          {
+            "text": "Не открывай",
+            "start": 24,
+            "end": 35,
+            "speakerId": "narrator",
+            "kind": "dialogue",
+            "confidence": "uncertain"
+          }
+        ],
+        "speakers": [
+          {
+            "id": "narrator",
+            "name": "",
+            "kind": "narrator",
+            "aliases": []
+          }
+        ]
+      }
+    },
+    {
+      "scene": "world-with-menu",
+      "passed": true,
+      "durationMs": 3682,
+      "usage": {
+        "prompt_tokens": 1218,
+        "total_tokens": 1307,
+        "completion_tokens": 89,
+        "estimated_cost": 0.00010915000000000001,
+        "prompt_tokens_details": null
+      },
+      "result": {
+        "version": "scene-speakers-v1",
+        "mode": "world",
+        "segments": [
+          {
+            "text": "Лес затих.",
+            "start": 0,
+            "end": 10,
+            "speakerId": "narrator",
+            "kind": "narration",
+            "confidence": "certain"
+          },
+          {
+            "text": "Дальше пойдём вместе",
+            "start": 18,
+            "end": 38,
+            "speakerId": "npc:222222222222222222222222",
+            "kind": "dialogue",
+            "confidence": "certain"
+          }
+        ],
+        "speakers": [
+          {
+            "id": "narrator",
+            "name": "",
+            "kind": "narrator",
+            "aliases": []
+          },
+          {
+            "id": "npc:222222222222222222222222",
+            "name": "Мира",
+            "kind": "npc",
+            "aliases": []
+          }
+        ]
+      }
+    },
+    {
+      "scene": "english-single-with-npc",
+      "passed": true,
+      "durationMs": 5606,
+      "usage": {
+        "prompt_tokens": 1169,
+        "total_tokens": 1345,
+        "completion_tokens": 176,
+        "estimated_cost": 0.00012287500000000002,
+        "prompt_tokens_details": null
+      },
+      "result": {
+        "version": "scene-speakers-v1",
+        "mode": "character",
+        "segments": [
+          {
+            "text": "Wait here.",
+            "start": 8,
+            "end": 18,
+            "speakerId": "main",
+            "kind": "dialogue",
+            "confidence": "certain"
+          },
+          {
+            "text": "A courier named Leo said,",
+            "start": 20,
+            "end": 45,
+            "speakerId": "narrator",
+            "kind": "narration",
+            "confidence": "certain"
+          },
+          {
+            "text": "The bridge is closed.",
+            "start": 47,
+            "end": 68,
+            "speakerId": "npc:d45ef6677bd0b32743b22c43",
+            "kind": "dialogue",
+            "confidence": "certain"
+          }
+        ],
+        "speakers": [
+          {
+            "id": "narrator",
+            "name": "",
+            "kind": "narrator",
+            "aliases": []
+          },
+          {
+            "id": "main",
+            "name": "Алиса",
+            "kind": "character",
+            "aliases": [
+              "Alice"
+            ]
+          },
+          {
+            "id": "npc:d45ef6677bd0b32743b22c43",
+            "name": "Leo",
+            "kind": "npc",
+            "aliases": []
+          }
+        ]
+      }
+    }
+  ]
+}

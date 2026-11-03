@@ -30,6 +30,8 @@ const run = (file, args, options = {}) => {
 };
 const audio = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(160, 1)]);
 let sessionUser = 'free', providerCalls = 0, preparationCalls = 0, preparationFailure = false, providerFailure = false, providerState = 'ready', pollFailure = false, downloadFailure = false;
+let preparationOverride = null;
+const preparationModes = [];
 class FixtureProviderError extends Error { constructor(status, definitive = false) { super('Speech provider unavailable'); this.status = status; this.definitive = definitive; } }
 const provider = { SPEECH_MODEL: 'google/gemini-3-8-flash-lite-tts', SPEECH_EXPRESSIVE_MODEL: 'google/gemini-3-8-flash-tts', SPEECH_CACHE_VERSION: 'gemini-native-v2-mp3-64', speechEnabled: () => true,
   speechModelFor: unlimited => unlimited ? 'google/gemini-3-8-flash-tts' : 'google/gemini-3-8-flash-lite-tts',
@@ -54,7 +56,7 @@ function loader(overrides = {}) {
     if (cache.has(file)) return cache.get(file);
     if (file.endsWith('speechProvider.ts') && !overrides.realProvider) return provider;
     if (file.endsWith('speechPreparation.ts') && !overrides.realPreparation) return {
-      prepareSpeechText: async text => { preparationCalls++; if (preparationFailure) throw new Error('Synthetic preparation failure'); const spoken = text.replace(/\*[^*]*\*/g, '').trim(); return { text: spoken, turns: spoken ? [{ text: spoken, style: '' }] : [] }; },
+      prepareSpeechText: async (text, _character, contentMode) => { preparationCalls++; preparationModes.push(contentMode); if (preparationFailure) throw new Error('Synthetic preparation failure'); if (preparationOverride) return preparationOverride(text, contentMode); const spoken = text.replace(/\*[^*]*\*/g, '').trim(); return { text: spoken, turns: spoken ? [{ text: spoken, style: '' }] : [] }; },
       SpeechPreparationError: class extends Error {},
     };
     const loadedModule = { exports: {} }; cache.set(file, loadedModule.exports);
@@ -66,7 +68,7 @@ function loader(overrides = {}) {
       const base = name.startsWith('@/') ? join(root, 'src', name.slice(2)) : name.startsWith('.') ? resolve(dirname(file), name) : null;
       if (!base) return require(name);
       if (base.endsWith('telegram/catalog')) return mocks['@/lib/telegram/catalog'];
-      if (base.endsWith('aiCostTelemetry')) return mocks['@/lib/aiCostTelemetry'];
+      if (base.endsWith('aiCostTelemetry')) return overrides['@/lib/aiCostTelemetry'] ?? mocks['@/lib/aiCostTelemetry'];
       const target = existsSync(base + '.ts') ? base + '.ts' : existsSync(base + '.js') ? base + '.js' : base;
       if (target.endsWith('.json')) return require(target);
       return load(target);
@@ -100,6 +102,8 @@ try {
   await ddl.query(readFileSync('prisma/migrations/20261019190000_character_speech/migration.sql', 'utf8'));
   await ddl.query(readFileSync('prisma/migrations/20261019230000_kie_character_speech/migration.sql', 'utf8'));
   await ddl.query(readFileSync('prisma/migrations/20261020090000_speech_preparation/migration.sql', 'utf8'));
+  await ddl.query('ALTER TABLE "Message" DROP COLUMN "speechRecognition"; ALTER TABLE "ChatThread" DROP COLUMN "speechCast";');
+  await ddl.query(readFileSync('prisma/migrations/20261103120000_scene_speaker_recognition/migration.sql', 'utf8'));
   const load = loader();
   const service = load('src/lib/chatSpeech.ts');
   const shared = load('src/lib/speech.ts');
@@ -133,6 +137,29 @@ try {
     && shared.isSpeechVoice('Fola') && shared.isSpeechVoiceChoice('auto') && !shared.isSpeechVoiceChoice('untrusted'),
     'voice catalog contains four male and four female choices, legacy Fola, and validated automatic selection');
   const preparation = loader({ realPreparation: true })('src/lib/speechPreparation.ts');
+  const typedSource = 'Шёл дождь. Привет! *улыбнулась*';
+  const typedSelection = { segments: ['Шёл дождь.', 'Привет!', '*улыбнулась*'], segmentKinds: ['narration', 'dialogue', 'action'], performance: [] };
+  check(preparation.validateSpeechPerformance(typedSource, typedSelection, 'dialogue').text === 'Привет!', 'single-character selection rejects narration and stage actions even if the model selected them');
+  check(preparation.validateSpeechPerformance(typedSource, typedSelection, 'scene').text === 'Шёл дождь. Привет!', 'world/group selection keeps narration but still removes stage actions');
+  check(preparation.validateSpeechPerformance('Вечер опустился на город.', { segments: ['Вечер опустился на город.'], segmentKinds: ['narration'], performance: [] }, 'dialogue').turns.length === 0,
+    'an entirely narrative character reply produces no speech turns');
+  const spokenAction = 'Я улыбнулась, чтобы тебя успокоить.';
+  check(preparation.validateSpeechPerformance(spokenAction, { segments: [spokenAction], segmentKinds: ['dialogue'], performance: [] }, 'dialogue').text === spokenAction,
+    'an action mentioned inside spoken words remains verbatim');
+  const quoteSource = 'Борис: «Нужно уходить». Анна: «Я с тобой».';
+  const quoteOutput = { segments: ['Нужно уходить.', 'Я с тобой.'], segmentKinds: ['dialogue', 'dialogue'], performance: [] };
+  const repairedQuote = preparation.repairSpeechQuoteBoundaries(quoteSource, quoteOutput);
+  check(preparation.validateSpeechPerformance(quoteSource, repairedQuote, 'dialogue').text === 'Нужно уходить Я с тобой',
+    'punctuation outside closing quotes cannot make verbatim dialogue fail or introduce new characters');
+  for (const bad of ['Нужно бежать.', 'Нужно уходить?', 'Я с тобой.', 'Нужно уходить. Добавь это.']) {
+    const value = preparation.repairSpeechQuoteBoundaries('Борис: «Нужно уходить».', { segments: [bad], segmentKinds: ['dialogue'], performance: [] });
+    assert.throws(() => preparation.validateSpeechPerformance('Борис: «Нужно уходить».', value, 'dialogue'));
+    check(true, 'quote-boundary recovery never repairs changed words, punctuation or invented content');
+  }
+  for (const invalid of [undefined, [], ['dialogue', 'narration'], ['guess']]) {
+    assert.throws(() => preparation.validateSpeechPerformance('Привет!', { segments: ['Привет!'], segmentKinds: invalid, performance: [] }, 'dialogue'));
+    check(true, 'production preparation requires a valid classification for every selected segment');
+  }
   const sourceText = 'Ты просыпаешься в комнате. За окном рассвет. Свиток гласит: «Выбери новый путь».\nВыбери клан:\n1. Акаси — «Тигры Заката»\nСтиль: меч.\n2. Курои — «Тени Ночи»';
   check(shared.speechSource(sourceText) === sourceText, 'narration, quoted scroll and menu reach AI without the destructive quote filter');
   check(preparation.validateSpeechPreparation(sourceText, { segments: [sourceText.split('\n')[0]] }) === sourceText.split('\n')[0], 'validated narrator script preserves the entire story before the choice menu');
@@ -324,6 +351,7 @@ try {
     create: { scopeKey: 'thread:story-paid', characterId: 'hero', mode: 'world', builderVersion: 2 }, update: { mode: 'world' } });
   const pinned = await routes.POST(paidReq('automatic-voice', { voice: acceptedAutomatic.voice }), context);
   check(pinned.status === 200 && pinned.headers.get('X-Speech-Voice') === 'Aoede', 'an accepted task retains its voice when story settings change during generation');
+  check(pinned.headers.get('X-Speech-Content-Mode') === 'dialogue', 'a pending task retains its original content policy across story-mode changes');
   const narratorStatus = await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid'), context);
   const narratorDefault = (await narratorStatus.json()).automatic;
   check(narratorDefault.voice === 'Charon' && narratorDefault.role === 'narrator', 'story type overrides a female card to select a male narrator for worlds');
@@ -331,6 +359,38 @@ try {
   check((await post(paidReq('automatic-voice', { voice: 'Kore' }), context)).headers.get('X-Speech-Voice') === 'Kore', 'an explicit manual voice overrides automatic narrator selection');
   await db.chatPromptState.delete({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } } });
   await db.character.update({ where: { id: 'hero' }, data: { tags: null, appearance: null } });
+
+  const narrativeOnly = 'Вечер опустился на город. Она закрыла окно.';
+  await add('narration-policy', 'paid', 'assistant', narrativeOnly);
+  preparationOverride = (text, mode) => mode === 'dialogue' ? { text: '', turns: [] } : { text, turns: [{ text, style: '' }] };
+  const beforeNarration = providerCalls;
+  const silentCharacter = await post(paidReq('narration-policy', { contentMode: 'scene' }), context);
+  check(silentCharacter.status === 400 && (await silentCharacter.json()).code === 'noDialogue' && preparationModes.at(-1) === 'dialogue' && providerCalls === beforeNarration,
+    'a character reply containing only narration does not synthesize, and the client cannot force scene policy');
+  await db.chatPromptState.create({ data: { scopeKey: 'thread:story-paid', characterId: 'hero', mode: 'world' } });
+  const narratedWorld = await post(paidReq('narration-policy'), context);
+  check(narratedWorld.status === 200 && narratedWorld.headers.get('X-Speech-Content-Mode') === 'scene' && preparationModes.at(-1) === 'scene',
+    'a world narration uses a separate scene preparation and audio cache');
+  const scenePreview = await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid&messageId=narration-policy&voice=Fola&contentMode=scene'), context);
+  const dialoguePreview = await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid&messageId=narration-policy&voice=Fola&contentMode=dialogue'), context);
+  check((await scenePreview.json()).text === narrativeOnly && (await dialoguePreview.json()).text === '', 'metadata previews distinguish spoken dialogue from scene narration for the same source and voice');
+  const worldCalls = providerCalls, worldPreparations = preparationCalls;
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } }, data: { mode: 'group' } });
+  check((await post(paidReq('narration-policy'), context)).status === 200 && providerCalls === worldCalls && preparationCalls === worldPreparations,
+    'groups keep the narrator policy and can reuse an identical world recording');
+  await db.chatPromptState.delete({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } } });
+  const characterAgain = await post(paidReq('narration-policy'), context);
+  check(characterAgain.status === 400 && (await characterAgain.json()).code === 'noDialogue' && providerCalls === worldCalls,
+    'switching back to a single character never replays a cached world narration');
+  check(service.speechClipId('paid', 'narration-policy', narrativeOnly, 'Fola', provider.SPEECH_MODEL, 'dialogue') !== service.speechClipId('paid', 'narration-policy', narrativeOnly, 'Fola', provider.SPEECH_MODEL, 'scene'),
+    'the cache identity includes the content policy independently of the selected voice');
+  await db.speechDailyQuota.deleteMany({ where: { userId: 'free' } });
+  await add('narration-free-policy', 'free', 'assistant', narrativeOnly);
+  sessionUser = 'free';
+  const freeNarration = await post(request('narration-free-policy'), context);
+  check(freeNarration.status === 400 && (await freeNarration.json()).code === 'noDialogue' && (await service.getSpeechQuota('free')).remaining === 1 && providerCalls === worldCalls,
+    'a narrative-only character reply does not consume a free playback');
+  preparationOverride = null;
 
   // Durable async jobs: polling, reconnects and failures must not purchase a second synthesis.
   await db.speechDailyQuota.deleteMany({ where: { userId: 'free' } });
@@ -469,6 +529,185 @@ try {
       await assert.rejects(() => encoder.speechWavToMp3(invalid)); check(true, 'encoder rejects truncated or unsupported WAV');
     }
   } finally { globalThis.fetch = nativeFetch; }
+  // Recognition has no TTS side effects. Use the actual validator, persistence and routes, with a synthetic model only.
+  let recognitionCalls = 0, respondToRecognition;
+  const recognitionInputs = [];
+  const recognitionLoad = loader({
+    '@/lib/advancedMemory': { clearChatMemories: async () => {} },
+    './aiProviders': { DEEPINFRA_CHAT_URL: 'https://synthetic.invalid/chat', providerApiKey: () => 'synthetic-key' },
+    '@/lib/aiProviders': { DEEPINFRA_CHAT_URL: 'https://synthetic.invalid/chat', providerApiKey: () => 'synthetic-key' },
+    '@/lib/aiCostTelemetry': { ...mocks['@/lib/aiCostTelemetry'], meteredPost: async (_operation, _url, body) => {
+      recognitionCalls++;
+      const input = JSON.parse(body.messages[1].content); recognitionInputs.push(input);
+      return { data: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(await respondToRecognition(input)) } }] } };
+    } },
+  });
+  const recognition = recognitionLoad('src/lib/speechRecognition.ts');
+  const recognitionRoutes = recognitionLoad('src/app/api/chat/[id]/speech/recognition/route.ts');
+  const narrator = { id: 'narrator', name: '', kind: 'narrator', aliases: [] };
+  const main = { id: 'main', name: 'Алиса', kind: 'character', aliases: ['Alice'] };
+  const companion = { id: 'participant:bob', name: 'Борис', kind: 'participant', aliases: [] };
+  const sceneContext = (mode = 'character', extra = {}) => ({ mode, messageId: 'fixture', speakers: [narrator, ...(mode === 'character' ? [main] : mode === 'group' ? [companion] : [])],
+    recent: [], character: { name: 'Алиса', description: '', appearance: '', npcs: '' }, playerName: '', ...extra });
+  const segment = (text, speakerId = 'main', kind = 'dialogue', confidence = 'certain') => ({ text, speakerId, kind, confidence });
+  const script = (...segments) => ({ newSpeakers: [], segments });
+  const withNpc = (name, evidence, segments, identity = 'named') => ({ newSpeakers: [{ id: 'new1', name, evidence, identity }], segments });
+  for (const [label, text, output, ctx, ids] of [
+    ['single main speaker', 'Привет!', script(segment('Привет!')), sceneContext(), ['main']],
+    ['narration outside quotation marks', 'За окном дождь.', script(segment('За окном дождь.', 'narrator', 'narration')), sceneContext(), ['narrator']],
+    ['incidental named NPC in a single-character chat', 'Иван сказал: «Заходи».', withNpc('Иван', 'Иван сказал:', [segment('Заходи', 'new1')]), sceneContext(), ['npc:']],
+    ['explicit group participant', 'Борис: Привет!', script(segment('Привет!', 'participant:bob')), sceneContext('group'), ['participant:bob']],
+    ['group member plus narration', 'Темнеет. Борис: Пора.', script(segment('Темнеет.', 'narrator', 'narration'), segment('Пора.', 'participant:bob')), sceneContext('group'), ['narrator', 'participant:bob']],
+    ['world NPC instead of the world card', 'Мира отвечает: «Да».', withNpc('Мира', 'Мира отвечает:', [segment('Да', 'new1')]), sceneContext('world'), ['npc:']],
+    ['ambiguous attribution falls back explicitly', '«Кто здесь?»', script(segment('Кто здесь?', 'main', 'dialogue', 'uncertain')), sceneContext(), ['narrator']],
+    ['narration never inherits the main character', 'Наступило утро.', script(segment('Наступило утро.', 'main', 'narration')), sceneContext(), ['narrator']],
+    ['stage directions may have no spoken content', '*улыбнулась*', script(), sceneContext(), []],
+    ['choice menu may have no spoken content', 'Выбери: 1. Лес 2. Город', script(), sceneContext('world'), []],
+    ['dates and numbers remain verbatim', 'Встреча 3 ноября в 19:30, цена 2 500 рублей.', script(segment('Встреча 3 ноября в 19:30, цена 2 500 рублей.')), sceneContext(), ['main']],
+    ['repeated words use distinct ordered offsets', 'Да. Да.', script(segment('Да.'), segment('Да.')), sceneContext(), ['main', 'main']],
+    ['a quoted player line stays uncertain', 'Ты сказал: «Я вернусь».', script(segment('Я вернусь', 'narrator', 'dialogue', 'uncertain')), sceneContext(), ['narrator']],
+    ['non-Latin NPC name', '葵: こんにちは。', withNpc('葵', '葵:', [segment('こんにちは。', 'new1')]), sceneContext('world'), ['npc:']],
+    ['short action and speaker label excluded', '*улыбнулась* Алиса: Привет!', script(segment('Привет!')), sceneContext(), ['main']],
+    ['different participant identities do not merge', 'Алиса: Да. Борис: Нет.', script(segment('Да.', 'participant:alice'), segment('Нет.', 'participant:bob')),
+      sceneContext('group', { speakers: [narrator, { ...main, id: 'participant:alice', kind: 'participant' }, companion] }), ['participant:alice', 'participant:bob']],
+    ['known English alias preserves the main identity', 'Alice: Hello.', withNpc('Alice', 'Alice:', [segment('Hello.', 'new1')]), sceneContext(), ['main']],
+  ]) {
+    const result = recognition.validateSpeechRecognition(text, output, ctx);
+    check(result.segments.length === ids.length && result.segments.every((item, index) => item.speakerId.startsWith(ids[index]) && text.slice(item.start, item.end) === item.text), label);
+  }
+  const roleText = 'Стражник: Стой!';
+  const roleOutput = withNpc('Стражник', 'Стражник:', [segment('Стой!', 'new1')], 'role');
+  const roleA = recognition.validateSpeechRecognition(roleText, roleOutput, sceneContext('world', { messageId: 'first-scene' }));
+  const roleB = recognition.validateSpeechRecognition(roleText, roleOutput, sceneContext('world', { messageId: 'second-scene' }));
+  check(roleA.speakers[0].id !== roleB.speakers[0].id, 'two anonymous guards are not automatically treated as one person');
+  const ivanOutput = withNpc('Иван', 'Иван:', [segment('Привет!', 'new1')]);
+  const ivan = recognition.validateSpeechRecognition('Иван: Привет!', ivanOutput, sceneContext('world')).speakers[0];
+  const returnedIvan = recognition.validateSpeechRecognition('«Я вернулся».', script(segment('Я вернулся', ivan.id)), sceneContext('world', { speakers: [narrator, ivan] }));
+  check(returnedIvan.speakers[0].id === ivan.id, 'a previously recognised NPC can speak without repeating their name');
+  const unused = recognition.validateSpeechRecognition('Иван молчит. Темнеет.', withNpc('Иван', 'Иван молчит.', [segment('Темнеет.', 'narrator', 'narration')]), sceneContext('world'));
+  check(!unused.speakers.some(item => item.kind === 'npc'), 'mere mention of an NPC does not add them to the speaking cast');
+  for (const [label, text, output, ctx] of [
+    ['paraphrased words', 'Привет!', script(segment('Здравствуйте!')), sceneContext()],
+    ['reordered words', 'Да. Нет.', script(segment('Нет.'), segment('Да.')), sceneContext()],
+    ['overlapping source slices', 'Да.', script(segment('Да.'), segment('Да.')), sceneContext()],
+    ['unknown speaker ID', 'Да.', script(segment('Да.', 'attacker')), sceneContext()],
+    ['invented NPC name', 'Кто-то сказал да.', withNpc('Иван', 'Кто-то сказал да.', [segment('да.', 'new1')]), sceneContext('world')],
+    ['invented NPC evidence', 'Иван: Да.', withNpc('Иван', 'Иван: Нет.', [segment('Да.', 'new1')]), sceneContext('world')],
+    ['player cannot become NPC', 'Игрок: Да.', withNpc('Игрок', 'Игрок:', [segment('Да.', 'new1')]), sceneContext('world', { playerName: 'Игрок' })],
+    ['world card cannot speak as main', 'Да.', script(segment('Да.')), sceneContext('world')],
+    ['source HTML is not an instruction channel', '<laugh>Да.', script(segment('<laugh>Да.')), sceneContext()],
+    ['invalid confidence', 'Да.', script({ ...segment('Да.'), confidence: 'guess' }), sceneContext()],
+    ['duplicate temporary IDs', 'Иван: Да.', { newSpeakers: [ivanOutput.newSpeakers[0], ivanOutput.newSpeakers[0]], segments: [segment('Да.', 'new1')] }, sceneContext('world')],
+  ]) {
+    assert.throws(() => recognition.validateSpeechRecognition(text, output, ctx)); check(true, 'recognition rejects ' + label);
+  }
+  assert.throws(() => recognition.validateSpeechRecognition('x'.repeat(8001), script(segment('x'.repeat(8001))), sceneContext()), error => error.code === 'tooLong');
+  check(true, 'recognised speech retains the existing 8000-character bound');
+
+  sessionUser = 'paid';
+  const recognitionScope = { userId: 'paid', characterId: 'hero', threadId: 'story-paid', legacy: false };
+  const recognitionReq = (messageId, method = 'POST', origin = 'http://localhost', thread = 'story-paid') => new NextRequest(
+    'http://localhost/api/chat/hero/speech/recognition?thread=' + thread + '&messageId=' + messageId,
+    { method, headers: { Origin: origin } });
+  respondToRecognition = async () => withNpc('Иван', 'Иван:', [segment('Привет!', 'new1')]);
+  await add('recognition-first', 'paid', 'assistant', 'Иван: Привет!');
+  const synthesisBeforeRecognition = providerCalls;
+  const quotaBeforeRecognition = await db.speechDailyQuota.count();
+  const recognitionResponse = await recognitionRoutes.POST(recognitionReq('recognition-first'), context);
+  const recognitionBody = await recognitionResponse.json();
+  const firstRecognition = recognitionBody.recognition;
+  check(recognitionResponse.status === 200 && firstRecognition.speakers[0].name === 'Иван', 'recognition API saves named NPCs for a single-character story: ' + JSON.stringify({ status: recognitionResponse.status, code: recognitionBody.code }));
+  const firstRecognitionId = firstRecognition.speakers[0].id;
+  const afterRecognition = recognitionCalls;
+  await recognitionRoutes.POST(recognitionReq('recognition-first'), context);
+  const reread = await recognitionRoutes.GET(recognitionReq('recognition-first', 'GET'), context);
+  check(recognitionCalls === afterRecognition && (await reread.json()).recognition.sourceHash === firstRecognition.sourceHash, 'saved recognition survives rereads without another model request');
+  check(providerCalls === synthesisBeforeRecognition && await db.speechDailyQuota.count() === quotaBeforeRecognition, 'recognition neither synthesises audio nor spends playback allowance');
+  await db.message.create({ data: { id: 'recognition-old-scene', userId: 'paid', characterId: 'hero', threadId: 'story-paid',
+    role: 'assistant', createdAt: new Date('2001-01-01'), content: 'Тогда мы ещё не встретились.' } });
+  respondToRecognition = async input => {
+    check(!input.speakers.some(speaker => speaker.id === firstRecognitionId), 'an older scene is not given an NPC discovered in its future');
+    return script(segment('Тогда мы ещё не встретились.', 'main'));
+  };
+  await recognition.recognizeSceneSpeech(recognitionScope, 'recognition-old-scene');
+  await add('recognition-return', 'paid', 'assistant', 'Я вернулся.');
+  respondToRecognition = async input => {
+    check(input.speakers.some(speaker => speaker.id === firstRecognitionId), 'known NPC identities reach the next scene');
+    return script(segment('Я вернулся.', firstRecognitionId));
+  };
+  const returned = await recognition.recognizeSceneSpeech(recognitionScope, 'recognition-return');
+  check(returned.speakers[0].id === firstRecognitionId, 'NPC identity is stable between messages in the same story');
+  check((await db.chatThread.findUnique({ where: { id: 'story-free' } })).speechCast === null, 'NPC registry stays isolated from another account');
+  check((await recognitionRoutes.POST(recognitionReq('other-story-reply'), context)).status === 404, 'recognition cannot read a message in another story');
+  check((await recognitionRoutes.POST(recognitionReq('recognition-first', 'POST', 'https://attacker.invalid'), context)).status === 403, 'cross-origin recognition is rejected');
+  sessionUser = null;
+  check((await recognitionRoutes.GET(recognitionReq('recognition-first', 'GET'), context)).status === 401, 'recognition requires authentication');
+  sessionUser = 'paid';
+
+  await db.chatPromptState.create({ data: { scopeKey: 'thread:story-paid', characterId: 'hero', mode: 'group' } });
+  await db.character.update({ where: { id: 'hero' }, data: { rpConfig: { participants: [{ id: 'bob', name: 'Борис', description: 'Смелый', appearance: '', speechStyle: '' }] } } });
+  await add('recognition-group', 'paid', 'assistant', 'Борис: Пора.');
+  respondToRecognition = async input => {
+    check(input.mode === 'group' && input.speakers.some(speaker => speaker.id === 'participant:bob') && !input.speakers.some(speaker => speaker.id === 'main')
+      && input.participants[0].description === 'Смелый', 'story mode overrides card mode and supplies group participant IDs and profiles');
+    return script(segment('Пора.', 'participant:bob'));
+  };
+  await recognition.recognizeSceneSpeech(recognitionScope, 'recognition-group');
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } }, data: { mode: 'world' } });
+  check(await recognition.getSpeechRecognition(recognitionScope, 'recognition-group') === null, 'changing story mode invalidates an incompatible saved attribution');
+  await add('recognition-world', 'paid', 'assistant', 'Темнеет.');
+  respondToRecognition = async input => { check(input.mode === 'world' && !input.speakers.some(speaker => speaker.id === 'main'), 'world mode does not treat a universe card as a person'); return script(segment('Темнеет.', 'narrator', 'narration')); };
+  await recognition.recognizeSceneSpeech(recognitionScope, 'recognition-world');
+
+  const deferredRecognition = () => {
+    let start, finish;
+    const started = new Promise(resolve => { start = resolve; });
+    const waiting = new Promise(resolve => { finish = resolve; });
+    respondToRecognition = async () => { start(); await waiting; return script(segment('Темнеет.', 'narrator', 'narration')); };
+    return { started, finish };
+  };
+  await add('recognition-race', 'paid', 'assistant', 'Темнеет.');
+  let deferred = deferredRecognition();
+  const inFlight = recognition.recognizeSceneSpeech(recognitionScope, 'recognition-race');
+  await deferred.started;
+  await rejects(() => recognition.recognizeSceneSpeech(recognitionScope, 'recognition-race'), 'busy', 'parallel recognition of one scene makes only one model request');
+  deferred.finish(); await inFlight;
+  await add('recognition-changed', 'paid', 'assistant', 'Темнеет.');
+  deferred = deferredRecognition();
+  const changedRecognition = recognition.recognizeSceneSpeech(recognitionScope, 'recognition-changed');
+  await deferred.started;
+  await db.message.update({ where: { id: 'recognition-changed' }, data: { content: 'Настало утро.' } });
+  deferred.finish();
+  await rejects(() => changedRecognition, 'changed', 'editing a message during recognition cannot publish stale fragments');
+  check((await db.message.findUnique({ where: { id: 'recognition-changed' } })).speechRecognition === null, 'failed recognition clears only its own lease');
+  respondToRecognition = async () => { throw new Error('Synthetic recognition failure'); };
+  await assert.rejects(() => recognition.recognizeSceneSpeech(recognitionScope, 'recognition-changed'));
+  respondToRecognition = async () => script(segment('Настало утро.', 'narrator', 'narration'));
+  check((await recognition.recognizeSceneSpeech(recognitionScope, 'recognition-changed')).segments[0].text === 'Настало утро.', 'recognition recovers after a failed model request');
+  await db.message.update({ where: { id: 'recognition-changed' }, data: { content: 'Другой текст.' } });
+  check(await recognition.getSpeechRecognition(recognitionScope, 'recognition-changed') === null, 'edited source invalidates its saved recognition');
+  await db.chatThread.create({ data: { id: 'recognition-second-story', userId: 'paid', characterId: 'hero', number: 2 } });
+  await db.message.create({ data: { id: 'recognition-second-story-message', userId: 'paid', characterId: 'hero', threadId: 'recognition-second-story', role: 'assistant', content: 'Привет.' } });
+  respondToRecognition = async input => {
+    check(!input.speakers.some(speaker => speaker.id === firstRecognitionId), 'NPCs do not leak into another story of the same owner');
+    return script(segment('Привет.', 'main'));
+  };
+  const otherScope = { ...recognitionScope, threadId: 'recognition-second-story' };
+  await recognition.recognizeSceneSpeech(otherScope, 'recognition-second-story-message');
+  await rejects(() => recognition.recognizeSceneSpeech(recognitionScope, 'recognition-second-story-message'), 'notFound', 'recognition validates message scope for the same owner too');
+  const dayKey = load('src/lib/freeDailyQuota.ts').moscowDayKey(new Date());
+  await db.speechDailyQuota.upsert({ where: { userId_day: { userId: 'free', day: dayKey } }, create: { userId: 'free', day: dayKey, used: 1 }, update: { used: 1 } });
+  await add('recognition-without-playback', 'free', 'assistant', 'Привет.');
+  sessionUser = 'free'; respondToRecognition = async () => script(segment('Привет.', 'main'));
+  check((await recognitionRoutes.POST(recognitionReq('recognition-without-playback', 'POST', 'http://localhost', 'story-free'), context)).status === 200
+    && (await service.getSpeechQuota('free')).remaining === 0, 'recognition works with an exhausted playback allowance without resetting it');
+  check(recognitionInputs.every(input => input.recent.length <= 6), 'recognition context is bounded to six preceding messages');
+  check(providerCalls === synthesisBeforeRecognition, 'all recognition scenarios leave the existing voice provider untouched');
+  sessionUser = 'paid';
+  const clearStory = recognitionLoad('src/app/api/chat/[id]/messages/route.ts');
+  const cleared = await clearStory.DELETE(new NextRequest('http://localhost/api/chat/hero/messages?thread=story-paid', { method: 'DELETE' }), context);
+  check(cleared.status === 200 && (await db.chatThread.findUnique({ where: { id: 'story-paid' } })).speechCast === null, 'restarting a story forgets its recognised NPCs');
+  check(await db.message.count({ where: { threadId: 'recognition-second-story' } }) === 1, 'restarting one story preserves another story of the same owner');
   console.log(`Speech verification: ${checks} passed`);
 } finally {
   await ddl.end().catch(() => {}); await db.$disconnect();

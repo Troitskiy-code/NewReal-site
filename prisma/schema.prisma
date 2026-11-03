@@ -192,6 +192,7 @@ model Message {
   memoryUserJobs MemoryJob[] @relation("MemoryJobUser")
   memoryAssistantJobs MemoryJob[] @relation("MemoryJobAssistant")
   speechClips SpeechClip[]
+  speechRecognition Json?
 
   @@index([userId, characterId])
   @@index([userId, chatId])
@@ -267,6 +268,8 @@ model ChatThread {
   memoryRevision Int @default(0)
   memoryManualSeq Int @default(0)
   memorySummaryInvalidated Boolean @default(false)
+  // Stable, private NPC identities for speaker recognition; no voice assignment yet.
+  speechCast Json?
   memoryLeaseOwner String?
   memoryLeaseUntil DateTime?
 

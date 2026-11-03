@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { moscowDayKey, nextMoscowMidnight } from "./freeDailyQuota";
 import { getSubscriptionPlan } from "./chatEconomy";
-import { speechSource, SPEECH_SOURCE_MAX_CHARACTERS, SPEECH_PREPARATION_VERSION, SPEECH_VOICES, type PreparedSpeech, type SpeechTurn, type SpeechVoice, type SpeechQuota } from "./speech";
+import { speechSource, SPEECH_SOURCE_MAX_CHARACTERS, SPEECH_PREPARATION_VERSION, SPEECH_VOICES, type PreparedSpeech, type SpeechTurn, type SpeechVoice, type SpeechQuota, type SpeechContentMode } from "./speech";
 import { SPEECH_MODEL, SPEECH_EXPRESSIVE_MODEL, SPEECH_CACHE_VERSION, speechEnabled, speechModelFor, type SpeechModel } from "./speechProvider";
 
 const LEASE_MS = 120_000;
@@ -17,12 +17,12 @@ export function unlimitedSpeech(user: SpeechUser, now = new Date()): boolean {
     && Boolean(user.subscriptionEnd && user.subscriptionEnd > now);
 }
 
-export function speechClipId(userId: string, messageId: string, text: string, voice: SpeechVoice, model: SpeechModel = SPEECH_MODEL): string {
-  return createHash("sha256").update(JSON.stringify([SPEECH_PREPARATION_VERSION, SPEECH_CACHE_VERSION, model, userId, messageId, text, voice])).digest("hex");
+export function speechClipId(userId: string, messageId: string, text: string, voice: SpeechVoice, model: SpeechModel = SPEECH_MODEL, contentMode: SpeechContentMode = "dialogue"): string {
+  return createHash("sha256").update(JSON.stringify([SPEECH_PREPARATION_VERSION, SPEECH_CACHE_VERSION, model, contentMode, userId, messageId, text, voice])).digest("hex");
 }
 /** Every cache id a reply may have: preparation is shared across voices and plan models. */
-function allSpeechClipIds(userId: string, messageId: string, text: string) {
-  return SPEECH_VOICES.flatMap(voice => ([SPEECH_MODEL, SPEECH_EXPRESSIVE_MODEL] as const).map(model => speechClipId(userId, messageId, text, voice.id, model)));
+function allSpeechClipIds(userId: string, messageId: string, text: string, contentMode: SpeechContentMode) {
+  return SPEECH_VOICES.flatMap(voice => ([SPEECH_MODEL, SPEECH_EXPRESSIVE_MODEL] as const).map(model => speechClipId(userId, messageId, text, voice.id, model, contentMode)));
 }
 async function lockUser(tx: Prisma.TransactionClient, userId: string) {
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
@@ -48,10 +48,10 @@ async function debitPlayback(tx: Prisma.TransactionClient, userId: string, day: 
     create: { userId, day, used: 1 }, update: { used: { increment: 1 } } });
 }
 
-type Source = { userId: string; characterId: string; messageId: string; voice: SpeechVoice };
-export type SpeechReservation = Source & { id: string; model: SpeechModel; token: string; text: string; preparedText: string | null; preparedTurns: SpeechTurn[] | null; freeDay: string | null;
+type Source = { userId: string; characterId: string; messageId: string; voice: SpeechVoice; contentMode?: SpeechContentMode };
+export type SpeechReservation = Source & { id: string; model: SpeechModel; contentMode: SpeechContentMode; token: string; text: string; preparedText: string | null; preparedTurns: SpeechTurn[] | null; freeDay: string | null;
   providerTaskId: string | null; costEventId: string; uncertain: boolean; startedAt: Date };
-type Reserved = { kind: "cached"; audio: Buffer; quota: SpeechQuota } | { kind: "reserved"; reservation: SpeechReservation };
+type Reserved = { kind: "cached"; audio: Buffer; quota: SpeechQuota; contentMode: SpeechContentMode } | { kind: "reserved"; reservation: SpeechReservation };
 
 export async function reserveSpeech(source: Source, now = new Date()): Promise<Reserved> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -65,11 +65,17 @@ export async function reserveSpeech(source: Source, now = new Date()): Promise<R
     const state = await quota(tx, source.userId, user, now);
     // Paid plans hear the expressive model; the plan at reservation time decides (its own cache entry).
     const model = speechModelFor(state.unlimited);
-    const id = speechClipId(source.userId, source.messageId, text, source.voice, model);
+    let contentMode = source.contentMode ?? "dialogue";
+    let id = speechClipId(source.userId, source.messageId, text, source.voice, model, contentMode);
     if (!state.unlimited && state.remaining === 0) throw new ChatSpeechError("quota", 429);
     // A cached play cannot spend the allowance while another paid synthesis is in flight.
     if (await tx.speechClip.findFirst({ where: { userId: source.userId, status: "processing", leaseUntil: { gt: now } }, select: { id: true } }))
       throw new ChatSpeechError("busy", 409);
+    // A changed story mode cannot abandon an accepted (or uncertain) task and buy another one.
+    const modeIds = (["dialogue", "scene"] as const).map(mode => speechClipId(source.userId, source.messageId, text, source.voice, model, mode));
+    const pinned = await tx.speechClip.findFirst({ where: { id: { in: modeIds }, status: { in: ["pending", "processing"] },
+      expiresAt: { gt: now }, OR: [{ providerTaskId: { not: null } }, { costEventId: { not: null } }] }, select: { id: true } });
+    if (pinned) { id = pinned.id; contentMode = id === modeIds[0] ? "dialogue" : "scene"; }
     // A pending Kie task can be resumed for this reply; another reply cannot start alongside it.
     if (await tx.speechClip.findFirst({ where: { userId: source.userId, id: { not: id }, status: "pending",
       providerTaskId: { not: null }, updatedAt: { gt: new Date(now.getTime() - 30 * 60_000) } }, select: { id: true } }))
@@ -79,7 +85,7 @@ export async function reserveSpeech(source: Source, now = new Date()): Promise<R
     if (cached?.status === "ready" && cached.audio && cached.expiresAt > now) {
       if (!state.unlimited) await debitPlayback(tx, source.userId, moscowDayKey(now));
       await tx.speechClip.update({ where: { id }, data: { expiresAt: new Date(now.getTime() + CACHE_MS) } });
-      return { kind: "cached", audio: Buffer.from(cached.audio), quota: await quota(tx, source.userId, user, now) };
+      return { kind: "cached", audio: Buffer.from(cached.audio), quota: await quota(tx, source.userId, user, now), contentMode };
     }
 
     // Both quota checks and leases share the user row lock.
@@ -93,7 +99,7 @@ export async function reserveSpeech(source: Source, now = new Date()): Promise<R
     const costEventId = resume && cached.costEventId ? cached.costEventId : randomUUID();
     // Preparation is independent of the selected voice. Reuse only clips keyed to the current source/version.
     const prepared = await tx.speechClip.findFirst({ where: {
-      id: { in: allSpeechClipIds(source.userId, source.messageId, text) },
+      id: { in: allSpeechClipIds(source.userId, source.messageId, text, contentMode) },
       preparedText: { not: null }, expiresAt: { gt: now },
     }, select: { preparedText: true, preparedTurns: true } });
     const preparedText = prepared?.preparedText ?? null;
@@ -104,7 +110,7 @@ export async function reserveSpeech(source: Source, now = new Date()): Promise<R
       preparedText, preparedTurns: preparedTurns ?? Prisma.JsonNull, providerTaskId, costEventId: resume ? cached.costEventId : null,
       createdAt: startedAt, expiresAt: new Date(now.getTime() + CACHE_MS) };
     await tx.speechClip.upsert({ where: { id }, create: { id, ...data }, update: data });
-    return { kind: "reserved", reservation: { ...source, id, model, token, text, preparedText, preparedTurns, providerTaskId, costEventId, startedAt,
+    return { kind: "reserved", reservation: { ...source, contentMode, id, model, token, text, preparedText, preparedTurns, providerTaskId, costEventId, startedAt,
       uncertain: Boolean(resume && cached.costEventId && !providerTaskId), freeDay: state.unlimited ? null : moscowDayKey(now) } };
   });
 }
@@ -130,7 +136,7 @@ export async function getPreparedSpeechText(source: Source): Promise<string | nu
   if (!message) throw new ChatSpeechError("notFound", 404);
   const text = speechSource(message.content);
   const clip = await prisma.speechClip.findFirst({ where: {
-    id: { in: ([SPEECH_MODEL, SPEECH_EXPRESSIVE_MODEL] as const).map(model => speechClipId(source.userId, source.messageId, text, source.voice, model)) },
+    id: { in: ([SPEECH_MODEL, SPEECH_EXPRESSIVE_MODEL] as const).map(model => speechClipId(source.userId, source.messageId, text, source.voice, model, source.contentMode ?? "dialogue")) },
     expiresAt: { gt: new Date() }, preparedText: { not: null },
   }, select: { preparedText: true } });
   return clip?.preparedText ?? null;
@@ -154,7 +160,7 @@ export async function finishSpeech(job: SpeechReservation, audio: Buffer, now = 
       status: "processing", leaseUntil: { gt: now } }, select: { id: true } });
     const message = await tx.message.findFirst({ where: { id: job.messageId, userId: job.userId,
       characterId: job.characterId, role: "assistant" }, select: { content: true } });
-    if (!clip || !message || speechClipId(job.userId, job.messageId, speechSource(message.content), job.voice, job.model) !== job.id)
+    if (!clip || !message || speechClipId(job.userId, job.messageId, speechSource(message.content), job.voice, job.model, job.contentMode) !== job.id)
       throw new ChatSpeechError("changed", 409);
     // A queued task can cross midnight or a subscription expiry. Charge the entitlement at delivery.
     if (!unlimitedSpeech(user, now)) await debitPlayback(tx, job.userId, moscowDayKey(now));

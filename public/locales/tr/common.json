@@ -1,11 +1,26 @@
 {
   "chatSpeech": {
+    "recognition": {
+      "analyze": "Kim konuşuyor?",
+      "loading": "Konuşanlar belirleniyor…",
+      "title": "Sahnedeki konuşmacılar",
+      "hint": "Her bölümün kime ait olduğunu inceleyin. Oynatma hâlâ seçilen tek bir sesi kullanır.",
+      "empty": "Burada seslendirilecek diyalog veya anlatım yok.",
+      "narrator": "Anlatıcı",
+      "uncertain": "Konuşan belirsiz",
+      "npc": "Yan karakter",
+      "kinds": {
+        "dialogue": "Diyalog",
+        "narration": "Anlatım"
+      }
+    },
     "label": "Karakterin sesi",
     "listen": "Dinle",
     "pause": "Duraklat",
     "resume": "Oynatmayı sürdür",
     "seek": "Sesi ileri sar",
     "preview": "Konuşma metni",
+    "speechOnlyDialogue": "Tek karakterli sohbette yalnızca söylenen sözler seslendirilir. Anlatım, düşünceler ve eylemler atlanır.",
     "speechOnly": "Yapay zeka diyalogu ve anlatımı korur, sahne yönergelerini ve seçim menülerini kaldırır ve sunumu seçer. Hazırlanan konuşma metni yanıtın altında görünür.",
     "loading": "Ses oluşturuluyor…",
     "player": "Karakter yanıt sesi",
@@ -51,6 +66,7 @@
     "errors": {
       "unauthorized": "Bu yanıtı dinlemek için oturum açın.",
       "notFound": "Bu yanıt kullanılamıyor. Sohbeti yenileyin.",
+      "noDialogue": "Bu yanıtta söylenen söz yok; yalnızca anlatım, düşünce veya eylem var.",
       "empty": "Bu yanıt yalnızca eylemler veya sahne yönergeleri içeriyor, okunacak söz yok.",
       "tooLong": "Metin çok uzun: yanıtta 16.000 karakter, ses betiğinde 8.000 karakter sınırı var.",
       "busy": "Başka bir yanıt hazırlanıyor. Lütfen bekleyin.",

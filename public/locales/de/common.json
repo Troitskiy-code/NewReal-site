@@ -1,11 +1,26 @@
 {
   "chatSpeech": {
+    "recognition": {
+      "analyze": "Wer spricht?",
+      "loading": "Sprecher werden erkannt…",
+      "title": "Sprecher in dieser Szene",
+      "hint": "Prüfe, zu wem die einzelnen Abschnitte gehören. Die Wiedergabe verwendet weiterhin eine einzige ausgewählte Stimme.",
+      "empty": "Hier gibt es keinen Dialog oder Erzähltext zum Vorlesen.",
+      "narrator": "Erzähler",
+      "uncertain": "Sprecher unklar",
+      "npc": "Nebenfigur",
+      "kinds": {
+        "dialogue": "Dialog",
+        "narration": "Erzählung"
+      }
+    },
     "label": "Stimme des Charakters",
     "listen": "Hören",
     "pause": "Pause",
     "resume": "Wiedergabe fortsetzen",
     "seek": "Audio suchen",
     "preview": "Sprechtext",
+    "speechOnlyDialogue": "Im Einzelcharakter-Chat werden nur gesprochene Worte vorgelesen. Erzählung, Gedanken und Handlungen werden ausgelassen.",
     "speechOnly": "KI behält Dialog und Erzählung bei, entfernt Regieanweisungen und Auswahlmenüs und wählt die Lieferung aus. Der vorbereitete Sprechtext erscheint unter der Antwort.",
     "loading": "Audio erzeugen…",
     "player": "Audio der Zeichenantwort",
@@ -51,6 +66,7 @@
     "errors": {
       "unauthorized": "Melden Sie sich an, um diese Antwort anzuhören.",
       "notFound": "Diese Antwort ist nicht verfügbar. Aktualisieren Sie den Chat.",
+      "noDialogue": "Diese Antwort enthält keine gesprochenen Worte, nur Erzählung, Gedanken oder Handlungen.",
       "empty": "Diese Antwort enthält nur Handlungen oder Regieanweisungen, ohne Worte zu lesen.",
       "tooLong": "Der Text ist zu lang: bis zu 16.000 Zeichen pro Antwort und 8.000 im Audioskript.",
       "busy": "Eine weitere Antwort wird generiert. Bitte warten Sie.",

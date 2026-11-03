@@ -1,11 +1,26 @@
 {
   "chatSpeech": {
+    "recognition": {
+      "analyze": "Kto mówi?",
+      "loading": "Rozpoznawanie rozmówców…",
+      "title": "Rozmówcy w scenie",
+      "hint": "Sprawdź, do kogo należy każdy fragment. Odtwarzanie nadal korzysta z jednego wybranego głosu.",
+      "empty": "Nie ma tu dialogu ani narracji do odczytania.",
+      "narrator": "Narrator",
+      "uncertain": "Nie wiadomo, kto mówi",
+      "npc": "Postać drugoplanowa",
+      "kinds": {
+        "dialogue": "Dialog",
+        "narration": "Narracja"
+      }
+    },
     "label": "Głos postaci",
     "listen": "Słuchaj",
     "pause": "Pauza",
     "resume": "Wznów odtwarzanie",
     "seek": "Szukaj audio",
     "preview": "Tekst mowy",
+    "speechOnlyDialogue": "W czacie z jedną postacią odczytywane są tylko wypowiedziane słowa. Narracja, myśli i działania są pomijane.",
     "speechOnly": "AI utrzymuje dialog i narrację, usuwa wskazówki sceniczne i menu wyboru oraz wybiera dostawę. Przygotowany tekst mowy pojawia się pod odpowiedzią.",
     "loading": "Generowanie dźwięku…",
     "player": "Znak Odpowiedź audio",
@@ -51,6 +66,7 @@
     "errors": {
       "unauthorized": "Zaloguj się, aby wysłuchać tej odpowiedzi.",
       "notFound": "Ta odpowiedź jest niedostępna. Odśwież czat.",
+      "noDialogue": "Ta odpowiedź nie zawiera wypowiedzianych słów, tylko narrację, myśli lub działania.",
       "empty": "Ta odpowiedź zawiera tylko działania lub wskazówki dotyczące etapu, bez słów do przeczytania.",
       "tooLong": "Tekst jest zbyt długi: do 16 000 znaków na odpowiedź i 8 000 w skrypcie audio.",
       "busy": "Generowana jest kolejna odpowiedź. Proszę zaczekać.",

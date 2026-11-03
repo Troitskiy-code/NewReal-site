@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
+    "docs/**/*.canvas.tsx",
     "scripts",
     "logs"
   ]

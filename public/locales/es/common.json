@@ -1,11 +1,26 @@
 {
   "chatSpeech": {
+    "recognition": {
+      "analyze": "¿Quién habla?",
+      "loading": "Identificando a los hablantes…",
+      "title": "Voces de la escena",
+      "hint": "Revisa a quién pertenece cada fragmento. La reproducción todavía utiliza una sola voz seleccionada.",
+      "empty": "Aquí no hay diálogo ni narración para leer en voz alta.",
+      "narrator": "Narrador",
+      "uncertain": "No está claro quién habla",
+      "npc": "Personaje secundario",
+      "kinds": {
+        "dialogue": "Diálogo",
+        "narration": "Narración"
+      }
+    },
     "label": "Voz del personaje",
     "listen": "Escuchar",
     "pause": "Pausa",
     "resume": "Reanudar la reproducción",
     "seek": "Desplazarse por el audio",
     "preview": "Texto de la narración",
+    "speechOnlyDialogue": "En un chat con un solo personaje solo se leen las palabras pronunciadas. Se omiten la narración, los pensamientos y las acciones.",
     "speechOnly": "La IA conserva el diálogo y la narración, elimina las acotaciones y los menús de opciones y adapta la interpretación. El texto preparado para la voz aparece debajo de la respuesta.",
     "loading": "Generación de audio…",
     "player": "Audio de la respuesta del personaje",
@@ -51,6 +66,7 @@
     "errors": {
       "unauthorized": "Inicie sesión para escuchar esta respuesta.",
       "notFound": "Esta respuesta no está disponible. Actualice el chat.",
+      "noDialogue": "Esta respuesta no contiene palabras pronunciadas, solo narración, pensamientos o acciones.",
       "empty": "Esta respuesta solo contiene acciones o instrucciones de escenario, sin palabras para leer.",
       "tooLong": "El texto es demasiado largo: hasta 16.000 caracteres por respuesta y 8.000 en el guión de audio.",
       "busy": "Se está generando otra respuesta. Espera un momento.",

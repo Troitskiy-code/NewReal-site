@@ -1,11 +1,26 @@
 {
   "chatSpeech": {
+    "recognition": {
+      "analyze": "Qui parle ?",
+      "loading": "Identification des voix…",
+      "title": "Personnages de la scène",
+      "hint": "Vérifiez à qui appartient chaque passage. La lecture utilise encore une seule voix sélectionnée.",
+      "empty": "Il n’y a ici ni dialogue ni narration à lire.",
+      "narrator": "Narrateur",
+      "uncertain": "Locuteur incertain",
+      "npc": "Personnage secondaire",
+      "kinds": {
+        "dialogue": "Dialogue",
+        "narration": "Narration"
+      }
+    },
     "label": "Voix du personnage",
     "listen": "Écoute",
     "pause": "Pause",
     "resume": "Reprendre la lecture",
     "seek": "Rechercher l'audio",
     "preview": "Texte du discours",
+    "speechOnlyDialogue": "Dans une discussion avec un seul personnage, seules les paroles prononcées sont lues. La narration, les pensées et les actions sont omises.",
     "speechOnly": "L'IA conserve le dialogue et la narration, supprime les directions de scène et les menus de choix, et sélectionne la livraison. Le texte du discours préparé apparaît sous la réponse.",
     "loading": "Génération d'audio…",
     "player": "Audio de réponse de caractère",
@@ -51,6 +66,7 @@
     "errors": {
       "unauthorized": "Connectez - vous pour écouter cette réponse.",
       "notFound": "Cette réponse n'est pas disponible. Actualisez le chat.",
+      "noDialogue": "Cette réponse ne contient aucune parole prononcée, seulement de la narration, des pensées ou des actions.",
       "empty": "Cette réponse ne contient que des actions ou des instructions de scène, sans mots à lire.",
       "tooLong": "Le texte est trop long: jusqu'à 16 000 caractères par réponse et 8 000 dans le script audio.",
       "busy": "Une autre réponse est en cours de génération. Veuillez patienter.",

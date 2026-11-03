@@ -1,11 +1,26 @@
 {
   "chatSpeech": {
+    "recognition": {
+      "analyze": "Who is speaking?",
+      "loading": "Identifying speakers…",
+      "title": "Speakers in this scene",
+      "hint": "Review who each passage belongs to. Playback still uses one selected voice.",
+      "empty": "There is no dialogue or narration to read aloud here.",
+      "narrator": "Narrator",
+      "uncertain": "Speaker unclear",
+      "npc": "Supporting character",
+      "kinds": {
+        "dialogue": "Dialogue",
+        "narration": "Narration"
+      }
+    },
     "label": "Character speech",
     "listen": "Listen",
     "pause": "Pause",
     "resume": "Resume playback",
     "seek": "Seek audio",
     "preview": "Speech text",
+    "speechOnlyDialogue": "In a single-character chat, only spoken words are read aloud. Narration, thoughts and actions are skipped.",
     "speechOnly": "AI keeps dialogue and narration, removes stage directions and choice menus, and selects the delivery. The prepared speech text appears below the reply.",
     "loading": "Generating audio…",
     "player": "Character reply audio",
@@ -51,6 +66,7 @@
     "errors": {
       "unauthorized": "Sign in to listen to this reply.",
       "notFound": "This reply is unavailable. Refresh the chat.",
+      "noDialogue": "This reply has no spoken words — only narration, thoughts or actions.",
       "empty": "This reply only contains actions or stage directions, with no words to read.",
       "tooLong": "The text is too long: up to 16,000 characters per reply and 8,000 in the audio script.",
       "busy": "Another reply is being generated. Please wait.",

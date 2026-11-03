@@ -20,7 +20,9 @@ export const NARRATOR_SPEECH_VOICE: SpeechVoice = "Charon";
 export type SpeechVoiceDefault = { voice: SpeechVoice; role: SpeechVoiceRole };
 export const SPEECH_MAX_CHARACTERS = 8_000;
 export const SPEECH_SOURCE_MAX_CHARACTERS = 16_000;
-export const SPEECH_PREPARATION_VERSION = "verbatim-performance-v2-character";
+export const SPEECH_PREPARATION_VERSION = "verbatim-performance-v3-content-mode";
+export type SpeechContentMode = "dialogue" | "scene";
+export function isSpeechContentMode(value: unknown): value is SpeechContentMode { return value === "dialogue" || value === "scene"; }
 export type SpeechTurn = { text: string; style: string };
 export type PreparedSpeech = { text: string; turns: SpeechTurn[] };
 export type SpeechQuota = { enabled: boolean; unlimited: boolean; remaining: number | null; resetsAt: string };
