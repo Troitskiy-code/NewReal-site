@@ -21,6 +21,8 @@
     "seek": "Procurar no áudio",
     "preview": "Texto da fala",
     "speechOnlyDialogue": "Numa conversa com uma só personagem, apenas as palavras pronunciadas são lidas. A narração, os pensamentos e as ações são ignorados.",
+    "narratorDialogue": "A narração e as ações são lidas pelo narrador {{narrator}}; as falas, pela voz da personagem {{voice}}.",
+    "narratorScene": "A narração é lida por {{voice}}; as falas das personagens, por uma voz masculina ou feminina separada conforme quem fala.",
     "speechOnly": "A IA mantém o diálogo e a narração, remove as indicações de cena e menus de escolha e seleciona o tom. O texto de fala preparado aparece abaixo da resposta.",
     "loading": "A gerar áudio…",
     "player": "Áudio da resposta do personagem",

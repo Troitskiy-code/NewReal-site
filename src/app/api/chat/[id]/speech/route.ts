@@ -6,10 +6,10 @@ import { getAuthorizedChatScope } from "@/lib/chatAccess";
 import { messageScopeWhere, requestedThreadId } from "@/lib/chatThreads";
 import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { ChatSpeechError, attachSpeechTask, deferSpeech, failSpeech, finishSpeech, getSpeechQuota, reserveSpeech,
-  getPreparedSpeechText, markSpeechSubmitting, saveSpeechPreparation } from "@/lib/chatSpeech";
+  getPreparedSpeechText, markSpeechSubmitting, saveSpeechPreparation, speechNarratorEnabled } from "@/lib/chatSpeech";
 import { prepareSpeechText, SpeechPreparationError } from "@/lib/speechPreparation";
 import { downloadSpeech, getSpeechTask, SpeechProviderError, submitSpeech, speechEnabled } from "@/lib/speechProvider";
-import { isSpeechVoice, isSpeechVoiceChoice, isSpeechContentMode, type SpeechQuota, type SpeechContentMode } from "@/lib/speech";
+import { isSpeechVoice, isSpeechVoiceChoice, isSpeechContentMode, speechCast, type SpeechQuota, type SpeechContentMode } from "@/lib/speech";
 import { getAutomaticSpeechVoice } from "@/lib/speechVoiceSelection";
 import { speechRecognitionEnabled } from "@/lib/speechRecognition";
 import { consumeRateLimit } from "@/lib/rateLimit";
@@ -23,14 +23,14 @@ type Context = { params: Promise<{ id: string }> };
 function problem(code: string, status: number) {
   return NextResponse.json({ code }, { status, headers: PRIVATE });
 }
-function pendingResponse(text: string | null, voice: string, contentMode: SpeechContentMode) {
-  return NextResponse.json({ pending: true, text, voice, contentMode }, { status: 202, headers: { ...PRIVATE, "Retry-After": "4" } });
+function pendingResponse(text: string | null, voice: string, contentMode: SpeechContentMode, narrated: boolean) {
+  return NextResponse.json({ pending: true, text, voice, contentMode, narrated }, { status: 202, headers: { ...PRIVATE, "Retry-After": "4" } });
 }
-function audioResponse(audio: Buffer, quota: SpeechQuota, voice: string, contentMode: SpeechContentMode) {
+function audioResponse(audio: Buffer, quota: SpeechQuota, voice: string, contentMode: SpeechContentMode, narrated: boolean) {
   return new Response(new Uint8Array(audio), { headers: { ...PRIVATE, "Content-Type": "audio/mpeg",
     "Content-Length": String(audio.length), "X-Content-Type-Options": "nosniff",
     "X-Speech-Unlimited": String(quota.unlimited), "X-Speech-Remaining": String(quota.remaining ?? -1),
-    "X-Speech-Resets-At": quota.resetsAt, "X-Speech-Voice": voice, "X-Speech-Content-Mode": contentMode } });
+    "X-Speech-Resets-At": quota.resetsAt, "X-Speech-Voice": voice, "X-Speech-Content-Mode": contentMode, "X-Speech-Narrated": String(narrated) } });
 }
 
 export async function GET(req: NextRequest, context: Context) {
@@ -55,12 +55,15 @@ export async function GET(req: NextRequest, context: Context) {
       if (requestedMode !== null && !isSpeechContentMode(requestedMode)) return problem("invalid", 400);
       // Metadata can inspect an owned existing clip prepared before a story-mode change; it starts no paid work.
       const contentMode: SpeechContentMode = isSpeechContentMode(requestedMode) ? requestedMode : automatic.role === "narrator" ? "scene" : "dialogue";
-      return NextResponse.json({ text: await getPreparedSpeechText({ userId: session.user.id, characterId: id, messageId, voice, contentMode }) }, { headers: PRIVATE });
+      const requestedNarration = req.nextUrl.searchParams.get("narrated");
+      if (requestedNarration !== null && requestedNarration !== "true" && requestedNarration !== "false") return problem("invalid", 400);
+      const narrator = requestedNarration === null ? speechNarratorEnabled() : requestedNarration === "true";
+      return NextResponse.json({ text: await getPreparedSpeechText({ userId: session.user.id, characterId: id, messageId, voice, contentMode, narrator }) }, { headers: PRIVATE });
     }
     const [quota, automatic] = await Promise.all([getSpeechQuota(session.user.id), getAutomaticSpeechVoice(id,
       access.resolution.status === "found" ? access.resolution.scope.threadId : null)]);
     return NextResponse.json({ ...quota, automatic, contentMode: automatic.role === "narrator" ? "scene" : "dialogue",
-      recognitionEnabled: speechRecognitionEnabled() }, { headers: PRIVATE });
+      narrated: speechNarratorEnabled(), recognitionEnabled: speechRecognitionEnabled() }, { headers: PRIVATE });
   } catch (error) {
     errorLog("Speech", "Speech status unavailable", toSafeDiagnostic(error));
     return problem("unavailable", 503);
@@ -115,8 +118,8 @@ export async function POST(req: NextRequest, context: Context) {
       const automatic = await getAutomaticSpeechVoice(characterId, access.resolution.scope.threadId);
       const voice = isSpeechVoice(body.voice) ? body.voice : automatic.voice;
       job = await reserveSpeech({ userId: session.user.id, characterId, messageId: message.id,
-        voice, contentMode: automatic.role === "narrator" ? "scene" : "dialogue" });
-      if (job.kind === "cached") return audioResponse(job.audio, job.quota, voice, job.contentMode);
+        voice, contentMode: automatic.role === "narrator" ? "scene" : "dialogue", narrator: speechNarratorEnabled() });
+      if (job.kind === "cached") return audioResponse(job.audio, job.quota, voice, job.contentMode, job.narrator);
       const reservation = job.reservation;
       if (reservation.uncertain) throw new ChatSpeechError("uncertain", 503);
       if (!reservation.providerTaskId) {
@@ -125,17 +128,20 @@ export async function POST(req: NextRequest, context: Context) {
           // The card tells the preparation who is speaking, so the casting note matches the character.
           const character = await prisma.character.findUnique({ where: { id: characterId },
             select: { name: true, description: true, appearance: true } });
-          await saveSpeechPreparation(reservation, await prepareSpeechText(reservation.text, character ?? undefined, reservation.contentMode));
+          await saveSpeechPreparation(reservation, await prepareSpeechText(reservation.text, character ?? undefined, reservation.contentMode, reservation.narrator));
         }
-        if (!reservation.preparedText) throw new ChatSpeechError(reservation.contentMode === "dialogue" ? "noDialogue" : "empty", 400);
+        if (!reservation.preparedText) throw new ChatSpeechError(reservation.contentMode === "dialogue" && !reservation.narrator ? "noDialogue" : "empty", 400);
         stage = "submit";
         await markSpeechSubmitting(reservation);
         await recordKieSpeechCost(reservation, reservation.model, "pending");
-        const taskId = await submitSpeech(reservation.preparedTurns!, reservation.voice, reservation.model);
+        // One task and one cost event: narration and spoken lines are two speakers of the same recording, in source order.
+        const cast = reservation.narrator ? speechCast(reservation.voice, reservation.contentMode, reservation.preparedTurns!) : null;
+        const taskId = cast ? await submitSpeech(reservation.preparedTurns!, cast.character, reservation.model, cast.narrator)
+          : await submitSpeech(reservation.preparedTurns!, reservation.voice, reservation.model);
         await attachSpeechTask(reservation, taskId);
         // Keep preparation/submission and result download in separate bounded requests.
         await deferSpeech(reservation);
-        return pendingResponse(reservation.preparedText, reservation.voice, reservation.contentMode);
+        return pendingResponse(reservation.preparedText, reservation.voice, reservation.contentMode, reservation.narrator);
       }
       stage = "poll";
       const task = await getSpeechTask(reservation.providerTaskId!, reservation.model);
@@ -143,12 +149,12 @@ export async function POST(req: NextRequest, context: Context) {
       if (task.state === "failed") { terminalFailure = true; throw new SpeechProviderError(); }
       if (task.state === "pending") {
         await deferSpeech(reservation);
-        return pendingResponse(reservation.preparedText, reservation.voice, reservation.contentMode);
+        return pendingResponse(reservation.preparedText, reservation.voice, reservation.contentMode, reservation.narrator);
       }
       stage = "download";
       const audio = await downloadSpeech(task.url!);
       stage = "deliver";
-      return audioResponse(audio, await finishSpeech(job.reservation, audio), voice, job.reservation.contentMode);
+      return audioResponse(audio, await finishSpeech(job.reservation, audio), voice, job.reservation.contentMode, job.reservation.narrator);
     } catch (error) {
       if (job?.kind === "reserved") {
         if (terminalFailure || (error instanceof SpeechProviderError && error.definitive && !job.reservation.providerTaskId)
@@ -164,7 +170,7 @@ export async function POST(req: NextRequest, context: Context) {
         providerRequestId: job?.kind === "reserved" ? job.reservation.providerTaskId : null }, toSafeDiagnostic(error));
       // A known accepted task survives transient poll/media failures. Let the existing client poll recover it.
       if (!terminalFailure && job?.kind === "reserved" && job.reservation.providerTaskId
-        && error instanceof SpeechProviderError && !error.definitive) return pendingResponse(job.reservation.preparedText, job.reservation.voice, job.reservation.contentMode);
+        && error instanceof SpeechProviderError && !error.definitive) return pendingResponse(job.reservation.preparedText, job.reservation.voice, job.reservation.contentMode, job.reservation.narrator);
       if (error instanceof SpeechPreparationError && error.reason === "too_long") return problem("tooLong", 400);
       return problem("unavailable", 503);
     }

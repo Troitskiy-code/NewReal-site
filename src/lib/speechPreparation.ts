@@ -29,8 +29,10 @@ const DELIVERY: Record<string, string> = { natural: "", soft: "soft spoken", whi
 const PACE: Record<string, string> = { normal: "", slow: "speaking slowly", fast: "speaking slightly faster" };
 const VOCALS = new Set(["none", "sigh", "breath", "gasp", "chuckle", "laugh", "sob", "short pause"]);
 
-export function speechPreparationPrompt(contentMode: SpeechContentMode): string {
-  const mode = contentMode === "scene"
+const NARRATOR_MODE = "ТЕКУЩИЙ РЕЖИМ: narrator. Реплику читают два голоса: рассказчик читает повествование и действия, персонаж — свои произнесённые вслух слова. В этом запросе сохрани в исходном порядке ВСЁ содержательное повествование, описания обстановки и действия героев, в том числе действия в *звёздочках* и ремарки вроде «— сказала она», и все произнесённые слова. Правила удаления повествования и ремарок из режимов dialogue и scene в этом запросе НЕ применяются. Мысли и внутренний монолог — narration, их читает рассказчик. По-прежнему исключи меню выбора, кнопки, технические заметки, код, URL и разметку; символы *, _, # и скобки ремарки не входят во фрагмент, разбивай текст вокруг них. Прямую речь всегда выделяй отдельным фрагментом dialogue, без соседнего повествования: source *Она улыбнулась.* «Привет!» — сказала она. -> segments:[\"Она улыбнулась.\",\"Привет!\",\"— сказала она.\"], segmentKinds:[\"narration\",\"dialogue\",\"action\"]. Добавь поле dialogueGender: female или male — пол того, кто произносит большую часть прямой речи; unknown, если речи нет или пол неясен. В этом режиме допускается до 64 фрагментов.";
+
+export function speechPreparationPrompt(contentMode: SpeechContentMode, narrator = false): string {
+  const mode = narrator ? NARRATOR_MODE : contentMode === "scene"
     ? "ТЕКУЩИЙ РЕЖИМ: scene. Это вселенная или групповая история. Обязательно сохрани содержательное повествование как narration и все произнесённые слова как dialogue. Даже если нет ни одной цитаты, рассказ о событиях и обстановке должен озвучиваться. Правила удаления всего повествования для dialogue в этом запросе НЕ применяются."
     : "ТЕКУЩИЙ РЕЖИМ: dialogue. Это одиночный чат, в котором тоже могут говорить NPC. Выбери все произнесённые вслух слова всех говорящих, включая NPC. Если ответ состоит из повествования, верни пустые segments, segmentKinds и performance. Не подменяй отсутствующие слова рассказом о сцене.";
   return `${SPEECH_PREPARATION_PROMPT}\nПроверяй пунктуацию как часть дословности. Например, source Борис: «Нужно уходить». -> segments:["Нужно уходить"], а НЕ ["Нужно уходить."]: точка после закрывающей кавычки не входит в непрерывный фрагмент внутри неё.\n\n${mode}`;
@@ -70,18 +72,24 @@ export function speechVoiceBrief(value: unknown): string {
   return brief.replace(/[.\s]+$/, "");
 }
 
-/** AI chooses enums and a validated casting note, never arbitrary provider instructions or inline markup. */
-export function validateSpeechPerformance(source: string, value: unknown, contentMode?: SpeechContentMode): PreparedSpeech {
+/**
+ * AI chooses enums and a validated casting note, never arbitrary provider instructions or inline markup.
+ * With `narrator`, narration and actions are kept as narrator turns and spoken words as the character's.
+ */
+export function validateSpeechPerformance(source: string, value: unknown, contentMode?: SpeechContentMode, narrator = false): PreparedSpeech {
   validateSpeechPreparation(source, value);
-  const data = value as { segments: string[]; segmentKinds?: unknown; performance?: unknown; voice?: unknown };
+  const data = value as { segments: string[]; segmentKinds?: unknown; performance?: unknown; voice?: unknown; dialogueGender?: unknown };
   const kinds = data.segmentKinds;
-  if (contentMode && (!Array.isArray(kinds) || kinds.length !== data.segments.length
+  if ((contentMode || narrator) && (!Array.isArray(kinds) || kinds.length !== data.segments.length
     || kinds.some(kind => !["dialogue", "narration", "action"].includes(kind)))) throw new SpeechPreparationError("invalid_response");
-  const include = (index: number) => !contentMode || (Array.isArray(kinds)
+  const include = (index: number) => narrator || !contentMode || (Array.isArray(kinds)
     && (kinds[index] === "dialogue" || (contentMode === "scene" && kinds[index] === "narration")));
+  const speaker = (index: number) => narrator && (kinds as string[])[index] !== "dialogue" ? "narrator" as const : "character" as const;
+  // Only picks the dialogue voice in a world or group; an unclear answer falls back to the default voice.
+  const gender = narrator && (data.dialogueGender === "female" || data.dialogueGender === "male") ? data.dialogueGender : undefined;
   const text = validateSpeechPreparation(source, { segments: data.segments.filter((_segment, index) => include(index)) });
   const brief = speechVoiceBrief(data.voice);
-  if (data.segments.length > 32 || !Array.isArray(data.performance)) throw new SpeechPreparationError("invalid_response");
+  if (data.segments.length > (narrator ? 64 : 32) || !Array.isArray(data.performance)) throw new SpeechPreparationError("invalid_response");
   const performance = new Map<number, { style: string; before: string; after: string }>();
   let vocalCount = 0;
   for (const item of data.performance) {
@@ -104,10 +112,13 @@ export function validateSpeechPerformance(source: string, value: unknown, conten
     // Source HTML/control tags cannot masquerade as model instructions or vocalizations.
     if (/[<>]/.test(segment)) throw new SpeechPreparationError("invalid_response");
     const direction = performance.get(index);
-    const turn = { text: [direction?.before, segment.trim().replace(/\s+/g, " "), direction?.after].filter(Boolean).join(" "),
-      style: [brief && `Character: ${brief}.`, direction?.style && `Delivery: ${direction.style}.`].filter(Boolean).join(" ") };
+    const role = speaker(index);
+    // The casting note describes the character; the narrator keeps only the line's delivery.
+    const turn: SpeechTurn = { text: [direction?.before, segment.trim().replace(/\s+/g, " "), direction?.after].filter(Boolean).join(" "),
+      style: [role === "character" && brief && `Character: ${brief}.`, direction?.style && `Delivery: ${direction.style}.`].filter(Boolean).join(" "),
+      ...(narrator ? { speaker: role, ...(role === "character" && gender ? { gender } : {}) } : {}) };
     const previous = turns.at(-1);
-    if (previous?.style === turn.style) previous.text += ` ${turn.text}`;
+    if (previous?.style === turn.style && previous.speaker === turn.speaker) previous.text += ` ${turn.text}`;
     else turns.push(turn);
   });
   return { text, turns };
@@ -137,7 +148,7 @@ export function validateSpeechPreparation(source: string, value: unknown): strin
 export type SpeechCharacter = { name: string; description?: string | null; appearance?: string | null };
 const clip = (value: string | null | undefined, max: number) => (value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
-export async function prepareSpeechText(content: string, character?: SpeechCharacter, contentMode: SpeechContentMode = "dialogue"): Promise<PreparedSpeech> {
+export async function prepareSpeechText(content: string, character?: SpeechCharacter, contentMode: SpeechContentMode = "dialogue", narrator = false): Promise<PreparedSpeech> {
   const source = speechSource(content);
   const card = character ? { name: clip(character.name, 80), personality: clip(character.description, 700), appearance: clip(character.appearance, 300) } : null;
   if (Array.from(source).length > SPEECH_SOURCE_MAX_CHARACTERS) throw new SpeechPreparationError("too_long");
@@ -145,8 +156,8 @@ export async function prepareSpeechText(content: string, character?: SpeechChara
     "speech_prepare", DEEPINFRA_CHAT_URL, {
       model: SPEECH_PREPARATION_MODEL, temperature: 0, max_tokens: 8_000,
       response_format: { type: "json_object" },
-      messages: [{ role: "system", content: speechPreparationPrompt(contentMode) },
-        { role: "user", content: JSON.stringify({ ...(card ? { character: card } : {}), speechMode: contentMode, source }) }],
+      messages: [{ role: "system", content: speechPreparationPrompt(contentMode, narrator) },
+        { role: "user", content: JSON.stringify({ ...(card ? { character: card } : {}), speechMode: narrator ? "narrator" : contentMode, source }) }],
     }, { timeout: 40_000, maxContentLength: 128 * 1024, maxBodyLength: 128 * 1024,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${providerApiKey("deepinfra")}` } });
   const choice = response.data.choices?.[0];
@@ -154,5 +165,5 @@ export async function prepareSpeechText(content: string, character?: SpeechChara
   let value: unknown;
   try { value = JSON.parse(choice.message?.content ?? ""); }
   catch { throw new SpeechPreparationError("invalid_response"); }
-  return validateSpeechPerformance(source, repairSpeechQuoteBoundaries(source, value), contentMode);
+  return validateSpeechPerformance(source, repairSpeechQuoteBoundaries(source, value), contentMode, narrator);
 }

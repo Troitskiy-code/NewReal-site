@@ -21,6 +21,8 @@
     "seek": "Seek audio",
     "preview": "Speech text",
     "speechOnlyDialogue": "In a single-character chat, only spoken words are read aloud. Narration, thoughts and actions are skipped.",
+    "narratorDialogue": "Narration and actions are read by the narrator {{narrator}}; spoken lines use the character voice {{voice}}.",
+    "narratorScene": "Narration is read by {{voice}}; the characters' lines use a separate male or female voice that matches the speaker.",
     "speechOnly": "AI keeps dialogue and narration, removes stage directions and choice menus, and selects the delivery. The prepared speech text appears below the reply.",
     "loading": "Generating audio…",
     "player": "Character reply audio",

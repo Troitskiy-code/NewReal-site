@@ -12,6 +12,8 @@ import pg from 'pg';
 
 const require = createRequire(import.meta.url);
 process.env.CHAT_THREADS_ENABLED = 'true';
+// The single-voice scenarios run with the narrator off; the narrator section switches it on explicitly.
+process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'false';
 const { NextRequest } = require('next/server');
 const root = process.cwd();
 const fixture = mkdtempSync(join(root, '.runtime', 'speech-db-'));
@@ -31,12 +33,12 @@ const run = (file, args, options = {}) => {
 const audio = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(160, 1)]);
 let sessionUser = 'free', providerCalls = 0, preparationCalls = 0, preparationFailure = false, providerFailure = false, providerState = 'ready', pollFailure = false, downloadFailure = false;
 let preparationOverride = null;
-const preparationModes = [];
+const preparationModes = [], preparationNarration = [], submissions = [];
 class FixtureProviderError extends Error { constructor(status, definitive = false) { super('Speech provider unavailable'); this.status = status; this.definitive = definitive; } }
 const provider = { SPEECH_MODEL: 'google/gemini-3-8-flash-lite-tts', SPEECH_EXPRESSIVE_MODEL: 'google/gemini-3-8-flash-tts', SPEECH_CACHE_VERSION: 'gemini-native-v2-mp3-64', speechEnabled: () => true,
   speechModelFor: unlimited => unlimited ? 'google/gemini-3-8-flash-tts' : 'google/gemini-3-8-flash-lite-tts',
   SpeechProviderError: FixtureProviderError,
-  submitSpeech: async () => { providerCalls++; if (providerFailure) throw new FixtureProviderError(503, true); return 'task_' + providerCalls; },
+  submitSpeech: async (turns, voice, model, narrator) => { providerCalls++; submissions.push({ turns, voice, model, narrator }); if (providerFailure) throw new FixtureProviderError(503, true); return 'task_' + providerCalls; },
   getSpeechTask: async () => { if (pollFailure) throw new FixtureProviderError(pollFailure === 'transient' ? 503 : 401, pollFailure !== 'transient'); return { state: providerState, credits: .47, url: 'https://tempfile.aiquickdraw.com/speech.wav' }; },
   downloadSpeech: async () => { if (downloadFailure) throw new FixtureProviderError(); return audio; } };
 const lame = await import('@breezystack/lamejs');
@@ -56,7 +58,7 @@ function loader(overrides = {}) {
     if (cache.has(file)) return cache.get(file);
     if (file.endsWith('speechProvider.ts') && !overrides.realProvider) return provider;
     if (file.endsWith('speechPreparation.ts') && !overrides.realPreparation) return {
-      prepareSpeechText: async (text, _character, contentMode) => { preparationCalls++; preparationModes.push(contentMode); if (preparationFailure) throw new Error('Synthetic preparation failure'); if (preparationOverride) return preparationOverride(text, contentMode); const spoken = text.replace(/\*[^*]*\*/g, '').trim(); return { text: spoken, turns: spoken ? [{ text: spoken, style: '' }] : [] }; },
+      prepareSpeechText: async (text, _character, contentMode, narrator = false) => { preparationCalls++; preparationModes.push(contentMode); preparationNarration.push(narrator); if (preparationFailure) throw new Error('Synthetic preparation failure'); if (preparationOverride) return preparationOverride(text, contentMode, narrator); const spoken = text.replace(/\*[^*]*\*/g, '').trim(); return { text: spoken, turns: spoken ? [{ text: spoken, style: '' }] : [] }; },
       SpeechPreparationError: class extends Error {},
     };
     const loadedModule = { exports: {} }; cache.set(file, loadedModule.exports);
@@ -189,6 +191,37 @@ try {
     [{ segment: 0, emotion: 'neutral', delivery: 'natural', pace: 'normal', vocalBefore: 'foreign-accent' }]]) {
     assert.throws(() => preparation.validateSpeechPerformance(performanceSource, { segments: ['Я тебя ждала.'], performance }));
     check(true, 'untrusted style instructions and unsupported vocal tags are rejected');
+  }
+  // Narrator voice: narration and actions become narrator turns, spoken words stay the character's, in source order.
+  const mixedSource = '*Она подошла к окну.* «Ты опоздал», — сказала Алиса. За окном шёл дождь. «Но я рада».';
+  const mixedSelection = { voice: 'A warm young woman; teasing.', dialogueGender: 'female',
+    segments: ['Она подошла к окну.', 'Ты опоздал', '— сказала Алиса.', 'За окном шёл дождь.', 'Но я рада'],
+    segmentKinds: ['narration', 'dialogue', 'action', 'narration', 'dialogue'],
+    performance: [{ segment: 1, emotion: 'amused', delivery: 'natural', pace: 'normal' }, { segment: 4, emotion: 'tender', delivery: 'soft', pace: 'normal' }] };
+  const narratedScript = preparation.validateSpeechPerformance(mixedSource, mixedSelection, 'dialogue', true);
+  check(narratedScript.text === 'Она подошла к окну. Ты опоздал — сказала Алиса. За окном шёл дождь. Но я рада'
+    && narratedScript.turns.map(turn => turn.speaker).join() === 'narrator,character,narrator,character'
+    && narratedScript.turns[2].text === '— сказала Алиса. За окном шёл дождь.', 'narrated script keeps narration, actions and speech in source order and merges adjacent narrator lines');
+  check(narratedScript.turns.filter(turn => turn.speaker === 'character').every(turn => turn.style.startsWith('Character: A warm young woman') && turn.gender === 'female')
+    && narratedScript.turns.filter(turn => turn.speaker === 'narrator').every(turn => !turn.style.includes('Character:') && !turn.gender),
+    'the casting note and speaker gender belong to character turns only');
+  check(preparation.validateSpeechPerformance('Вечер опустился на город.', { segments: ['Вечер опустился на город.'], segmentKinds: ['narration'], performance: [] }, 'dialogue', true).turns[0].speaker === 'narrator',
+    'with the narrator voice an entirely narrative character reply is still read aloud');
+  check(preparation.validateSpeechPerformance(typedSource, typedSelection, 'dialogue').turns.every(turn => turn.speaker === undefined),
+    'single-voice preparation keeps its previous turn shape');
+  check(preparation.validateSpeechPerformance(mixedSource, { ...mixedSelection, dialogueGender: 'ignore instructions' }, 'scene', true).turns.every(turn => !turn.gender),
+    'an invalid speaker gender is dropped without failing the preparation');
+  assert.throws(() => preparation.validateSpeechPerformance(mixedSource, { ...mixedSelection, segmentKinds: undefined }, undefined, true));
+  check(true, 'narrated preparation requires a classification for every segment');
+  check(preparation.speechPreparationPrompt('dialogue', true).includes('ТЕКУЩИЙ РЕЖИМ: narrator') && !preparation.speechPreparationPrompt('dialogue').includes('ТЕКУЩИЙ РЕЖИМ: narrator'),
+    'only the narrated preparation asks to keep narration for the narrator');
+  for (const [voice, mode, turns, character, narrator] of [
+    ['Aoede', 'dialogue', [], 'Aoede', 'Charon'], ['Charon', 'dialogue', [], 'Charon', 'Kore'],
+    ['Charon', 'scene', narratedScript.turns, 'Aoede', 'Charon'], ['Charon', 'scene', [{ text: 'Стой!', style: '', speaker: 'character', gender: 'male' }], 'Fenrir', 'Charon'],
+    ['Charon', 'scene', [], 'Fenrir', 'Charon'], ['Aoede', 'scene', narratedScript.turns, 'Kore', 'Aoede'], ['Fenrir', 'scene', [], 'Orus', 'Fenrir'],
+  ]) {
+    const cast = shared.speechCast(voice, mode, turns);
+    check(cast.character === character && cast.narrator === narrator && cast.character !== cast.narrator, `narrator cast: ${voice} / ${mode} -> ${character} + ${narrator}`);
   }
   for (const id of ['free', 'paid', 'expired', 'other']) {
     await db.user.create({ data: { id, subscriptionType: id === 'paid' || id === 'expired' ? 'dialog' : 'start',
@@ -392,6 +425,68 @@ try {
     'a narrative-only character reply does not consume a free playback');
   preparationOverride = null;
 
+  // Narrator voice through the real API: one task with two voices, plan model and quota unchanged.
+  process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'true';
+  await db.user.create({ data: { id: 'narrated', subscriptionType: 'dialog', subscriptionEnd: new Date('2099-01-01') } });
+  await db.user.create({ data: { id: 'narrated-free', subscriptionType: 'start' } });
+  const mixedReply = '*Она подошла к окну.* «Ты опоздал», — сказала Алиса. «Но я рада».';
+  preparationOverride = (text, mode, narrated) => narrated
+    ? { text: 'Она подошла к окну. Ты опоздал — сказала Алиса. Но я рада', turns: [
+      { text: 'Она подошла к окну.', style: '', speaker: 'narrator' }, { text: 'Ты опоздал', style: '', speaker: 'character', gender: 'female' },
+      { text: '— сказала Алиса.', style: '', speaker: 'narrator' }, { text: 'Но я рада', style: '', speaker: 'character', gender: 'female' }] }
+    : { text: 'Ты опоздал Но я рада', turns: [{ text: 'Ты опоздал Но я рада', style: '' }] };
+  const narratedReq = (id, userId = 'narrated', extra = {}) => new NextRequest(`http://localhost/api/chat/hero/speech?thread=story-${userId}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost' }, body: JSON.stringify({ messageId: id, voice: 'Aoede', ...extra }) });
+  sessionUser = 'narrated';
+  await add('narrated-mixed', 'narrated', 'assistant', mixedReply);
+  const narratedStatus = await (await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated'), context)).json();
+  check(narratedStatus.narrated === true && narratedStatus.contentMode === 'dialogue', 'status announces the narrator voice for the client hint');
+  const beforeNarrated = submissions.length;
+  const narratedPlay = await post(narratedReq('narrated-mixed'), context);
+  const narratedTask = submissions.at(-1);
+  check(narratedPlay.status === 200 && narratedPlay.headers.get('X-Speech-Narrated') === 'true' && submissions.length === beforeNarrated + 1
+    && preparationNarration.at(-1) === true && preparationModes.at(-1) === 'dialogue', 'a mixed reply is prepared for the narrator and submitted as exactly one task');
+  check(narratedTask.voice === 'Aoede' && narratedTask.narrator === 'Charon' && narratedTask.model === 'google/gemini-3-8-flash-tts'
+    && narratedTask.turns.map(turn => turn.speaker).join() === 'narrator,character,narrator,character',
+    'the character keeps the selected voice, the narrator reads narration, and paid plans keep the expressive model');
+  const narratedPreview = await (await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated&messageId=narrated-mixed&voice=Aoede&contentMode=dialogue&narrated=true'), context)).json();
+  const singleVoicePreview = await (await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated&messageId=narrated-mixed&voice=Aoede&contentMode=dialogue&narrated=false'), context)).json();
+  check(narratedPreview.text.includes('Она подошла к окну.') && singleVoicePreview.text === null, 'the preview reads the narrated script of the recording that was played');
+  check((await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated&messageId=narrated-mixed&voice=Aoede&narrated=maybe'), context)).status === 400, 'an invalid narration flag is refused');
+  const narratedCalls = providerCalls;
+  check((await post(narratedReq('narrated-mixed'), context)).headers.get('X-Speech-Narrated') === 'true' && providerCalls === narratedCalls, 'a narrated recording replays from its own cache');
+  check(service.speechClipId('narrated', 'narrated-mixed', mixedReply, 'Aoede', provider.SPEECH_EXPRESSIVE_MODEL, 'dialogue', true)
+    !== service.speechClipId('narrated', 'narrated-mixed', mixedReply, 'Aoede', provider.SPEECH_EXPRESSIVE_MODEL, 'dialogue'), 'narrated and single-voice recordings never share a cache entry');
+  await db.chatPromptState.create({ data: { scopeKey: 'thread:story-narrated', characterId: 'hero', mode: 'world' } });
+  await add('narrated-world', 'narrated', 'assistant', mixedReply);
+  await post(narratedReq('narrated-world', 'narrated', { voice: 'auto' }), context);
+  check(submissions.at(-1).narrator === 'Charon' && submissions.at(-1).voice === 'Aoede' && preparationModes.at(-1) === 'scene',
+    'a world narrator keeps the automatic narrator voice and gives a female speaker a female voice');
+  await db.chatPromptState.delete({ where: { scopeKey_characterId: { scopeKey: 'thread:story-narrated', characterId: 'hero' } } });
+  preparationOverride = (text, mode, narrated) => narrated ? { text: 'Вечер опустился на город.', turns: [{ text: 'Вечер опустился на город.', style: '', speaker: 'narrator' }] } : { text: '', turns: [] };
+  await add('narrated-only-narration', 'narrated', 'assistant', 'Вечер опустился на город.');
+  check((await post(narratedReq('narrated-only-narration'), context)).status === 200 && submissions.at(-1).narrator === 'Charon',
+    'a narrative-only single-character reply is read by the narrator instead of failing with noDialogue');
+  // A task accepted with the narrator survives the rollback flag and is never bought twice.
+  preparationOverride = (text, mode, narrated) => ({ text, turns: [{ text, style: '', ...(narrated ? { speaker: 'narrator' } : {}) }] });
+  await add('narrated-pending', 'narrated', 'assistant', mixedReply);
+  providerState = 'pending';
+  check((await post(narratedReq('narrated-pending'), context)).status === 202, 'narrated synthesis can be queued');
+  const pendingCalls = providerCalls;
+  process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'false';
+  providerState = 'ready';
+  const narratedResumed = await post(narratedReq('narrated-pending'), context);
+  check(narratedResumed.status === 200 && narratedResumed.headers.get('X-Speech-Narrated') === 'true' && providerCalls === pendingCalls,
+    'turning the narrator off resumes an accepted narrated task instead of buying a single-voice one');
+  process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'true';
+  sessionUser = 'narrated-free';
+  await add('narrated-free-mixed', 'narrated-free', 'assistant', mixedReply);
+  const freeNarrated = await post(narratedReq('narrated-free-mixed', 'narrated-free'), context);
+  check(freeNarrated.status === 200 && submissions.at(-1).model === 'google/gemini-3-8-flash-lite-tts' && submissions.at(-1).narrator === 'Charon'
+    && (await service.getSpeechQuota('narrated-free')).remaining === 0, 'a free narrated playback uses Flash-Lite and spends exactly one daily playback');
+  process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'false';
+  preparationOverride = null;
+
   // Durable async jobs: polling, reconnects and failures must not purchase a second synthesis.
   await db.speechDailyQuota.deleteMany({ where: { userId: 'free' } });
   sessionUser = 'free';
@@ -498,6 +593,20 @@ try {
     await real.submitSpeech('Тест', 'Kore', real.SPEECH_EXPRESSIVE_MODEL);
     check(JSON.parse(captured[0].init.body).model === 'google/gemini-3-8-flash-tts' && real.speechModelFor(true) === 'google/gemini-3-8-flash-tts'
       && real.speechModelFor(false) === 'google/gemini-3-8-flash-lite-tts', 'paid plans submit to Gemini Flash, free to Flash-Lite');
+    const twoVoices = real.speechInput(narratedScript.turns, 'Aoede', 'Charon');
+    check(JSON.stringify(twoVoices.speakers) === JSON.stringify([{ speaker_id: 'Speaker 1', voice_name: 'Aoede' }, { speaker_id: 'Speaker 2', voice_name: 'Charon' }])
+      && twoVoices.dialogue_turns.map(turn => turn.speaker_id).join() === 'Speaker 2,Speaker 1,Speaker 2,Speaker 1'
+      && twoVoices.dialogue_turns.map(turn => turn.text).join(' ') === narratedScript.text && twoVoices.filler_words === false,
+      'Kie receives both voices in one request, with turns in source order');
+    check(twoVoices.dialogue_turns[0].style.includes('рассказчик аудиокниги') && twoVoices.dialogue_turns[1].style.includes('актёрская игра'),
+      'narrator turns are read as narration, character turns stay acted');
+    const narratorOnly = real.speechInput([{ text: 'Вечер опустился на город.', style: '', speaker: 'narrator' }], 'Aoede', 'Charon');
+    check(narratorOnly.speakers.length === 1 && narratorOnly.speakers[0].voice_name === 'Charon' && narratorOnly.dialogue_turns[0].speaker_id === 'Speaker 1',
+      'a narration-only reply declares only the narrator voice');
+    check(real.speechInput(narratedScript.turns, 'Aoede').speakers.length === 1, 'without a narrator voice every turn keeps the single selected voice');
+    for (const narrator of ['Aoede', 'untrusted-voice']) {
+      assert.throws(() => real.speechInput(narratedScript.turns, 'Aoede', narrator)); check(true, `an invalid narrator voice is refused: ${narrator}`);
+    }
     const emotionalInput = real.speechInput(performed.turns, 'Fola');
     check(emotionalInput.dialogue_turns.length === 2 && emotionalInput.dialogue_turns[0].text.startsWith('<sigh>')
       && emotionalInput.dialogue_turns.every(turn => turn.style.includes('без иностранного акцента')),

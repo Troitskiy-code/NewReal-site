@@ -21,6 +21,8 @@
     "seek": "Desplazarse por el audio",
     "preview": "Texto de la narración",
     "speechOnlyDialogue": "En un chat con un solo personaje solo se leen las palabras pronunciadas. Se omiten la narración, los pensamientos y las acciones.",
+    "narratorDialogue": "La narración y las acciones las lee el narrador {{narrator}}; las palabras habladas, la voz del personaje {{voice}}.",
+    "narratorScene": "La narración la lee {{voice}}; las réplicas de los personajes, una voz masculina o femenina aparte según quién hable.",
     "speechOnly": "La IA conserva el diálogo y la narración, elimina las acotaciones y los menús de opciones y adapta la interpretación. El texto preparado para la voz aparece debajo de la respuesta.",
     "loading": "Generación de audio…",
     "player": "Audio de la respuesta del personaje",

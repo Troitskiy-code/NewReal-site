@@ -59,19 +59,34 @@ async function request(path: string, body?: unknown) {
   if (!data.data || typeof data.data !== "object") throw new SpeechProviderError(response.status);
   return data.data;
 }
-export function speechInput(input: string | SpeechTurn[], voice: SpeechVoice) {
-  const turns = typeof input === "string" ? [{ text: input, style: "" }] : input;
+/** `narrator` gives narrator turns a second voice in the same recording; without it every turn uses `voice`. */
+export function speechInput(input: string | SpeechTurn[], voice: SpeechVoice, narrator?: SpeechVoice) {
+  const turns: SpeechTurn[] = typeof input === "string" ? [{ text: input, style: "" }] : input;
   const text = turns.map(turn => turn.text).join(" ");
-  if (!isSpeechVoice(voice) || !text.trim() || turns.length > 32 || Array.from(text).length > SPEECH_MAX_CHARACTERS + 512) throw new SpeechProviderError(undefined, true);
+  if (!isSpeechVoice(voice) || (narrator !== undefined && (!isSpeechVoice(narrator) || narrator === voice))
+    || !text.trim() || turns.length > (narrator === undefined ? 32 : 64) || Array.from(text).length > SPEECH_MAX_CHARACTERS + 512) throw new SpeechProviderError(undefined, true);
+  const russian = /[а-яё]/i.test(text);
   // An acted performance, not neutral narration: the turn style carries the character brief and the line's emotion.
-  const style = /[а-яё]/i.test(text)
+  const acted = russian
     ? "Говори по-русски как носитель русского языка из России, без иностранного акцента. Это актёрская игра, а не дикторское чтение: живая выразительная подача с ясно слышимыми эмоциями персонажа. Все числа, дату, время и сумму произноси по-русски. Озвучь только переданный текст, ничего не добавляй."
     : "Speak in the original language of the script as a native speaker. This is an acted performance, not neutral narration: lively delivery with clearly audible emotion. Read numbers, dates, times and amounts in that language. Speak only the provided text, without additions.";
-  return { temperature: 1, filler_words: false, speakers: [{ speaker_id: "Speaker 1", voice_name: voice }],
-    dialogue_turns: turns.map(turn => ({ speaker_id: "Speaker 1", style: `${style}${turn.style ? ` ${turn.style}` : ""}`, text: turn.text })) };
+  const narrated = russian
+    ? "Говори по-русски как носитель русского языка из России, без иностранного акцента. Ты рассказчик аудиокниги: читай повествование и действия выразительно, но спокойнее реплик героев, не изображай персонажа. Все числа, дату, время и сумму произноси по-русски. Озвучь только переданный текст, ничего не добавляй."
+    : "Speak in the original language of the script as a native speaker. You are an audiobook narrator: read narration and actions expressively but calmer than the characters' lines, without impersonating a character. Read numbers, dates, times and amounts in that language. Speak only the provided text, without additions.";
+  const second = narrator !== undefined && turns.some(turn => turn.speaker === "narrator");
+  const characterSpeaks = !second || turns.some(turn => turn.speaker !== "narrator");
+  // Declare only voices that actually speak: Speaker 1 is the first one heard, in a fixed order per cast.
+  const speakers = [...(characterSpeaks ? [voice] : []), ...(second ? [narrator!] : [])]
+    .map((voice_name, index) => ({ speaker_id: `Speaker ${index + 1}`, voice_name }));
+  const idOf = (name: SpeechVoice) => speakers.find(speaker => speaker.voice_name === name)!.speaker_id;
+  return { temperature: 1, filler_words: false, speakers,
+    dialogue_turns: turns.map(turn => {
+      const byNarrator = second && turn.speaker === "narrator";
+      return { speaker_id: idOf(byNarrator ? narrator! : voice), style: `${byNarrator ? narrated : acted}${turn.style ? ` ${turn.style}` : ""}`, text: turn.text };
+    }) };
 }
-export async function submitSpeech(text: string | SpeechTurn[], voice: SpeechVoice, model: SpeechModel = SPEECH_MODEL): Promise<string> {
-  const data = await request("createTask", { model, input: speechInput(text, voice) });
+export async function submitSpeech(text: string | SpeechTurn[], voice: SpeechVoice, model: SpeechModel = SPEECH_MODEL, narrator?: SpeechVoice): Promise<string> {
+  const data = await request("createTask", { model, input: speechInput(text, voice, narrator) });
   if (!isTaskId(data.taskId)) throw new SpeechProviderError();
   return data.taskId;
 }

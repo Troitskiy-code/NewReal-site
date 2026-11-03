@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { LuLoaderCircle, LuPause, LuPlay, LuVolume2 } from "react-icons/lu";
 import LocaleLink from "./LocaleLink";
 import { useTelegramMode } from "./TelegramProvider";
-import { DEFAULT_SPEECH_VOICE, isSpeechVoice, isSpeechVoiceChoice, isSpeechContentMode, SPEECH_VOICES, type SpeechQuota, type SpeechVoice,
+import { DEFAULT_SPEECH_VOICE, isSpeechVoice, isSpeechVoiceChoice, isSpeechContentMode, speechCast, SPEECH_VOICES, type SpeechQuota, type SpeechVoice,
   type SpeechVoiceChoice, type SpeechVoiceDefault, type SpeechContentMode } from "@/lib/speech";
 import { withThread } from "@/lib/chatThreadShared";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
@@ -14,7 +14,7 @@ import type { SpeechRecognitionResult } from "@/lib/speechRecognitionShared";
 type Clip = { messageId: string; content: string; voice: SpeechVoice; choice: SpeechVoiceChoice; url: string };
 type SpeechContextValue = {
   quota: SpeechQuota | null; voice: SpeechVoice; choice: SpeechVoiceChoice; automatic: SpeechVoiceDefault | null;
-  contentMode: SpeechContentMode;
+  contentMode: SpeechContentMode; narrated: boolean;
   setVoice: (voice: SpeechVoiceChoice) => void; refresh: () => void;
   loadingId: string | null; clip: Clip | null; paused: boolean; error: string | null; errorId: string | null;
   prepared: Record<string, { content: string; text: string }>;
@@ -38,6 +38,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   const [choice, setVoiceState] = useState<SpeechVoiceChoice>("auto");
   const [automatic, setAutomatic] = useState<SpeechVoiceDefault | null>(null);
   const [contentMode, setContentMode] = useState<SpeechContentMode>("dialogue");
+  const [narrated, setNarrated] = useState(false);
   const voice = isSpeechVoice(choice) ? choice : automatic?.voice ?? DEFAULT_SPEECH_VOICE;
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [clip, setClip] = useState<Clip | null>(null);
@@ -63,11 +64,12 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     try {
       const response = await fetch(endpoint, { cache: "no-store", signal });
       if (response.ok) {
-        const state = await response.json() as SpeechQuota & { automatic?: SpeechVoiceDefault; recognitionEnabled?: boolean; contentMode?: SpeechContentMode };
+        const state = await response.json() as SpeechQuota & { automatic?: SpeechVoiceDefault; recognitionEnabled?: boolean; contentMode?: SpeechContentMode; narrated?: boolean };
         if (mountedRef.current && !signal?.aborted) {
           setQuota(state);
           setRecognitionEnabled(state.recognitionEnabled === true);
           if (isSpeechContentMode(state.contentMode)) setContentMode(state.contentMode);
+          setNarrated(state.narrated === true);
           if (state.automatic && isSpeechVoice(state.automatic.voice)) setAutomatic(state.automatic);
         }
       }
@@ -182,6 +184,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       const actualVoice = response.headers.get("X-Speech-Voice");
       const playedVoice = isSpeechVoice(actualVoice) ? actualVoice : voice;
       const playedMode = response.headers.get("X-Speech-Content-Mode");
+      const playedNarration = response.headers.get("X-Speech-Narrated");
       setClip({ messageId: id, content, voice: playedVoice, choice, url: URL.createObjectURL(blob) });
       // Once per tab session: did the visitor actually hear a character (the feature the promo videos sell)?
       try {
@@ -194,6 +197,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       const metadataUrl = new URL(endpoint, window.location.origin);
       metadataUrl.searchParams.set("messageId", id); metadataUrl.searchParams.set("voice", playedVoice);
       if (isSpeechContentMode(playedMode)) metadataUrl.searchParams.set("contentMode", playedMode);
+      if (playedNarration === "true" || playedNarration === "false") metadataUrl.searchParams.set("narrated", playedNarration);
       void fetch(metadataUrl, { cache: "no-store", signal: controller.signal }).then(async metadata => {
         if (!metadata.ok) return;
         const state = await metadata.json();
@@ -211,7 +215,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     }
   };
 
-  return <SpeechContext.Provider value={{ quota, voice, choice, automatic, contentMode, setVoice, refresh: refreshQuota, loadingId, clip, paused, error, errorId, prepared, toggle,
+  return <SpeechContext.Provider value={{ quota, voice, choice, automatic, contentMode, narrated, setVoice, refresh: refreshQuota, loadingId, clip, paused, error, errorId, prepared, toggle,
     bindAudio, setPaused, stop,
     seek: seconds => { if (audioRef.current && Number.isFinite(seconds)) audioRef.current.currentTime = seconds; },
     playbackError: () => { setErrorId(clip?.messageId ?? null); setError(t("chatSpeech.errors.playback")); },
@@ -232,7 +236,10 @@ export function ChatSpeechControls({ onOpenSettings }: { onOpenSettings: () => v
       </button>
     </div>
     {!speech.quota.unlimited && <p className="mt-1">{t("chatSpeech.reset")}{!telegram && <> · <LocaleLink href="/pricing" className="text-wd-secondary underline">{t("chatSpeech.upgrade")}</LocaleLink></>}</p>}
-    <p className="mt-1">{t(speech.contentMode === "dialogue" ? "chatSpeech.speechOnlyDialogue" : "chatSpeech.speechOnly")}</p>
+    <p className="mt-1">{speech.narrated
+      ? t(speech.contentMode === "dialogue" ? "chatSpeech.narratorDialogue" : "chatSpeech.narratorScene",
+        { voice: speech.voice, narrator: speechCast(speech.voice, "dialogue", []).narrator })
+      : t(speech.contentMode === "dialogue" ? "chatSpeech.speechOnlyDialogue" : "chatSpeech.speechOnly")}</p>
   </section>;
 }
 

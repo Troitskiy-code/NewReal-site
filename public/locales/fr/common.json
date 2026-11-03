@@ -21,6 +21,8 @@
     "seek": "Rechercher l'audio",
     "preview": "Texte du discours",
     "speechOnlyDialogue": "Dans une discussion avec un seul personnage, seules les paroles prononcées sont lues. La narration, les pensées et les actions sont omises.",
+    "narratorDialogue": "La narration et les actions sont lues par le narrateur {{narrator}}, les paroles prononcées par la voix du personnage {{voice}}.",
+    "narratorScene": "La narration est lue par {{voice}}, les répliques des personnages par une voix masculine ou féminine distincte selon la personne qui parle.",
     "speechOnly": "L'IA conserve le dialogue et la narration, supprime les directions de scène et les menus de choix, et sélectionne la livraison. Le texte du discours préparé apparaît sous la réponse.",
     "loading": "Génération d'audio…",
     "player": "Audio de réponse de caractère",

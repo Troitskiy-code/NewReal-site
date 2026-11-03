@@ -21,9 +21,17 @@ export type SpeechVoiceDefault = { voice: SpeechVoice; role: SpeechVoiceRole };
 export const SPEECH_MAX_CHARACTERS = 8_000;
 export const SPEECH_SOURCE_MAX_CHARACTERS = 16_000;
 export const SPEECH_PREPARATION_VERSION = "verbatim-performance-v3-content-mode";
+/** Narration and actions kept for a separate narrator voice: its own cache identity next to the v3 policy. */
+export const SPEECH_NARRATOR_PREPARATION_VERSION = "verbatim-performance-v4-narrator";
+/** Narrates a single-character reply when the character itself was given the narrator's voice. */
+export const NARRATOR_ALTERNATE_SPEECH_VOICE: SpeechVoice = "Kore";
 export type SpeechContentMode = "dialogue" | "scene";
 export function isSpeechContentMode(value: unknown): value is SpeechContentMode { return value === "dialogue" || value === "scene"; }
-export type SpeechTurn = { text: string; style: string };
+/** A turn without a speaker belongs to the character (scripts prepared before the narrator voice). */
+export type SpeechSpeaker = "character" | "narrator";
+export type SpeechTurn = { text: string; style: string; speaker?: SpeechSpeaker; gender?: "female" | "male" };
+/** The provider mixes at most two voices into one recording. */
+export type SpeechCast = { character: SpeechVoice; narrator: SpeechVoice };
 export type PreparedSpeech = { text: string; turns: SpeechTurn[] };
 export type SpeechQuota = { enabled: boolean; unlimited: boolean; remaining: number | null; resetsAt: string };
 
@@ -32,6 +40,18 @@ export function isSpeechVoice(value: unknown): value is SpeechVoice {
 }
 export function isSpeechVoiceChoice(value: unknown): value is SpeechVoiceChoice {
   return value === "auto" || isSpeechVoice(value);
+}
+
+/**
+ * Who reads what in a narrated recording. A single character keeps the selected voice and gets a separate narrator;
+ * in a world or group the selected voice narrates and spoken lines use a voice of the main speaker's gender.
+ */
+export function speechCast(voice: SpeechVoice, contentMode: SpeechContentMode, turns: SpeechTurn[]): SpeechCast {
+  if (contentMode === "dialogue")
+    return { character: voice, narrator: voice === NARRATOR_SPEECH_VOICE ? NARRATOR_ALTERNATE_SPEECH_VOICE : NARRATOR_SPEECH_VOICE };
+  const gender = turns.find(turn => turn.speaker !== "narrator" && turn.gender)?.gender;
+  const [first, second]: SpeechVoice[] = gender === "female" ? [FEMALE_SPEECH_VOICE, "Kore"] : [DEFAULT_SPEECH_VOICE, "Orus"];
+  return { narrator: voice, character: first === voice ? second : first };
 }
 
 /** Normalize transport controls only; never discard narration, quotes or actions before AI selection. */

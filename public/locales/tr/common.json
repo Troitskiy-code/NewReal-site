@@ -21,6 +21,8 @@
     "seek": "Sesi ileri sar",
     "preview": "Konuşma metni",
     "speechOnlyDialogue": "Tek karakterli sohbette yalnızca söylenen sözler seslendirilir. Anlatım, düşünceler ve eylemler atlanır.",
+    "narratorDialogue": "Anlatımı ve eylemleri anlatıcı {{narrator}}, konuşmaları karakter sesi {{voice}} okur.",
+    "narratorScene": "Anlatımı {{voice}} okur; karakterlerin repliklerini konuşan kişiye uygun ayrı bir erkek veya kadın sesi okur.",
     "speechOnly": "Yapay zeka diyalogu ve anlatımı korur, sahne yönergelerini ve seçim menülerini kaldırır ve sunumu seçer. Hazırlanan konuşma metni yanıtın altında görünür.",
     "loading": "Ses oluşturuluyor…",
     "player": "Karakter yanıt sesi",
