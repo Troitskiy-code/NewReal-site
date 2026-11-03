@@ -30,6 +30,8 @@ import { scheduleMessageEmbeddingRefresh, shouldPersistEmbeddings } from "@/lib/
 import { getApiLocale } from "@/lib/apiI18n";
 import { isFreeDailyQuotaEnabled } from "@/lib/freeDailyQuotaServer";
 import { defaultShouldRetry, KODIK_RETRY_ERROR_MESSAGE } from "@/lib/retryWithBackoff";
+import { memoryV2Enabled } from "@/lib/memoryFacts";
+import { drainMemoryJobs, invalidateMessageMemory } from "@/lib/memoryV2";
 
 export const maxDuration = 120;
 
@@ -224,15 +226,18 @@ async function handlePost(
       await recordChatCostCharge(upstream, costVC);
 
       responseStage = "save_reply";
-      const updatedMessage = await prisma.message.update({
-        where: { id: assistantMessage.id },
-        data: {
-          content: assistantReply,
-          finishReason: completion.finishReason,
-          createdAt: new Date(),
-        },
-      });
+      const replacement = { content: assistantReply, finishReason: completion.finishReason, createdAt: new Date() };
+      // The replaced reply's facts and events are withdrawn and the turn is queued again with the new text,
+      // as for a continuation; before, memory kept what the rejected reply said and never read the new one.
+      const updatedMessage = memoryV2Enabled()
+        ? await prisma.$transaction(async tx => {
+            await invalidateMessageMemory(tx, scope, assistantMessage.id);
+            return tx.message.update({ where: { id: assistantMessage.id }, data: replacement });
+          })
+        : await prisma.message.update({ where: { id: assistantMessage.id }, data: replacement });
       await markThreadActive(scope.threadId);
+      if (memoryV2Enabled()) void drainMemoryJobs({ threadId: scope.threadId, apiKey: KODIKROUTER_KEY })
+        .catch(error => errorLog("MemoryV2", "background drain deferred", toSafeDiagnostic(error)));
       responseStage = "schedule_memory";
       scheduleMessageEmbeddingRefresh(
         updatedMessage.id,

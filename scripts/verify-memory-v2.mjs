@@ -923,6 +923,26 @@ try {
     assert.equal(job.assistantMessageIds.length, 2);
     assert.ok((await active(f.scope)).some(fact => fact.value === 'Веста'));
   });
+  await check('the regenerate button withdraws the replaced reply\'s facts and reads the new reply', async () => {
+    const f = await setup(); provider.reset();
+    provider.extractionText = body => {
+      const latest = JSON.parse(body.messages[1].content).sources.filter(source => source.author === 'character' && /Меня зовут/iu.test(source.text)).at(-1);
+      return output(latest ? [delta(latest.text.match(/Меня зовут (.+)\./u)[1], latest.id, 'name', 'character')] : []);
+    };
+    provider.reply = 'Меня зовут Лира.';
+    await h.chat(f.user.id, f.character.id, { message: 'Расскажи о себе.' });
+    const reply = await db.message.findFirst({ where: { threadId: f.scope.threadId, role: 'assistant' }, orderBy: { createdAt: 'desc' } });
+    provider.reply = 'Меня зовут Веста.';
+    const { NextRequest } = require('next/server');
+    const route = h.load(join(h.root, 'src/app/api/chat/[id]/regenerate/route.ts'));
+    h.session.userId = f.user.id;
+    const response = await route.POST(new NextRequest(`http://localhost/api/chat/${f.character.id}/regenerate`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messageId: reply.id }) }), { params: Promise.resolve({ id: f.character.id }) });
+    assert.equal(response.status, 200); assert.match(await response.text(), /"type":"end"/);
+    await h.settle();
+    assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'name').map(fact => fact.value), ['Веста']);
+    assert.equal((await db.memoryJob.findFirst({ where: { threadId: f.scope.threadId } })).status, 'succeeded');
+  });
   await check('important events use the same extraction and are removed from the legacy projection after source correction', async () => {
     const f = await setup(), source = await turn(f, 'Помоги мне с поисками.', 'Я обещаю вернуть ключ капитану.');
     await run(f, output([], [{ sourceId: 's2', importance: 3 }]));
