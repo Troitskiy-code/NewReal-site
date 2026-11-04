@@ -29,7 +29,8 @@ export type SpeechContentMode = "dialogue" | "scene";
 export function isSpeechContentMode(value: unknown): value is SpeechContentMode { return value === "dialogue" || value === "scene"; }
 /** A turn without a speaker belongs to the character (scripts prepared before the narrator voice). */
 export type SpeechSpeaker = "character" | "narrator";
-export type SpeechTurn = { text: string; style: string; speaker?: SpeechSpeaker; gender?: "female" | "male" };
+export type SpeechTurn = { text: string; style: string; speaker?: SpeechSpeaker; gender?: "female" | "male"; speakerId?: string; voice?: SpeechVoice };
+export type VoicedSpeechTurn = SpeechTurn & { speakerId: string; voice: SpeechVoice };
 /** The provider mixes at most two voices into one recording. */
 export type SpeechCast = { character: SpeechVoice; narrator: SpeechVoice };
 export type PreparedSpeech = { text: string; turns: SpeechTurn[] };

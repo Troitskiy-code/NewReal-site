@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Elige una voz para cada personaje. Los cambios se guardan en esta historia y se aplican a la próxima reproducción.",
+    "editSpeaker": "Cambiar hablante",
+    "newSpeaker": "Nuevo personaje",
+    "speakerName": "Nombre del personaje",
+    "saveEdit": "Guardar",
+    "cancelEdit": "Cancelar",
+    "savingEdit": "Guardando…",
+    "corrected": "Corregido por ti",
+    "castPrimary": "La selección cambia la voz del protagonista, del primer miembro del grupo o del narrador del mundo. Los demás conservan sus voces.",
+    "castPlayback": "Los personajes y los PNJ usan las voces que tienen asignadas en esta historia. La narración solo se lee en los mundos.",
     "recognition": {
       "analyze": "¿Quién habla?",
       "loading": "Identificando a los hablantes…",
@@ -66,6 +76,7 @@
     "reset": "Una reproducción al día; volver a escucharla también cuenta. Se restablece a las 00:00, hora de Moscú. Pausar y reanudar no consume otra reproducción.",
     "upgrade": "Ilimitado con una suscripción",
     "errors": {
+      "invalid": "Comprueba el nombre del personaje y la voz seleccionada.",
       "unauthorized": "Inicie sesión para escuchar esta respuesta.",
       "notFound": "Esta respuesta no está disponible. Actualice el chat.",
       "noDialogue": "Esta respuesta no contiene palabras pronunciadas, solo narración, pensamientos o acciones.",
@@ -74,7 +85,7 @@
       "busy": "Se está generando otra respuesta. Espera un momento.",
       "quota": "Ya has usado tu reproducción gratuita de hoy. Volver a escucharla también cuenta. Se restablece a las 00:00, hora de Moscú. Las suscripciones incluyen voz ilimitada.",
       "rateLimit": "Demasiadas peticiones. Inténtalo de nuevo en un minuto.",
-      "changed": "La respuesta ha cambiado. Intente generar su audio nuevamente.",
+      "changed": "Los datos han cambiado. Vuelve a abrir los ajustes o el análisis de hablantes e inténtalo de nuevo.",
       "unavailable": "No se pudo cargar el audio. Por favor, inténtelo de nuevo más tarde.",
       "playback": "Presione reproducir en el reproductor de audio. No es necesario generar el audio nuevamente.",
       "pending": "El audio aún se está preparando. Intente Escuchar nuevamente más tarde para continuar con la misma grabación.",

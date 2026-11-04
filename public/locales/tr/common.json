@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Her karakter için bir ses seçin. Değişiklikler bu hikâyede kaydedilir ve sonraki dinlemede uygulanır.",
+    "editSpeaker": "Konuşmacıyı değiştir",
+    "newSpeaker": "Yeni karakter",
+    "speakerName": "Karakter adı",
+    "saveEdit": "Kaydet",
+    "cancelEdit": "İptal",
+    "savingEdit": "Kaydediliyor…",
+    "corrected": "Sizin düzeltmeniz",
+    "castPrimary": "Seçim ana karakterin, grubun ilk üyesinin veya dünyanın anlatıcısının sesini değiştirir. Diğer karakterler seslerini korur.",
+    "castPlayback": "Karakterler ve NPC'ler bu hikâyede kendilerine atanan seslerle konuşur. Anlatım yalnızca dünyalarda seslendirilir.",
     "recognition": {
       "analyze": "Kim konuşuyor?",
       "loading": "Konuşanlar belirleniyor…",
@@ -66,6 +76,7 @@
     "reset": "Günde bir dinleme hakkı, tekrarlar dahil. Moskova saatiyle 00:00'da sıfırlanır. Duraklatma ve devam ettirme yeni hak harcamaz.",
     "upgrade": "Abonelikle sınırsız",
     "errors": {
+      "invalid": "Karakter adını ve seçilen sesi kontrol edin.",
       "unauthorized": "Bu yanıtı dinlemek için oturum açın.",
       "notFound": "Bu yanıt kullanılamıyor. Sohbeti yenileyin.",
       "noDialogue": "Bu yanıtta söylenen söz yok; yalnızca anlatım, düşünce veya eylem var.",
@@ -74,7 +85,7 @@
       "busy": "Başka bir yanıt hazırlanıyor. Lütfen bekleyin.",
       "quota": "Ücretsiz dinleme hakkınız bugün için bitti. Tekrarlar da sayılır. Moskova saatiyle 00:00'da sıfırlanır. Aboneliklerde sınırsız konuşma vardır.",
       "rateLimit": "Çok fazla istek. Bir dakika sonra tekrar deneyin.",
-      "changed": "Yanıt değişti. Sesini yeniden oluşturmayı deneyin.",
+      "changed": "Veriler değişti. Ayarları veya konuşmacı analizini yeniden açıp tekrar deneyin.",
       "unavailable": "Ses yüklenemedi. Lütfen daha sonra tekrar deneyin.",
       "playback": "Ses oynatıcıda oynat'a basın. Sesi yeniden oluşturmak gerekmez.",
       "pending": "Ses hâlâ hazırlanıyor. Aynı kaydı devam ettirmek için daha sonra Dinle'yi tekrar deneyin.",

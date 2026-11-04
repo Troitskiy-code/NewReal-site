@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Wybierz głos dla każdej postaci. Zmiany są zapisywane w tej historii i stosowane przy następnym odtwarzaniu.",
+    "editSpeaker": "Zmień mówiącego",
+    "newSpeaker": "Nowa postać",
+    "speakerName": "Imię postaci",
+    "saveEdit": "Zapisz",
+    "cancelEdit": "Anuluj",
+    "savingEdit": "Zapisywanie…",
+    "corrected": "Poprawione przez Ciebie",
+    "castPrimary": "Wybór zmienia głos głównej postaci, pierwszego członka grupy lub narratora świata. Pozostałe postacie zachowują swoje głosy.",
+    "castPlayback": "Postacie i NPC mówią głosami przypisanymi im w tej historii. Narracja jest odczytywana tylko w światach.",
     "recognition": {
       "analyze": "Kto mówi?",
       "loading": "Rozpoznawanie rozmówców…",
@@ -66,6 +76,7 @@
     "reset": "Jedno odtwarzanie dziennie, w tym powtórki. Resetuje się o 00: 00 czasu moskiewskiego. Wstrzymywanie i wznawianie nie używaj innej gry.",
     "upgrade": "Nieograniczony z subskrypcją",
     "errors": {
+      "invalid": "Sprawdź imię postaci i wybrany głos.",
       "unauthorized": "Zaloguj się, aby wysłuchać tej odpowiedzi.",
       "notFound": "Ta odpowiedź jest niedostępna. Odśwież czat.",
       "noDialogue": "Ta odpowiedź nie zawiera wypowiedzianych słów, tylko narrację, myśli lub działania.",
@@ -74,7 +85,7 @@
       "busy": "Generowana jest kolejna odpowiedź. Proszę zaczekać.",
       "quota": "Twoje bezpłatne odtwarzanie zostało dziś wykorzystane. Liczą się również powtórki. Resetuje się o 00: 00 czasu moskiewskiego. Subskrypcje obejmują nieograniczoną mowę.",
       "rateLimit": "Zbyt wiele próśb. Spróbuj ponownie za minutę.",
-      "changed": "Odpowiedź się zmieniła. Spróbuj ponownie wygenerować dźwięk.",
+      "changed": "Dane się zmieniły. Otwórz ponownie ustawienia lub analizę mówiących i spróbuj jeszcze raz.",
       "unavailable": "Nie można załadować dźwięku. Spróbuj ponownie później.",
       "playback": "Naciśnij Odtwórz na odtwarzaczu audio. Nie ma potrzeby ponownego generowania dźwięku.",
       "pending": "Dźwięk jest wciąż przygotowywany. Spróbuj posłuchać ponownie później, aby kontynuować to samo nagranie.",

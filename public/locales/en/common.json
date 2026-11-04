@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Choose a voice for each character. Changes are saved in this story and apply to the next playback.",
+    "editSpeaker": "Change speaker",
+    "newSpeaker": "New character",
+    "speakerName": "Character name",
+    "saveEdit": "Save",
+    "cancelEdit": "Cancel",
+    "savingEdit": "Saving…",
+    "corrected": "Edited by you",
+    "castPrimary": "The choice below changes the main character, the first group member, or the world narrator. Other characters keep their voices.",
+    "castPlayback": "Characters and NPCs use their assigned voices in this story. Narration is spoken only in worlds.",
     "recognition": {
       "analyze": "Who is speaking?",
       "loading": "Identifying speakers…",
@@ -66,6 +76,7 @@
     "reset": "One playback a day, including replays. Resets at 00:00 Moscow time. Pausing and resuming do not use another play.",
     "upgrade": "Unlimited with a subscription",
     "errors": {
+      "invalid": "Check the character name and selected voice.",
       "unauthorized": "Sign in to listen to this reply.",
       "notFound": "This reply is unavailable. Refresh the chat.",
       "noDialogue": "This reply has no spoken words — only narration, thoughts or actions.",
@@ -74,7 +85,7 @@
       "busy": "Another reply is being generated. Please wait.",
       "quota": "Your free playback has been used today. Replays also count. Resets at 00:00 Moscow time. Subscriptions include unlimited speech.",
       "rateLimit": "Too many requests. Try again in a minute.",
-      "changed": "The reply has changed. Try generating its audio again.",
+      "changed": "The data changed. Reopen the settings or speaker analysis and try again.",
       "unavailable": "Could not load the audio. Please try again later.",
       "playback": "Press play on the audio player. There is no need to generate the audio again.",
       "pending": "Audio is still being prepared. Try Listen again later to continue the same recording.",

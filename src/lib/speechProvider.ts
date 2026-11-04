@@ -1,5 +1,5 @@
-import { isSpeechVoice, SPEECH_MAX_CHARACTERS, type SpeechTurn, type SpeechVoice } from "./speech";
-import { speechWavToMp3, SPEECH_WAV_LIMIT } from "./speechAudio";
+import { isSpeechVoice, SPEECH_MAX_CHARACTERS, type SpeechTurn, type SpeechVoice, type VoicedSpeechTurn } from "./speech";
+import { speechWavToMp3, speechWavPcm, SPEECH_WAV_LIMIT } from "./speechAudio";
 
 export const SPEECH_MODEL = "google/gemini-3-8-flash-lite-tts";
 /** Paid plans: the fuller Gemini model (~1.7x the audio price), clearly more expressive in a blind comparison (2026-11-01). */
@@ -90,6 +90,27 @@ export async function submitSpeech(text: string | SpeechTurn[], voice: SpeechVoi
   if (!isTaskId(data.taskId)) throw new SpeechProviderError();
   return data.taskId;
 }
+
+/** Each contiguous batch uses at most two voices, including any narrator. */
+export function sceneSpeechInput(turns: VoicedSpeechTurn[]) {
+  const voices = [...new Set(turns.map(turn => turn.voice))];
+  if (!turns.length || turns.length > 64 || voices.length > 2 || voices.some(voice => !isSpeechVoice(voice))
+    || turns.some(turn => !turn.speakerId || !turn.text.trim())) throw new SpeechProviderError(undefined, true);
+  // Reuse the established language, acting and narrator instructions for every line.
+  const dialogue_turns = turns.map(turn => ({
+    ...speechInput([{ ...turn, speaker: turn.speaker === "narrator" ? "narrator" : "character" }],
+      turn.speaker === "narrator" ? (turn.voice === "Fenrir" ? "Aoede" : "Fenrir") : turn.voice,
+      turn.speaker === "narrator" ? turn.voice : undefined).dialogue_turns[0],
+    speaker_id: `Speaker ${voices.indexOf(turn.voice) + 1}`,
+  }));
+  if (Array.from(turns.map(turn => turn.text).join(" ")).length > SPEECH_MAX_CHARACTERS + 512) throw new SpeechProviderError(undefined, true);
+  return { temperature: 1, filler_words: false, speakers: voices.map((voice_name, i) => ({ speaker_id: `Speaker ${i + 1}`, voice_name })), dialogue_turns };
+}
+export async function submitSceneSpeech(turns: VoicedSpeechTurn[], model: SpeechModel): Promise<string> {
+  const data = await request("createTask", { model, input: sceneSpeechInput(turns) });
+  if (!isTaskId(data.taskId)) throw new SpeechProviderError();
+  return data.taskId;
+}
 export type SpeechTask = { state: "pending" | "ready" | "failed"; credits: number | null; url?: string };
 export function isSpeechAudioUrl(value: unknown): value is string {
   if (typeof value !== "string") return false;
@@ -113,13 +134,19 @@ export async function getSpeechTask(taskId: string, model: SpeechModel = SPEECH_
   return { state: "ready", credits, url };
 }
 export async function downloadSpeech(url: string): Promise<Buffer> {
+  return downloadSpeechMedia(url, false);
+}
+export async function downloadSpeechPcm(url: string): Promise<Buffer> {
+  return downloadSpeechMedia(url, true);
+}
+async function downloadSpeechMedia(url: string, pcm: boolean): Promise<Buffer> {
   if (!isSpeechAudioUrl(url)) throw new SpeechProviderError();
   try {
     // No credentials on media requests; reject redirects and untrusted destinations.
     const response = await fetch(url, { redirect: "error", cache: "no-store", signal: AbortSignal.timeout(30_000) });
     if (!response.ok) { await response.body?.cancel(); throw new SpeechProviderError(response.status, false, "media_http"); }
     const wav = await boundedBody(response, SPEECH_WAV_LIMIT);
-    try { return await speechWavToMp3(wav); }
+    try { return pcm ? speechWavPcm(wav) : await speechWavToMp3(wav); }
     catch { throw new SpeechProviderError(undefined, true, "media_format"); }
   } catch (error) {
     if (error instanceof SpeechProviderError) throw error;

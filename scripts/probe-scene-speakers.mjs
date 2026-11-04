@@ -13,6 +13,8 @@ dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 if (!process.env.DEEPINFRA_API_KEY?.trim()) throw new Error('Missing configured DeepInfra key');
 const require = createRequire(import.meta.url);
 const root = process.cwd();
+const withVoices = process.argv.includes('--voices');
+const performanceUsage = [];
 const cache = new Map();
 function load(file) {
   file = resolve(file);
@@ -23,7 +25,14 @@ function load(file) {
     // Import only pure recognition code and transport; no project DB or metering writes.
     if (name === '@/lib/prisma') return { prisma: {} };
     if (name === '@/lib/logger') return { errorLog() {}, toSafeDiagnostic: () => ({}) };
-    if (name === './aiCostTelemetry' || name === './aiProviders' || name === './chatThreads') return {};
+    if (name === './aiCostTelemetry') return { meteredPost: async (_purpose, url, body) => {
+      const response = await deepinfraFetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + process.env.DEEPINFRA_API_KEY.trim(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body), signal: AbortSignal.timeout(50_000) });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const data = await response.json(); performanceUsage.push(data.usage ?? null); return { data };
+    } };
+    if (name === './aiProviders') return { DEEPINFRA_CHAT_URL: 'https://api.deepinfra.com/v1/openai/chat/completions', providerApiKey: () => process.env.DEEPINFRA_API_KEY.trim() };
+    if (name === './chatThreads') return {};
     const base = name.startsWith('.') ? resolve(dirname(file), name) : null;
     if (!base) return require(name);
     return load(existsSync(base + '.ts') ? base + '.ts' : base);
@@ -33,6 +42,7 @@ function load(file) {
 }
 const recognition = load('src/lib/speechRecognition.ts');
 const { deepinfraFetch } = load('src/lib/deepinfraNetwork.ts');
+const performance = withVoices ? load('src/lib/speechPreparation.ts') : null;
 const narrator = { id: 'narrator', name: '', kind: 'narrator', aliases: [] };
 const main = { id: 'main', name: 'Алиса', kind: 'character', aliases: ['Alice'] };
 const ivan = { id: 'npc:111111111111111111111111', name: 'Иван', kind: 'npc', aliases: [] };
@@ -55,10 +65,12 @@ const scenes = [
     expected: [['Wait here.', 'main'], ['The bridge is closed.', 'Leo']] },
 ];
 const receipts = [];
-for (const scene of scenes) {
+const sceneFilter = process.argv.find(arg => arg.startsWith('--case='))?.slice(7).split(',');
+for (const scene of scenes.filter(scene => !sceneFilter || sceneFilter.includes(scene.id))) {
   const context = { mode: scene.mode, messageId: scene.id, speakers: [narrator, ...scene.speakers], recent: scene.recent ?? [],
     character: { name: scene.mode === 'character' ? 'Алиса' : 'История', description: '', appearance: '', npcs: '' }, playerName: '' };
   const start = Date.now();
+  let candidate;
   try {
     const response = await deepinfraFetch('https://api.deepinfra.com/v1/openai/chat/completions', {
       method: 'POST', headers: { Authorization: 'Bearer ' + process.env.DEEPINFRA_API_KEY.trim(), 'Content-Type': 'application/json' },
@@ -70,6 +82,7 @@ for (const scene of scenes) {
     const data = await response.json();
     if (data.choices?.[0]?.finish_reason !== 'stop') throw new Error('Incomplete response');
     const parsed = JSON.parse(data.choices[0].message.content);
+    candidate = parsed;
     const result = recognition.validateSpeechRecognition(scene.source, parsed, context);
     const matched = scene.expected.every(([text, speaker, confidence]) => result.segments.some(segment => {
       const actor = result.speakers.find(item => item.id === segment.speakerId);
@@ -77,17 +90,26 @@ for (const scene of scenes) {
         && (!confidence || segment.confidence === confidence);
     }));
     const noMenu = !(scene.excluded ?? []).some(word => result.segments.some(segment => segment.text.includes(word)));
-    receipts.push({ scene: scene.id, passed: matched && noMenu, durationMs: Date.now() - start, usage: data.usage ?? null, result });
+    let prepared, voices, voiceSelectionMatches = true;
+    if (withVoices) {
+      const voiceNames = ['Charon', 'Aoede', 'Fenrir', 'Kore', 'Orus', 'Leda', 'Puck', 'Zephyr', 'Fola'];
+      voices = Object.fromEntries(result.speakers.map((speaker, index) => [speaker.id, voiceNames[index % voiceNames.length]]));
+      prepared = await performance.prepareSceneSpeech(scene.source, result, voices, scene.mode === 'character' ? { name: 'Алиса', description: 'Спокойная девушка' } : undefined);
+      const expected = result.segments.filter(segment => segment.kind === 'dialogue' || scene.mode === 'world').map(segment => segment.text).join(' ').replace(/\s+/g, ' ').trim();
+      voiceSelectionMatches = prepared.text === expected && prepared.turns.every(turn => turn.voice === voices[turn.speakerId]);
+    }
+    receipts.push({ scene: scene.id, passed: matched && noMenu && voiceSelectionMatches, durationMs: Date.now() - start, usage: data.usage ?? null, result,
+      ...(withVoices ? { voices, prepared } : {}) });
   } catch (error) {
     // Error messages contain only local validation or HTTP status, never credentials or provider response bodies.
     receipts.push({ scene: scene.id, passed: false, durationMs: Date.now() - start,
-      error: error instanceof recognition.SpeechRecognitionError ? error.code : error instanceof Error && /^HTTP |^Incomplete/.test(error.message) ? error.message : 'transport_or_format' });
+      candidate, error: error instanceof recognition.SpeechRecognitionError ? error.code : error?.reason ?? (error instanceof Error && /^HTTP |^Incomplete/.test(error.message) ? error.message : 'transport_or_format') });
   }
   const last = receipts.at(-1);
   console.log(JSON.stringify({ scene: last.scene, passed: last.passed, durationMs: last.durationMs, error: last.error }));
 }
-const report = { date: '2026-11-03', syntheticOnly: true, databaseAccess: false, ttsCalls: 0,
+const report = { date: withVoices ? '2026-11-04' : '2026-11-03', syntheticOnly: true, databaseAccess: false, ttsCalls: 0, performanceUsage,
   model: 'mistralai/Mistral-Small-3.2-24B-Instruct-2506', passed: receipts.filter(item => item.passed).length, total: receipts.length, receipts };
-writeFileSync(join(root, 'docs/scene-speaker-recognition-probe-2026-11-03.json'), JSON.stringify(report, null, 2) + '\n');
+writeFileSync(join(root, withVoices ? `docs/scene-speaker-voices-${sceneFilter ? 'focused-' : ''}probe-2026-11-04.json` : 'docs/scene-speaker-recognition-probe-2026-11-03.json'), JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify({ passed: report.passed, total: report.total }));
 if (report.passed !== report.total) process.exitCode = 1;

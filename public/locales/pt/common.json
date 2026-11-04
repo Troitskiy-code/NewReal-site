@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Escolha uma voz para cada personagem. As alterações ficam guardadas nesta história e aplicam-se à próxima reprodução.",
+    "editSpeaker": "Alterar quem fala",
+    "newSpeaker": "Nova personagem",
+    "speakerName": "Nome da personagem",
+    "saveEdit": "Guardar",
+    "cancelEdit": "Cancelar",
+    "savingEdit": "A guardar…",
+    "corrected": "Corrigido por si",
+    "castPrimary": "A seleção altera a voz da personagem principal, do primeiro membro do grupo ou do narrador do mundo. As outras mantêm as suas vozes.",
+    "castPlayback": "As personagens e os NPCs usam as vozes que lhes foram atribuídas nesta história. A narração só é lida nos mundos.",
     "recognition": {
       "analyze": "Quem está a falar?",
       "loading": "A identificar quem fala…",
@@ -66,6 +76,7 @@
     "reset": "Uma reprodução por dia, incluindo repetições. Renova às 00:00 hora de Moscovo. Pausar e retomar não consome nova tentativa.",
     "upgrade": "Fala ilimitada com subscrição",
     "errors": {
+      "invalid": "Verifique o nome da personagem e a voz escolhida.",
       "unauthorized": "Inicie sessão para ouvir esta resposta.",
       "notFound": "Esta resposta não está disponível. Atualize a conversa.",
       "noDialogue": "Esta resposta não contém palavras pronunciadas, apenas narração, pensamentos ou ações.",
@@ -74,7 +85,7 @@
       "busy": "Outra resposta está a ser gerada. Aguarde, por favor.",
       "quota": "A reprodução gratuita foi usada hoje. Repetições também contam. Renova às 00:00 hora de Moscovo. As subscrições incluem fala ilimitada.",
       "rateLimit": "Demasiados pedidos. Tente novamente daqui a um minuto.",
-      "changed": "A resposta foi alterada. Tente gerar o áudio novamente.",
+      "changed": "Os dados mudaram. Abra novamente as definições ou a análise de quem fala e tente outra vez.",
       "unavailable": "Não foi possível carregar o áudio. Tente novamente mais tarde.",
       "playback": "Clique em reproduzir no leitor de áudio. Não é necessário gerar o áudio novamente.",
       "pending": "O áudio ainda está a ser preparado. Tente ouvir novamente mais tarde para continuar a mesma gravação.",

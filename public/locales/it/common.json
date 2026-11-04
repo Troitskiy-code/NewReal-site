@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Scegli una voce per ogni personaggio. Le modifiche vengono salvate in questa storia e applicate al prossimo ascolto.",
+    "editSpeaker": "Cambia chi parla",
+    "newSpeaker": "Nuovo personaggio",
+    "speakerName": "Nome del personaggio",
+    "saveEdit": "Salva",
+    "cancelEdit": "Annulla",
+    "savingEdit": "Salvataggio…",
+    "corrected": "Corretto da te",
+    "castPrimary": "La scelta cambia la voce del protagonista, del primo membro del gruppo o del narratore del mondo. Gli altri mantengono le loro voci.",
+    "castPlayback": "I personaggi e i PNG usano le voci assegnate in questa storia. La narrazione viene letta solo nei mondi.",
     "recognition": {
       "analyze": "Chi parla?",
       "loading": "Identificazione dei personaggi…",
@@ -66,6 +76,7 @@
     "reset": "Una riproduzione al giorno, compresi i replay. Ripristina alle 00: 00 ora di Mosca. Pausa e ripresa non utilizzare un altro gioco.",
     "upgrade": "Illimitato con un abbonamento",
     "errors": {
+      "invalid": "Controlla il nome del personaggio e la voce scelta.",
       "unauthorized": "Accedi per ascoltare questa risposta.",
       "notFound": "Questa risposta non è disponibile. Aggiorna la chat.",
       "noDialogue": "Questa risposta non contiene parole pronunciate, solo narrazione, pensieri o azioni.",
@@ -74,7 +85,7 @@
       "busy": "Viene generata un'altra risposta. Ti prego, aspetta.",
       "quota": "La riproduzione gratuita è stata utilizzata oggi. Anche i replay contano. Ripristina alle 00: 00 ora di Mosca. Gli abbonamenti includono un discorso illimitato.",
       "rateLimit": "Troppe richieste. Riprova tra un minuto.",
-      "changed": "La risposta è cambiata. Prova a generare nuovamente l'audio.",
+      "changed": "I dati sono cambiati. Riapri le impostazioni o l’analisi delle voci e riprova.",
       "unavailable": "Impossibile caricare l'audio. Riprova più tardi.",
       "playback": "Premere play sul lettore audio. Non è necessario generare nuovamente l'audio.",
       "pending": "L'audio è ancora in fase di preparazione. Riprova ad ascoltare più tardi per continuare la stessa registrazione.",

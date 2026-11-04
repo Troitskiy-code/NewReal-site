@@ -6,7 +6,9 @@ import { DEEPINFRA_CHAT_URL, providerApiKey } from "./aiProviders";
 import { messageScopeWhere, threadPromptScopeKey, type ChatScope } from "./chatThreads";
 import { readRoleplayConfig, roleplayMode, type GroupParticipant, type RoleplayMode } from "./roleplayConfig";
 import { speechSource, SPEECH_MAX_CHARACTERS, SPEECH_SOURCE_MAX_CHARACTERS } from "./speech";
-import { SPEECH_RECOGNITION_VERSION, type SceneSpeaker, type SpeechRecognitionResult } from "./speechRecognitionShared";
+import { SPEECH_RECOGNITION_VERSION, speechRecognitionRevision, type SceneSpeaker, type SpeechRecognitionResult } from "./speechRecognitionShared";
+import { assertSpeechEditable } from "./speechEdits";
+import { ChatSpeechError } from "./chatSpeech";
 
 const MODEL = "mistralai/Mistral-Small-3.2-24B-Instruct-2506";
 const LEASE_MS = 90_000;
@@ -46,12 +48,13 @@ speakers — известные герои с постоянными ID; partici
 Не прячь вложенную прямую речь в большом фрагменте narration. Например source «За дверью послышалось: «Не открывай».» нужно разделить: {"text":"За дверью послышалось:","speakerId":"narrator","kind":"narration","confidence":"certain"} и {"text":"Не открывай","speakerId":"narrator","kind":"dialogue","confidence":"uncertain"}. Здесь неизвестно, кто произнёс слова за дверью. Когда известный герой говорит внутри повествования, точно так же выделяй его слова отдельно с его ID. Цитируемое письмо или надпись без произносящего человека могут оставаться narration.
 Новый NPC допускается только если его присутствие и авторство подтверждены source или recent/character.npcs. В newSpeakers evidence — дословная подстрока этих материалов, содержащая name. Имя бери в написании из материалов. identity:named для собственного имени; identity:role для неназванного «охранника», «женщины у двери» и т.п. Неназванные люди с одинаковой ролью не обязательно один герой; старый ID такого NPC используй только если ближайший контекст связывает его с этой сценой. Не объявляй NPC из отвлечённого упоминания, примера, цитаты в меню или инструкции.
 playerName и роль user в recent — игрок, не новый NPC. Не придумывай и не добавляй ему реплик. Цитату прежних слов игрока внутри source можешь сохранить как narrator, confidence:uncertain; не превращай её в новую реплику персонажа.
+Для подбора постоянного голоса добавь speakerGenders:[{"speakerId":"main","gender":"female"}]. Только female или male, если пол подтверждён карточкой или контекстом, иначе пропусти. Для новых NPC можно добавить gender в newSpeakers. Не угадывай по одной интонации.
 Для уверенного автора confidence:certain. Для narration всегда speakerId:narrator. Не вставляй имена говорящих, эмоции или теги в text. Если в source только ремарки/меню и нечего произнести, segments:[], newSpeakers:[].`;
 
 /** Read only server-written NPC entries, bounded independently of the size of a story. */
 export function readSpeechCast(value: unknown): RegisteredSpeaker[] {
   const data = object(value);
-  if (data?.version !== SPEECH_RECOGNITION_VERSION || !Array.isArray(data.speakers)) return [];
+  if ((data?.version !== SPEECH_RECOGNITION_VERSION && data?.version !== "scene-speakers-v1") || !Array.isArray(data.speakers)) return [];
   const seen = new Set<string>();
   return data.speakers.slice(0, MAX_CAST).flatMap(raw => {
     const item = object(raw);
@@ -59,6 +62,7 @@ export function readSpeechCast(value: unknown): RegisteredSpeaker[] {
       || item.kind !== "npc" || typeof item.name !== "string" || !item.name.trim() || item.name.length > 80) return [];
     seen.add(item.id);
     return [{ id: item.id, name: item.name, kind: "npc" as const,
+      ...(item.gender === "female" || item.gender === "male" ? { gender: item.gender } : {}),
       introducedAt: typeof item.introducedAt === "number" && Number.isFinite(item.introducedAt) ? item.introducedAt : 0,
       aliases: Array.isArray(item.aliases) ? item.aliases.filter((v): v is string => typeof v === "string" && v.length > 0 && v.length <= 80).slice(0, 6) : [] }];
   });
@@ -87,7 +91,16 @@ export function validateSpeechRecognition(source: string, value: unknown, contex
       [speaker.name, ...speaker.aliases].some(alias => alias && normal(alias) === normal(name))) : undefined;
     const id = existing?.id ?? `npc:${hash(JSON.stringify([item.identity === "role" ? context.messageId : "named", normal(name)])).slice(0, 24)}`;
     newIds.set(item.id, id);
-    if (!speakers.has(id)) speakers.set(id, { id, name, kind: "npc", aliases: [] });
+    if (!speakers.has(id)) speakers.set(id, { id, name, kind: "npc", aliases: [],
+      ...(item.gender === "female" || item.gender === "male" ? { gender: item.gender } : {}) });
+  }
+  // Optional voice casting hints, never identities or free-form provider instructions.
+  if (Array.isArray(data.speakerGenders)) for (const raw of data.speakerGenders.slice(0, MAX_CAST)) {
+    const item = object(raw);
+    const id = typeof item?.speakerId === "string" ? newIds.get(item.speakerId) ?? item.speakerId : "";
+    const speaker = speakers.get(id);
+    if (speaker && speaker.kind !== "narrator" && (item?.gender === "female" || item?.gender === "male"))
+      speakers.set(id, { ...speaker, gender: item.gender });
   }
   let position = 0, spokenCharacters = 0;
   const used = new Set<string>();
@@ -164,6 +177,56 @@ async function loadMaterials(scope: ChatScope, messageId: string) {
 export async function getSpeechRecognition(scope: ChatScope, messageId: string) {
   const material = await loadMaterials(scope, messageId);
   return readyResult(material.message.speechRecognition, material.sourceHash, material.contextHash);
+}
+
+export async function getSpeechRecognitionEditor(scope: ChatScope, messageId: string) {
+  const material = await loadMaterials(scope, messageId);
+  const recognition = readyResult(material.message.speechRecognition, material.sourceHash, material.contextHash);
+  return { recognition, options: [...new Map([...material.context.speakers, ...(recognition?.speakers ?? [])].map(speaker => [speaker.id, speaker])).values()] };
+}
+
+/** Human corrections change attribution/type only. Text, order and source offsets stay server-owned. */
+export async function correctSpeechRecognition(scope: ChatScope, messageId: string, input: {
+  revision: string; segmentIndex: number; speakerId: string; kind: "dialogue" | "narration"; name?: string;
+}) {
+  const material = await loadMaterials(scope, messageId);
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${scope.userId} FOR UPDATE`;
+    const message = await tx.message.findFirst({ where: { ...messageScopeWhere(scope), id: messageId, role: "assistant" }, select: { content: true, speechRecognition: true } });
+    const result = message && readyResult(message.speechRecognition, material.sourceHash, material.contextHash);
+    if (!message || speechSource(message.content) !== material.source || !result || speechRecognitionRevision(result) !== input.revision)
+      throw new ChatSpeechError("changed", 409);
+    if (!Number.isInteger(input.segmentIndex) || input.segmentIndex < 0 || input.segmentIndex >= result.segments.length
+      || (input.kind !== "dialogue" && input.kind !== "narration") || (input.kind === "narration" && input.speakerId !== "narrator"))
+      throw new ChatSpeechError("invalid", 400);
+    await assertSpeechEditable(tx, scope, messageId);
+    const thread = await tx.chatThread.findFirst({ where: { id: scope.threadId, userId: scope.userId, characterId: scope.characterId }, select: { speechCast: true } });
+    if (!thread) throw new ChatSpeechError("notFound", 404);
+    const registered = new Map(readSpeechCast(thread.speechCast).map(speaker => [speaker.id, speaker]));
+    const actors = new Map([...material.context.speakers, ...result.speakers, ...registered.values(), narrator].map(speaker => [speaker.id, speaker]));
+    let id = input.speakerId;
+    if (id === "new") {
+      const name = input.name?.trim();
+      if (!name || name.length > 80 || /[<>\r\n\p{Cc}]/u.test(name) || (material.context.playerName && normal(name) === normal(material.context.playerName)))
+        throw new ChatSpeechError("invalid", 400);
+      const existing = [...actors.values()].find(speaker => [speaker.name, ...speaker.aliases].some(alias => alias && normal(alias) === normal(name)));
+      id = existing?.id ?? `npc:${hash(JSON.stringify(["named", normal(name)])).slice(0, 24)}`;
+      if (!existing) {
+        if (registered.size >= MAX_CAST) throw new ChatSpeechError("tooLong", 400);
+        const speaker = { id, name, kind: "npc" as const, aliases: [] };
+        actors.set(id, speaker);
+        registered.set(id, { ...speaker, introducedAt: material.message.createdAt.getTime() });
+        await tx.chatThread.update({ where: { id: scope.threadId }, data: { speechCast: json({ version: SPEECH_RECOGNITION_VERSION, speakers: [...registered.values()] }) } });
+      }
+    }
+    if (!actors.has(id)) throw new ChatSpeechError("invalid", 400);
+    const segments = result.segments.map((segment, index) => index === input.segmentIndex ? { ...segment, speakerId: id, kind: input.kind,
+      confidence: input.kind === "dialogue" && id === "narrator" ? "uncertain" as const : "certain" as const, corrected: true } : segment);
+    const used = new Set(segments.map(segment => segment.speakerId));
+    const recognition: SpeechRecognitionResult = { ...result, revision: randomUUID(), segments, speakers: [...actors.values()].filter(speaker => used.has(speaker.id)) };
+    await tx.message.update({ where: { id: messageId }, data: { speechRecognition: json({ status: "ready", result: recognition }) } });
+    return { recognition, options: [...actors.values()] };
+  });
 }
 
 /** One short model call, independently cached from audio. No synthesis or playback quota is involved. */

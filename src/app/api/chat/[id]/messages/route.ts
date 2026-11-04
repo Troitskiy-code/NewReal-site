@@ -48,7 +48,7 @@ export async function DELETE(
     const result = await prisma.message.deleteMany({ where });
     // A deliberate restart forgets the old NPC cast along with its messages and memory.
     await prisma.chatThread.updateMany({ where: { id: scope.threadId, userId: scope.userId, characterId },
-      data: { speechCast: Prisma.DbNull } });
+      data: { speechCast: Prisma.DbNull, speechVoices: Prisma.DbNull } });
 
     await clearChatMemories(scope);
     // An explicit restart is the only operation that re-adopts the card's default mode.

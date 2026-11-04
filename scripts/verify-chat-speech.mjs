@@ -14,6 +14,7 @@ const require = createRequire(import.meta.url);
 process.env.CHAT_THREADS_ENABLED = 'true';
 // The single-voice scenarios run with the narrator off; the narrator section switches it on explicitly.
 process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'false';
+process.env.CHAT_SPEECH_CAST_ENABLED = 'false';
 const { NextRequest } = require('next/server');
 const root = process.cwd();
 const fixture = mkdtempSync(join(root, '.runtime', 'speech-db-'));
@@ -38,6 +39,8 @@ class FixtureProviderError extends Error { constructor(status, definitive = fals
 const provider = { SPEECH_MODEL: 'google/gemini-3-8-flash-lite-tts', SPEECH_EXPRESSIVE_MODEL: 'google/gemini-3-8-flash-tts', SPEECH_CACHE_VERSION: 'gemini-native-v2-mp3-64', speechEnabled: () => true,
   speechModelFor: unlimited => unlimited ? 'google/gemini-3-8-flash-tts' : 'google/gemini-3-8-flash-lite-tts',
   SpeechProviderError: FixtureProviderError,
+  submitSceneSpeech: async (turns, model) => { providerCalls++; submissions.push({ turns, model, scene: true }); if (providerFailure) throw new FixtureProviderError(503, providerFailure !== 'uncertain'); return 'task_' + providerCalls; },
+  downloadSpeechPcm: async () => { if (downloadFailure) throw new FixtureProviderError(); return Buffer.alloc(4800, 0); },
   submitSpeech: async (turns, voice, model, narrator) => { providerCalls++; submissions.push({ turns, voice, model, narrator }); if (providerFailure) throw new FixtureProviderError(503, true); return 'task_' + providerCalls; },
   getSpeechTask: async () => { if (pollFailure) throw new FixtureProviderError(pollFailure === 'transient' ? 503 : 401, pollFailure !== 'transient'); return { state: providerState, credits: .47, url: 'https://tempfile.aiquickdraw.com/speech.wav' }; },
   downloadSpeech: async () => { if (downloadFailure) throw new FixtureProviderError(); return audio; } };
@@ -58,6 +61,8 @@ function loader(overrides = {}) {
     if (cache.has(file)) return cache.get(file);
     if (file.endsWith('speechProvider.ts') && !overrides.realProvider) return provider;
     if (file.endsWith('speechPreparation.ts') && !overrides.realPreparation) return {
+      prepareSceneSpeech: async (_text, script, voices) => { preparationCalls++; const segments = script.segments.filter(s => s.kind === 'dialogue' || script.mode === 'world'); return {
+        text: segments.map(s => s.text).join(' '), turns: segments.map(s => ({ text: s.text, style: '', speakerId: s.speakerId, voice: voices[s.speakerId], speaker: s.kind === 'narration' ? 'narrator' : 'character' })) }; },
       prepareSpeechText: async (text, _character, contentMode, narrator = false) => { preparationCalls++; preparationModes.push(contentMode); preparationNarration.push(narrator); if (preparationFailure) throw new Error('Synthetic preparation failure'); if (preparationOverride) return preparationOverride(text, contentMode, narrator); const spoken = text.replace(/\*[^*]*\*/g, '').trim(); return { text: spoken, turns: spoken ? [{ text: spoken, style: '' }] : [] }; },
       SpeechPreparationError: class extends Error {},
     };
@@ -100,12 +105,14 @@ try {
   });
   await ddl.connect();
   // Apply the real migration independently of Prisma's schema creation.
-  await ddl.query('DROP TABLE "SpeechClip"; DROP TABLE "SpeechDailyQuota";');
+  await ddl.query('DROP TABLE "SpeechClipPart"; DROP TABLE "SpeechClip"; DROP TABLE "SpeechDailyQuota";');
   await ddl.query(readFileSync('prisma/migrations/20261019190000_character_speech/migration.sql', 'utf8'));
   await ddl.query(readFileSync('prisma/migrations/20261019230000_kie_character_speech/migration.sql', 'utf8'));
   await ddl.query(readFileSync('prisma/migrations/20261020090000_speech_preparation/migration.sql', 'utf8'));
   await ddl.query('ALTER TABLE "Message" DROP COLUMN "speechRecognition"; ALTER TABLE "ChatThread" DROP COLUMN "speechCast";');
   await ddl.query(readFileSync('prisma/migrations/20261103120000_scene_speaker_recognition/migration.sql', 'utf8'));
+  await ddl.query('ALTER TABLE "ChatThread" DROP COLUMN "speechVoices"');
+  await ddl.query(readFileSync('prisma/migrations/20261104223000_story_speech_voices/migration.sql', 'utf8'));
   const load = loader();
   const service = load('src/lib/chatSpeech.ts');
   const shared = load('src/lib/speech.ts');
@@ -859,9 +866,259 @@ try {
   check(recognitionInputs.every(input => input.recent.length <= 6), 'recognition context is bounded to six preceding messages');
   check(providerCalls === synthesisBeforeRecognition, 'all recognition scenarios leave the existing voice provider untouched');
   sessionUser = 'paid';
+  {
+  // Real persistence, casting and provider orchestration; synthetic model/audio only.
+  process.env.CHAT_SPEECH_CAST_ENABLED = 'true';
+  const sceneRoutes = recognitionLoad('src/app/api/chat/[id]/speech/route.ts');
+  const jobs = recognitionLoad('src/lib/sceneSpeechJobs.ts');
+  const voiceRegistry = recognitionLoad('src/lib/storySpeechVoices.ts');
+  const sceneText = 'Темнеет. Анна: «Привет». Борис: «Да». Кира: «Пора». Анна: «Идём».';
+  const sceneOutput = () => ({ newSpeakers: [{ id: 'new1', name: 'Кира', identity: 'named', evidence: 'Кира:', gender: 'female' }],
+    speakerGenders: [{ speakerId: 'participant:alice', gender: 'female' }, { speakerId: 'participant:bob', gender: 'male' }],
+    segments: [segment('Темнеет.', 'narrator', 'narration'), segment('Привет', 'participant:alice'), segment('Да', 'participant:bob'), segment('Пора', 'new1'), segment('Идём', 'participant:alice')] });
+  await db.character.update({ where: { id: 'hero' }, data: { rpConfig: { participants: [
+    { id: 'alice', name: 'Анна', description: 'Девушка', appearance: '', speechStyle: '' },
+    { id: 'bob', name: 'Борис', description: 'Мужчина', appearance: '', speechStyle: '' }] } } });
+  for (const id of ['ensemble', 'ensemble-free']) {
+    await db.user.create({ data: { id, subscriptionType: id === 'ensemble' ? 'dialog' : 'start', subscriptionEnd: id === 'ensemble' ? new Date('2099-01-01') : null } });
+    await add(`${id}-mixed`, id, 'assistant', sceneText);
+    await db.chatPromptState.create({ data: { scopeKey: `thread:story-${id}`, characterId: 'hero', mode: 'group' } });
+  }
+  const sceneReq = (messageId, userId = 'ensemble', extra = {}) => new NextRequest(`http://localhost/api/chat/hero/speech?thread=story-${userId}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost' }, body: JSON.stringify({ messageId, voice: 'Aoede', ...extra }) });
+  const completeScene = async req => {
+    for (let count = 0; count < 40; count++) { const response = await sceneRoutes.POST(req.clone(), context); if (response.status !== 202) return response; }
+    throw new Error('Scene did not finish');
+  };
+  sessionUser = 'ensemble'; respondToRecognition = async () => sceneOutput();
+  const beforeScene = providerCalls;
+  const autoScope = { userId: 'ensemble', characterId: 'hero', threadId: 'story-ensemble', legacy: false };
+  const autoScript = await recognition.recognizeSceneSpeech(autoScope, 'ensemble-mixed');
+  const autoVoices = await voiceRegistry.storySpeechVoices(autoScope, autoScript, 'Charon', false);
+  check(autoVoices['participant:alice'] === 'Aoede' && autoVoices['participant:bob'] === 'Fenrir',
+    'automatic group casting uses participant genders rather than the legacy narrator default');
+  const reversed = { ...autoScript, segments: autoScript.segments.map(s => Object.fromEntries(Object.entries(s).reverse())) };
+  check(voiceRegistry.sceneSpeechKey(autoScript, autoVoices) === voiceRegistry.sceneSpeechKey(reversed, autoVoices), 'cache identity ignores JSON object key order');
+  const mixedScene = await completeScene(sceneReq('ensemble-mixed'));
+  const sceneSubmissions = submissions.slice(-2), mappedTurns = sceneSubmissions.flatMap(item => item.turns);
+  check(mixedScene.status === 200 && providerCalls === beforeScene + 2 && sceneSubmissions.every(item => item.scene), 'three speakers use two durable contiguous provider batches: ' + JSON.stringify({ status: mixedScene.status, calls: providerCalls - beforeScene, error: mixedScene.status === 200 ? null : await mixedScene.clone().text() }));
+  check(mappedTurns.map(turn => turn.text).join(' ') === 'Привет Да Пора Идём' && new Set(mappedTurns.map(turn => turn.voice)).size === 3
+    && mappedTurns[0].voice === mappedTurns[3].voice, 'group playback speaks only dialogue with separate stable voices in source order');
+  const mp3Bytes = Buffer.from(await mixedScene.arrayBuffer());
+  check(mp3Bytes[0] === 255 && (mp3Bytes[1] & 224) === 224 && mp3Bytes.length > 32, 'PCM batches become one valid MP3 encoding');
+  check(await db.speechClipPart.count({ where: { clip: { userId: 'ensemble' } } }) === 0, 'completed playback releases intermediate PCM storage');
+  const usedCast = voiceRegistry.readStoryVoices((await db.chatThread.findUnique({ where: { id: 'story-ensemble' } })).speechVoices);
+  const kiraVoice = usedCast.find(speaker => speaker.name === 'Кира').voice;
+  check(usedCast.find(speaker => speaker.id === 'participant:bob').voice === 'Fenrir' && ['Kore','Leda','Zephyr'].includes(kiraVoice), 'casting respects gender hints and reserves distinct available voices');
+  const beforeReplay = providerCalls, preparedBeforeReplay = preparationCalls;
+  check((await completeScene(sceneReq('ensemble-mixed'))).status === 200 && providerCalls === beforeReplay && preparationCalls === preparedBeforeReplay,
+    'repeat playback reuses the recording without synthesis or performance calls');
+  const castKey = mixedScene.headers.get('X-Speech-Cast-Key');
+  const metadata = await sceneRoutes.GET(new NextRequest(`http://localhost/api/chat/hero/speech?thread=story-ensemble&messageId=ensemble-mixed&voice=Aoede&contentMode=dialogue&narrated=false&castKey=${castKey}`), context);
+  check((await metadata.json()).text === 'Привет Да Пора Идём', 'metadata resolves the exact owned multi-voice script');
+  await add('ensemble-return', 'ensemble', 'assistant', 'Кира: «Снова я».');
+  respondToRecognition = async () => ({ ...withNpc('Кира', 'Кира:', [segment('Снова я', 'new1')]), speakerGenders: [{ speakerId: 'new1', gender: 'male' }] });
+  check((await completeScene(sceneReq('ensemble-return'))).status === 200 && submissions.at(-1).turns[0].voice === kiraVoice,
+    'a returning NPC keeps its voice despite a later inconsistent gender hint');
+  const freshVoiceModule = loader()('src/lib/storySpeechVoices.ts');
+  check(freshVoiceModule.readStoryVoices((await db.chatThread.findUnique({ where: { id: 'story-ensemble' } })).speechVoices).find(s => s.name === 'Кира').voice === kiraVoice,
+    'voice assignments survive a fresh server module');
+  check((await freshVoiceModule.storySpeechVoices(autoScope, autoScript, 'Orus', false))['participant:alice'] === 'Aoede',
+    'another browser default cannot replace the story first participant voice');
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-ensemble', characterId: 'hero' } }, data: { mode: 'character' } });
+  await add('ensemble-single', 'ensemble', 'assistant', 'Снова дождь. «Я здесь». Кира: «И я».');
+  respondToRecognition = async () => withNpc('Кира', 'Кира:', [segment('Снова дождь.', 'narrator', 'narration'), segment('Я здесь', 'main'), segment('И я', 'new1')]);
+  check((await completeScene(sceneReq('ensemble-single'))).status === 200 && submissions.at(-1).turns.map(t => t.text).join(' ') === 'Я здесь И я'
+    && submissions.at(-1).turns[0].voice === 'Aoede' && submissions.at(-1).turns[1].voice === kiraVoice,
+    'one character and a returning NPC use their own voices while narration stays silent');
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-ensemble', characterId: 'hero' } }, data: { mode: 'world' } });
+  await add('ensemble-world', 'ensemble', 'assistant', 'Темнеет. Кира: «Пора». Иван: «Жду».');
+  respondToRecognition = async () => ({ newSpeakers: [{ id: 'new1', name: 'Кира', identity: 'named', evidence: 'Кира:' },
+    { id: 'new2', name: 'Иван', identity: 'named', evidence: 'Иван:', gender: 'male' }],
+    segments: [segment('Темнеет.', 'narrator', 'narration'), segment('Пора', 'new1'), segment('Жду', 'new2')] });
+  const beforeWorld = submissions.length;
+  check((await completeScene(sceneReq('ensemble-world'))).status === 200 && submissions.slice(beforeWorld).flatMap(item => item.turns).map(t => t.text).join(' ') === 'Темнеет. Пора Жду'
+    && submissions[beforeWorld].turns[0].speaker === 'narrator', 'world playback retains narration and assigns separate persistent NPC voices');
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-ensemble', characterId: 'hero' } }, data: { mode: 'group' } });
+
+  sessionUser = 'ensemble-free';
+  await add('ensemble-free-narration', 'ensemble-free', 'assistant', 'Темнеет.');
+  respondToRecognition = async () => script(segment('Темнеет.', 'narrator', 'narration'));
+  const beforeSilentScene = providerCalls, silentScene = await completeScene(sceneReq('ensemble-free-narration', 'ensemble-free'));
+  check(silentScene.status === 400 && (await silentScene.json()).code === 'noDialogue' && providerCalls === beforeSilentScene
+    && (await service.getSpeechQuota('ensemble-free')).remaining === 1, 'narration-only groups neither synthesize nor spend the daily allowance');
+  respondToRecognition = async () => sceneOutput();
+  const freeScene = await completeScene(sceneReq('ensemble-free-mixed', 'ensemble-free'));
+  check(freeScene.status === 200 && (await service.getSpeechQuota('ensemble-free')).remaining === 0 && submissions.at(-1).model === provider.SPEECH_MODEL,
+    'multiple batches spend exactly one free playback and keep the free model');
+  check((await completeScene(sceneReq('ensemble-free-mixed', 'ensemble-free'))).status === 429, 'a multi-voice recording obeys the free playback limit');
+
+  sessionUser = 'ensemble'; await add('ensemble-failure', 'ensemble', 'assistant', sceneText);
+  respondToRecognition = async () => sceneOutput();
+  await sceneRoutes.POST(sceneReq('ensemble-failure'), context);
+  await sceneRoutes.POST(sceneReq('ensemble-failure'), context);
+  pollFailure = 'transient'; const beforePollRetry = providerCalls;
+  check((await sceneRoutes.POST(sceneReq('ensemble-failure'), context)).status === 202 && providerCalls === beforePollRetry, 'transient scene polling retains the original task');
+  pollFailure = false;
+  await sceneRoutes.POST(sceneReq('ensemble-failure'), context);
+  await sceneRoutes.POST(sceneReq('ensemble-failure'), context);
+  providerState = 'failed';
+  check((await sceneRoutes.POST(sceneReq('ensemble-failure'), context)).status === 503, 'a failed provider batch is a controlled error');
+  check(await db.speechClipPart.count({ where: { clip: { messageId: 'ensemble-failure' }, status: 'ready' } }) === 1, 'a later failure preserves an already paid ready batch');
+  providerState = 'ready'; const beforePartialRetry = providerCalls;
+  check((await completeScene(sceneReq('ensemble-failure'))).status === 200 && providerCalls === beforePartialRetry + 1, 'retry synthesizes only the failed batch');
+  const twoVoiceInput = real.sceneSpeechInput(mappedTurns.slice(0, 2));
+  check(twoVoiceInput.speakers.length === 2 && twoVoiceInput.dialogue_turns.map(turn => turn.speaker_id).join() === 'Speaker 1,Speaker 2', 'real provider adapter maps stable voices to declared speakers');
+  assert.throws(() => real.sceneSpeechInput(mappedTurns.slice(0, 3))); check(true, 'three distinct voices cannot reach one provider request');
+  check(jobs.sceneSpeechBatches(mappedTurns).flat().map(turn => turn.text).join(' ') === 'Привет Да Пора Идём', 'batching never reorders nonadjacent dialogue');
+  const attributed = preparation.validateSpeechPerformance('Да. Нет.', { segments: ['Да.', 'Нет.'], segmentKinds: ['dialogue','dialogue'], performance: [] }, 'dialogue', false,
+    [{ speakerId: 'a', voice: 'Aoede', narration: false }, { speakerId: 'b', voice: 'Kore', narration: false }]);
+  check(attributed.turns.length === 2 && attributed.turns[0].speakerId === 'a' && attributed.turns[1].voice === 'Kore', 'equal delivery never merges different speakers');
+  const fixedScript = { mode: 'character', segments: [{ text: 'Да.', start: 0, end: 3, speakerId: 'main', kind: 'dialogue' },
+    { text: 'Нет.', start: 4, end: 8, speakerId: 'npc:other', kind: 'dialogue' }] };
+  const performanceLoader = loader({ realPreparation: true,
+    './aiProviders': { DEEPINFRA_CHAT_URL: 'https://synthetic.invalid/chat', providerApiKey: () => 'synthetic-key' },
+    '@/lib/aiCostTelemetry': { ...mocks['@/lib/aiCostTelemetry'], meteredPost: async () => ({ data: { choices: [{ finish_reason: 'stop', message: {
+      content: JSON.stringify({ segments: ['Подмена текста'], performance: [{ segment: 1, emotion: 'sad', delivery: 'whisper', pace: 'slow' }] }) } }] } }) } });
+  const fixedPerformance = await performanceLoader('src/lib/speechPreparation.ts').prepareSceneSpeech('Да. Нет.', fixedScript, { main: 'Aoede', 'npc:other': 'Kore' });
+  check(fixedPerformance.text === 'Да. Нет.' && fixedPerformance.turns[1].style.includes('whispering') && fixedPerformance.turns[1].voice === 'Kore',
+    'the real performance preparation changes delivery but cannot replace approved words or speaker voices');
+  // The fixture polls immediately; real clients wait four seconds between requests.
+  await db.rateLimitBucket.deleteMany();
+  await add('ensemble-uncertain', 'ensemble', 'assistant', sceneText);
+  await sceneRoutes.POST(sceneReq('ensemble-uncertain'), context);
+  const beforeUncertain = providerCalls; providerFailure = 'uncertain';
+  await sceneRoutes.POST(sceneReq('ensemble-uncertain'), context); providerFailure = false;
+  const uncertainScene = await sceneRoutes.POST(sceneReq('ensemble-uncertain'), context);
+  check(uncertainScene.status === 503 && (await uncertainScene.json()).code === 'uncertain' && providerCalls === beforeUncertain + 1, 'a lost submission response never buys a batch twice');
+  const changedCast = await sceneRoutes.POST(sceneReq('ensemble-uncertain', 'ensemble', { voice: 'Orus' }), context);
+  check(changedCast.status === 409 && voiceRegistry.readStoryVoices((await db.chatThread.findUnique({ where: { id: 'story-ensemble' } })).speechVoices).find(s => s.id === 'participant:alice').voice === 'Aoede',
+    'a voice change during an uncertain task cannot mutate its saved cast or orphan the task');
+  process.env.CHAT_SPEECH_CAST_ENABLED = 'false';
+  const disabledPending = await sceneRoutes.POST(sceneReq('ensemble-uncertain'), context);
+  check(disabledPending.status === 409 && providerCalls === beforeUncertain + 1, 'disabling multi-voice playback cannot duplicate a queued batch');
+  const uncertainClip = await db.speechClip.findFirst({ where: { messageId: 'ensemble-uncertain' } });
+  await db.speechClip.delete({ where: { id: uncertainClip.id } });
+  check(await db.speechClipPart.count({ where: { clipId: uncertainClip.id } }) === 0, 'parent deletion cascades private audio parts');
+  sessionUser = 'paid';
+  }
+  {
+    // Voice and attribution editors use the real access checks, transactions and cache invalidation.
+    process.env.CHAT_SPEECH_CAST_ENABLED = 'true';
+    await db.rateLimitBucket.deleteMany();
+    await db.user.create({ data: { id: 'editor', subscriptionType: 'dialog', subscriptionEnd: new Date('2099-01-01') } });
+    const text = 'Дождь. Анна: «Привет». Борис: «Да».';
+    await add('editor-reply', 'editor', 'assistant', text);
+    await db.chatPromptState.create({ data: { scopeKey: 'thread:story-editor', characterId: 'hero', mode: 'group' } });
+    sessionUser = 'editor';
+    const speechApi = recognitionLoad('src/app/api/chat/[id]/speech/route.ts');
+    const voicesApi = recognitionLoad('src/app/api/chat/[id]/speech/voices/route.ts');
+    const voices = recognitionLoad('src/lib/storySpeechVoices.ts');
+    const revision = recognitionLoad('src/lib/speechRecognitionShared.ts').speechRecognitionRevision;
+    const scope = { userId: 'editor', characterId: 'hero', threadId: 'story-editor', legacy: false };
+    const status = async (thread = 'story-editor') => (await speechApi.GET(new NextRequest(`http://localhost/api/chat/hero/speech?thread=${thread}`), context)).json();
+    const voicePatch = (speakerId, voice, rev, extra = {}, thread = 'story-editor', origin = 'http://localhost') => new NextRequest(`http://localhost/api/chat/hero/speech/voices?thread=${thread}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify({ speakerId, voice, revision: rev, ...extra }) });
+    const recognitionReq = (id, method = 'POST', body, thread = 'story-editor', origin = 'http://localhost') => new NextRequest(`http://localhost/api/chat/hero/speech/recognition?thread=${thread}&messageId=${id}`, {
+      method, headers: { 'Content-Type': 'application/json', Origin: origin }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    const playReq = (id, voice = 'auto') => new NextRequest('http://localhost/api/chat/hero/speech?thread=story-editor', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'http://localhost' }, body: JSON.stringify({ messageId: id, voice }) });
+    const play = async id => { for (let i = 0; i < 40; i++) { const res = await speechApi.POST(playReq(id), context); if (res.status !== 202) return res; } throw Error('Editor playback did not finish'); };
+    let saved = await status();
+    check(saved.cast.some(s => s.id === 'participant:alice') && saved.cast.some(s => s.id === 'participant:bob'), 'all group participants can be configured before recognition or playback');
+    const initialRevision = saved.castRevision, beforeEdits = providerCalls, beforeEditModels = recognitionCalls;
+    let editedVoice = await voicesApi.PATCH(voicePatch('participant:bob', 'Orus', saved.castRevision), context);
+    check(editedVoice.status === 200 && (await editedVoice.json()).cast.find(s => s.id === 'participant:bob').manual === true, 'individual voice choice is marked manual and persisted');
+    check((await voicesApi.PATCH(voicePatch('participant:alice', 'Zephyr', initialRevision), context)).status === 409, 'stale voice settings cannot overwrite a concurrent change');
+    saved = await status();
+    editedVoice = await voicesApi.PATCH(voicePatch('participant:alice', 'Zephyr', saved.castRevision), context);
+    check(editedVoice.status === 200 && providerCalls === beforeEdits && recognitionCalls === beforeEditModels, 'voice editing performs no synthesis or recognition calls');
+    saved = await status();
+    check((await voicesApi.PATCH(voicePatch('npc:aaaaaaaaaaaaaaaaaaaaaaaa', 'Puck', saved.castRevision), context)).status === 400, 'a client cannot assign a voice to an unknown story actor');
+    check((await voicesApi.PATCH(voicePatch('participant:bob', 'not-a-voice', saved.castRevision), context)).status === 400, 'unapproved voice identifiers are rejected');
+    check((await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', saved.castRevision, {}, 'story-editor', 'https://attacker.invalid'), context)).status === 403, 'voice edits reject cross-site requests');
+    check((await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', saved.castRevision, { padding: 'a'.repeat(5000) }), context)).status === 413, 'voice edit bodies have a strict byte limit');
+    sessionUser = 'other';
+    check((await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', saved.castRevision), context)).status === 404, 'voice settings are private to the story owner');
+    sessionUser = null;
+    check((await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', saved.castRevision), context)).status === 401, 'voice editing requires authentication');
+    sessionUser = 'editor';
+    respondToRecognition = async () => script(segment('Дождь.', 'narrator', 'narration'), segment('Привет', 'participant:alice'), segment('Да', 'participant:bob'));
+    let response = await recognitionRoutes.POST(recognitionReq('editor-reply'), context), editor = await response.json();
+    check(response.status === 200 && editor.options.some(s => s.id === 'participant:alice'), 'recognition exposes server-owned correction targets');
+    const sourceSlices = editor.recognition.segments.map(s => [s.text, s.start, s.end]);
+    const patch = async (index, speakerId, kind = 'dialogue', name) => {
+      const res = await recognitionRoutes.PATCH(recognitionReq('editor-reply', 'PATCH', { revision: revision(editor.recognition), segmentIndex: index, speakerId, kind, ...(name ? { name } : {}) }), context);
+      const body = await res.json(); if (res.ok) editor = body; return { res, body };
+    };
+    const stale = revision(editor.recognition);
+    let correction = await patch(1, 'participant:bob');
+    check(correction.res.status === 200 && editor.recognition.segments[1].corrected && editor.recognition.segments[1].speakerId === 'participant:bob', 'a dialogue fragment can be reassigned to another group participant');
+    check(JSON.stringify(editor.recognition.segments.map(s => [s.text, s.start, s.end])) === JSON.stringify(sourceSlices), 'correction preserves all source words, offsets and ordering');
+    check((await recognitionRoutes.PATCH(recognitionReq('editor-reply', 'PATCH', { revision: stale, segmentIndex: 2, speakerId: 'participant:alice', kind: 'dialogue' }), context)).status === 409, 'stale fragment edits cannot erase another correction');
+    correction = await patch(2, 'new', 'dialogue', 'Кира');
+    const kiraId = editor.recognition.segments[2].speakerId;
+    check(correction.res.status === 200 && kiraId.startsWith('npc:') && editor.options.some(s => s.id === kiraId && s.name === 'Кира'), 'a missed NPC can be added by name without changing the reply text');
+    saved = await status();
+    check((await voicesApi.PATCH(voicePatch(kiraId, 'Leda', saved.castRevision), context)).status === 200, 'a manually identified NPC gets an individually selectable voice');
+    const modelCountAfterCorrection = recognitionCalls;
+    const reloaded = await recognitionRoutes.GET(recognitionReq('editor-reply', 'GET'), context);
+    check((await reloaded.json()).recognition.segments[2].speakerId === kiraId && recognitionCalls === modelCountAfterCorrection, 'manual attribution survives reload without another model call');
+    let played = await play('editor-reply');
+    check(played.status === 200 && submissions.at(-1).turns.map(t => t.voice).join() === 'Orus,Leda', 'playback uses corrected authors and manually selected voices');
+    const directManual = await speechApi.POST(playReq('editor-reply', 'Fenrir'), context);
+    check(directManual.status === 200 && voices.readStoryVoices((await db.chatThread.findUnique({ where: { id: 'story-editor' } })).speechVoices).find(s => s.id === 'participant:alice').voice === 'Zephyr',
+      'an old browser primary-voice preference cannot overwrite an individual manual assignment');
+    const paidBeforeClassification = providerCalls;
+    await patch(1, 'narrator', 'narration'); await patch(2, 'narrator', 'narration');
+    played = await play('editor-reply');
+    check(played.status === 400 && (await played.json()).code === 'noDialogue' && providerCalls === paidBeforeClassification, 'marking mistaken dialogue as narration prevents cached speech and new synthesis in groups');
+    await patch(1, 'participant:bob'); await patch(2, kiraId);
+    check((await play('editor-reply')).status === 200 && providerCalls === paidBeforeClassification, 'restoring a previous attribution safely reuses the matching ready recording');
+    check((await db.message.findUnique({ where: { id: 'editor-reply' } })).content === text, 'manual media corrections never rewrite the chat reply');
+    const snapshot = await recognition.getSpeechRecognition(scope, 'editor-reply');
+    const snapshotVoices = await voices.storySpeechVoices(scope, snapshot, 'Charon');
+    saved = await status(); await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', saved.castRevision), context);
+    await rejects(() => service.reserveSpeech({ userId: 'editor', characterId: 'hero', messageId: 'editor-reply', voice: 'Orus', contentMode: 'dialogue', castKey: voices.sceneSpeechKey(snapshot, snapshotVoices),
+      scene: { threadId: 'story-editor', revision: revision(snapshot), mode: 'group', voices: snapshotVoices } }), 'changed', 'a voice edit racing a reservation cannot buy audio with stale assignments');
+    saved = await status(); await voicesApi.PATCH(voicePatch('participant:bob', 'Orus', saved.castRevision), context);
+    const raceVoices = await voices.storySpeechVoices(scope, snapshot, 'Charon');
+    await patch(1, 'narrator');
+    await rejects(() => service.reserveSpeech({ userId: 'editor', characterId: 'hero', messageId: 'editor-reply', voice: 'Orus', contentMode: 'dialogue', castKey: voices.sceneSpeechKey(snapshot, raceVoices),
+      scene: { threadId: 'story-editor', revision: revision(snapshot), mode: 'group', voices: raceVoices } }), 'changed', 'a correction racing reservation invalidates its stale script before synthesis');
+    await patch(1, 'participant:bob');
+    check((await patch(1, 'npc:bbbbbbbbbbbbbbbbbbbbbbbb')).res.status === 400, 'correction targets cannot be injected from another story');
+    check((await patch(1, 'new', 'dialogue', '<script>')).res.status === 400, 'new NPC names cannot contain markup or control instructions');
+    check((await patch(99, 'participant:bob')).res.status === 400, 'correction cannot address an absent fragment');
+    const busyText = 'Темно. Анна: «Стой». Борис: «Иду».';
+    await add('editor-busy', 'editor', 'assistant', busyText);
+    respondToRecognition = async () => script(segment('Темно.', 'narrator', 'narration'), segment('Стой', 'participant:alice'), segment('Иду', 'participant:bob'));
+    check((await speechApi.POST(playReq('editor-busy'), context)).status === 202, 'editor fixture creates a durable in-progress playback');
+    saved = await status();
+    check((await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', saved.castRevision), context)).status === 409, 'voice edits cannot orphan an in-progress playback');
+    const busyScript = await recognition.getSpeechRecognition(scope, 'editor-busy');
+    check((await recognitionRoutes.PATCH(recognitionReq('editor-busy', 'PATCH', { revision: revision(busyScript), segmentIndex: 1, speakerId: 'participant:bob', kind: 'dialogue' }), context)).status === 409, 'attribution edits cannot orphan an in-progress playback');
+    check((await play('editor-busy')).status === 200, 'the original task still finishes after blocked edits');
+    await add('editor-unpaid', 'editor', 'assistant', 'Темнеет.');
+    respondToRecognition = async () => script(segment('Темнеет.', 'narrator', 'narration'));
+    check((await play('editor-unpaid')).status === 400, 'narration-only preparation has no paid provider task');
+    saved = await status();
+    check((await voicesApi.PATCH(voicePatch('participant:alice', 'Kore', saved.castRevision), context)).status === 200, 'abandoned unpaid preparation does not lock the voice editor');
+    await db.rateLimitBucket.deleteMany();
+    sessionUser = 'ensemble-free';
+    const freeStatus = await status('story-ensemble-free');
+    check((await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', freeStatus.castRevision, {}, 'story-ensemble-free'), context)).status === 200
+      && (await service.getSpeechQuota('ensemble-free')).remaining === 0, 'voice editing works with an exhausted free allowance and never resets or spends it');
+    sessionUser = 'other';
+    check((await recognitionRoutes.PATCH(recognitionReq('editor-reply', 'PATCH', { revision: revision(editor.recognition), segmentIndex: 1, speakerId: 'participant:bob', kind: 'dialogue' }), context)).status === 404, 'manual recognition edits require message ownership');
+    sessionUser = 'editor';
+    check((await recognitionRoutes.PATCH(recognitionReq('editor-reply', 'PATCH', { revision: revision(editor.recognition), segmentIndex: 1, speakerId: 'participant:bob', kind: 'dialogue' }, 'story-editor', 'https://attacker.invalid'), context)).status === 403, 'recognition edits reject cross-origin requests');
+    process.env.CHAT_SPEECH_CAST_ENABLED = 'false'; sessionUser = 'paid';
+  }
   const clearStory = recognitionLoad('src/app/api/chat/[id]/messages/route.ts');
   const cleared = await clearStory.DELETE(new NextRequest('http://localhost/api/chat/hero/messages?thread=story-paid', { method: 'DELETE' }), context);
   check(cleared.status === 200 && (await db.chatThread.findUnique({ where: { id: 'story-paid' } })).speechCast === null, 'restarting a story forgets its recognised NPCs');
+  check((await db.chatThread.findUnique({ where: { id: 'story-paid' } })).speechVoices === null, 'restarting a story also resets voice assignments');
   check(await db.message.count({ where: { threadId: 'recognition-second-story' } }) === 1, 'restarting one story preserves another story of the same owner');
   console.log(`Speech verification: ${checks} passed`);
 } finally {

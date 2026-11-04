@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Wähle für jede Figur eine Stimme. Änderungen werden in dieser Geschichte gespeichert und gelten ab der nächsten Wiedergabe.",
+    "editSpeaker": "Sprecher ändern",
+    "newSpeaker": "Neue Figur",
+    "speakerName": "Name der Figur",
+    "saveEdit": "Speichern",
+    "cancelEdit": "Abbrechen",
+    "savingEdit": "Wird gespeichert…",
+    "corrected": "Von dir korrigiert",
+    "castPrimary": "Die Auswahl ändert die Stimme der Hauptfigur, des ersten Gruppenmitglieds oder des Welterzählers. Andere Figuren behalten ihre Stimmen.",
+    "castPlayback": "Charaktere und NPCs sprechen mit ihren zugewiesenen Stimmen in dieser Geschichte. Erzählungen werden nur in Welten vorgelesen.",
     "recognition": {
       "analyze": "Wer spricht?",
       "loading": "Sprecher werden erkannt…",
@@ -66,6 +76,7 @@
     "reset": "Eine Wiedergabe pro Tag, einschließlich Wiederholungen. Wird um 00:00 Uhr Moskauer Zeit zurückgesetzt. Anhalten und Fortsetzen Verwenden Sie kein anderes Spiel.",
     "upgrade": "Unbegrenzt mit einem Abonnement",
     "errors": {
+      "invalid": "Prüfe den Namen der Figur und die gewählte Stimme.",
       "unauthorized": "Melden Sie sich an, um diese Antwort anzuhören.",
       "notFound": "Diese Antwort ist nicht verfügbar. Aktualisieren Sie den Chat.",
       "noDialogue": "Diese Antwort enthält keine gesprochenen Worte, nur Erzählung, Gedanken oder Handlungen.",
@@ -74,7 +85,7 @@
       "busy": "Eine weitere Antwort wird generiert. Bitte warten Sie.",
       "quota": "Ihre kostenlose Wiedergabe wurde heute verwendet. Wiederholungen zählen auch. Wird um 00:00 Uhr Moskauer Zeit zurückgesetzt. Abonnements beinhalten unbegrenzte Rede.",
       "rateLimit": "Zu viele Anfragen. Versuchen Sie es in einer Minute noch einmal.",
-      "changed": "Die Antwort hat sich geändert. Versuchen Sie erneut, das Audio zu generieren.",
+      "changed": "Die Daten wurden geändert. Öffne die Einstellungen oder Sprecheranalyse erneut und versuche es noch einmal.",
       "unavailable": "Das Audio konnte nicht geladen werden. Bitte versuchen Sie es später noch einmal.",
       "playback": "Drücken Sie Wiedergabe auf dem Audioplayer. Es ist nicht erforderlich, das Audio erneut zu generieren.",
       "pending": "Audio wird noch vorbereitet. Versuchen Sie es später erneut, um dieselbe Aufnahme fortzusetzen.",

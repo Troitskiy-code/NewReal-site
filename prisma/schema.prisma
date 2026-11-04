@@ -131,6 +131,21 @@ model CharacterTranslation {
   @@index([locale])
 }
 
+// Ordered, resumable provider tasks for one multi-character playback.
+model SpeechClipPart {
+  id             String @id
+  clipId         String
+  clip           SpeechClip @relation(fields: [clipId], references: [id], onDelete: Cascade)
+  position       Int
+  status         String @default("idle")
+  turns          Json
+  providerTaskId String?
+  costEventId    String?
+  pcm            Bytes?
+  createdAt      DateTime @default(now())
+  @@unique([clipId, position])
+}
+
 model CharacterTranslationJob {
   id String @id
   characterId String
@@ -208,6 +223,7 @@ model SpeechClip {
   message         Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   voice           String
   inputCharacters Int
+  parts           SpeechClipPart[]
   status          String
   audio           Bytes?
   preparedText    String?  @db.Text
@@ -270,6 +286,7 @@ model ChatThread {
   memorySummaryInvalidated Boolean @default(false)
   // Stable, private NPC identities for speaker recognition; no voice assignment yet.
   speechCast Json?
+  speechVoices Json?
   memoryLeaseOwner String?
   memoryLeaseUntil DateTime?
 

@@ -9,12 +9,18 @@ import { DEFAULT_SPEECH_VOICE, isSpeechVoice, isSpeechVoiceChoice, isSpeechConte
   type SpeechVoiceChoice, type SpeechVoiceDefault, type SpeechContentMode } from "@/lib/speech";
 import { withThread } from "@/lib/chatThreadShared";
 import { METRIKA_GOALS, reachGoal } from "@/lib/metrika";
-import type { SpeechRecognitionResult } from "@/lib/speechRecognitionShared";
+import { speechRecognitionRevision, type SpeechRecognitionResult, type SceneSpeaker } from "@/lib/speechRecognitionShared";
+import type { StorySpeechVoice } from "@/lib/storySpeechVoices";
 
 type Clip = { messageId: string; content: string; voice: SpeechVoice; choice: SpeechVoiceChoice; url: string };
+type RecognitionView = { content: string; result: SpeechRecognitionResult; options: SceneSpeaker[] };
 type SpeechContextValue = {
   quota: SpeechQuota | null; voice: SpeechVoice; choice: SpeechVoiceChoice; automatic: SpeechVoiceDefault | null;
   contentMode: SpeechContentMode; narrated: boolean;
+  castEnabled: boolean; cast: StorySpeechVoice[];
+  editingId: string | null; editError: string | null;
+  changeSpeakerVoice: (speakerId: string, voice: SpeechVoice) => Promise<void>;
+  correctSpeaker: (messageId: string, content: string, index: number, target: string, name: string) => Promise<boolean>;
   setVoice: (voice: SpeechVoiceChoice) => void; refresh: () => void;
   loadingId: string | null; clip: Clip | null; paused: boolean; error: string | null; errorId: string | null;
   prepared: Record<string, { content: string; text: string }>;
@@ -22,12 +28,12 @@ type SpeechContextValue = {
   bindAudio: (audio: HTMLAudioElement | null) => void;
   setPaused: (value: boolean) => void; stop: (id: string) => void; playbackError: () => void; seek: (seconds: number) => void;
   recognitionEnabled: boolean; recognizingId: string | null;
-  recognitions: Record<string, { content: string; result: SpeechRecognitionResult }>;
+  recognitions: Record<string, RecognitionView>;
   recognitionError: { messageId: string; content: string; code: string } | null;
   recognize: (id: string, content: string) => Promise<void>;
 };
 const SpeechContext = createContext<SpeechContextValue | null>(null);
-const ERROR_CODES = new Set(["unauthorized", "notFound", "empty", "noDialogue", "tooLong", "busy", "quota", "rateLimit", "changed", "pending", "uncertain"]);
+const ERROR_CODES = new Set(["unauthorized", "notFound", "empty", "noDialogue", "tooLong", "busy", "quota", "rateLimit", "changed", "pending", "uncertain", "invalid"]);
 
 export function ChatSpeechProvider({ characterId, threadId, userId, children }: {
   characterId: string; threadId: string | null; userId: string | null; children: ReactNode;
@@ -39,6 +45,13 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   const [automatic, setAutomatic] = useState<SpeechVoiceDefault | null>(null);
   const [contentMode, setContentMode] = useState<SpeechContentMode>("dialogue");
   const [narrated, setNarrated] = useState(false);
+  const [castEnabled, setCastEnabled] = useState(false);
+  const [cast, setCast] = useState<StorySpeechVoice[]>([]);
+  const [castRevision, setCastRevision] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const editRequestRef = useRef<AbortController | null>(null);
+  const statusSequence = useRef(0);
   const voice = isSpeechVoice(choice) ? choice : automatic?.voice ?? DEFAULT_SPEECH_VOICE;
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [clip, setClip] = useState<Clip | null>(null);
@@ -48,7 +61,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   const [prepared, setPrepared] = useState<Record<string, { content: string; text: string }>>({});
   const [recognitionEnabled, setRecognitionEnabled] = useState(false);
   const [recognizingId, setRecognizingId] = useState<string | null>(null);
-  const [recognitions, setRecognitions] = useState<Record<string, { content: string; result: SpeechRecognitionResult }>>({});
+  const [recognitions, setRecognitions] = useState<Record<string, RecognitionView>>({});
   const [recognitionError, setRecognitionError] = useState<{ messageId: string; content: string; code: string } | null>(null);
   const recognitionRequestRef = useRef<AbortController | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -61,15 +74,19 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
 
   const refreshQuota = useCallback(async (signal?: AbortSignal) => {
     if (!userId) return;
+    const sequence = ++statusSequence.current;
     try {
       const response = await fetch(endpoint, { cache: "no-store", signal });
       if (response.ok) {
-        const state = await response.json() as SpeechQuota & { automatic?: SpeechVoiceDefault; recognitionEnabled?: boolean; contentMode?: SpeechContentMode; narrated?: boolean };
-        if (mountedRef.current && !signal?.aborted) {
+        const state = await response.json() as SpeechQuota & { automatic?: SpeechVoiceDefault; recognitionEnabled?: boolean; contentMode?: SpeechContentMode; narrated?: boolean; castEnabled?: boolean; cast?: StorySpeechVoice[]; castRevision?: string };
+        if (mountedRef.current && !signal?.aborted && sequence === statusSequence.current) {
           setQuota(state);
           setRecognitionEnabled(state.recognitionEnabled === true);
           if (isSpeechContentMode(state.contentMode)) setContentMode(state.contentMode);
           setNarrated(state.narrated === true);
+          setCastEnabled(state.castEnabled === true);
+          setCast(Array.isArray(state.cast) ? state.cast : []);
+          setCastRevision(typeof state.castRevision === "string" ? state.castRevision : null);
           if (state.automatic && isSpeechVoice(state.automatic.voice)) setAutomatic(state.automatic);
         }
       }
@@ -90,7 +107,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
         else if (isSpeechVoice(previous)) { setVoiceState(previous); localStorage.setItem(storageKey, previous); }
       } catch {}
     });
-    return () => { mountedRef.current = false; controller.abort(); requestRef.current?.abort(); recognitionRequestRef.current?.abort(); audioRef.current?.pause(); };
+    return () => { mountedRef.current = false; controller.abort(); requestRef.current?.abort(); recognitionRequestRef.current?.abort(); editRequestRef.current?.abort(); audioRef.current?.pause(); };
   }, [refreshQuota, storageKey, characterId]);
   // Refresh on the server's Moscow midnight, and after returning to this tab (e.g. after subscribing).
   useEffect(() => {
@@ -116,7 +133,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     try { localStorage.setItem(storageKey, value); } catch {}
   };
   const recognize = async (id: string, content: string) => {
-    if (!recognitionEnabled || recognitionRequestRef.current) return;
+    if (!recognitionEnabled || recognitionRequestRef.current || editRequestRef.current) return;
     const controller = new AbortController(); recognitionRequestRef.current = controller;
     setRecognizingId(id); setRecognitionError(null);
     try {
@@ -127,7 +144,8 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       const body = await response.json();
       if (!response.ok || !body.recognition) throw new Error(typeof body.code === "string" ? body.code : "unavailable");
       if (mountedRef.current && !controller.signal.aborted)
-        setRecognitions(previous => ({ ...previous, [id]: { content, result: body.recognition as SpeechRecognitionResult } }));
+        setRecognitions(previous => ({ ...previous, [id]: { content, result: body.recognition as SpeechRecognitionResult, options: body.options ?? body.recognition.speakers } }));
+      void refreshQuota();
     } catch (caught) {
       if (mountedRef.current && !controller.signal.aborted) setRecognitionError({ messageId: id, content,
         code: caught instanceof Error && ERROR_CODES.has(caught.message) ? caught.message : "unavailable" });
@@ -136,8 +154,49 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       if (mountedRef.current) setRecognizingId(null);
     }
   };
+  const changeSpeakerVoice = async (speakerId: string, selectedVoice: SpeechVoice) => {
+    if (!castRevision || editRequestRef.current || requestRef.current || recognitionRequestRef.current) return;
+    const controller = new AbortController(); editRequestRef.current = controller; setEditingId(`voice:${speakerId}`); setEditError(null);
+    try {
+      const response = await fetch(withThread(`/api/chat/${characterId}/speech/voices`, threadId), { method: "PATCH", cache: "no-store",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ speakerId, voice: selectedVoice, revision: castRevision }), signal: controller.signal });
+      const body = await response.json();
+      if (!response.ok) throw new Error(typeof body.code === "string" ? body.code : "unavailable");
+      if (mountedRef.current && !controller.signal.aborted) {
+        statusSequence.current++;
+        setCast(body.cast); setCastRevision(body.revision); audioRef.current?.pause(); setClip(null); setPaused(true); setPrepared({});
+      }
+    } catch (caught) {
+      if (mountedRef.current && !controller.signal.aborted) {
+        setEditError(t(`chatSpeech.errors.${caught instanceof Error && ERROR_CODES.has(caught.message) ? caught.message : "unavailable"}`));
+        void refreshQuota();
+      }
+    } finally { editRequestRef.current = null; if (mountedRef.current) setEditingId(null); }
+  };
+  const correctSpeaker = async (id: string, content: string, segmentIndex: number, target: string, name: string): Promise<boolean> => {
+    const saved = recognitions[id];
+    if (!saved || saved.content !== content || editRequestRef.current || requestRef.current || recognitionRequestRef.current) return false;
+    const controller = new AbortController(); editRequestRef.current = controller; setEditingId(`message:${id}`); setRecognitionError(null);
+    try {
+      const url = new URL(withThread(`/api/chat/${characterId}/speech/recognition`, threadId), window.location.origin); url.searchParams.set("messageId", id);
+      const response = await fetch(url, { method: "PATCH", cache: "no-store", headers: { "Content-Type": "application/json" }, signal: controller.signal,
+        body: JSON.stringify({ revision: speechRecognitionRevision(saved.result), segmentIndex,
+          kind: target === "__narration" ? "narration" : "dialogue", speakerId: target === "__narration" || target === "__unknown" ? "narrator" : target === "__new" ? "new" : target,
+          ...(target === "__new" ? { name } : {}) }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(typeof body.code === "string" ? body.code : "unavailable");
+      if (!mountedRef.current || controller.signal.aborted) return false;
+      setRecognitions(previous => ({ ...previous, [id]: { content, result: body.recognition, options: body.options } }));
+      stop(id); setPrepared(previous => { const next = { ...previous }; delete next[id]; return next; }); void refreshQuota();
+      return true;
+    } catch (caught) {
+      if (mountedRef.current && !controller.signal.aborted) setRecognitionError({ messageId: id, content,
+        code: caught instanceof Error && ERROR_CODES.has(caught.message) ? caught.message : "unavailable" });
+      return false;
+    } finally { editRequestRef.current = null; if (mountedRef.current) setEditingId(null); }
+  };
   const toggle = async (id: string, content: string) => {
-    if (requestRef.current || !quota?.enabled) return;
+    if (requestRef.current || editRequestRef.current || !quota?.enabled) return;
     setError(null); setErrorId(id);
     // Pause/resume belongs to the authorized playback. After 'ended' the clip is cleared;
     // starting it again must go through the server, even if the MP3 is already cached.
@@ -152,7 +211,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     const controller = new AbortController(); requestRef.current = controller; setLoadingId(id);
     try {
       let response: Response;
-      let requestedVoice: SpeechVoiceChoice = choice;
+      let requestedVoice: SpeechVoiceChoice = castEnabled ? "auto" : choice;
       const deadline = Date.now() + 5 * 60_000;
       for (;;) {
         response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" },
@@ -160,7 +219,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
         if (response.status !== 202) break;
         const state = await response.json();
         // Pin this task's resolved voice even if the card/story type changes during synthesis.
-        if (isSpeechVoice(state.voice)) requestedVoice = state.voice;
+        if (!state.castKey && isSpeechVoice(state.voice)) requestedVoice = state.voice;
         if (typeof state.text === "string" && mountedRef.current && !controller.signal.aborted)
           setPrepared(previous => ({ ...previous, [id]: { content, text: state.text } }));
         if (Date.now() >= deadline) throw new Error("pending");
@@ -198,6 +257,9 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
       metadataUrl.searchParams.set("messageId", id); metadataUrl.searchParams.set("voice", playedVoice);
       if (isSpeechContentMode(playedMode)) metadataUrl.searchParams.set("contentMode", playedMode);
       if (playedNarration === "true" || playedNarration === "false") metadataUrl.searchParams.set("narrated", playedNarration);
+      const castKey = response.headers.get("X-Speech-Cast-Key");
+      if (castKey && /^[a-f0-9]{64}$/.test(castKey)) metadataUrl.searchParams.set("castKey", castKey);
+      void refreshQuota();
       void fetch(metadataUrl, { cache: "no-store", signal: controller.signal }).then(async metadata => {
         if (!metadata.ok) return;
         const state = await metadata.json();
@@ -215,7 +277,8 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
     }
   };
 
-  return <SpeechContext.Provider value={{ quota, voice, choice, automatic, contentMode, narrated, setVoice, refresh: refreshQuota, loadingId, clip, paused, error, errorId, prepared, toggle,
+  return <SpeechContext.Provider value={{ quota, voice, choice, automatic, contentMode, narrated, castEnabled, cast, editingId, editError, changeSpeakerVoice, correctSpeaker,
+    setVoice, refresh: refreshQuota, loadingId, clip, paused, error, errorId, prepared, toggle,
     bindAudio, setPaused, stop,
     seek: seconds => { if (audioRef.current && Number.isFinite(seconds)) audioRef.current.currentTime = seconds; },
     playbackError: () => { setErrorId(clip?.messageId ?? null); setError(t("chatSpeech.errors.playback")); },
@@ -232,11 +295,11 @@ export function ChatSpeechControls({ onOpenSettings }: { onOpenSettings: () => v
       <p>{t(speech.quota.unlimited ? "chatSpeech.unlimited" : "chatSpeech.daily", { remaining: speech.quota.remaining })}</p>
       <button type="button" onClick={onOpenSettings} aria-label={t("chatSpeech.settingsTitle")}
         className="rounded-lg border border-wd-border px-2 py-1 text-wd-text hover:bg-white/5">
-        {t("chatSpeech.voice")}: {speech.voice}{speech.choice === "auto" ? ` · ${t("chatSpeech.autoShort")}` : ""}
+        {speech.castEnabled ? t("chatSpeech.settingsTitle") : <>{t("chatSpeech.voice")}: {speech.voice}{speech.choice === "auto" ? ` · ${t("chatSpeech.autoShort")}` : ""}</>}
       </button>
     </div>
     {!speech.quota.unlimited && <p className="mt-1">{t("chatSpeech.reset")}{!telegram && <> · <LocaleLink href="/pricing" className="text-wd-secondary underline">{t("chatSpeech.upgrade")}</LocaleLink></>}</p>}
-    <p className="mt-1">{speech.narrated
+    <p className="mt-1">{speech.castEnabled ? t("chatSpeech.castPlayback") : speech.narrated
       ? t(speech.contentMode === "dialogue" ? "chatSpeech.narratorDialogue" : "chatSpeech.narratorScene",
         { voice: speech.voice, narrator: speechCast(speech.voice, "dialogue", []).narrator })
       : t(speech.contentMode === "dialogue" ? "chatSpeech.speechOnlyDialogue" : "chatSpeech.speechOnly")}</p>
@@ -249,16 +312,27 @@ export function ChatSpeechSettings() {
   const refresh = speech?.refresh;
   useEffect(() => { refresh?.(); }, [refresh]);
   if (!speech?.quota?.enabled) return <p className="text-sm text-wd-text-secondary">{t(speech?.quota ? "chatSpeech.settingsUnavailable" : "chatSpeech.settingsLoading")}</p>;
-  const busy = Boolean(speech.loadingId);
+  const busy = Boolean(speech.loadingId || speech.recognizingId || speech.editingId);
   return <div className="space-y-5 text-sm text-wd-text">
-    <p className="text-wd-text-secondary">{t("chatSpeech.settingsHint")}</p>
-    <fieldset disabled={busy} className="space-y-4">
+    <p className="text-wd-text-secondary">{t(speech.castEnabled ? "chatSpeech.castPlayback" : "chatSpeech.settingsHint")}</p>
+    {speech.castEnabled && <p className="text-wd-text-secondary">{t("chatSpeech.editVoices")}</p>}
+    {speech.castEnabled && speech.cast.length > 0 && <ul className="space-y-2" aria-label={t("chatSpeech.voice")}>
+      {speech.cast.map(speaker => <li key={speaker.id} className="flex justify-between gap-3">
+        <label htmlFor={`story-voice-${speaker.id}`}>{speaker.kind === "narrator" ? t("chatSpeech.recognition.narrator") : speaker.name}</label>
+        <select id={`story-voice-${speaker.id}`} disabled={busy} value={speaker.voice} onChange={event => {
+          if (isSpeechVoice(event.target.value)) void speech.changeSpeakerVoice(speaker.id, event.target.value);
+        }} className="rounded-lg border border-wd-border bg-wd-bg px-2 py-1 text-wd-text">
+          {SPEECH_VOICES.map(voice => <option key={voice.id} value={voice.id}>{voice.id}</option>)}
+        </select>
+      </li>)}
+    </ul>}
+    {!speech.castEnabled && <fieldset disabled={busy} className="space-y-4">
       <legend className="sr-only">{t("chatSpeech.settingsTitle")}</legend>
       <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${speech.choice === "auto" ? "border-wd-secondary bg-white/5" : "border-wd-border hover:bg-white/5"} ${busy ? "opacity-50" : ""}`}>
         <input type="radio" name="character-speech-voice" value="auto" checked={speech.choice === "auto"}
           onChange={() => speech.setVoice("auto")} className="mt-1 accent-wd-secondary" />
-        <span><span className="block font-semibold">{t("chatSpeech.autoVoice", { voice: speech.automatic?.voice ?? DEFAULT_SPEECH_VOICE })}</span>
-          <span className="mt-1 block text-xs leading-relaxed text-wd-text-secondary">{t(`chatSpeech.autoReasons.${speech.automatic?.role ?? "unknown"}`)}</span></span>
+        <span><span className="block font-semibold">{speech.castEnabled ? t("chatSpeech.autoShort") : t("chatSpeech.autoVoice", { voice: speech.automatic?.voice ?? DEFAULT_SPEECH_VOICE })}</span>
+          {!speech.castEnabled && <span className="mt-1 block text-xs leading-relaxed text-wd-text-secondary">{t(`chatSpeech.autoReasons.${speech.automatic?.role ?? "unknown"}`)}</span>}</span>
       </label>
       {(["female", "male", "other"] as const).map(gender => <div key={gender} className="space-y-2">
         <h3 className="font-semibold">{t(`chatSpeech.voiceGroups.${gender}`)}</h3>
@@ -270,7 +344,8 @@ export function ChatSpeechSettings() {
             <span className="mt-1 block text-xs leading-relaxed text-wd-text-secondary">{t(`chatSpeech.voiceDescriptions.${voice.label}`)}</span></span>
         </label>)}</div>
       </div>)}
-    </fieldset>
+    </fieldset>}
+    {speech.editError && <p role="alert" className="text-red-400">{speech.editError}</p>}
     <p role="status" className="text-xs text-wd-text-secondary">{t(busy ? "chatSpeech.voiceChangeBusy" : "chatSpeech.voiceSaved")}</p>
   </div>;
 }
@@ -284,18 +359,55 @@ export function MessageSpeechButton({ messageId, content, disabled }: { messageI
   const spoken = content.trim();
   const label = t(loading ? "chatSpeech.loading" : playing ? "chatSpeech.pause" : "chatSpeech.listen");
   return <><button type="button" aria-label={spoken ? label : t("chatSpeech.errors.empty")} title={spoken ? label : t("chatSpeech.errors.empty")} aria-pressed={playing} aria-busy={loading}
-    disabled={disabled || !spoken || Boolean(speech.loadingId)} onClick={() => void speech.toggle(messageId, content)}
+    disabled={disabled || !spoken || Boolean(speech.loadingId || speech.editingId)} onClick={() => void speech.toggle(messageId, content)}
     className="flex h-8 shrink-0 items-center gap-1.5 rounded px-2 text-xs text-wd-text-secondary transition-colors hover:bg-white/5 hover:text-wd-text disabled:opacity-40">
     {loading ? <LuLoaderCircle aria-hidden className="animate-spin" /> : playing ? <LuPause aria-hidden /> : <LuVolume2 aria-hidden />}
     {label}
   </button>
-    {speech.recognitionEnabled && <button type="button" disabled={disabled || !spoken || Boolean(speech.recognizingId)}
+    {speech.recognitionEnabled && <button type="button" disabled={disabled || !spoken || Boolean(speech.recognizingId || speech.editingId)}
       aria-busy={speech.recognizingId === messageId} onClick={() => void speech.recognize(messageId, content)}
       className="flex min-h-8 shrink-0 items-center gap-1.5 rounded px-2 text-xs text-wd-text-secondary transition-colors hover:bg-white/5 hover:text-wd-text disabled:opacity-40">
       {speech.recognizingId === messageId && <LuLoaderCircle aria-hidden className="animate-spin" />}
       {t(speech.recognizingId === messageId ? "chatSpeech.recognition.loading" : "chatSpeech.recognition.analyze")}
     </button>}
   </>;
+}
+
+function SpeechSegmentEditor({ messageId, content, index, result, options }: {
+  messageId: string; content: string; index: number; result: SpeechRecognitionResult; options: SceneSpeaker[];
+}) {
+  const speech = useContext(SpeechContext);
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState("");
+  const [name, setName] = useState("");
+  if (!speech) return null;
+  const busy = Boolean(speech.loadingId || speech.recognizingId || speech.editingId);
+  const segment = result.segments[index];
+  const actors = [...new Map([...options, ...result.speakers].filter(speaker => speaker.kind !== "narrator").map(speaker => [speaker.id, speaker])).values()];
+  if (!open) return <button type="button" disabled={busy} className="mt-2 underline disabled:opacity-40" onClick={() => {
+    setTarget(segment.kind === "narration" ? "__narration" : segment.speakerId === "narrator" ? "__unknown" : segment.speakerId); setName(""); setOpen(true);
+  }}>{t("chatSpeech.editSpeaker")}</button>;
+  return <form className="mt-2 space-y-2" onSubmit={event => { event.preventDefault();
+    void speech.correctSpeaker(messageId, content, index, target, name).then(saved => { if (saved) setOpen(false); });
+  }}>
+    <label className="block" htmlFor={`fragment-speaker-${messageId}-${index}`}>{t("chatSpeech.editSpeaker")}</label>
+    <select id={`fragment-speaker-${messageId}-${index}`} value={target} disabled={busy} onChange={event => setTarget(event.target.value)}
+      className="w-full rounded-lg border border-wd-border bg-wd-bg px-2 py-2 text-wd-text">
+      <option value="__narration">{t("chatSpeech.recognition.kinds.narration")}</option>
+      <option value="__unknown">{t("chatSpeech.recognition.uncertain")}</option>
+      {actors.map(speaker => <option key={speaker.id} value={speaker.id}>{speaker.name}</option>)}
+      <option value="__new">{t("chatSpeech.newSpeaker")}</option>
+    </select>
+    {target === "__new" && <input aria-label={t("chatSpeech.speakerName")} placeholder={t("chatSpeech.speakerName")} required maxLength={80}
+      value={name} onChange={event => setName(event.target.value)} disabled={busy} className="w-full rounded-lg border border-wd-border bg-wd-bg px-2 py-2 text-wd-text" />}
+    <div className="flex gap-3">
+      <button type="submit" disabled={busy || target === "__new" && !name.trim()} className="rounded-lg border border-wd-border px-3 py-1 disabled:opacity-40">
+        {t(speech.editingId === `message:${messageId}` ? "chatSpeech.savingEdit" : "chatSpeech.saveEdit")}
+      </button>
+      <button type="button" disabled={busy} onClick={() => setOpen(false)} className="underline disabled:opacity-40">{t("chatSpeech.cancelEdit")}</button>
+    </div>
+  </form>;
 }
 
 function MessageSpeakerRecognition({ messageId, content }: { messageId: string; content: string }) {
@@ -311,7 +423,7 @@ function MessageSpeakerRecognition({ messageId, content }: { messageId: string; 
     {error && <p role="alert">{t(`chatSpeech.errors.${error.code}`)}</p>}
     {result && <details open className="rounded-xl border border-wd-border bg-wd-bg/60 p-3">
       <summary className="cursor-pointer font-semibold text-wd-text">{t("chatSpeech.recognition.title")}</summary>
-      <p className="mt-2 leading-relaxed">{t("chatSpeech.recognition.hint")}</p>
+      <p className="mt-2 leading-relaxed">{t(speech.castEnabled ? "chatSpeech.castPlayback" : "chatSpeech.recognition.hint")}</p>
       {!result.segments.length ? <p className="mt-2">{t("chatSpeech.recognition.empty")}</p> : <ol className="mt-3 space-y-3">
         {result.segments.map((segment, index) => {
           const speaker = speakers.get(segment.speakerId);
@@ -320,8 +432,11 @@ function MessageSpeakerRecognition({ messageId, content }: { messageId: string; 
             <p className="font-semibold text-wd-text">{segment.confidence === "uncertain" ? t("chatSpeech.recognition.uncertain") : name}
               <span className="ml-2 font-normal text-wd-text-secondary">{t(`chatSpeech.recognition.kinds.${segment.kind}`)}</span>
               {speaker?.kind === "npc" && segment.confidence !== "uncertain" && <span className="ml-2 font-normal">{t("chatSpeech.recognition.npc")}</span>}
+              {speech.castEnabled && <span className="ml-2 font-normal">{speech.cast.find(member => member.id === segment.speakerId)?.voice}</span>}
+              {segment.corrected && <span className="ml-2 font-normal">{t("chatSpeech.corrected")}</span>}
             </p>
             <p className="mt-1 whitespace-pre-wrap leading-relaxed">{segment.text}</p>
+            <SpeechSegmentEditor messageId={messageId} content={content} index={index} result={result} options={saved?.options ?? result.speakers} />
           </li>;
         })}
       </ol>}

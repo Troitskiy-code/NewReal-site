@@ -6,6 +6,10 @@ export const SPEECH_WAV_LIMIT = 40 * 1024 * 1024;
 
 /** Accept only the provider's documented mono PCM16 / 24 kHz WAV. */
 export async function speechWavToMp3(wav: Buffer): Promise<Buffer> {
+  return speechPcmToMp3(speechWavPcm(wav));
+}
+
+export function speechWavPcm(wav: Buffer): Buffer {
   if (wav.length < 44 || wav.length > SPEECH_WAV_LIMIT || wav.toString("ascii", 0, 4) !== "RIFF"
     || wav.toString("ascii", 8, 12) !== "WAVE" || wav.readUInt32LE(4) + 8 !== wav.length) throw new Error("Invalid speech WAV");
   let offset = 12, validFormat = false, pcm: Buffer | null = null;
@@ -19,6 +23,12 @@ export async function speechWavToMp3(wav: Buffer): Promise<Buffer> {
     offset = start + length + (length % 2);
   }
   if (!validFormat || !pcm?.length || pcm.length % 2 || offset !== wav.length) throw new Error("Unsupported speech WAV");
+  return pcm;
+}
+
+/** Encode once after joining compatible PCM streams, never concatenate MP3 files. */
+export async function speechPcmToMp3(pcm: Buffer): Promise<Buffer> {
+  if (!pcm.length || pcm.length % 2 || pcm.length > SPEECH_WAV_LIMIT) throw new Error("Invalid speech PCM");
   const encoder = new Mp3Encoder(1, 24_000, 64), chunks: Buffer[] = [];
   const samples = new Int16Array(1152);
   let bytes = 0;

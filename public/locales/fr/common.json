@@ -1,5 +1,15 @@
 {
   "chatSpeech": {
+    "editVoices": "Choisissez une voix pour chaque personnage. Les modifications sont enregistrées dans cette histoire et appliquées à la prochaine écoute.",
+    "editSpeaker": "Changer de locuteur",
+    "newSpeaker": "Nouveau personnage",
+    "speakerName": "Nom du personnage",
+    "saveEdit": "Enregistrer",
+    "cancelEdit": "Annuler",
+    "savingEdit": "Enregistrement…",
+    "corrected": "Corrigé par vous",
+    "castPrimary": "Le choix change la voix du personnage principal, du premier membre du groupe ou du narrateur du monde. Les autres gardent leurs voix.",
+    "castPlayback": "Les personnages et les PNJ utilisent les voix qui leur sont attribuées dans cette histoire. La narration est lue uniquement dans les mondes.",
     "recognition": {
       "analyze": "Qui parle ?",
       "loading": "Identification des voix…",
@@ -66,6 +76,7 @@
     "reset": "Une lecture par jour, y compris les rediffusions. Réinitialise à 00h00, heure de Moscou. Pause et reprise n'utilisez pas une autre lecture.",
     "upgrade": "Illimité avec un abonnement",
     "errors": {
+      "invalid": "Vérifiez le nom du personnage et la voix choisie.",
       "unauthorized": "Connectez - vous pour écouter cette réponse.",
       "notFound": "Cette réponse n'est pas disponible. Actualisez le chat.",
       "noDialogue": "Cette réponse ne contient aucune parole prononcée, seulement de la narration, des pensées ou des actions.",
@@ -74,7 +85,7 @@
       "busy": "Une autre réponse est en cours de génération. Veuillez patienter.",
       "quota": "Votre lecture gratuite a été utilisée aujourd'hui. Les rediffusions comptent aussi. Réinitialise à 00h00, heure de Moscou. Les abonnements incluent la parole illimitée.",
       "rateLimit": "Trop de demandes. Réessayez dans une minute.",
-      "changed": "La réponse a changé. Essayez de générer à nouveau son audio.",
+      "changed": "Les données ont changé. Rouvrez les réglages ou l’analyse des locuteurs et réessayez.",
       "unavailable": "Impossible de charger l'audio. Veuillez réessayer plus tard.",
       "playback": "Appuyez sur lecture sur le lecteur audio. Il n'est pas nécessaire de générer à nouveau l'audio.",
       "pending": "L'audio est toujours en préparation. Réessayez d'écouter plus tard pour continuer le même enregistrement.",
