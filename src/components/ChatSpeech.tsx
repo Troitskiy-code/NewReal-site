@@ -346,7 +346,7 @@ export function ChatSpeechSettings() {
       </div>)}
     </fieldset>}
     {speech.editError && <p role="alert" className="text-red-400">{speech.editError}</p>}
-    <p role="status" className="text-xs text-wd-text-secondary">{t(busy ? "chatSpeech.voiceChangeBusy" : "chatSpeech.voiceSaved")}</p>
+    {!speech.castEnabled && <p role="status" className="text-xs text-wd-text-secondary">{t(busy ? "chatSpeech.voiceChangeBusy" : "chatSpeech.voiceSaved")}</p>}
   </div>;
 }
 
