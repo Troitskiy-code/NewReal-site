@@ -1043,6 +1043,12 @@ try {
     sessionUser = null;
     check((await voicesApi.PATCH(voicePatch('participant:bob', 'Puck', saved.castRevision), context)).status === 401, 'voice editing requires authentication');
     sessionUser = 'editor';
+    await db.message.create({ data: { id: 'editor-legacy', userId: 'editor', characterId: 'hero', role: 'assistant', content: 'До историй.' } });
+    await db.speechClip.create({ data: { id: 'editor-legacy-paid', userId: 'editor', messageId: 'editor-legacy', voice: 'Aoede', inputCharacters: 11,
+      status: 'pending', providerTaskId: 'legacy-paid-task', expiresAt: new Date('2099-01-01') } });
+    await rejects(() => recognitionLoad('src/lib/speechEdits.ts').assertSpeechEditable(db, { ...scope, legacy: true }, 'editor-legacy'), 'busy',
+      'paid legacy replies without a thread id are also protected from media edits');
+    await db.message.delete({ where: { id: 'editor-legacy' } });
     respondToRecognition = async () => script(segment('Дождь.', 'narrator', 'narration'), segment('Привет', 'participant:alice'), segment('Да', 'participant:bob'));
     let response = await recognitionRoutes.POST(recognitionReq('editor-reply'), context), editor = await response.json();
     check(response.status === 200 && editor.options.some(s => s.id === 'participant:alice'), 'recognition exposes server-owned correction targets');

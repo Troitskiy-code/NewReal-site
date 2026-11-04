@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
-import type { ChatScope } from "./chatThreads";
+import { messageScopeWhere, type ChatScope } from "./chatThreads";
 import { ChatSpeechError } from "./chatSpeech";
 
 export async function readSpeechEdit(req: NextRequest): Promise<Record<string, unknown>> {
@@ -30,7 +30,7 @@ export async function readSpeechEdit(req: NextRequest): Promise<Record<string, u
 export async function assertSpeechEditable(tx: Prisma.TransactionClient, scope: ChatScope, messageId?: string) {
   const now = new Date();
   if (await tx.speechClip.findFirst({ where: { userId: scope.userId, expiresAt: { gt: now },
-    message: { characterId: scope.characterId, threadId: scope.threadId, ...(messageId ? { id: messageId } : {}) },
+    message: { ...messageScopeWhere(scope), ...(messageId ? { id: messageId } : {}) },
     OR: [{ status: "processing", leaseUntil: { gt: now } },
       { status: { in: ["pending", "processing"] }, OR: [{ providerTaskId: { not: null } }, { costEventId: { not: null } }] }] },
     select: { id: true } })) throw new ChatSpeechError("busy", 409);
