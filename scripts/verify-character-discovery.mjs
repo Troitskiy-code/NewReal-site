@@ -59,7 +59,9 @@ try {
   const eight = tags.ALL_CHARACTER_TAGS.slice(0, 8).join(', ');
   equal(tags.toggleTagInString(eight, tags.ALL_CHARACTER_TAGS[8]), eight, 'picker refuses ninth tag');
   equal(tags.parseTagsString(tags.toggleTagInString(eight, tags.ALL_CHARACTER_TAGS[0])).length, 7, 'selection can still be removed at limit');
-  for (const tag of tags.ALL_CHARACTER_TAGS) check(tags.characterTagLabel(tag, 'en') !== tag, `English label: ${tag}`);
+  for (const tag of tags.ALL_CHARACTER_TAGS.filter(tag => tag !== tags.ADULT_CHARACTER_TAG)) check(tags.characterTagLabel(tag, 'en') !== tag, `English label: ${tag}`);
+  check(tags.ALL_CHARACTER_TAGS.includes('18+') && !tags.GENERATED_CHARACTER_TAGS.includes('18+'), '18+ is offered to authors, not to the card generator');
+  check(tags.toggleTagInString('', '18+') === '18+', '18+ can be selected in the editor');
   const { rankRecommendedCharacters } = load(join(root, 'src/lib/characterRecommendationRank.ts'));
   const now = new Date(), publicWhere = { isPublic: true, slug: { not: null } };
   const owner = await (async () => { await pg.initialise(); await pg.start(); await pg.createDatabase('nv_discovery');

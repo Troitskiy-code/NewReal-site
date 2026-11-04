@@ -1310,7 +1310,8 @@
       "Ролевая игра": "Roleplay",
       "Медленное развитие отношений": "Slow-burn relationships",
       "Выборы и последствия": "Choices and consequences",
-      "Исследование мира": "World exploration"
+      "Исследование мира": "World exploration",
+      "18+": "18+"
     },
     "groups": {
       "genres": "Genre",
@@ -1318,7 +1319,8 @@
       "character": "Character",
       "roles": "Role and relationships",
       "traits": "Personality",
-      "style": "Story style"
+      "style": "Story style",
+      "audience": "Age rating"
     },
     "hint": "Choose up to {{limit}} accurate tags to help readers find your story.",
     "search": "Find a tag",

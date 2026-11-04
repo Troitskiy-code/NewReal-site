@@ -1317,7 +1317,8 @@
       "Ролевая игра": "Jeu de Rôle",
       "Медленное развитие отношений": "Relations à combustion lente",
       "Выборы и последствия": "Choix et conséquences",
-      "Исследование мира": "Exploration du monde"
+      "Исследование мира": "Exploration du monde",
+      "18+": "18+"
     },
     "groups": {
       "genres": "Genre",
@@ -1325,7 +1326,8 @@
       "character": "Personnage",
       "roles": "Rôle et relations",
       "traits": "Personnalité",
-      "style": "Style d'histoire"
+      "style": "Style d'histoire",
+      "audience": "Classification par âge"
     },
     "hint": "Choisissez jusqu'à {{limit}} des balises précises pour aider les lecteurs à trouver votre histoire.",
     "search": "Trouver un tag",

@@ -1,4 +1,4 @@
-import { ALL_CHARACTER_TAGS, MAX_SELECTED_CHARACTER_TAGS, canonicalCharacterTag } from "./characterTags";
+import { GENERATED_CHARACTER_TAGS, MAX_SELECTED_CHARACTER_TAGS, canonicalCharacterTag } from "./characterTags";
 
 // Deterministic checks for generated cards, derived from the 2026-10-14 paid batch
 // acceptance. Safe defects are repaired in place; the rest become text feedback.
@@ -17,7 +17,7 @@ export function normalizeGeneratedTags(raw: unknown, card: Pick<Card, "descripti
   const values = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(",") : [];
   const text = corpus(card as Card), dropped: string[] = [];
   const tags = [...new Set(values.filter((value): value is string => typeof value === "string")
-    .map(value => canonicalCharacterTag(value)).filter((tag): tag is string => Boolean(tag) && ALL_CHARACTER_TAGS.includes(tag!)))]
+    .map(value => canonicalCharacterTag(value)).filter((tag): tag is string => Boolean(tag) && GENERATED_CHARACTER_TAGS.includes(tag!)))]
     .filter(tag => {
       const unsupported = tag === "Магическая академия" && !ACADEMY.test(text) || tag === "Средневековье" && MODERN.test(text);
       if (unsupported) dropped.push(tag);

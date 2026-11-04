@@ -1310,7 +1310,8 @@
       "Ролевая игра": "Rollenspiel",
       "Медленное развитие отношений": "Langsame Beziehungen",
       "Выборы и последствия": "Entscheidungen und Konsequenzen",
-      "Исследование мира": "Welterkundung"
+      "Исследование мира": "Welterkundung",
+      "18+": "18+"
     },
     "groups": {
       "genres": "Gattung",
@@ -1318,7 +1319,8 @@
       "character": "Charakter",
       "roles": "Rolle und Beziehungen",
       "traits": "Persönlichkeit",
-      "style": "Story-Stil"
+      "style": "Story-Stil",
+      "audience": "Altersfreigabe"
     },
     "hint": "Wählen Sie bis zu {{limit}} genaue Tags, die den Lesern helfen, Ihre Geschichte zu finden.",
     "search": "Finde einen Tag",

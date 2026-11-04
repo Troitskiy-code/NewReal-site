@@ -6,8 +6,12 @@ export const CHARACTER_TAG_GROUPS = [
   { id: "roles", label: "Роль и отношения", labelEn: "Role and relationships", tags: ["Друг", "Партнёр", "Сосед", "Напарник", "Наставник", "Соперник", "Герой", "Злодей", "Враг"] },
   { id: "traits", label: "Характер", labelEn: "Personality", tags: ["Добрый", "Заботливый", "Сдержанный", "Дерзкий", "Загадочный", "Холодный", "Ироничный", "Флиртующий", "Цундере"] },
   { id: "style", label: "Стиль истории", labelEn: "Story style", tags: ["Аниме", "Ролевая игра", "Медленное развитие отношений", "Выборы и последствия", "Исследование мира"] },
+  { id: "audience", label: "Возраст", labelEn: "Age rating", tags: ["18+"] },
 ] as const;
 export const ALL_CHARACTER_TAGS: string[] = CHARACTER_TAG_GROUPS.flatMap(group => [...group.tags]);
+export const ADULT_CHARACTER_TAG = "18+";
+// The author marks a card 18+; the card generator never assigns it.
+export const GENERATED_CHARACTER_TAGS: string[] = ALL_CHARACTER_TAGS.filter(tag => tag !== ADULT_CHARACTER_TAG);
 export const MAX_SELECTED_CHARACTER_TAGS = 8;
 // Retained on old cards, removable in the editor, never offered or used as recommendation signals.
 export const LEGACY_CHARACTER_TAGS = ["Томбой", "Пушистый", "Оригинальный персонаж", "Офис", "Сложный", "От лица мужчины", "От лица женщины", "Брак", "Магия", "Сверхъестественное", "VR", "Пародия", "Из медиа", "Из игры", "Мускулистый", "Гигантский", "Несколько персонажей", "Игра", "Сценарий", "Пухлый", "Симулятор"];
@@ -74,6 +78,7 @@ const EN_TAG_LABELS: Record<string, string> = {
   "Друг": "Friend", "Партнёр": "Partner", "Сосед": "Neighbor", "Напарник": "Companion", "Наставник": "Mentor", "Соперник": "Rival", "Герой": "Hero", "Злодей": "Villain", "Враг": "Enemy",
   "Добрый": "Kind", "Заботливый": "Caring", "Сдержанный": "Reserved", "Дерзкий": "Bold", "Загадочный": "Mysterious", "Холодный": "Cold", "Ироничный": "Witty", "Флиртующий": "Flirty", "Цундере": "Tsundere",
   "Аниме": "Anime", "Ролевая игра": "Roleplay", "Медленное развитие отношений": "Slow-burn relationships", "Выборы и последствия": "Choices and consequences", "Исследование мира": "World exploration",
+  "18+": "18+",
 };
 export function characterTagLabel(tag: string, locale: string, translate?: (key: string, fallback: string) => string): string {
   const fallback = locale.startsWith("ru") ? tag : EN_TAG_LABELS[tag] ?? tag;

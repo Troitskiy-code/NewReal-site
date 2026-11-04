@@ -1310,7 +1310,8 @@
       "Ролевая игра": "Rol Yapma",
       "Медленное развитие отношений": "Yavaş İlişki Gelişimi",
       "Выборы и последствия": "Seçimler ve Sonuçlar",
-      "Исследование мира": "Dünya Keşfi"
+      "Исследование мира": "Dünya Keşfi",
+      "18+": "18+"
     },
     "groups": {
       "genres": "Tür",
@@ -1318,7 +1319,8 @@
       "character": "Karakter",
       "roles": "Rol ve ilişkiler",
       "traits": "Kişilik",
-      "style": "Hikâye tarzı"
+      "style": "Hikâye tarzı",
+      "audience": "Yaş sınırı"
     },
     "hint": "Okuyucuların hikâyenizi bulmasına yardımcı olmak için en fazla {{limit}} doğru etiket seçin.",
     "search": "Etiket bul",
