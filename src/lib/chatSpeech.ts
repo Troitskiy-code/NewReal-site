@@ -17,7 +17,7 @@ export function unlimitedSpeech(user: SpeechUser, now = new Date()): boolean {
     && Boolean(user.subscriptionEnd && user.subscriptionEnd > now);
 }
 
-/** Narration read by a separate narrator voice. `CHAT_SPEECH_NARRATOR_ENABLED=false` restores the single-voice policy. */
+/** Separate narrator for worlds only. `false` keeps world narration in a single voice. */
 export function speechNarratorEnabled(): boolean {
   return process.env.CHAT_SPEECH_NARRATOR_ENABLED !== "false";
 }
@@ -85,6 +85,9 @@ export async function reserveSpeech(source: Source, now = new Date()): Promise<R
     const pinned = await tx.speechClip.findFirst({ where: { id: { in: policies.map(policy => policy.id) }, status: { in: ["pending", "processing"] },
       expiresAt: { gt: now }, OR: [{ providerTaskId: { not: null } }, { costEventId: { not: null } }] }, select: { id: true } });
     const policy = pinned && policies.find(candidate => candidate.id === pinned.id);
+    // An accepted or uncertain narrated task cannot play in a dialogue-only category or buy a duplicate.
+    if (policy && contentMode === "dialogue" && (policy.mode !== "dialogue" || policy.narrated))
+      throw new ChatSpeechError("busy", 409);
     if (policy) { id = policy.id; contentMode = policy.mode; narrator = policy.narrated; }
     // A pending Kie task can be resumed for this reply; another reply cannot start alongside it.
     if (await tx.speechClip.findFirst({ where: { userId: source.userId, id: { not: id }, status: "pending",

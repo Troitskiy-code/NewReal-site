@@ -54,16 +54,16 @@ export async function GET(req: NextRequest, context: Context) {
       const requestedMode = req.nextUrl.searchParams.get("contentMode");
       if (requestedMode !== null && !isSpeechContentMode(requestedMode)) return problem("invalid", 400);
       // Metadata can inspect an owned existing clip prepared before a story-mode change; it starts no paid work.
-      const contentMode: SpeechContentMode = isSpeechContentMode(requestedMode) ? requestedMode : automatic.role === "narrator" ? "scene" : "dialogue";
+      const contentMode: SpeechContentMode = isSpeechContentMode(requestedMode) ? requestedMode : automatic.contentMode;
       const requestedNarration = req.nextUrl.searchParams.get("narrated");
       if (requestedNarration !== null && requestedNarration !== "true" && requestedNarration !== "false") return problem("invalid", 400);
-      const narrator = requestedNarration === null ? speechNarratorEnabled() : requestedNarration === "true";
+      const narrator = requestedNarration === null ? automatic.contentMode === "scene" && speechNarratorEnabled() : requestedNarration === "true";
       return NextResponse.json({ text: await getPreparedSpeechText({ userId: session.user.id, characterId: id, messageId, voice, contentMode, narrator }) }, { headers: PRIVATE });
     }
     const [quota, automatic] = await Promise.all([getSpeechQuota(session.user.id), getAutomaticSpeechVoice(id,
       access.resolution.status === "found" ? access.resolution.scope.threadId : null)]);
-    return NextResponse.json({ ...quota, automatic, contentMode: automatic.role === "narrator" ? "scene" : "dialogue",
-      narrated: speechNarratorEnabled(), recognitionEnabled: speechRecognitionEnabled() }, { headers: PRIVATE });
+    return NextResponse.json({ ...quota, automatic, contentMode: automatic.contentMode,
+      narrated: automatic.contentMode === "scene" && speechNarratorEnabled(), recognitionEnabled: speechRecognitionEnabled() }, { headers: PRIVATE });
   } catch (error) {
     errorLog("Speech", "Speech status unavailable", toSafeDiagnostic(error));
     return problem("unavailable", 503);
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest, context: Context) {
       const automatic = await getAutomaticSpeechVoice(characterId, access.resolution.scope.threadId);
       const voice = isSpeechVoice(body.voice) ? body.voice : automatic.voice;
       job = await reserveSpeech({ userId: session.user.id, characterId, messageId: message.id,
-        voice, contentMode: automatic.role === "narrator" ? "scene" : "dialogue", narrator: speechNarratorEnabled() });
+        voice, contentMode: automatic.contentMode, narrator: automatic.contentMode === "scene" && speechNarratorEnabled() });
       if (job.kind === "cached") return audioResponse(job.audio, job.quota, voice, job.contentMode, job.narrator);
       const reservation = job.reservation;
       if (reservation.uncertain) throw new ChatSpeechError("uncertain", 503);

@@ -43,7 +43,7 @@ const cases = [
   ['character-speech-about-action', 'dialogue', '«Я улыбнулась, чтобы тебя успокоить», — сказала Алиса.', 'Я улыбнулась, чтобы тебя успокоить'],
   ['character-and-incidental-npc', 'dialogue', 'Раздался стук. Алиса сказала: «Входи». Иван ответил: «Спасибо».', 'Входи Спасибо'],
   ['world-narration-only', 'scene', city, city],
-  ['group-narration-and-dialogue', 'scene', 'По всему зданию зазвучал сигнал тревоги. Борис: «Нужно уходить». Анна: «Я с тобой».', 'По всему зданию зазвучал сигнал тревоги. Нужно уходить Я с тобой'],
+  ['group-narration-and-dialogue', 'dialogue', 'По всему зданию зазвучал сигнал тревоги. Борис: «Нужно уходить». Анна: «Я с тобой».', 'Нужно уходить Я с тобой'],
   ['character-choice-menu', 'dialogue', '«Пойдём вместе?» — спросила Алиса.\nВыберите путь:\n1. Пещера — темно и опасно.\n2. Деревня — можно отдохнуть.', 'Пойдём вместе?'],
   ['character-english-narration', 'dialogue', 'Alice closed the window and sat down beside you. The room grew quiet.', ''],
   ['character-english-unmarked-speech', 'dialogue', 'I missed you. Would you like some tea?', 'I missed you. Would you like some tea?'],

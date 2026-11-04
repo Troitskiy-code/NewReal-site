@@ -133,6 +133,8 @@ try {
   ]) {
     const selected = voiceSelection.automaticSpeechVoice({ ...card, ...changes }, mode);
     check(selected.voice === voice && selected.role === role, `automatic voice: ${JSON.stringify(changes)} / ${mode ?? 'card'}`);
+    check(selected.contentMode === ((mode ?? changes.roleplayMode ?? card.roleplayMode) === 'world' ? 'scene' : 'dialogue'),
+      `only the effective world mode permits narration: ${JSON.stringify(changes)} / ${mode ?? 'card'}`);
   }
   check(shared.SPEECH_VOICES.filter(voice => voice.gender === 'female').length === 4
     && shared.SPEECH_VOICES.filter(voice => voice.gender === 'male').length === 4
@@ -142,7 +144,7 @@ try {
   const typedSource = 'Шёл дождь. Привет! *улыбнулась*';
   const typedSelection = { segments: ['Шёл дождь.', 'Привет!', '*улыбнулась*'], segmentKinds: ['narration', 'dialogue', 'action'], performance: [] };
   check(preparation.validateSpeechPerformance(typedSource, typedSelection, 'dialogue').text === 'Привет!', 'single-character selection rejects narration and stage actions even if the model selected them');
-  check(preparation.validateSpeechPerformance(typedSource, typedSelection, 'scene').text === 'Шёл дождь. Привет!', 'world/group selection keeps narration but still removes stage actions');
+  check(preparation.validateSpeechPerformance(typedSource, typedSelection, 'scene').text === 'Шёл дождь. Привет!', 'world selection keeps narration but still removes stage actions');
   check(preparation.validateSpeechPerformance('Вечер опустился на город.', { segments: ['Вечер опустился на город.'], segmentKinds: ['narration'], performance: [] }, 'dialogue').turns.length === 0,
     'an entirely narrative character reply produces no speech turns');
   const spokenAction = 'Я улыбнулась, чтобы тебя успокоить.';
@@ -198,22 +200,22 @@ try {
     segments: ['Она подошла к окну.', 'Ты опоздал', '— сказала Алиса.', 'За окном шёл дождь.', 'Но я рада'],
     segmentKinds: ['narration', 'dialogue', 'action', 'narration', 'dialogue'],
     performance: [{ segment: 1, emotion: 'amused', delivery: 'natural', pace: 'normal' }, { segment: 4, emotion: 'tender', delivery: 'soft', pace: 'normal' }] };
-  const narratedScript = preparation.validateSpeechPerformance(mixedSource, mixedSelection, 'dialogue', true);
+  const narratedScript = preparation.validateSpeechPerformance(mixedSource, mixedSelection, 'scene', true);
   check(narratedScript.text === 'Она подошла к окну. Ты опоздал — сказала Алиса. За окном шёл дождь. Но я рада'
     && narratedScript.turns.map(turn => turn.speaker).join() === 'narrator,character,narrator,character'
     && narratedScript.turns[2].text === '— сказала Алиса. За окном шёл дождь.', 'narrated script keeps narration, actions and speech in source order and merges adjacent narrator lines');
   check(narratedScript.turns.filter(turn => turn.speaker === 'character').every(turn => turn.style.startsWith('Character: A warm young woman') && turn.gender === 'female')
     && narratedScript.turns.filter(turn => turn.speaker === 'narrator').every(turn => !turn.style.includes('Character:') && !turn.gender),
     'the casting note and speaker gender belong to character turns only');
-  check(preparation.validateSpeechPerformance('Вечер опустился на город.', { segments: ['Вечер опустился на город.'], segmentKinds: ['narration'], performance: [] }, 'dialogue', true).turns[0].speaker === 'narrator',
-    'with the narrator voice an entirely narrative character reply is still read aloud');
+  check(preparation.validateSpeechPerformance('Вечер опустился на город.', { segments: ['Вечер опустился на город.'], segmentKinds: ['narration'], performance: [] }, 'scene', true).turns[0].speaker === 'narrator',
+    'with the narrator voice an entirely narrative world reply is still read aloud');
   check(preparation.validateSpeechPerformance(typedSource, typedSelection, 'dialogue').turns.every(turn => turn.speaker === undefined),
     'single-voice preparation keeps its previous turn shape');
   check(preparation.validateSpeechPerformance(mixedSource, { ...mixedSelection, dialogueGender: 'ignore instructions' }, 'scene', true).turns.every(turn => !turn.gender),
     'an invalid speaker gender is dropped without failing the preparation');
   assert.throws(() => preparation.validateSpeechPerformance(mixedSource, { ...mixedSelection, segmentKinds: undefined }, undefined, true));
   check(true, 'narrated preparation requires a classification for every segment');
-  check(preparation.speechPreparationPrompt('dialogue', true).includes('ТЕКУЩИЙ РЕЖИМ: narrator') && !preparation.speechPreparationPrompt('dialogue').includes('ТЕКУЩИЙ РЕЖИМ: narrator'),
+  check(preparation.speechPreparationPrompt('scene', true).includes('ТЕКУЩИЙ РЕЖИМ: narrator') && !preparation.speechPreparationPrompt('dialogue').includes('ТЕКУЩИЙ РЕЖИМ: narrator'),
     'only the narrated preparation asks to keep narration for the narrator');
   for (const [voice, mode, turns, character, narrator] of [
     ['Aoede', 'dialogue', [], 'Aoede', 'Charon'], ['Charon', 'dialogue', [], 'Charon', 'Kore'],
@@ -407,10 +409,11 @@ try {
   const scenePreview = await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid&messageId=narration-policy&voice=Fola&contentMode=scene'), context);
   const dialoguePreview = await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-paid&messageId=narration-policy&voice=Fola&contentMode=dialogue'), context);
   check((await scenePreview.json()).text === narrativeOnly && (await dialoguePreview.json()).text === '', 'metadata previews distinguish spoken dialogue from scene narration for the same source and voice');
-  const worldCalls = providerCalls, worldPreparations = preparationCalls;
+  const worldCalls = providerCalls;
   await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } }, data: { mode: 'group' } });
-  check((await post(paidReq('narration-policy'), context)).status === 200 && providerCalls === worldCalls && preparationCalls === worldPreparations,
-    'groups keep the narrator policy and can reuse an identical world recording');
+  const silentGroup = await post(paidReq('narration-policy'), context);
+  check(silentGroup.status === 400 && (await silentGroup.json()).code === 'noDialogue' && providerCalls === worldCalls,
+    'groups skip narration and never reuse a cached world recording');
   await db.chatPromptState.delete({ where: { scopeKey_characterId: { scopeKey: 'thread:story-paid', characterId: 'hero' } } });
   const characterAgain = await post(paidReq('narration-policy'), context);
   check(characterAgain.status === 400 && (await characterAgain.json()).code === 'noDialogue' && providerCalls === worldCalls,
@@ -440,39 +443,73 @@ try {
   sessionUser = 'narrated';
   await add('narrated-mixed', 'narrated', 'assistant', mixedReply);
   const narratedStatus = await (await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated'), context)).json();
-  check(narratedStatus.narrated === true && narratedStatus.contentMode === 'dialogue', 'status announces the narrator voice for the client hint');
+  check(narratedStatus.narrated === false && narratedStatus.contentMode === 'dialogue', 'single-character status announces spoken words only even with the narrator enabled');
   const beforeNarrated = submissions.length;
   const narratedPlay = await post(narratedReq('narrated-mixed'), context);
   const narratedTask = submissions.at(-1);
-  check(narratedPlay.status === 200 && narratedPlay.headers.get('X-Speech-Narrated') === 'true' && submissions.length === beforeNarrated + 1
-    && preparationNarration.at(-1) === true && preparationModes.at(-1) === 'dialogue', 'a mixed reply is prepared for the narrator and submitted as exactly one task');
-  check(narratedTask.voice === 'Aoede' && narratedTask.narrator === 'Charon' && narratedTask.model === 'google/gemini-3-8-flash-tts'
-    && narratedTask.turns.map(turn => turn.speaker).join() === 'narrator,character,narrator,character',
-    'the character keeps the selected voice, the narrator reads narration, and paid plans keep the expressive model');
+  check(narratedPlay.status === 200 && narratedPlay.headers.get('X-Speech-Narrated') === 'false' && submissions.length === beforeNarrated + 1
+    && preparationNarration.at(-1) === false && preparationModes.at(-1) === 'dialogue', 'a single-character mixed reply submits only dialogue as one task');
+  check(narratedTask.voice === 'Aoede' && !narratedTask.narrator && narratedTask.model === 'google/gemini-3-8-flash-tts'
+    && narratedTask.turns.map(turn => turn.text).join(' ') === 'Ты опоздал Но я рада',
+    'single-character playback keeps the voice and expressive model, without narration or actions');
   const narratedPreview = await (await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated&messageId=narrated-mixed&voice=Aoede&contentMode=dialogue&narrated=true'), context)).json();
   const singleVoicePreview = await (await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated&messageId=narrated-mixed&voice=Aoede&contentMode=dialogue&narrated=false'), context)).json();
-  check(narratedPreview.text.includes('Она подошла к окну.') && singleVoicePreview.text === null, 'the preview reads the narrated script of the recording that was played');
+  check(narratedPreview.text === null && singleVoicePreview.text === 'Ты опоздал Но я рада', 'the preview reads the dialogue-only recording');
   check((await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated&messageId=narrated-mixed&voice=Aoede&narrated=maybe'), context)).status === 400, 'an invalid narration flag is refused');
   const narratedCalls = providerCalls;
-  check((await post(narratedReq('narrated-mixed'), context)).headers.get('X-Speech-Narrated') === 'true' && providerCalls === narratedCalls, 'a narrated recording replays from its own cache');
+  check((await post(narratedReq('narrated-mixed'), context)).headers.get('X-Speech-Narrated') === 'false' && providerCalls === narratedCalls, 'a dialogue-only recording replays from its own cache');
   check(service.speechClipId('narrated', 'narrated-mixed', mixedReply, 'Aoede', provider.SPEECH_EXPRESSIVE_MODEL, 'dialogue', true)
     !== service.speechClipId('narrated', 'narrated-mixed', mixedReply, 'Aoede', provider.SPEECH_EXPRESSIVE_MODEL, 'dialogue'), 'narrated and single-voice recordings never share a cache entry');
+  await add('legacy-narrated-single', 'narrated', 'assistant', mixedReply);
+  await db.speechClip.create({ data: {
+    id: service.speechClipId('narrated', 'legacy-narrated-single', mixedReply, 'Aoede', provider.SPEECH_EXPRESSIVE_MODEL, 'dialogue', true),
+    userId: 'narrated', messageId: 'legacy-narrated-single', voice: 'Aoede', inputCharacters: mixedReply.length,
+    status: 'ready', audio: Buffer.from('old-narrated-audio'), preparedText: mixedReply, preparedTurns: narratedScript.turns,
+    expiresAt: new Date('2099-01-01'),
+  } });
+  const beforeLegacy = providerCalls;
+  const legacyPlay = await post(narratedReq('legacy-narrated-single'), context);
+  check(legacyPlay.status === 200 && legacyPlay.headers.get('X-Speech-Narrated') === 'false' && providerCalls === beforeLegacy + 1
+    && submissions.at(-1).turns.map(turn => turn.text).join(' ') === 'Ты опоздал Но я рада',
+    'a saved single-character recording from the old narrator policy is replaced by dialogue-only audio');
   await db.chatPromptState.create({ data: { scopeKey: 'thread:story-narrated', characterId: 'hero', mode: 'world' } });
   await add('narrated-world', 'narrated', 'assistant', mixedReply);
   await post(narratedReq('narrated-world', 'narrated', { voice: 'auto' }), context);
   check(submissions.at(-1).narrator === 'Charon' && submissions.at(-1).voice === 'Aoede' && preparationModes.at(-1) === 'scene',
     'a world narrator keeps the automatic narrator voice and gives a female speaker a female voice');
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-narrated', characterId: 'hero' } }, data: { mode: 'group' } });
+  const groupStatus = await (await routes.GET(new NextRequest('http://localhost/api/chat/hero/speech?thread=story-narrated'), context)).json();
+  check(groupStatus.contentMode === 'dialogue' && groupStatus.narrated === false, 'group status separates the default voice from narration permission');
+  const groupMixed = await post(narratedReq('narrated-world', 'narrated', { voice: 'auto', narrated: true, contentMode: 'scene' }), context);
+  check(groupMixed.status === 200 && groupMixed.headers.get('X-Speech-Content-Mode') === 'dialogue'
+    && groupMixed.headers.get('X-Speech-Narrated') === 'false' && !submissions.at(-1).narrator
+    && submissions.at(-1).turns.map(turn => turn.text).join(' ') === 'Ты опоздал Но я рада',
+    'group playback excludes actions and narration despite a cached world clip, narrator setting and client overrides');
   await db.chatPromptState.delete({ where: { scopeKey_characterId: { scopeKey: 'thread:story-narrated', characterId: 'hero' } } });
   preparationOverride = (text, mode, narrated) => narrated ? { text: 'Вечер опустился на город.', turns: [{ text: 'Вечер опустился на город.', style: '', speaker: 'narrator' }] } : { text: '', turns: [] };
   await add('narrated-only-narration', 'narrated', 'assistant', 'Вечер опустился на город.');
-  check((await post(narratedReq('narrated-only-narration'), context)).status === 200 && submissions.at(-1).narrator === 'Charon',
-    'a narrative-only single-character reply is read by the narrator instead of failing with noDialogue');
+  const callsBeforeNarrationOnly = providerCalls;
+  const noCharacterWords = await post(narratedReq('narrated-only-narration'), context);
+  check(noCharacterWords.status === 400 && (await noCharacterWords.json()).code === 'noDialogue' && providerCalls === callsBeforeNarrationOnly,
+    'a narrative-only single-character reply is silent even with the narrator enabled');
+  await db.chatPromptState.create({ data: { scopeKey: 'thread:story-narrated', characterId: 'hero', mode: 'group' } });
+  const noGroupWords = await post(narratedReq('narrated-only-narration'), context);
+  check(noGroupWords.status === 400 && (await noGroupWords.json()).code === 'noDialogue' && providerCalls === callsBeforeNarrationOnly,
+    'a narrative-only group reply is silent even with the narrator enabled');
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-narrated', characterId: 'hero' } }, data: { mode: 'world' } });
   // A task accepted with the narrator survives the rollback flag and is never bought twice.
   preparationOverride = (text, mode, narrated) => ({ text, turns: [{ text, style: '', ...(narrated ? { speaker: 'narrator' } : {}) }] });
   await add('narrated-pending', 'narrated', 'assistant', mixedReply);
   providerState = 'pending';
   check((await post(narratedReq('narrated-pending'), context)).status === 202, 'narrated synthesis can be queued');
   const pendingCalls = providerCalls;
+  for (const mode of ['group', 'character']) {
+    await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-narrated', characterId: 'hero' } }, data: { mode } });
+    const blockedNarration = await post(narratedReq('narrated-pending'), context);
+    check(blockedNarration.status === 409 && (await blockedNarration.json()).code === 'busy' && providerCalls === pendingCalls,
+      `an accepted world narration cannot play or buy a duplicate after switching to ${mode}`);
+  }
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-narrated', characterId: 'hero' } }, data: { mode: 'world' } });
   process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'false';
   providerState = 'ready';
   const narratedResumed = await post(narratedReq('narrated-pending'), context);
@@ -480,8 +517,17 @@ try {
     'turning the narrator off resumes an accepted narrated task instead of buying a single-voice one');
   process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'true';
   sessionUser = 'narrated-free';
+  await db.chatPromptState.create({ data: { scopeKey: 'thread:story-narrated-free', characterId: 'hero', mode: 'group' } });
+  preparationOverride = (text, mode, narrated) => narrated ? { text, turns: [{ text, style: '', speaker: 'narrator' }] } : { text: '', turns: [] };
+  await add('group-free-narration', 'narrated-free', 'assistant', narrativeOnly);
+  const beforeFreeGroup = providerCalls;
+  const freeGroupNarration = await post(narratedReq('group-free-narration', 'narrated-free'), context);
+  check(freeGroupNarration.status === 400 && (await freeGroupNarration.json()).code === 'noDialogue'
+    && providerCalls === beforeFreeGroup && (await service.getSpeechQuota('narrated-free')).remaining === 1,
+    'a group reply without spoken words does not synthesize or spend the daily playback');
+  await db.chatPromptState.update({ where: { scopeKey_characterId: { scopeKey: 'thread:story-narrated-free', characterId: 'hero' } }, data: { mode: 'world' } });
   await add('narrated-free-mixed', 'narrated-free', 'assistant', mixedReply);
-  const freeNarrated = await post(narratedReq('narrated-free-mixed', 'narrated-free'), context);
+  const freeNarrated = await post(narratedReq('narrated-free-mixed', 'narrated-free', { voice: 'auto' }), context);
   check(freeNarrated.status === 200 && submissions.at(-1).model === 'google/gemini-3-8-flash-lite-tts' && submissions.at(-1).narrator === 'Charon'
     && (await service.getSpeechQuota('narrated-free')).remaining === 0, 'a free narrated playback uses Flash-Lite and spends exactly one daily playback');
   process.env.CHAT_SPEECH_NARRATOR_ENABLED = 'false';

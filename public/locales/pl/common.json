@@ -20,7 +20,7 @@
     "resume": "Wznów odtwarzanie",
     "seek": "Szukaj audio",
     "preview": "Tekst mowy",
-    "speechOnlyDialogue": "W czacie z jedną postacią odczytywane są tylko wypowiedziane słowa. Narracja, myśli i działania są pomijane.",
+    "speechOnlyDialogue": "W czatach z jedną lub wieloma postaciami odczytywane są tylko wypowiedziane słowa. Narracja, myśli i działania są pomijane.",
     "narratorDialogue": "Narrację i działania czyta narrator {{narrator}}, wypowiadane słowa — głos postaci {{voice}}.",
     "narratorScene": "Narrację czyta {{voice}}, a kwestie postaci — osobny męski lub żeński głos zależnie od mówiącego.",
     "speechOnly": "AI utrzymuje dialog i narrację, usuwa wskazówki sceniczne i menu wyboru oraz wybiera dostawę. Przygotowany tekst mowy pojawia się pod odpowiedzią.",

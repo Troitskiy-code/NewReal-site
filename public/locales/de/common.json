@@ -20,7 +20,7 @@
     "resume": "Wiedergabe fortsetzen",
     "seek": "Audio suchen",
     "preview": "Sprechtext",
-    "speechOnlyDialogue": "Im Einzelcharakter-Chat werden nur gesprochene Worte vorgelesen. Erzählung, Gedanken und Handlungen werden ausgelassen.",
+    "speechOnlyDialogue": "In Chats mit einem oder mehreren Charakteren werden nur gesprochene Worte vorgelesen. Erzählung, Gedanken und Handlungen werden ausgelassen.",
     "narratorDialogue": "Erzählung und Handlungen liest der Erzähler {{narrator}}, gesprochene Worte die Figurenstimme {{voice}}.",
     "narratorScene": "Die Erzählung liest {{voice}}, die Repliken der Figuren eine eigene männliche oder weibliche Stimme passend zur sprechenden Person.",
     "speechOnly": "KI behält Dialog und Erzählung bei, entfernt Regieanweisungen und Auswahlmenüs und wählt die Lieferung aus. Der vorbereitete Sprechtext erscheint unter der Antwort.",
