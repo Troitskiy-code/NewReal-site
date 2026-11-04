@@ -1,7 +1,8 @@
 import { insufficientBalanceMessage } from "@/lib/telegram/context";
 import { isCharacterAllowedInTelegram } from "@/lib/telegram/catalog";
 import { chatProviderConfigured } from "@/lib/aiProviders";
-import { errorLog, toSafeDiagnostic } from "@/lib/logger";
+import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
+import { retrySaveOnTimeout, SAVE_TRANSACTION, SLOW_SAVE_MS } from "@/lib/chatSave";
 import { withAiCostContext, setAiCostActor, setAiCostThread, recordChatCostCharge, aiCostDiagnosticContext } from "@/lib/aiCostTelemetry";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -73,24 +74,37 @@ async function createMessageAndBumpTotal(scope: ChatScope, data: {
   content: string;
   finishReason?: "stop" | "length";
 }, memoryUserMessageId?: string, appendMemoryReply = false) {
+  return retrySaveOnTimeout(data.role, attempt => saveMessageAndBumpTotal(scope, data, attempt, memoryUserMessageId, appendMemoryReply));
+}
+
+async function saveMessageAndBumpTotal(scope: ChatScope, data: {
+  role: string;
+  content: string;
+  finishReason?: "stop" | "length";
+}, attempt: number, memoryUserMessageId?: string, appendMemoryReply = false) {
   const now = new Date();
+  // The counter update returns only the id: a full Character row carries the card and avatar data.
+  const bumpTotal = { where: { id: scope.characterId }, data: { totalMessages: { increment: 1 }, lastActive: now }, select: { id: true } };
+  const requested = Date.now();
   if (memoryV2Enabled()) return prisma.$transaction(async tx => {
+    const started = Date.now();
     await lockMemoryThread(tx, scope.threadId);
+    const locked = Date.now();
     const message = await tx.message.create({ data: { ...data, characterId: scope.characterId, chatId: scope.characterId,
       userId: scope.userId, threadId: scope.threadId } });
-    await tx.character.update({ where: { id: scope.characterId }, data: { totalMessages: { increment: 1 }, lastActive: now } });
+    await tx.character.update(bumpTotal);
     await tx.chatThread.update({ where: { id: scope.threadId }, data: { lastMessageAt: now, status: "active" } });
     if (data.role === "user") await enqueueMemoryTurn(tx, scope, message.id);
     if (data.role === "assistant" && memoryUserMessageId) await attachMemoryReply(tx, scope, memoryUserMessageId, message.id, appendMemoryReply);
+    const totalMs = Date.now() - requested;
+    if (totalMs > SLOW_SAVE_MS) infoLog("ChatSave", "slow save", { messageRole: data.role, attempt, totalMs,
+      connectionWaitMs: started - requested, lockWaitMs: locked - started, writeMs: Date.now() - locked });
     return message;
-  });
+  }, SAVE_TRANSACTION);
   const [message] = await prisma.$transaction([
     // chatId keeps its legacy meaning (the character); the story is threadId.
     prisma.message.create({ data: { ...data, characterId: scope.characterId, chatId: scope.characterId, userId: scope.userId, threadId: scope.threadId } }),
-    prisma.character.update({
-      where: { id: scope.characterId },
-      data: { totalMessages: { increment: 1 }, lastActive: now },
-    }),
+    prisma.character.update(bumpTotal),
     touchThread(scope.threadId, now),
   ]);
 
@@ -463,12 +477,12 @@ async function handlePost(
       const appendsToCutOff = Boolean(continueChat && continueCutOff && lastAssistant);
       const assistantMessage =
         appendsToCutOff && lastAssistant
-          ? memoryV2Enabled() ? await prisma.$transaction(async tx => {
+          ? memoryV2Enabled() ? await retrySaveOnTimeout("assistant", () => prisma.$transaction(async tx => {
               await invalidateMessageMemory(tx, scope, lastAssistant.id);
               return tx.message.update({ where: { id: lastAssistant.id }, data: {
                 content: mergeAssistantContinuation(lastAssistant.content, assistantReply), finishReason: completion.finishReason,
               } });
-            }) : await prisma.message.update({
+            }, SAVE_TRANSACTION)) : await prisma.message.update({
               where: { id: lastAssistant.id },
               data: {
                 content: mergeAssistantContinuation(lastAssistant.content, assistantReply),

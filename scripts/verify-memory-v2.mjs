@@ -943,6 +943,35 @@ try {
     assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'name').map(fact => fact.value), ['Веста']);
     assert.equal((await db.memoryJob.findFirst({ where: { threadId: f.scope.threadId } })).status, 'succeeded');
   });
+  await check('a reply save retries once on a transaction timeout and nothing else', async () => {
+    const { retrySaveOnTimeout } = h.load(join(h.root, 'src/lib/chatSave.ts'));
+    const timeout = Object.assign(new Error('Transaction already closed'), { code: 'P2028' });
+    let calls = 0;
+    assert.equal(await retrySaveOnTimeout('assistant', async () => { if (++calls === 1) throw timeout; return 'saved'; }), 'saved');
+    assert.equal(calls, 2);
+    calls = 0;
+    await assert.rejects(retrySaveOnTimeout('assistant', async () => { calls++; throw timeout; }), /Transaction already closed/);
+    assert.equal(calls, 2);
+    calls = 0;
+    await assert.rejects(retrySaveOnTimeout('assistant', async () => { calls++; throw Object.assign(new Error('unique'), { code: 'P2002' }); }), /unique/);
+    assert.equal(calls, 1);
+  });
+  await check('a reply is saved while another transaction holds the story lock past the old 5 s limit', async () => {
+    const f = await setup(); provider.reset(); provider.reply = 'Ответ после ожидания.';
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    const holder = db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "ChatThread" WHERE id = ${f.scope.threadId} FOR UPDATE`;
+      release(); await new Promise(resolve => setTimeout(resolve, 7_000));
+    }, { timeout: 20_000 });
+    await held;
+    const started = Date.now();
+    const turn = await h.chat(f.user.id, f.character.id, { message: 'Подожду.' });
+    await holder;
+    assert.ok(Date.now() - started >= 6_000, 'the save waited for the lock');
+    assert.ok(turn.events.some(event => event.type === 'end'));
+    assert.ok(await db.message.findFirst({ where: { threadId: f.scope.threadId, role: 'assistant', content: 'Ответ после ожидания.' } }));
+  });
   await check('important events use the same extraction and are removed from the legacy projection after source correction', async () => {
     const f = await setup(), source = await turn(f, 'Помоги мне с поисками.', 'Я обещаю вернуть ключ капитану.');
     await run(f, output([], [{ sourceId: 's2', importance: 3 }]));

@@ -72,7 +72,9 @@ const ERROR_LOG_CONTEXT_KEYS = new Set([
   "jobId", "seq", "maxAttempts", "willRetry", "nextAttemptAt", "retryDelayMs", "timeoutMs", "providerCode",
   "validationReason", "validationPath", "factIndex", "eventIndex", "factKey", "factSubject", "factOperation",
   "sourceId", "sourceRole", "sourceStatus", "sourceChars", "valueChars", "responseChars", "inputChars", "inputTokens",
-  "factCount", "eventCount", "factsIncluded", "factsOmitted",
+  "factCount", "eventCount", "factsIncluded", "factsOmitted", "commitMs", "commitLockWaitMs",
+  // Chat saves: which message a retried or slow save stored.
+  "messageRole",
 ]);
 
 const ERROR_PAYLOAD_KEYS = new Set([

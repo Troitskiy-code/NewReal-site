@@ -243,7 +243,7 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
   const scope: ChatScope = { threadId: thread.id, characterId: thread.characterId, userId: thread.userId, legacy: false };
   const startedAt = Date.now(), timeoutMs = EXTRACTION_TIMEOUT_MS;
   const diagnostic: { sourceCount?: number; inputChars?: number; inputTokens?: number; responseChars?: number; finishReason?: string;
-    factsIncluded?: number; factsOmitted?: number } = {};
+    factsIncluded?: number; factsOmitted?: number; commitLockWaitMs?: number; commitMs?: number } = {};
   let stage = "load_sources";
   try {
     const messages = await jobMessages(prisma, job), hash = fingerprint(messages), sources = factSources(messages);
@@ -299,8 +299,12 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       ? "MEMORY_EXTRACT_PARTIAL" : "MEMORY_EXTRACT_REJECTED_ALL"
       : extraction.rejectedRetractions ? "MEMORY_EXTRACT_UNSUPPORTED_RETRACTION" : null;
     stage = "commit";
+    // Timed so a slow commit shows whether it waited for the story lock or did slow work under it; replies
+    // saved behind it timed out with P2028 (prod 2026-10-28 – 11-03). It stays under the reply save's 15 s.
+    const commitRequested = Date.now();
     const applied = await prisma.$transaction(async tx => {
       await lockMemoryThread(tx, thread.id);
+      diagnostic.commitLockWaitMs = Date.now() - commitRequested;
       const current = await tx.chatThread.findUnique({ where: { id: thread.id } });
       if (!current || current.memoryLeaseOwner !== owner || current.memoryRevision !== job.revision) return false;
       const ids = messages.map(message => message.id);
@@ -363,10 +367,12 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         errorCode: warningCode } });
       await advanceWatermark(tx, thread.id);
       await tx.chatThread.update({ where: { id: thread.id }, data: { memoryLeaseOwner: null, memoryLeaseUntil: null } });
+      diagnostic.commitMs = Date.now() - commitRequested;
       return true;
-    });
+    }, { maxWait: 5_000, timeout: 10_000 });
     if (applied) infoLog("MemoryV2", "turn processed", { jobId: job.id, seq: job.seq, attempt: job.attempts, willRetry: false,
-      durationMs: Date.now() - startedAt, inputTokens: diagnostic.inputTokens, factsIncluded: diagnostic.factsIncluded,
+      durationMs: Date.now() - startedAt, commitMs: diagnostic.commitMs, commitLockWaitMs: diagnostic.commitLockWaitMs,
+      inputTokens: diagnostic.inputTokens, factsIncluded: diagnostic.factsIncluded,
       factsOmitted: diagnostic.factsOmitted, facts: extraction.facts.length,
       events: extraction.events.length, rejectedRetractions: extraction.rejectedRetractions,
       rejectedFacts: extraction.rejectedFacts, rejectedEvents: extraction.rejectedEvents, warningCode,
