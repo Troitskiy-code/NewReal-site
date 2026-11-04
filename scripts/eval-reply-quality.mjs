@@ -30,8 +30,17 @@ const scenario = JSON.parse(readFileSync('docs/memory-modes-test-2026-10-24.json
 const onlyCases = arg('--cases')?.split(',');
 const cases = spec.cases.filter(item => !onlyCases || onlyCases.includes(item.id));
 
+// --patches <file.json>: {"name": [{"file": "src/lib/chatSystemPrompt.ts", "from": "…", "to": "…"}]} — a variant
+// named in --variants is the working tree with these replacements, so rule wordings compare without commits.
+const patches = arg('--patches') ? JSON.parse(readFileSync(arg('--patches'), 'utf8')) : {};
+const patched = name => (file, source) => (patches[name] ?? []).filter(edit => file.replace(/\\/g, '/').endsWith(edit.file))
+  .reduce((text, edit) => {
+    if (!text.includes(edit.from)) throw new Error(`Patch ${name}: text not found in ${edit.file}`);
+    return text.replace(edit.from, edit.to);
+  }, source);
 const loaders = Object.fromEntries(VARIANTS.map(ref => [ref, createModuleLoader({
-  prismaFor: () => { throw new Error('Database forbidden'); }, sourceRef: ref === 'working' ? null : ref })]));
+  prismaFor: () => { throw new Error('Database forbidden'); }, sourceRef: ref === 'working' || patches[ref] ? null : ref,
+  sourceTransform: patched(ref) })]));
 const { countTokens } = loaders[VARIANTS[0]].load(join(loaders[VARIANTS[0]].root, 'src/lib/tokenCount.ts'));
 const prompts = Object.fromEntries(VARIANTS.map(ref => [ref, loaders[ref].load(join(loaders[ref].root, 'src/lib/chatSystemPrompt.ts'))]));
 const memoryFormats = Object.fromEntries(VARIANTS.map(ref => [ref, loaders[ref].load(join(loaders[ref].root, 'src/lib/memoryPromptFormat.ts'))]));
