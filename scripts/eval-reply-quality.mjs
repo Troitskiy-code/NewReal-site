@@ -47,16 +47,22 @@ const memoryFormats = Object.fromEntries(VARIANTS.map(ref => [ref, loaders[ref].
 
 const cost = { chatIn: 0, chatOut: 0, judgeCredits: 0, judgeIn: 0, judgeOut: 0 };
 async function post(url, headers, body, timeout = 120_000) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // KodikRouter answers 429 «Превышен лимит запросов» under parallel runs: rate limits wait longer and retry more.
+  let limited = 0;
+  for (let attempt = 0; attempt < 3 + limited; attempt++) {
+    let status = 0;
     try {
       const response = await fetch(url, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(body), signal: AbortSignal.timeout(timeout) });
+      status = response.status;
       const data = await response.json();
       if (response.ok && (data.choices || data.content || data.data)) return data.data && !data.choices && !data.content ? data.data : data;
-      if (attempt === 2) throw new Error(`HTTP ${response.status} ${String(data.msg ?? data.error?.message ?? '').slice(0, 160)}`);
-    } catch (error) { if (attempt === 2) throw error; }
-    await new Promise(resolve => setTimeout(resolve, 4000 * (attempt + 1)));
+      if (status === 429 && limited < 8) limited++;
+      else if (attempt >= 2 + limited) throw new Error(`HTTP ${response.status} ${String(data.msg ?? data.error?.message ?? '').slice(0, 160)}`);
+    } catch (error) { if (attempt >= 2 + limited && status !== 429) throw error; }
+    await new Promise(resolve => setTimeout(resolve, status === 429 ? 15_000 * Math.min(limited, 4) : 4000 * (attempt + 1)));
   }
+  throw new Error('HTTP 429 after retries');
 }
 
 /** A group card's members, as production passes them to the turn reminder. */
@@ -79,9 +85,16 @@ function chatMessages(ref, story, history, memory = null) {
   return typeof prompt.withTurnReminder === 'function'
     ? prompt.withTurnReminder(messages, 'ru', { cast: castOf(story) }) : messages;
 }
+// --model kodik:<id> sends the chat to KodikRouter with the production request settings for testing models
+// (max_tokens 1000, temperature 0.7, reasoning switched off where the model has a switch); others go to DeepInfra.
+const KODIK = CHAT_MODEL.startsWith('kodik:');
 async function chat(messages) {
-  const data = await post('https://api.deepinfra.com/v1/openai/chat/completions', { Authorization: `Bearer ${config.DEEPINFRA_API_KEY}` },
-    { model: CHAT_MODEL, messages, max_tokens: 1000, temperature: 0.7, reasoning_effort: 'none' });
+  const data = KODIK
+    ? await post('https://api.kodikrouter.ru/v1/chat/completions', { Authorization: `Bearer ${config.KODIKROUTER_API_KEY}` },
+      { model: CHAT_MODEL.slice(6), messages, max_tokens: 1000, temperature: 0.7,
+        ...(process.argv.includes('--no-reasoning') ? { reasoning: { effort: 'none', enabled: false, exclude: true } } : {}) })
+    : await post('https://api.deepinfra.com/v1/openai/chat/completions', { Authorization: `Bearer ${config.DEEPINFRA_API_KEY}` },
+      { model: CHAT_MODEL, messages, max_tokens: 1000, temperature: 0.7, reasoning_effort: 'none' });
   cost.chatIn += data.usage?.prompt_tokens ?? 0; cost.chatOut += data.usage?.completion_tokens ?? 0;
   return { text: data.choices?.[0]?.message?.content ?? '', finish: data.choices?.[0]?.finish_reason };
 }
