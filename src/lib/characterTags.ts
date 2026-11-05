@@ -5,7 +5,7 @@ export const CHARACTER_TAG_GROUPS = [
   { id: "character", label: "Персонаж", labelEn: "Character", tags: ["Мужской персонаж", "Женский персонаж", "Антропоморфный", "Эльф", "Андроид", "Монстр"] },
   { id: "roles", label: "Роль и отношения", labelEn: "Role and relationships", tags: ["Друг", "Партнёр", "Сосед", "Напарник", "Наставник", "Соперник", "Герой", "Злодей", "Враг"] },
   { id: "traits", label: "Характер", labelEn: "Personality", tags: ["Добрый", "Заботливый", "Сдержанный", "Дерзкий", "Загадочный", "Холодный", "Ироничный", "Флиртующий", "Цундере"] },
-  { id: "style", label: "Стиль истории", labelEn: "Story style", tags: ["Аниме", "Ролевая игра", "Медленное развитие отношений", "Выборы и последствия", "Исследование мира"] },
+  { id: "style", label: "Стиль истории", labelEn: "Story style", tags: ["Аниме", "Медленное развитие отношений", "Выборы и последствия", "Исследование мира"] },
   { id: "audience", label: "Возраст", labelEn: "Age rating", tags: ["18+"] },
 ] as const;
 export const ALL_CHARACTER_TAGS: string[] = CHARACTER_TAG_GROUPS.flatMap(group => [...group.tags]);
@@ -14,14 +14,23 @@ export const ADULT_CHARACTER_TAG = "18+";
 export const GENERATED_CHARACTER_TAGS: string[] = ALL_CHARACTER_TAGS.filter(tag => tag !== ADULT_CHARACTER_TAG);
 export const MAX_SELECTED_CHARACTER_TAGS = 8;
 // Retained on old cards, removable in the editor, never offered or used as recommendation signals.
-export const LEGACY_CHARACTER_TAGS = ["Томбой", "Пушистый", "Оригинальный персонаж", "Офис", "Сложный", "От лица мужчины", "От лица женщины", "Брак", "Магия", "Сверхъестественное", "VR", "Пародия", "Из медиа", "Из игры", "Мускулистый", "Гигантский", "Несколько персонажей", "Игра", "Сценарий", "Пухлый", "Симулятор"];
+export const LEGACY_CHARACTER_TAGS = ["Томбой", "Пушистый", "Оригинальный персонаж", "Офис", "Сложный", "От лица мужчины", "От лица женщины", "Брак", "Магия", "Сверхъестественное", "VR", "Пародия", "Из медиа", "Из игры", "Мускулистый", "Гигантский", "Несколько персонажей", "Игра", "Сценарий", "Пухлый", "Симулятор", "Ролевая игра", "Реалистичный"];
 const TAG_ALIASES: Record<string, string> = {
   "Мужчина": "Мужской персонаж", "Девушка": "Женский персонаж", "Милый/Добрый": "Добрый",
-  "Цуцере": "Цундере", "Sci-Fi": "Научная фантастика", "Реалистичный": "Современный мир", "RPG": "Ролевая игра",
-  "Fantasy": "Фэнтези", "Romance": "Романтика", "Adventure": "Приключение", "Anime": "Аниме",
-  "Detective": "Детектив", "Horror": "Ужасы", "Comedy": "Комедия", "Drama": "Драма",
-  "Cyberpunk": "Киберпанк", "Slice of life": "Повседневность", "Science fiction": "Научная фантастика",
+  "Цуцере": "Цундере", "Sci-Fi": "Научная фантастика", "RPG": "Ролевая игра", "Приключения": "Приключение",
+  "Science fiction": "Научная фантастика",
 };
+const EN_TAG_LABELS: Record<string, string> = {
+  "Романтика": "Romance", "Приключение": "Adventure", "Фэнтези": "Fantasy", "Научная фантастика": "Sci-Fi", "Детектив": "Detective", "Драма": "Drama", "Комедия": "Comedy", "Ужасы": "Horror", "Триллер": "Thriller", "Мистика": "Mystery", "Повседневность": "Slice of life", "Экшен": "Action",
+  "Современный мир": "Modern world", "Исторический": "Historical", "Средневековье": "Middle Ages", "Постапокалипсис": "Post-apocalyptic", "Киберпанк": "Cyberpunk", "Космос": "Space", "Магическая академия": "Magic academy", "Готика": "Gothic",
+  "Мужской персонаж": "Male character", "Женский персонаж": "Female character", "Антропоморфный": "Anthropomorphic", "Эльф": "Elf", "Андроид": "Android", "Монстр": "Monster",
+  "Друг": "Friend", "Партнёр": "Partner", "Сосед": "Neighbor", "Напарник": "Companion", "Наставник": "Mentor", "Соперник": "Rival", "Герой": "Hero", "Злодей": "Villain", "Враг": "Enemy",
+  "Добрый": "Kind", "Заботливый": "Caring", "Сдержанный": "Reserved", "Дерзкий": "Bold", "Загадочный": "Mysterious", "Холодный": "Cold", "Ироничный": "Witty", "Флиртующий": "Flirty", "Цундере": "Tsundere",
+  "Аниме": "Anime", "Ролевая игра": "Roleplay", "Медленное развитие отношений": "Slow-burn relationships", "Выборы и последствия": "Choices and consequences", "Исследование мира": "World exploration",
+  "18+": "18+",
+};
+// The English labels search too: stored values stay Russian, an English visitor types "Action".
+for (const [tag, label] of Object.entries(EN_TAG_LABELS)) if (label !== tag) TAG_ALIASES[label] = tag;
 const canonicalByKey = new Map([...ALL_CHARACTER_TAGS, ...LEGACY_CHARACTER_TAGS].map(tag => [tag.toLocaleLowerCase("ru"), tag]));
 const aliasesByKey = new Map(Object.entries(TAG_ALIASES).map(([key, value]) => [key.toLocaleLowerCase("ru"), value]));
 export function canonicalCharacterTag(value: string): string | null {
@@ -71,15 +80,6 @@ export function toggleTagInString(current: string, tag: string): string {
 export function removeTagFromString(current: string, tag: string): string {
   return joinTagsString(parseTagsString(current).filter(item => item !== tag));
 }
-const EN_TAG_LABELS: Record<string, string> = {
-  "Романтика": "Romance", "Приключение": "Adventure", "Фэнтези": "Fantasy", "Научная фантастика": "Sci-Fi", "Детектив": "Detective", "Драма": "Drama", "Комедия": "Comedy", "Ужасы": "Horror", "Триллер": "Thriller", "Мистика": "Mystery", "Повседневность": "Slice of life", "Экшен": "Action",
-  "Современный мир": "Modern world", "Исторический": "Historical", "Средневековье": "Middle Ages", "Постапокалипсис": "Post-apocalyptic", "Киберпанк": "Cyberpunk", "Космос": "Space", "Магическая академия": "Magic academy", "Готика": "Gothic",
-  "Мужской персонаж": "Male character", "Женский персонаж": "Female character", "Антропоморфный": "Anthropomorphic", "Эльф": "Elf", "Андроид": "Android", "Монстр": "Monster",
-  "Друг": "Friend", "Партнёр": "Partner", "Сосед": "Neighbor", "Напарник": "Companion", "Наставник": "Mentor", "Соперник": "Rival", "Герой": "Hero", "Злодей": "Villain", "Враг": "Enemy",
-  "Добрый": "Kind", "Заботливый": "Caring", "Сдержанный": "Reserved", "Дерзкий": "Bold", "Загадочный": "Mysterious", "Холодный": "Cold", "Ироничный": "Witty", "Флиртующий": "Flirty", "Цундере": "Tsundere",
-  "Аниме": "Anime", "Ролевая игра": "Roleplay", "Медленное развитие отношений": "Slow-burn relationships", "Выборы и последствия": "Choices and consequences", "Исследование мира": "World exploration",
-  "18+": "18+",
-};
 export function characterTagLabel(tag: string, locale: string, translate?: (key: string, fallback: string) => string): string {
   const fallback = locale.startsWith("ru") ? tag : EN_TAG_LABELS[tag] ?? tag;
   return translate ? translate(`characterTags.labels.${tag}`, fallback) : fallback;

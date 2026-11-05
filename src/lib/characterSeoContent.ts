@@ -19,9 +19,12 @@ const ADULT_PATTERNS = [
   /(?<![\p{L}\d])18\s*\+/u,
 ];
 
+// "Без эротики" / "without eroticism" says the opposite of what the patterns look for.
+const NEGATED_ADULT_WORDS = /(?<![\p{L}\d])(?:без|никакой|никакого|нет|without|no)\s+(?:эроти\p{L}*|секс(?!т)\p{L}*|порн\p{L}*|erotic\p{L}*|sex(?:ual\p{L}*)?|porn\p{L}*|nsfw)/giu;
+
 export function hasAdultText(text: string | null | undefined): boolean {
   if (!text) return false;
-  const comparable = text.normalize("NFKC").replace(/[­​-‏⁠-⁯﻿]/g, "");
+  const comparable = text.normalize("NFKC").replace(/[­​-‏⁠-⁯﻿]/g, "").replace(NEGATED_ADULT_WORDS, " ");
   return ADULT_PATTERNS.some((pattern) => pattern.test(comparable));
 }
 

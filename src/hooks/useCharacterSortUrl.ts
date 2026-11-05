@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DEFAULT_CHARACTER_SORT, isCharacterSort, type CharacterSort } from "@/lib/characterSort";
+import { applyCatalogFiltersToParams, type CatalogFilters } from "@/lib/catalogFilters";
 
 function parsePage(value: string | null): number {
   const parsed = Number.parseInt(value || "1", 10);
@@ -64,14 +65,21 @@ export function useCharacterSortUrl() {
   );
 
   const setSearchQuery = useCallback((value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(window.location.search);
     const query = value.trim().slice(0, 200);
     if (query) params.set("q", query); else params.delete("q");
     params.delete("page");
     // Search stays client-driven. Native history updates Next's searchParams;
     // subsequent sort/page navigation carries q into the server request.
     window.history.replaceState(null, "", `${pathname}${params.size ? `?${params}` : ""}`);
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
-  return { sort, setSort, page, setPage, setSearchQuery };
+  // Like the search: client-driven, and carried into the server request by later navigation.
+  const setFiltersQuery = useCallback((filters: CatalogFilters) => {
+    const params = applyCatalogFiltersToParams(new URLSearchParams(window.location.search), filters);
+    params.delete("page");
+    window.history.replaceState(null, "", `${pathname}${params.size ? `?${params}` : ""}`);
+  }, [pathname]);
+
+  return { sort, setSort, page, setPage, setSearchQuery, setFiltersQuery };
 }

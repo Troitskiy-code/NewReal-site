@@ -223,7 +223,7 @@
       "label": "Kontynuuj",
       "you": "Ty"
     },
-    "searchPlaceholder": "Szukaj według nazwy lub tagu...",
+    "searchPlaceholder": "Szukaj po imieniu",
     "sort": "Sortuj",
     "sortTop": "Top",
     "sortRandom": "Losowe",
@@ -295,6 +295,45 @@
       "discoveryTitle": "Odkryj nowe historie",
       "personalizedHint": "Na podstawie ulubionych i ostatnich czatów, z nowymi gatunkami i mniejszą liczbą znanych postaci.",
       "discoveryHint": "Mieszanka gatunków, popularnych historii i nowości. Dodaj ulubione i czat, aby spersonalizować te typy."
+    },
+    "filters": {
+      "button": "Filtry",
+      "reset": "Wyczyść",
+      "resetAll": "Wyczyść wszystko",
+      "any": "dowolny",
+      "showAdult": "Pokaż 18+",
+      "pick": "Znajdź",
+      "selected": "Wybrane filtry",
+      "removeLabel": "Usuń filtr {{label}}",
+      "removeSuggestion": "Usuń „{{label}}”",
+      "emptyTitle": "Takiego połączenia jeszcze nie ma",
+      "emptyText": "Usuń jeden filtr albo stwórz tę postać samodzielnie.",
+      "more": "Jeszcze {{count}}",
+      "show_one": "Pokaż {{count}} postać",
+      "show_few": "Pokaż {{count}} postacie",
+      "show_many": "Pokaż {{count}} postaci",
+      "show_other": "Pokaż {{count}} postaci",
+      "resultCount_one": "{{count}} postać",
+      "resultCount_few": "{{count}} postacie",
+      "resultCount_many": "{{count}} postaci",
+      "resultCount_other": "{{count}} postaci",
+      "groups": {
+        "style": "Styl rysunku",
+        "gender": "Postać",
+        "format": "Format",
+        "genres": "Gatunek",
+        "worlds": "Świat i realia",
+        "traits": "Charakter"
+      },
+      "gender": {
+        "female": "Żeńska",
+        "male": "Męska"
+      },
+      "format": {
+        "character": "Jedna postać",
+        "group": "Kilka",
+        "world": "Świat"
+      }
     }
   },
   "characterCard": {
@@ -711,7 +750,9 @@
         "new": "Nowy na NewVerse: Ostatnio dodane postacie i światy do gry fabularnej AI.",
         "random": "Losowy wybór NewVerse postacie-odkryj nieoczekiwaną historię AI.",
         "for-you": "NewVerse postacie wybrane dla Twoich zainteresowań, do odgrywania ról AI."
-      }
+      },
+      "filtered": "Wybór postaci",
+      "filteredDescription": "Postacie NewVerse według Twoich filtrów: gatunek, styl rysunku i charakter."
     }
   },
   "genrePage": {

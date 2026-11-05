@@ -3,14 +3,15 @@
 import LocaleLink from "@/components/LocaleLink";
 import Footer from "@/components/Footer";
 import CharacterCard from "@/components/CharacterCard";
-import CharacterSearchFilters from "@/components/CharacterSearchFilters";
+import CharacterSearchFilters, { CatalogEmptyFilters } from "@/components/CharacterSearchFilters";
 import CharacterPagination from "@/components/CharacterPagination";
 import HomeHero from "@/components/HomeHero";
 import ContinueStoryCard from "@/components/ContinueStoryCard";
 import FirstStepOnboarding, { writeOnboardingCookie } from "@/components/FirstStepOnboarding";
 import { hasOnboardingSignals } from "@/lib/onboarding";
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { FaUser } from "react-icons/fa";
+import { catalogFilterCount, catalogFiltersQuery, parseCatalogFilters } from "@/lib/catalogFilters";
 import { useCharacterSortUrl } from "@/hooks/useCharacterSortUrl";
 import { usePaginatedCharacters } from "@/hooks/usePaginatedCharacters";
 import { useTranslation } from "react-i18next";
@@ -18,19 +19,46 @@ import { withLocale } from "@/lib/i18nConfig";
 
 // The widest grid row up to lg (4 columns); on xl the fifth card is in view and loads at once anyway.
 const FIRST_ROW_CARDS = 4;
+const HIDE_ADULT_KEY = "nv_hide_adult";
+const HIDE_ADULT_EVENT = "nv-hide-adult";
+
+function readHideAdult() {
+  try { return window.localStorage.getItem(HIDE_ADULT_KEY) === "1"; } catch { return false; }
+}
+function subscribeHideAdult(onChange) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(HIDE_ADULT_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(HIDE_ADULT_EVENT, onChange);
+  };
+}
 
 export default function HomePageContent({ initialData, showHero = false, onboarding = null, freeQuotaOffer = false, about = null }) {
   const { t, i18n } = useTranslation();
-  const { sort, setSort, page, setPage, setSearchQuery } = useCharacterSortUrl();
+  const { sort, setSort, page, setPage, setSearchQuery, setFiltersQuery } = useCharacterSortUrl();
+  const [filters, setFilters] = useState(() => {
+    const initial = new URLSearchParams(initialData?.filtersQuery ?? "");
+    return parseCatalogFilters((key) => initial.get(key));
+  });
+  const filtersQuery = useMemo(() => catalogFiltersQuery(filters), [filters]);
+  const changeFilters = (next) => { setFilters(next); setFiltersQuery(next); };
+  // Shown by default and on the server; a stored "hide" refetches the list after hydration.
+  const hideAdult = useSyncExternalStore(subscribeHideAdult, readHideAdult, () => false);
+  const changeHideAdult = (hide) => {
+    try { window.localStorage.setItem(HIDE_ADULT_KEY, hide ? "1" : "0"); } catch {}
+    window.dispatchEvent(new Event(HIDE_ADULT_EVENT));
+    if (page !== 1) setPage(1);
+  };
   const { search, setSearch, characters, loading, error, total, totalPages, goToPage, reload, recommendationMode } =
-    usePaginatedCharacters({ sort, page, setPage, listKey: "home", initialData, onSearchChange: setSearchQuery });
+    usePaginatedCharacters({ sort, page, setPage, listKey: "home", initialData, onSearchChange: setSearchQuery, filtersQuery, hideAdult });
 
   const [onboardingSource, setOnboardingSource] = useState(onboarding?.show ? "organic" : null);
   const [onboardingPrefs, setOnboardingPrefs] = useState(onboarding?.prefs ?? null);
   const openOnboarding = onboarding?.enabled ? (source) => setOnboardingSource(source) : undefined;
   const updatePrefs = (prefs) => { writeOnboardingCookie(prefs); setOnboardingPrefs(prefs); reload(); };
 
-  const hasFilters = search.trim().length > 0;
+  const hasFilters = search.trim().length > 0 || catalogFilterCount(filters) > 0;
   const sectionTitle = t(hasFilters ? "home.sectionTitle.search" : sort === "for-you" && recommendationMode !== "personalized" ? "home.recommendations.discoveryTitle" : `home.sectionTitle.${sort}`);
 
   return (
@@ -51,6 +79,13 @@ export default function HomePageContent({ initialData, showHero = false, onboard
         onSearchChange={setSearch}
         sort={sort}
         onSortChange={setSort}
+        filters={filters}
+        onFiltersChange={changeFilters}
+        hideAdult={hideAdult}
+        onHideAdultChange={changeHideAdult}
+        total={total}
+        loading={loading}
+        onPick={openOnboarding && !hasFilters ? () => openOnboarding("reopen") : undefined}
       />
 
       <main
@@ -58,22 +93,10 @@ export default function HomePageContent({ initialData, showHero = false, onboard
         data-character-list-scroll
         className="flex min-h-0 flex-1 scroll-mt-24 flex-col gap-4 overflow-y-auto px-4 pb-6 pt-2 scrollbar-subtle md:gap-5 md:px-6"
       >
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-display text-base font-semibold text-wd-text md:text-xl">{sectionTitle}</h2>
-          {!loading && total > 0 && (
-            <p className="shrink-0 text-[13px] text-wd-text-secondary">
-              {t("home.found")}<span className="font-semibold text-white">{total}</span>
-            </p>
-          )}
-        </div>
+        <h2 className="sr-only">{sectionTitle}</h2>
 
-        {onboarding?.enabled && sort === "for-you" && hasOnboardingSignals(onboardingPrefs) ? (
+        {onboarding?.enabled && sort === "for-you" && hasOnboardingSignals(onboardingPrefs) && (
           <OnboardingPrefsBar prefs={onboardingPrefs} onChange={updatePrefs} onPickAgain={() => openOnboarding("reopen")} />
-        ) : onboarding?.enabled && !hasFilters && (
-          <button type="button" onClick={() => openOnboarding("reopen")}
-            className="inline-flex items-center gap-1.5 self-start rounded-full border border-wd-secondary/60 bg-wd-secondary/15 px-3.5 py-2 text-[13px] font-semibold text-wd-secondary-text transition-colors hover:bg-wd-secondary/25">
-            <span aria-hidden>✦</span>{t("onboarding.catalog.pick")}
-          </button>
         )}
 
         {sort === "for-you" && !loading && !error && <p className="text-sm leading-relaxed text-wd-text-secondary">
@@ -92,6 +115,9 @@ export default function HomePageContent({ initialData, showHero = false, onboard
               {t("common.retry")}
             </button>
           </div>
+        ) : characters.length === 0 && catalogFilterCount(filters) > 0 ? (
+          <CatalogEmptyFilters filters={filters} search={search} hideAdult={hideAdult} onFiltersChange={changeFilters}
+            createHref={withLocale("/create", i18n.language)} />
         ) : characters.length === 0 ? (
           <div className="rounded-wd border border-wd-border bg-wd-card p-10 text-center shadow-wd">
             <FaUser className="mx-auto mb-4 text-4xl opacity-20" />
@@ -119,7 +145,7 @@ export default function HomePageContent({ initialData, showHero = false, onboard
               totalPages={totalPages}
               onPageChange={goToPage}
               disabled={loading}
-              hrefForPage={(target) => `${withLocale("/", i18n.language)}?${new URLSearchParams({ sort, page: String(target), ...(search ? { q: search } : {}) })}`}
+              hrefForPage={(target) => `${withLocale("/", i18n.language)}?${new URLSearchParams({ sort, page: String(target), ...(search ? { q: search } : {}), ...Object.fromEntries(new URLSearchParams(filtersQuery)) })}`}
             />
           </>
         )}

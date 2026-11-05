@@ -18,7 +18,7 @@ function scrollCharacterListToTop() {
   }
 }
 
-export function usePaginatedCharacters({ sort, listKey, page, setPage, initialData, onSearchChange }) {
+export function usePaginatedCharacters({ sort, listKey, page, setPage, initialData, onSearchChange, filtersQuery = "", hideAdult = false }) {
   const { data: session, status } = useSession();
   const accountKey = status === "loading" ? (initialData?.viewerId ?? "guest") : (session?.user?.id ?? "guest");
   // A cached/navigation server snapshot can belong to a different session.
@@ -35,7 +35,8 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
   const [totalPages, setTotalPages] = useState(initialData?.meta.totalPages ?? 0);
   const [ready, setReady] = useState(false);
   const skipFetchRef = useRef(false);
-  const lastQueryRef = useRef(initialData ? `${initialAccount}\0${sort}\0${initialData.search}\0${page}\0${initialData.meta.limit}` : "");
+  // The server snapshot is rendered with 18+ cards shown.
+  const lastQueryRef = useRef(initialData ? `${initialAccount}\0${sort}\0${initialData.search}\0${page}\0${initialData.meta.limit}\0${initialData.filtersQuery ?? ""}\0show` : "");
 
   useLayoutEffect(() => {
     // Browser-only return state is restored after hydration; never replace the
@@ -76,11 +77,12 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
       setError(null);
 
       try {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams(filtersQuery);
         params.set("page", String(pageNum));
         params.set("limit", String(pageLimit));
         params.set("sort", sort);
         if (search.trim()) params.set("search", search.trim());
+        if (hideAdult) params.set("adult", "hide");
 
         const { data } = await axios.get(`/api/characters?${params.toString()}`, { signal: controller.signal });
         if (!current()) return;
@@ -114,7 +116,7 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
         if (current()) setLoading(false);
       }
     },
-    [search, setPage, sort, accountKey]
+    [search, setPage, sort, accountKey, filtersQuery, hideAdult]
   );
 
   useEffect(() => () => { activeRequest.current.controller?.abort(); }, [accountKey]);
@@ -122,7 +124,7 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
   useEffect(() => {
     if (!ready || limit == null) return;
 
-    const queryKey = `${accountKey}\0${sort}\0${search}\0${page}\0${limit}`;
+    const queryKey = `${accountKey}\0${sort}\0${search}\0${page}\0${limit}\0${filtersQuery}\0${hideAdult ? "hide" : "show"}`;
     if (lastQueryRef.current === queryKey) return;
 
     if (skipFetchRef.current) {
@@ -135,7 +137,7 @@ export function usePaginatedCharacters({ sort, listKey, page, setPage, initialDa
     const shouldScroll = lastQueryRef.current !== "";
     lastQueryRef.current = queryKey;
     fetchCharacters(page, limit, { scrollToTop: shouldScroll });
-  }, [fetchCharacters, limit, page, ready, search, sort, accountKey]);
+  }, [fetchCharacters, limit, page, ready, search, sort, accountKey, filtersQuery, hideAdult]);
 
   useEffect(() => {
     if (!ready || loading || loadedAccount !== accountKey) return;

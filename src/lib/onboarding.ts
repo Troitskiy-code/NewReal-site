@@ -70,5 +70,8 @@ export function matchedOnboardingInterests(tags: string | null | undefined, inte
 
 /** Stored style wins; until a card is classified the "Аниме" tag is the only reliable hint. */
 export function resolveArtStyle(artStyle: string | null | undefined, tags: string | null | undefined): ArtStyle | null {
-  return parseArtStyle(artStyle) ?? (parseTagsString(tags).includes("Аниме") ? "anime" : null);
+  const stored = parseArtStyle(artStyle);
+  if (stored) return stored;
+  const own = parseTagsString(tags);
+  return own.includes("Аниме") ? "anime" : own.includes("Реалистичный") ? "realistic" : null;
 }

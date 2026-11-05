@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect } from "react";
+import { CATALOG_FILTER_PARAMS } from "@/lib/catalogFilters";
 import { stripLocalePrefix } from "@/lib/i18nConfig";
 
 const STORAGE_KEY = "nv:character-return";
@@ -94,7 +95,8 @@ export function characterReturnMatches(snapshot: CharacterReturnSnapshot | null,
   const saved = new URL(snapshot.href, window.location.origin).searchParams;
   const current = new URL(window.location.href).searchParams;
   const page = (params: URLSearchParams) => Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1);
-  return page(saved) === page(current) && (saved.get("q") || "") === (current.get("q") || "");
+  const sameFilters = CATALOG_FILTER_PARAMS.every(key => saved.get(key) === current.get(key));
+  return page(saved) === page(current) && (saved.get("q") || "") === (current.get("q") || "") && sameFilters;
 }
 
 export function restoreCharacterScroll(snapshot: CharacterReturnSnapshot | null) {

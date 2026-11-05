@@ -57,12 +57,19 @@ const PORTRAIT_CONSTRAINTS = "Exactly one character. No text, letters, captions,
 const COVER_CONSTRAINTS = "No text, letters, titles, captions, logos, watermarks or frames.";
 
 // Without this, the editing model tends to retouch the uploaded photo instead of drawing the character.
-const PORTRAIT_REFERENCE =
-  "Use the person in the reference image as the character's likeness: keep the face, facial proportions, hairstyle and distinctive features recognizable. Create a new portrait rather than editing the photo, and do not copy its background, framing, pose or lighting.";
+// The face rule opens and closes the prompt: a long scene description in between made the model
+// draw a generic attractive face, and "wishes take priority" read as permission to change it.
+const REFERENCE_PHOTO =
+  "Keep exactly the same person as in the reference image: the same face shape, eyes, nose, mouth, jawline, skin tone, apparent age and any scars or marks, instantly recognizable, and the same hairstyle unless the request below changes it. Do not beautify, slim, de-age or reinterpret the face. Create a new image of this person rather than editing the photo: clothing, pose, setting and lighting may change.";
+const REFERENCE_DRAWN =
+  "Draw the person from the reference image as this character: keep the face shape, facial proportions, hairstyle and distinctive features recognizable, and the same apparent age. Create a new image rather than editing the photo.";
+const REFERENCE_CLOSING = "The face is clearly visible and is unmistakably the same person as in the reference image.";
 const WORLD_REFERENCE =
   "Use the reference image as inspiration for the look and mood of the place, but create a new image rather than editing the photo.";
 const GROUP_REFERENCE =
   "Use the reference image for the look of one of the characters, but create a new scene rather than editing the photo.";
+
+const portraitReference = (style: AvatarStyle) => style === "anime" ? REFERENCE_DRAWN : REFERENCE_PHOTO;
 
 export function resolveAvatarStyle(value: unknown): AvatarStyle {
   return value === "anime" ? "anime" : "realistic";
@@ -76,8 +83,8 @@ export function avatarPromptMode(value: unknown): AvatarPromptMode {
  * Wraps a written scene description (from the prompt-writer model) in the parts that must never be
  * left to a model: style, reference handling, composition for the editor type and the no-text rules.
  */
-export function composeAvatarPrompt({ mode, style, withReference, scene }: {
-  mode: AvatarPromptMode; style: AvatarStyle; withReference: boolean; scene: string;
+export function composeAvatarPrompt({ mode, style, withReference, scene, hasWishes = false }: {
+  mode: AvatarPromptMode; style: AvatarStyle; withReference: boolean; scene: string; hasWishes?: boolean;
 }): string {
   const description = sentence(sanitizePromptText(scene, 1600));
   if (mode === "world") {
@@ -88,8 +95,10 @@ export function composeAvatarPrompt({ mode, style, withReference, scene }: {
     return [GROUP_STYLE_PROMPT[style], "An ensemble illustration for a story with several characters.",
       withReference ? GROUP_REFERENCE : "", description, GROUP_COMPOSITION, COVER_CONSTRAINTS].filter(Boolean).join(" ");
   }
-  return [STYLE_PROMPT[style], withReference ? PORTRAIT_REFERENCE : "A single original character.",
-    description, `Framing: ${PORTRAIT_FRAMING}.`, PORTRAIT_CONSTRAINTS].filter(Boolean).join(" ");
+  // A wish like "full body" must beat the default framing here too.
+  const framing = hasWishes ? `Unless the description says otherwise, frame it as ${PORTRAIT_FRAMING}.` : `Framing: ${PORTRAIT_FRAMING}.`;
+  if (withReference) return [portraitReference(style), STYLE_PROMPT[style], description, framing, REFERENCE_CLOSING, PORTRAIT_CONSTRAINTS].filter(Boolean).join(" ");
+  return [STYLE_PROMPT[style], "A single original character.", description, framing, PORTRAIT_CONSTRAINTS].filter(Boolean).join(" ");
 }
 
 /** Deterministic prompt from the editor fields; also the fallback when the prompt writer is off or fails. */
@@ -128,9 +137,21 @@ export function buildAvatarPrompt(body: {
 
   // With no visual input at all the name is the only hint (for example, gender); the no-text rule still applies.
   const name = sanitizePromptText(asText(body.name), 80);
-  const subject = withReference
-    ? PORTRAIT_REFERENCE
-    : wishes || appearance || description
+  if (withReference) {
+    return [
+      portraitReference(style),
+      STYLE_PROMPT[style],
+      wishes ? `Requested clothing, pose, expression and setting: ${sentence(wishes)}` : "",
+      // The card may flatter or contradict the photo ("model looks"); the photo decides the person.
+      appearance ? `Other details, only where they do not contradict the reference face: ${sentence(appearance)}` : "",
+      description ? `Character context: ${sentence(description)}` : "",
+      wishes ? `Unless the request says otherwise, frame it as ${PORTRAIT_FRAMING}.` : `Framing: ${PORTRAIT_FRAMING}.`,
+      wishes ? "" : PORTRAIT_BACKGROUND,
+      REFERENCE_CLOSING,
+      PORTRAIT_CONSTRAINTS,
+    ].filter(Boolean).join(" ");
+  }
+  const subject = wishes || appearance || description
       ? "A single original character."
       : `A single original character named ${name || "without a name"}.`;
 

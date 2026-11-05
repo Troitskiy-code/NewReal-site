@@ -223,7 +223,7 @@
       "label": "Devam et",
       "you": "Sen"
     },
-    "searchPlaceholder": "İsme veya etikete göre ara...",
+    "searchPlaceholder": "Ada göre ara",
     "sort": "Sırala",
     "sortTop": "Popüler",
     "sortRandom": "Rastgele",
@@ -293,6 +293,41 @@
       "discoveryTitle": "Yeni hikâyeler keşfedin",
       "personalizedHint": "Favorilerinize ve son sohbetlerinize dayanarak; yeni türler ve daha az tanıdık karakterler.",
       "discoveryHint": "Türlerin karışımı, popüler hikâyeler ve yeni gelenler. Favori ekleyin ve sohbet edin ki bu öneriler kişiselleşsin."
+    },
+    "filters": {
+      "button": "Filtreler",
+      "reset": "Sıfırla",
+      "resetAll": "Tümünü sıfırla",
+      "any": "herhangi",
+      "showAdult": "18+ göster",
+      "pick": "Bul",
+      "selected": "Seçili filtreler",
+      "removeLabel": "{{label}} filtresini kaldır",
+      "removeSuggestion": "“{{label}}” kaldır",
+      "emptyTitle": "Bu kombinasyon henüz yok",
+      "emptyText": "Bir filtreyi kaldırın veya bu karakteri kendiniz oluşturun.",
+      "more": "{{count}} tane daha",
+      "show_one": "{{count}} karakteri göster",
+      "show_other": "{{count}} karakteri göster",
+      "resultCount_one": "{{count}} karakter",
+      "resultCount_other": "{{count}} karakter",
+      "groups": {
+        "style": "Çizim tarzı",
+        "gender": "Karakter",
+        "format": "Biçim",
+        "genres": "Tür",
+        "worlds": "Dünya ve ortam",
+        "traits": "Kişilik"
+      },
+      "gender": {
+        "female": "Kadın",
+        "male": "Erkek"
+      },
+      "format": {
+        "character": "Tek karakter",
+        "group": "Birkaç",
+        "world": "Dünya"
+      }
     }
   },
   "characterCard": {
@@ -705,7 +740,9 @@
         "new": "NewVerse'te yeni: son eklenen karakterler ve yapay zekâ ile rol yapma dünyaları.",
         "random": "NewVerse karakterlerinden rastgele bir seçim — beklenmedik bir yapay zekâ hikâyesi keşfedin.",
         "for-you": "İlginize göre seçilmiş NewVerse karakterleri, yapay zekâ ile rol yapmak için."
-      }
+      },
+      "filtered": "Karakter seçkisi",
+      "filteredDescription": "Filtrelerinize göre NewVerse karakterleri: tür, çizim tarzı ve kişilik."
     }
   },
   "genrePage": {
@@ -1275,15 +1312,15 @@
     "labels": {
       "Романтика": "Romantik",
       "Приключение": "Macera",
-      "Фэнтези": "Fantezi",
+      "Фэнтези": "Fantastik",
       "Научная фантастика": "Bilim Kurgu",
-      "Детектив": "Dedektif",
+      "Детектив": "Polisiye",
       "Драма": "Dram",
       "Комедия": "Komedi",
       "Ужасы": "Korku",
       "Триллер": "Gerilim",
       "Мистика": "Gizem",
-      "Повседневность": "Yaşamdan kesitler",
+      "Повседневность": "Günlük yaşam",
       "Экшен": "Aksiyon",
       "Современный мир": "Modern dünya",
       "Исторический": "Tarihsel",

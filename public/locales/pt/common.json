@@ -223,7 +223,7 @@
       "label": "Continuar",
       "you": "Tu"
     },
-    "searchPlaceholder": "Procurar por nome ou etiqueta...",
+    "searchPlaceholder": "Buscar por nome",
     "sort": "Ordenar",
     "sortTop": "Melhores",
     "sortRandom": "Aleatório",
@@ -294,6 +294,43 @@
       "discoveryTitle": "Descubra novas histórias",
       "personalizedHint": "Baseado nos seus favoritos e conversas recentes, com novos géneros e menos personagens familiares.",
       "discoveryHint": "Uma mistura de géneros, histórias populares e novidades. Adicione favoritos e converse para personalizar estas sugestões."
+    },
+    "filters": {
+      "button": "Filtros",
+      "reset": "Limpar",
+      "resetAll": "Limpar tudo",
+      "any": "qualquer",
+      "showAdult": "Mostrar 18+",
+      "pick": "Encontrar",
+      "selected": "Filtros selecionados",
+      "removeLabel": "Remover filtro {{label}}",
+      "removeSuggestion": "Remover “{{label}}”",
+      "emptyTitle": "Essa combinação ainda não existe",
+      "emptyText": "Remova um filtro ou crie esse personagem você mesmo.",
+      "more": "Mais {{count}}",
+      "show_one": "Mostrar {{count}} personagem",
+      "show_many": "Mostrar {{count}} personagens",
+      "show_other": "Mostrar {{count}} personagens",
+      "resultCount_one": "{{count}} personagem",
+      "resultCount_many": "{{count}} personagens",
+      "resultCount_other": "{{count}} personagens",
+      "groups": {
+        "style": "Estilo de desenho",
+        "gender": "Personagem",
+        "format": "Formato",
+        "genres": "Gênero",
+        "worlds": "Mundo e cenário",
+        "traits": "Personalidade"
+      },
+      "gender": {
+        "female": "Feminino",
+        "male": "Masculino"
+      },
+      "format": {
+        "character": "Um personagem",
+        "group": "Vários",
+        "world": "Mundo"
+      }
     }
   },
   "characterCard": {
@@ -708,7 +745,9 @@
         "new": "Novidades no NewVerse: personagens e mundos adicionados recentemente para interpretação com IA.",
         "random": "Seleção aleatória de personagens NewVerse — descubra uma história inesperada com IA.",
         "for-you": "Personagens NewVerse escolhidos com base nos seus interesses, para interpretação com IA."
-      }
+      },
+      "filtered": "Seleção de personagens",
+      "filteredDescription": "Personagens da NewVerse conforme seus filtros: gênero, estilo de desenho e personalidade."
     }
   },
   "genrePage": {
@@ -1284,13 +1323,13 @@
       "Приключение": "Aventura",
       "Фэнтези": "Fantasia",
       "Научная фантастика": "Ficção científica",
-      "Детектив": "Detetive",
+      "Детектив": "Policial",
       "Драма": "Drama",
       "Комедия": "Comédia",
       "Ужасы": "Terror",
       "Триллер": "Thriller",
       "Мистика": "Mistério",
-      "Повседневность": "Vida quotidiana",
+      "Повседневность": "Cotidiano",
       "Экшен": "Ação",
       "Современный мир": "Mundo moderno",
       "Исторический": "Histórico",

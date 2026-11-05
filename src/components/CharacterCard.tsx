@@ -9,7 +9,7 @@ import { LuTriangleAlert } from "react-icons/lu";
 import { useTranslation } from "react-i18next";
 import FavoriteButton from "@/components/FavoriteButton";
 import { getLocalizedCardDescription, stripLeadingName } from "@/lib/characterFields";
-import { pickFeaturedGenre } from "@/lib/characterTags";
+import { characterTagLabel, pickFeaturedGenre } from "@/lib/characterTags";
 import { captureCharacterReturn } from "@/lib/characterReturn";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 
@@ -88,7 +88,7 @@ export default function CharacterCard({ character, className = "", eager = false
           <div className="absolute inset-x-0 bottom-0 p-2.5 md:p-3.5">
             {genre && (
               <span className="mb-1.5 inline-block rounded-full bg-white/12 px-2 py-0.5 text-[11px] font-semibold text-zinc-200 backdrop-blur-sm md:mb-2">
-                {t(`home.genres.${genre.id}`)}
+                {characterTagLabel(genre.tag, locale, (key, fallback) => t(key, { defaultValue: fallback }))}
               </span>
             )}
             <h2 className="line-clamp-2 text-[15px] font-bold leading-tight text-white md:text-base">{name}</h2>

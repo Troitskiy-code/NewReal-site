@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LOCALES, withLocale, type Locale } from "@/lib/i18nConfig";
+import { CATALOG_FILTER_PARAMS } from "@/lib/catalogFilters";
 
 export const PUBLIC_PAGE_PATHS = {
   home: "/", pricing: "/pricing", coins: "/coins",
@@ -18,7 +19,7 @@ export function pageIndexingMetadata(
   if (page === "home") {
     // Only these parameters change the catalog. Tracking stays in the browser URL,
     // but never enters canonical/hreflang. Preserve meaningful variants as their own URLs.
-    for (const key of ["sort", "page", "q"]) {
+    for (const key of ["sort", "page", "q", ...CATALOG_FILTER_PARAMS]) {
       const raw = searchParams[key];
       const value = Array.isArray(raw) ? raw[0] : raw;
       if (!value || (key === "sort" && value === "top") || (key === "page" && value === "1")) continue;

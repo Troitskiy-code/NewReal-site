@@ -447,7 +447,7 @@ function CharacterFormContent({
             )}
           </div>
         )}
-        <p className="text-xs text-wd-text-secondary">Одна генерация создаёт одно изображение. Добавьте референс, чтобы сохранить внешность персонажа.</p>
+        <p className="text-xs text-wd-text-secondary">Одна генерация создаёт одно изображение. Добавьте референс, чтобы сохранить внешность персонажа. Лучше всего подходит фото, где лицо крупное и хорошо освещено: издалека или в тёмном свете модель хуже узнаёт человека.</p>
         {generation.notice && <p role="status" className="text-sm text-amber-400">{generation.notice}</p>}
         {generation.canRestore && <button type="button" onClick={generation.restore} className="text-sm text-wd-secondary underline">Восстановить последнее изображение</button>}
         {(generation.busy || generation.blocked || generation.notice) && <button type="button" onClick={generation.refresh} className="text-sm text-wd-secondary underline">Проверить результат</button>}

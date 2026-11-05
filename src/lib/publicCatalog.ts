@@ -7,7 +7,8 @@ import { DEFAULT_CHARACTER_SORT, isCharacterSort } from "@/lib/characterSort";
 import { CHARACTERS_PAGE_LIMIT } from "@/lib/charactersList";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import type { SeoSearchParams } from "@/lib/seoIndexing";
-import { catalogSearchCondition, catalogTagCondition } from "./characterCatalogSearch";
+import { catalogFiltersConditions, catalogSearchCondition, catalogTagCondition } from "./characterCatalogSearch";
+import { catalogFiltersQuery, EMPTY_CATALOG_FILTERS, parseCatalogFilters, type CatalogFilters } from "./catalogFilters";
 import { getCharacterRecommendationOrder } from "./characterRecommendations";
 import type { RecommendationMode } from "./characterRecommendationRank";
 import { readOnboardingPrefs } from "./onboardingServer";
@@ -18,18 +19,19 @@ export function parseCatalogQuery(params: SeoSearchParams) {
   const value = first("sort");
   const sort = isCharacterSort(value) ? value : DEFAULT_CHARACTER_SORT;
   const page = Math.max(1, Number.parseInt(first("page"), 10) || 1);
-  return { sort, page, search: first("q").trim().slice(0, 200) };
+  return { sort, page, search: first("q").trim().slice(0, 200), filters: parseCatalogFilters(first) };
 }
 
 // React cache is per render/request, not a shared cache of personalized favorites.
 // Genre pages pass a genre tag instead of a search: tags only, names are not matched.
-export const getPublicCatalog = cache(async (sort: string, page: number, search: string, genreTag = "") => {
+export const getPublicCatalog = cache(async (sort: string, page: number, search: string, genreTag = "", filters: CatalogFilters = EMPTY_CATALOG_FILTERS) => {
   try {
     const viewerId = await getViewerId();
     // Telegram uses the same public visibility as the website.
     const where = await withTelegramCharacterWhere({
       isPublic: true, slug: { not: null },
       ...(genreTag ? catalogTagCondition(genreTag) : catalogSearchCondition(search)),
+      AND: catalogFiltersConditions(filters),
     }, viewerId);
     const limit = CHARACTERS_PAGE_LIMIT;
     const total = await prisma.character.count({ where });
@@ -66,7 +68,7 @@ export const getPublicCatalog = cache(async (sort: string, page: number, search:
       data: rows.map(row => ({ ...row, updatedAt: row.updatedAt.toISOString(),
         imageUrl: characterAvatarPath(row.id, row.updatedAt), isPublic: true, isFavorited: favoriteIds.has(row.id),
       })),
-      meta: { total, page, limit, totalPages: Math.ceil(total / limit), recommendationMode }, search, viewerId,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit), recommendationMode }, search, filtersQuery: catalogFiltersQuery(filters), viewerId,
     };
   } catch (error) {
     errorLog("Catalog", "server listing", toSafeDiagnostic(error));

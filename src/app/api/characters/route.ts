@@ -20,8 +20,9 @@ import { clampCharactersPageLimit } from "@/lib/charactersList";
 import { characterAvatarPath } from "@/lib/characterCardImage";
 import { ensureCharacterModerationColumns } from "@/lib/ensureCharacterModerationColumns";
 import { prismaPoolOverloadResponse } from "@/lib/handlePrismaError";
-import { catalogSearchCondition } from "@/lib/characterCatalogSearch";
+import { catalogAdultHiddenCondition, catalogFiltersConditions, catalogSearchCondition } from "@/lib/characterCatalogSearch";
 import { characterTagSearchTerms } from "@/lib/characterTags";
+import { parseCatalogFilters } from "@/lib/catalogFilters";
 import { getCharacterRecommendationOrder } from "@/lib/characterRecommendations";
 import { readOnboardingPrefs } from "@/lib/onboardingServer";
 import type { RecommendationMode } from "@/lib/characterRecommendationRank";
@@ -213,6 +214,9 @@ export async function GET(req: NextRequest) {
         })),
       });
     }
+
+    andConditions.push(...catalogFiltersConditions(parseCatalogFilters((key) => searchParams.get(key))));
+    if (searchParams.get("adult") === "hide") andConditions.push(catalogAdultHiddenCondition);
 
     // Telegram Mini App: only the approved Telegram catalog and the viewer's own characters.
     const telegramWhere = await telegramCharacterWhere(session?.user?.id);

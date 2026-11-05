@@ -223,7 +223,7 @@
       "label": "Continuare",
       "you": "Si"
     },
-    "searchPlaceholder": "Cerca per nome o tag...",
+    "searchPlaceholder": "Cerca per nome",
     "sort": "Genere",
     "sortTop": "Cima",
     "sortRandom": "Casuale",
@@ -294,6 +294,43 @@
       "discoveryTitle": "Scopri nuove storie",
       "personalizedHint": "Basato sui tuoi preferiti e chat recenti, con nuovi generi e meno personaggi familiari.",
       "discoveryHint": "Un mix di generi, storie popolari e nuovi arrivi. Aggiungi preferiti e chattare per personalizzare queste scelte."
+    },
+    "filters": {
+      "button": "Filtri",
+      "reset": "Reimposta",
+      "resetAll": "Reimposta tutto",
+      "any": "qualsiasi",
+      "showAdult": "Mostra 18+",
+      "pick": "Trova",
+      "selected": "Filtri selezionati",
+      "removeLabel": "Rimuovi filtro {{label}}",
+      "removeSuggestion": "Rimuovi «{{label}}»",
+      "emptyTitle": "Questa combinazione non esiste ancora",
+      "emptyText": "Rimuovi un filtro o crea tu questo personaggio.",
+      "more": "Altri {{count}}",
+      "show_one": "Mostra {{count}} personaggio",
+      "show_many": "Mostra {{count}} personaggi",
+      "show_other": "Mostra {{count}} personaggi",
+      "resultCount_one": "{{count}} personaggio",
+      "resultCount_many": "{{count}} personaggi",
+      "resultCount_other": "{{count}} personaggi",
+      "groups": {
+        "style": "Stile di disegno",
+        "gender": "Personaggio",
+        "format": "Formato",
+        "genres": "Genere",
+        "worlds": "Mondo e ambientazione",
+        "traits": "Personalità"
+      },
+      "gender": {
+        "female": "Femminile",
+        "male": "Maschile"
+      },
+      "format": {
+        "character": "Un personaggio",
+        "group": "Più personaggi",
+        "world": "Mondo"
+      }
     }
   },
   "characterCard": {
@@ -708,7 +745,9 @@
         "new": "Nuovo su NewVerse: personaggi e mondi aggiunti di recente per il gioco di ruolo AI.",
         "random": "Una scelta casuale di NewVerse personaggi-scopri una storia AI inaspettata.",
         "for-you": "NewVerse personaggi scelti per i tuoi interessi, per il gioco di ruolo AI."
-      }
+      },
+      "filtered": "Selezione di personaggi",
+      "filteredDescription": "Personaggi NewVerse in base ai tuoi filtri: genere, stile di disegno e personalità."
     }
   },
   "genrePage": {

@@ -1,5 +1,6 @@
 import { isCharacterSort } from "@/lib/characterSort";
 import type { SeoSearchParams } from "@/lib/seoIndexing";
+import { CATALOG_FILTER_PARAMS } from "@/lib/catalogFilters";
 
 type PageText = { title: string; description: string };
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
@@ -16,13 +17,16 @@ export function catalogVariantText(t: Translate, searchParams: SeoSearchParams, 
   const sortValue = first(searchParams.sort);
   const sort = isCharacterSort(sortValue) && sortValue !== "top" ? sortValue : null;
   const page = Math.max(1, Number.parseInt(first(searchParams.page), 10) || 1);
-  if (!query && !sort && page === 1) return home;
+  const filtered = CATALOG_FILTER_PARAMS.some(key => first(searchParams[key]));
+  if (!query && !sort && !filtered && page === 1) return home;
 
   const name = query
     ? t("meta.catalog.search", { query })
+    : filtered ? t("meta.catalog.filtered")
     : sort ? t(`meta.catalog.sort.${sort}`) : t("meta.catalog.all");
   const description = query
     ? t("meta.catalog.searchDescription", { query })
+    : filtered ? t("meta.catalog.filteredDescription")
     : sort ? t(`meta.catalog.sortDescription.${sort}`) : t("meta.catalog.description");
   return {
     title: t("meta.catalog.title", { name: page > 1 ? `${name}${t("meta.catalog.pageSuffix", { page })}` : name }),

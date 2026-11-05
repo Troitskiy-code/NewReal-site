@@ -278,7 +278,8 @@ try {
   check(sentCard.characters?.length === 2 && sentCard.characters[1].appearance === 'шрам на щеке' && sentCard.user_wishes === marker,
     'writer receives every group member and the image wishes');
   await writerRun('ok', { referenceImage: reference });
-  check(!JSON.stringify(writerCalls.at(-1).body).includes('base64') && writerCalls.at(-1).body.messages[0].content.includes('do not describe facial features'),
+  check(!JSON.stringify(writerCalls.at(-1).body).includes('base64') && writerCalls.at(-1).body.messages[0].content.includes('Never mention gender, age, face')
+    && !('appearance' in JSON.parse(writerCalls.at(-1).body.messages[1].content)),
     'reference image is never sent to the writer, which leaves the face to the reference');
   for (const mode of ['timeout', 'garbage', 'refusal']) {
     const fallback = await writerRun(mode);

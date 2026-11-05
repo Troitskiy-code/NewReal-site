@@ -223,7 +223,7 @@
       "label": "Continue",
       "you": "You"
     },
-    "searchPlaceholder": "Search by name or tag...",
+    "searchPlaceholder": "Search by name",
     "sort": "Sort",
     "sortTop": "Top",
     "sortRandom": "Random",
@@ -293,6 +293,41 @@
       "discoveryTitle": "Discover new stories",
       "personalizedHint": "Based on your favorites and recent chats, with new genres and fewer familiar characters.",
       "discoveryHint": "A mix of genres, popular stories and new arrivals. Add favorites and chat to personalize these picks."
+    },
+    "filters": {
+      "button": "Filters",
+      "reset": "Reset",
+      "resetAll": "Reset all",
+      "any": "any",
+      "showAdult": "Show 18+",
+      "pick": "Find one",
+      "selected": "Selected filters",
+      "removeLabel": "Remove filter {{label}}",
+      "removeSuggestion": "Remove “{{label}}”",
+      "emptyTitle": "No such combination yet",
+      "emptyText": "Remove a filter or create this character yourself.",
+      "more": "{{count}} more",
+      "show_one": "Show {{count}} character",
+      "show_other": "Show {{count}} characters",
+      "resultCount_one": "{{count}} character",
+      "resultCount_other": "{{count}} characters",
+      "groups": {
+        "style": "Art style",
+        "gender": "Character",
+        "format": "Format",
+        "genres": "Genre",
+        "worlds": "World and setting",
+        "traits": "Personality"
+      },
+      "gender": {
+        "female": "Female",
+        "male": "Male"
+      },
+      "format": {
+        "character": "One character",
+        "group": "Several",
+        "world": "World"
+      }
     }
   },
   "characterCard": {
@@ -705,7 +740,9 @@
         "new": "New on NewVerse: recently added characters and worlds for AI roleplay.",
         "random": "A random pick of NewVerse characters — discover an unexpected AI story.",
         "for-you": "NewVerse characters picked for your interests, for AI roleplay."
-      }
+      },
+      "filtered": "Selected characters",
+      "filteredDescription": "NewVerse characters matching your filters: genre, art style and personality."
     }
   },
   "genrePage": {

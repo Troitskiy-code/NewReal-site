@@ -223,7 +223,7 @@
       "label": "Weiterhin",
       "you": "Sie"
     },
-    "searchPlaceholder": "Suche nach Name oder Tag...",
+    "searchPlaceholder": "Nach Namen suchen",
     "sort": "Sortieren",
     "sortTop": "Oberen",
     "sortRandom": "Zufällig",
@@ -293,6 +293,41 @@
       "discoveryTitle": "Entdecke neue Geschichten",
       "personalizedHint": "Basierend auf Ihren Favoriten und den letzten Chats, mit neuen Genres und weniger bekannten Charakteren.",
       "discoveryHint": "Eine Mischung aus Genres, beliebten Geschichten und Neuankömmlingen. Fügen Sie Favoriten hinzu und chatten Sie, um diese Tipps zu personalisieren."
+    },
+    "filters": {
+      "button": "Filter",
+      "reset": "Zurücksetzen",
+      "resetAll": "Alle zurücksetzen",
+      "any": "beliebig",
+      "showAdult": "18+ anzeigen",
+      "pick": "Finden",
+      "selected": "Ausgewählte Filter",
+      "removeLabel": "Filter {{label}} entfernen",
+      "removeSuggestion": "„{{label}}“ entfernen",
+      "emptyTitle": "Diese Kombination gibt es noch nicht",
+      "emptyText": "Entferne einen Filter oder erstelle diesen Charakter selbst.",
+      "more": "{{count}} weitere",
+      "show_one": "{{count}} Charakter anzeigen",
+      "show_other": "{{count}} Charaktere anzeigen",
+      "resultCount_one": "{{count}} Charakter",
+      "resultCount_other": "{{count}} Charaktere",
+      "groups": {
+        "style": "Zeichenstil",
+        "gender": "Charakter",
+        "format": "Format",
+        "genres": "Genre",
+        "worlds": "Welt und Setting",
+        "traits": "Persönlichkeit"
+      },
+      "gender": {
+        "female": "Weiblich",
+        "male": "Männlich"
+      },
+      "format": {
+        "character": "Ein Charakter",
+        "group": "Mehrere",
+        "world": "Welt"
+      }
     }
   },
   "characterCard": {
@@ -705,7 +740,9 @@
         "new": "Neu auf NewVerse: kürzlich hinzugefügte Charaktere und Welten für das KI-Rollenspiel.",
         "random": "Eine zufällige Auswahl von NewVerse charaktere - entdecke eine unerwartete KI-Geschichte.",
         "for-you": "NewVerse charaktere, die für Ihre Interessen ausgewählt wurden, für KI-Rollenspiele."
-      }
+      },
+      "filtered": "Charakterauswahl",
+      "filteredDescription": "NewVerse-Charaktere nach deinen Filtern: Genre, Zeichenstil und Persönlichkeit."
     }
   },
   "genrePage": {
