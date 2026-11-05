@@ -37,6 +37,7 @@ async function shutdown(code = 0) {
 
 async function main() {
   const mode = process.argv.includes('--dev') ? 'dev' : 'start';
+  const standalone = mode === 'start' && process.argv.includes('--standalone');
   if (mode === 'start' && ['1', 'true'].includes(process.env.MEMORY_V2_ENABLED) && !process.env.CRON_SECRET)
     throw new Error('MEMORY_V2_ENABLED requires CRON_SECRET for durable processing');
   if (forced && !enabled) throw new Error('AllVPN must be enabled for forced mode');
@@ -53,9 +54,10 @@ async function main() {
   }
   process.env.CHARACTER_GENERATION_WORKER_ACTIVE = mode === 'start' && process.env.CRON_SECRET
     && process.env.CHARACTER_GENERATION_WORKER_ENABLED !== '0' ? '1' : '0';
-  app = spawn(process.execPath, ['node_modules/next/dist/bin/next', mode,
-    ...(mode === 'start' ? ['--hostname', '0.0.0.0'] : [])],
-  { stdio: 'inherit', windowsHide: true, env: process.env });
+  const args = standalone ? ['server.js'] : ['node_modules/next/dist/bin/next', mode,
+    ...(mode === 'start' ? ['--hostname', '0.0.0.0'] : [])];
+  const env = standalone ? { ...process.env, HOSTNAME: '0.0.0.0' } : process.env;
+  app = spawn(process.execPath, args, { stdio: 'inherit', windowsHide: true, env });
   app.once('error', () => { void shutdown(1); });
   app.once('exit', code => { void shutdown(code ?? 1); });
   if (process.env.CHARACTER_GENERATION_WORKER_ACTIVE === '1')

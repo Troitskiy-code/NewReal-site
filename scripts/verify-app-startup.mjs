@@ -10,26 +10,34 @@ const folder = await mkdtemp(join(tmpdir(), 'newreal-startup-'));
 const wrapper = resolve('scripts/start-app.mjs');
 await mkdir(join(folder, 'node_modules/next/dist/bin'), { recursive: true });
 await writeFile(join(folder, '.env.local'), 'ALLVPN_ENABLED=1\nALLVPN_SUBSCRIPTION_URL=https://must-not-be-used.invalid/private\nCRON_SECRET=wrong-local-secret\n');
-await writeFile(join(folder, 'node_modules/next/dist/bin/next'), `
+const fakeServer = `
 const http = require('node:http');
-const mode = process.argv[2];
+const standalone = require('node:path').basename(process.argv[1]) === 'server.js';
+const mode = standalone ? 'standalone' : process.argv[2];
 const active = process.env.CHARACTER_GENERATION_WORKER_ACTIVE;
 if (active !== process.env.EXPECT_WORKER || mode !== process.env.EXPECT_MODE
   || process.env.CRON_SECRET !== 'synthetic-startup-secret'
   || (mode === 'start' && !process.argv.includes('0.0.0.0'))
+  || (standalone && process.env.HOSTNAME !== '0.0.0.0')
   || (mode === 'dev' && process.argv.includes('--hostname'))) process.exit(2);
 console.log(JSON.stringify({event:'next_started',fixturePid:process.pid,mode,workerActive:active}));
 if (process.env.FAKE_NEXT_EXIT) process.exit(Number(process.env.FAKE_NEXT_EXIT));
 if (active !== '1') process.exit(0);
+const pending = new Set(['/api/cron/generate-characters']);
+if (standalone) { pending.add('/api/cron/memory-jobs'); pending.add('/api/cron/translate-characters'); }
 const server = http.createServer((req,res) => {
-  const ok = req.method === 'POST' && req.url === '/api/cron/generate-characters'
+  const ok = req.method === 'POST' && pending.has(req.url)
     && req.headers.authorization === 'Bearer synthetic-startup-secret';
   res.writeHead(ok ? 204 : 403); res.end();
-  if (ok) { console.log(JSON.stringify({event:'worker_request_authenticated'}));
-    server.close(); setTimeout(() => process.exit(0), 50); }
+  if (!ok) return;
+  pending.delete(req.url);
+  console.log(JSON.stringify({event:'worker_request_authenticated',path:req.url}));
+  if (!pending.size) { server.close(); setTimeout(() => process.exit(0), 50); }
 });
 server.listen(Number(process.env.PORT), '127.0.0.1');
-`);
+`;
+await writeFile(join(folder, 'node_modules/next/dist/bin/next'), fakeServer);
+await writeFile(join(folder, 'server.js'), fakeServer);
 
 async function freePort() {
   const probe = createServer();
@@ -38,16 +46,18 @@ async function freePort() {
   await new Promise(ok => probe.close(ok));
   return port;
 }
-async function run({ dev = false, worker = true, exit = 0, vpn = false, forced = false } = {}) {
+async function run({ dev = false, standalone = false, worker = true, exit = 0, vpn = false, forced = false } = {}) {
   const expected = !dev && worker ? '1' : '0';
   const env = { ...process.env, PORT: String(await freePort()), CRON_SECRET: 'synthetic-startup-secret',
     ALLVPN_ENABLED: vpn ? '1' : '0', ALLVPN_SUBSCRIPTION_URL: 'invalid-synthetic-subscription',
-    DEEPINFRA_NETWORK_MODE: forced ? 'allvpn' : 'auto', MEMORY_V2_ENABLED: '0',
+    DEEPINFRA_NETWORK_MODE: forced ? 'allvpn' : 'auto', MEMORY_V2_ENABLED: standalone ? '1' : '0',
+    MEMORY_V2_WORKER_ENABLED: '1', DEEPINFRA_API_KEY: 'synthetic-startup-key',
+    CHARACTER_TRANSLATION_ENABLED: '1', CHARACTER_TRANSLATION_WORKER_ENABLED: standalone ? '1' : '0',
     CHARACTER_GENERATION_WORKER_ENABLED: worker ? '1' : '0', EXPECT_WORKER: expected,
-    EXPECT_MODE: dev ? 'dev' : 'start', FAKE_NEXT_EXIT: exit ? String(exit) : '' };
+    EXPECT_MODE: dev ? 'dev' : standalone ? 'standalone' : 'start', FAKE_NEXT_EXIT: exit ? String(exit) : '' };
   delete env.NODE_OPTIONS;
   for (const key of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'NODE_USE_ENV_PROXY']) delete env[key];
-  const child = spawn(process.execPath, [wrapper, ...(dev ? ['--dev'] : [])],
+  const child = spawn(process.execPath, [wrapper, ...(dev ? ['--dev'] : standalone ? ['--standalone'] : [])],
     { cwd: folder, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '', errors = '';
   child.stdout.on('data', chunk => { output += chunk; });
@@ -63,11 +73,17 @@ async function run({ dev = false, worker = true, exit = 0, vpn = false, forced =
   assert.equal(output.includes('next_started'), !forced, 'forced mode fails closed; reserve failure keeps primary startup available');
   assert.equal(output.includes('worker_request_authenticated'), expected === '1' && !exit && !forced,
     'production worker reaches only the authenticated loopback endpoint');
+  if (standalone && !exit && !forced) {
+    for (const endpoint of ['/api/cron/generate-characters', '/api/cron/memory-jobs', '/api/cron/translate-characters']) {
+      assert.ok(output.includes(endpoint), `standalone worker must reach ${endpoint}`);
+    }
+  }
   assert.equal(output.includes('allvpn_unavailable'), vpn, 'gateway starts only with the explicit enable flag');
   assert.ok(!output.includes('invalid-synthetic-subscription') && !errors.includes('invalid-synthetic-subscription'), 'subscription is never logged');
 }
 try {
   await run(); console.log('PASS production startup retains the authenticated character worker with AllVPN disabled');
+  await run({ standalone: true }); console.log('PASS standalone binds to all interfaces and runs all three authenticated workers');
   await run({ worker: false }); console.log('PASS worker disable flag remains effective');
   await run({ dev: true }); console.log('PASS development starts Next without a production worker');
   await run({ exit: 7 }); console.log('PASS child failure stops the worker and preserves the failure exit code');
