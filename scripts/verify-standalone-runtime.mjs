@@ -10,7 +10,7 @@ for (const file of [
   'prisma/migrations/20261006120000_support_replies/migration.sql',
 ]) await access(file);
 for (const file of ['.env', '.env.local', '.env.production', '.env.production.local']) {
-  await assert.rejects(access(file), { code: 'ENOENT' });
+  await assert.rejects(access(file), { code: 'ENOENT' }, `Unexpected environment file in standalone output: ${file}`);
 }
 
 require('dotenv');

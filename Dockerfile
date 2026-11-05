@@ -9,7 +9,9 @@ RUN npm ci
 
 FROM dependencies AS build
 COPY . .
+# Next.js can copy build-time env files into the standalone output.
 RUN NEXT_STANDALONE_BUILD=1 npm run build \
+    && rm -f .next/standalone/.env .next/standalone/.env.* \
     && rm -f .next/standalone/node_modules/.prisma/client/libquery_engine-linux-musl-*.so.node \
              .next/standalone/node_modules/.prisma/client/libquery_engine-rhel-*.so.node
 
