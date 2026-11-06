@@ -2,14 +2,15 @@ import { splitStoryChoices } from "@/lib/storyChoices";
 
 export type StoryAmbience = "rain" | "forest" | "city" | "shore" | "tavern";
 type Place = Exclude<StoryAmbience, "rain">;
-type Cue = Place | "rain" | "dry" | "inside" | "outside";
+type Cue = Place | "rain" | "exposedRain" | "dry" | "inside" | "outside";
 
 // Match events in the current scene. Bare words such as "дождь" and "лес"
 // also occur in dialogue, plans and descriptions of other places.
 const CUES: ReadonlyArray<[Cue, RegExp]> = [
   ["tavern", /(?<!\p{L})(?:(?:на стол|за столом|в зале|внутри|шум|гул)\s+(?:таверны|трактира|постоялого двора)|(?:вош(?:[её]л|ла|ли)|заш(?:[её]л|ла|ли)|входи(?:т|м|те|шь)|заходи(?:т|м|те|шь)|оказал(?:ся|ась|ись)|сидим|сидите|сидят|сели)\s+в\s+(?:таверн[уе]|трактир[е]?|постоял(?:ый двор|ом дворе)|кафе)|(?:мы|вы|они)\s+(?:уже\s+)?в\s+(?:таверне|трактире|кафе|постоялом дворе))(?!\p{L})/giu],
   ["tavern", /\b(?:into|inside|(?:sit|are|wait|stand)\s+in)\s+(?:the |an? )?(?:tavern|inn|pub|caf[eé]|restaurant)(?!\p{L})/giu],
-  ["outside", /(?<!\p{L})(?:выш[её]л|вышла|вышли|выходи(?:т|м|те|шь))\s+(?:наружу|на свежий воздух|на дорогу|во двор|из\s+(?:таверны|трактира|постоялого двора|дома|здания|замка))|\b(?:stepped|walked|went|came)\s+(?:back\s+)?(?:outside|out of\s+(?:the |a )?(?:tavern|inn|building)|onto\s+(?:the |a )?(?:road|path))\b/giu],
+  ["outside", /(?<!\p{L})(?:выш[её]л|вышла|вышли|выходи(?:т|м|те|шь)|выйдя|выходя)\s+(?:наружу|на свежий воздух|на дорогу|во двор|на мокрую улицу|из\s+(?:таверны|трактира|постоялого двора|дома|здания|замка|борделя))(?!\p{L})/giu],
+  ["outside", /\b(?:stepped|walked|went|came)\s+(?:back\s+)?(?:outside|out of\s+(?:the |a )?(?:tavern|inn|building|brothel)|onto\s+(?:the |a )?(?:road|path))\b/giu],
   ["inside", /(?<!\p{L})(?:(?:вош(?:[её]л|ла|ли)|заш(?:[её]л|ла|ли)|входи(?:т|м|те|шь)|заходи(?:т|м|те|шь)|забежа(?:л[аи]?|ли)|укрыл[аи]?с[ья]|укрылись|оказал(?:ся|ась|ись)|переш(?:[её]л|ла|ли))\s+(?:внутрь|в\s+(?:дом|комнат|здани|подъезд|помещени|коридор|зал|замок)\p{L}*)|(?:мы|вы|они)\s+(?:уже\s+)?в\s+(?:помещении|комнате|доме|замке|(?:большом\s+)?зале))/giu],
   ["inside", /\b(?:stepped|walked|went|go|goes|hurried|ran|came)\s+(?:back\s+)?(?:inside|indoors|into\s+(?:the |a )?(?:house|room|building|hall|castle))\b|\b(?:you are|they are|we are|you're|we're)\s+(?:now\s+)?(?:inside|indoors)\b/giu],
   ["forest", /(?<!\p{L})(?:(?:вош(?:[её]л|ла|ли)|заш(?:[её]л|ла|ли)|углубил(?:ись|ся|ась)|оказа(?:лись|лся|лась)|находитесь)\s+(?:в|во)\s+(?:густой\s+|т[её]мный\s+)?(?:лес(?:а|е|у|ом)?|лесопарк(?:е)?|рощ[уе]|чащ[еу])(?!\p{L})|(?:мы|вы|они)\s+(?:(?:стоите|ид[её]те|стоим|ид[её]м|стоят|идут)\s+)?в\s+лесу|(?:по|вдоль)\s+лесной\s+троп\p{L}*|(?:вокруг|над вами)\s+(?:шелест\p{L}*\s+)?(?:деревья|кроны))/giu],
@@ -18,6 +19,10 @@ const CUES: ReadonlyArray<[Cue, RegExp]> = [
   ["city", /\b(?:onto|along|down)\s+(?:(?:the|a)\s+)?(?:(?:busy|city|wet)\s+)?(?:street|sidewalk)\b|\b(?:traffic|the city)\s+(?:hums|rumbles|roars|bustles)\b/giu],
   ["shore", /(?<!\p{L})(?:(?:выш(?:[её]л|ла|ли)|подош(?:[её]л|ла|ли)|спустил(?:ся|ась|ись)|оказал(?:ся|ась|ись))\s+(?:к|на)\s+(?:песчан\p{L}*\s+)?(?:берег\p{L}*|пляж\p{L}*|побереж\p{L}*)|(?:мы|вы|они)\s+(?:(?:стоите|стоим|стоят|сидите|сидим|сидят)\s+)?на\s+(?:берегу|пляже|побережье)|(?:волны|прибой)\s+(?:набега\p{L}*|шум\p{L}*|бь\p{L}*|омыва\p{L}*|накатыва\p{L}*))/giu],
   ["shore", /\b(?:onto|along|down to|(?:stand|wait|sit|are|wake)\s+on)\s+(?:(?:the|a)\s+)?(?:beach|shore|coastline)\b|\b(?:waves|surf)\s+(?:lap|laps|crash|crashes|roll|break)\b/giu],
+  // Rain soaking a person is evidence of exposure, unlike rain on a roof or beyond a window.
+  ["exposedRain", /(?<!\p{L})(?:выш[её]л|вышла|вышли|выходи(?:т|м|те|шь)|выйдя|выходя)\s+на дождливую улицу(?!\p{L})/giu],
+  ["exposedRain", /(?<!\p{L})(?:дождь|ливень)\s+(?:(?:мгновенно|сразу|быстро|насквозь)\s+)?(?:пропитал|промочил|намочил|пропитыва(?:л|ет)|промачива(?:л|ет))\s+(?:(?:вашу|твою|его|её|их)\s+)?(?:одежду|плащ|куртку|пальто|волосы)(?!\p{L})/giu],
+  ["exposedRain", /\b(?:rain|downpour)\s+(?:(?:instantly|quickly|already)\s+)?(?:soak(?:ed|s)|drench(?:ed|es))\s+(?:(?:your|his|her|their|the)\s+)?(?:clothes|clothing|cloak|coat|jacket|hair)\b/giu],
   ["rain", /(?<!\p{L})(?:(?:дождь|ливень)\s+(?:(?:вс[её] ещ[её]|по-прежнему|уже|снова)\s+)?(?:ид[её]т|ш[её]л|начал(?:ся| идти)|ль[её]т|лил|забарабанил|барабанит|моросит|стучит|усилил(?:ся|ивается)|продолжает(?:ся)?)|(?<!не )(?:пош[её]л|ш[её]л|начался|ль[её]т|лил|ид[её]т|проливной)\s+(?:(?:сильный|мелкий|т[её]плый|холодный)\s+)?(?:дождь|ливень)|на улице\s+(?:вс[её] ещ[её]\s+)?(?:дождь|ливень)(?!\p{L})|капли\s+дождя\s+(?:стуч\p{L}*|барабан\p{L}*|пада\p{L}*)|под\s+(?:проливным\s+)?дожд[её]м)/giu],
   ["rain", /\b(?:it's|it is|it was)\s+(?:still\s+)?raining\b|\b(?:rain|the downpour)\s+(?:(?:still|now)\s+)?(?:falls|fell|pours|poured|beats|patters|drums|starts|started|begins|began|continues|continued)\b|\b(?:starts|started|begins|began)\s+to\s+rain\b/giu],
   ["dry", /(?<!\p{L})(?:(?:дождь|ливень)\s+(?:стих\p{L}*|прекра(?:тил|ща)\p{L}*|законч\p{L}*|переста\p{L}*|утих\p{L}*|не ид[её]т)|не\s+ид[её]т\s+дождь|(?:перестал(?:о)?\s+(?:лить|моросить)|дождя\s+(?:больше\s+)?нет))/giu],
@@ -53,7 +58,11 @@ export function storyAmbience(messages: ReadonlyArray<{ role: string; content: s
       }))).sort((a, b) => a.index - b.index);
       for (const { cue } of events) {
         if (cue === "rain") rain = true;
-        else if (cue === "dry") rain = false;
+        else if (cue === "exposedRain") {
+          rain = true;
+          if (indoors) place = null;
+          indoors = false;
+        } else if (cue === "dry") rain = false;
         else {
           indoors = cue === "inside" || cue === "tavern";
           place = cue === "inside" || cue === "outside" ? null : cue;
