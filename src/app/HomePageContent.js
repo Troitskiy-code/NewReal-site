@@ -34,7 +34,7 @@ function subscribeHideAdult(onChange) {
   };
 }
 
-export default function HomePageContent({ initialData, showHero = false, onboarding = null, freeQuotaOffer = false, about = null }) {
+export default function HomePageContent({ initialData, showHero = false, onboarding = null, freeQuotaOffer = false, about = null, announcement = null }) {
   const { t, i18n } = useTranslation();
   const { sort, setSort, page, setPage, setSearchQuery, setFiltersQuery } = useCharacterSortUrl();
   const [filters, setFilters] = useState(() => {
@@ -63,6 +63,7 @@ export default function HomePageContent({ initialData, showHero = false, onboard
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
+      {announcement}
       {showHero ? (
         <HomeHero total={initialData?.meta.total ?? total} characters={initialData?.data ?? []}
           onStart={openOnboarding ? () => openOnboarding("hero") : undefined} freeQuotaOffer={freeQuotaOffer} />
