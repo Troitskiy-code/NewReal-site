@@ -64,11 +64,11 @@ const ru = {
     {
       title: "Что будет с балансом VC",
       text: "Купленные VC сохраняются без срока действия. По новым месячным и годовым тарифам пакет VC обновляется каждый месяц. Неиспользованный остаток подписочного пакета не переносится.",
-      detail: "VC также можно тратить на премиум-модели и на платные ответы после бесплатной квоты. Сначала расходуются монеты с ограниченным сроком действия.",
+      detail: "VC можно тратить на ответы премиум-моделей. Только для пользователей без подписки ответы на базовой модели после исчерпания бесплатной дневной квоты оплачиваются в VC. Сначала расходуются монеты с ограниченным сроком действия.",
     },
     {
       title: "Как работает чат без списания VC",
-      text: "На две включённые модели действует общий лимит в 120 ответов в час. После 1 000 ответов за сутки в «Диалоге», 1 500 в «Истории» или 2 000 во «Вселенной» чат продолжится с контекстом «Диалога» до полуночи по Москве.",
+      text: "На две включённые модели действует общий лимит в 120 ответов в час. После 1 000 ответов за сутки в «Диалоге», 1 500 в «Истории» или 2 000 во «Вселенной» чат продолжится с контекстом «Диалога» до полуночи по Москве. Эти меры помогают защитить сервис от массовых запросов через скрипты и совместного использования одного аккаунта несколькими людьми.",
       detail: "Без подписки сохраняется бесплатная дневная квота на базовой модели. После неё можно продолжить общение за VC.",
     },
   ],
@@ -117,11 +117,11 @@ const en: typeof ru = {
     {
       title: "What happens to your VC balance",
       text: "Purchased VC have no expiry date. New monthly and annual plans refresh their VC allowance each month. Unused subscription VC do not roll over.",
-      detail: "You can also spend VC on premium models and on paid replies after your free allowance runs out. Coins with an expiry date are used first.",
+      detail: "You can spend VC on replies from premium models. Only users without a subscription pay VC for replies on the base model after using their free daily allowance. Coins with an expiry date are used first.",
     },
     {
       title: "How chat without spending VC works",
-      text: "The two included models share a limit of 120 replies per hour. After 1,000 replies in a day on Dialog, 1,500 on Story, or 2,000 on Universe, chat continues with Dialog context until midnight Moscow time.",
+      text: "The two included models share a limit of 120 replies per hour. After 1,000 replies in a day on Dialog, 1,500 on Story, or 2,000 on Universe, chat continues with Dialog context until midnight Moscow time. These measures help protect the service from automated requests at scale and from multiple people sharing one account.",
       detail: "Accounts without a subscription still get a free daily allowance on the base model. You can continue chatting with VC after using it.",
     },
   ],
