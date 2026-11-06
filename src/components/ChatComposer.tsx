@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
-import { LuInfo } from "react-icons/lu";
+import { LuInfo, LuMic, LuSquare } from "react-icons/lu";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { VOICE_INPUT_SECONDS } from "@/lib/voiceInput";
 
 const COMPOSER_MAX_LINES = 5;
 const DESKTOP_MQ = "(min-width: 768px)";
@@ -81,6 +83,8 @@ export default function ChatComposer({
   disabled,
   canSend,
   note,
+  voiceInputEnabled = false,
+  onVoiceCaptureChange,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -89,10 +93,27 @@ export default function ChatComposer({
   canSend: boolean;
   /** Billing rules, shown on demand from the info button. */
   note?: string;
+  voiceInputEnabled?: boolean;
+  onVoiceCaptureChange: (capturing: boolean) => void;
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [isDesktop, setIsDesktop] = useState(false);
+  const voiceStatusId = useId();
+  const voice = useVoiceInput({
+    enabled: voiceInputEnabled && !disabled,
+    onCaptureChange: onVoiceCaptureChange,
+    onText: text => {
+      const draft = inputRef.current?.value ?? value;
+      const separator = draft && !/\s$/.test(draft) ? " " : "";
+      onChange(draft + separator + text);
+    },
+  });
+  const dictating = voice.phase !== "idle";
+  const sendEnabled = canSend && !dictating;
+  const recording = voice.phase === "recording";
+  const voiceStatus = voice.error ? t(`voiceInput.errors.${voice.error}`) : dictating
+    ? t(`voiceInput.${voice.phase}`, { seconds: VOICE_INPUT_SECONDS }) : null;
 
   useEffect(() => {
     const mq = window.matchMedia(DESKTOP_MQ);
@@ -108,7 +129,10 @@ export default function ChatComposer({
 
   return (
     <form
-      onSubmit={onSubmit}
+      onSubmit={event => {
+        if (dictating) event.preventDefault();
+        else onSubmit(event);
+      }}
       className="chat-form relative mx-auto flex w-full max-w-3xl items-end gap-2"
       data-metrika="chat-form"
     >
@@ -123,7 +147,7 @@ export default function ChatComposer({
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
-                if (canSend) {
+                if (sendEnabled) {
                   event.currentTarget.form?.requestSubmit();
                 }
               }
@@ -138,7 +162,7 @@ export default function ChatComposer({
             <button
               type="submit"
               data-metrika="chat-send"
-              disabled={!canSend}
+              disabled={!sendEnabled}
               aria-label={t("chatUi.text054")}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50"
               style={{
@@ -155,13 +179,31 @@ export default function ChatComposer({
           )}
         </div>
       </div>
+      {voiceStatus && (
+        <div className="absolute bottom-full left-0 z-20 mb-2 flex max-w-full items-center gap-3 rounded-xl border border-divider bg-bg-card px-3 py-2 text-xs shadow-xl">
+          <span id={voiceStatusId} role={voice.error ? "alert" : "status"}>{voiceStatus}</span>
+          {dictating && <button type="button" onClick={voice.cancel}
+            className="shrink-0 font-semibold text-secondary-text hover:text-white">{t("voiceInput.cancel")}</button>}
+        </div>
+      )}
+      {voiceInputEnabled && voice.supported && (
+        <button type="button" aria-label={t(recording ? "voiceInput.stop" : "voiceInput.start")}
+          aria-describedby={voiceStatus ? voiceStatusId : undefined}
+          title={t(recording ? "voiceInput.stop" : "voiceInput.start")}
+          disabled={disabled || (dictating && !recording)}
+          onClick={() => recording ? voice.stop() : void voice.start()}
+          className={`flex h-11 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${recording
+            ? "bg-red-500/15 text-red-400" : "text-secondary-text hover:text-white"}`}>
+          {recording ? <LuSquare size={17} aria-hidden /> : <LuMic size={19} aria-hidden />}
+        </button>
+      )}
       {note ? <ComposerNote text={note} /> : null}
       {isDesktop ? (
         <button
           type="submit"
           id="chat-send-btn"
           data-metrika="chat-send"
-          disabled={!canSend}
+          disabled={!sendEnabled}
           className="flex min-h-[44px] shrink-0 items-center justify-center rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50"
         >
           {t("chatUi.text054")}</button>

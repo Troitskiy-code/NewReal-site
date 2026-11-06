@@ -992,6 +992,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     descriptionCard_en: null,
   });
   const [input, setInput] = useState("");
+  const [capturingVoice, setCapturingVoice] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [transferState, setTransferState] = useState<"idle" | "waiting" | "retry">("idle");
   const [historyReload, setHistoryReload] = useState(0);
@@ -1878,9 +1879,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
   return (<>
     {/* Keep the same media element when the speech provider resets for a new story. */}
-    <audio ref={ambienceAudioRef} hidden loop playsInline preload="none" />
+    <audio ref={ambienceAudioRef} hidden loop playsInline preload="none" muted={capturingVoice} />
     <ChatSpeechProvider key={`${characterId}:${threadId ?? ""}:${session?.user?.id ?? "guest"}`}
-      characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}>
+      characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}
+      muted={capturingVoice}>
     {characterAvatarUrl ? <ChatPortraitBackground imageUrl={characterAvatarUrl} /> : null}
     <div
       className={`nv-chat-shell relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
@@ -2181,6 +2183,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               value={input}
               onChange={setInput}
               onSubmit={sendMessage}
+              voiceInputEnabled={status === "authenticated"}
+              onVoiceCaptureChange={setCapturingVoice}
               disabled={sending || actionLoading || clearingChat || historyLoading || transferState !== "idle"}
               canSend={canSend && !historyLoading && transferState === "idle"}
               note={isAnonymous ? undefined : t(telegram ? "telegram.coinRulesActions" : "pricing.coinRulesActions")}

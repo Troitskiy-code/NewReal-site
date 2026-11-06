@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "Wprowadzanie głosowe",
+    "stop": "Zatrzymaj i przepisz",
+    "cancel": "Anuluj",
+    "permission": "Zezwól na dostęp do mikrofonu.",
+    "recording": "Nagranie do {{seconds}} sekund. DeepInfra przetwarza dźwięk na tekst.",
+    "processing": "Rozpoznawanie mowy…",
+    "errors": {
+      "permission": "Odmówiono dostępu do mikrofonu.",
+      "capture": "Nie udało się nagrać dźwięku.",
+      "empty": "Nie rozpoznano mowy. Spróbuj ponownie.",
+      "rateLimit": "Osiągnięto limit wprowadzania głosowego. Spróbuj później.",
+      "unavailable": "Rozpoznawanie mowy jest teraz niedostępne."
+    }
+  },
   "chatAmbience": {
     "label": "Dźwięk tła",
     "playing": "Dźwięk tła jest odtwarzany",

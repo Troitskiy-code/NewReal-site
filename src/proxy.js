@@ -244,7 +244,7 @@ export default async function proxy(request) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|locales|ambience/|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|voice-input-worklet\\.js$|locales|ambience/|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)).*)",
     // API requests pass through the proxy only inside Telegram (session mapping, purchase block).
     { source: "/api/:path*", has: [{ type: "cookie", key: "__Secure-nv-tg.ctx" }] },
     { source: "/api/:path*", has: [{ type: "cookie", key: "nv-tg.ctx" }] },

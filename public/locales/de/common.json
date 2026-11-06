@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "Spracheingabe",
+    "stop": "Stoppen und transkribieren",
+    "cancel": "Abbrechen",
+    "permission": "Erlaube den Mikrofonzugriff.",
+    "recording": "Aufnahme bis zu {{seconds}} Sekunden. DeepInfra verarbeitet das Audio für die Transkription.",
+    "processing": "Wird transkribiert…",
+    "errors": {
+      "permission": "Der Mikrofonzugriff wurde verweigert.",
+      "capture": "Die Audioaufnahme ist fehlgeschlagen.",
+      "empty": "Keine Sprache erkannt. Versuche es erneut.",
+      "rateLimit": "Limit für Spracheingaben erreicht. Versuche es später erneut.",
+      "unavailable": "Die Transkription ist momentan nicht verfügbar."
+    }
+  },
   "chatAmbience": {
     "label": "Hintergrundgeräusche",
     "playing": "Hintergrundton läuft",

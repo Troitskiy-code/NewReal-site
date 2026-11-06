@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "Saisie vocale",
+    "stop": "Arrêter et transcrire",
+    "cancel": "Annuler",
+    "permission": "Autorisez l’accès au microphone.",
+    "recording": "Enregistrement de {{seconds}} secondes maximum. DeepInfra traite l’audio pour le transcrire.",
+    "processing": "Transcription en cours…",
+    "errors": {
+      "permission": "L’accès au microphone a été refusé.",
+      "capture": "Impossible d’enregistrer le son.",
+      "empty": "Aucune parole reconnue. Réessayez.",
+      "rateLimit": "Limite de saisie vocale atteinte. Réessayez plus tard.",
+      "unavailable": "La transcription est actuellement indisponible."
+    }
+  },
   "chatAmbience": {
     "label": "Ambiance sonore",
     "playing": "Ambiance sonore en cours",

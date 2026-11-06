@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "Entrada de voz",
+    "stop": "Detener y transcribir",
+    "cancel": "Cancelar",
+    "permission": "Permite el acceso al micrófono.",
+    "recording": "Grabación de hasta {{seconds}} segundos. DeepInfra procesa el audio para transcribirlo.",
+    "processing": "Transcribiendo…",
+    "errors": {
+      "permission": "Se denegó el acceso al micrófono.",
+      "capture": "No se pudo grabar el audio.",
+      "empty": "No se reconoció voz. Inténtalo de nuevo.",
+      "rateLimit": "Se alcanzó el límite de entrada de voz. Inténtalo más tarde.",
+      "unavailable": "La transcripción no está disponible ahora."
+    }
+  },
   "chatAmbience": {
     "label": "Sonido ambiental",
     "playing": "Sonido ambiental en reproducción",

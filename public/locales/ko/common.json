@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "음성 입력",
+    "stop": "중지하고 텍스트로 변환",
+    "cancel": "취소",
+    "permission": "마이크 접근을 허용하세요.",
+    "recording": "최대 {{seconds}}초 녹음합니다. DeepInfra가 음성을 텍스트로 변환합니다.",
+    "processing": "음성을 변환하는 중…",
+    "errors": {
+      "permission": "마이크 접근이 거부되었습니다.",
+      "capture": "오디오를 녹음할 수 없습니다.",
+      "empty": "음성을 인식하지 못했습니다. 다시 시도하세요.",
+      "rateLimit": "음성 입력 한도에 도달했습니다. 나중에 다시 시도하세요.",
+      "unavailable": "현재 음성 변환을 사용할 수 없습니다."
+    }
+  },
   "chatAmbience": {
     "label": "배경 소리",
     "playing": "배경 소리 재생 중",

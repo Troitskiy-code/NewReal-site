@@ -10,6 +10,7 @@ const endpoints = new Set([
   "https://api.deepinfra.com/v1/openai/chat/completions",
   "https://api.deepinfra.com/v1/openai/embeddings",
   "https://api.deepinfra.com/v1/openai/audio/speech",
+  "https://api.deepinfra.com/v1/inference/openai/whisper-large-v3-turbo",
 ]);
 function proxyUrl(name: string): string | null {
   const raw = process.env[name]?.trim();

@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "Sesli giriş",
+    "stop": "Durdur ve yazıya dök",
+    "cancel": "İptal",
+    "permission": "Mikrofon erişimine izin verin.",
+    "recording": "En fazla {{seconds}} saniye kayıt. Ses, yazıya dökülmek üzere DeepInfra tarafından işlenir.",
+    "processing": "Ses yazıya dökülüyor…",
+    "errors": {
+      "permission": "Mikrofon erişimi reddedildi.",
+      "capture": "Ses kaydedilemedi.",
+      "empty": "Konuşma tanınmadı. Tekrar deneyin.",
+      "rateLimit": "Sesli giriş sınırına ulaşıldı. Daha sonra tekrar deneyin.",
+      "unavailable": "Ses tanıma şu anda kullanılamıyor."
+    }
+  },
   "chatAmbience": {
     "label": "Ortam sesi",
     "playing": "Ortam sesi çalıyor",

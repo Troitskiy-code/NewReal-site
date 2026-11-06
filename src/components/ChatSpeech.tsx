@@ -22,7 +22,7 @@ type SpeechContextValue = {
   changeSpeakerVoice: (speakerId: string, voice: SpeechVoice) => Promise<void>;
   correctSpeaker: (messageId: string, content: string, index: number, target: string, name: string) => Promise<boolean>;
   setVoice: (voice: SpeechVoiceChoice) => void; refresh: () => void;
-  loadingId: string | null; clip: Clip | null; paused: boolean; error: string | null; errorId: string | null;
+  loadingId: string | null; clip: Clip | null; paused: boolean; muted: boolean; error: string | null; errorId: string | null;
   prepared: Record<string, { content: string; text: string }>;
   toggle: (id: string, content: string) => void;
   bindAudio: (audio: HTMLAudioElement | null) => void;
@@ -39,8 +39,9 @@ export function useChatSpeechPlaying() {
 }
 const ERROR_CODES = new Set(["unauthorized", "notFound", "empty", "noDialogue", "tooLong", "busy", "quota", "rateLimit", "changed", "pending", "uncertain", "invalid"]);
 
-export function ChatSpeechProvider({ characterId, threadId, userId, children }: {
+export function ChatSpeechProvider({ characterId, threadId, userId, muted = false, children }: {
   characterId: string; threadId: string | null; userId: string | null; children: ReactNode;
+  muted?: boolean;
 }) {
   const { t } = useTranslation();
   const endpoint = withThread(`/api/chat/${characterId}/speech`, threadId);
@@ -282,7 +283,7 @@ export function ChatSpeechProvider({ characterId, threadId, userId, children }: 
   };
 
   return <SpeechContext.Provider value={{ quota, voice, choice, automatic, contentMode, narrated, castEnabled, cast, editingId, editError, changeSpeakerVoice, correctSpeaker,
-    setVoice, refresh: refreshQuota, loadingId, clip, paused, error, errorId, prepared, toggle,
+    setVoice, refresh: refreshQuota, loadingId, clip, paused, muted, error, errorId, prepared, toggle,
     bindAudio, setPaused, stop,
     seek: seconds => { if (audioRef.current && Number.isFinite(seconds)) audioRef.current.currentTime = seconds; },
     playbackError: () => { setErrorId(clip?.messageId ?? null); setError(t("chatSpeech.errors.playback")); },
@@ -475,7 +476,7 @@ export function MessageSpeechPlayer({ messageId, content }: { messageId: string;
     <input type="range" aria-label={t("chatSpeech.seek")} min={0} max={duration || 1} step={0.1}
       value={Math.min(position, duration || 1)} disabled={!duration} onChange={event => { const value = Number(event.target.value); speech.seek(value); setPosition(value); }}
       className="min-w-0 flex-1 accent-wd-secondary" />
-    <audio hidden autoPlay playsInline preload="auto" src={activeClip.url} ref={element => speech.bindAudio(element)}
+    <audio hidden autoPlay playsInline preload="auto" muted={speech.muted} src={activeClip.url} ref={element => speech.bindAudio(element)}
     aria-label={t("chatSpeech.player")}
     onLoadedMetadata={event => { const value = event.currentTarget.duration; setDuration(Number.isFinite(value) ? value : 0); setPosition(0); }}
     onTimeUpdate={event => setPosition(event.currentTarget.currentTime)}

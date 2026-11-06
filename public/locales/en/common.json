@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "Voice input",
+    "stop": "Stop and transcribe",
+    "cancel": "Cancel",
+    "permission": "Allow microphone access.",
+    "recording": "Recording for up to {{seconds}} seconds. DeepInfra processes the audio for transcription.",
+    "processing": "Transcribing…",
+    "errors": {
+      "permission": "Microphone access was denied.",
+      "capture": "Audio could not be recorded.",
+      "empty": "No speech was recognized. Try again.",
+      "rateLimit": "Voice input limit reached. Try again later.",
+      "unavailable": "Transcription is currently unavailable."
+    }
+  },
   "chatAmbience": {
     "label": "Ambient sound",
     "playing": "Ambient sound is playing",

@@ -1,4 +1,19 @@
 {
+  "voiceInput": {
+    "start": "音声入力",
+    "stop": "停止して文字起こし",
+    "cancel": "キャンセル",
+    "permission": "マイクへのアクセスを許可してください。",
+    "recording": "最大{{seconds}}秒録音します。文字起こしのため、DeepInfraが音声を処理します。",
+    "processing": "文字起こし中…",
+    "errors": {
+      "permission": "マイクへのアクセスが拒否されました。",
+      "capture": "音声を録音できませんでした。",
+      "empty": "音声を認識できませんでした。もう一度お試しください。",
+      "rateLimit": "音声入力の上限に達しました。時間をおいてお試しください。",
+      "unavailable": "現在、文字起こしを利用できません。"
+    }
+  },
   "chatAmbience": {
     "label": "環境音",
     "playing": "環境音を再生中",
