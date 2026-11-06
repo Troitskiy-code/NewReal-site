@@ -1,6 +1,8 @@
 {
   "chatAmbience": {
-    "label": "Ambient sound"
+    "label": "Ambient sound",
+    "playing": "Ambient sound is playing",
+    "silent": "No ambient sound is playing"
   },
   "chatSpeech": {
     "editVoices": "Choose a voice for each character. Changes are saved in this story and apply to the next playback.",

@@ -1,6 +1,8 @@
 {
   "chatAmbience": {
-    "label": "Som ambiente"
+    "label": "Som ambiente",
+    "playing": "Som ambiente em reprodução",
+    "silent": "Nenhum som ambiente em reprodução"
   },
   "chatSpeech": {
     "editVoices": "Escolha uma voz para cada personagem. As alterações ficam guardadas nesta história e aplicam-se à próxima reprodução.",

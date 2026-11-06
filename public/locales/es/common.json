@@ -1,6 +1,8 @@
 {
   "chatAmbience": {
-    "label": "Sonido ambiental"
+    "label": "Sonido ambiental",
+    "playing": "Sonido ambiental en reproducción",
+    "silent": "No se está reproduciendo sonido ambiental"
   },
   "chatSpeech": {
     "editVoices": "Elige una voz para cada personaje. Los cambios se guardan en esta historia y se aplican a la próxima reproducción.",

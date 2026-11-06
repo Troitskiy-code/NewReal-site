@@ -1,6 +1,8 @@
 {
   "chatAmbience": {
-    "label": "環境音"
+    "label": "環境音",
+    "playing": "環境音を再生中",
+    "silent": "現在、環境音は再生されていません"
   },
   "chatSpeech": {
     "editVoices": "キャラクターごとに声を選べます。変更はこの物語に保存され、次の再生に適用されます。",

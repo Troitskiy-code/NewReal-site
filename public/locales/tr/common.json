@@ -1,6 +1,8 @@
 {
   "chatAmbience": {
-    "label": "Ortam sesi"
+    "label": "Ortam sesi",
+    "playing": "Ortam sesi çalıyor",
+    "silent": "Şu anda ortam sesi çalmıyor"
   },
   "chatSpeech": {
     "editVoices": "Her karakter için bir ses seçin. Değişiklikler bu hikâyede kaydedilir ve sonraki dinlemede uygulanır.",

@@ -1,15 +1,17 @@
 import { splitStoryChoices } from "@/lib/storyChoices";
 
-export type StoryAmbience = "calm" | "rain" | "forest" | "city" | "shore";
+export type StoryAmbience = "rain" | "forest" | "city" | "shore" | "tavern";
 type Place = Exclude<StoryAmbience, "rain">;
-type Cue = Place | "rain" | "dry" | "outside";
+type Cue = Place | "rain" | "dry" | "inside" | "outside";
 
 // Match events in the current scene. Bare words such as "дождь" and "лес"
 // also occur in dialogue, plans and descriptions of other places.
 const CUES: ReadonlyArray<[Cue, RegExp]> = [
-  ["outside", /(?<!\p{L})(?:выш[её]л|вышла|вышли|выходи(?:т|м|те|шь))\s+(?:наружу|на свежий воздух)|\b(?:stepped|walked|went|came)\s+(?:back\s+)?outside\b/giu],
-  ["calm", /(?<!\p{L})(?:(?:вош(?:[её]л|ла|ли)|заш(?:[её]л|ла|ли)|входи(?:т|м|те|шь)|заходи(?:т|м|те|шь)|забежа(?:л[аи]?|ли)|укрыл[аи]?с[ья]|укрылись|оказал(?:ся|ась|ись)|переш(?:[её]л|ла|ли))\s+(?:внутрь|в\s+(?:дом|комнат|здани|кафе|таверн|подъезд|помещени|коридор)\p{L}*)|(?:мы|вы|они)\s+(?:уже\s+)?в\s+(?:помещении|комнате|доме))/giu],
-  ["calm", /\b(?:stepped|walked|went|go|goes|hurried|ran|came)\s+(?:back\s+)?(?:inside|indoors|into\s+(?:the |a )?(?:house|room|building|cafe|tavern))\b|\b(?:you are|they are|we are|you're|we're)\s+(?:now\s+)?(?:inside|indoors)\b/giu],
+  ["tavern", /(?<!\p{L})(?:(?:на стол|за столом|в зале|внутри|шум|гул)\s+(?:таверны|трактира|постоялого двора)|(?:вош(?:[её]л|ла|ли)|заш(?:[её]л|ла|ли)|входи(?:т|м|те|шь)|заходи(?:т|м|те|шь)|оказал(?:ся|ась|ись)|сидим|сидите|сидят|сели)\s+в\s+(?:таверн[уе]|трактир[е]?|постоял(?:ый двор|ом дворе)|кафе)|(?:мы|вы|они)\s+(?:уже\s+)?в\s+(?:таверне|трактире|кафе|постоялом дворе))(?!\p{L})/giu],
+  ["tavern", /\b(?:into|inside|(?:sit|are|wait|stand)\s+in)\s+(?:the |an? )?(?:tavern|inn|pub|caf[eé]|restaurant)(?!\p{L})/giu],
+  ["outside", /(?<!\p{L})(?:выш[её]л|вышла|вышли|выходи(?:т|м|те|шь))\s+(?:наружу|на свежий воздух|на дорогу|во двор|из\s+(?:таверны|трактира|постоялого двора|дома|здания|замка))|\b(?:stepped|walked|went|came)\s+(?:back\s+)?(?:outside|out of\s+(?:the |a )?(?:tavern|inn|building)|onto\s+(?:the |a )?(?:road|path))\b/giu],
+  ["inside", /(?<!\p{L})(?:(?:вош(?:[её]л|ла|ли)|заш(?:[её]л|ла|ли)|входи(?:т|м|те|шь)|заходи(?:т|м|те|шь)|забежа(?:л[аи]?|ли)|укрыл[аи]?с[ья]|укрылись|оказал(?:ся|ась|ись)|переш(?:[её]л|ла|ли))\s+(?:внутрь|в\s+(?:дом|комнат|здани|подъезд|помещени|коридор|зал|замок)\p{L}*)|(?:мы|вы|они)\s+(?:уже\s+)?в\s+(?:помещении|комнате|доме|замке|(?:большом\s+)?зале))/giu],
+  ["inside", /\b(?:stepped|walked|went|go|goes|hurried|ran|came)\s+(?:back\s+)?(?:inside|indoors|into\s+(?:the |a )?(?:house|room|building|hall|castle))\b|\b(?:you are|they are|we are|you're|we're)\s+(?:now\s+)?(?:inside|indoors)\b/giu],
   ["forest", /(?<!\p{L})(?:(?:вош(?:[её]л|ла|ли)|заш(?:[её]л|ла|ли)|углубил(?:ись|ся|ась)|оказа(?:лись|лся|лась)|находитесь)\s+(?:в|во)\s+(?:густой\s+|т[её]мный\s+)?(?:лес(?:а|е|у|ом)?|лесопарк(?:е)?|рощ[уе]|чащ[еу])(?!\p{L})|(?:мы|вы|они)\s+(?:(?:стоите|ид[её]те|стоим|ид[её]м|стоят|идут)\s+)?в\s+лесу|(?:по|вдоль)\s+лесной\s+троп\p{L}*|(?:вокруг|над вами)\s+(?:шелест\p{L}*\s+)?(?:деревья|кроны))/giu],
   ["forest", /\b(?:into|through|within|amid|(?:stand|wait|sit|are|wake|find yourself)\s+in)\s+(?:the |a )?(?:forest|woods|woodland)\b|\b(?:the trees|forest canopy)\s+(?:surround|sway|rustle)\b/giu],
   ["city", /(?<!\p{L})(?:(?:выш(?:[её]л|ла|ли)|выходи(?:т|м|те|шь)|оказал(?:ся|ась|ись))\s+на\s+(?:оживл[её]нную\s+|городскую\s+)?улицу|(?:на|по)\s+(?:мокрой\s+|городской\s+|оживл[её]нной\s+)?улице\s+(?:шум\p{L}*|гуде\p{L}*|едут|слыш\p{L}*)|(?:гул|шум)\s+(?:машин|города|транспорта))/giu],
@@ -37,8 +39,8 @@ function sceneText(content: string) {
     .join("\n");
 }
 
-export function storyAmbience(messages: ReadonlyArray<{ role: string; content: string }>): StoryAmbience {
-  let place: Place = "calm";
+export function storyAmbience(messages: ReadonlyArray<{ role: string; content: string }>): StoryAmbience | null {
+  let place: Place | null = null;
   let rain = false;
   let indoors = false;
   for (const { role, content } of messages) {
@@ -53,8 +55,8 @@ export function storyAmbience(messages: ReadonlyArray<{ role: string; content: s
         if (cue === "rain") rain = true;
         else if (cue === "dry") rain = false;
         else {
-          indoors = cue === "calm";
-          place = cue === "outside" ? "calm" : cue;
+          indoors = cue === "inside" || cue === "tavern";
+          place = cue === "inside" || cue === "outside" ? null : cue;
         }
       }
     }

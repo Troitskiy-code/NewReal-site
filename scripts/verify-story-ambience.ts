@@ -7,17 +7,26 @@ const city = "*Вы вышли на оживлённую улицу.*";
 const rain = "*На улице идёт дождь, капли барабанят по зонту.*";
 const forest = "*Вы углубились в лес.*";
 const indoors = "*Она вошла в комнату. Дождь стучит по крыше.*";
-const cases: ReadonlyArray<[string, StoryAmbience, string[]]> = [
-  ["neutral by default", "calm", []],
+const tavern = "На стол таверны лёг свежий лист с королевской печатью.";
+const cases: ReadonlyArray<[string, StoryAmbience | null, string[]]> = [
+  ["silence by default", null, []],
+  ["an unknown scene does not get a generic loop", null, ["Она открыла глаза и улыбнулась."]],
+  ["the Game of Thrones opening selects the tavern", "tavern", [tavern]],
+  ["the tavern persists across conversation", "tavern", [tavern, "— Меня зовут Рейна."]],
+  ["the tavern stops after leaving for the road", null, [tavern, "Вы вышли из таверны на дорогу."]],
+  ["rain outside does not replace the tavern indoors", "tavern", [tavern, "Дождь стучит по крыше."]],
+  ["leaving the tavern exposes the rain", "rain", [tavern, "Дождь стучит по крыше.", "Вы вышли из таверны."]],
+  ["entering an ordinary room stops the tavern", null, [tavern, "Она вошла в комнату."]],
+  ["English tavern entry", "tavern", ["You step into the tavern."]],
   ["street", "city", [city]],
   ["rain takes precedence outdoors", "rain", [city, rain]],
   ["brief mention of current outdoor weather", "rain", ["На улице дождь."]],
   ["past-tense narration still describes the current scene", "rain", [city, "Шёл холодный дождь."]],
   ["rain ends and reveals the street again", "city", [city, rain, "Дождь прекратился."]],
   ["rain persists between replies", "rain", [city, rain, "Она поправила шарф.", "Он кивнул."]],
-  ["entering a room hides outdoor rain", "calm", [city, rain, indoors]],
+  ["entering a room hides outdoor rain", null, [city, rain, indoors]],
   ["returning outdoors restores current weather", "rain", [city, rain, indoors, "Мы вышли наружу."]],
-  ["the weather can change while indoors", "calm", [rain, indoors, "Дождь стих.", "Вы вышли наружу."]],
+  ["the weather can change while indoors", null, [rain, indoors, "Дождь стих.", "Вы вышли наружу."]],
   ["latest location wins", "shore", [city, forest, "Вы вышли на берег. Волны набегают на песок."]],
   ["forest in the greeting", "forest", [forest, "— Добро пожаловать!"]],
   ["scene can open in the forest", "forest", ["Вы стоите в лесу. Темнеет."]],
@@ -36,7 +45,7 @@ const cases: ReadonlyArray<[string, StoryAmbience, string[]]> = [
   ["English forest and rainfall", "rain", ["You walk into the forest.", "It is raining."]],
   ["English forest in the opening", "forest", ["You stand in a forest."]],
   ["English surf after the rain", "shore", ["Rain starts to fall.", "You walk onto the beach. The rain has stopped."]],
-  ["English indoor shelter", "calm", ["The rain pours.", "You walked inside. Rain patters on the roof."]],
+  ["English indoor shelter", null, ["The rain pours.", "You walked inside. Rain patters on the roof."]],
 ];
 
 for (const [name, expected, replies] of cases) {

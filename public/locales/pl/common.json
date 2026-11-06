@@ -1,6 +1,8 @@
 {
   "chatAmbience": {
-    "label": "Dźwięk tła"
+    "label": "Dźwięk tła",
+    "playing": "Dźwięk tła jest odtwarzany",
+    "silent": "Dźwięk tła nie jest teraz odtwarzany"
   },
   "chatSpeech": {
     "editVoices": "Wybierz głos dla każdej postaci. Zmiany są zapisywane w tej historii i stosowane przy następnym odtwarzaniu.",
