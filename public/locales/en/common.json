@@ -1,4 +1,7 @@
 {
+  "chatAmbience": {
+    "label": "Ambient sound"
+  },
   "chatSpeech": {
     "editVoices": "Choose a voice for each character. Changes are saved in this story and apply to the next playback.",
     "editSpeaker": "Change speaker",

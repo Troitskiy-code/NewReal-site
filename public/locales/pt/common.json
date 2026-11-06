@@ -1,4 +1,7 @@
 {
+  "chatAmbience": {
+    "label": "Som ambiente"
+  },
   "chatSpeech": {
     "editVoices": "Escolha uma voz para cada personagem. As alterações ficam guardadas nesta história e aplicam-se à próxima reprodução.",
     "editSpeaker": "Alterar quem fala",

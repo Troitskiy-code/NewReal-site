@@ -1,4 +1,7 @@
 {
+  "chatAmbience": {
+    "label": "Dźwięk tła"
+  },
   "chatSpeech": {
     "editVoices": "Wybierz głos dla każdej postaci. Zmiany są zapisywane w tej historii i stosowane przy następnym odtwarzaniu.",
     "editSpeaker": "Zmień mówiącego",

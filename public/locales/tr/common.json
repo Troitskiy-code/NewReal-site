@@ -1,4 +1,7 @@
 {
+  "chatAmbience": {
+    "label": "Ortam sesi"
+  },
   "chatSpeech": {
     "editVoices": "Her karakter için bir ses seçin. Değişiklikler bu hikâyede kaydedilir ve sonraki dinlemede uygulanır.",
     "editSpeaker": "Konuşmacıyı değiştir",

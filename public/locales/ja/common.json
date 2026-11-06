@@ -1,4 +1,7 @@
 {
+  "chatAmbience": {
+    "label": "環境音"
+  },
   "chatSpeech": {
     "editVoices": "キャラクターごとに声を選べます。変更はこの物語に保存され、次の再生に適用されます。",
     "editSpeaker": "話者を変更",

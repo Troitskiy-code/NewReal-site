@@ -33,6 +33,10 @@ type SpeechContextValue = {
   recognize: (id: string, content: string) => Promise<void>;
 };
 const SpeechContext = createContext<SpeechContextValue | null>(null);
+export function useChatSpeechPlaying() {
+  const speech = useContext(SpeechContext);
+  return Boolean(speech?.clip && !speech.paused);
+}
 const ERROR_CODES = new Set(["unauthorized", "notFound", "empty", "noDialogue", "tooLong", "busy", "quota", "rateLimit", "changed", "pending", "uncertain", "invalid"]);
 
 export function ChatSpeechProvider({ characterId, threadId, userId, children }: {

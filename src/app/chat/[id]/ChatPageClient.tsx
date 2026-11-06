@@ -11,6 +11,7 @@ import { showError, showSuccess } from "@/lib/toast";
 import { FaUser, FaCog, FaChevronDown, FaChevronUp, FaRedo, FaEllipsisH, FaRegCopy, FaInfoCircle } from "react-icons/fa";
 import { LuArrowLeft, LuPencil, LuTrash2 } from "react-icons/lu";
 import MemoryEditor from "@/components/MemoryEditor";
+import ChatAmbience from "@/components/ChatAmbience";
 import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
 import { choiceNumeral, splitStoryChoices, type StoryChoicesSplit } from "@/lib/storyChoices";
@@ -1026,6 +1027,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     router.replace(id ? withThread(path, id) : path, { scroll: false });
   };
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const ambienceAudioRef = useRef<HTMLAudioElement>(null);
   const lastSendRef = useRef<{
     message: string;
     history?: Array<{ role: "user" | "assistant"; content: string }>;
@@ -1874,7 +1876,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     }
   };
 
-  return (
+  return (<>
+    {/* Keep the same media element when the speech provider resets for a new story. */}
+    <audio ref={ambienceAudioRef} hidden loop playsInline preload="none" />
     <ChatSpeechProvider key={`${characterId}:${threadId ?? ""}:${session?.user?.id ?? "guest"}`}
       characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}>
     {characterAvatarUrl ? <ChatPortraitBackground imageUrl={characterAvatarUrl} /> : null}
@@ -2032,41 +2036,41 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               ) : null}
             </div>
             {/* Character info and chat settings live in the chat header instead of floating over the messages. */}
-            {(character?.slug || !isAnonymous) && (
-              <div className="-mr-2 flex shrink-0 items-center gap-1">
-                {character?.slug ? (
-                  <LocaleLink
-                    href={`/character/${character.slug}`}
-                    onClick={captureCharacterReturn}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text md:bg-transparent md:backdrop-blur-none"
-                    title={t("chatUi.text047")}
-                    aria-label={t("chatUi.text047")}
-                  >
-                    <FaInfoCircle size={18} />
-                  </LocaleLink>
-                ) : null}
-                {!isAnonymous && (
-                  <ChatSettingsMenu
-                    open={settingsMenuOpen}
-                    onToggle={() => setSettingsMenuOpen((current) => !current)}
-                    onClose={() => setSettingsMenuOpen(false)}
-                    onOpenModels={() => setSettingsOpen(true)}
-                    onOpenMemory={() => setMemoryEditorOpen(true)}
-                    onOpenPersona={() => setPersonaSelectorOpen(true)}
-                    onOpenPrompt={() => setPromptSettingsOpen(true)}
-                    onOpenVoice={() => setVoiceSettingsOpen(true)}
-                    onClearChat={() => {
-                      setSettingsMenuOpen(false);
-                      setConfirmClearChat(true);
-                    }}
-                    threadsEnabled={threadsEnabled}
-                    onOpenThreads={() => setThreadsOpen(true)}
-                    onNewThread={() => void handleNewThread()}
-                    disabled={sending || actionLoading || clearingChat || creatingThread}
-                  />
-                )}
-              </div>
-            )}
+            <div className="-mr-2 flex shrink-0 items-center gap-1">
+              <ChatAmbience audioRef={ambienceAudioRef} messages={messages} ready={!historyLoading && transferState === "idle"}
+                pending={sending || actionLoading || streamingMessageId !== null} />
+              {character?.slug ? (
+                <LocaleLink
+                  href={`/character/${character.slug}`}
+                  onClick={captureCharacterReturn}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:text-wd-secondary-text md:bg-transparent md:backdrop-blur-none"
+                  title={t("chatUi.text047")}
+                  aria-label={t("chatUi.text047")}
+                >
+                  <FaInfoCircle size={18} />
+                </LocaleLink>
+              ) : null}
+              {!isAnonymous && (
+                <ChatSettingsMenu
+                  open={settingsMenuOpen}
+                  onToggle={() => setSettingsMenuOpen((current) => !current)}
+                  onClose={() => setSettingsMenuOpen(false)}
+                  onOpenModels={() => setSettingsOpen(true)}
+                  onOpenMemory={() => setMemoryEditorOpen(true)}
+                  onOpenPersona={() => setPersonaSelectorOpen(true)}
+                  onOpenPrompt={() => setPromptSettingsOpen(true)}
+                  onOpenVoice={() => setVoiceSettingsOpen(true)}
+                  onClearChat={() => {
+                    setSettingsMenuOpen(false);
+                    setConfirmClearChat(true);
+                  }}
+                  threadsEnabled={threadsEnabled}
+                  onOpenThreads={() => setThreadsOpen(true)}
+                  onNewThread={() => void handleNewThread()}
+                  disabled={sending || actionLoading || clearingChat || creatingThread}
+                />
+              )}
+            </div>
           </div>
           {threadsEnabled && currentThread?.status === "archived" ? (
             <p role="status" className="mx-4 mb-1 rounded-lg border border-wd-border bg-black/40 px-3 py-2 text-xs text-wd-text-secondary">
@@ -2197,5 +2201,6 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
       {confirmModal}
     </div>
     </ChatSpeechProvider>
+  </>
   );
 }

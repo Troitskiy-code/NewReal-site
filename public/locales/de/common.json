@@ -1,4 +1,7 @@
 {
+  "chatAmbience": {
+    "label": "Hintergrundgeräusche"
+  },
   "chatSpeech": {
     "editVoices": "Wähle für jede Figur eine Stimme. Änderungen werden in dieser Geschichte gespeichert und gelten ab der nächsten Wiedergabe.",
     "editSpeaker": "Sprecher ändern",
