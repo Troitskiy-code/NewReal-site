@@ -14,6 +14,13 @@
       "unavailable": "La transcription est actuellement indisponible."
     }
   },
+  "chatGuide": {
+    "title": "Guide du chat",
+    "action": "Place un astérisque de chaque côté de l’action de ton personnage.",
+    "thought": "Place les pensées entre guillemets simples.",
+    "dialogue": "Écris les répliques sans astérisques.",
+    "example": "*Je recule d’un pas.* 'Il ne doit pas voir la clé.' Qui est là ?"
+  },
   "chatAmbience": {
     "label": "Ambiance sonore",
     "playing": "Ambiance sonore en cours",

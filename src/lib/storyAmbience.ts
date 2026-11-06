@@ -1,3 +1,4 @@
+import { withoutChatThoughts } from "@/lib/chatMessageMarkup";
 import { splitStoryChoices } from "@/lib/storyChoices";
 
 // Russian destination/current forms, Russian exit forms and English names.
@@ -119,7 +120,7 @@ export function storyAmbience(messages: ReadonlyArray<{ role: string; content: s
   for (const { role, content } of messages) {
     if (role !== "assistant") continue;
     let previousClauseMentionsRain = false;
-    for (const clause of sceneText(content).split(CLAUSE_BREAK)) {
+    for (const clause of sceneText(withoutChatThoughts(content)).split(CLAUSE_BREAK)) {
       const rainContinues = previousClauseMentionsRain && RAIN_CONTINUATION.test(clause);
       previousClauseMentionsRain = RAIN_REFERENCE.test(clause);
       if (clause.trimEnd().endsWith("?") || NON_CURRENT.test(clause) || PLANNED_VISIT.test(clause)) continue;

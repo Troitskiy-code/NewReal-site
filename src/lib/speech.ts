@@ -1,3 +1,5 @@
+import { withoutChatThoughts } from "./chatMessageMarkup";
+
 // Client-safe settings. Semantic selection belongs to the server's AI preparation step.
 export const SPEECH_VOICES = [
   { id: "Aoede", label: "aoede", gender: "female" },
@@ -55,7 +57,8 @@ export function speechCast(voice: SpeechVoice, contentMode: SpeechContentMode, t
   return { narrator: voice, character: first === voice ? second : first };
 }
 
-/** Normalize transport controls only; never discard narration, quotes or actions before AI selection. */
+/** Remove marked private thoughts before AI selection while retaining narration, dialogue and actions. */
 export function speechSource(content: string): string {
-  return content.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim();
+  const normalized = content.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
+  return withoutChatThoughts(normalized).trim();
 }

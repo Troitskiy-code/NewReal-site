@@ -1,4 +1,5 @@
 import { stripMemoryControlInstructions } from "./memorySafety";
+import { withoutChatThoughts } from "./chatMessageMarkup";
 import { MemorySummaryError, OUTCOME_ITEM_MAX_CHARS, PAST_BUDGET_SHARE, SUMMARY_ITEM_MAX_CHARS, pastItemLimit, type MemorySummaryDetail,
   type MemorySummaryItemReason } from "./memorySummaryPolicy";
 import { MEMORY_STATUSES, RETELLING_TERM_SHARE, STATUS_LABELS, hasRoleplayVoice, inferMemoryStatus, isSameMemoryName, knownMemoryNames, retellingRejection, sameMemoryMeaning,
@@ -316,7 +317,7 @@ export function makeSummarySources(messages: Array<{ role: string; content: stri
   const rows: SummarySource[] = [];
   for (const [turn, message] of messages.entries()) {
     const author: Author = message.role === "user" ? "user" : message.role === "assistant" ? "character" : "memory";
-    for (const text of stripMemoryControlInstructions(message.content).split(/\r?\n|(?<=[.!?])\s+/u)) {
+    for (const text of withoutChatThoughts(stripMemoryControlInstructions(message.content)).split(/\r?\n|(?<=[.!?])\s+/u)) {
       if (text.trim().length < 3) continue;
       rows.push({ id: `s${rows.length + 1}`, author, text: text.trim(), turn });
     }

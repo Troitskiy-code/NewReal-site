@@ -14,6 +14,13 @@
       "unavailable": "Ses tanıma şu anda kullanılamıyor."
     }
   },
+  "chatGuide": {
+    "title": "Sohbet rehberi",
+    "action": "Karakterinizin eyleminin başına ve sonuna birer yıldız koyun.",
+    "thought": "İçinizden geçenleri tek tırnak içine alın.",
+    "dialogue": "Konuşmaları yıldız kullanmadan yazın.",
+    "example": "*Bir adım geri çekilirim.* 'Anahtarı görmemeli.' Kim var orada?"
+  },
   "chatAmbience": {
     "label": "Ortam sesi",
     "playing": "Ortam sesi çalıyor",

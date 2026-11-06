@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { parseCoreSections, sanitizeCoreMemory } from "./coreMemorySanitize";
 import { stripMemoryControlInstructions } from "./memorySafety";
+import { withoutChatThoughts } from "./chatMessageMarkup";
 import { evidenceNumbers, inferMemoryStatus, isSameMemoryName, memoryNumbers, memoryTerms, retellingNumbersSupported } from "./memoryNarrative";
 
 export const memoryV2Enabled = () => ["1", "true"].includes(process.env.MEMORY_V2_ENABLED ?? "");
@@ -403,7 +404,7 @@ export function sharesName(left: string, right: string): boolean {
 }
 
 export function factSources(messages: Array<{ id: string; role: string; content: string }>): FactSource[] {
-  return messages.flatMap(message => stripMemoryControlInstructions(message.content)
+  return messages.flatMap(message => withoutChatThoughts(stripMemoryControlInstructions(message.content))
     .split(/\r?\n|(?<=[.!?])\s+/u).map(text => text.trim()).filter(Boolean)
     .map(text => ({ id: "", author: message.role === "user" ? "user" as const : "character" as const,
       messageId: message.id, text }))).map((source, index) => ({ ...source, id: `s${index + 1}` }));

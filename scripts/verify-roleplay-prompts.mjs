@@ -32,7 +32,8 @@ const errorType = load('src/lib/publicError.ts');
 const config = load('src/lib/roleplayConfig.ts', { './publicError': errorType });
 const safety = load('src/lib/memorySafety.ts');
 const format = load('src/lib/memoryPromptFormat.ts', { './memorySafety': safety });
-const builder = load('src/lib/chatSystemPrompt.ts', { './roleplayConfig': config, './memoryPromptFormat': format, './memorySafety': safety });
+const builder = load('src/lib/chatSystemPrompt.ts', { './roleplayConfig': config, './memoryPromptFormat': format, './memorySafety': safety,
+  './chatMessageMarkup': loadLocaleModule('src/lib/chatMessageMarkup.ts') });
 const imagePrompt = load('src/lib/avatarPrompt.ts');
 check(!imagePrompt.buildAvatarPrompt({ roleplayMode: 'world', name: 'Современный город', avatarPrompt: 'Ночной город' }).includes('character portrait'), 'universe cover generation does not impose a character portrait');
 check(imagePrompt.buildAvatarPrompt({ roleplayMode: 'group', name: 'Экспедиция' }).includes('ensemble illustration'), 'group image uses an ensemble scene prompt');

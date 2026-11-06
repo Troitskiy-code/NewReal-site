@@ -14,6 +14,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { memoryScopeWhere, messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { getMemoryProvider } from "./aiProviders";
+import { withoutChatThoughts } from "./chatMessageMarkup";
 import { extraSummaryItems, groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
 import { SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS, withSummaryRefreshLease } from "./memorySummaryRefresh";
 import { memoryV2Enabled } from "./memoryFacts";
@@ -442,7 +443,7 @@ function formatDialogForSummary(messages: DialogMessage[]): string {
       const time = message.createdAt
         ? new Date(message.createdAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
         : "";
-      return `[${time}] ${speaker}: ${message.content}`;
+      return `[${time}] ${speaker}: ${withoutChatThoughts(message.content)}`;
     })
     .join("\n\n");
 }

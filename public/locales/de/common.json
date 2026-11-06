@@ -14,6 +14,13 @@
       "unavailable": "Die Transkription ist momentan nicht verfügbar."
     }
   },
+  "chatGuide": {
+    "title": "Chat-Anleitung",
+    "action": "Setze je ein Sternchen vor und nach der Handlung deines Charakters.",
+    "thought": "Setze einen Gedanken in einfache Anführungszeichen.",
+    "dialogue": "Schreibe gesprochene Worte ohne Sternchen.",
+    "example": "*Ich trete einen Schritt zurück.* 'Er darf den Schlüssel nicht sehen.' Wer ist da?"
+  },
   "chatAmbience": {
     "label": "Hintergrundgeräusche",
     "playing": "Hintergrundton läuft",

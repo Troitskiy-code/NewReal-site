@@ -14,6 +14,13 @@
       "unavailable": "La transcripción no está disponible ahora."
     }
   },
+  "chatGuide": {
+    "title": "Guía del chat",
+    "action": "Pon un asterisco a cada lado de la acción de tu personaje.",
+    "thought": "Escribe los pensamientos entre comillas simples.",
+    "dialogue": "Escribe el diálogo sin asteriscos.",
+    "example": "*Doy un paso atrás.* 'No debe ver la llave.' ¿Quién anda ahí?"
+  },
   "chatAmbience": {
     "label": "Sonido ambiental",
     "playing": "Sonido ambiental en reproducción",

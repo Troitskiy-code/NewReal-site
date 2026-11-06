@@ -14,6 +14,13 @@
       "unavailable": "Transcription is currently unavailable."
     }
   },
+  "chatGuide": {
+    "title": "Chat guide",
+    "action": "Put one asterisk on each side of your character’s action.",
+    "thought": "Put a private thought in single quotes.",
+    "dialogue": "Write spoken dialogue without asterisks.",
+    "example": "*I take a step back.* 'I don't want him to see the key.' Who’s there?"
+  },
   "chatAmbience": {
     "label": "Ambient sound",
     "playing": "Ambient sound is playing",

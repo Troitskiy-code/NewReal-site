@@ -14,6 +14,13 @@
       "unavailable": "A transcrição está indisponível neste momento."
     }
   },
+  "chatGuide": {
+    "title": "Guia do chat",
+    "action": "Coloque um asterisco de cada lado da ação do seu personagem.",
+    "thought": "Coloque os pensamentos entre aspas simples.",
+    "dialogue": "Escreva as falas sem asteriscos.",
+    "example": "*Dou um passo para trás.* 'Ele não pode ver a chave.' Quem está aí?"
+  },
   "chatAmbience": {
     "label": "Som ambiente",
     "playing": "Som ambiente em reprodução",

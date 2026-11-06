@@ -14,7 +14,7 @@ export function moduleLoader(overrides = {}) {
     if (cache.has(resolved)) return cache.get(resolved).exports;
     if (resolved.endsWith(".json")) return JSON.parse(readFileSync(resolved, "utf8"));
     const mod = { exports: {} }; cache.set(resolved, mod);
-    const output = ts.transpileModule(readFileSync(resolved, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+    const output = ts.transpileModule(readFileSync(resolved, "utf8"), { fileName: resolved, compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX } }).outputText;
     new Function("require", "module", "exports", output)((specifier) => {
       if (Object.hasOwn(overrides, specifier)) return overrides[specifier];
       if (!specifier.startsWith(".") && !specifier.startsWith("@/")) return require(specifier);

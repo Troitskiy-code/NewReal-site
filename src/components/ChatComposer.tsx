@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
-import { LuInfo, LuMic, LuSquare } from "react-icons/lu";
+import { LuBookOpen, LuMic, LuSquare } from "react-icons/lu";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { VOICE_INPUT_SECONDS } from "@/lib/voiceInput";
 
@@ -27,12 +27,11 @@ function resizeComposer(el: HTMLTextAreaElement | null) {
   el.style.overflowY = el.scrollHeight > maxHeight + 1 ? "auto" : "hidden";
 }
 
-/** Billing note behind an info button next to send, so it does not take four lines under the composer. */
-function ComposerNote({ text }: { text: string }) {
+function ChatGuide({ billingNote }: { billingNote?: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const noteId = useId();
+  const guideId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -56,22 +55,27 @@ function ComposerNote({ text }: { text: string }) {
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
-        aria-controls={noteId}
-        aria-label={t("chatUi.text052")}
-        title={t("chatUi.text052")}
+        aria-controls={guideId}
+        aria-label={t("chatGuide.title")}
+        title={t("chatGuide.title")}
         className={`flex h-11 w-8 items-center justify-center rounded-full transition-colors hover:text-white ${
           open ? "text-white" : "text-secondary-text"
         }`}
       >
-        <LuInfo size={18} aria-hidden />
+        <LuBookOpen size={18} aria-hidden />
       </button>
-      <p
-        id={noteId}
+      <div
+        id={guideId}
         hidden={!open}
         className="absolute bottom-full right-0 z-30 mb-2 w-full max-w-xs rounded-xl border border-divider bg-bg-card px-3 py-2 text-xs leading-relaxed text-secondary-text shadow-xl"
       >
-        {text}
-      </p>
+        <h2 className="font-semibold text-primary-text">{t("chatGuide.title")}</h2>
+        <p className="mt-1">{t("chatGuide.action")}</p>
+        <p>{t("chatGuide.thought")}</p>
+        <p>{t("chatGuide.dialogue")}</p>
+        <code className="mt-2 block rounded-md bg-bg-page px-2 py-1 text-primary-text">{t("chatGuide.example")}</code>
+        {billingNote && <p className="mt-2 border-t border-divider pt-2">{billingNote}</p>}
+      </div>
     </div>
   );
 }
@@ -91,7 +95,7 @@ export default function ChatComposer({
   onSubmit: (event: React.FormEvent) => void;
   disabled: boolean;
   canSend: boolean;
-  /** Billing rules, shown on demand from the info button. */
+  /** Billing rules, shown below the chat guide when applicable. */
   note?: string;
   voiceInputEnabled?: boolean;
   onVoiceCaptureChange: (capturing: boolean) => void;
@@ -197,7 +201,7 @@ export default function ChatComposer({
           {recording ? <LuSquare size={17} aria-hidden /> : <LuMic size={19} aria-hidden />}
         </button>
       )}
-      {note ? <ComposerNote text={note} /> : null}
+      <ChatGuide billingNote={note} />
       {isDesktop ? (
         <button
           type="submit"

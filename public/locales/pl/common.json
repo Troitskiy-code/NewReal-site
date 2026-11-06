@@ -14,6 +14,13 @@
       "unavailable": "Rozpoznawanie mowy jest teraz niedostępne."
     }
   },
+  "chatGuide": {
+    "title": "Poradnik czatu",
+    "action": "Umieść po jednej gwiazdce przed i po opisie działania swojej postaci.",
+    "thought": "Zapisuj myśli w pojedynczym cudzysłowie.",
+    "dialogue": "Wypowiedzi zapisuj bez gwiazdek.",
+    "example": "*Cofam się o krok.* 'Nie może zobaczyć klucza.' Kto tam?"
+  },
   "chatAmbience": {
     "label": "Dźwięk tła",
     "playing": "Dźwięk tła jest odtwarzany",

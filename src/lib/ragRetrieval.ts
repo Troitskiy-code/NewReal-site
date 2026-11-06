@@ -1,4 +1,5 @@
 import { sameMemoryMeaning, memoryTerms } from "./memoryNarrative";
+import { withoutChatThoughts } from "./chatMessageMarkup";
 
 export type RagSourceMessage = {
   id: string;
@@ -115,7 +116,7 @@ export function selectDiverseRagCandidates<T extends RagMessage>(
 export function formatRagLine(message: Pick<RagSourceMessage, "role" | "content">, locale?: string): string {
   const english = Boolean(locale && locale !== "ru");
   const speaker = message.role === "user" ? (english ? "User" : "Пользователь") : english ? "Character" : "Персонаж";
-  return `- ${speaker}: ${message.content.replace(/\s*\n\s*/gu, " ").trim()}`;
+  return `- ${speaker}: ${withoutChatThoughts(message.content).replace(/\s*\n\s*/gu, " ").trim()}`;
 }
 
 function compareSources(left: RagSourceMessage, right: RagSourceMessage): number {

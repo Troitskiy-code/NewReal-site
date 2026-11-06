@@ -14,6 +14,7 @@ import MemoryEditor from "@/components/MemoryEditor";
 import ChatAmbience from "@/components/ChatAmbience";
 import ChatPortraitBackground from "@/components/ChatPortraitBackground";
 import ChatComposer from "@/components/ChatComposer";
+import { formatChatMessage } from "@/lib/chatMessageMarkup";
 import { choiceNumeral, splitStoryChoices, type StoryChoicesSplit } from "@/lib/storyChoices";
 import PersonaSelector from "@/components/PersonaSelector";
 import ChatStorySettings from "@/components/ChatStorySettings";
@@ -543,7 +544,7 @@ function ChatMessageItem({
             <span className="animate-pulse font-sans text-sm text-wd-text-secondary">{isThinking ? t("chatUi.text011") : t("chatUi.text012")}</span>
           ) : storyChoices ? (
             <>
-              {storyChoices.before ? <span dangerouslySetInnerHTML={{ __html: formatMessageContent(storyChoices.before) }} /> : null}
+              {storyChoices.before ? <span dangerouslySetInnerHTML={{ __html: formatChatMessage(storyChoices.before) }} /> : null}
               <span role="group" aria-label={t("chatUi.text013")} className={`flex flex-col gap-2 ${storyChoices.before ? "mt-3" : ""} ${storyChoices.after ? "mb-3" : ""}`}>
                 {storyChoices.choices.map((choice, index) => (
                   <button
@@ -558,12 +559,12 @@ function ChatMessageItem({
                   </button>
                 ))}
               </span>
-              {storyChoices.after ? <span dangerouslySetInnerHTML={{ __html: formatMessageContent(storyChoices.after) }} /> : null}
+              {storyChoices.after ? <span dangerouslySetInnerHTML={{ __html: formatChatMessage(storyChoices.after) }} /> : null}
             </>
           ) : (
             <span
               dangerouslySetInnerHTML={{
-                __html: formatMessageContent(message.content) + (isStreaming ? '<span class="animate-pulse">▍</span>' : ""),
+                __html: formatChatMessage(message.content) + (isStreaming ? '<span class="animate-pulse">▍</span>' : ""),
               }}
             />
           )}
@@ -586,17 +587,6 @@ function ChatMessageItem({
       {!isUser && !isEditing && !isStreaming && <MessageSpeechPlayer messageId={message.id} content={message.content} />}
     </div>
   );
-}
-
-function formatMessageContent(content: string): string {
-  const escaped = content
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  // *действие* is narration: italic and quieter than spoken lines. Models also write it as **действие** or
-  // ***действие***: a single-asterisk pattern matched each empty `**` pair and erased it, leaving the action plain.
-  return escaped.replace(/(\*{1,3})([^*\n]+?)\1/g, '<em class="text-wd-story-muted">$2</em>').replace(/\n/g, "<br />");
 }
 
 function CharacterDescriptionCard({ description }: { description: string }) {
