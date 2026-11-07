@@ -1025,6 +1025,22 @@ try {
     assert.equal((await memory.drainMemoryJobs()).processed, 0);
     assert.match((await legacy.loadMemoryCandidates(fixture.scope)).core, /Артём/);
   });
+  await check('a memory event carries where and before whom it was said; a regenerated reply drops it', async () => {
+    process.env.MEMORY_V2_ENABLED = '1';
+    const f = await setup();
+    const t = await turn(f, 'Вхожу в рубку и спрашиваю пароль.', 'Аварийный пароль на этот рейс — «Медный Ибис».');
+    await run(f, JSON.stringify({ facts: [], events: [{ sourceId: 's2', importance: 3 }], presence: { place: 'рубка', present: ['Ирма Сол'] } }));
+    const old = await db.episodicMemory.create({ data: { ...await helpers.key(f.user.id, f.character.id), event: 'Старое событие без сцены', importance: 3, timestamp: new Date(Date.now() - 86_400_000) } });
+    const { episodic } = await legacy.loadMemoryCandidates(f.scope);
+    const noted = episodic.find(item => item.id !== old.id), plain = episodic.find(item => item.id === old.id);
+    assert.deepEqual(noted.scene, { place: 'рубка', present: ['Ирма Сол'] });
+    assert.ok(legacy.formatEpisodicLine(noted).endsWith('(сцена: рубка; при этом были: Ирма Сол)'), legacy.formatEpisodicLine(noted));
+    assert.equal(plain.scene, undefined);
+    assert.ok(legacy.formatEpisodicLine(plain).endsWith('Старое событие без сцены'));
+    assert.equal(facts.eventPresenceNote({ place: '', present: [] }), '(при этом были: только герой)');
+    await db.$transaction(tx => memory.invalidateMessageMemory(tx, f.scope, t.assistant.id));
+    assert.deepEqual((await legacy.loadMemoryCandidates(f.scope)).episodic.map(item => item.id), [old.id]);
+  });
   await check('a turn keeps who was near the hero; a regenerated reply drops it', async () => {
     // Owner's Witcher story 12 (2026-10-29): Трисс knew the informer's request, Йеннифэр the old woman's words.
     process.env.MEMORY_V2_ENABLED = '1';

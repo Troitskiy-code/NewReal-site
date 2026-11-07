@@ -568,6 +568,12 @@ export function turnPresenceNote(presence: TurnPresence): string {
   return `[[Сцена: ${presence.place || "место не названо"}. Рядом с героем: ${presence.present.length ? presence.present.join(", ") : "никого"}]]`;
 }
 
+/** The note after a memory event: where and before whom it was said («(сцена: порт; при этом были: Йеннифэр)»). */
+export function eventPresenceNote(presence: TurnPresence): string {
+  const who = `при этом были: ${presence.present.length ? presence.present.join(", ") : "только герой"}`;
+  return `(${presence.place ? `сцена: ${presence.place}; ` : ""}${who})`;
+}
+
 export function parseFactExtraction(raw: string, sources: FactSource[], { partial = false, heroNames = [] as string[] } = {}): {
   facts: FactDelta[]; events: ExtractedEvent[]; presence: TurnPresence | null; rejectedRetractions: number;
   rejectedFacts: number; rejectedEvents: number; rejectedCandidates: Readonly<MemoryValidationDiagnostic>[];

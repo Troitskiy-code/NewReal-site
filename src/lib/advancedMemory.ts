@@ -8,8 +8,8 @@ import { hasDistinctKeyTokens, isSemanticDuplicate } from "@/lib/memoryEmbedding
 import { STATUS_LABELS, inferMemoryStatus, memoryOverlap, memoryTerms, safeMemoryParaphrase, sameMemoryMeaning } from "@/lib/memoryNarrative";
 import { makeSummarySources } from "@/lib/memorySummaryEvidence";
 import { memoryScopeWhere, type ChatScope } from "@/lib/chatThreads";
-import { memoryV2Enabled } from "./memoryFacts";
-import { clearFactMemory, lockMemoryThread, readFactCore, replaceManualFactCore } from "./memoryV2";
+import { eventPresenceNote, memoryV2Enabled, type TurnPresence } from "./memoryFacts";
+import { clearFactMemory, loadJobPresence, lockMemoryThread, readFactCore, replaceManualFactCore } from "./memoryV2";
 import { backfillEpisodicEmbeddings, episodicSimilarities } from "./episodicEmbeddings";
 
 const KODIKROUTER_URL = "https://api.kodikrouter.ru/v1";
@@ -391,6 +391,8 @@ export type EpisodicMemoryItem = {
   importance: number;
   /** Cosine similarity to the user's message, when the event has a vector (episodicEmbeddings). */
   similarity?: number;
+  /** Where and before whom it was said; events older than presence (2026-10-29) have none. */
+  scene?: TurnPresence;
 };
 
 export type RelevantMemories = {
@@ -636,6 +638,7 @@ const QUERY_WORDS = new Set(["расск", "напом", "зовут", "звал
   "когда", "зачем", "where", "what", "remin", "tell"]);
 /** Events matching the user's message are looked up over the whole story, not only the newest ones. */
 const QUERY_POOL_SCAN = 400, QUERY_POOL_SIZE = 12;
+const EVENT_FIELDS = { id: true, event: true, timestamp: true, importance: true, sourceMemoryJobId: true } as const;
 
 /** Largest per-intent limit: enough candidates to choose for any intent once it is known. */
 export const EPISODIC_CANDIDATE_LIMIT = Math.max(
@@ -703,7 +706,7 @@ export function rankEpisodicCandidates(items: EpisodicMemoryItem[], query = ""):
 }
 
 export function formatEpisodicLine(item: EpisodicMemoryItem): string {
-  return `- [${item.timestamp.toISOString().slice(0, 10)}] ${item.event}`;
+  return `- [${item.timestamp.toISOString().slice(0, 10)}] ${item.event}${item.scene ? ` ${eventPresenceNote(item.scene)}` : ""}`;
 }
 
 export function formatRelevantMemories(memories: RelevantMemories): string | null {
@@ -733,7 +736,7 @@ export async function loadMemoryCandidates(
   // The message's vector takes 0.5–5 s at DeepInfra (prod 2026-10-29), longer than the rest of the context:
   // started here, awaited only before the prompt is assembled, in parallel with intent analysis and RAG.
   const similarityPromise = query.trim() && scope.threadId ? episodicSimilarities(scope.threadId, query) : null;
-  const [core, important, recent, scanned] = await Promise.all([
+  const [core, importantRows, recentRows, scannedRows] = await Promise.all([
     readFactCore(scope, query).then(content => content !== null ? { content } : prisma.coreMemory.findUnique({
       where: { threadId: scope.threadId },
       select: { content: true },
@@ -742,21 +745,31 @@ export async function loadMemoryCandidates(
       where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
       orderBy: [{ importance: "desc" }, { timestamp: "desc" }, { id: "desc" }],
       take: EPISODIC_CANDIDATE_LIMIT,
-      select: { id: true, event: true, timestamp: true, importance: true },
+      select: EVENT_FIELDS,
     }),
     prisma.episodicMemory.findMany({
       where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
       orderBy: [{ timestamp: "desc" }, { id: "desc" }], take: 30,
-      select: { id: true, event: true, timestamp: true, importance: true },
+      select: EVENT_FIELDS,
     }),
     // The candidates above are the newest and most important only: an old event answering the user's
     // question (a deal made 90 turns ago) never reached the prompt. Match the message over the whole story.
     query.trim() ? prisma.episodicMemory.findMany({
       where: { ...memoryScopeWhere(scope), importance: { gte: minImportance } },
       orderBy: [{ timestamp: "desc" }, { id: "desc" }], take: QUERY_POOL_SCAN,
-      select: { id: true, event: true, timestamp: true, importance: true },
+      select: EVENT_FIELDS,
     }) : Promise.resolve([]),
   ]);
+  // Who was there comes from the turn that produced the event. A failure only loses the notes.
+  const allRows = [...importantRows, ...recentRows, ...scannedRows];
+  const jobIds = [...new Set(allRows.flatMap(row => row.sourceMemoryJobId ? [row.sourceMemoryJobId] : []))];
+  const scenes = await loadJobPresence(scope.threadId, jobIds)
+    .catch(error => { errorLog("Memory", "event presence unavailable", toSafeDiagnostic(error)); return new Map<string, TurnPresence>(); });
+  const withScene = ({ sourceMemoryJobId, ...row }: typeof allRows[number]): EpisodicMemoryItem => {
+    const scene = sourceMemoryJobId ? scenes.get(sourceMemoryJobId) : undefined;
+    return scene ? { ...row, scene } : row;
+  };
+  const important = importantRows.map(withScene), recent = recentRows.map(withScene), scanned = scannedRows.map(withScene);
   // Over the whole story: the events sharing the most words with the message (and, below, closest in meaning).
   const byWords = scanned.map(row => ({ row, overlap: memoryOverlap(query, row.event) })).filter(match => match.overlap > 0)
     .sort((a, b) => b.overlap - a.overlap || b.row.importance - a.row.importance).slice(0, QUERY_POOL_SIZE).map(match => match.row);

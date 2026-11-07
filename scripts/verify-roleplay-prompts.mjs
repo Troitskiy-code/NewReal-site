@@ -317,6 +317,8 @@ for (const locale of ['ru', 'en']) {
 // The money line joins the reminder only on turns about money.
 const reminded = text => builder.withTurnReminder([{ role: 'user', content: text }], 'ru').at(-1).content;
 check(reminded('Что вы готовы сделать?').includes('не возвращает задачу герою') && reminded('Что вы готовы сделать?').includes('Решение героя остаётся за пользователем'), 'ru: a character at an obstacle makes a move and the decision stays with the user');
+check(reminded('Ирма?').includes('при этом были') && reminded('Ирма?').includes('отвечает только он'), 'ru: the reminder explains witness notes and the only addressee');
+check(builder.withTurnReminder([{ role: 'user', content: 'Irma?' }], 'en').at(-1).content.includes('only that character answers'), 'en: only the addressee answers');
 check(builder.withTurnReminder([{ role: 'user', content: 'What will you do?' }], 'en').at(-1).content.includes('do not hand the task back to the hero'), 'en: a character at an obstacle makes a move');
 check(reminded('*Достаю кошель и спрашиваю, сколько стоит комната.*').includes('Деньги называй числом'), 'a money turn gets the money line');
 check(!reminded('*Беру её за руку.*').includes('Деньги называй числом'), 'other turns do not');

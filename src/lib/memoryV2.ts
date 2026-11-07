@@ -33,6 +33,13 @@ export async function loadTurnPresence(threadId: string, userMessageIds: string[
     job: { userMessageId: { in: userMessageIds } } }, orderBy: { seq: "asc" }, select: { after: true, job: { select: { userMessageId: true } } } });
   return new Map(rows.flatMap(row => row.job?.userMessageId ? [[row.job.userMessageId, row.after as unknown as TurnPresence] as const] : []));
 }
+/** Presence of the turns that produced the given memory jobs, for the notes on their events. */
+export async function loadJobPresence(threadId: string, jobIds: string[]): Promise<Map<string, TurnPresence>> {
+  if (!memoryV2Enabled() || !jobIds.length) return new Map();
+  const rows = await prisma.memoryChange.findMany({ where: { threadId, subject: PRESENCE_SUBJECT, invalidated: false, jobId: { in: jobIds } },
+    orderBy: { seq: "asc" }, select: { after: true, jobId: true } });
+  return new Map(rows.flatMap(row => row.jobId ? [[row.jobId, row.after as unknown as TurnPresence] as const] : []));
+}
 export async function lockMemoryThread(tx: Tx, threadId: string) {
   await tx.$queryRaw`SELECT id FROM "ChatThread" WHERE id = ${threadId} FOR UPDATE`;
 }
