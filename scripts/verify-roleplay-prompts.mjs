@@ -292,7 +292,7 @@ const guestDeps = {
   // The guest reply consumer moved into the stream diagnostics module.
   '@/lib/chatStreamDiagnostics': { consumeOpenAIChatStream: async () => 'synthetic guest answer' },
   '@/lib/retryWithBackoff': { defaultShouldRetry: () => false }, '@/lib/logger': logger, '@/lib/testingChatModels': policy,
-  '@/lib/anonymousSession': { resolveAnonymousSessionId: () => ({ sessionId: `test-${guestLocale}` }), attachAnonymousSessionCookie: () => {}, getAnonymousMessageLimit: () => 5 },
+  '@/lib/anonymousSession': { resolveAnonymousSessionId: () => ({ sessionId: `test-${guestLocale}` }), attachAnonymousSessionCookie: () => {}, getAnonymousMessageLimit: () => 5, guestIpQuota: () => null },
   '@/lib/anonymousCookie': { isValidAnonymousRequestId: () => true },
   '@/lib/rateLimit': { consumeRateLimit: async () => ({ ok: true }), clientKeyFromRequest: () => 'synthetic' },
   '@/lib/guestRequestPolicy': { MAX_ANONYMOUS_HISTORY: 20, normalizeGuestMessage: value => value },
@@ -316,6 +316,8 @@ for (const locale of ['ru', 'en']) {
 }
 // The money line joins the reminder only on turns about money.
 const reminded = text => builder.withTurnReminder([{ role: 'user', content: text }], 'ru').at(-1).content;
+check(reminded('Что вы готовы сделать?').includes('не возвращает задачу герою') && reminded('Что вы готовы сделать?').includes('Решение героя остаётся за пользователем'), 'ru: a character at an obstacle makes a move and the decision stays with the user');
+check(builder.withTurnReminder([{ role: 'user', content: 'What will you do?' }], 'en').at(-1).content.includes('do not hand the task back to the hero'), 'en: a character at an obstacle makes a move');
 check(reminded('*Достаю кошель и спрашиваю, сколько стоит комната.*').includes('Деньги называй числом'), 'a money turn gets the money line');
 check(!reminded('*Беру её за руку.*').includes('Деньги называй числом'), 'other turns do not');
 check(builder.withTurnReminder([{ role: 'user', content: 'How much for the room? I pay in crowns.' }], 'en').at(-1).content.includes('Name money as numbers'), 'en: the money line in English');
@@ -354,8 +356,9 @@ const creationPrisma = { character: {
   update: async ({ data }) => { createdCard = { ...createdCard, ...data }; return createdCard; },
 } };
 const tags = load('src/lib/characterTags.ts');
-const catalogSearch = load('src/lib/characterCatalogSearch.ts', { './characterTags': tags });
 const onboarding = load('src/lib/onboarding.ts', { './characterTags': tags });
+const catalogFilters = load('src/lib/catalogFilters.ts', { './characterTags': tags, './onboarding': onboarding, './roleplayConfig': config });
+const catalogSearch = load('src/lib/characterCatalogSearch.ts', { './characterTags': tags, './catalogFilters': catalogFilters });
 const recommendationRank = load('src/lib/characterRecommendationRank.ts', { './characterTags': tags, './onboarding': onboarding });
 const recommendations = load('src/lib/characterRecommendations.ts', {
   '@/lib/prisma': { prisma: creationPrisma }, './characterRecommendationRank': recommendationRank,
@@ -369,7 +372,7 @@ const characterApiDeps = {
   '@/lib/characterMedia': { persistCharacterImage: async value => value ?? null, CharacterMediaUnavailable: class extends Error {} },
   '@/lib/onboardingServer': { readOnboardingPrefs: async () => null },
   '@/lib/roleplayConfig': config,
-  '@/lib/characterCatalogSearch': catalogSearch, '@/lib/characterTags': tags,
+  '@/lib/characterCatalogSearch': catalogSearch, '@/lib/catalogFilters': catalogFilters, '@/lib/characterTags': tags,
   '@/lib/characterRecommendations': recommendations,
   ...apiDeps, '@/lib/publicError': errorType, '@/lib/aiCostTelemetry': { withAiCostContext: fn => fn(), setAiCostActor: () => {} },
   '@/lib/characterFields': fields, '@/lib/characterSort': {},
