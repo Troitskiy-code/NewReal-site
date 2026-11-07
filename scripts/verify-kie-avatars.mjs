@@ -36,7 +36,7 @@ const reference = `data:image/png;base64,${png.toString('base64')}`;
 const marker = 'SYNTHETIC_PRIVATE_PROMPT';
 const logs = [];
 const fakeConsole = Object.fromEntries(['log','info','warn','error','debug'].map(name => [name, (...args) => logs.push(args.map(String).join(' '))]));
-let userId, creates = 0, uploads = 0, state = 'success', createMode = 'ok', downloadFails = false;
+let userId, creates = 0, uploads = 0, state = 'success', createMode = 'ok', downloadFails = false, refuseNext = 0, paramMode = 'ok', moderateNext = 0;
 const tasks = new Map();
 const requests = [];
 const json = (value, status = 200) => Response.json(value, { status });
@@ -54,12 +54,20 @@ async function providerFetch(url, init = {}) {
     if (createMode === 'reject') return json({ code: 402, msg: marker });
     // Kie answers HTTP 200 with a failure code in the body when moderation refuses the input.
     if (createMode === 'moderated') return json({ code: 501, msg: 'Content flagged as sensitive' });
+    if (moderateNext > 0) { moderateNext--; return json({ code: 501, msg: 'Content flagged as sensitive' }); }
     if (createMode === 'malformed') return json({ code: 200, msg: marker });
     const taskId = `fixture_task_${creates}`;
-    tasks.set(taskId, { model: body.model }); return json({ code: 200, data: { taskId } });
+    const refused = refuseNext > 0;
+    if (refused) refuseNext--;
+    tasks.set(taskId, { model: body.model, input: body.input, refused }); return json({ code: 200, data: { taskId } });
   }
   if (parsed.host === 'api.kie.ai' && parsed.pathname === '/api/v1/jobs/recordInfo') {
     const taskId = parsed.searchParams.get('taskId');
+    const task = tasks.get(taskId);
+    // Kie's real record for a filter refusal: failCode 400, credits 0, the request as nested JSON strings.
+    if (task.refused) return json({ code: 200, data: { taskId, model: task.model, state: 'fail', creditsConsumed: 0, failCode: '400',
+      failMsg: 'The input or output was flagged as sensitive. Please try again with different inputs.',
+      param: paramMode === 'missing' ? '' : JSON.stringify({ model: task.model, input: JSON.stringify(task.input) }) } });
     return json({ code: 200, data: { taskId, model: tasks.get(taskId).model, state,
       creditsConsumed: state === 'fail' ? 0 : 4, failMsg: marker,
       resultJson: JSON.stringify({ resultUrls: ['https://tempfile.aiquickdraw.com/image.png'] }) } });
@@ -74,7 +82,22 @@ async function providerFetch(url, init = {}) {
 let writerMode = 'ok';
 const writerCalls = [];
 const WRITTEN_SCENE = 'A weathered innkeeper in a linen apron stands by a stone hearth, warm firelight on her face, dried herbs hanging from dark wooden beams, a calm and welcoming expression.';
+let rewriteMode = 'ok', rewriteIntimateOnce = 0;
+const rewriteCalls = [];
+const REWRITTEN_PROMPT = 'A calm portrait of the same person in a wool coat at a quiet window, in soft daylight, with a relaxed expression and no text in the frame.';
+const CLOTHED_REWRITE = `${REWRITTEN_PROMPT} Every person is fully dressed in ordinary everyday clothes that cover the torso and legs.`;
 async function writerStub(purpose, url, body) {
+  if (body.messages[0].content.includes('content filter refused')) {
+    rewriteCalls.push({ purpose, body });
+    if (rewriteMode === 'timeout') throw Object.assign(new Error('timeout'), { code: 'ECONNABORTED' });
+    if (rewriteMode === 'underwear') return { data: { choices: [{ message: { content: JSON.stringify({ prompt: 'A calm portrait of the 34-year-old woman in black lace lingerie on a sofa, in soft evening light, with a relaxed expression and no text in the frame.' }) } }] } };
+    if (rewriteMode === 'nudity') return { data: { choices: [{ message: { content: JSON.stringify({ prompt: 'A calm portrait of the 34-year-old woman, naked on a sofa, in soft evening light, with a relaxed expression and no text in the frame.' }) } }] } };
+    if (rewriteMode === 'intimate' || rewriteIntimateOnce > 0) {
+      if (rewriteIntimateOnce > 0) rewriteIntimateOnce--;
+      return { data: { choices: [{ message: { content: JSON.stringify({ prompt: 'The same person stays in a hot bathtub at night, with soft candles around her and a relaxed expression, and no text in the frame.' }) } }] } };
+    }
+    return { data: { choices: [{ message: { content: rewriteMode === 'refusal' ? JSON.stringify({ prompt: "I'm sorry, but I can't help with this request because it goes against the rules of this service." }) : JSON.stringify({ prompt: REWRITTEN_PROMPT }) } }] } };
+  }
   writerCalls.push({ purpose, body });
   if (writerMode === 'timeout') throw Object.assign(new Error('timeout'), { code: 'ECONNABORTED' });
   const content = writerMode === 'garbage' ? 'not json at all'
@@ -293,6 +316,138 @@ try {
   check(secondRun.jobId === firstRun.jobId && writerCalls.length === writerCallsAfterFirst, 'a retried request reuses its job and never calls the writer twice');
   await finishJob(firstRun);
   delete testEnv.AVATAR_PROMPT_LLM_ENABLED;
+
+  // A filter refusal is replaced by a milder prompt instead of reaching the user.
+  userId = (await db.user.create({ data: { email: 'rewrite@example.test', subscriptionType: 'dialog',
+    subscriptionEnd: new Date(Date.now() + 86400000), lastTokenMonth: new Date() } })).id;
+  const rewriteUser = userId;
+  state = 'success';
+  const used = async () => (await db.user.findUnique({ where: { id: rewriteUser } })).tokensUsedThisMonth;
+  const job = id => db.avatarGeneration.findUnique({ where: { id } });
+  const poll = async id => {
+    await db.avatarGeneration.update({ where: { id }, data: { nextPollAt: new Date(0) } });
+    return (await handler.GET(get({ jobId: id }))).json();
+  };
+  refuseNext = 1;
+  const refusedOnce = await (await handler.POST(post(bodyFor({ referenceImage: reference })))).json();
+  const refusedInput = requests.at(-1).input;
+  const firstTask = (await job(refusedOnce.jobId)).providerTaskId;
+  const afterRefusal = await poll(refusedOnce.jobId);
+  check(afterRefusal.state === 'pending' && (await job(refusedOnce.jobId)).providerTaskId !== firstTask
+    && (await job(refusedOnce.jobId)).errorCode === 'safety_rewrite_1' && !afterRefusal.error, 'a refused task is replaced and the user keeps waiting without an error');
+  check(requests.at(-1).input.prompt === CLOTHED_REWRITE && requests.at(-1).input.image_urls[0] === refusedInput.image_urls[0]
+    && requests.at(-1).model === 'seedream/5-lite-image-to-image', 'the retry sends the rewritten prompt with the same reference and model');
+  check(rewriteCalls.at(-1).body.messages[1].content.includes(refusedInput.prompt.slice(0, 40)), "the rewrite starts from Kie's record of the refused prompt");
+  check(requests.at(-1).input.prompt.endsWith('that cover the torso and legs.'), 'the code itself dresses everyone in the rewritten prompt');
+  const rewrittenDone = await poll(refusedOnce.jobId);
+  const rewrittenCost = await db.aiCostEvent.findUnique({ where: { id: refusedOnce.jobId } });
+  check(rewrittenDone.state === 'succeeded' && await used() === 1 && rewrittenCost.providerRequestId === (await job(refusedOnce.jobId)).providerTaskId,
+    'the rewritten result completes on one quota unit and costs are linked to the final task');
+  await poll(refusedOnce.jobId);
+  check(await used() === 1, 'repeated polling cannot charge or retry a finished rewrite');
+
+  refuseNext = 1;
+  const noReference = await (await handler.POST(post(bodyFor()))).json();
+  await poll(noReference.jobId);
+  const firstRules = rewriteCalls.at(-1).body.messages[0].content;
+  check(firstRules.includes('fully dressed') && firstRules.includes('Never add an age') && firstRules.includes('Never use euphemisms')
+    && !firstRules.includes('leave out any closeness'), 'the first rewrite dresses everyone without inventing an age or hiding details');
+  await poll(noReference.jobId);
+
+  refuseNext = 4;
+  const beforeRefusals = creates;
+  const alwaysRefused = await (await handler.POST(post(bodyFor()))).json();
+  await poll(alwaysRefused.jobId);
+  const secondRules = rewriteCalls.length;
+  await poll(alwaysRefused.jobId);
+  check(rewriteCalls.length === secondRules + 1 && rewriteCalls.at(-1).body.messages[0].content.includes('leave out any closeness'), 'the second rewrite is stricter');
+  await poll(alwaysRefused.jobId);
+  const refusedFinal = await poll(alwaysRefused.jobId);
+  check(refusedFinal.state === 'failed' && refusedFinal.error?.includes('правилами') && creates === beforeRefusals + 4
+    && await used() === 2, 'after three rewrites the refusal reaches the user and the generation is refunded');
+
+  refuseNext = 1; rewriteIntimateOnce = 1;
+  const beforeIntimate = rewriteCalls.length;
+  const intimateOnce = await (await handler.POST(post(bodyFor()))).json();
+  await poll(intimateOnce.jobId);
+  check(rewriteCalls.length === beforeIntimate + 2 && requests.at(-1).input.prompt === CLOTHED_REWRITE, 'an answer that keeps an intimate detail is rejected and asked again');
+  await poll(intimateOnce.jobId);
+  const usedAfterIntimateOnce = await used();
+  refuseNext = 1; rewriteMode = 'intimate';
+  const beforeStubborn = creates;
+  const stubborn = await (await handler.POST(post(bodyFor()))).json();
+  const stubbornEnd = await poll(stubborn.jobId);
+  check(stubbornEnd.state === 'failed' && creates === beforeStubborn + 1 && await used() === usedAfterIntimateOnce, 'an intimate prompt is never sent to the image model, the generation is refunded');
+  const baseUsed = await used();
+  refuseNext = 1; rewriteMode = 'refusal';
+  const modelRefused = await (await handler.POST(post(bodyFor()))).json();
+  const refusedByModel = await poll(modelRefused.jobId);
+  check(refusedByModel.state === 'failed' && await used() === baseUsed, 'an unusable rewrite refunds instead of resending the prompt');
+  refuseNext = 1; rewriteMode = 'timeout';
+  const timedOut = await (await handler.POST(post(bodyFor()))).json();
+  check((await poll(timedOut.jobId)).state === 'failed' && await used() === baseUsed, 'a rewrite timeout refunds');
+  rewriteMode = 'ok';
+
+  refuseNext = 1; paramMode = 'missing';
+  const noRecord = await (await handler.POST(post(bodyFor()))).json();
+  const callsBeforeNoRecord = rewriteCalls.length;
+  check((await poll(noRecord.jobId)).state === 'failed' && rewriteCalls.length === callsBeforeNoRecord && await used() === baseUsed, 'without a provider record nothing is rewritten and the generation is refunded');
+  paramMode = 'ok';
+
+  testEnv.AVATAR_SAFETY_REWRITE_ENABLED = 'false';
+  refuseNext = 1;
+  const disabled = await (await handler.POST(post(bodyFor()))).json();
+  const callsBeforeDisabled = rewriteCalls.length;
+  check((await poll(disabled.jobId)).state === 'failed' && rewriteCalls.length === callsBeforeDisabled, 'the flag turns rewriting off');
+  delete testEnv.AVATAR_SAFETY_REWRITE_ENABLED;
+
+  refuseNext = 1;
+  const lostRetry = await (await handler.POST(post(bodyFor()))).json();
+  createMode = 'lost';
+  const lostRetryResult = await poll(lostRetry.jobId);
+  check(lostRetryResult.state === 'uncertain' && lostRetryResult.blocked === true && await used() === baseUsed + 1, 'a lost response on the retry goes to review, never a new paid submission');
+  createMode = 'ok';
+  await jobs.finishAvatarJob(await job(lostRetry.jobId), 'failed');
+
+  moderateNext = 1;
+  const beforeSync = rewriteCalls.length;
+  const syncRefused = await (await handler.POST(post(bodyFor()))).json();
+  check(syncRefused.state === 'pending' && rewriteCalls.length === beforeSync + 1 && requests.at(-1).input.prompt === CLOTHED_REWRITE
+    && (await job(syncRefused.jobId)).errorCode === 'safety_rewrite_1', 'a refusal at creation is rewritten inside the same request');
+  await poll(syncRefused.jobId);
+
+  // Underwear stays only when the code itself sees adult ages. Age fixtures stay neutral on purpose.
+  const rewrite = load('src/lib/avatarPromptRewrite.ts');
+  check(rewrite.statesOnlyAdultAges('A 34-year-old woman stands by a window.') && rewrite.statesOnlyAdultAges('Женщина 30 лет у окна.')
+    && rewrite.statesOnlyAdultAges('Lira, 32 years old, and Kai, aged 40.'), 'adult ages are recognized in English and Russian');
+  check(!rewrite.statesOnlyAdultAges('A woman stands by a window.') && !rewrite.statesOnlyAdultAges('A 16-year-old student at a desk.')
+    && !rewrite.statesOnlyAdultAges('A 30-year-old and a 15 year old at a table.') && !rewrite.statesOnlyAdultAges('A young woman, 25 years old.')
+    && !rewrite.statesOnlyAdultAges('Девушка 20 лет у окна.'), 'a missing age, any age under 18 or a youth word fails the check');
+  const ADULT_LINGERIE = 'Anime illustration. The woman is 34 years old, in black lingerie on a sofa, in soft evening light, with no text in the frame.';
+  const systemOf = () => rewriteCalls.at(-1).body.messages[0].content;
+  rewriteMode = 'underwear';
+  const kept = await rewrite.rewriteRefusedAvatarPrompt(ADULT_LINGERIE, 1, false);
+  check(systemOf().includes('Everyone wears underwear') && kept.includes('keeps their underwear on') && kept.includes('clearly an adult'),
+    'verified adult ages keep underwear, and the code adds the underwear and adult sentences');
+  const beforeModes = rewriteCalls.length;
+  rewriteMode = 'ok';
+  const withReferenceRewrite = await rewrite.rewriteRefusedAvatarPrompt(ADULT_LINGERIE, 1, true);
+  check(rewriteCalls.length === beforeModes + 1 && systemOf().includes('fully dressed') && withReferenceRewrite === CLOTHED_REWRITE, 'an uploaded photo is always dressed');
+  await rewrite.rewriteRefusedAvatarPrompt('Anime illustration. A woman in black lingerie on a sofa, in soft evening light, with no text in the frame.', 1, false);
+  check(systemOf().includes('fully dressed'), 'without a stated age the rewrite dresses the person');
+  await rewrite.rewriteRefusedAvatarPrompt(ADULT_LINGERIE, 2, false);
+  check(systemOf().includes('plain cotton underwear'), 'the second rewrite gives verified adults a calmer underwear scene');
+  await rewrite.rewriteRefusedAvatarPrompt(ADULT_LINGERIE, 3, false);
+  check(systemOf().includes('leave out any closeness'), 'the last rewrite always dresses and removes closeness');
+  await rewrite.rewriteRefusedAvatarPrompt(`${ADULT_LINGERIE} Every person keeps their underwear on, and it covers the chest and hips. Every person shown is clearly an adult, with a mature face and adult proportions.`, 2, false);
+  check(!rewriteCalls.at(-1).body.messages[1].content.includes('keeps their underwear on'), 'a later rewrite does not inherit the code-owned sentences');
+  rewriteMode = 'nudity';
+  const beforeNudity = rewriteCalls.length;
+  const afterNudity = await rewrite.rewriteRefusedAvatarPrompt(ADULT_LINGERIE, 1, false);
+  check(rewriteCalls.length === beforeNudity + 2 && afterNudity === null, 'an answer describing nudity is rejected, then the clothed rule is tried');
+  rewriteMode = 'ok';
+
+  check(!logs.join('\n').includes(REWRITTEN_PROMPT), 'logs omit the rewritten prompt');
   check(!logs.join('\n').includes(marker) && !logs.join('\n').includes(testEnv.KIE_API_KEY) && !logs.join('\n').includes('weathered innkeeper'),
     'logs omit prompt, written scene, provider text and API key');
   console.log(`Kie avatar verification: ${checks} passed. No paid requests or production DB access.`);

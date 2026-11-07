@@ -72,6 +72,9 @@ export function serviceTransport(purpose: string, requestedModel: string, legacy
     character_generation: "Qwen/Qwen3-235B-A22B-Instruct-2507",
     // Fast and multilingual: reads Russian cards, writes the English image description.
     avatar_prompt: "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+    // 2026-11-07, refused prompts: Mistral kept beds and baths in half of its answers. DeepSeek V4.1 gave a usable
+    // answer on 23 of 23 and kept more of the place than Gemma, in 2-4 s.
+    avatar_prompt_rewrite: "deepseek-ai/DeepSeek-V4.1-Flash-1017",
   };
   if (!Object.hasOwn(choices, purpose)) throw new AiProviderConfigurationError();
   const serviceModel = purpose === "character_generation" && requestedModel === "mistralai/Mistral-Small-3.2-24B-Instruct-2506"

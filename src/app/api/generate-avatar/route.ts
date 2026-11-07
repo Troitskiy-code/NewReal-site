@@ -7,9 +7,9 @@ import { reserveAvatarGeneration, getAvatarTokenStatus, getAvatarUsageUser, Avat
 import { buildAvatarPrompt } from "@/lib/avatarPrompt";
 import { readAvatarCardSnapshot, writeAvatarPrompt } from "@/lib/avatarPromptWriter";
 import { isSafeAvatarReference } from "@/lib/avatarReference";
-import { KieError, hasKieKey, prepareKieReference, uploadKieReference, createKieAvatar } from "@/lib/kieAi";
+import { KieError, hasKieKey, prepareKieReference, uploadKieReference } from "@/lib/kieAi";
 import { kieAvatarModel, KIE_CREDIT_RUB } from "@/lib/kieAvatarModels";
-import { publicAvatarJob, finishAvatarJob, reconcileAvatarJob } from "@/lib/kieAvatarJobs";
+import { createAvatarTaskWithRewrites, publicAvatarJob, finishAvatarJob, reconcileAvatarJob, safetyRewriteCode } from "@/lib/kieAvatarJobs";
 import { withAiCostContext, setAiCostActor, recordKieAvatarCost } from "@/lib/aiCostTelemetry";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { readAvatarBody, AvatarBodyTooLarge } from "@/lib/avatarRequest";
@@ -74,12 +74,12 @@ export async function POST(req: NextRequest) {
         const referenceUrl = prepared ? await uploadKieReference(prepared) : undefined;
         stage = "create_task";
         attempted = true;
-        const taskId = await createKieAvatar(written.prompt, referenceUrl);
+        const { taskId, rewrites } = await createAvatarTaskWithRewrites(written.prompt, referenceUrl);
         // No prompt/reference/key: operators can recover a task after a DB write failure.
         infoLog("KieAvatar", "Task accepted", { taskId, jobId: job.id, model: model.id });
         stage = "save_task";
         job = await prisma.avatarGeneration.update({ where: { id: job.id }, data: {
-          providerTaskId: taskId, state: "pending", leaseUntil: null, nextPollAt: new Date(),
+          providerTaskId: taskId, state: "pending", errorCode: safetyRewriteCode(rewrites), leaseUntil: null, nextPollAt: new Date(),
         } });
         await recordKieAvatarCost(job);
       } else {

@@ -48,6 +48,18 @@
     "description": "Новая версия DeepSeek для диалогов. Режим без рассуждений проходит проверку."
   },
   {
+    "name": "deepinfra:deepseek-ai/DeepSeek-V4.1-Flash-1017",
+    "apiModel": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+    "displayName": "DeepSeek V4.1 Flash 1017",
+    "priceVC": 4,
+    "inputUsdPerMillion": 0.2,
+    "outputUsdPerMillion": 0.6,
+    "providerContextWindow": 1048576,
+    "testing": true,
+    "reasoning": true,
+    "description": "Служебная модель для переписывания промптов изображений, пользователям недоступна."
+  },
+  {
     "name": "deepinfra:meta-llama/Llama-3.3-70B-Instruct-Turbo",
     "apiModel": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
     "displayName": "Llama 3.3 70B Turbo",

@@ -10,6 +10,7 @@ export const DEEPINFRA_BASE_MODEL = "deepinfra:google/gemma-4-31B-it-turbo";
 // Hermes 3 405B produced no token in 60 s on two runs.
 // The rest failed the 2026-10-16 RU/EN review (docs/deepinfra-adult-roleplay-selection-2026-10-16.md):
 // weak Russian, 26-49 s replies or provider content-policy risk.
+// DeepSeek V4.1 Flash 1017 serves only the avatar prompt rewrite (see serviceTransport); it was not reviewed for chats.
 export const DISABLED_DEEPINFRA_MODEL_NAMES = [
   "deepinfra:deepseek-ai/DeepSeek-V3.2",
   "deepinfra:NousResearch/Hermes-3-Llama-3.1-405B",
@@ -19,6 +20,7 @@ export const DISABLED_DEEPINFRA_MODEL_NAMES = [
   "deepinfra:XiaomiMiMo/MiMo-V2.6-Flash",
   "deepinfra:google/gemini-2.5-flash",
   "deepinfra:NousResearch/Hermes-3-Llama-3.1-70B",
+  "deepinfra:deepseek-ai/DeepSeek-V4.1-Flash-1017",
 ];
 /** Models users may select and chat with when DeepInfra is the chat provider. */
 export const DEEPINFRA_AVAILABLE_MODEL_NAMES = DEEPINFRA_MODEL_NAMES.filter((name) => !DISABLED_DEEPINFRA_MODEL_NAMES.includes(name));

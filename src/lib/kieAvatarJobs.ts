@@ -1,10 +1,34 @@
 import { randomUUID } from "node:crypto";
 import type { AvatarGeneration } from "@prisma/client";
 import { prisma } from "./prisma";
-import { getKieAvatarTask, saveKieImage } from "./kieAi";
-import { recordKieAvatarCost } from "./aiCostTelemetry";
-import { errorLog, toSafeDiagnostic } from "./logger";
-import { uncertainBlockSecondsLeft, uncertainJobBlocks } from "./kieAvatarModels";
+import { createKieAvatar, getKieAvatarTask, KieError, saveKieImage, type KieRefusedInput } from "./kieAi";
+import { recordKieAvatarCost, setAiCostActor, withAiCostContext } from "./aiCostTelemetry";
+import { isAvatarSafetyRewriteEnabled, MAX_SAFETY_REWRITES, rewriteRefusedAvatarPrompt } from "./avatarPromptRewrite";
+import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
+import { kieAvatarModel, uncertainBlockSecondsLeft, uncertainJobBlocks } from "./kieAvatarModels";
+
+/** While a job is pending, errorCode counts its rewrites: no prompt is kept and no column is needed. */
+export function safetyRewriteCode(rewrites: number) {
+  return rewrites > 0 ? `safety_rewrite_${rewrites}` : null;
+}
+function safetyRewritesUsed(job: AvatarGeneration) {
+  return Number(/^safety_rewrite_(\d+)$/.exec(job.errorCode ?? "")?.[1] ?? 0);
+}
+
+/** A refused task costs nothing, so a moderation refusal at creation may be rewritten and sent again. */
+export async function createAvatarTaskWithRewrites(prompt: string, referenceUrl: string | undefined, used = 0) {
+  let current = prompt, rewrites = used;
+  for (;;) {
+    try {
+      return { taskId: await createKieAvatar(current, referenceUrl), rewrites };
+    } catch (error) {
+      if (!(error instanceof KieError && error.code === "safety") || !isAvatarSafetyRewriteEnabled() || rewrites >= MAX_SAFETY_REWRITES) throw error;
+      const next = await rewriteRefusedAvatarPrompt(current, ++rewrites, Boolean(referenceUrl));
+      if (!next) throw error;
+      current = next;
+    }
+  }
+}
 
 export function publicAvatarJob(job: AvatarGeneration) {
   return { jobId: job.id, clientKey: job.clientKey, scope: job.scope, state: job.state,
@@ -47,6 +71,34 @@ export async function finishAvatarJob(job: AvatarGeneration, state: "succeeded" 
   return result;
 }
 
+/** Replaces a filter-refused task with a rewritten one. Null keeps the refusal, which refunds the generation. */
+async function retryRefusedTask(job: AvatarGeneration, refused: KieRefusedInput | null, leaseToken: string) {
+  const used = safetyRewritesUsed(job);
+  if (!refused || !isAvatarSafetyRewriteEnabled() || used >= MAX_SAFETY_REWRITES) return null;
+  const { prompt, referenceUrl } = refused;
+  // A task from an earlier model has a different request shape; resending it would change the model.
+  if (job.model !== kieAvatarModel(Boolean(referenceUrl)).id) return null;
+  const rewritten = await withAiCostContext(() => {
+    setAiCostActor(job.userId);
+    return rewriteRefusedAvatarPrompt(prompt, used + 1, Boolean(referenceUrl));
+  });
+  if (!rewritten) return null;
+  let created: Awaited<ReturnType<typeof createAvatarTaskWithRewrites>>;
+  try {
+    created = await createAvatarTaskWithRewrites(rewritten, referenceUrl, used + 1);
+  } catch (error) {
+    if (error instanceof KieError && error.rejected) return null;
+    // A lost createTask response may hide a billed task. Never automatically re-submit.
+    return finishAvatarJob(job, "uncertain", { errorCode: "lost_create_response" }, leaseToken);
+  }
+  await prisma.avatarGeneration.updateMany({ where: { id: job.id, leaseToken, state: "pending" }, data: {
+    providerTaskId: created.taskId, errorCode: safetyRewriteCode(created.rewrites), credits: null, nextPollAt: new Date(Date.now() + 3_000),
+  } });
+  // No prompt: only which attempt replaced which job.
+  infoLog("KieAvatar", "Refused prompt rewritten", { jobId: job.id, taskId: created.taskId, rewrites: created.rewrites });
+  return prisma.avatarGeneration.findUnique({ where: { id: job.id } });
+}
+
 export async function reconcileAvatarJob(id: string) {
   const job = await prisma.avatarGeneration.findUnique({ where: { id } });
   if (!job) return null;
@@ -68,7 +120,11 @@ export async function reconcileAvatarJob(id: string) {
   try {
     const result = await getKieAvatarTask(job.providerTaskId);
     if (result.model !== job.model) throw new Error("Image task model mismatch");
-    if (result.state === "fail") return await finishAvatarJob(job, "failed", { errorCode: result.errorCode ?? "provider_error", credits: result.credits }, leaseToken);
+    if (result.state === "fail") {
+      const retried = await retryRefusedTask(job, result.refusedInput, leaseToken);
+      if (retried) return retried;
+      return await finishAvatarJob(job, "failed", { errorCode: result.errorCode ?? "provider_error", credits: result.credits }, leaseToken);
+    }
     if (result.state === "success" && result.imageUrl) {
       // Persist WebP in our bucket before consuming success; provider links expire.
       const imageUrl = await saveKieImage(result.imageUrl, job.userId, job.id);

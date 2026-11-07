@@ -100,7 +100,20 @@ export async function createKieAvatar(prompt: string, referenceUrl?: string) {
   if (!isKieTaskId(taskId)) throw new KieError("missing_task_id", false, 200);
   return taskId;
 }
-export type KieTask = { taskId: string; model: string; state: string; imageUrl: string | null; credits: number | null; errorCode: string | null };
+export type KieRefusedInput = { prompt: string; referenceUrl?: string };
+export type KieTask = { taskId: string; model: string; state: string; imageUrl: string | null; credits: number | null; errorCode: string | null;
+  /** The request of a task the content filter refused. Prompts are not stored on our side, Kie's record keeps them. */
+  refusedInput: KieRefusedInput | null };
+function refusedTaskInput(param: unknown): KieRefusedInput | null {
+  try {
+    const outer = record(typeof param === "string" ? JSON.parse(param) : param);
+    const input = record(typeof outer.input === "string" ? JSON.parse(outer.input) : outer.input);
+    if (typeof input.prompt !== "string" || !input.prompt) return null;
+    const referenceUrl = Array.isArray(input.image_urls) ? input.image_urls[0] : undefined;
+    if (referenceUrl === undefined) return { prompt: input.prompt };
+    return typeof referenceUrl === "string" && isKieImageUrl(referenceUrl) ? { prompt: input.prompt, referenceUrl } : null;
+  } catch { return null; }
+}
 export async function getKieAvatarTask(taskId: string): Promise<KieTask> {
   if (!isKieTaskId(taskId)) throw new KieError("invalid_task");
   const body = await request(`${API}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`);
@@ -115,8 +128,9 @@ export async function getKieAvatarTask(taskId: string): Promise<KieTask> {
     } catch { /* keep successful paid task retryable until an image can be saved */ }
   }
   const credits = typeof data.creditsConsumed === "number" && Number.isFinite(data.creditsConsumed) && data.creditsConsumed >= 0 ? data.creditsConsumed : null;
-  return { taskId, model: data.model, state: String(data.state), imageUrl, credits,
-    errorCode: data.state === "fail" ? failureCode({ msg: data.failMsg }, Number(data.failCode)) : null };
+  const errorCode = data.state === "fail" ? failureCode({ msg: data.failMsg }, Number(data.failCode)) : null;
+  return { taskId, model: data.model, state: String(data.state), imageUrl, credits, errorCode,
+    refusedInput: errorCode === "safety" ? refusedTaskInput(data.param) : null };
 }
 // Only provider-owned image hosts; no credentials, arbitrary URLs, redirects or private IP fetches.
 export function isKieImageUrl(value: string) {
