@@ -89,7 +89,7 @@ function load(file) {
       },
       getKieAvatarTask: async id => {
         if (!imageTasks.has(id)) throw new Error('unknown fixture task');
-        return { model: 'seedream/5-flash-text-to-image', state: 'success', credits: 3.24, imageUrl: 'https://tempfile.aiquickdraw.com/fixture.png' };
+        return { model: 'seedream/5-lite-text-to-image', state: 'success', credits: 5.5, imageUrl: 'https://tempfile.aiquickdraw.com/fixture.png' };
       },
       saveKieImage: async (_url, owner, id) => { saves++; return `/api/character-media/${owner}/${id.replaceAll('-', '').slice(0, 32)}`; },
     };

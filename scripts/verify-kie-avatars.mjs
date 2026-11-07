@@ -147,7 +147,7 @@ try {
   const request = bodyFor({ modelId: 'malicious/expensive', resolution: '4K', num_images: 9 });
   const initial = await handler.POST(post(request)); const initialBody = await initial.json();
   check(initial.status === 202 && initialBody.state === 'pending' && initialBody.tokenStatus.monthlyRemaining === 8, 'one quota unit reserved for asynchronous task');
-  check(requests[0].model === 'seedream/5-flash-text-to-image' && requests[0].input.size === '1K'
+  check(requests[0].model === 'seedream/5-lite-text-to-image' && requests[0].input.quality === 'basic'
     && !('num_images' in requests[0].input), 'text routing ignores client model/resolution/count');
   check(requests[0].callBackUrl === 'https://example.test/api/webhook/kie', 'callback URL comes from server configuration');
   const finished = await handler.GET(get({ jobId: initialBody.jobId })); const completed = await finished.json();
@@ -170,8 +170,8 @@ try {
   userId = user.id;
   const refStart = await handler.POST(post(bodyFor({ referenceImage: reference })));
   const refBody = await refStart.json();
-  check(uploads === 1 && requests.at(-1).model === 'nano-banana-2-1' && requests.at(-1).input.resolution === '1K'
-    && requests.at(-1).input.image_input.length === 1, 'reference is uploaded and automatically routed to Nano Banana 2.1');
+  check(uploads === 1 && requests.at(-1).model === 'seedream/5-lite-image-to-image' && requests.at(-1).input.quality === 'basic'
+    && requests.at(-1).input.image_urls.length === 1, 'reference is uploaded and automatically routed to Seedream 5.0 Lite');
   downloadFails = true;
   check((await (await handler.GET(get({ jobId: refBody.jobId }))).json()).state === 'pending', 'image download failure keeps paid task for retry');
   check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 2, 'download failure does not refund successful billed generation');
@@ -240,7 +240,7 @@ try {
   createMode = 'ok';
   const tokens = load('src/lib/avatarTokens.ts');
   const staleReservation = await tokens.reserveAvatarGeneration(user.id, { clientKey: randomUUID(), scope: 'create:character',
-    payloadHash: 'fixture', model: 'seedream/5-flash-text-to-image', estimatedCredits: 3.24, creditRub: 0.5 });
+    payloadHash: 'fixture', model: 'seedream/5-lite-text-to-image', estimatedCredits: 5.5, creditRub: 0.5 });
   await db.avatarGeneration.update({ where: { id: staleReservation.generation.id }, data: { leaseUntil: new Date(0) } });
   check((await jobs.reconcileAvatarJob(staleReservation.generation.id)).state === 'uncertain', 'process crash during creation becomes review, never a new paid submission');
   await jobs.finishAvatarJob(await db.avatarGeneration.findUnique({ where: { id: staleReservation.generation.id } }),'failed');
