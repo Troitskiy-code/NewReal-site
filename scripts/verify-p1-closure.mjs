@@ -118,12 +118,15 @@ export async function verifyP1Closure({ db, load, check, cache, databaseUrl, sch
   check(await db.transaction.count() === beforeRetired.transactions && await db.paymentEvent.count() === beforeRetired.events,
     'retired direct purchase creates no transaction or payment confirmation');
   function signed(invId, shp, extra = {}, password = process.env.ROBOKASSA_PASSWORD2) {
-    const fields = { OutSum: '129.00', InvId: invId, ...shp, ...extra };
+    const fields = { OutSum: '300.00', InvId: invId, ...shp, ...extra };
     const suffix = Object.keys(fields).filter(k => /^shp_/i.test(k)).sort().map(k => `${k}=${fields[k]}`).join(':');
     fields.SignatureValue = createHash('md5').update(`${fields.OutSum}:${fields.InvId}:${password}:${suffix}`).digest('hex');
     return fields;
   }
-  const vc = { Shp_userId: customer.id, Shp_vc: '100' };
+  const vc = { Shp_userId: customer.id, Shp_type: 'vc', Shp_packageId: '1', Shp_vc: '1000' };
+  await db.paymentOrder.createMany({ data: ['9001', '9002', '9003', '9030', '9031'].map(invoiceId => ({
+    provider: 'robokassa', invoiceId, userId: customer.id, kind: 'purchase', packageId: 1, amountRub: 300,
+  })) });
   async function http(fields, mode = 'form') {
     const base = 'http://localhost/api/payment/webhook';
     const req = mode === 'get' ? new NextRequest(base + '?' + new URLSearchParams(fields))
@@ -135,28 +138,45 @@ export async function verifyP1Closure({ db, load, check, cache, databaseUrl, sch
   check((await http(signed('9001', vc, {}, process.env.ROBOKASSA_PASSWORD))).status === 403, 'HTTP webhook rejects checkout password');
   const withoutShp = signed('9001', {}); withoutShp.Shp_userId = customer.id; withoutShp.Shp_vc = '100';
   check((await http(withoutShp)).status === 403, 'HTTP webhook rejects unsigned Shp fields');
+  check((await http(signed('8999', vc))).status === 409, 'signed but unregistered invoice cannot grant VC');
+  check((await http(signed('9001', vc, { OutSum: '1.00' }))).status === 409, 'signed underpayment cannot grant VC');
+  check((await http(signed('9001', vc, { IsTest: '1' }))).status === 403, 'test notification cannot grant live VC');
   const replies = await Promise.all([http(signed('9001', vc)), http(signed('9001', vc), 'json'), http(signed('9001', vc), 'get')]);
   check(replies.every(r => r.status === 200), 'form/json/GET concurrent signed webhooks acknowledge replay');
-  check((await db.user.findUniqueOrThrow({ where: { id: customer.id } })).permanentCoins === 120
+  check((await db.user.findUniqueOrThrow({ where: { id: customer.id } })).permanentCoins === 1020
     && await db.paymentEvent.count({ where: { invoiceId: '9001' } }) === 1
     && await db.notification.count({ where: { userId: customer.id } }) === 1, 'three deliveries produce one grant/event/notification');
   const simultaneous = await Promise.all([http(signed('9002', vc)), http(signed('9003', vc))]);
-  check(simultaneous.every(r => r.status === 200) && (await db.user.findUniqueOrThrow({ where: { id: customer.id } })).permanentCoins === 320, 'different concurrent invoices preserve both VC grants');
+  check(simultaneous.every(r => r.status === 200) && (await db.user.findUniqueOrThrow({ where: { id: customer.id } })).permanentCoins === 3020, 'different concurrent invoices preserve both VC grants');
   const other = await db.user.create({ data: { email: 'other@example.test' } });
   check((await http(signed('9001', { ...vc, Shp_userId: other.id }))).status === 409, 'existing invoice cannot move to another account');
-  const sub = { Shp_userId: customer.id, Shp_subscription: 'true', Shp_plan: 'dialog', Shp_period: 'month' };
-  check((await http(signed('9010', sub))).status === 200, 'real signed handler activates subscription');
+  const sub = { Shp_userId: customer.id, Shp_subscription: 'true', Shp_plan: 'dialog', Shp_period: 'month', Shp_applyMode: 'immediate' };
+  const subOrder = { provider: 'robokassa', userId: customer.id, kind: 'subscription', period: 'month' };
+  await db.paymentOrder.create({ data: { ...subOrder, invoiceId: '9010', planId: 'dialog', amountRub: 499 } });
+  const retiredChange = load('src/app/api/subscription/change/route.ts');
+  for (const applyMode of ['immediate', 'afterExpiry']) {
+    check((await retiredChange.POST(new NextRequest('http://localhost/api/subscription/change', {method:'POST',
+      body:JSON.stringify({planId:'universe',applyMode,period:'year'})}))).status === 410, 'direct plan change is disabled');
+  }
+  check((await http(signed('9010', sub, {OutSum:'1.00'}))).status === 409, 'signed subscription underpayment rejected');
+  check((await http(signed('9010', {...sub, Shp_plan:'universe'}, {OutSum:'499.00'}))).status === 409, 'signed wrong plan rejected');
+  check((await http(signed('9010', {...sub, Shp_period:'year'}, {OutSum:'499.00'}))).status === 409, 'signed wrong period rejected');
+  check((await http(signed('9010', sub, {OutSum:'499.00', RecurringID:'987'}))).status === 200, 'real signed order activates subscription');
   const active = await db.user.findUniqueOrThrow({ where: { id: customer.id } });
-  check(active.subscriptionType === 'dialog' && active.permanentCoins === 320 && active.subscriptionEnd > new Date(), 'subscription keeps permanent VC and sets expiry');
-  check((await http(signed('9011', sub, { RecurringID: '9010' }))).status === 200, 'real handler accepts signed recurring renewal');
-  const renewed = await db.user.findUniqueOrThrow({ where: { id: customer.id } });
-  check(renewed.subscriptionEnd.getTime() - active.subscriptionEnd.getTime() === 30 * 86400000, 'renewal extends subscription by thirty days');
+  check(active.subscriptionType === 'dialog' && active.permanentCoins === 3020 && active.subscriptionEnd > new Date()
+    && active.robokassaRecurringId === '9010', 'subscription preserves permanent VC and trusts the paid invoice for recurring ID');
+  await db.user.update({where:{id:customer.id},data:{robokassaRecurringId:null}});
+  check((await http(signed('9010', sub, {OutSum:'499.00', RecurringID:'987'}))).status === 200
+    && (await db.user.findUniqueOrThrow({where:{id:customer.id}})).robokassaRecurringId === null,
+    'duplicate parent callback does not restore a cancelled agreement');
   const pending = { ...sub, Shp_plan: 'universe', Shp_applyMode: 'afterExpiry' };
-  check((await http(signed('9012', pending))).status === 200, 'after-expiry purchase is recorded');
+  await db.paymentOrder.create({ data: { ...subOrder, invoiceId: '9012', planId: 'universe', amountRub: 3499 } });
+  check((await http(signed('9012', pending, {OutSum:'3499.00'}))).status === 200, 'after-expiry purchase is recorded');
   const queued = await db.user.findUniqueOrThrow({ where: { id: customer.id } });
-  check(queued.subscriptionType === 'dialog' && queued.pendingSubscriptionType === 'universe' && queued.verseCoins === renewed.verseCoins, 'pending upgrade neither overwrites active plan nor grants early VC');
-  const events = await db.paymentEvent.findMany({ where: { invoiceId: { in: ['9010', '9011', '9012'] } } });
-  check(events.every(e => e.planId && e.amountRub === 129) && new Set(events.map(e => e.kind)).size === 3, 'activation/renewal/pending retain server analytics metadata');
+  check(queued.subscriptionType === 'dialog' && queued.pendingSubscriptionType === 'universe' && queued.verseCoins === active.verseCoins, 'pending upgrade neither overwrites active plan nor grants early VC');
+  const events = await db.paymentEvent.findMany({ where: { invoiceId: { in: ['9010', '9012'] } } });
+  check(events.length === 2 && events.every(e => e.planId && e.amountRub > 0)
+    && new Set(events.map(e => e.kind)).size === 2, 'activation and pending retain server analytics metadata');
   const fault = new Client({ connectionString: databaseUrl }); await fault.connect();
   try {
     const balanceBefore = (await db.user.findUniqueOrThrow({ where: { id: customer.id } })).verseCoins;
@@ -179,7 +199,17 @@ export async function verifyP1Closure({ db, load, check, cache, databaseUrl, sch
   check(switching.filter(r => r === true).length === 1 && switching[1].status === 200,
     'concurrent pending activation runs once alongside a signed VC purchase');
   check(switched.subscriptionType === 'universe' && switched.pendingSubscriptionType === null
-    && switched.permanentCoins === permanentBefore + 100, 'pending activation preserves concurrently purchased permanent VC');
+    && switched.permanentCoins === permanentBefore + 1000, 'pending activation preserves concurrently purchased permanent VC');
+
+  const unbacked = await db.user.update({where:{id:other.id},data:{
+    subscriptionType:'dialog',subscriptionEnd:new Date(Date.now()-1000),
+    pendingSubscriptionType:'universe',pendingSubscriptionEnd:new Date(Date.now()+30*86400000),
+    permanentCoins:30,verseCoins:30,
+  }});
+  await activation.activatePendingSubscriptionIfNeeded(unbacked);
+  const cleared = await db.user.findUniqueOrThrow({where:{id:other.id}});
+  check(cleared.subscriptionType === 'dialog' && cleared.pendingSubscriptionType === null && cleared.verseCoins === 30,
+    'legacy deferred plan without provider confirmation is cleared without an entitlement');
 
   process.env.NEXTAUTH_SECRET = 'synthetic_auth_callback_only';
   const auth = load('src/lib/auth.ts', { 'next/headers': { cookies: async () => ({ get: () => undefined }) } });

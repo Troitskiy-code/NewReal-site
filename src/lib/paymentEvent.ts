@@ -37,7 +37,7 @@ export async function backfillPaymentEventsFromTransactions(): Promise<{ inserte
   let inserted = 0;
   let skipped = 0;
   for (const row of rows) {
-    const invoiceId = row.description.slice("Robokassa InvId=".length).trim();
+    const invoiceId = /^Robokassa InvId=(\d{1,20})(?:\s|$)/.exec(row.description)?.[1];
     if (!invoiceId) {
       skipped += 1;
       continue;
@@ -66,10 +66,9 @@ export async function backfillPaymentEventsFromTransactions(): Promise<{ inserte
 }
 
 export function parseConfirmedAmountRub(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const n = Number(String(raw).replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0 || n > 10_000_000) return null;
-  return Math.round(n);
+  if (!raw || !/^\d+(?:[.,]0{1,6})?$/.test(raw)) return null;
+  const amount = Number(raw.replace(",", "."));
+  return Number.isSafeInteger(amount) && amount > 0 && amount <= 10_000_000 ? amount : null;
 }
 
 export function paymentEventCreateData(

@@ -11,8 +11,7 @@ import { redirectToRobokassa } from "@/lib/robokassaRedirect";
 import { PurchaseStatusBanner } from "@/components/PurchaseStatusBanner";
 import { metrikaPlanSlug } from "@/lib/metrika";
 import { getCheckoutAttribution } from "@/lib/checkoutAttributionClient";
-import { showError, showSuccess } from "@/lib/toast";
-import ConfirmModal from "@/components/ConfirmModal";
+import { showError } from "@/lib/toast";
 import { FaCheck, FaCrown, FaGlobe, FaRocket, FaStar } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { dateLocale, stripLocalePrefix, withLocale } from "@/lib/i18nConfig";
@@ -77,8 +76,6 @@ export default function SubscriptionPlans({
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [applyMode, setApplyMode] = useState("immediate");
   const [recurringConsent, setRecurringConsent] = useState(false);
-  const [cancellingPending, setCancellingPending] = useState(false);
-  const [confirmCancelPending, setConfirmCancelPending] = useState(false);
   const [pricedModels, setPricedModels] = useState<PricedModel[]>([]);
   const [freeQuotaModelName, setFreeQuotaModelName] = useState<string | null>(null);
 
@@ -188,24 +185,6 @@ export default function SubscriptionPlans({
     await startCheckout(selectedPlan, mode);
   };
 
-  const handleCancelPending = async () => {
-    setCancellingPending(true);
-    try {
-      const res = await fetch("/api/subscription/pending/cancel", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || t("pricing.cancelPendingError"));
-      }
-      setBalance((prev) => (prev ? { ...prev, ...data } : data));
-      setConfirmCancelPending(false);
-      showSuccess(t("pricing.cancelPendingSuccess"));
-    } catch (error) {
-      showError(error instanceof Error ? error.message : t("pricing.cancelPendingError"));
-    } finally {
-      setCancellingPending(false);
-    }
-  };
-
   return (
     <>
       {showHero ? (
@@ -253,14 +232,6 @@ export default function SubscriptionPlans({
                   date: formatDate(balance.subscriptionEnd, i18n.language),
                 })}
               </p>
-              <button
-                type="button"
-                onClick={() => setConfirmCancelPending(true)}
-                disabled={cancellingPending}
-                className="shrink-0 rounded-wd-pill border border-wd-border px-4 py-2 text-xs font-bold text-white transition-colors hover:border-wd-primary disabled:opacity-50"
-              >
-                {cancellingPending ? t("pricing.cancelling") : t("pricing.cancelPending")}
-              </button>
             </div>
           ) : null}
           {balance?.recurringSetupRequired ? (
@@ -513,17 +484,6 @@ export default function SubscriptionPlans({
         </div>
       ) : null}
 
-      <ConfirmModal
-        open={confirmCancelPending}
-        title={t("pricing.cancelPendingConfirmTitle")}
-        description={t("pricing.cancelPendingConfirm")}
-        confirmLabel={t("pricing.cancelPending")}
-        cancelLabel={t("common.cancel")}
-        danger
-        loading={cancellingPending}
-        onConfirm={() => void handleCancelPending()}
-        onClose={() => setConfirmCancelPending(false)}
-      />
     </>
   );
 }

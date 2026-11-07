@@ -23,6 +23,7 @@ function modules(overrides = {}) {
       if (name === 'next/server') return { NextRequest, NextResponse };
       if (name === '@/lib/logger' || name === './logger') return quietLogger;
       if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
+      if (name.endsWith('.json')) return JSON.parse(readFileSync(resolve(dirname(file), name), 'utf8'));
       if (name.startsWith('.')) return load(resolve(dirname(file), `${name}.ts`));
       return require(name);
     }, mod, mod.exports);
@@ -100,6 +101,7 @@ try {
     'next-auth/next': { getServerSession: async () => session }, '@/lib/auth': { authOptions: {} },
     '@/lib/emailVerification': { rejectUnverifiedEmail: async () => unverified },
     '@/lib/getRequestLocale': { getRequestLocale: async () => 'ru' },
+    '@/lib/subscriptionState': { applyPendingSubscriptionIfDue: async () => ({ pendingSubscriptionType: null }) },
     '@/lib/safeDiagnostics': { reportPaymentFailure() {} }, '@/lib/prisma': { prisma: {} },
     '@/lib/firstVcPurchase': { reserveFirstVcCheckout: async () => null },
     '@/lib/paymentOrders': { registerPaymentOrder: async input => {
@@ -138,61 +140,5 @@ try {
   }
   pass('failed order persistence never returns a payable form');
 
-  if (process.argv.includes('--audit')) {
-    // These are confirmations of OPEN findings, deliberately separate from regression passes.
-    const user = { id: 'synthetic_user', email: null, emailVerified: new Date(), subscriptionType: 'dialog',
-      subscriptionEnd: new Date(Date.now() + 3600000), robokassaRecurringId: '123',
-      pendingSubscriptionType: null, verseCoins: 0, permanentCoins: 0, isSubscribed: true };
-    const events = new Map(), transactions = [];
-    const db = {
-      user: { findUnique: async () => user, update: async ({ data }) => Object.assign(user, data) },
-      transaction: { findFirst: async () => null, create: async ({ data }) => { transactions.push(data); return data; } },
-      paymentEvent: { findUnique: async ({ where }) => events.get(where.provider_invoiceId.invoiceId) ?? null,
-        create: async ({ data }) => { events.set(data.invoiceId, data); return data; } },
-      firstVcPurchase: { findUnique: async () => null }, notification: { create: async () => ({}) },
-      $queryRaw: async () => [{ id: user.id }], $transaction: async fn => fn(db),
-    };
-    const auditLoad = modules({ '@/lib/prisma': { prisma: db } });
-    globalThis.fetch = async () => new Response('ERROR: synthetic declined operation', { status: 200 });
-    const before = user.subscriptionEnd.getTime();
-    const renewed = await auditLoad('src/lib/subscriptionRenewal.ts').renewSubscriptionIfDue(user.id);
-    assert.equal(renewed.renewed, true); assert.ok(user.subscriptionEnd.getTime() > before);
-    originalLog('OPEN P1: HTTP 200 error body grants a renewal without payment confirmation');
-    const webhook = auditLoad('src/app/api/payment/webhook/route.ts');
-    const sign = payload => {
-      const suffix = Object.entries(payload).filter(([k]) => k.startsWith('Shp_')).sort(([a], [b]) => a < b ? -1 : 1)
-        .map(([k, v]) => `:${k}=${v}`).join('');
-      return { ...payload, SignatureValue: crypto.createHash('md5')
-        .update(`${payload.OutSum}:${payload.InvId}:synthetic_password2${suffix}`).digest('hex') };
-    };
-    const paid = { OutSum: '499.00', InvId: '456', Shp_userId: user.id, Shp_subscription: 'true',
-      Shp_plan: 'dialog', Shp_period: 'month', Shp_applyMode: 'immediate' };
-    user.robokassaRecurringId = null;
-    events.set('456', { id: 'existing', userId: user.id, kind: 'subscription' });
-    const replayed = await webhook.POST(request('/api/payment/webhook', { ...sign(paid), RecurringID: '987' }));
-    assert.equal(replayed.status, 200); assert.equal(user.robokassaRecurringId, '987');
-    originalLog('OPEN P1: replayed signed webhook restores cancelled recurring ID from unsigned RecurringID');
-    const priorEnd = user.subscriptionEnd.getTime(), beforeTransactions = transactions.length;
-    const child = sign({ ...paid, InvId: renewed.invId });
-    assert.equal((await webhook.POST(request('/api/payment/webhook', child))).status, 200);
-    assert.ok(user.subscriptionEnd.getTime() > priorEnd);
-    assert.ok(transactions.length > beforeTransactions);
-    originalLog('OPEN P1: recurring request and its callback grant the same renewal twice');
-    const oldPackage = sign({ OutSum: '250.00', InvId: '789', Shp_userId: user.id,
-      Shp_type: 'vc', Shp_packageId: '1', Shp_vc: '1000' });
-    assert.equal((await webhook.POST(request('/api/payment/webhook', oldPackage))).status, 400);
-    originalLog('OPEN P2: a correctly signed prior-price VC payment is rejected against the current catalog');
-    let creditsGranted = 0;
-    const billing = modules({
-      '../stripe': { stripe: { webhooks: { constructEvent: () => ({ type: 'checkout.session.completed',
-        data: { object: { id: 'cs_synthetic', payment_status: 'paid', metadata: { userId: user.id, credits: '100' } } } }) } } },
-      '../config': { default: { stripe: { webhookSecret: 'synthetic' } }, __esModule: true },
-      './user': { UserService: { addCredits: async (_id, amount) => { creditsGranted += amount; } } },
-    })('src/lib/services/billing.js');
-    await billing.BillingService.handleWebhook('synthetic', 'synthetic');
-    await billing.BillingService.handleWebhook('synthetic', 'synthetic');
-    assert.equal(creditsGranted, 200);
-    originalLog('OPEN P2: duplicate Stripe callback grants credits twice (legacy route, no local Stripe credentials)');
-  }
   originalLog(`Payment creation: ${checks} groups passed; no real database or provider used.`);
 } finally { globalThis.fetch = originalFetch; console.log = originalLog; }

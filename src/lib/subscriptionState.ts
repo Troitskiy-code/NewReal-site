@@ -24,7 +24,7 @@ export function subscriptionPeriodDays(period: "month" | "year"): number {
   return period === "year" ? 365 : 30;
 }
 
-const SUBSCRIPTION_SELECT = {
+export const SUBSCRIPTION_SELECT = {
   id: true,
   subscriptionType: true,
   subscriptionEnd: true,

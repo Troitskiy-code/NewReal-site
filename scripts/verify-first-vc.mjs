@@ -48,7 +48,7 @@ export async function verifyFirstVc({ db, load, check, webhook }) {
     return fields;
   };
   const deliver = fields => webhook.POST(new NextRequest('http://localhost/api/payment/webhook', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(fields) }));
-  check((await deliver(signed({ OutSum: '128.99' }))).status === 409, 'first pack requires exact 129 RUB even with a valid signature');
+  check((await deliver(signed({ OutSum: '128.99' }))).status === 400, 'first pack requires exact 129 RUB even with a valid signature');
   check((await deliver(signed({ Shp_vc: '1000' }))).status === 409, 'first pack rejects a signed amount outside reserved catalog VC');
   check((await deliver(signed({ InvId: '99999111' }))).status === 409, 'first pack webhook requires the reserved invoice');
   await db.$executeRawUnsafe("CREATE FUNCTION first_pack_notification_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic first pack notification failure'; END $$");

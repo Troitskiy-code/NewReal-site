@@ -1,14 +1,15 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getSubscriptionActivationBenefits, getSubscriptionPlan } from "@/lib/chatEconomy";
-import { buildReceipt, chargeRobokassaRecurring, fetchRobokassaInvoiceState } from "@/lib/robokassa";
-import { applySubscriptionCoinGrant, getExpiringCoins } from "@/lib/verseCoins";
-import { paymentEventCreateData, PAYMENT_PROVIDER } from "@/lib/paymentEvent";
-import { errorLog, infoLog } from "@/lib/logger";
+import { getSubscriptionActivationBenefits, getSubscriptionPlan, SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
+import { buildReceipt, chargeRobokassaRecurring, createRobokassaInvoiceId, fetchRobokassaInvoiceState, ROBOKASSA_TEST_MODE } from "@/lib/robokassa";
+import { applySubscriptionCoinGrant } from "@/lib/verseCoins";
+import { paymentEventCreateData, parseConfirmedAmountRub, PAYMENT_PROVIDER } from "@/lib/paymentEvent";
+import { errorLog } from "@/lib/logger";
 
 export type RenewFailureReason =
   | "user_not_found"
   | "no_recurring_id"
+  | "no_confirmed_agreement"
   | "no_subscription_end"
   | "pending_plan_change"
   | "free_plan"
@@ -40,287 +41,240 @@ function addDays(date: Date, days: number): Date {
 
 const INITIATED_TYPE = "subscription_renewal_initiated";
 const DECLINED_TYPE = "subscription_renewal_declined";
-const INITIATED_TTL_MS = 24 * 60 * 60 * 1000;
-// ResultURL normally arrives within seconds; only then ask Robokassa directly.
+const RETRY_DELAY_MS = 24 * 60 * 60 * 1000;
 const CONFIRMATION_GRACE_MS = 10 * 60 * 1000;
-// An operation still "initialised" (State 5) a day later was never paid.
-const ABANDONED_AFTER_MS = 24 * 60 * 60 * 1000;
-const RECONCILE_WINDOW_MS = 4 * 24 * 60 * 60 * 1000;
+const RECONCILE_WINDOW_MS = 4 * RETRY_DELAY_MS;
 const PAID_STATE = 100;
 const DECLINED_STATES = new Set([10, 60]);
-
-const grantMarker = (invId: string) => `Robokassa InvId=${invId}`;
-const initiatedMarker = (charge: Omit<PendingCharge, "createdAt">) =>
-  `Robokassa recurring initiated InvId=${charge.invId} plan=${charge.planId} period=${charge.period} amount=${charge.amountRub}`;
 const INITIATED_RE = /^Robokassa recurring initiated InvId=(\d{1,20}) plan=([a-z]+) period=(month|year) amount=(\d+(?:\.\d+)?)$/;
-
-function inferPeriod(subscriptionEnd: Date, lastPaidAt: Date | null): Period {
-  if (!lastPaidAt) {
-    return "month";
-  }
-
-  const days = Math.round((subscriptionEnd.getTime() - lastPaidAt.getTime()) / 86_400_000);
-  return days > 180 ? "year" : "month";
-}
+const grantMarker = (invId: string) => "Robokassa InvId=" + invId;
+const initiatedPrefix = "Robokassa recurring initiated InvId=";
 
 function isDue(subscriptionEnd: Date, now: Date): boolean {
-  const windowStart = addDays(now, -2);
-  const windowEnd = addDays(now, 1);
-  return subscriptionEnd >= windowStart && subscriptionEnd <= windowEnd;
+  return subscriptionEnd >= addDays(now, -2) && subscriptionEnd <= addDays(now, 1);
 }
 
-function formatSubscriptionEnd(date: Date): string {
-  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+function parsePendingCharge(row: { description: string | null; createdAt: Date } | null): PendingCharge | null {
+  const match = row?.description && INITIATED_RE.exec(row.description);
+  if (!row || !match) return null;
+  const amountRub = parseConfirmedAmountRub(match[4]);
+  if (amountRub === null) return null;
+  return { invId: match[1], planId: match[2], period: match[3] as Period, amountRub, createdAt: row.createdAt };
 }
 
-/**
- * The only place a paid renewal period is granted: ResultURL and the OpStateExt reconciliation both
- * call it, so a confirmed invoice extends the subscription exactly once whichever arrives first.
- * Before 2026-10-21 the cron granted the period when it merely sent the charge, which also gave a
- * period for charges that later failed, and the webhook granted it again (+60 days).
- */
-export async function grantConfirmedRenewal(tx: Prisma.TransactionClient, params: {
-  userId: string; invId: string; planId: string; period: Period; amountRub: number | null;
-  /** Series id to store; omit to keep the user's current RecurringID. */
-  recurringId?: string | null; now: Date;
-  /** When the charge was sent. A late confirmation extends from then, so a lapse while waiting costs no paid days. */
-  chargedAt?: Date;
-}): Promise<{ granted: boolean; subscriptionEnd: Date | null }> {
-  await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${params.userId} FOR UPDATE`;
-  const confirmed = await tx.paymentEvent.findUnique({
-    where: { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: params.invId } }, select: { userId: true } });
-  if (confirmed) return { granted: false, subscriptionEnd: null };
-  const plan = getSubscriptionPlan(params.planId);
-  const event = paymentEventCreateData(params.invId, params.userId, "subscription_renewal", {
-    planId: plan.monthlyPrice > 0 ? plan.id : null, amountRub: params.amountRub });
-  // A charge sent by the pre-2026-10-21 cron was already granted then; only record its confirmation.
+export async function findRenewalCharge(tx: Prisma.TransactionClient, userId: string, invoiceId: string) {
+  const row = await tx.transaction.findFirst({
+    where: { userId, type: INITIATED_TYPE, description: { startsWith: initiatedPrefix + invoiceId + " " } },
+    select: { description: true, createdAt: true },
+  });
+  return parsePendingCharge(row);
+}
+
+/** The caller has verified the provider response and holds the account lock. */
+export async function grantConfirmedRenewal(tx: Prisma.TransactionClient, userId: string, charge: PendingCharge, now: Date) {
+  const existing = await tx.paymentEvent.findUnique({
+    where: { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: charge.invId } },
+    select: { userId: true },
+  });
+  if (existing) {
+    if (existing.userId !== userId) throw new Error("Renewal invoice owner conflict");
+    return;
+  }
+
+  const plan = SUBSCRIPTION_PLANS.find(item => item.id === charge.planId && item.monthlyPrice > 0);
+  const user = await tx.user.findUnique({ where: { id: userId },
+    select: { subscriptionEnd: true, subscriptionType: true, pendingSubscriptionType: true,
+      verseCoins: true, permanentCoins: true } });
+  if (!plan || !user) throw new Error("Unknown renewal plan or account");
+
+  const event = paymentEventCreateData(charge.invId, userId, "subscription_renewal", {
+    planId: plan.id, amountRub: charge.amountRub,
+  });
   const legacyGrant = await tx.transaction.findFirst({
-    where: { userId: params.userId, description: grantMarker(params.invId), type: "subscription_renewal" }, select: { id: true } });
+    where: { userId, description: grantMarker(charge.invId), type: "subscription_renewal" }, select: { id: true },
+  });
   if (legacyGrant) {
     await tx.paymentEvent.create({ data: event });
-    return { granted: false, subscriptionEnd: null };
+    return;
   }
-  const user = await tx.user.findUnique({ where: { id: params.userId },
-    select: { subscriptionEnd: true, verseCoins: true, permanentCoins: true } });
-  if (!user) throw new Error("user_not_found");
-  const reference = params.chargedAt ?? params.now;
-  const baseDate = user.subscriptionEnd && user.subscriptionEnd > reference ? user.subscriptionEnd : reference;
-  const subscriptionEnd = addDays(baseDate, params.period === "year" ? 365 : 30);
-  const benefits = getSubscriptionActivationBenefits(plan, params.now);
-  const coinData = applySubscriptionCoinGrant(
-    { id: params.userId, verseCoins: user.verseCoins, permanentCoins: user.permanentCoins }, benefits.vcGrant);
+
+  // A delayed confirmation must never replace another paid tariff.
+  if (user.pendingSubscriptionType || (user.subscriptionEnd && user.subscriptionEnd > now
+      && getSubscriptionPlan(user.subscriptionType).id !== plan.id)) {
+    throw new Error("Paid renewal conflicts with a plan change");
+  }
+
+  const baseDate = user.subscriptionEnd && user.subscriptionEnd > charge.createdAt ? user.subscriptionEnd : charge.createdAt;
+  const subscriptionEnd = addDays(baseDate, charge.period === "year" ? 365 : 30);
+  const benefits = getSubscriptionActivationBenefits(plan, now);
+  const coinData = applySubscriptionCoinGrant({ id: userId, ...user }, benefits.vcGrant);
   await tx.paymentEvent.create({ data: event });
-  await tx.user.update({ where: { id: params.userId }, data: {
-    subscriptionType: plan.id, subscriptionEnd, isSubscribed: true,
-    ...(params.recurringId ? { robokassaRecurringId: params.recurringId } : {}),
-    ...benefits.user, ...coinData,
+  await tx.user.update({ where: { id: userId }, data: {
+    subscriptionType: plan.id, subscriptionEnd, isSubscribed: true, ...benefits.user, ...coinData,
   } });
-  await tx.transaction.create({ data: { userId: params.userId, amount: 0, type: "subscription_renewal", description: grantMarker(params.invId) } });
-  await tx.transaction.create({ data: { userId: params.userId, amount: benefits.transaction.amount,
-    type: benefits.transaction.type, description: benefits.transaction.description } });
-  await tx.notification.create({ data: { userId: params.userId, type: "purchase_subscription", title: "Подписка активирована",
-    message: `Подписка «${plan.name}» активна до ${formatSubscriptionEnd(subscriptionEnd)}.`, link: "/subscription" } });
-  return { granted: true, subscriptionEnd };
+  await tx.transaction.create({ data: { userId, amount: 0, type: "subscription_renewal", description: grantMarker(charge.invId) } });
+  await tx.transaction.create({ data: { userId, ...benefits.transaction } });
+  const date = subscriptionEnd.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  await tx.notification.create({ data: { userId, type: "purchase_subscription", title: "Подписка активирована",
+    message: "Подписка «" + plan.name + "» активна до " + date + ".", link: "/subscription" } });
 }
 
-/** The latest charge the cron sent for this user that neither ResultURL nor reconciliation has settled. */
-async function pendingCharge(userId: string, since: Date): Promise<PendingCharge | null> {
-  const initiated = await prisma.transaction.findFirst({
-    where: { userId, type: INITIATED_TYPE, description: { startsWith: "Robokassa recurring initiated InvId=" }, createdAt: { gte: since } },
-    orderBy: { createdAt: "desc" }, select: { description: true, createdAt: true } });
-  const match = initiated?.description ? INITIATED_RE.exec(initiated.description) : null;
-  // Markers without plan/period come from the old cron, which granted at send time: nothing pending.
-  if (!initiated || !match) return null;
-  const invId = match[1];
+async function pendingCharge(userId: string, client: Prisma.TransactionClient = prisma): Promise<PendingCharge | null> {
+  const latest = await client.transaction.findFirst({
+    where: { userId, type: INITIATED_TYPE, description: { startsWith: initiatedPrefix } },
+    orderBy: { createdAt: "desc" }, select: { description: true, createdAt: true },
+  });
+  const charge = parsePendingCharge(latest);
+  if (!charge) return null;
   const settled = await Promise.all([
-    prisma.paymentEvent.findUnique({ where: { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: invId } }, select: { id: true } }),
-    prisma.transaction.findFirst({ where: { userId, description: grantMarker(invId), type: "subscription_renewal" }, select: { id: true } }),
-    prisma.transaction.findFirst({ where: { userId, type: DECLINED_TYPE, description: { startsWith: `Robokassa recurring declined InvId=${invId} ` } }, select: { id: true } }),
+    client.paymentEvent.findUnique({ where: { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: charge.invId } },
+      select: { id: true } }),
+    client.transaction.findFirst({ where: { userId, description: grantMarker(charge.invId), type: "subscription_renewal" },
+      select: { id: true } }),
+    client.transaction.findFirst({ where: { userId, type: DECLINED_TYPE,
+      description: { startsWith: "Robokassa recurring declined InvId=" + charge.invId + " " } }, select: { id: true } }),
   ]);
-  if (settled.some(Boolean)) return null;
-  return { invId, planId: match[2], period: match[3] as Period, amountRub: Number(match[4]), createdAt: initiated.createdAt };
+  return settled.some(Boolean) ? null : charge;
 }
 
-/** Ask Robokassa about a charge whose ResultURL did not arrive. Never sends a new charge. */
 async function settlePendingCharge(userId: string, charge: PendingCharge, now: Date): Promise<"granted" | "declined" | "pending"> {
   const age = now.getTime() - charge.createdAt.getTime();
   if (age < CONFIRMATION_GRACE_MS) return "pending";
-  let state;
+
   try {
-    state = await fetchRobokassaInvoiceState(charge.invId);
+    const state = await fetchRobokassaInvoiceState(charge.invId);
+    if (state.result === 0 && state.state === PAID_STATE) {
+      if (parseConfirmedAmountRub(state.outSum) !== charge.amountRub || !/^(?:RUB|RUR)$/i.test(state.currency ?? "")) {
+        errorLog("Subscription", "Confirmed renewal has an unexpected amount or currency", { userId, invId: charge.invId });
+        return "pending";
+      }
+      await prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+        await grantConfirmedRenewal(tx, userId, charge, now);
+      });
+      return "granted";
+    }
+
+    const declined = state.result === 0 && state.state !== null && DECLINED_STATES.has(state.state);
+    // A missing operation can be retried only after the original send window has safely passed.
+    if (!declined && !(state.result === 3 && age >= RETRY_DELAY_MS)) return "pending";
+
+    await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      const latest = await pendingCharge(userId, tx);
+      if (latest?.invId !== charge.invId) return;
+      await tx.transaction.create({ data: { userId, amount: 0, type: DECLINED_TYPE,
+        description: "Robokassa recurring declined InvId=" + charge.invId + " result=" + state.result + " state=" + state.state } });
+    });
+    return "declined";
   } catch (error) {
-    errorLog("Subscription", "Renewal state check failed", { userId, invId: charge.invId }, error);
+    errorLog("Subscription", "Renewal state check or settlement failed", { userId, invId: charge.invId }, error);
     return "pending";
   }
-  if (state.result === 0 && state.state === PAID_STATE) {
-    const outcome = await prisma.$transaction(tx => grantConfirmedRenewal(tx, {
-      userId, invId: charge.invId, planId: charge.planId, period: charge.period, amountRub: charge.amountRub, now, chargedAt: charge.createdAt }));
-    infoLog("Subscription", "Renewal confirmed by state check", { userId, invId: charge.invId, granted: outcome.granted });
-    return "granted";
-  }
-  const declined = state.result === 0 && state.state !== null && DECLINED_STATES.has(state.state)
-    || state.result === 0 && state.state === 5 && age > ABANDONED_AFTER_MS
-    || state.result === 3 && age > 60 * 60 * 1000;
-  if (!declined) {
-    if (age > ABANDONED_AFTER_MS) errorLog("Subscription", "Renewal still unsettled", { userId, invId: charge.invId, result: state.result, state: state.state });
-    return "pending";
-  }
-  await prisma.transaction.create({ data: { userId, amount: 0, type: DECLINED_TYPE,
-    description: `Robokassa recurring declined InvId=${charge.invId} result=${state.result} state=${state.state ?? "none"}` } });
-  infoLog("Subscription", "Renewal charge declined", { userId, invId: charge.invId, result: state.result, state: state.state });
-  return "declined";
+}
+
+async function reserveRenewal(userId: string, now: Date, force: boolean) {
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const user = await tx.user.findUnique({ where: { id: userId }, select: {
+      email: true, subscriptionType: true, subscriptionEnd: true, isSubscribed: true,
+      pendingSubscriptionType: true, robokassaRecurringId: true,
+    } });
+    if (!user) return { reason: "user_not_found" } as const;
+    const parentId = user.robokassaRecurringId;
+    if (!parentId) return { reason: "no_recurring_id" } as const;
+    if (!user.subscriptionEnd) return { reason: "no_subscription_end" } as const;
+    if (user.pendingSubscriptionType) return { reason: "pending_plan_change" } as const;
+    const plan = getSubscriptionPlan(user.subscriptionType);
+    if (!user.isSubscribed || plan.monthlyPrice <= 0) return { reason: "free_plan" } as const;
+    if (!force && !isDue(user.subscriptionEnd, now)) return { reason: "not_due" } as const;
+    if (await pendingCharge(userId, tx)) return { reason: "awaiting_confirmation" } as const;
+
+    const lastAttempt = await tx.transaction.findFirst({ where: { userId, type: INITIATED_TYPE },
+      orderBy: { createdAt: "desc" }, select: { createdAt: true } });
+    if (lastAttempt && now.getTime() - lastAttempt.createdAt.getTime() < RETRY_DELAY_MS) {
+      return { reason: "already_initiated" } as const;
+    }
+
+    const key = { provider_invoiceId: { provider: PAYMENT_PROVIDER, invoiceId: parentId } };
+    const parent = await tx.paymentEvent.findUnique({ where: key });
+    const order = await tx.paymentOrder.findUnique({ where: key });
+    let approvedAmount = parent?.amountRub ?? null;
+    if (!parent && !order) {
+      // Payments from before PaymentOrder/PaymentEvent had a signed ResultURL ledger entry.
+      // Preserve them only if a later confirmed renewal also identifies the same account and tariff.
+      const initial = await tx.transaction.findFirst({
+        where: { userId, type: "subscription", description: grantMarker(parentId) },
+        select: { createdAt: true },
+      });
+      const originalActivation = initial && await tx.transaction.findFirst({
+        where: { userId, type: "subscription_activated",
+          description: getSubscriptionActivationBenefits(plan).transaction.description,
+          createdAt: { gte: initial.createdAt, lte: new Date(initial.createdAt.getTime() + 1000) } },
+        select: { id: true },
+      });
+      const priorRenewal = initial && originalActivation && await tx.paymentEvent.findFirst({
+        where: { userId, provider: PAYMENT_PROVIDER, kind: "subscription_renewal", planId: plan.id,
+          amountRub: { gt: 0 }, createdAt: { gt: initial.createdAt } },
+        orderBy: { createdAt: "desc" }, select: { amountRub: true },
+      });
+      approvedAmount = priorRenewal ? priorRenewal.amountRub : null;
+    } else if (parent?.userId !== userId || !["subscription", "subscription_pending"].includes(parent.kind)
+        || getSubscriptionPlan(parent.planId).id !== plan.id
+        || (order && (order.userId !== userId || order.kind !== "subscription" || order.planId !== plan.id
+          || order.amountRub !== approvedAmount))) {
+      return { reason: "no_confirmed_agreement" } as const;
+    }
+    if (!approvedAmount || ROBOKASSA_TEST_MODE) return { reason: "no_confirmed_agreement" } as const;
+
+    // Existing agreements without a checkout snapshot can use a known tariff price.
+    const period = order?.period ?? (approvedAmount === plan.yearlyPrice ? "year" : approvedAmount === plan.monthlyPrice ? "month" : null);
+    if (period !== "month" && period !== "year") return { reason: "no_confirmed_agreement" } as const;
+
+    const invId = createRobokassaInvoiceId();
+    const amountRub = approvedAmount;
+    // Reserve the invoice under the account lock, before sending a potentially successful network request.
+    await tx.transaction.create({ data: { userId, amount: 0, type: INITIATED_TYPE,
+      description: initiatedPrefix + invId + " plan=" + plan.id + " period=" + period + " amount=" + amountRub,
+    } });
+    return { invId, parentId, amountRub, period, plan, email: user.email } as const;
+  });
 }
 
 export async function renewSubscriptionIfDue(
   userId: string,
-  options?: { force?: boolean; ignoreInitiated?: boolean; now?: Date }
+  options?: { force?: boolean; now?: Date }
 ): Promise<RenewSubscriptionResult> {
   const now = options?.now ?? new Date();
-  const force = options?.force === true;
-  const ignoreInitiated = options?.ignoreInitiated === true;
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      subscriptionType: true,
-      subscriptionEnd: true,
-      robokassaRecurringId: true,
-      pendingSubscriptionType: true,
-    },
-  });
-
-  if (!user) {
-    return { renewed: false, userId, reason: "user_not_found" };
-  }
-
-  if (!user.robokassaRecurringId) {
-    return { renewed: false, userId, reason: "no_recurring_id" };
-  }
-
-  if (!user.subscriptionEnd) {
-    return { renewed: false, userId, reason: "no_subscription_end" };
-  }
-
-  const pendingPlan = user.pendingSubscriptionType
-    ? getSubscriptionPlan(user.pendingSubscriptionType)
-    : null;
-  if (pendingPlan) {
-    console.log(
-      `[Robokassa] Renew skipped: user=${user.id} has pending=${pendingPlan.id}, RecurringID=${user.robokassaRecurringId}`
-    );
-    return { renewed: false, userId, reason: "pending_plan_change" };
-  }
-
-  const plan = getSubscriptionPlan(user.subscriptionType);
-  if (plan.monthlyPrice <= 0) {
-    return { renewed: false, userId, reason: "free_plan" };
-  }
-
-  if (!force && !isDue(user.subscriptionEnd, now)) {
-    return { renewed: false, userId, reason: "not_due" };
-  }
-
-  // Never send a second charge while an earlier one may still succeed: that would take the money twice.
-  // Even force mode respects this; only a definite decline from Robokassa frees the way.
-  const pending = await pendingCharge(user.id, new Date(now.getTime() - RECONCILE_WINDOW_MS));
+  const pending = await pendingCharge(userId);
   if (pending) {
-    const settled = await settlePendingCharge(user.id, pending, now);
+    const settled = await settlePendingCharge(userId, pending, now);
     if (settled === "granted") {
-      const after = await prisma.user.findUnique({ where: { id: user.id }, select: { subscriptionEnd: true } });
-      return { renewed: true, userId, invId: pending.invId, newEnd: after?.subscriptionEnd ?? undefined, period: pending.period };
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { subscriptionEnd: true } });
+      return { renewed: true, userId, invId: pending.invId, newEnd: user?.subscriptionEnd ?? undefined, period: pending.period };
     }
-    if (settled === "pending") {
-      return { renewed: false, userId, invId: pending.invId, reason: "awaiting_confirmation" };
-    }
+    if (settled === "pending") return { renewed: false, userId, invId: pending.invId, reason: "awaiting_confirmation" };
   }
 
-  if (!ignoreInitiated) {
-    const recentInit = await prisma.transaction.findFirst({
-      where: {
-        userId: user.id,
-        type: INITIATED_TYPE,
-      },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, createdAt: true },
-    });
-
-    if (recentInit) {
-      const initiatedAt = recentInit.createdAt;
-      const ageMs = now.getTime() - initiatedAt.getTime();
-      if (ageMs < INITIATED_TTL_MS) {
-        return { renewed: false, userId, reason: "already_initiated" };
-      }
-
-      console.log(
-        `[Cron] Resetting stale initiated flag for user=${user.id} (initiated at ${initiatedAt.toISOString()}).`
-      );
-    }
-  } else {
-    console.log("⚠️ Force mode: ignoring already_initiated");
-  }
-
-  const lastPaid = await prisma.transaction.findFirst({
-    where: {
-      userId: user.id,
-      type: { in: ["subscription", "subscription_renewal"] },
-    },
-    orderBy: { createdAt: "desc" },
-    select: { createdAt: true },
-  });
-
-  const period = inferPeriod(user.subscriptionEnd, lastPaid?.createdAt ?? null);
-  const amount = period === "year" ? plan.yearlyPrice : plan.monthlyPrice;
-  const periodLabel = period === "year" ? "год" : "месяц";
-  const desc = `Подписка ${plan.name} на 1 ${periodLabel}`;
-
-  console.log(
-    `[Subscription] Renew charge: user=${user.id} period=${period} amount=${amount} RecurringID=${user.robokassaRecurringId}`
-  );
-
-  let invId: string;
+  const reservation = await reserveRenewal(userId, now, options?.force === true);
+  if (reservation.reason) return { renewed: false, userId, reason: reservation.reason };
+  const { invId, parentId, amountRub, period, plan, email } = reservation;
+  const desc = "Подписка " + plan.name + " на 1 " + (period === "year" ? "год" : "месяц");
   try {
-    ({ invId } = await chargeRobokassaRecurring({
-      previousInvoiceId: user.robokassaRecurringId,
-      sum: amount,
-      desc,
+    await chargeRobokassaRecurring({
+      invoiceId: invId, previousInvoiceId: parentId, sum: amountRub, desc, email,
       extraShp: {
-        Shp_userId: user.id,
-        Shp_subscription: "true",
-        Shp_plan: plan.id,
-        Shp_period: period,
-        Shp_applyMode: "immediate",
-        // Lets ResultURL route this child charge to the renewal grant even if the period lapsed meanwhile.
-        Shp_renewal: "true",
+        Shp_userId: userId, Shp_subscription: "true", Shp_plan: plan.id, Shp_period: period,
+        Shp_applyMode: "immediate", Shp_renewal: "true",
       },
-      receipt: buildReceipt([{ name: desc, price: amount, quantity: 1 }]),
-      email: user.email,
-    }));
+      receipt: buildReceipt([{ name: desc, price: amountRub, quantity: 1 }]),
+    });
+    return { renewed: false, initiated: true, userId, invId };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "charge_failed";
-    errorLog("Subscription", "Renew failed", { userId: user.id }, error);
-    try {
-      await prisma.transaction.create({
-        data: {
-          userId: user.id,
-          amount: 0,
-          type: INITIATED_TYPE,
-          description: `Robokassa recurring failed: ${message}`,
-        },
-      });
-    } catch (writeError) {
-      errorLog("Subscription", "Failed to store initiatedAt", { userId: user.id }, writeError);
-    }
-    return { renewed: false, userId, reason: "charge_failed", error: message };
+    // Keep the reservation. A timeout may mean the provider accepted the payment.
+    errorLog("Subscription", "Renewal request not acknowledged", { userId, invId }, error);
+    return { renewed: false, userId, invId, reason: "charge_failed" };
   }
-
-  // "OK" only means Robokassa created the operation. The period is granted on ResultURL or by the
-  // state check of a later cron run, never here.
-  await prisma.transaction.create({ data: { userId: user.id, amount: 0, type: INITIATED_TYPE,
-    description: initiatedMarker({ invId, planId: plan.id, period, amountRub: amount }) } });
-  console.log(`[Subscription] Renewal charge sent: user=${user.id} InvId=${invId}; awaiting confirmation`);
-  return { renewed: false, initiated: true, userId: user.id, invId, period };
 }
 
 /** Settles charges whose ResultURL was lost, including users whose period has already lapsed. */
@@ -331,7 +285,7 @@ async function reconcilePendingRenewals(now: Date) {
     distinct: ["userId"], select: { userId: true } });
   const outcomes: Array<{ userId: string; invId: string; outcome: "granted" | "declined" | "pending" }> = [];
   for (const { userId } of rows) {
-    const charge = await pendingCharge(userId, since);
+    const charge = await pendingCharge(userId);
     if (!charge) continue;
     outcomes.push({ userId, invId: charge.invId, outcome: await settlePendingCharge(userId, charge, now) });
   }
@@ -410,27 +364,6 @@ export async function renewDueSubscriptions(now = new Date()) {
 
 async function expireLapsedSubscriptionCoins(now: Date) {
   const lapsedBefore = addDays(now, -2);
-  const users = await prisma.user.findMany({
-    where: { subscriptionEnd: { lt: lapsedBefore } },
-    select: { id: true, verseCoins: true, permanentCoins: true },
-  });
-
-  let expired = 0;
-  for (const user of users) {
-    if (getExpiringCoins(user) <= 0) {
-      continue;
-    }
-    const coinData = applySubscriptionCoinGrant(user, 0, true);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: coinData,
-    });
-    expired += 1;
-  }
-
-  if (expired > 0) {
-    console.log(`[Coins] Expired leftover subscription VC for ${expired} users`);
-  }
-
-  return expired;
+  return prisma.$executeRaw`UPDATE "User" SET "verseCoins" = "permanentCoins"
+    WHERE "subscriptionEnd" < ${lapsedBefore} AND "verseCoins" > "permanentCoins"`;
 }

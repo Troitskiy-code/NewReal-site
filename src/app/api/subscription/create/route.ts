@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { applyPendingSubscriptionIfDue } from "@/lib/subscriptionState";
 import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import { buildReceipt, buildRobokassaSuccessUrl, createRobokassaCheckout } from "@/lib/robokassa";
 import { isSubscriptionActive } from "@/lib/verseChatEconomy";
@@ -52,17 +52,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Тариф не найден" }, { status: 400 });
     }
 
-    if (applyMode === "afterExpiry") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { subscriptionType: true, subscriptionEnd: true },
-      });
-      if (!user || !isSubscriptionActive(user)) {
-        return NextResponse.json(
-          { error: "Отложенная подписка доступна только при активном тарифе" },
-          { status: 400 }
-        );
-      }
+    const user = await applyPendingSubscriptionIfDue(session.user.id);
+    if (!user) return NextResponse.json({ error: "Пользователь не найден" }, { status: 401 });
+    if (user.pendingSubscriptionType) {
+      return NextResponse.json({ error: "Дождитесь активации уже оплаченной подписки." }, { status: 409 });
+    }
+    if (applyMode === "afterExpiry" && !isSubscriptionActive(user)) {
+      return NextResponse.json({ error: "Отложенная подписка доступна только при активном тарифе" }, { status: 400 });
     }
 
     const sumRUB = period === "year" ? plan.yearlyPrice : plan.monthlyPrice;

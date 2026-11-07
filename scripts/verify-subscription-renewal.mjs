@@ -22,14 +22,16 @@ globalThis.fetch = async (url, init) => {
   const target = String(url);
   if (target === 'https://auth.robokassa.ru/Merchant/Recurring') {
     charges.push(Object.fromEntries(new URLSearchParams(String(init.body))));
-    return new Response('OK', { status: 200 });
+    return new Response('OK' + charges.at(-1).InvoiceID, { status: 200 });
   }
   if (target.startsWith('https://auth.robokassa.ru/Merchant/WebService/Service.asmx/OpStateExt?')) {
     const params = new URL(target).searchParams;
     stateQueries.push(params.get('InvoiceID'));
     assert.equal(params.get('Signature'), createHash('md5').update(`synthetic_merchant:${params.get('InvoiceID')}:synthetic_result_password`).digest('hex'));
     const state = invoiceState.state === null ? '' : `<State><Code>${invoiceState.state}</Code></State>`;
-    return new Response(`<?xml version="1.0"?><OperationStateResponse><Result><Code>${invoiceState.result}</Code></Result>${state}</OperationStateResponse>`);
+    const amount = invoiceState.amount ?? charges.find(charge => charge.InvoiceID === params.get("InvoiceID"))?.OutSum;
+    const info = `<Info><OutCurrLabel>${invoiceState.currency ?? "RUR"}</OutCurrLabel><OutSum>${amount}</OutSum></Info>`;
+    return new Response(`<?xml version="1.0"?><OperationStateResponse><Result><Code>${invoiceState.result}</Code></Result>${state}${info}</OperationStateResponse>`);
   }
   throw new Error(`External network forbidden: ${target}`);
 };
@@ -45,9 +47,11 @@ const deliver = fields => webhook.POST(new NextRequest('http://localhost/api/pay
   headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(signedResult(fields)).toString() }));
 const resultFor = charge => Object.fromEntries(Object.entries(charge).filter(([key]) => key === 'OutSum' || key === 'InvId' || /^Shp_/.test(key)));
 async function subscriber(end, plan = 'universe') {
-  return db.user.create({ data: { email: `renew-${Math.random().toString(36).slice(2)}@example.test`, subscriptionType: plan,
+  const account = await db.user.create({ data: { email: `renew-${Math.random().toString(36).slice(2)}@example.test`, subscriptionType: plan,
     subscriptionEnd: end, isSubscribed: true, robokassaRecurringId: String(1_900_000_000 + Math.floor(Math.random() * 90_000_000)),
     verseCoins: 100, permanentCoins: 100 } });
+  await db.paymentEvent.create({data:{userId:account.id,provider:"robokassa",invoiceId:account.robokassaRecurringId,kind:"subscription",planId:plan,amountRub:getSubscriptionPlan(plan).monthlyPrice}});
+  return account;
 }
 const user = id => db.user.findUniqueOrThrow({ where: { id } });
 // Initiated markers carry the real clock; age them to emulate a later cron run.
@@ -113,30 +117,71 @@ try {
     const chargesBefore = charges.length;
     for (const state of [{ result: 0, state: 50 }, { result: 1000, state: null }]) {
       invoiceState = state;
-      const result = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(now.getTime() + 30 * 3_600_000), force: true, ignoreInitiated: true });
+      const result = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(now.getTime() + 30 * 3_600_000), force: true });
       assert.equal(result.reason, 'awaiting_confirmation');
     }
     assert.equal(charges.length, chargesBefore);
     assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime());
   });
-  await check('a renewal granted by the pre-change cron is only recorded when its ResultURL arrives', async () => {
-    const end = new Date(Date.now() + 30 * DAY), u = await subscriber(end);
-    await db.transaction.create({ data: { userId: u.id, amount: 0, type: 'subscription_renewal', description: 'Robokassa InvId=888000111' } });
-    await db.transaction.create({ data: { userId: u.id, amount: 0, type: 'subscription_renewal_initiated', description: 'Robokassa recurring initiated InvId=888000111' } });
-    const response = await deliver({ OutSum: `${getSubscriptionPlan('universe').monthlyPrice}.00`, InvId: '888000111', Shp_userId: u.id,
-      Shp_subscription: 'true', Shp_plan: 'universe', Shp_period: 'month', Shp_applyMode: 'immediate' });
-    assert.equal(response.status, 200);
-    assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime());
-    assert.ok(await db.paymentEvent.findUnique({ where: { provider_invoiceId: { provider: 'robokassa', invoiceId: '888000111' } } }));
-    const due = await renewal.renewSubscriptionIfDue(u.id, { now: new Date(), force: true, ignoreInitiated: true });
-    assert.notEqual(due.reason, 'awaiting_confirmation', 'an old-format marker is not a pending charge');
-  });
-  await check('a renewal confirmed only by ResultURL (no cron charge) still extends one period', async () => {
+  await check('an unknown signed renewal cannot grant a period', async () => {
     const end = new Date(Date.now() + 5 * DAY), u = await subscriber(end, 'dialog');
-    const response = await deliver({ OutSum: `${getSubscriptionPlan('dialog').monthlyPrice}.00`, InvId: '777000111', Shp_userId: u.id,
-      Shp_subscription: 'true', Shp_plan: 'dialog', Shp_period: 'month', Shp_applyMode: 'immediate' });
-    assert.equal(response.status, 200);
-    assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime() + 30 * DAY);
+    const response = await deliver({ OutSum: "499.00", InvId: "777000111", Shp_userId: u.id,
+      Shp_subscription: "true", Shp_plan: "dialog", Shp_period: "month", Shp_applyMode: "immediate", Shp_renewal: "true" });
+    assert.equal(response.status, 409);
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(), end.getTime());
+  });
+  await check('concurrent cron runs reserve and send only one child invoice', async () => {
+    const end = new Date(Date.now() + 3_600_000), u = await subscriber(end, 'dialog');
+    const before = charges.length;
+    const results = await Promise.all(Array.from({length: 5}, () => renewal.renewSubscriptionIfDue(u.id)));
+    assert.equal(results.filter(r => r.initiated).length, 1);
+    assert.equal(charges.length, before + 1);
+    assert.equal(await db.transaction.count({where:{userId:u.id,type:"subscription_renewal_initiated"}}),1);
+  });
+  await check('mismatched amount or currency does not settle a pending invoice', async () => {
+    const end = new Date(Date.now() + 3_600_000), u = await subscriber(end, 'dialog');
+    const sent = await renewal.renewSubscriptionIfDue(u.id);
+    const charge = resultFor(charges.at(-1));
+    assert.equal((await deliver({...charge, OutSum:"1.00"})).status,409);
+    await ageInitiated(u.id, 20 * MIN);
+    for (const state of [{result:0,state:100,amount:"1.00"},{result:0,state:100,currency:"USD"}]) {
+      invoiceState = state;
+      assert.equal((await renewal.renewSubscriptionIfDue(u.id)).reason,"awaiting_confirmation");
+      assert.equal((await user(u.id)).subscriptionEnd.getTime(),end.getTime());
+    }
+    assert.equal(await db.paymentEvent.count({where:{invoiceId:sent.invId}}),0);
+    assert.equal((await deliver(charge)).status,200);
+  });
+  await check('an in-flight paid renewal preserves the cancellation of future payments', async () => {
+    const end = new Date(Date.now() + 3_600_000), u = await subscriber(end, 'dialog');
+    await renewal.renewSubscriptionIfDue(u.id);
+    const charge = resultFor(charges.at(-1));
+    await db.user.update({where:{id:u.id},data:{robokassaRecurringId:null}});
+    assert.equal((await deliver({...charge,RecurringID:"987"})).status,200);
+    assert.equal((await deliver({...charge,RecurringID:"987"})).status,200);
+    assert.equal((await user(u.id)).robokassaRecurringId,null);
+    assert.equal((await user(u.id)).subscriptionEnd.getTime(),end.getTime()+30*DAY);
+  });
+  await check('a server record of a paid parent is required before sending a renewal', async () => {
+    const end = new Date(Date.now() + 3_600_000), u = await subscriber(end, 'dialog');
+    await db.paymentEvent.deleteMany({where:{userId:u.id}});
+    const before = charges.length;
+    assert.equal((await renewal.renewSubscriptionIfDue(u.id)).reason,"no_confirmed_agreement");
+    assert.equal(charges.length,before);
+  });
+  await check('a historical paid parent with a matching activation and renewal remains eligible', async () => {
+    const u = await subscriber(new Date(Date.now() + 3_600_000), 'dialog');
+    await db.paymentEvent.deleteMany({where:{userId:u.id}});
+    const initial = new Date(Date.now() - 60*DAY);
+    await db.transaction.createMany({data:[
+      {userId:u.id,amount:0,type:"subscription",description:"Robokassa InvId="+u.robokassaRecurringId,createdAt:initial},
+      {userId:u.id,amount:2500,type:"subscription_activated",description:"Зачислено 2500 VC по тарифу «Диалог»",createdAt:initial},
+    ]});
+    await db.paymentEvent.create({data:{userId:u.id,provider:"robokassa",invoiceId:"777000222",kind:"subscription_renewal",
+      planId:"dialog",amountRub:499,createdAt:new Date(Date.now()-30*DAY)}});
+    assert.equal((await renewal.renewSubscriptionIfDue(u.id)).initiated,true);
+    assert.equal(charges.at(-1).PreviousInvoiceID,u.robokassaRecurringId);
+    assert.equal(charges.at(-1).OutSum,"499.00");
   });
   console.log(`Subscription renewal: ${passed} checks passed`);
 } finally { globalThis.fetch = realFetch; await h.stop(); }

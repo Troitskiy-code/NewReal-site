@@ -4,80 +4,33 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cancelRobokassaRecurring } from "@/lib/robokassa";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
-import { serializeSubscriptionState } from "@/lib/subscriptionState";
+import { serializeSubscriptionState, SUBSCRIPTION_SELECT } from "@/lib/subscriptionState";
 
 export async function POST() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
-    }
+    const userId = session?.user?.id;
+    if (!userId) return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        robokassaRecurringId: true,
-        subscriptionType: true,
-        subscriptionEnd: true,
-        pendingSubscriptionType: true,
-        pendingSubscriptionEnd: true,
-        isSubscribed: true,
-      },
+    const stopped = await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      const user = await tx.user.findUnique({ where: { id: userId }, select: SUBSCRIPTION_SELECT });
+      if (!user) return null;
+      const recurringId = user.robokassaRecurringId;
+      if (recurringId) {
+        await tx.user.update({ where: { id: userId }, data: { robokassaRecurringId: null } });
+        await tx.transaction.create({ data: { userId, amount: 0, type: "subscription_cancelled",
+          description: "Автопродление отключено" } });
+      }
+      return { user: { ...user, robokassaRecurringId: null }, recurringId };
     });
+    if (!stopped) return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
 
-    if (!user) {
-      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
-    }
-
-    if (!user.robokassaRecurringId) {
-      return NextResponse.json(
-        {
-          success: true,
-          message: "Автопродление отключено",
-          ...serializeSubscriptionState({ ...user, robokassaRecurringId: null }),
-        }
-      );
-    }
-
-    const recurringId = user.robokassaRecurringId;
-    const cancelled = await cancelRobokassaRecurring(recurringId);
-    console.log(
-      `[Subscription] Recurring cancel user=${user.id} RecurringID=${recurringId} robokassa=${cancelled ? "ok" : "failed"}; clearing local ID`
-    );
-
-    const updated = await prisma.$transaction(async (tx) => {
-      const nextUser = await tx.user.update({
-        where: { id: user.id },
-        data: { robokassaRecurringId: null },
-        select: {
-          subscriptionType: true,
-          subscriptionEnd: true,
-          pendingSubscriptionType: true,
-          pendingSubscriptionEnd: true,
-          isSubscribed: true,
-          robokassaRecurringId: true,
-        },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId: user.id,
-          amount: 0,
-          type: "subscription_cancelled",
-          description: cancelled
-            ? "Автопродление отключено"
-            : "Автопродление отключено локально (ответ Robokassa неуспешен)",
-        },
-      });
-
-      return nextUser;
-    });
-
+    if (stopped.recurringId) await cancelRobokassaRecurring(stopped.recurringId);
     return NextResponse.json({
       success: true,
       message: "Автопродление отключено",
-      ...serializeSubscriptionState(updated),
+      ...serializeSubscriptionState(stopped.user),
     });
   } catch (error) {
     errorLog("Subscription", "cancel-recurring", toSafeDiagnostic(error));

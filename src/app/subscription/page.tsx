@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import Footer from "@/components/Footer";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/chatEconomy";
+import { SUBSCRIPTION_PLANS } from "@/lib/chatEconomy";
 import axios from "axios";
 import { showError, showSuccess } from "@/lib/toast";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -54,8 +54,6 @@ export default function SubscriptionPage() {
   const [balance, setBalance] = useState<SubscriptionBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
-  const [changing, setChanging] = useState(false);
   const [cancellingRecurring, setCancellingRecurring] = useState(false);
   const [confirmCancelRecurring, setConfirmCancelRecurring] = useState(false);
   const [recurringError, setRecurringError] = useState<string | null>(null);
@@ -84,32 +82,6 @@ export default function SubscriptionPage() {
       fetchBalance();
     }
   }, [status, fetchBalance]);
-
-  const handleChange = async (applyMode: "immediate" | "afterExpiry") => {
-    if (!selectedPlan) return;
-    setChanging(true);
-    try {
-      const { data } = await axios.post<SubscriptionBalance>("/api/subscription/change", {
-        planId: selectedPlan.id,
-        applyMode,
-      });
-      setBalance(data);
-      setSelectedPlan(null);
-      showSuccess(
-        applyMode === "immediate"
-          ? `Тариф «${selectedPlan.name}» применён`
-          : `Тариф «${selectedPlan.name}» будет включён после окончания текущей подписки`
-      );
-    } catch (err) {
-      const message =
-        axios.isAxiosError(err) && err.response?.data?.error
-          ? err.response.data.error
-          : "Не удалось изменить подписку";
-      showError(message);
-    } finally {
-      setChanging(false);
-    }
-  };
 
   const handleCancelRecurring = async () => {
     setCancellingRecurring(true);
@@ -171,7 +143,6 @@ export default function SubscriptionPage() {
   const currentPlanId = balance?.subscriptionActive
     ? balance.subscriptionType
     : "start";
-  const canDefer = Boolean(balance?.subscriptionActive && balance.subscriptionEnd);
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden bg-wd-bg text-wd-text">
@@ -299,58 +270,17 @@ export default function SubscriptionPage() {
                     <span className="rounded-wd-pill border border-wd-border px-4 py-2 text-center text-xs font-bold text-wd-text-secondary">
                       Текущий тариф
                     </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPlan(plan)}
-                      className="wd-button w-full py-2.5 text-sm"
-                    >
-                      Перейти
-                    </button>
-                  )}
+                  ) : plan.monthlyPrice > 0 ? (
+                    <Link href="/pricing" className="wd-button w-full py-2.5 text-center text-sm">
+                      Оформить подписку
+                    </Link>
+                  ) : null}
                 </article>
               );
             })}
           </div>
         </section>
       </main>
-
-      {selectedPlan && (
-        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/70 px-4">
-          <div className="wd-card w-full max-w-md space-y-4 p-6">
-            <h2 className="text-lg font-black text-white">Перейти на тариф «{selectedPlan.name}»</h2>
-            <p className="text-sm text-wd-text-secondary">
-              Можно применить тариф сразу или дождаться окончания текущей подписки.
-            </p>
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                disabled={changing}
-                onClick={() => handleChange("immediate")}
-                className="wd-button w-full py-3 text-sm disabled:opacity-50"
-              >
-                Применить сейчас
-              </button>
-              <button
-                type="button"
-                disabled={changing || !canDefer}
-                onClick={() => handleChange("afterExpiry")}
-                className="w-full rounded-wd-pill border border-wd-border bg-[#0c0b12] px-4 py-3 text-sm font-bold text-white transition-colors hover:border-wd-secondary disabled:opacity-50"
-              >
-                После окончания
-              </button>
-              <button
-                type="button"
-                disabled={changing}
-                onClick={() => setSelectedPlan(null)}
-                className="w-full py-2 text-sm font-medium text-wd-text-secondary hover:text-white"
-              >
-                Отмена
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <ConfirmModal
         open={confirmCancelRecurring}

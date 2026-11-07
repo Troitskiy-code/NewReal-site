@@ -99,7 +99,7 @@ export type RobokassaRecurringOptions = {
   amount: number;
 };
 
-function nextInvId(): string {
+export function createRobokassaInvoiceId(): string {
   // Robokassa accepts positive signed 64-bit IDs. Keep them as strings: JS numbers
   // lose precision here. Randomness works across instances without a repeating clock.
   const id = crypto.randomBytes(8).readBigUInt64BE() & BigInt("9223372036854775807");
@@ -157,7 +157,7 @@ export function createRobokassaCheckout(options: {
   }
 
   const extraShp = options.extraShp ?? {};
-  const invId = options.invoiceId ?? nextInvId();
+  const invId = options.invoiceId ?? createRobokassaInvoiceId();
   const outSum = Number(options.sum).toFixed(2);
   const isSubscription = extraShp.Shp_subscription === "true";
   const shp: ShpParams = {
@@ -247,6 +247,7 @@ export function createRobokassaCheckout(options: {
 }
 
 export async function chargeRobokassaRecurring(options: {
+  invoiceId?: string;
   previousInvoiceId: string;
   sum: number;
   desc: string;
@@ -263,7 +264,7 @@ export async function chargeRobokassaRecurring(options: {
     throw new Error("PreviousInvoiceID is required");
   }
 
-  const invId = nextInvId();
+  const invId = options.invoiceId ?? createRobokassaInvoiceId();
   const outSum = Number(options.sum).toFixed(2);
   const shp = options.extraShp ?? {};
   const shpSuffix = buildShpSuffix(shp);
@@ -300,10 +301,12 @@ export async function chargeRobokassaRecurring(options: {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    redirect: "error",
+    signal: AbortSignal.timeout(15_000),
   });
 
-  await response.text();
-  if (!response.ok) {
+  const answer = (await response.text()).trim();
+  if (!response.ok || (answer !== "OK" && answer !== "OK" + invId && answer !== "OK+" + invId)) {
     errorLog("Robokassa", "Recurring charge failed", { invId, status: response.status });
     throw new Error("Robokassa recurring charge failed");
   }
@@ -312,7 +315,7 @@ export async function chargeRobokassaRecurring(options: {
   return { invId };
 }
 
-export type RobokassaInvoiceState = { result: number; state: number | null };
+export type RobokassaInvoiceState = { result: number; state: number | null; outSum: string | null; currency: string | null };
 /**
  * OpStateExt (docs.robokassa.ru/ru/xml-interfaces): Result.Code 0 = answered, 3 = invoice not found;
  * State.Code 100 = paid, 10 = cancelled (no money), 60 = refused and returned, 5/20/50/80 = in progress.
@@ -331,7 +334,10 @@ export async function fetchRobokassaInvoiceState(invoiceId: string): Promise<Rob
   const result = Number(/<Result>\s*<Code>\s*(\d+)\s*<\/Code>/i.exec(text)?.[1]);
   if (!Number.isInteger(result)) throw new Error("OpStateExt response is unreadable");
   const state = /<State>\s*<Code>\s*(\d+)\s*<\/Code>/i.exec(text)?.[1];
-  return { result, state: state === undefined ? null : Number(state) };
+  const info = /<Info>\s*([\s\S]*?)<\/Info>/i.exec(text)?.[1] ?? "";
+  const outSum = /<OutSum>\s*([^<]+?)\s*<\/OutSum>/i.exec(info)?.[1] ?? null;
+  const currency = /<OutCurrLabel>\s*([^<]+?)\s*<\/OutCurrLabel>/i.exec(info)?.[1] ?? null;
+  return { result, state: state === undefined ? null : Number(state), outSum, currency };
 }
 
 export async function cancelRobokassaRecurring(recurringId: string): Promise<boolean> {

@@ -1,29 +1,8 @@
-import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { BillingService } from "@/lib/services/billing";
-import { rejectUnverifiedEmail } from "@/lib/emailVerification";
 
-export async function POST(req) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized. Please sign in." }, { status: 401 });
-    }
-
-    const unverified = await rejectUnverifiedEmail(req, session.user.id, "api.confirmEmailToPurchase");
-    if (unverified) return unverified;
-
-    const { planId } = await req.json();
-    if (!planId) {
-      return NextResponse.json({ error: "Missing planId parameter" }, { status: 400 });
-    }
-
-    const checkoutUrl = await BillingService.createCheckoutSession(session.user.id, planId);
-    return NextResponse.json({ url: checkoutUrl });
-  } catch (error) {
-    errorLog("Server", "Checkout route error:", toSafeDiagnostic(error));
-    return NextResponse.json({ error: "Операция временно недоступна" }, { status: 500 });
-  }
+export async function POST() {
+  return NextResponse.json(
+    { error: "Этот способ оплаты отключён." },
+    { status: 410, headers: { "Cache-Control": "no-store" } }
+  );
 }
