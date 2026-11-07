@@ -134,7 +134,7 @@ prisma.chatThread = {
 };
 prisma.personaSelection = { findUnique: async () => null };
 prisma.$executeRaw = async () => 0;
-const threads = load('src/lib/chatThreads.ts', { '@/lib/prisma': { prisma }, '@/lib/chatThreadShared': load('src/lib/chatThreadShared.ts'), '@/lib/logger': logger });
+const threads = load('src/lib/chatThreads.ts', { '@/lib/prisma': { prisma }, '@/lib/chatThreadShared': load('src/lib/chatThreadShared.ts'), '@/lib/storySceneShared': load('src/lib/storySceneShared.ts'), '@/lib/logger': logger });
 const storyOf = userId => ({ userId, characterId: 'card', threadId: `thread-${userId}`, legacy: true });
 const states = load('src/lib/promptState.ts', { '@/lib/prisma': { prisma }, './roleplayConfig': config, './chatThreads': threads });
 // Provider routing rejects an empty key; network calls in this script are stubbed.

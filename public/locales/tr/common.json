@@ -1,4 +1,16 @@
 {
+  "storyScene": {
+    "title": "Sahne illüstrasyonu",
+    "hint": "Gemma en fazla sekiz son mesajı işler. Görsel modeli sahne açıklamasını alır ve varsa kart avatarını referans olarak kullanır. İllüstrasyonu yalnızca siz görebilirsiniz.",
+    "generate": "İllüstrasyon oluştur",
+    "generating": "İllüstrasyon oluşturuluyor…",
+    "allowance": "Oluşturma kotanızdan bir hak kullanır.",
+    "unavailable": "Oluşturma kotanız doldu.",
+    "apply": "Hikâye avatarı olarak ayarla",
+    "selected": "Hikâye avatarı olarak seçildi",
+    "reset": "Varsayılan avatarı geri yükle",
+    "saveFailed": "Hikâye avatarı güncellenemedi."
+  },
   "voiceInput": {
     "start": "Sesli giriş",
     "stop": "Durdur ve yazıya dök",

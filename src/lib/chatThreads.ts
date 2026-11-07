@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { ChatThread, Prisma } from "@prisma/client";
 import { errorLog, toSafeDiagnostic } from "@/lib/logger";
 import { THREAD_QUERY_PARAM, type ChatThreadStatus, type ChatThreadSummary } from "@/lib/chatThreadShared";
+import { storySceneImagePath } from "@/lib/storySceneShared";
 
 /**
  * Independent stories with one character. With the flag off (default) every user+character pair
@@ -46,7 +47,7 @@ export function threadStatus(value: string): ChatThreadStatus {
   return value === "archived" ? "archived" : "active";
 }
 
-export function toThreadSummary(thread: Pick<ChatThread, "id" | "number" | "title" | "status" | "createdAt" | "lastMessageAt">, messageCount?: number): ChatThreadSummary {
+export function toThreadSummary(thread: Pick<ChatThread, "id" | "number" | "title" | "status" | "createdAt" | "lastMessageAt" | "sceneAvatarJobId">, messageCount?: number): ChatThreadSummary {
   return {
     id: thread.id,
     number: thread.number,
@@ -54,6 +55,7 @@ export function toThreadSummary(thread: Pick<ChatThread, "id" | "number" | "titl
     status: threadStatus(thread.status),
     createdAt: thread.createdAt.toISOString(),
     lastMessageAt: thread.lastMessageAt.toISOString(),
+    sceneAvatarUrl: thread.sceneAvatarJobId ? storySceneImagePath(thread.id, thread.sceneAvatarJobId) : null,
     ...(typeof messageCount === "number" ? { messageCount } : {}),
   };
 }

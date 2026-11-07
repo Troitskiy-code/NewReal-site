@@ -3,6 +3,7 @@ import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from 
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import sharp from "sharp";
 import { ClientInputError } from "./publicError";
+import { isStorySceneJobId, storySceneImagePath, storySceneScope, storySceneThreadId } from "./storySceneShared";
 
 export const MAX_CHARACTER_IMAGE_BYTES = 5 * 1024 * 1024;
 const MEDIA_PATH = /^\/api\/character-media\/([a-zA-Z0-9_-]{1,128})\/([a-f0-9]{32})$/;
@@ -97,4 +98,49 @@ export async function characterMediaDownloadUrl(value: string): Promise<string> 
       new GetObjectCommand({ Bucket: configured.bucket, Key: media.key }), { expiresIn: 300 });
   } catch { throw new CharacterMediaUnavailable(); }
   finally { configured.client.destroy(); }
+}
+
+export async function readCharacterAvatarReference(value: string | null, ownerId: string): Promise<Buffer | null> {
+  const media = parseCharacterMediaPath(value);
+  if (media) {
+    if (media.ownerId !== ownerId) throw new CharacterMediaUnavailable();
+    return Buffer.from(await readStoredImage(media.key, 10_000));
+  }
+  // Older cards can contain an inline raster. Never make server requests to legacy external URLs.
+  if (!value?.startsWith("data:")) return null;
+  if (value.length > Math.ceil(MAX_CHARACTER_IMAGE_BYTES * 4 / 3) + 128) throw new CharacterMediaUnavailable();
+  const match = DATA_IMAGE.exec(value);
+  if (!match) throw new CharacterMediaUnavailable();
+  return Buffer.from(match[1], "base64");
+}
+
+function storySceneKey(ownerId: string, threadId: string, jobId: string) {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(ownerId) || storySceneThreadId(storySceneScope(threadId)) !== threadId
+    || !isStorySceneJobId(jobId)) throw new CharacterMediaUnavailable();
+  return `story-scenes/${ownerId}/${threadId}/${jobId}.webp`;
+}
+
+export async function storeStorySceneImage(image: Buffer, ownerId: string, threadId: string, jobId: string) {
+  const Key = storySceneKey(ownerId, threadId, jobId);
+  if (!image.length || image.length > MAX_CHARACTER_IMAGE_BYTES) throw new CharacterMediaUnavailable();
+  const configured = storage();
+  try {
+    await configured.client.send(new PutObjectCommand({ Bucket: configured.bucket, Key, Body: image,
+      ContentType: "image/webp", CacheControl: "private, no-store" }), { abortSignal: AbortSignal.timeout(20_000) });
+    return storySceneImagePath(threadId, jobId);
+  } finally { configured.client.destroy(); }
+}
+
+export async function readStorySceneImage(ownerId: string, threadId: string, jobId: string) {
+  return readStoredImage(storySceneKey(ownerId, threadId, jobId), 15_000);
+}
+
+async function readStoredImage(Key: string, timeout: number) {
+  const configured = storage();
+  try {
+    const object = await configured.client.send(new GetObjectCommand({ Bucket: configured.bucket, Key }),
+      { abortSignal: AbortSignal.timeout(timeout) });
+    if (!object.Body || !object.ContentLength || object.ContentLength > MAX_CHARACTER_IMAGE_BYTES) throw new CharacterMediaUnavailable();
+    return new Uint8Array(await object.Body.transformToByteArray());
+  } finally { configured.client.destroy(); }
 }

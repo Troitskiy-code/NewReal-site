@@ -12,12 +12,14 @@ const MIN_PROMPT_CHARS = 80;
 // The limit of Seedream 5.0 Lite.
 const MAX_PROMPT_CHARS = 2995;
 const REFUSAL = /\b(I can(?:not|'t)|I am sorry|I'm sorry|as an AI|I won't|I'm unable|I am unable)\b/i;
-const CLOTHED_SENTENCE = "Every person is fully dressed in ordinary everyday clothes that cover the torso and legs.";
+export const CLOTHED_SENTENCE = "Every person is fully dressed in ordinary everyday clothes that cover the torso and legs.";
 const UNDERWEAR_SENTENCE = "Every person keeps their underwear on, and it covers the chest and hips.";
-const ADULT_SENTENCE = "Every person shown is clearly an adult, with a mature face and adult proportions.";
+export const ADULT_SENTENCE = "Every person shown is clearly an adult, with a mature face and adult proportions.";
 const INTIMATE_DETAIL = /\b(?:underwear|lingerie|bras?|bralettes?|panties|briefs|boxers|garters?|stockings|corsets?|negligees?|naked|nude|nudity|bare|topless|shirtless|undress\w*|unclothed|sheets?|towels?|baths?|bathtubs?|bathing|showers?|hot springs?|sauna|submerged|waist-deep|kiss\w*|embrac\w*|caress\w*|intima\w*|sensual\w*|passion\w*|desire\w*|arous\w*|seduct\w*|erotic\w*|sexy|sexual\w*|lovemaking|(?:on|in|under) (?:a |the )?bed)\b/i;
 const NUDITY_OR_SEX = /\b(?:naked|nude|nudity|topless|bottomless|bare[- ](?:chested|breasted)|undress\w*|unclothed|breasts?|nipples?|genitals?|sensual\w*|passion\w*|desire\w*|arous\w*|seduct\w*|erotic\w*|sexy|sexual\w*|lovemaking)\b/i;
-const YOUTH = /\b(?:teen\w*|adolescen\w*|minors?|underage|schoolgirls?|schoolboys?|high school|child\w*|kids?|girls?|boys?|young\w*|youth\w*|lolis?|shotas?)\b|(?<!\p{L})(?:школьн|подрост|несовершеннолет|девочк|девушк|мальчик|ребён|ребен|юн[аыоу]|младш)/iu;
+const MINOR_SIGN = /\b(?:teen\w*|adolescen\w*|minors?|underage|schoolgirls?|schoolboys?|high school|child\w*|kids?|lolis?|shotas?)\b|(?<!\p{L})(?:школьн|подрост|несовершеннолет|девочк|мальчик|ребён|ребен|младш)/iu;
+// Stricter than a sign of a minor: for text the rewriter itself wrote, even "young" or "girl" costs the underwear.
+const YOUTH = new RegExp(`${MINOR_SIGN.source}|\\b(?:girls?|boys?|young\\w*|youth\\w*)\\b|(?<!\\p{L})(?:девушк|юн[аыоу])`, "iu");
 const UNDERWEAR_OR_NUDITY = /\b(?:underwear|lingerie|bras?|bralettes?|panties|briefs|boxers|garters?|stockings|corsets?|negligees?|naked|nude|nudity|topless|undress\w*|unclothed)\b|(?<!\p{L})(?:бель[её]|гол(?:ая|ый|ые|ую|ой)|обнаж|раздет|лифчик|трус)/iu;
 const AGE_PATTERNS = [/\b(\d{1,3})[- ]?(?:year|yr)s?[- ]?old\b/gi, /\b(\d{1,3}) years? of age\b/gi, /\baged? (\d{1,3})\b/gi, /(?<!\d)(\d{1,3})\s*(?:лет|года|год)(?!\p{L})/giu];
 
@@ -25,10 +27,19 @@ export function isAvatarSafetyRewriteEnabled(): boolean {
   return (process.env['AVATAR_SAFETY_REWRITE_ENABLED'] ?? "").trim().toLowerCase() !== "false";
 }
 
+function statedAges(text: string) {
+  return AGE_PATTERNS.flatMap(pattern => [...text.matchAll(pattern)].map(match => Number(match[1])));
+}
+
 /** True only when the text gives at least one number age, every one of them is 18+, and nothing suggests youth. */
 export function statesOnlyAdultAges(text: string): boolean {
-  const ages = AGE_PATTERNS.flatMap(pattern => [...text.matchAll(pattern)].map(match => Number(match[1])));
+  const ages = statedAges(text);
   return ages.length > 0 && ages.every(age => age >= 18) && !YOUTH.test(text);
+}
+
+/** A stated age under 18 or an explicit word for a minor anywhere in the text. */
+export function mentionsMinor(text: string): boolean {
+  return statedAges(text).some(age => age < 18) || MINOR_SIGN.test(text);
 }
 
 const SHARED_RULES = [

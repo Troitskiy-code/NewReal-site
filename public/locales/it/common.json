@@ -1,4 +1,16 @@
 {
+  "storyScene": {
+    "title": "Illustrazione della scena",
+    "hint": "Gemma elabora fino a otto messaggi recenti. Il modello di immagini riceve la descrizione della scena e usa come riferimento l’avatar della scheda, se disponibile. Solo tu puoi vedere l’illustrazione.",
+    "generate": "Crea illustrazione",
+    "generating": "Creazione dell’illustrazione…",
+    "allowance": "Usa una generazione della tua quota.",
+    "unavailable": "Hai esaurito la quota di generazioni.",
+    "apply": "Imposta come avatar della storia",
+    "selected": "Selezionata come avatar della storia",
+    "reset": "Ripristina l’avatar predefinito",
+    "saveFailed": "Impossibile aggiornare l’avatar della storia."
+  },
   "voiceInput": {
     "start": "Input vocale",
     "stop": "Interrompi e trascrivi",

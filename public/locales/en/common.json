@@ -1,4 +1,16 @@
 {
+  "storyScene": {
+    "title": "Scene illustration",
+    "hint": "Gemma processes up to eight recent messages. The image model receives the scene description and uses the card avatar as a reference when available. The illustration is visible only to you.",
+    "generate": "Create illustration",
+    "generating": "Creating the illustration…",
+    "allowance": "Uses one generation from your allowance.",
+    "unavailable": "No generations left in your allowance.",
+    "apply": "Set as story avatar",
+    "selected": "Selected as the story avatar",
+    "reset": "Restore the default avatar",
+    "saveFailed": "Could not update the story avatar."
+  },
   "voiceInput": {
     "start": "Voice input",
     "stop": "Stop and transcribe",

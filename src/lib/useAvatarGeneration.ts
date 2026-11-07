@@ -4,13 +4,13 @@ import { useSession } from "next-auth/react";
 import { showError, showSuccess } from "./toast";
 import { METRIKA_GOALS, reachGoal } from "./metrika";
 
-type Limit = { tokensUsedThisMonth: number; monthlyLimit: number; monthlyRemaining: number };
-type Job = { jobId?: string; clientKey?: string; scope?: string; state: string; imageUrl?: string; error?: string; tokenStatus?: Limit;
+export type AvatarLimit = { tokensUsedThisMonth: number; monthlyLimit: number; monthlyRemaining: number };
+type Job = { jobId?: string; clientKey?: string; scope?: string; state: string; imageUrl?: string; error?: string; tokenStatus?: AvatarLimit;
   /** For "uncertain": true while the server still refuses a new paid run. */
   blocked?: boolean;
   /** For a blocking "uncertain" job: seconds until a new run is allowed. */
   retryAfterSeconds?: number };
-export function useAvatarGeneration(scope: string, onImage: (image: string) => void, onLimits: (limits: Limit) => void) {
+export function useAvatarGeneration(scope: string, onImage: (image: string) => void, onLimits: (limits: AvatarLimit) => void) {
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
   const [job, setJob] = useState<Job>({ state: "none" });
@@ -145,6 +145,7 @@ export function useAvatarGeneration(scope: string, onImage: (image: string) => v
     } finally { if (!controller.current?.signal.aborted) setStarting(false); }
   }
   return { busy: starting || ["creating", "pending"].includes(job.state), blocked: uncertainBlocks,
+    image: job.state === "succeeded" && job.jobId && job.imageUrl ? { jobId: job.jobId, url: job.imageUrl } : null,
     notice, state: job.state, canRestore: job.state === "succeeded" && deliveredId !== job.jobId,
     restore: () => applyImage(job), refresh: () => readStatus(undefined, true), start };
 }

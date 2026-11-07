@@ -13,6 +13,12 @@ import { createAvatarTaskWithRewrites, publicAvatarJob, finishAvatarJob, reconci
 import { withAiCostContext, setAiCostActor, recordKieAvatarCost } from "@/lib/aiCostTelemetry";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { readAvatarBody, AvatarBodyTooLarge } from "@/lib/avatarRequest";
+import { chatThreadsEnabled } from "@/lib/chatThreads";
+import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
+import { isSameOriginRequest } from "@/lib/telegram/http";
+import { STORY_SCENE_SCOPE_PREFIX, storySceneThreadId } from "@/lib/storySceneShared";
+import { buildStorySceneSnapshot, mayShowStorySceneUnderwear, STORY_SCENE_MESSAGE_LIMIT, StoryScenePromptUnavailable, writeStoryScenePrompt } from "@/lib/storyScenePrompt";
+import { readCharacterAvatarReference } from "@/lib/characterMedia";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -38,9 +44,41 @@ export async function POST(req: NextRequest) {
       try { body = JSON.parse(raw); } catch { return json({ error: "Некорректный запрос" }, 400); }
       if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Некорректный запрос" }, 400);
       const name = text(body.name), reference = text(body.referenceImage), scope = text(body.scope), clientKey = text(body.clientKey);
-      if (!name || name.length > 200) return json({ error: "Укажите имя или название до 200 символов" }, 400);
       if (!validScope(scope) || !validKey(clientKey)) return json({ error: "Некорректный идентификатор генерации. Обновите страницу." }, 400);
-      withReference = Boolean(reference);
+      const storyThreadId = storySceneThreadId(scope);
+      let scene: ReturnType<typeof buildStorySceneSnapshot> | undefined;
+      let storyReference: Buffer | null = null;
+      let allowUnderwear = false;
+      if (scope.startsWith(STORY_SCENE_SCOPE_PREFIX)) {
+        if (!storyThreadId || reference) return json({ error: "Некорректный запрос иллюстрации" }, 400);
+        if (!isSameOriginRequest(req)) return json({ error: "Доступ запрещён" }, 403);
+        const thread = chatThreadsEnabled() ? await prisma.chatThread.findFirst({ where: { id: storyThreadId, userId: session.user.id },
+          select: { characterId: true, character: { select: { name: true, appearance: true, description: true, artStyle: true, roleplayMode: true,
+            rpConfig: true, imageUrl: true, userId: true } } } }) : null;
+        if (!thread) return json({ error: "История не найдена" }, 404);
+        const access = await getAuthorizedCharacterForChat(session.user.id, thread.characterId);
+        if ("error" in access) return json({ error: access.error }, access.status);
+        const existing = await prisma.avatarGeneration.findUnique({ where: { userId_clientKey: { userId: session.user.id, clientKey } } });
+        if (existing) {
+          if (existing.scope !== scope) throw new AvatarRequestConflict("Story scene idempotency conflict");
+          const updated = await reconcileAvatarJob(existing.id) ?? existing;
+          const usage = await getAvatarUsageUser(session.user.id);
+          return json({ ...publicAvatarJob(updated), tokenStatus: getAvatarTokenStatus(usage) }, updated.state === "succeeded" ? 200 : 202);
+        }
+        const messages = await prisma.message.findMany({ where: { threadId: storyThreadId, userId: session.user.id,
+          characterId: thread.characterId, role: { in: ["user", "assistant"] } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: STORY_SCENE_MESSAGE_LIMIT, select: { id: true, role: true, content: true } });
+        scene = buildStorySceneSnapshot(messages.reverse(), thread.character);
+        if (!scene.turns.length) return json({ error: "В истории пока нет сцены для иллюстрации" }, 400);
+        if (scene.card.type !== "world") {
+          stage = "read_character_avatar";
+          storyReference = await readCharacterAvatarReference(thread.character.imageUrl, thread.character.userId ?? "");
+        }
+        const { name: cardName, appearance, description, rpConfig } = thread.character;
+        allowUnderwear = await mayShowStorySceneUnderwear({ id: thread.characterId, userId: thread.character.userId, imageUrl: thread.character.imageUrl }, Boolean(storyReference),
+          JSON.stringify([cardName, appearance, description, rpConfig]), scene.turns.map(turn => turn.text).join("\n"));
+      } else if (!name || name.length > 200) return json({ error: "Укажите имя или название до 200 символов" }, 400);
+      withReference = Boolean(reference || storyReference);
       if (reference && !isSafeAvatarReference(reference)) {
         // Only the declared type and size, never the image: tells a format problem from a size one.
         const mime = /^data:([a-z0-9.+-]{1,40}\/[a-z0-9.+-]{1,60})?[;,]/i.exec(reference);
@@ -48,14 +86,16 @@ export async function POST(req: NextRequest) {
         return json({ error: "Загрузите PNG, JPEG, WebP или GIF размером до 5 МБ" }, 400);
       }
       stage = "prepare_reference";
-      const prepared = reference ? await prepareKieReference(reference) : undefined;
+      const prepared = withReference ? await prepareKieReference(storyReference ?? reference) : undefined;
       stage = "reserve";
-      const templatePrompt = buildAvatarPrompt(body);
+      const templatePrompt = scene ? "" : buildAvatarPrompt(body);
       // Never accept modelId, resolution or number of images from the client.
-      const model = kieAvatarModel(Boolean(reference));
+      const model = kieAvatarModel(withReference);
       // Hash the card fields, not the written prompt: the writer model varies, and a retried request
-      // with the same key must still match its original.
-      const payloadHash = createHash("sha256").update(JSON.stringify([scope, templatePrompt, readAvatarCardSnapshot(body), reference])).digest("hex");
+      // with the same key must still match its original. A scene has no editable fields, so retries match
+      // even when the chat has advanced.
+      const payloadHash = createHash("sha256").update(JSON.stringify(scene ? [scope]
+        : [scope, templatePrompt, readAvatarCardSnapshot(body), reference])).digest("hex");
       const reservation = await reserveAvatarGeneration(session.user.id, {
         clientKey, scope, payloadHash, model: model.id, estimatedCredits: model.estimatedCredits, creditRub: KIE_CREDIT_RUB,
       });
@@ -68,13 +108,14 @@ export async function POST(req: NextRequest) {
         await recordKieAvatarCost(job);
         // Only a new job reaches the writer, so a retried request never pays for a second prompt.
         stage = "write_prompt";
-        const written = await writeAvatarPrompt(body, templatePrompt);
+        const written = scene ? { prompt: await writeStoryScenePrompt(scene, withReference, allowUnderwear), source: "llm" as const, reason: undefined }
+          : await writeAvatarPrompt(body, templatePrompt);
         infoLog("KieAvatar", "Prompt prepared", { jobId: job.id, source: written.source, ...(written.reason ? { reason: written.reason } : {}) });
         stage = "upload_reference";
         const referenceUrl = prepared ? await uploadKieReference(prepared) : undefined;
         stage = "create_task";
         attempted = true;
-        const { taskId, rewrites } = await createAvatarTaskWithRewrites(written.prompt, referenceUrl);
+        const { taskId, rewrites } = await createAvatarTaskWithRewrites(written.prompt, referenceUrl, 0, Boolean(scene));
         // No prompt/reference/key: operators can recover a task after a DB write failure.
         infoLog("KieAvatar", "Task accepted", { taskId, jobId: job.id, model: model.id });
         stage = "save_task";
@@ -100,7 +141,7 @@ export async function POST(req: NextRequest) {
         // A post-acceptance DB/status failure must not stop reconciliation of a known task.
         if (!job.providerTaskId) {
           job = await finishAvatarJob(job, !attempted || (error instanceof KieError && error.rejected) ? "failed" : "uncertain",
-            { errorCode: error instanceof KieError ? error.code : "internal" }).catch(() => null);
+            { errorCode: error instanceof KieError ? error.code : error instanceof StoryScenePromptUnavailable ? "no_scene" : "internal" }).catch(() => null);
         }
         if (job) {
           const usage = await getAvatarUsageUser(job.userId).catch(() => null);

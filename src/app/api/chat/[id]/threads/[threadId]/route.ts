@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
+import { isSameOriginRequest } from "@/lib/telegram/http";
+import { isStorySceneJobId, storySceneImagePath, storySceneScope } from "@/lib/storySceneShared";
 import {
   chatThreadsEnabled,
   isValidThreadId,
@@ -30,16 +32,16 @@ async function authorizeThread(characterId: string, threadId: string) {
   return { thread };
 }
 
-/** Rename ({ title }, null = automatic) and archive/restore ({ status }). */
+/** Rename, archive/restore, or select a completed illustration from this story. */
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
     const { id: characterId, threadId } = await context.params;
     const auth = await authorizeThread(characterId, threadId);
     if ("response" in auth) return auth.response;
 
-    const body = await req.json().catch(() => null) as { title?: unknown; status?: unknown } | null;
+    const body = await req.json().catch(() => null) as { title?: unknown; status?: unknown; sceneAvatarJobId?: unknown } | null;
     if (!body || typeof body !== "object") return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
-    const data: { title?: string | null; status?: string } = {};
+    const data: { title?: string | null; status?: string; sceneAvatarJobId?: string | null } = {};
     if (body.title !== undefined) {
       const title = normalizeThreadTitle(body.title);
       if (title === undefined) return NextResponse.json({ error: "Некорректное название истории" }, { status: 400 });
@@ -50,6 +52,18 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: "Некорректный статус истории" }, { status: 400 });
       }
       data.status = body.status;
+    }
+    if (body.sceneAvatarJobId !== undefined) {
+      if (!isSameOriginRequest(req)) return NextResponse.json({ error: "Доступ запрещён" }, { status: 403 });
+      if (body.sceneAvatarJobId === null) data.sceneAvatarJobId = null;
+      else {
+        const jobId = body.sceneAvatarJobId;
+        if (!isStorySceneJobId(jobId)) return NextResponse.json({ error: "Иллюстрация не найдена" }, { status: 404 });
+        const job = await prisma.avatarGeneration.findFirst({ where: { id: jobId, userId: auth.thread.userId,
+          scope: storySceneScope(threadId), state: "succeeded", imageUrl: storySceneImagePath(threadId, jobId) }, select: { id: true } });
+        if (!job) return NextResponse.json({ error: "Иллюстрация не найдена" }, { status: 404 });
+        data.sceneAvatarJobId = job.id;
+      }
     }
     if (!Object.keys(data).length) return NextResponse.json({ error: "Нечего изменять" }, { status: 400 });
 

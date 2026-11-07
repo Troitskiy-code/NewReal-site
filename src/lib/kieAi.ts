@@ -64,10 +64,11 @@ async function request(url: string, body?: unknown) {
 }
 // Phone cameras shoot 24–50 MP; the input is capped at 5 MB, so this only guards against decompression bombs.
 const MAX_REFERENCE_PIXELS = 64_000_000;
-export async function prepareKieReference(value: string) {
-  if (!isSafeAvatarReference(value)) throw new KieError("invalid_reference", true);
+export async function prepareKieReference(value: string | Buffer) {
+  if (typeof value === "string" && !isSafeAvatarReference(value)) throw new KieError("invalid_reference", true);
   try {
-    const buffer = Buffer.from(value.slice(value.indexOf(",") + 1), "base64");
+    const buffer = typeof value === "string" ? Buffer.from(value.slice(value.indexOf(",") + 1), "base64") : value;
+    if (buffer.length > 5 * 1024 * 1024) throw new Error("too large");
     // WebP keeps photos near 1 MB at 1536 px; PNG often exceeded the cap and slowed the upload.
     const webp = await sharp(buffer, { limitInputPixels: MAX_REFERENCE_PIXELS, animated: false })
       .rotate().resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true }).webp({ quality: 90 }).toBuffer();
@@ -91,9 +92,9 @@ export function kieCallbackUrl() {
     return new URL("/api/webhook/kie", base.origin).href;
   } catch { return undefined; }
 }
-export async function createKieAvatar(prompt: string, referenceUrl?: string) {
+export async function createKieAvatar(prompt: string, referenceUrl?: string, square = false) {
   const data = await request(`${API}/api/v1/jobs/createTask`, {
-    model: kieAvatarModel(Boolean(referenceUrl)).id, input: kieAvatarInput(prompt, referenceUrl), callBackUrl: kieCallbackUrl(),
+    model: kieAvatarModel(Boolean(referenceUrl)).id, input: kieAvatarInput(prompt, referenceUrl, square), callBackUrl: kieCallbackUrl(),
   });
   const taskId = record(data.data).taskId;
   // Code 200 without a task ID: Kie accepted the call, so a paid task may still exist.
@@ -141,7 +142,7 @@ export function isKieImageUrl(value: string) {
       && ["redpandaai.co", "kie.ai", "aiquickdraw.com"].some(domain => host === domain || host.endsWith(`.${domain}`));
   } catch { return false; }
 }
-export async function saveKieImage(value: string, userId: string, jobId: string) {
+export async function saveKieImage(value: string, userId: string, jobId: string, storyThreadId?: string | null) {
   if (!isKieImageUrl(value)) throw new KieError("invalid_image");
   const response = await fetch(value, { signal: AbortSignal.timeout(20_000), redirect: "error", cache: "no-store" });
   if (!response.ok || !response.body || Number(response.headers.get("content-length")) > MAX_IMAGE_BYTES) throw new KieError("invalid_image");
@@ -157,8 +158,8 @@ export async function saveKieImage(value: string, userId: string, jobId: string)
   } finally { await reader.cancel().catch(() => {}); }
   const image = await sharp(Buffer.concat(chunks), { limitInputPixels: 16_000_000, animated: false })
     .rotate().resize({ width: 1536, height: 1536, fit: "inside", withoutEnlargement: true }).webp({ quality: 90 }).toBuffer();
-  const { storeCharacterImage } = await import("./characterMedia");
-  return storeCharacterImage(image, userId, jobId);
+  const { storeCharacterImage, storeStorySceneImage } = await import("./characterMedia");
+  return storyThreadId ? storeStorySceneImage(image, userId, storyThreadId, jobId) : storeCharacterImage(image, userId, jobId);
 }
 export function verifyKieWebhook(taskId: unknown, timestamp: string | null, signature: string | null, now = Date.now()) {
   const key = process.env['KIE_WEBHOOK_HMAC_KEY'];

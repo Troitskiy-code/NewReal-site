@@ -26,7 +26,7 @@ const pg = new EmbeddedPostgres({ databaseDir: join(directory, 'db'), user: 'pos
 const databaseUrl = `postgresql://postgres:synthetic_fixture@127.0.0.1:${port}/nv_kie_test`;
 const db = new PrismaClient({ datasourceUrl: databaseUrl, log: [] });
 const ddl = new Client({ connectionString: databaseUrl });
-const testEnv = { KIE_API_KEY: 'synthetic_fixture_key', KIE_WEBHOOK_HMAC_KEY: 'synthetic_fixture_hmac',
+const testEnv = { DEEPINFRA_API_KEY: 'synthetic_deepinfra_key', CHAT_THREADS_ENABLED: 'true', KIE_API_KEY: 'synthetic_fixture_key', KIE_WEBHOOK_HMAC_KEY: 'synthetic_fixture_hmac',
   NEXTAUTH_URL: 'https://example.test', NEXTAUTH_SECRET: 'synthetic_fixture_actor', CRON_SECRET: 'synthetic_fixture_cron',
   S3_ENDPOINT: 'https://storage.yandexcloud.net', S3_REGION: 'ru-central1', S3_BUCKET: 'fixture',
   S3_ACCESS_KEY_ID: 'synthetic_fixture_key', S3_SECRET_ACCESS_KEY: 'synthetic_fixture_secret' };
@@ -86,7 +86,15 @@ let rewriteMode = 'ok', rewriteIntimateOnce = 0;
 const rewriteCalls = [];
 const REWRITTEN_PROMPT = 'A calm portrait of the same person in a wool coat at a quiet window, in soft daylight, with a relaxed expression and no text in the frame.';
 const CLOTHED_REWRITE = `${REWRITTEN_PROMPT} Every person is fully dressed in ordinary everyday clothes that cover the torso and legs.`;
+const BEDROOM_SCENE = 'Ada sits beside the turquoise bedspread and looks up with a calm smile in the warm light of an amber lamp, with rain on the round window.';
+let sceneWardrobe = 'ordinary';
 async function writerStub(purpose, url, body) {
+  if (purpose === 'story_scene_prompt') {
+    writerCalls.push({ purpose, body });
+    const content = writerMode === 'garbage' ? 'not json at all'
+      : '```json\n' + JSON.stringify({ description: sceneWardrobe === 'adult_underwear' ? BEDROOM_SCENE : WRITTEN_SCENE, wardrobe: sceneWardrobe }) + '\n```';
+    return { status: 200, headers: {}, data: { choices: [{ finish_reason: 'stop', message: { content } }] } };
+  }
   if (body.messages[0].content.includes('content filter refused')) {
     rewriteCalls.push({ purpose, body });
     if (rewriteMode === 'timeout') throw Object.assign(new Error('timeout'), { code: 'ECONNABORTED' });
@@ -114,8 +122,18 @@ function load(file) {
   const dependency = name => {
     if (name === '@aws-sdk/client-s3') return {
       PutObjectCommand: class { constructor(input) { this.input = input; } },
-      S3Client: class { async send(command) { storedImages.set(command.input.Key, command.input.Body); } destroy() {} },
+      GetObjectCommand: class { constructor(input) { this.input = input; } },
+      S3Client: class {
+        async send({ input: { Key, Body } }) {
+          if (Body) { storedImages.set(Key, Body); return; }
+          const image = storedImages.get(Key);
+          if (!image) throw Object.assign(new Error('Missing fixture image'), { $metadata: { httpStatusCode: 404 } });
+          return { ContentLength: image.byteLength, Body: { transformToByteArray: async () => image } };
+        }
+        destroy() {}
+      },
     };
+    if (name === 'axios') return { post: (url, body) => writerStub('story_scene_prompt', url, body), isAxiosError: () => false };
     if (name === '@/lib/prisma' || name === './prisma') return { prisma: db };
     if (name === '@/lib/auth') return { authOptions: {} };
     if (name === 'next-auth/next') return { getServerSession: async () => userId ? { user: { id: userId } } : null };
@@ -153,10 +171,12 @@ try {
     body: new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(11)); controller.close(); } }), duplex: 'half' }), 10), input.AvatarBodyTooLarge);
   check(true, 'chunked requests respect actual byte limit without Content-Length');
   const legacy = await db.avatarQuotaReservation.create({ data: { id: randomUUID(), userId, units: 1, month: new Date(), status: 'completed' } });
+  await ddl.query('ALTER TABLE "ChatThread" DROP COLUMN "sceneAvatarJobId"');
   await ddl.query('DROP TABLE "AvatarGeneration"');
   await ddl.query('BEGIN');
   await ddl.query(readFileSync('prisma/migrations/20261011190000_kie_avatar_jobs/migration.sql','utf8'));
   await ddl.query('COMMIT');
+  await ddl.query(readFileSync('prisma/migrations/20261107160000_story_scene_avatar/migration.sql', 'utf8'));
   check(!!await db.avatarQuotaReservation.findUnique({ where: { id: legacy.id } }), 'scoped SQL preserves legacy quota reservations');
   const handler = load('src/app/api/generate-avatar/route.ts'), jobs = load('src/lib/kieAvatarJobs.ts');
   const kie = load('src/lib/kieAi.ts'), telemetry = load('src/lib/aiCostTelemetry.ts');
@@ -446,6 +466,106 @@ try {
   const afterNudity = await rewrite.rewriteRefusedAvatarPrompt(ADULT_LINGERIE, 1, false);
   check(rewriteCalls.length === beforeNudity + 2 && afterNudity === null, 'an answer describing nudity is rejected, then the clothed rule is tried');
   rewriteMode = 'ok';
+
+  // Story scenes on the monthly generation allowance.
+  const sceneOwner = await db.user.create({ data: { email: 'scene@example.test', subscriptionType: 'dialog',
+    subscriptionEnd: new Date(Date.now() + 86400000), lastTokenMonth: new Date() } });
+  userId = sceneOwner.id;
+  state = 'success';
+  const card = await db.character.create({ data: { name: 'Scene fixture', userId, isPublic: true, artStyle: 'anime',
+    appearance: 'A gray linen apron', totalMessages: 0 } });
+  const thread = await db.chatThread.create({ data: { userId, characterId: card.id, number: 1 } });
+  const otherThread = await db.chatThread.create({ data: { userId, characterId: card.id, number: 2 } });
+  const createMessage = (threadId, content, createdAt, role = 'assistant') => db.message.create({ data: { userId,
+    characterId: card.id, threadId, role, content, createdAt } });
+  for (let i = 0; i < 9; i++) await createMessage(thread.id, `Old fixture turn ${i}`, new Date(Date.now() - (11 - i) * 1000));
+  await createMessage(thread.id, "*Заходим в зал со старым камином.* 'Скрытая мысль о синей лодке.'", new Date());
+  await createMessage(otherThread.id, 'Другая история. Подводная станция.', new Date());
+  const sameOrigin = { 'sec-fetch-site': 'same-origin' };
+  const scenePost = (body, headers = sameOrigin) => new NextRequest('https://example.test/api/generate-avatar',
+    { method: 'POST', headers, body: JSON.stringify(body) });
+  const sceneRequest = { scope: `story:${thread.id}`, clientKey: randomUUID() };
+  const beforeScene = creates;
+  check((await handler.POST(scenePost(sceneRequest, { 'sec-fetch-site': 'cross-site' }))).status === 403 && creates === beforeScene,
+    'cross-site requests cannot start a story illustration');
+  const sceneStarted = await (await handler.POST(scenePost(sceneRequest))).json();
+  const sceneWritten = writerCalls.at(-1);
+  const material = JSON.parse(sceneWritten.body.messages.at(-1).content);
+  check(sceneStarted.state === 'pending' && sceneWritten.purpose === 'story_scene_prompt' && sceneWritten.body.model === 'google/gemma-4-31B-it-turbo'
+    && material.chat.length === 8 && material.chat[0].text === 'Old fixture turn 2' && material.chat.at(-1).text.includes('камином')
+    && !JSON.stringify(material).includes('лодке') && !JSON.stringify(material).includes('Подводная станция'),
+    'Gemma sees only the newest eight messages from this story, with private thoughts removed');
+  check(requests.at(-1).input.aspect_ratio === '1:1' && requests.at(-1).input.nsfw_checker
+    && material.style === 'anime' && requests.at(-1).input.prompt.startsWith('Anime still')
+    && requests.at(-1).input.prompt.includes(WRITTEN_SCENE) && !requests.at(-1).input.prompt.includes('камином'),
+    'the image model receives a square request with the extracted description only');
+  await createMessage(thread.id, 'Сцена изменилась после запуска.', new Date(Date.now() + 1000), 'user');
+  const sceneReplay = await (await handler.POST(scenePost(sceneRequest))).json();
+  check(sceneReplay.jobId === sceneStarted.jobId && creates === beforeScene + 1, 'retry after new messages returns the original paid job');
+  check(sceneReplay.state === 'succeeded' && sceneReplay.imageUrl === `/api/story-scene-media/${thread.id}/${sceneReplay.jobId}`
+    && storedImages.has(`story-scenes/${sceneOwner.id}/${thread.id}/${sceneReplay.jobId}.webp`)
+    && !load('src/lib/characterMedia.ts').parseCharacterMediaPath(sceneReplay.imageUrl), 'scene image is private and outside the publishable character-media namespace');
+  const sceneMedia = load('src/app/api/story-scene-media/[threadId]/[jobId]/route.ts');
+  const settings = load('src/app/api/chat/[id]/threads/[threadId]/route.ts');
+  const media = threadId => sceneMedia.GET(new Request('https://example.test' + sceneReplay.imageUrl),
+    { params: Promise.resolve({ threadId, jobId: sceneReplay.jobId }) });
+  const setAvatar = (threadId, id) => settings.PATCH(new NextRequest('https://example.test', { method: 'PATCH',
+    headers: sameOrigin, body: JSON.stringify({ sceneAvatarJobId: id }) }), { params: Promise.resolve({ id: card.id, threadId }) });
+  check((await media(thread.id)).headers.get('content-type') === 'image/webp' && (await media(otherThread.id)).status === 404
+    && (await setAvatar(otherThread.id, sceneReplay.jobId)).status === 404, 'owner can read the image but another story cannot use it');
+  check((await (await setAvatar(thread.id, sceneReplay.jobId)).json()).thread.sceneAvatarUrl === sceneReplay.imageUrl
+    && (await db.chatThread.findUnique({ where: { id: thread.id } })).sceneAvatarJobId === sceneReplay.jobId
+    && (await db.character.findUnique({ where: { id: card.id } })).imageUrl === null, 'assignment persists on this story alone');
+  check((await (await setAvatar(thread.id, null)).json()).thread.sceneAvatarUrl === null, 'owner can restore the character avatar');
+  userId = user.id;
+  check((await media(thread.id)).status === 404 && (await setAvatar(thread.id, sceneReplay.jobId)).status === 404
+    && (await handler.POST(scenePost({ ...sceneRequest, clientKey: randomUUID() }))).status === 404,
+    'another account cannot generate, view or assign an illustration in this story');
+  userId = sceneOwner.id;
+  writerMode = 'garbage';
+  const beforeInvalidScene = creates;
+  const invalidScene = await (await handler.POST(scenePost({ ...sceneRequest, clientKey: randomUUID() }))).json();
+  check(invalidScene.state === 'failed' && creates === beforeInvalidScene
+    && (await db.user.findUnique({ where: { id: sceneOwner.id } })).tokensUsedThisMonth === 1,
+    'an invalid scene description never reaches the image model and refunds its reservation');
+  writerMode = 'ok';
+
+  // Underwear in a scene: the code decides from the card, the avatar and the chat.
+  const scenePrompt = async (threadId, wardrobe) => {
+    sceneWardrobe = wardrobe;
+    const before = requests.length;
+    const body = await (await handler.POST(scenePost({ scope: `story:${threadId}`, clientKey: randomUUID() }))).json();
+    if (body.jobId && !['failed', 'succeeded'].includes(body.state)) await poll(body.jobId);
+    sceneWardrobe = 'ordinary';
+    return { body, prompt: requests.length > before ? requests.at(-1).input.prompt : null };
+  };
+  const storyFor = async (data, line = 'Вечер в спальне отеля, тёплый свет лампы.') => {
+    const created = await db.character.create({ data: { name: 'Gate fixture', userId, isPublic: true, artStyle: 'anime', totalMessages: 0, ...data } });
+    const story = await db.chatThread.create({ data: { userId, characterId: created.id, number: 1 } });
+    await db.message.create({ data: { userId, characterId: created.id, threadId: story.id, role: 'assistant', content: line, createdAt: new Date() } });
+    return { created, story };
+  };
+  const noAge = await storyFor({ appearance: 'Silver hair' });
+  check((await scenePrompt(noAge.story.id, 'adult_underwear')).prompt === null && writerCalls.at(-1).body.messages[0].content.includes('Underwear is not available'),
+    'a card without a stated age never gets underwear, even when the writer asks for it');
+  const dressed = await scenePrompt(noAge.story.id, 'ordinary');
+  check(dressed.prompt.endsWith('No text, labels or watermark.') && dressed.prompt.includes('fully dressed'), 'the code dresses people when underwear is not allowed');
+  const adultCard = await storyFor({ appearance: 'A woman, 34 years old, silver hair' });
+  const allowed = await scenePrompt(adultCard.story.id, 'adult_underwear');
+  check(allowed.prompt.includes('full-coverage underwear') && allowed.prompt.includes('clearly an adult') && !writerCalls.at(-1).body.messages[0].content.includes('Underwear is not available'),
+    'a card with a stated adult age and no reference may keep underwear, and the code adds the adult sentence');
+  const minorChat = await storyFor({ appearance: 'A woman, 34 years old, silver hair' }, 'Учитель заходит в школьный класс.');
+  check((await scenePrompt(minorChat.story.id, 'adult_underwear')).prompt === null, 'a sign of a minor anywhere in the card or the chat vetoes underwear');
+  const uploaded = await storyFor({ appearance: 'A woman, 34 years old, silver hair', imageUrl: reference });
+  const uploadedScene = await scenePrompt(uploaded.story.id, 'adult_underwear');
+  check(uploadedScene.prompt === null, 'an avatar that was not drawn here from text may be a real photo, so it never gets underwear');
+  const beforeSquare = creates;
+  refuseNext = 1;
+  const refusedScene = await scenePrompt(noAge.story.id, 'ordinary');
+  check(creates === beforeSquare + 2 && requests.at(-1).input.aspect_ratio === '1:1' && requests.at(-1).input.prompt === CLOTHED_REWRITE && refusedScene.body.jobId,
+    'a refused scene is rewritten and stays square');
+  await poll(refusedScene.body.jobId);
+  check(['succeeded'].includes((await poll(refusedScene.body.jobId)).state), 'a rewritten scene finishes');
 
   check(!logs.join('\n').includes(REWRITTEN_PROMPT), 'logs omit the rewritten prompt');
   check(!logs.join('\n').includes(marker) && !logs.join('\n').includes(testEnv.KIE_API_KEY) && !logs.join('\n').includes('weathered innkeeper'),

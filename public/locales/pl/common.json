@@ -1,4 +1,16 @@
 {
+  "storyScene": {
+    "title": "Ilustracja sceny",
+    "hint": "Gemma przetwarza maksymalnie osiem ostatnich wiadomości. Model obrazu otrzymuje opis sceny i w miarę możliwości korzysta z awatara karty jako wzorca. Ilustracja jest widoczna tylko dla Ciebie.",
+    "generate": "Utwórz ilustrację",
+    "generating": "Tworzenie ilustracji…",
+    "allowance": "Zużywa jedną generację z Twojego limitu.",
+    "unavailable": "Twój limit generacji został wykorzystany.",
+    "apply": "Ustaw jako awatar historii",
+    "selected": "Wybrano jako awatar historii",
+    "reset": "Przywróć domyślny awatar",
+    "saveFailed": "Nie udało się zaktualizować awatara historii."
+  },
   "voiceInput": {
     "start": "Wprowadzanie głosowe",
     "stop": "Zatrzymaj i przepisz",

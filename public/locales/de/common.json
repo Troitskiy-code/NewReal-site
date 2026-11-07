@@ -1,4 +1,16 @@
 {
+  "storyScene": {
+    "title": "Szenenillustration",
+    "hint": "Gemma verarbeitet bis zu acht aktuelle Nachrichten. Das Bildmodell erhält die Szenenbeschreibung und nutzt, falls verfügbar, den Kartenavatar als Referenz. Nur du kannst die Illustration sehen.",
+    "generate": "Illustration erstellen",
+    "generating": "Illustration wird erstellt…",
+    "allowance": "Verbraucht eine Generierung aus deinem Kontingent.",
+    "unavailable": "Dein Kontingent ist aufgebraucht.",
+    "apply": "Als Story-Avatar festlegen",
+    "selected": "Als Story-Avatar ausgewählt",
+    "reset": "Standardavatar wiederherstellen",
+    "saveFailed": "Der Story-Avatar konnte nicht aktualisiert werden."
+  },
   "voiceInput": {
     "start": "Spracheingabe",
     "stop": "Stoppen und transkribieren",

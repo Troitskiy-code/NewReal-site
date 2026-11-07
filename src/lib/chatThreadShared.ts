@@ -12,6 +12,7 @@ export type ChatThreadSummary = {
   status: ChatThreadStatus;
   createdAt: string;
   lastMessageAt: string;
+  sceneAvatarUrl?: string | null;
   messageCount?: number;
 };
 

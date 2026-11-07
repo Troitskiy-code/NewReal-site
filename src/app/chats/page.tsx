@@ -194,6 +194,7 @@ function ChatsPageContent() {
             ...(showArchived ? chats.filter((chat) => chat.thread?.status === "archived").map((chat) => [chat]) : []),
           ].map((group) => {
             const [latest] = group;
+            const avatarUrl = latest.thread?.sceneAvatarUrl || latest.character.avatarUrl;
             return (
               <div key={latest.thread?.id ?? latest.character.id} className="flex flex-col gap-2 border-b border-white/[0.06] pb-3 last:border-b-0">
                 <Link
@@ -204,16 +205,18 @@ function ChatsPageContent() {
                     <div className="flex h-full w-full items-center justify-center">
                       <FaUser className="text-xl text-wd-text-secondary/40" />
                     </div>
-                    {latest.character.avatarUrl ? (
-                    <img
-                      src={latest.character.avatarUrl}
-                      alt={latest.character.name}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-                    ) : null}
+                    {avatarUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={avatarUrl}
+                        src={avatarUrl}
+                        alt={latest.character.name}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    )}
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -250,6 +253,10 @@ function ChatsPageContent() {
                           index === 0 ? "bg-wd-primary/15 text-rose-100 hover:bg-wd-primary/25" : "bg-wd-card text-wd-text-secondary hover:text-white"
                         }`}
                       >
+                        {chat.thread?.sceneAvatarUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={chat.thread.sceneAvatarUrl} alt="" loading="lazy" className="mr-1.5 h-5 w-5 rounded-full object-cover" />
+                        )}
                         {chat.thread ? threadDisplayTitle(chat.thread, t) : chat.character.name} · {chat.count}
                       </Link>
                     ))}

@@ -287,12 +287,15 @@ model ChatThread {
   // Stable, private NPC identities for speaker recognition; no voice assignment yet.
   speechCast Json?
   speechVoices Json?
+  sceneAvatarJobId String?
+  sceneAvatarJob AvatarGeneration? @relation("StorySceneAvatar", fields: [sceneAvatarJobId], references: [id], onDelete: SetNull)
   memoryLeaseOwner String?
   memoryLeaseUntil DateTime?
 
   @@index([userId, characterId, status, lastMessageAt])
   @@index([userId, lastMessageAt])
   @@index([personaId])
+  @@index([sceneAvatarJobId])
 }
 
 model MessageEmbedding {
@@ -928,6 +931,7 @@ model AvatarGeneration {
   id String @id
   reservationId String @unique
   reservation AvatarQuotaReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  sceneAvatarFor ChatThread[] @relation("StorySceneAvatar")
   userId String
   clientKey String
   scope String

@@ -164,6 +164,10 @@ export default function ChatThreadsPanel({
               className="flex min-w-0 flex-col items-start text-left disabled:opacity-60"
             >
               <span className="flex w-full items-center gap-2">
+                {thread.sceneAvatarUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={thread.sceneAvatarUrl} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+                )}
                 <span className="truncate text-sm font-bold text-white">{title}</span>
                 {isCurrent ? <span className="shrink-0 rounded-wd-pill bg-wd-primary/20 px-2 py-0.5 text-[10px] font-bold text-wd-primary-soft">{t("chatThreads.currentBadge")}</span> : null}
                 {thread.status === "archived" ? <span className="shrink-0 rounded-wd-pill bg-white/10 px-2 py-0.5 text-[10px] text-wd-text-secondary">{t("chatThreads.archived")}</span> : null}

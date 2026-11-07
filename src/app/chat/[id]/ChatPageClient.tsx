@@ -13,6 +13,7 @@ import { LuArrowLeft, LuPencil, LuTrash2 } from "react-icons/lu";
 import MemoryEditor from "@/components/MemoryEditor";
 import ChatAmbience from "@/components/ChatAmbience";
 import ChatPortraitBackground from "@/components/ChatPortraitBackground";
+import ChatSceneImage from "@/components/ChatSceneImage";
 import ChatComposer from "@/components/ChatComposer";
 import { formatChatMessage } from "@/lib/chatMessageMarkup";
 import { choiceNumeral, splitStoryChoices, type StoryChoicesSplit } from "@/lib/storyChoices";
@@ -611,6 +612,7 @@ function ChatSettingsMenu({
   onOpenPersona,
   onOpenPrompt,
   onOpenVoice,
+  onOpenSceneImage,
   onClearChat,
   threadsEnabled = false,
   onOpenThreads,
@@ -625,6 +627,7 @@ function ChatSettingsMenu({
   onOpenPersona: () => void;
   onOpenPrompt: () => void;
   onOpenVoice: () => void;
+  onOpenSceneImage?: () => void;
   onClearChat: () => void;
   /** Stories on: "new story" and the story list replace the destructive restart. */
   threadsEnabled?: boolean;
@@ -686,6 +689,10 @@ function ChatSettingsMenu({
           >
             {t("chatSpeech.settingsTitle")}
           </button>
+          {onOpenSceneImage && <button type="button" role="menuitem" onClick={() => { onClose(); onOpenSceneImage(); }}
+            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]">
+            {t("storyScene.title")}
+          </button>}
           <button
             type="button"
             role="menuitem"
@@ -999,6 +1006,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
   const [personaSelectorOpen, setPersonaSelectorOpen] = useState(false);
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false);
+  const [sceneImageOpen, setSceneImageOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<ChatPersona | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -1082,6 +1090,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     ? getLocalizedCardDescription(character, locale)
     : null;
   const characterAvatarUrl = character?.avatarUrl ?? initialShell.avatarUrl;
+  const storyAvatarUrl = currentThread?.sceneAvatarUrl || characterAvatarUrl;
 
   useEffect(() => {
     if (!characterId || status === "loading") {
@@ -1965,6 +1974,13 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
           {!isAnonymous && <ChatStorySettings key={`${characterId}:${threadId ?? ""}`} characterId={characterId} threadId={threadId} disabled={sending || actionLoading || clearingChat} />}
         </Modal>
 
+        {threadsEnabled && !isAnonymous && currentThread && (
+          <Modal open={sceneImageOpen} onClose={() => setSceneImageOpen(false)} title={t("storyScene.title")} wide>
+            <ChatSceneImage key={currentThread.id} characterId={characterId} thread={currentThread}
+              onThreadChange={thread => setCurrentThread(current => current?.id === thread.id ? { ...current, ...thread } : current)} />
+          </Modal>
+        )}
+
         {threadsEnabled && !isAnonymous ? (
           <Modal open={threadsOpen} onClose={() => setThreadsOpen(false)} title={t("chatThreads.listTitle", { name: characterDisplayName })} wide>
             <ChatThreadsPanel
@@ -2000,9 +2016,10 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                 <LuArrowLeft size={20} aria-hidden />
               </LocaleLink>
             )}
-            {characterAvatarUrl ? (
+            {storyAvatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={characterAvatarUrl}
+                src={storyAvatarUrl}
                 alt=""
                 className="h-10 w-10 rounded-full object-cover"
               />
@@ -2052,6 +2069,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                   onOpenPersona={() => setPersonaSelectorOpen(true)}
                   onOpenPrompt={() => setPromptSettingsOpen(true)}
                   onOpenVoice={() => setVoiceSettingsOpen(true)}
+                  onOpenSceneImage={threadsEnabled && currentThread ? () => setSceneImageOpen(true) : undefined}
                   onClearChat={() => {
                     setSettingsMenuOpen(false);
                     setConfirmClearChat(true);

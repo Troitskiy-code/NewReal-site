@@ -6,6 +6,9 @@ import { recordKieAvatarCost, setAiCostActor, withAiCostContext } from "./aiCost
 import { isAvatarSafetyRewriteEnabled, MAX_SAFETY_REWRITES, rewriteRefusedAvatarPrompt } from "./avatarPromptRewrite";
 import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
 import { kieAvatarModel, uncertainBlockSecondsLeft, uncertainJobBlocks } from "./kieAvatarModels";
+import { storySceneThreadId } from "./storySceneShared";
+
+const STORY_SCENE_DELIVERY_WINDOW_MS = 30 * 60 * 1000;
 
 /** While a job is pending, errorCode counts its rewrites: no prompt is kept and no column is needed. */
 export function safetyRewriteCode(rewrites: number) {
@@ -16,11 +19,11 @@ function safetyRewritesUsed(job: AvatarGeneration) {
 }
 
 /** A refused task costs nothing, so a moderation refusal at creation may be rewritten and sent again. */
-export async function createAvatarTaskWithRewrites(prompt: string, referenceUrl: string | undefined, used = 0) {
+export async function createAvatarTaskWithRewrites(prompt: string, referenceUrl: string | undefined, used = 0, square = false) {
   let current = prompt, rewrites = used;
   for (;;) {
     try {
-      return { taskId: await createKieAvatar(current, referenceUrl), rewrites };
+      return { taskId: await createKieAvatar(current, referenceUrl, square), rewrites };
     } catch (error) {
       if (!(error instanceof KieError && error.code === "safety") || !isAvatarSafetyRewriteEnabled() || rewrites >= MAX_SAFETY_REWRITES) throw error;
       const next = await rewriteRefusedAvatarPrompt(current, ++rewrites, Boolean(referenceUrl));
@@ -35,6 +38,7 @@ export function publicAvatarJob(job: AvatarGeneration) {
     ...(job.state === "succeeded" ? { imageUrl: job.imageUrl } : {}),
     ...(job.state === "failed" ? { error: job.errorCode === "safety"
       ? "Запрос отклонён правилами генерации. Измените описание или референс."
+      : job.errorCode === "no_scene" ? "Не удалось определить текущую сцену по сообщениям."
       : "Не удалось сгенерировать изображение. Генерация возвращена в лимит." } : {}),
     // The client keeps the button disabled while "blocked" and re-checks after retryAfterSeconds.
     ...(job.state === "uncertain" ? uncertainJobBlocks(job)
@@ -54,12 +58,14 @@ export async function finishAvatarJob(job: AvatarGeneration, state: "succeeded" 
     const updated = await tx.avatarGeneration.update({ where: { id: job.id }, data: {
       state, ...values, leaseToken: null, leaseUntil: null,
     } });
+    // A lost scene launch is still blocked against duplicate jobs, but the reader received no image.
+    const refund = state === "failed" || (state === "uncertain" && Boolean(storySceneThreadId(job.scope)));
     const reservation = await tx.avatarQuotaReservation.findUnique({ where: { id: job.reservationId } });
     if (reservation?.status === "reserved" || reservation?.status === "manual_review") {
       await tx.avatarQuotaReservation.update({ where: { id: job.reservationId }, data: {
-        status: state === "succeeded" ? "completed" : state === "failed" ? "refunded" : "manual_review",
+        status: state === "succeeded" ? "completed" : refund ? "refunded" : "manual_review",
       } });
-      if (state === "failed") {
+      if (refund) {
         // A subscription activation or month rollover may have reset usage already.
         await tx.user.updateMany({ where: { id: job.userId, lastTokenMonth: reservation.month,
           tokensUsedThisMonth: { gte: reservation.units } }, data: { tokensUsedThisMonth: { decrement: reservation.units } } });
@@ -85,7 +91,7 @@ async function retryRefusedTask(job: AvatarGeneration, refused: KieRefusedInput 
   if (!rewritten) return null;
   let created: Awaited<ReturnType<typeof createAvatarTaskWithRewrites>>;
   try {
-    created = await createAvatarTaskWithRewrites(rewritten, referenceUrl, used + 1);
+    created = await createAvatarTaskWithRewrites(rewritten, referenceUrl, used + 1, Boolean(storySceneThreadId(job.scope)));
   } catch (error) {
     if (error instanceof KieError && error.rejected) return null;
     // A lost createTask response may hide a billed task. Never automatically re-submit.
@@ -117,9 +123,13 @@ export async function reconcileAvatarJob(id: string) {
   const claimed = await prisma.avatarGeneration.updateMany({ where: { id, state: "pending", nextPollAt: { lte: now },
     OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }] }, data: { leaseToken, leaseUntil: new Date(Date.now() + 120_000) } });
   if (!claimed.count) return job;
+  const storyThreadId = storySceneThreadId(job.scope);
+  const deliveryExpired = Boolean(storyThreadId) && now.getTime() - job.createdAt.getTime() >= STORY_SCENE_DELIVERY_WINDOW_MS;
+  let credits = job.credits;
   try {
     const result = await getKieAvatarTask(job.providerTaskId);
     if (result.model !== job.model) throw new Error("Image task model mismatch");
+    credits = result.credits ?? credits;
     if (result.state === "fail") {
       const retried = await retryRefusedTask(job, result.refusedInput, leaseToken);
       if (retried) return retried;
@@ -127,15 +137,19 @@ export async function reconcileAvatarJob(id: string) {
     }
     if (result.state === "success" && result.imageUrl) {
       // Persist WebP in our bucket before consuming success; provider links expire.
-      const imageUrl = await saveKieImage(result.imageUrl, job.userId, job.id);
+      const imageUrl = storyThreadId ? await saveKieImage(result.imageUrl, job.userId, job.id, storyThreadId)
+        : await saveKieImage(result.imageUrl, job.userId, job.id);
       return await finishAvatarJob(job, "succeeded", { imageUrl, credits: result.credits }, leaseToken);
     }
+    if (deliveryExpired) return await finishAvatarJob(job, "failed", { errorCode: "delivery_timeout", credits }, leaseToken);
     await prisma.avatarGeneration.updateMany({ where: { id, leaseToken, state: "pending" }, data: {
       credits: result.credits ?? job.credits, nextPollAt: new Date(Date.now() + 5_000),
     } });
   } catch (error) {
-    // Poll/download failures do not mean generation failed. Keep the task and quota.
+    // Poll/download failures do not mean generation failed. Keep the task and quota, but an undelivered
+    // story image cannot hold a reservation indefinitely.
     errorLog("KieAvatar", "Unable to reconcile task", toSafeDiagnostic(error));
+    if (deliveryExpired) return await finishAvatarJob(job, "failed", { errorCode: "delivery_timeout", credits }, leaseToken);
     await prisma.avatarGeneration.updateMany({ where: { id, leaseToken, state: "pending" }, data: { nextPollAt: new Date(Date.now() + 30_000) } });
   } finally {
     await prisma.avatarGeneration.updateMany({ where: { id, leaseToken }, data: { leaseToken: null, leaseUntil: null } });

@@ -105,20 +105,25 @@ function cardMessage(card: AvatarCardSnapshot): string {
 
 const REFUSAL = /\b(I can(?:not|'t)|I am sorry|I'm sorry|as an AI|I won't|I'm unable|I am unable)\b/i;
 
-/** Accepts only a plain English description of sensible length; anything else means "use the template". */
-export function parseSceneDescription(raw: unknown): string | null {
+export function parseSceneDescriptionFields(raw: unknown): (Record<string, unknown> & { description: string }) | null {
   if (typeof raw !== "string") return null;
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? raw;
   const start = fenced.indexOf("{"), end = fenced.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
-  let description: unknown;
-  try { description = (JSON.parse(fenced.slice(start, end + 1)) as { description?: unknown }).description; } catch { return null; }
+  let fields: Record<string, unknown>;
+  try { fields = record(JSON.parse(fenced.slice(start, end + 1))); } catch { return null; }
+  const { description } = fields;
   if (typeof description !== "string") return null;
   const text = description.replace(/\s+/g, " ").trim();
   if (text.length < 80 || text.length > 1600 || REFUSAL.test(text)) return null;
   const letters = text.match(/\p{L}/gu)?.length ?? 0;
   const latin = text.match(/[A-Za-z]/g)?.length ?? 0;
-  return letters > 0 && latin / letters >= 0.8 ? text : null;
+  return letters > 0 && latin / letters >= 0.8 ? { ...fields, description: text } : null;
+}
+
+/** Accepts only a plain English description of sensible length; anything else means "use the template". */
+export function parseSceneDescription(raw: unknown): string | null {
+  return parseSceneDescriptionFields(raw)?.description ?? null;
 }
 
 export type AvatarPromptResult = {
