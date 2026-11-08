@@ -199,15 +199,33 @@ export function buildChatSystemPrompt(character: ChatCharacterProfile, locale?: 
   return assembleRoleplayPrompt(character, locale).content;
 }
 
-/** Reduce the largest data blocks first; application rules and balanced delimiters survive intact. */
+// A group member's profile blocks, in the order they may be dropped whole once nothing can be shortened: everyone's
+// appearance, then speech style, then description, from the last member. An 8-member group did not fit the 3,000-token
+// prompt budget of the start and «Диалог» plans even at the shortest (≈3,060–3,290 tokens: 32 blocks of ~25 tokens of
+// delimiters each), and every turn of such a story failed with PromptBudgetError (verify-roleplay-prompts, 2026-11-08).
+const DROPPABLE_PROFILE = ["appearance", "voice", "personality"];
+function droppableRank(source: string): number | null {
+  const match = /^card\.cast\.(\d+)\.(\w+)$/u.exec(source);
+  const kind = match ? DROPPABLE_PROFILE.indexOf(match[2]) : -1;
+  return match && kind >= 0 ? kind * 1000 - Number(match[1]) : null;
+}
+/** Reduce the largest data blocks first, then drop group profile blocks; application rules, identities and balanced
+ * delimiters survive intact. */
 export function fitPromptAssembly(assembly: PromptAssembly, budget: number, tokens: (text: string) => number): PromptAssembly {
-  const blocks = assembly.blocks.map(block => ({ ...block }));
+  let blocks = assembly.blocks.map(block => ({ ...block }));
   const truncated = new Set<string>();
   const compose = () => blocks.map(block => block.content).join("\n\n");
   while (tokens(compose()) > budget) {
     const candidate = blocks.filter(block => !block.source.startsWith("application.") && !block.source.endsWith(".identity") && block.content.length > 160)
       .sort((a, b) => b.content.length - a.content.length)[0];
-    if (!candidate) throw new PromptBudgetError();
+    if (!candidate) {
+      const drop = blocks.filter(block => droppableRank(block.source) !== null)
+        .sort((a, b) => droppableRank(a.source)! - droppableRank(b.source)!)[0];
+      if (!drop) throw new PromptBudgetError();
+      blocks = blocks.filter(block => block !== drop);
+      truncated.add(drop.source);
+      continue;
+    }
     const start = candidate.content.indexOf("\n") + 1;
     const end = candidate.content.lastIndexOf("\n");
     const body = candidate.content.slice(start, end).replace(/\n\[…\]$/, "");

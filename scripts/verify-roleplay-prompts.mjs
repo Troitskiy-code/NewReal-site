@@ -428,6 +428,23 @@ const groupCard = { ...card, name: 'Экспедиция', roleplayMode: 'group'
 check(config.parseRoleplayFields(groupCard).rpConfig.participants.length === 8, 'eight-member group parses with stable IDs');
 assert.throws(() => builder.fitPromptAssembly(builder.assembleRoleplayPrompt(groupCard, 'ru'), 100, countTokens), builder.PromptBudgetError);
 check(true, 'insufficient context has a public budget error rather than dropping identities or core');
+{
+  // Below the shortest form, an 8-member group drops whole profile blocks: appearance, then speech style, then
+  // description; names are never dropped (start-plan «продолжить» failed with PromptBudgetError until 2026-11-08).
+  const groupAssembly = builder.assembleRoleplayPrompt(groupCard, 'ru', { operation: 'continue' });
+  const kinds = fit => Object.fromEntries(['identity', 'appearance', 'voice', 'personality']
+    .map(kind => [kind, fit.blocks.filter(block => block.source.endsWith(`.${kind}`)).length]));
+  const fits = [];
+  for (let budget = 3000; budget > 0; budget -= 50) {
+    try { fits.push(kinds(builder.fitPromptAssembly(groupAssembly, budget, countTokens))); } catch (error) {
+      assert.ok(error instanceof builder.PromptBudgetError); break;
+    }
+  }
+  check(fits.every(fit => fit.identity === 8), 'every member keeps a name at any budget that fits');
+  check(fits.some(fit => fit.appearance < 8), 'profile blocks are dropped before the budget error');
+  check(fits.every(fit => (fit.voice === 8 || fit.appearance === 0) && (fit.personality === 8 || fit.voice === 0)),
+    'appearance goes first, then speech style, then description');
+}
 for (const [participants, label] of [
   [[...members, { ...members[0], id: 'ninth', name: 'Девятый' }], 'ninth participant'],
   [[members[0], { ...members[1], id: members[0].id }], 'duplicate ID'],
