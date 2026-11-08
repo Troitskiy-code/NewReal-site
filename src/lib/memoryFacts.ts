@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { parseCoreSections, sanitizeCoreMemory } from "./coreMemorySanitize";
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { withoutChatThoughts } from "./chatMessageMarkup";
-import { evidenceNumbers, inferMemoryStatus, isSameMemoryName, memoryNumbers, memoryTerms, retellingNumbersSupported, retellingRejection, RETELLING_TERM_SHARE, memoryOverlap } from "./memoryNarrative";
+import { evidenceNumbers, inferMemoryStatus, isSameMemoryName, memoryNumbers, memoryTerms, retellingNumbersSupported, retellingRejection, RETELLING_TERM_SHARE, memoryOverlap, type MemoryStatus } from "./memoryNarrative";
 
 export const memoryV2Enabled = () => ["1", "true"].includes(process.env.MEMORY_V2_ENABLED ?? "");
 const SLOTS: Record<string, { label: string; multi?: boolean }> = {
@@ -349,6 +349,17 @@ export function slotNoiseReason(key: string, value: string): MemoryValidationRea
   return null;
 }
 /** A negation within three words before one of the value's words (five-letter roots). */
+/**
+ * The status of the part of the sentence that carries the fact. «Я оставил его в деревне, в гостинице «Чайка», хозяйка
+ * согласилась присмотреть» read as «decided» because of the landlady's «согласилась», and the hero's dog was never
+ * stored, so the character later denied it (waves 2026-11-03 and 2026-11-08). A plan stays a plan: «Решили завтра
+ * поехать в Псков» has the city and the decision in one part.
+ */
+export function factClauseStatus(value: string, sentence: string): MemoryStatus {
+  const clauses = sentence.split(/[,;:]|s[—–-]s/u).map(clause => clause.trim()).filter(Boolean);
+  const own = clauses.filter(clause => memoryOverlap(clause, value) > 0);
+  return inferMemoryStatus(own.length && own.length < clauses.length ? own.join(", ") : sentence);
+}
 function negationNear(value: string, evidence: string): boolean {
   const roots = new Set((clean(value).match(/\p{L}{3,}/gu) ?? []).map(word => word.slice(0, 5)));
   const words: string[] = clean(evidence).match(/[\p{L}\p{N}]+/gu) ?? [];
@@ -698,7 +709,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
     // A set is refused only when a negation stands just before the fact's own words: «не пугайтесь»
     // after a scar and «я не один приехал — со мной пёс» refused both facts (prod test 2026-10-24).
     const negatedValue = negated && negationNear(text, source.text);
-    detail.sourceStatus = inferMemoryStatus(source.text);
+    detail.sourceStatus = factClauseStatus(text, source.text);
     // Numbers spoken in words count: «мне двадцать девять» supports age 29.
     // An obligation is a promise or a decision by nature: «одалживает мне 40 крон; я обещаю вернуть до Саовины» was
     // refused as «promised», so the loan was never a debt (crash test 3). Offers and doubts stay out.

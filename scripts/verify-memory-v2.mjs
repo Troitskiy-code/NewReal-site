@@ -670,6 +670,17 @@ try {
     await run(f, output([delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]));
     assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'debts').map(fact => fact.value), ['должна Ягне 10 крон']);
   });
+  await check('a fact is judged by its own part of the sentence: another person agreeing does not make it a plan', async () => {
+    // Waves 2026-11-03 and 2026-11-08: «хозяйка согласилась» made the hero's dog a «decided» plan, it was never stored,
+    // and the character later denied the dog.
+    const parse = (text, value, key) => facts.parseFactExtraction(output([delta(value, 's1', key)]),
+      facts.factSources([{ id: 'm1', role: 'user', content: text }]), { partial: true }).facts.map(fact => fact.value);
+    assert.deepEqual(parse('Я оставил пса Бублика в деревне, в гостинице «Чайка», хозяйка согласилась присмотреть.', 'пёс Бублик, оставлен в гостинице «Чайка»', 'pets'),
+      ['пёс Бублик, оставлен в гостинице «Чайка»']);
+    assert.deepEqual(parse('Решили завтра поехать в Псков.', 'Псков', 'city'), [], 'a plan is still not a fact');
+    assert.deepEqual(parse('Можно спрятать ключ под третьей ступенькой.', 'ключ спрятан под третьей ступенькой', 'possessions'), [], 'a proposal is still not a fact');
+    assert.equal(facts.factClauseStatus('пёс Бублик', 'Со мной пёс Бублик, хозяйка согласилась присмотреть.'), 'reported');
+  });
   await check('unnamed NPCs with one role stay apart; money without a sum is noise', async () => {
     // The owner's Witcher test (2026-10-28): two accountants shared one «Счетовод» card, the narrator buried the
     // living one, and «серебро» sat in the hero's things next to the crowns he was paid.
