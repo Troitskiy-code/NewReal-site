@@ -19,6 +19,7 @@ import { isSameOriginRequest } from "@/lib/telegram/http";
 import { STORY_SCENE_SCOPE_PREFIX, storySceneThreadId } from "@/lib/storySceneShared";
 import { buildStorySceneSnapshot, mayShowStorySceneUnderwear, STORY_SCENE_MESSAGE_LIMIT, StoryScenePromptUnavailable, writeStoryScenePrompt } from "@/lib/storyScenePrompt";
 import { readCharacterAvatarReference } from "@/lib/characterMedia";
+import { cropReferenceFace, withFaceReferenceSentence } from "@/lib/referenceFaceCrop";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -111,11 +112,16 @@ export async function POST(req: NextRequest) {
         const written = scene ? { prompt: await writeStoryScenePrompt(scene, withReference, allowUnderwear), source: "llm" as const, reason: undefined }
           : await writeAvatarPrompt(body, templatePrompt);
         infoLog("KieAvatar", "Prompt prepared", { jobId: job.id, source: written.source, ...(written.reason ? { reason: written.reason } : {}) });
+        stage = "crop_face";
+        const faceCrop = prepared ? await cropReferenceFace(prepared) : null;
+        infoLog("KieAvatar", "Face close-up", { jobId: job.id, added: Boolean(faceCrop) });
         stage = "upload_reference";
-        const referenceUrl = prepared ? await uploadKieReference(prepared) : undefined;
+        const referenceUrls = prepared ? [await uploadKieReference(prepared)] : [];
+        if (faceCrop) referenceUrls.push(await uploadKieReference(faceCrop));
+        const prompt = faceCrop ? withFaceReferenceSentence(written.prompt) : written.prompt;
         stage = "create_task";
         attempted = true;
-        const { taskId, rewrites } = await createAvatarTaskWithRewrites(written.prompt, referenceUrl, 0, Boolean(scene));
+        const { taskId, rewrites } = await createAvatarTaskWithRewrites(prompt, referenceUrls, 0, Boolean(scene));
         // No prompt/reference/key: operators can recover a task after a DB write failure.
         infoLog("KieAvatar", "Task accepted", { taskId, jobId: job.id, model: model.id });
         stage = "save_task";

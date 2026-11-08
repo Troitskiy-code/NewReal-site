@@ -92,16 +92,16 @@ export function kieCallbackUrl() {
     return new URL("/api/webhook/kie", base.origin).href;
   } catch { return undefined; }
 }
-export async function createKieAvatar(prompt: string, referenceUrl?: string, square = false) {
+export async function createKieAvatar(prompt: string, referenceUrls: string[] = [], square = false) {
   const data = await request(`${API}/api/v1/jobs/createTask`, {
-    model: kieAvatarModel(Boolean(referenceUrl)).id, input: kieAvatarInput(prompt, referenceUrl, square), callBackUrl: kieCallbackUrl(),
+    model: kieAvatarModel(referenceUrls.length > 0).id, input: kieAvatarInput(prompt, referenceUrls, square), callBackUrl: kieCallbackUrl(),
   });
   const taskId = record(data.data).taskId;
   // Code 200 without a task ID: Kie accepted the call, so a paid task may still exist.
   if (!isKieTaskId(taskId)) throw new KieError("missing_task_id", false, 200);
   return taskId;
 }
-export type KieRefusedInput = { prompt: string; referenceUrl?: string };
+export type KieRefusedInput = { prompt: string; referenceUrls: string[] };
 export type KieTask = { taskId: string; model: string; state: string; imageUrl: string | null; credits: number | null; errorCode: string | null;
   /** The request of a task the content filter refused. Prompts are not stored on our side, Kie's record keeps them. */
   refusedInput: KieRefusedInput | null };
@@ -110,9 +110,9 @@ function refusedTaskInput(param: unknown): KieRefusedInput | null {
     const outer = record(typeof param === "string" ? JSON.parse(param) : param);
     const input = record(typeof outer.input === "string" ? JSON.parse(outer.input) : outer.input);
     if (typeof input.prompt !== "string" || !input.prompt) return null;
-    const referenceUrl = Array.isArray(input.image_urls) ? input.image_urls[0] : undefined;
-    if (referenceUrl === undefined) return { prompt: input.prompt };
-    return typeof referenceUrl === "string" && isKieImageUrl(referenceUrl) ? { prompt: input.prompt, referenceUrl } : null;
+    const referenceUrls: unknown[] = Array.isArray(input.image_urls) ? input.image_urls : [];
+    // Every reference goes back with the retry, the face close-up included.
+    return referenceUrls.every(url => typeof url === "string" && isKieImageUrl(url)) ? { prompt: input.prompt, referenceUrls: referenceUrls as string[] } : null;
   } catch { return null; }
 }
 export async function getKieAvatarTask(taskId: string): Promise<KieTask> {

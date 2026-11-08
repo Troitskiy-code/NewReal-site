@@ -20,8 +20,8 @@ export function uncertainBlockSecondsLeft(job: { updatedAt: Date }, now = Date.n
 export function kieAvatarModel(hasReference: boolean) {
   return hasReference ? KIE_REFERENCE_MODEL : KIE_TEXT_MODEL;
 }
-export function kieAvatarInput(prompt: string, referenceUrl?: string, square = false) {
+export function kieAvatarInput(prompt: string, referenceUrls: string[] = [], square = false) {
   // "basic" is the model's lowest tier and renders 2K; the stored copy is still resized to 1536 px.
   const input = { prompt, aspect_ratio: square ? "1:1" : "3:4", quality: "basic", output_format: "png", nsfw_checker: true };
-  return referenceUrl ? { ...input, image_urls: [referenceUrl] } : input;
+  return referenceUrls.length ? { ...input, image_urls: referenceUrls } : input;
 }

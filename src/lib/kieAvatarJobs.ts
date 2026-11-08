@@ -19,14 +19,14 @@ function safetyRewritesUsed(job: AvatarGeneration) {
 }
 
 /** A refused task costs nothing, so a moderation refusal at creation may be rewritten and sent again. */
-export async function createAvatarTaskWithRewrites(prompt: string, referenceUrl: string | undefined, used = 0, square = false) {
+export async function createAvatarTaskWithRewrites(prompt: string, referenceUrls: string[], used = 0, square = false) {
   let current = prompt, rewrites = used;
   for (;;) {
     try {
-      return { taskId: await createKieAvatar(current, referenceUrl, square), rewrites };
+      return { taskId: await createKieAvatar(current, referenceUrls, square), rewrites };
     } catch (error) {
       if (!(error instanceof KieError && error.code === "safety") || !isAvatarSafetyRewriteEnabled() || rewrites >= MAX_SAFETY_REWRITES) throw error;
-      const next = await rewriteRefusedAvatarPrompt(current, ++rewrites, Boolean(referenceUrl));
+      const next = await rewriteRefusedAvatarPrompt(current, ++rewrites, referenceUrls.length > 0);
       if (!next) throw error;
       current = next;
     }
@@ -81,17 +81,17 @@ export async function finishAvatarJob(job: AvatarGeneration, state: "succeeded" 
 async function retryRefusedTask(job: AvatarGeneration, refused: KieRefusedInput | null, leaseToken: string) {
   const used = safetyRewritesUsed(job);
   if (!refused || !isAvatarSafetyRewriteEnabled() || used >= MAX_SAFETY_REWRITES) return null;
-  const { prompt, referenceUrl } = refused;
+  const { prompt, referenceUrls } = refused;
   // A task from an earlier model has a different request shape; resending it would change the model.
-  if (job.model !== kieAvatarModel(Boolean(referenceUrl)).id) return null;
+  if (job.model !== kieAvatarModel(referenceUrls.length > 0).id) return null;
   const rewritten = await withAiCostContext(() => {
     setAiCostActor(job.userId);
-    return rewriteRefusedAvatarPrompt(prompt, used + 1, Boolean(referenceUrl));
+    return rewriteRefusedAvatarPrompt(prompt, used + 1, referenceUrls.length > 0);
   });
   if (!rewritten) return null;
   let created: Awaited<ReturnType<typeof createAvatarTaskWithRewrites>>;
   try {
-    created = await createAvatarTaskWithRewrites(rewritten, referenceUrl, used + 1, Boolean(storySceneThreadId(job.scope)));
+    created = await createAvatarTaskWithRewrites(rewritten, referenceUrls, used + 1, Boolean(storySceneThreadId(job.scope)));
   } catch (error) {
     if (error instanceof KieError && error.rejected) return null;
     // A lost createTask response may hide a billed task. Never automatically re-submit.

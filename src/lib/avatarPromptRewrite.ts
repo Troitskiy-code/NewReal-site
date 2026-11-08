@@ -73,7 +73,17 @@ function modesFor(prompt: string, attempt: number, hasReference: boolean): [Mode
   return attempt === 1 ? ["clothed", "strict"] : ["strict", "strict"];
 }
 
-function parseRewrittenPrompt(raw: unknown, mode: Mode): string | null {
+// Sentences about the reference image belong to the code. If the rewrite drops one, the reference still goes to the image
+// model but nothing tells it to keep the face, so a lost sentence is put back.
+const REFERENCE_SENTENCE = /reference|likeness/i;
+const FOLLOWS_REFERENCE = /^(?:Do not copy|Do not beautify|Create a new|Apply the requested rendering style)/;
+function referenceSentences(prompt: string) {
+  const sentences = prompt.match(/[^.!?]+[.!?]+/g)?.map(sentence => sentence.trim()) ?? [];
+  return sentences.filter((sentence, index) => REFERENCE_SENTENCE.test(sentence)
+    || (FOLLOWS_REFERENCE.test(sentence) && REFERENCE_SENTENCE.test(sentences[index - 1] ?? "")));
+}
+
+function parseRewrittenPrompt(raw: unknown, mode: Mode, source = ""): string | null {
   if (typeof raw !== "string") return null;
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? raw;
   const start = fenced.indexOf("{"), end = fenced.lastIndexOf("}");
@@ -81,7 +91,9 @@ function parseRewrittenPrompt(raw: unknown, mode: Mode): string | null {
   let prompt: unknown;
   try { prompt = (JSON.parse(fenced.slice(start, end + 1)) as { prompt?: unknown }).prompt; } catch { return null; }
   if (typeof prompt !== "string") return null;
-  const body = prompt.replace(/\s+/g, " ").trim();
+  const written = prompt.replace(/\s+/g, " ").trim();
+  const lost = referenceSentences(source).filter(sentence => !written.includes(sentence));
+  const body = lost.length ? `${lost.join(" ")} ${written}` : written;
   const inUnderwear = mode === "underwear" || mode === "calmUnderwear";
   if (inUnderwear ? NUDITY_OR_SEX.test(body) || YOUTH.test(body) : INTIMATE_DETAIL.test(body)) return null;
   const text = inUnderwear ? `${body} ${UNDERWEAR_SENTENCE} ${ADULT_SENTENCE}` : `${body} ${CLOTHED_SENTENCE}`;
@@ -108,7 +120,7 @@ export async function rewriteRefusedAvatarPrompt(prompt: string, attempt: number
         headers: { Authorization: `Bearer ${process.env.KODIKROUTER_API_KEY ?? ""}`, "Content-Type": "application/json" },
         timeout: REWRITE_TIMEOUT_MS,
       });
-      const rewritten = parseRewrittenPrompt(response.data?.choices?.[0]?.message?.content, mode);
+      const rewritten = parseRewrittenPrompt(response.data?.choices?.[0]?.message?.content, mode, source);
       if (rewritten) return rewritten;
     } catch {
       return null;

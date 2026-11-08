@@ -88,7 +88,15 @@ const REWRITTEN_PROMPT = 'A calm portrait of the same person in a wool coat at a
 const CLOTHED_REWRITE = `${REWRITTEN_PROMPT} Every person is fully dressed in ordinary everyday clothes that cover the torso and legs.`;
 const BEDROOM_SCENE = 'Ada sits beside the turquoise bedspread and looks up with a calm smile in the warm light of an amber lamp, with rain on the round window.';
 let sceneWardrobe = 'ordinary';
+let faceMode = 'small';
+const faceCalls = [];
 async function writerStub(purpose, url, body) {
+  if (body.messages[0].content.includes('You locate the face')) {
+    faceCalls.push(body);
+    if (faceMode === 'error') throw Object.assign(new Error('timeout'), { code: 'ECONNABORTED' });
+    const face = faceMode === 'close' ? [20, 20, 980, 980] : faceMode === 'none' ? null : [400, 120, 560, 300];
+    return { status: 200, headers: {}, data: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ face }) } }] } };
+  }
   if (purpose === 'story_scene_prompt') {
     writerCalls.push({ purpose, body });
     const content = writerMode === 'garbage' ? 'not json at all'
@@ -213,8 +221,11 @@ try {
   userId = user.id;
   const refStart = await handler.POST(post(bodyFor({ referenceImage: reference })));
   const refBody = await refStart.json();
-  check(uploads === 1 && requests.at(-1).model === 'seedream/5-lite-image-to-image' && requests.at(-1).input.quality === 'basic'
-    && requests.at(-1).input.image_urls.length === 1, 'reference is uploaded and automatically routed to Seedream 5.0 Lite');
+  check(uploads === 2 && requests.at(-1).model === 'seedream/5-lite-image-to-image' && requests.at(-1).input.quality === 'basic'
+    && requests.at(-1).input.image_urls.length === 2, 'reference and a close-up of its face are uploaded and routed to Seedream 5.0 Lite');
+  check(faceCalls.at(-1).model === 'google/gemma-4-31B-it-turbo' && faceCalls.at(-1).messages[1].content[0].image_url.url.startsWith('data:image/jpeg;base64,')
+    && requests.at(-1).input.prompt.includes('second reference image is a close-up of the same face') && requests.at(-1).input.prompt.endsWith('watermarks or frames.'),
+    'a vision model finds the face, and the prompt names the close-up before the closing no-text rule');
   downloadFails = true;
   check((await (await handler.GET(get({ jobId: refBody.jobId }))).json()).state === 'pending', 'image download failure keeps paid task for retry');
   check((await db.user.findUnique({ where: { id: user.id } })).tokensUsedThisMonth === 2, 'download failure does not refund successful billed generation');
@@ -355,8 +366,10 @@ try {
   const afterRefusal = await poll(refusedOnce.jobId);
   check(afterRefusal.state === 'pending' && (await job(refusedOnce.jobId)).providerTaskId !== firstTask
     && (await job(refusedOnce.jobId)).errorCode === 'safety_rewrite_1' && !afterRefusal.error, 'a refused task is replaced and the user keeps waiting without an error');
-  check(requests.at(-1).input.prompt === CLOTHED_REWRITE && requests.at(-1).input.image_urls[0] === refusedInput.image_urls[0]
-    && requests.at(-1).model === 'seedream/5-lite-image-to-image', 'the retry sends the rewritten prompt with the same reference and model');
+  check(requests.at(-1).input.prompt.includes(CLOTHED_REWRITE) && JSON.stringify(requests.at(-1).input.image_urls) === JSON.stringify(refusedInput.image_urls)
+    && refusedInput.image_urls.length === 2 && requests.at(-1).model === 'seedream/5-lite-image-to-image', 'the retry sends the rewritten prompt with both references and the same model');
+  check(requests.at(-1).input.prompt.startsWith('Keep exactly the same person as in the reference image') && requests.at(-1).input.prompt.includes('Do not beautify, slim, de-age') && requests.at(-1).input.prompt.includes('second reference image is a close-up'),
+    'reference sentences the rewrite dropped are put back by the code');
   check(rewriteCalls.at(-1).body.messages[1].content.includes(refusedInput.prompt.slice(0, 40)), "the rewrite starts from Kie's record of the refused prompt");
   check(requests.at(-1).input.prompt.endsWith('that cover the torso and legs.'), 'the code itself dresses everyone in the rewritten prompt');
   const rewrittenDone = await poll(refusedOnce.jobId);
@@ -559,6 +572,10 @@ try {
   const uploaded = await storyFor({ appearance: 'A woman, 34 years old, silver hair', imageUrl: reference });
   const uploadedScene = await scenePrompt(uploaded.story.id, 'adult_underwear');
   check(uploadedScene.prompt === null, 'an avatar that was not drawn here from text may be a real photo, so it never gets underwear');
+  const lookedCard = JSON.parse(writerCalls.at(-1).body.messages[1].content).card;
+  const plainCard = JSON.parse(writerCalls.find(call => call.purpose === 'story_scene_prompt' && call.body.messages[1].content.includes('Silver hair')).body.messages[1].content).card;
+  check(lookedCard.appearance === undefined && writerCalls.at(-1).body.messages[0].content.includes('Never describe their face, eyes, skin, makeup, hair, body')
+    && plainCard.appearance === 'Silver hair', 'with a reference the scene writer gets no card appearance and is told not to describe face, hair or body');
   const beforeSquare = creates;
   refuseNext = 1;
   const refusedScene = await scenePrompt(noAge.story.id, 'ordinary');
@@ -566,6 +583,30 @@ try {
     'a refused scene is rewritten and stays square');
   await poll(refusedScene.body.jobId);
   check(['succeeded'].includes((await poll(refusedScene.body.jobId)).state), 'a rewritten scene finishes');
+
+  // When no close-up is added.
+  const refWithFace = async mode => {
+    faceMode = mode;
+    const before = uploads;
+    const body = await (await handler.POST(post(bodyFor({ referenceImage: reference })))).json();
+    const sent = requests.at(-1).input;
+    await poll(body.jobId);
+    faceMode = 'small';
+    return { uploaded: uploads - before, refs: sent.image_urls.length, named: sent.prompt.includes('second reference image') };
+  };
+  const closeFace = await refWithFace('close');
+  const noFace = await refWithFace('none');
+  const brokenFace = await refWithFace('error');
+  check([closeFace, noFace, brokenFace].every(run => run.uploaded === 1 && run.refs === 1 && !run.named),
+    'a face that already fills the frame, no face or a failed lookup leaves one reference and no close-up sentence');
+  testEnv.AVATAR_FACE_CROP_ENABLED = 'false';
+  const callsBeforeOff = faceCalls.length;
+  const switchedOff = await refWithFace('small');
+  check(switchedOff.refs === 1 && faceCalls.length === callsBeforeOff, 'the flag turns the face close-up off');
+  delete testEnv.AVATAR_FACE_CROP_ENABLED;
+  const crop = load('src/lib/referenceFaceCrop.ts');
+  check(crop.parseFaceBox('{"face":[400,120,560,300]}')?.join() === '400,120,560,300' && crop.parseFaceBox('{"face":null}') === null
+    && crop.parseFaceBox('{"face":[500,500,505,505]}') === null && crop.parseFaceBox('{"face":[0,0,1200,900]}') === null, 'only a sane box in 0..1000 is accepted');
 
   check(!logs.join('\n').includes(REWRITTEN_PROMPT), 'logs omit the rewritten prompt');
   check(!logs.join('\n').includes(marker) && !logs.join('\n').includes(testEnv.KIE_API_KEY) && !logs.join('\n').includes('weathered innkeeper'),
