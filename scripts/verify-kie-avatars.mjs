@@ -185,7 +185,11 @@ try {
   await ddl.query(readFileSync('prisma/migrations/20261011190000_kie_avatar_jobs/migration.sql','utf8'));
   await ddl.query('COMMIT');
   await ddl.query(readFileSync('prisma/migrations/20261107160000_story_scene_avatar/migration.sql', 'utf8'));
-  check(!!await db.avatarQuotaReservation.findUnique({ where: { id: legacy.id } }), 'scoped SQL preserves legacy quota reservations');
+  await ddl.query('ALTER TABLE "AvatarQuotaReservation" DROP COLUMN "chargedVC", DROP COLUMN "chargedFromPermanent", DROP COLUMN "chargedSubscriptionEnd", DROP COLUMN "chargedNextVCAt"');
+  await ddl.query(readFileSync('prisma/migrations/20261105130000_avatar_vc/migration.sql', 'utf8'));
+  const legacyAfter = await db.avatarQuotaReservation.findUnique({ where: { id: legacy.id } });
+  check(legacyAfter.units === 1 && legacyAfter.chargedVC === 0 && legacyAfter.status === 'completed',
+    'migration preserves old allowance reservations');
   const handler = load('src/app/api/generate-avatar/route.ts'), jobs = load('src/lib/kieAvatarJobs.ts');
   const kie = load('src/lib/kieAi.ts'), telemetry = load('src/lib/aiCostTelemetry.ts');
   userId = null;
@@ -480,9 +484,10 @@ try {
   check(rewriteCalls.length === beforeNudity + 2 && afterNudity === null, 'an answer describing nudity is rejected, then the clothed rule is tried');
   rewriteMode = 'ok';
 
-  // Story scenes on the monthly generation allowance.
+  // Story illustrations are a separate VC purchase.
   const sceneOwner = await db.user.create({ data: { email: 'scene@example.test', subscriptionType: 'dialog',
-    subscriptionEnd: new Date(Date.now() + 86400000), lastTokenMonth: new Date() } });
+    subscriptionEnd: new Date(Date.now() + 86400000), lastTokenMonth: new Date(), tokensUsedThisMonth: 7,
+    verseCoins: 59, permanentCoins: 39 } });
   userId = sceneOwner.id;
   state = 'success';
   const card = await db.character.create({ data: { name: 'Scene fixture', userId, isPublic: true, artStyle: 'anime',
@@ -497,11 +502,29 @@ try {
   const sameOrigin = { 'sec-fetch-site': 'same-origin' };
   const scenePost = (body, headers = sameOrigin) => new NextRequest('https://example.test/api/generate-avatar',
     { method: 'POST', headers, body: JSON.stringify(body) });
-  const sceneRequest = { scope: `story:${thread.id}`, clientKey: randomUUID() };
+  const sceneRequest = { scope: `story:${thread.id}`, clientKey: randomUUID(), acceptedPriceVC: 60 };
+  const sceneWallet = () => db.user.findUniqueOrThrow({ where: { id: sceneOwner.id } });
+  const sceneLedger = type => db.transaction.findMany({ where: { userId: sceneOwner.id, type } });
   const beforeScene = creates;
   check((await handler.POST(scenePost(sceneRequest, { 'sec-fetch-site': 'cross-site' }))).status === 403 && creates === beforeScene,
     'cross-site requests cannot start a story illustration');
+  const initialQuote = await (await handler.GET(get({ scope: sceneRequest.scope }))).json();
+  check(initialQuote.sceneQuote.priceVC === 60 && initialQuote.sceneQuote.verseCoins === 59 && !initialQuote.tokenStatus,
+    'story illustration reports its VC quote independently of the avatar allowance');
+  const poorScene = await handler.POST(scenePost(sceneRequest));
+  check(poorScene.status === 402 && (await poorScene.json()).code === 'STORY_SCENE_INSUFFICIENT_VC'
+    && creates === beforeScene && (await sceneLedger('story_scene')).length === 0,
+    '59 VC cannot start a task even with an avatar allowance');
+  await db.user.update({ where: { id: sceneOwner.id }, data: { verseCoins: 1000, permanentCoins: 980 } });
+  const staleQuote = await handler.POST(scenePost({ ...sceneRequest, acceptedPriceVC: 50 }));
+  check(staleQuote.status === 409 && (await staleQuote.json()).sceneQuote.priceVC === 60 && creates === beforeScene,
+    'a stale price cannot authorize spending');
   const sceneStarted = await (await handler.POST(scenePost(sceneRequest))).json();
+  const spentWallet = await sceneWallet();
+  const debit = await sceneLedger('story_scene');
+  check(sceneStarted.sceneQuote.verseCoins === 940 && spentWallet.verseCoins === 940 && spentWallet.permanentCoins === 940
+    && spentWallet.tokensUsedThisMonth === 7 && debit.length === 1 && debit[0].amount === -60,
+    'the story consumes exactly 60 VC, using expiring VC first and leaving the avatar allowance intact');
   const sceneWritten = writerCalls.at(-1);
   const material = JSON.parse(sceneWritten.body.messages.at(-1).content);
   check(sceneStarted.state === 'pending' && sceneWritten.purpose === 'story_scene_prompt' && sceneWritten.body.model === 'google/gemma-4-31B-it-turbo'
@@ -515,6 +538,9 @@ try {
   await createMessage(thread.id, 'Сцена изменилась после запуска.', new Date(Date.now() + 1000), 'user');
   const sceneReplay = await (await handler.POST(scenePost(sceneRequest))).json();
   check(sceneReplay.jobId === sceneStarted.jobId && creates === beforeScene + 1, 'retry after new messages returns the original paid job');
+  check((await sceneLedger('story_scene')).length === 1 && (await sceneWallet()).verseCoins === 940
+    && (await db.aiCostEvent.findUniqueOrThrow({ where: { id: sceneReplay.jobId } })).chargedVC === 60,
+    'replaying a paid scene keeps one charge');
   check(sceneReplay.state === 'succeeded' && sceneReplay.imageUrl === `/api/story-scene-media/${thread.id}/${sceneReplay.jobId}`
     && storedImages.has(`story-scenes/${sceneOwner.id}/${thread.id}/${sceneReplay.jobId}.webp`)
     && !load('src/lib/characterMedia.ts').parseCharacterMediaPath(sceneReplay.imageUrl), 'scene image is private and outside the publishable character-media namespace');
@@ -538,16 +564,27 @@ try {
   writerMode = 'garbage';
   const beforeInvalidScene = creates;
   const invalidScene = await (await handler.POST(scenePost({ ...sceneRequest, clientKey: randomUUID() }))).json();
+  const refund = await sceneLedger('story_scene_refund');
   check(invalidScene.state === 'failed' && creates === beforeInvalidScene
-    && (await db.user.findUnique({ where: { id: sceneOwner.id } })).tokensUsedThisMonth === 1,
+    && (await sceneWallet()).tokensUsedThisMonth === 7 && (await sceneWallet()).verseCoins === 940
+    && (await sceneWallet()).permanentCoins === 940 && refund.length === 1 && refund[0].amount === 60,
     'an invalid scene description never reaches the image model and refunds its reservation');
   writerMode = 'ok';
+
+  const previousJobId = randomUUID();
+  await db.user.update({ where: { id: sceneOwner.id }, data: { tokensUsedThisMonth: 8 } });
+  await db.avatarQuotaReservation.create({ data: { id: previousJobId, userId, units: 1, month: sceneOwner.lastTokenMonth } });
+  const previousJob = await db.avatarGeneration.create({ data: { id: previousJobId, reservationId: previousJobId, userId,
+    scope: sceneRequest.scope, clientKey: randomUUID(), payloadHash: 'legacy', model: 'legacy', estimatedCredits: 3 } });
+  await jobs.finishAvatarJob(previousJob, 'failed');
+  check((await sceneWallet()).tokensUsedThisMonth === 7 && (await sceneLedger('story_scene_refund')).length === 1,
+    'a failed job launched before VC billing restores its original allowance only');
 
   // Underwear in a scene: the code decides from the card, the avatar and the chat.
   const scenePrompt = async (threadId, wardrobe) => {
     sceneWardrobe = wardrobe;
     const before = requests.length;
-    const body = await (await handler.POST(scenePost({ scope: `story:${threadId}`, clientKey: randomUUID() }))).json();
+    const body = await (await handler.POST(scenePost({ scope: `story:${threadId}`, clientKey: randomUUID(), acceptedPriceVC: 60 }))).json();
     if (body.jobId && !['failed', 'succeeded'].includes(body.state)) await poll(body.jobId);
     sceneWardrobe = 'ordinary';
     return { body, prompt: requests.length > before ? requests.at(-1).input.prompt : null };
@@ -585,6 +622,8 @@ try {
   check(['succeeded'].includes((await poll(refusedScene.body.jobId)).state), 'a rewritten scene finishes');
 
   // When no close-up is added.
+  // The VC checks above leave this account at its avatar allowance; these are ordinary avatars.
+  await db.user.update({ where: { id: userId }, data: { tokensUsedThisMonth: 0 } });
   const refWithFace = async mode => {
     faceMode = mode;
     const before = uploads;
@@ -607,6 +646,24 @@ try {
   const crop = load('src/lib/referenceFaceCrop.ts');
   check(crop.parseFaceBox('{"face":[400,120,560,300]}')?.join() === '400,120,560,300' && crop.parseFaceBox('{"face":null}') === null
     && crop.parseFaceBox('{"face":[500,500,505,505]}') === null && crop.parseFaceBox('{"face":[0,0,1200,900]}') === null, 'only a sane box in 0..1000 is accepted');
+  const freePayer = await db.user.create({ data: { email: 'scene-free@example.test', verseCoins: 60, permanentCoins: 60 } });
+  userId = freePayer.id;
+  const freeStory = await storyFor({ appearance: 'Silver hair' });
+  const paidRequest = { scope: `story:${freeStory.story.id}`, clientKey: randomUUID(), acceptedPriceVC: 60 };
+  state = 'waiting';
+  const beforeConcurrent = creates;
+  const replies = await Promise.all([handler.POST(scenePost(paidRequest)), handler.POST(scenePost(paidRequest))]);
+  const [first, second] = await Promise.all(replies.map(response => response.json()));
+  check(first.jobId === second.jobId && creates === beforeConcurrent + 1
+    && (await db.user.findUniqueOrThrow({ where: { id: userId } })).verseCoins === 0
+    && await db.transaction.count({ where: { userId, type: 'story_scene' } }) === 1,
+    'a free account can spend exactly 60 VC and concurrent launches share one debit');
+  state = 'fail';
+  check((await poll(first.jobId)).state === 'failed' && (await poll(first.jobId)).state === 'failed'
+    && (await db.user.findUniqueOrThrow({ where: { id: userId } })).permanentCoins === 60
+    && await db.transaction.count({ where: { userId, type: 'story_scene_refund', amount: 60 } }) === 1
+    && (await db.aiCostEvent.findUniqueOrThrow({ where: { id: first.jobId } })).chargedVC === 0,
+    'a provider failure refunds one debit exactly once even when polled again');
 
   check(!logs.join('\n').includes(REWRITTEN_PROMPT), 'logs omit the rewritten prompt');
   check(!logs.join('\n').includes(marker) && !logs.join('\n').includes(testEnv.KIE_API_KEY) && !logs.join('\n').includes('weathered innkeeper'),

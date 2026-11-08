@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { reserveAvatarGeneration, getAvatarTokenStatus, getAvatarUsageUser, AvatarRequestConflict } from "@/lib/avatarTokens";
+import { reserveAvatarGeneration, getAvatarTokenStatus, getAvatarUsageUser, getStorySceneQuote, AvatarRequestConflict, StoryScenePriceError } from "@/lib/avatarTokens";
 import { buildAvatarPrompt } from "@/lib/avatarPrompt";
 import { readAvatarCardSnapshot, writeAvatarPrompt } from "@/lib/avatarPromptWriter";
 import { isSafeAvatarReference } from "@/lib/avatarReference";
@@ -27,6 +27,11 @@ const json = (body: unknown, status = 200) => NextResponse.json(body, { status, 
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
 const validScope = (value: string) => /^[a-zA-Z0-9:_-]{1,160}$/.test(value);
 const validKey = (value: string) => /^[a-zA-Z0-9_-]{16,128}$/.test(value);
+
+async function generationQuote(userId: string, scope: string) {
+  return storySceneThreadId(scope) ? { sceneQuote: await getStorySceneQuote(userId) }
+    : { tokenStatus: getAvatarTokenStatus(await getAvatarUsageUser(userId)) };
+}
 
 export async function POST(req: NextRequest) {
   return withAiCostContext(async () => {
@@ -63,8 +68,7 @@ export async function POST(req: NextRequest) {
         if (existing) {
           if (existing.scope !== scope) throw new AvatarRequestConflict("Story scene idempotency conflict");
           const updated = await reconcileAvatarJob(existing.id) ?? existing;
-          const usage = await getAvatarUsageUser(session.user.id);
-          return json({ ...publicAvatarJob(updated), tokenStatus: getAvatarTokenStatus(usage) }, updated.state === "succeeded" ? 200 : 202);
+          return json({ ...publicAvatarJob(updated), ...await generationQuote(session.user.id, scope) }, updated.state === "succeeded" ? 200 : 202);
         }
         const messages = await prisma.message.findMany({ where: { threadId: storyThreadId, userId: session.user.id,
           characterId: thread.characterId, role: { in: ["user", "assistant"] } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -99,7 +103,7 @@ export async function POST(req: NextRequest) {
         : [scope, templatePrompt, readAvatarCardSnapshot(body), reference])).digest("hex");
       const reservation = await reserveAvatarGeneration(session.user.id, {
         clientKey, scope, payloadHash, model: model.id, estimatedCredits: model.estimatedCredits, creditRub: KIE_CREDIT_RUB,
-      });
+      }, body.acceptedPriceVC);
       if (!reservation) return json({ error: "Достигнут месячный лимит генераций" }, 402);
       job = reservation.generation;
       setAiCostActor(session.user.id, reservation.user.subscriptionType);
@@ -125,16 +129,21 @@ export async function POST(req: NextRequest) {
         // No prompt/reference/key: operators can recover a task after a DB write failure.
         infoLog("KieAvatar", "Task accepted", { taskId, jobId: job.id, model: model.id });
         stage = "save_task";
-        job = await prisma.avatarGeneration.update({ where: { id: job.id }, data: {
+        await prisma.avatarGeneration.updateMany({ where: { id: job.id, state: "creating" }, data: {
           providerTaskId: taskId, state: "pending", errorCode: safetyRewriteCode(rewrites), leaseUntil: null, nextPollAt: new Date(),
         } });
+        job = await prisma.avatarGeneration.findUniqueOrThrow({ where: { id: job.id } });
         await recordKieAvatarCost(job);
       } else {
         job = await reconcileAvatarJob(job.id) ?? job;
       }
-      const usage = await getAvatarUsageUser(session.user.id);
-      return json({ ...publicAvatarJob(job), tokenStatus: getAvatarTokenStatus(usage) }, job.state === "succeeded" ? 200 : 202);
+      return json({ ...publicAvatarJob(job), ...await generationQuote(session.user.id, scope) }, job.state === "succeeded" ? 200 : 202);
     } catch (error) {
+      if (error instanceof StoryScenePriceError) {
+        const insufficient = error.code === "STORY_SCENE_INSUFFICIENT_VC";
+        return json({ code: error.code, sceneQuote: error.quote,
+          error: insufficient ? "Недостаточно VC для иллюстрации" : "Проверьте цену и подтвердите генерацию." }, insufficient ? 402 : 409);
+      }
       errorLog("KieAvatar", "Unable to start generation", {
         stage,
         withReference,
@@ -150,8 +159,8 @@ export async function POST(req: NextRequest) {
             { errorCode: error instanceof KieError ? error.code : error instanceof StoryScenePromptUnavailable ? "no_scene" : "internal" }).catch(() => null);
         }
         if (job) {
-          const usage = await getAvatarUsageUser(job.userId).catch(() => null);
-          return json({ ...publicAvatarJob(job), ...(usage ? { tokenStatus: getAvatarTokenStatus(usage) } : {}) }, 202);
+          const quote = await generationQuote(job.userId, job.scope).catch(() => ({}));
+          return json({ ...publicAvatarJob(job), ...quote }, 202);
         }
       }
       return json({ error: error instanceof KieError && error.code === "invalid_reference"
@@ -173,8 +182,8 @@ export async function GET(req: NextRequest) {
       : await prisma.avatarGeneration.findFirst({ where: { userId: session.user.id, scope }, orderBy: { createdAt: "desc" } });
     if (jobId && !job) return json({ error: "Генерация не найдена" }, 404);
     const updated = job ? await reconcileAvatarJob(job.id) : null;
-    const user = await getAvatarUsageUser(session.user.id);
-    return json({ ...(updated ? publicAvatarJob(updated) : { state: "none" }), tokenStatus: user ? getAvatarTokenStatus(user) : undefined });
+    return json({ ...(updated ? publicAvatarJob(updated) : { state: "none" }),
+      ...await generationQuote(session.user.id, updated?.scope ?? scope) });
   } catch (error) {
     errorLog("KieAvatar", "Unable to read generation", toSafeDiagnostic(error));
     return json({ error: "Не удалось проверить генерацию" }, 503);

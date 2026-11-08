@@ -1,4 +1,6 @@
 export const STORY_SCENE_SCOPE_PREFIX = "story:";
+export const STORY_SCENE_PRICE_VC = 60;
+export type StorySceneQuote = { priceVC: number; verseCoins: number };
 
 export function storySceneScope(threadId: string) {
   return `${STORY_SCENE_SCOPE_PREFIX}${threadId}`;

@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { showError, showSuccess } from "./toast";
 import { METRIKA_GOALS, reachGoal } from "./metrika";
+import type { StorySceneQuote } from "./storySceneShared";
 
 export type AvatarLimit = { tokensUsedThisMonth: number; monthlyLimit: number; monthlyRemaining: number };
-type Job = { jobId?: string; clientKey?: string; scope?: string; state: string; imageUrl?: string; error?: string; tokenStatus?: AvatarLimit;
+type Job = { jobId?: string; clientKey?: string; scope?: string; state: string; imageUrl?: string; error?: string; tokenStatus?: AvatarLimit; sceneQuote?: StorySceneQuote;
   /** For "uncertain": true while the server still refuses a new paid run. */
   blocked?: boolean;
   /** For a blocking "uncertain" job: seconds until a new run is allowed. */
@@ -16,6 +17,7 @@ export function useAvatarGeneration(scope: string, onImage: (image: string) => v
   const [job, setJob] = useState<Job>({ state: "none" });
   const [starting, setStarting] = useState(false);
   const [notice, setNotice] = useState("");
+  const [sceneQuote, setSceneQuote] = useState<StorySceneQuote | null>(null);
   const [deliveredId, setDeliveredId] = useState<string | null>(null);
   const callbacks = useRef({ onImage, onLimits });
   useEffect(() => { callbacks.current = { onImage, onLimits }; }, [onImage, onLimits]);
@@ -29,6 +31,16 @@ export function useAvatarGeneration(scope: string, onImage: (image: string) => v
   const delivered = useRef<string | null>(null);
   const polling = useRef(false);
   const attemptKey = useRef<string | null>(null);
+  const lastSceneBalance = useRef<number | null>(null);
+
+  function acceptSceneQuote(quote: StorySceneQuote) {
+    const previous = lastSceneBalance.current;
+    lastSceneBalance.current = quote.verseCoins;
+    setSceneQuote(quote);
+    if (previous !== null && previous !== quote.verseCoins) {
+      window.dispatchEvent(new CustomEvent("verseCoinsUpdated", { detail: { verseCoins: quote.verseCoins } }));
+    }
+  }
 
   function applyImage(value: Job, announce = true) {
     if (!value.jobId || !value.imageUrl || delivered.current === value.jobId) return;
@@ -60,6 +72,7 @@ export function useAvatarGeneration(scope: string, onImage: (image: string) => v
     }
     setJob(value);
     if (value.tokenStatus) callbacks.current.onLimits(value.tokenStatus);
+    if (value.sceneQuote) acceptSceneQuote(value.sceneQuote);
     if (value.state === "succeeded" && own) applyImage(value);
     if (["failed", "uncertain"].includes(value.state)) {
       setNotice(value.error ?? "Не удалось получить изображение");
@@ -133,7 +146,10 @@ export function useAvatarGeneration(scope: string, onImage: (image: string) => v
         attemptKey.current = null;
         try { sessionStorage.removeItem(storageKey); } catch { /* in-tab fallback */ }
       }
-      if (!response.ok) throw new Error(data.error || "Не удалось запустить генерацию");
+      if (!response.ok) {
+        if (data.sceneQuote) acceptSceneQuote(data.sceneQuote);
+        throw new Error(data.error || "Не удалось запустить генерацию");
+      }
       accept(data);
     } catch (error) {
       if (!controller.current?.signal.aborted) {
@@ -146,6 +162,6 @@ export function useAvatarGeneration(scope: string, onImage: (image: string) => v
   }
   return { busy: starting || ["creating", "pending"].includes(job.state), blocked: uncertainBlocks,
     image: job.state === "succeeded" && job.jobId && job.imageUrl ? { jobId: job.jobId, url: job.imageUrl } : null,
-    notice, state: job.state, canRestore: job.state === "succeeded" && deliveredId !== job.jobId,
+    notice, sceneQuote, state: job.state, canRestore: job.state === "succeeded" && deliveredId !== job.jobId,
     restore: () => applyImage(job), refresh: () => readStatus(undefined, true), start };
 }

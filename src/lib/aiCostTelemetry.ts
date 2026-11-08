@@ -486,12 +486,18 @@ export async function recordKieAvatarCost(job: AvatarGeneration) {
     estimatedCostRub: credits !== null ? credits * job.creditRub : job.state === "succeeded" ? job.estimatedCredits * job.creditRub : null,
   };
   try {
+    const reservation = await prisma.avatarQuotaReservation.findUnique({ where: { id: job.reservationId },
+      select: { chargedVC: true, status: true } });
+    const charge = reservation?.chargedVC ? {
+      quotedVC: reservation.chargedVC, chargedVC: reservation.status === "completed" ? reservation.chargedVC : 0,
+    } : {};
     await prisma.aiCostEvent.upsert({ where: { id: job.id }, update: {}, create: {
-      id: job.id, operationId: job.id, attempt: 1, audience: "user", ...data,
+      id: job.id, operationId: job.id, attempt: 1, audience: "user", ...data, ...charge,
       actorHash: ctx?.actorHash ?? (process.env.NEXTAUTH_SECRET ? createHmac("sha256", process.env.NEXTAUTH_SECRET).update(job.userId).digest("hex") : null),
       subscriptionType: ctx?.subscriptionType,
     } });
     // A stale creation/poll writer cannot overwrite a completed event from another worker.
-    await prisma.aiCostEvent.updateMany({ where: { id: job.id, outcome: { in: data.outcome === "pending" ? ["pending"] : ["pending", data.outcome] } }, data });
+    await prisma.aiCostEvent.updateMany({ where: { id: job.id, outcome: { in: data.outcome === "pending" ? ["pending"] : ["pending", data.outcome] } },
+      data: { ...data, ...charge } });
   } catch (error) { errorLog("AiCost", "Unable to record Kie avatar cost", toSafeDiagnostic(error)); }
 }

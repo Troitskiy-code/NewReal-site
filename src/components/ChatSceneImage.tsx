@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatThreadSummary } from "@/lib/chatThreadShared";
 import { storySceneScope } from "@/lib/storySceneShared";
-import { useAvatarGeneration, type AvatarLimit } from "@/lib/useAvatarGeneration";
+import { useAvatarGeneration } from "@/lib/useAvatarGeneration";
 
 export default function ChatSceneImage({ characterId, thread, onThreadChange }: {
   characterId: string;
@@ -12,11 +12,11 @@ export default function ChatSceneImage({ characterId, thread, onThreadChange }: 
   onThreadChange: (thread: ChatThreadSummary) => void;
 }) {
   const { t } = useTranslation();
-  const [limits, setLimits] = useState<AvatarLimit | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
-  const generation = useAvatarGeneration(storySceneScope(thread.id), () => {}, setLimits);
-  const available = (limits?.monthlyRemaining ?? 0) > 0;
+  const generation = useAvatarGeneration(storySceneScope(thread.id), () => {}, () => {});
+  const quote = generation.sceneQuote;
+  const insufficient = quote !== null && quote.verseCoins < quote.priceVC;
   const image = generation.image;
   const selected = Boolean(image && thread.sceneAvatarUrl === image.url);
 
@@ -37,12 +37,13 @@ export default function ChatSceneImage({ characterId, thread, onThreadChange }: 
   return <div className="space-y-4">
     <p className="text-sm text-wd-text-secondary">{t("storyScene.hint")}</p>
     <div className="flex flex-wrap items-center gap-3">
-      <button type="button" className="wd-btn" disabled={!available || generation.busy || generation.blocked}
-        onClick={() => void generation.start({})}>
-        {generation.busy ? t("storyScene.generating") : t("storyScene.generate")}
+      <button type="button" className="wd-btn" disabled={!quote || insufficient || generation.busy || generation.blocked}
+        onClick={() => { if (quote) void generation.start({ acceptedPriceVC: quote.priceVC }); }}>
+        {generation.busy ? t("storyScene.generating") : quote
+          ? t("storyScene.generatePaid", { price: quote.priceVC }) : t("storyScene.generate")}
       </button>
-      {available && <span className="text-xs text-wd-text-secondary">{t("storyScene.allowance")}</span>}
-      {limits && !available && <span role="status" className="text-xs text-wd-text-secondary">{t("storyScene.unavailable")}</span>}
+      {quote && <span className="text-xs text-wd-text-secondary">{t("storyScene.balance", { balance: quote.verseCoins })}</span>}
+      {insufficient && <span role="status" className="text-xs text-wd-text-secondary">{t("storyScene.insufficient")}</span>}
     </div>
     {generation.notice && <p role="status" className="text-sm text-wd-text-secondary">{generation.notice}</p>}
     {image && <figure className="space-y-3">

@@ -920,6 +920,10 @@ model AvatarQuotaReservation {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   units     Int
   month     DateTime
+  chargedVC Int      @default(0)
+  chargedFromPermanent Int @default(0)
+  chargedSubscriptionEnd DateTime?
+  chargedNextVCAt DateTime?
   status    String   @default("reserved")
   createdAt DateTime @default(now())
   generation AvatarGeneration?

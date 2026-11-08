@@ -3,6 +3,10 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { avatarMonthlyAllowance } from "./avatarEconomy";
 import { randomUUID } from "node:crypto";
 import { UNCERTAIN_BLOCK_MS } from "./kieAvatarModels";
+import type { Prisma } from "@prisma/client";
+import { spendCoins, getPermanentCoins } from "./verseCoins";
+import { applyPendingSubscriptionIfDue } from "./subscriptionState";
+import { STORY_SCENE_PRICE_VC, storySceneThreadId, type StorySceneQuote } from "./storySceneShared";
 
 export const MAX_AVATAR_TOKENS = 10;
 export const AVATAR_REPLENISH_HOURS = 6;
@@ -20,6 +24,7 @@ export type AvatarModelType = "FLUX" | "SD";
 export type AvatarTokenUser = {
   id: string;
   verseCoins: number;
+  permanentCoins: number;
   avatarTokens: number;
   lastTokenReplenish: Date;
   tokensUsedThisMonth: number;
@@ -31,6 +36,7 @@ export type AvatarTokenUser = {
 const AVATAR_TOKEN_SELECT = {
   id: true,
   verseCoins: true,
+  permanentCoins: true,
   avatarTokens: true,
   lastTokenReplenish: true,
   tokensUsedThisMonth: true,
@@ -163,8 +169,27 @@ export function getAvatarTokenStatus(user: AvatarTokenUser) {
 
 type GenerationInput = { clientKey: string; scope: string; payloadHash: string; model: string; estimatedCredits: number; creditRub: number };
 export class AvatarRequestConflict extends Error {}
+export class StoryScenePriceError extends Error {
+  constructor(readonly code: "STORY_SCENE_PRICE_CHANGED" | "STORY_SCENE_INSUFFICIENT_VC", readonly quote: StorySceneQuote) {
+    super(code);
+  }
+}
 
-export async function reserveAvatarGeneration(userId: string, generation?: GenerationInput) {
+function sceneQuote(user: Pick<AvatarTokenUser, "verseCoins" | "permanentCoins" | "subscriptionEnd">): StorySceneQuote {
+  return { priceVC: STORY_SCENE_PRICE_VC,
+    verseCoins: user.subscriptionEnd && user.subscriptionEnd <= new Date() ? getPermanentCoins(user) : user.verseCoins };
+}
+
+export async function getStorySceneQuote(userId: string) {
+  await applyPendingSubscriptionIfDue(userId);
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId },
+    select: { verseCoins: true, permanentCoins: true, subscriptionEnd: true } });
+  return sceneQuote(user);
+}
+
+export async function reserveAvatarGeneration(userId: string, generation?: GenerationInput, acceptedPriceVC?: unknown) {
+  const paidScene = Boolean(generation && storySceneThreadId(generation.scope));
+  if (paidScene) await applyPendingSubscriptionIfDue(userId);
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const user = await tx.user.findUnique({ where: { id: userId }, select: AVATAR_TOKEN_SELECT });
@@ -182,13 +207,29 @@ export async function reserveAvatarGeneration(userId: string, generation?: Gener
       ] }, orderBy: { createdAt: "desc" } });
       if (active) return { id: active.reservationId, user, generation: active, isNew: false };
     }
-    if (!canGenerateThisMonth(user).ok) return null;
     const monthly = normalizeMonthlyUsage(user);
     const id = randomUUID();
-    await tx.avatarQuotaReservation.create({ data: { id, userId, units: 1, month: monthly.lastTokenMonth } });
-    const updated = await tx.user.update({ where: { id: userId }, data: {
-      tokensUsedThisMonth: monthly.tokensUsedThisMonth + 1, lastTokenMonth: monthly.lastTokenMonth,
-    }, select: AVATAR_TOKEN_SELECT });
+    let updated: AvatarTokenUser;
+    if (paidScene) {
+      const quote = sceneQuote(user);
+      if (quote.verseCoins < quote.priceVC) throw new StoryScenePriceError("STORY_SCENE_INSUFFICIENT_VC", quote);
+      if (acceptedPriceVC !== quote.priceVC) throw new StoryScenePriceError("STORY_SCENE_PRICE_CHANGED", quote);
+      const coins = spendCoins({ verseCoins: quote.verseCoins, permanentCoins: user.permanentCoins }, quote.priceVC);
+      await tx.avatarQuotaReservation.create({ data: { id, userId, units: 0, month: monthly.lastTokenMonth,
+        chargedVC: quote.priceVC, chargedFromPermanent: user.permanentCoins - coins.permanentCoins,
+        chargedSubscriptionEnd: user.subscriptionEnd } });
+      updated = await tx.user.update({ where: { id: userId }, data: {
+        verseCoins: { decrement: quote.priceVC }, permanentCoins: coins.permanentCoins,
+      }, select: AVATAR_TOKEN_SELECT });
+      await tx.transaction.create({ data: { userId, amount: -quote.priceVC, type: "story_scene",
+        description: "Генерация иллюстрации сцены" } });
+    } else {
+      if (!canGenerateThisMonth(user).ok) return null;
+      await tx.avatarQuotaReservation.create({ data: { id, userId, units: 1, month: monthly.lastTokenMonth } });
+      updated = await tx.user.update({ where: { id: userId }, data: {
+        tokensUsedThisMonth: monthly.tokensUsedThisMonth + 1, lastTokenMonth: monthly.lastTokenMonth,
+      }, select: AVATAR_TOKEN_SELECT });
+    }
     const job = generation ? await tx.avatarGeneration.create({ data: {
       id, reservationId: id, userId, ...generation, leaseUntil: new Date(Date.now() + 90_000),
     } }) : null;
@@ -201,10 +242,32 @@ export async function settleAvatarGeneration(id: string, succeeded: boolean | "r
     const reservation = await tx.avatarQuotaReservation.findUnique({ where: { id } });
     if (!reservation || reservation.status !== "reserved") return;
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${reservation.userId} FOR UPDATE`;
-    const claimed = await tx.avatarQuotaReservation.updateMany({ where: { id, status: "reserved" }, data: { status: succeeded === "review" ? "manual_review" : succeeded ? "completed" : "refunded" } });
-    if (!claimed.count || succeeded) return;
-    // Activation or month rollover may have reset usage: never refund into that new period.
-    await tx.user.updateMany({ where: { id: reservation.userId, lastTokenMonth: reservation.month,
-      tokensUsedThisMonth: { gte: reservation.units } }, data: { tokensUsedThisMonth: { decrement: reservation.units } } });
+    await settleLockedAvatarReservation(tx, id, succeeded);
   });
+}
+
+/** Call while holding the user's row lock. */
+export async function settleLockedAvatarReservation(tx: Prisma.TransactionClient, id: string, succeeded: boolean | "review") {
+  const reservation = await tx.avatarQuotaReservation.findUnique({ where: { id } });
+  if (!reservation || !["reserved", "manual_review"].includes(reservation.status)) return;
+  await tx.avatarQuotaReservation.update({ where: { id },
+    data: { status: succeeded === "review" ? "manual_review" : succeeded ? "completed" : "refunded" } });
+  if (succeeded) return;
+  if (reservation.chargedVC > 0) {
+    const user = await tx.user.findUniqueOrThrow({ where: { id: reservation.userId }, select: { subscriptionEnd: true } });
+    const samePeriod = user.subscriptionEnd?.getTime() === reservation.chargedSubscriptionEnd?.getTime()
+      && (!user.subscriptionEnd || user.subscriptionEnd > new Date());
+    const amount = samePeriod ? reservation.chargedVC : reservation.chargedFromPermanent;
+    if (amount > 0) {
+      await tx.user.update({ where: { id: reservation.userId }, data: {
+        verseCoins: { increment: amount }, permanentCoins: { increment: reservation.chargedFromPermanent },
+      } });
+      await tx.transaction.create({ data: { userId: reservation.userId, amount, type: "story_scene_refund",
+        description: "Возврат за иллюстрацию сцены" } });
+    }
+    return;
+  }
+  // Old jobs were paid by the avatar allowance. Only restore units for the original period.
+  await tx.user.updateMany({ where: { id: reservation.userId, lastTokenMonth: reservation.month,
+    tokensUsedThisMonth: { gte: reservation.units } }, data: { tokensUsedThisMonth: { decrement: reservation.units } } });
 }

@@ -7,6 +7,7 @@ import { isAvatarSafetyRewriteEnabled, MAX_SAFETY_REWRITES, rewriteRefusedAvatar
 import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
 import { kieAvatarModel, uncertainBlockSecondsLeft, uncertainJobBlocks } from "./kieAvatarModels";
 import { storySceneThreadId } from "./storySceneShared";
+import { settleLockedAvatarReservation } from "./avatarTokens";
 
 const STORY_SCENE_DELIVERY_WINDOW_MS = 30 * 60 * 1000;
 
@@ -39,6 +40,7 @@ export function publicAvatarJob(job: AvatarGeneration) {
     ...(job.state === "failed" ? { error: job.errorCode === "safety"
       ? "Запрос отклонён правилами генерации. Измените описание или референс."
       : job.errorCode === "no_scene" ? "Не удалось определить текущую сцену по сообщениям."
+      : storySceneThreadId(job.scope) ? "Не удалось сгенерировать иллюстрацию."
       : "Не удалось сгенерировать изображение. Генерация возвращена в лимит." } : {}),
     // The client keeps the button disabled while "blocked" and re-checks after retryAfterSeconds.
     ...(job.state === "uncertain" ? uncertainJobBlocks(job)
@@ -59,18 +61,8 @@ export async function finishAvatarJob(job: AvatarGeneration, state: "succeeded" 
       state, ...values, leaseToken: null, leaseUntil: null,
     } });
     // A lost scene launch is still blocked against duplicate jobs, but the reader received no image.
-    const refund = state === "failed" || (state === "uncertain" && Boolean(storySceneThreadId(job.scope)));
-    const reservation = await tx.avatarQuotaReservation.findUnique({ where: { id: job.reservationId } });
-    if (reservation?.status === "reserved" || reservation?.status === "manual_review") {
-      await tx.avatarQuotaReservation.update({ where: { id: job.reservationId }, data: {
-        status: state === "succeeded" ? "completed" : refund ? "refunded" : "manual_review",
-      } });
-      if (refund) {
-        // A subscription activation or month rollover may have reset usage already.
-        await tx.user.updateMany({ where: { id: job.userId, lastTokenMonth: reservation.month,
-          tokensUsedThisMonth: { gte: reservation.units } }, data: { tokensUsedThisMonth: { decrement: reservation.units } } });
-      }
-    }
+    await settleLockedAvatarReservation(tx, job.reservationId,
+      state === "uncertain" && !storySceneThreadId(job.scope) ? "review" : state === "succeeded");
     return updated;
   });
   if (result) await recordKieAvatarCost(result);
