@@ -108,4 +108,26 @@ try {
   check(!charged && wire.includes('"type":"error"') && !wire.includes('secret_provider_error')
     && !wire.includes('"type":"end"'), 'real NDJSON wrapper exposes only a safe error, no successful end');
 } finally { console.error = log; }
+{
+  // The browser goes away after the first chunk (tab closed, phone asleep): the reply is still read to the end and
+  // saved, and nothing throws. Writing to the cancelled stream used to fail the reply and refund it (prod, 2026-11-08).
+  const info = console.info; console.info = () => {};
+  try {
+    let saved = false, failed = null;
+    const upstream = stream(text + text + text + terminal('stop') + usage + done, 5);
+    const response = createChatNdjsonResponse(async (emit) => {
+      try {
+        emit({ type: 'meta' });
+        const reply = await consumeOpenAIChatStream(upstream, (delta) => emit({ type: 'delta', text: delta }));
+        saved = reply.length > 0;
+        emit({ type: 'end', assistantMessage: { id: 'm1', role: 'assistant', content: reply, createdAt: new Date().toISOString() } });
+      } catch (error) { failed = error; throw error; }
+    });
+    const reader = response.body.getReader();
+    await reader.read();
+    await reader.cancel();
+    for (let wait = 0; wait < 50 && !saved && !failed; wait++) await new Promise(resolve => setTimeout(resolve, 10));
+    check(saved && failed === null, 'a reply whose browser disconnected mid-stream is finished and saved, not failed');
+  } finally { console.info = info; }
+}
 console.log(`Cost streams verification: ${checks} passed`);

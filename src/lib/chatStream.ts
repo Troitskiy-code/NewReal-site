@@ -81,10 +81,24 @@ export function encodeChatStreamEvent(event: ChatStreamEvent): Uint8Array {
 export function createChatNdjsonResponse(
   run: (emit: (event: ChatStreamEvent) => void) => Promise<void>
 ): Response {
+  // The browser may go away mid-reply (tab closed, page left, phone asleep, network lost). The reply is still finished
+  // and saved, and the user finds it on return. Writing to the cancelled stream threw TypeError, which failed the reply
+  // and refunded it: «consumer failed deliver_delta TypeError», 1–2 a day in prod logs since 2026-11-01.
+  let disconnected = false;
   const stream = new ReadableStream<Uint8Array>({
+    cancel() {
+      if (!disconnected) console.info("[ChatStream] client disconnected; finishing the reply without sending");
+      disconnected = true;
+    },
     async start(controller) {
       const emit = (event: ChatStreamEvent) => {
-        controller.enqueue(encodeChatStreamEvent(event));
+        if (disconnected) return;
+        try {
+          controller.enqueue(encodeChatStreamEvent(event));
+        } catch {
+          if (!disconnected) console.info("[ChatStream] client disconnected; finishing the reply without sending");
+          disconnected = true;
+        }
       };
 
       try {
@@ -105,7 +119,7 @@ export function createChatNdjsonResponse(
           // Client already disconnected.
         }
       } finally {
-        controller.close();
+        try { controller.close(); } catch { /* Already cancelled by the client. */ }
       }
     },
   });
