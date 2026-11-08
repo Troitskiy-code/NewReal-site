@@ -1880,7 +1880,8 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     <ChatSpeechProvider key={`${characterId}:${threadId ?? ""}:${session?.user?.id ?? "guest"}`}
       characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}
       muted={capturingVoice}>
-    {characterAvatarUrl ? <ChatPortraitBackground imageUrl={characterAvatarUrl} /> : null}
+    {/* The story illustration chosen as its avatar also becomes the chat backdrop. */}
+    {storyAvatarUrl ? <ChatPortraitBackground imageUrl={storyAvatarUrl} /> : null}
     <div
       className={`nv-chat-shell relative z-10 flex h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] min-h-0 max-w-full flex-col overflow-hidden overscroll-none text-primary-text md:h-[calc(100dvh-5rem)] md:max-h-[calc(100dvh-5rem)] ${
         characterAvatarUrl ? "" : "bg-bg-page"
