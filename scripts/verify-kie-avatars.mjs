@@ -31,6 +31,7 @@ const testEnv = { DEEPINFRA_API_KEY: 'synthetic_deepinfra_key', CHAT_THREADS_ENA
   S3_ENDPOINT: 'https://storage.yandexcloud.net', S3_REGION: 'ru-central1', S3_BUCKET: 'fixture',
   S3_ACCESS_KEY_ID: 'synthetic_fixture_key', S3_SECRET_ACCESS_KEY: 'synthetic_fixture_secret' };
 const storedImages = new Map();
+const s3Deletes = [];
 const png = await sharp({ create: { width: 16, height: 16, channels: 3, background: '#789abc' } }).png().toBuffer();
 const reference = `data:image/png;base64,${png.toString('base64')}`;
 const marker = 'SYNTHETIC_PRIVATE_PROMPT';
@@ -131,8 +132,10 @@ function load(file) {
     if (name === '@aws-sdk/client-s3') return {
       PutObjectCommand: class { constructor(input) { this.input = input; } },
       GetObjectCommand: class { constructor(input) { this.input = input; } },
+      DeleteObjectCommand: class { constructor(input) { this.input = input; this.remove = true; } },
       S3Client: class {
-        async send({ input: { Key, Body } }) {
+        async send({ input: { Key, Body }, remove }) {
+          if (remove) { s3Deletes.push(Key); storedImages.delete(Key); return; }
           if (Body) { storedImages.set(Key, Body); return; }
           const image = storedImages.get(Key);
           if (!image) throw Object.assign(new Error('Missing fixture image'), { $metadata: { httpStatusCode: 404 } });
@@ -556,6 +559,62 @@ try {
     && (await db.chatThread.findUnique({ where: { id: thread.id } })).sceneAvatarJobId === sceneReplay.jobId
     && (await db.character.findUnique({ where: { id: card.id } })).imageUrl === null, 'assignment persists on this story alone');
   check((await (await setAvatar(thread.id, null)).json()).thread.sceneAvatarUrl === null, 'owner can restore the character avatar');
+
+  // Gallery: rows already exist for billing, images and their tiles live in private storage.
+  const sceneKey = (threadId, jobId, thumb = false) => `story-scenes/${sceneOwner.id}/${threadId}/${jobId}${thumb ? '.thumb' : ''}.webp`;
+  check(storedImages.has(sceneKey(thread.id, sceneReplay.jobId, true))
+    && (await sharp(storedImages.get(sceneKey(thread.id, sceneReplay.jobId, true))).metadata()).width === 384, 'saving a scene also stores a 384 px tile');
+  const galleryRoute = load('src/app/api/story-scene-media/[threadId]/route.ts');
+  const gallery = async threadId => galleryRoute.GET(new Request('https://example.test'), { params: Promise.resolve({ threadId }) });
+  const addStoredScene = async (threadId, createdAt = new Date()) => {
+    const id = randomUUID();
+    await db.avatarQuotaReservation.create({ data: { id, userId: sceneOwner.id, units: 0, month: sceneOwner.lastTokenMonth, status: 'completed' } });
+    await db.avatarGeneration.create({ data: { id, reservationId: id, userId: sceneOwner.id, scope: `story:${threadId}`, clientKey: randomUUID(),
+      payloadHash: 'gallery', model: 'seedream/5-lite-image-to-image', estimatedCredits: 5.5, state: 'succeeded',
+      imageUrl: `/api/story-scene-media/${threadId}/${id}`, createdAt } });
+    storedImages.set(sceneKey(threadId, id), storedImages.get(sceneKey(thread.id, sceneReplay.jobId)));
+    return id;
+  };
+  const olderScene = await addStoredScene(thread.id, new Date(Date.now() - 3600_000));
+  const listed = await (await gallery(thread.id)).json();
+  check(listed.scenes.length === 2 && listed.scenes[0].jobId === sceneReplay.jobId && listed.scenes[1].jobId === olderScene
+    && listed.scenes[1].thumbUrl === `/api/story-scene-media/${thread.id}/${olderScene}?size=thumb` && listed.limit === 100
+    && (await gallery(otherThread.id)).status === 200 && (await (await gallery(otherThread.id)).json()).scenes.length === 0,
+    'the gallery lists this story only, newest first, with tile links');
+  const sceneRequestFor = (jobId, query = '', method = 'GET', headers = sameOrigin) => sceneMedia[method](
+    new NextRequest(`https://example.test/api/story-scene-media/${thread.id}/${jobId}${query}`, { method, headers }),
+    { params: Promise.resolve({ threadId: thread.id, jobId }) });
+  const missingTile = await sceneRequestFor(olderScene, '?size=thumb');
+  check(missingTile.status === 200 && (await sharp(Buffer.from(await missingTile.arrayBuffer())).metadata()).width === 384
+    && storedImages.has(sceneKey(thread.id, olderScene, true)), 'a missing tile is built from the image on first view and stored');
+  await setAvatar(thread.id, olderScene);
+  check((await sceneRequestFor(olderScene, '', 'DELETE', { 'sec-fetch-site': 'cross-site' })).status === 403
+    && storedImages.has(sceneKey(thread.id, olderScene)), 'a cross-site request cannot delete an illustration');
+  const deleted = await (await sceneRequestFor(olderScene, '', 'DELETE')).json();
+  check(deleted.thread.sceneAvatarUrl === null && (await db.chatThread.findUnique({ where: { id: thread.id } })).sceneAvatarJobId === null
+    && (await db.avatarGeneration.findUnique({ where: { id: olderScene } })).imageUrl === null
+    && !storedImages.has(sceneKey(thread.id, olderScene)) && !storedImages.has(sceneKey(thread.id, olderScene, true))
+    && (await sceneRequestFor(olderScene)).status === 404 && (await (await gallery(thread.id)).json()).scenes.length === 1,
+    'deleting the story avatar illustration removes both files, keeps the paid row and restores the character avatar');
+  check((await setAvatar(thread.id, olderScene)).status === 404, 'a deleted illustration cannot be set as the avatar');
+  const doomed = await db.chatThread.create({ data: { userId: sceneOwner.id, characterId: card.id, number: 3 } });
+  const doomedScene = await addStoredScene(doomed.id);
+  const removed = await settings.DELETE(new NextRequest('https://example.test', { method: 'DELETE', headers: sameOrigin,
+    body: JSON.stringify({ confirmed: true }) }), { params: Promise.resolve({ id: card.id, threadId: doomed.id }) });
+  check(removed.status === 200 && !storedImages.has(sceneKey(doomed.id, doomedScene))
+    && (await db.avatarGeneration.findUnique({ where: { id: doomedScene } })).imageUrl === null,
+    'deleting a story deletes its illustrations from storage and keeps the paid rows');
+  const crowded = await db.chatThread.create({ data: { userId: sceneOwner.id, characterId: card.id, number: 4 } });
+  await createMessage(crowded.id, 'Полный зал.', new Date());
+  const ids = Array.from({ length: 100 }, () => randomUUID());
+  await db.avatarQuotaReservation.createMany({ data: ids.map(id => ({ id, userId: sceneOwner.id, units: 0, month: sceneOwner.lastTokenMonth, status: 'completed' })) });
+  await db.avatarGeneration.createMany({ data: ids.map(id => ({ id, reservationId: id, userId: sceneOwner.id, scope: `story:${crowded.id}`,
+    clientKey: randomUUID(), payloadHash: 'gallery', model: 'seedream/5-lite-image-to-image', estimatedCredits: 5.5, state: 'succeeded',
+    imageUrl: `/api/story-scene-media/${crowded.id}/${id}` })) });
+  const beforeFull = creates;
+  const fullResponse = await handler.POST(scenePost({ scope: `story:${crowded.id}`, clientKey: randomUUID(), acceptedPriceVC: 60 }));
+  check(fullResponse.status === 409 && (await fullResponse.json()).code === 'STORY_SCENE_GALLERY_FULL' && creates === beforeFull
+    && (await sceneLedger('story_scene')).length === 1, 'a story with 100 stored illustrations refuses a new one before charging');
   userId = user.id;
   check((await media(thread.id)).status === 404 && (await setAvatar(thread.id, sceneReplay.jobId)).status === 404
     && (await handler.POST(scenePost({ ...sceneRequest, clientKey: randomUUID() }))).status === 404,

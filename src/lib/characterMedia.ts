@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import sharp from "sharp";
 import { ClientInputError } from "./publicError";
@@ -114,20 +114,56 @@ export async function readCharacterAvatarReference(value: string | null, ownerId
   return Buffer.from(match[1], "base64");
 }
 
-function storySceneKey(ownerId: string, threadId: string, jobId: string) {
+function storySceneKey(ownerId: string, threadId: string, jobId: string, thumb = false) {
   if (!/^[a-zA-Z0-9_-]{1,128}$/.test(ownerId) || storySceneThreadId(storySceneScope(threadId)) !== threadId
     || !isStorySceneJobId(jobId)) throw new CharacterMediaUnavailable();
-  return `story-scenes/${ownerId}/${threadId}/${jobId}.webp`;
+  return `story-scenes/${ownerId}/${threadId}/${jobId}${thumb ? ".thumb" : ""}.webp`;
+}
+
+// A gallery tile is about 25 KB instead of the full 2K frame.
+const STORY_SCENE_THUMB_PX = 384;
+function storySceneThumb(image: Uint8Array | Buffer) {
+  return sharp(image, { limitInputPixels: 16_000_000 }).resize(STORY_SCENE_THUMB_PX, STORY_SCENE_THUMB_PX, { fit: "cover" })
+    .webp({ quality: 78 }).toBuffer();
+}
+
+async function putStorySceneObject(Key: string, Body: Buffer) {
+  const configured = storage();
+  try {
+    await configured.client.send(new PutObjectCommand({ Bucket: configured.bucket, Key, Body,
+      ContentType: "image/webp", CacheControl: "private, no-store" }), { abortSignal: AbortSignal.timeout(20_000) });
+  } finally { configured.client.destroy(); }
 }
 
 export async function storeStorySceneImage(image: Buffer, ownerId: string, threadId: string, jobId: string) {
   const Key = storySceneKey(ownerId, threadId, jobId);
   if (!image.length || image.length > MAX_CHARACTER_IMAGE_BYTES) throw new CharacterMediaUnavailable();
+  await putStorySceneObject(Key, image);
+  // The gallery rebuilds a missing tile on first view, so a failed thumbnail never fails the paid image.
+  await storySceneThumb(image).then(thumb => putStorySceneObject(storySceneKey(ownerId, threadId, jobId, true), thumb)).catch(() => null);
+  return storySceneImagePath(threadId, jobId);
+}
+
+export async function readStorySceneThumb(ownerId: string, threadId: string, jobId: string) {
+  const thumbKey = storySceneKey(ownerId, threadId, jobId, true);
+  try {
+    return await readStoredImage(thumbKey, 10_000);
+  } catch (error) {
+    if ((error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode !== 404) throw error;
+  }
+  const thumb = await storySceneThumb(await readStorySceneImage(ownerId, threadId, jobId));
+  await putStorySceneObject(thumbKey, thumb).catch(() => null);
+  return new Uint8Array(thumb);
+}
+
+/** Removes the image and its tile. S3 treats a missing key as deleted. */
+export async function deleteStorySceneImages(ownerId: string, threadId: string, jobIds: string[]) {
   const configured = storage();
   try {
-    await configured.client.send(new PutObjectCommand({ Bucket: configured.bucket, Key, Body: image,
-      ContentType: "image/webp", CacheControl: "private, no-store" }), { abortSignal: AbortSignal.timeout(20_000) });
-    return storySceneImagePath(threadId, jobId);
+    for (const jobId of jobIds) for (const thumb of [false, true]) {
+      await configured.client.send(new DeleteObjectCommand({ Bucket: configured.bucket, Key: storySceneKey(ownerId, threadId, jobId, thumb) }),
+        { abortSignal: AbortSignal.timeout(10_000) });
+    }
   } finally { configured.client.destroy(); }
 }
 

@@ -744,11 +744,13 @@ type ModalProps = {
   onClose: () => void;
   title: string;
   wide?: boolean;
+  /** On phones the dialog rises from the bottom edge, next to the message bar that opened it. */
+  sheet?: boolean;
   dismissible?: boolean;
   children: React.ReactNode;
 };
 
-function Modal({ open, onClose, title, wide = false, dismissible = true, children }: ModalProps) {
+function Modal({ open, onClose, title, wide = false, sheet = false, dismissible = true, children }: ModalProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -770,13 +772,15 @@ function Modal({ open, onClose, title, wide = false, dismissible = true, childre
 
   return (
     <div
-      className="fixed inset-0 z-[10050] flex items-start justify-center bg-black/80 p-4 pt-16 backdrop-blur-sm md:items-center md:pt-4"
+      className={`fixed inset-0 z-[10050] flex justify-center bg-black/80 backdrop-blur-sm md:items-center ${
+        sheet ? "items-end p-0 md:p-4" : "items-start p-4 pt-16 md:pt-4"}`}
       onClick={dismissible ? onClose : undefined}
       role="presentation"
     >
       <div
-        className={`relative mx-auto flex max-h-[80vh] w-full flex-col overflow-hidden rounded-xl border border-[#2a2638] bg-[#15131d] shadow-xl ${
-          wide ? "max-w-lg md:max-w-2xl" : "max-w-sm md:max-w-md"
+        className={`relative mx-auto flex w-full flex-col overflow-hidden border border-[#2a2638] bg-[#15131d] shadow-xl ${
+          sheet ? "max-h-[92vh] max-w-lg rounded-t-2xl md:max-h-[85vh] md:rounded-xl" : "max-h-[80vh] rounded-xl"} ${
+          sheet ? "" : wide ? "max-w-lg md:max-w-2xl" : "max-w-sm md:max-w-md"
         }`}
         onClick={(e) => e.stopPropagation()}
         ref={dialogRef}
@@ -1969,8 +1973,9 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
         </Modal>
 
         {threadsEnabled && !isAnonymous && currentThread && (
-          <Modal open={sceneImageOpen} onClose={() => setSceneImageOpen(false)} title={t("storyScene.title")} wide>
+          <Modal open={sceneImageOpen} onClose={() => setSceneImageOpen(false)} title={t("storyScene.title")} sheet>
             <ChatSceneImage key={currentThread.id} characterId={characterId} thread={currentThread}
+              characterName={characterDisplayName} characterAvatarUrl={characterAvatarUrl}
               onThreadChange={thread => setCurrentThread(current => current?.id === thread.id ? { ...current, ...thread } : current)} />
           </Modal>
         )}

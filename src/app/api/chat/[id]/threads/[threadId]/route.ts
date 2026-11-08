@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
 import { isSameOriginRequest } from "@/lib/telegram/http";
 import { isStorySceneJobId, storySceneImagePath, storySceneScope } from "@/lib/storySceneShared";
+import { deleteStorySceneImages } from "@/lib/characterMedia";
 import {
   chatThreadsEnabled,
   isValidThreadId,
@@ -88,11 +89,20 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
     }
 
     const deletedMessages = await prisma.message.count({ where: { threadId: auth.thread.id } });
+    const scenes = await prisma.avatarGeneration.findMany({ where: { userId: auth.thread.userId, scope: storySceneScope(auth.thread.id),
+      imageUrl: { not: null } }, select: { id: true } });
     // Messages, embeddings (via Message), summary, core, episodes and entries cascade from the story.
     await prisma.$transaction([
       prisma.chatPromptState.deleteMany({ where: { scopeKey: threadPromptScopeKey(auth.thread.id), characterId } }),
       prisma.chatThread.delete({ where: { id: auth.thread.id } }),
     ]);
+    // Paid job rows stay for accounting; only the private images go.
+    if (scenes.length) {
+      const jobIds = scenes.map(scene => scene.id);
+      await prisma.avatarGeneration.updateMany({ where: { id: { in: jobIds } }, data: { imageUrl: null } });
+      await deleteStorySceneImages(auth.thread.userId, auth.thread.id, jobIds)
+        .catch(error => errorLog("Server", "[Threads] scene images not deleted", toSafeDiagnostic(error)));
+    }
     // totalMessages is a cumulative counter across users and is never decreased.
     console.log(`[Threads] deleted character=${characterId} messages=${deletedMessages}`);
     return NextResponse.json({ success: true, deletedMessages }, { headers: NO_STORE });

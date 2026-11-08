@@ -16,7 +16,7 @@ import { readAvatarBody, AvatarBodyTooLarge } from "@/lib/avatarRequest";
 import { chatThreadsEnabled } from "@/lib/chatThreads";
 import { getAuthorizedCharacterForChat } from "@/lib/chatAccess";
 import { isSameOriginRequest } from "@/lib/telegram/http";
-import { STORY_SCENE_SCOPE_PREFIX, storySceneThreadId } from "@/lib/storySceneShared";
+import { STORY_SCENE_GALLERY_LIMIT, STORY_SCENE_SCOPE_PREFIX, storySceneThreadId } from "@/lib/storySceneShared";
 import { buildStorySceneSnapshot, mayShowStorySceneUnderwear, STORY_SCENE_MESSAGE_LIMIT, StoryScenePromptUnavailable, writeStoryScenePrompt } from "@/lib/storyScenePrompt";
 import { readCharacterAvatarReference } from "@/lib/characterMedia";
 import { cropReferenceFace, withFaceReferenceSentence } from "@/lib/referenceFaceCrop";
@@ -70,6 +70,9 @@ export async function POST(req: NextRequest) {
           const updated = await reconcileAvatarJob(existing.id) ?? existing;
           return json({ ...publicAvatarJob(updated), ...await generationQuote(session.user.id, scope) }, updated.state === "succeeded" ? 200 : 202);
         }
+        const stored = await prisma.avatarGeneration.count({ where: { userId: session.user.id, scope, state: "succeeded", imageUrl: { not: null } } });
+        if (stored >= STORY_SCENE_GALLERY_LIMIT) return json({ code: "STORY_SCENE_GALLERY_FULL",
+          error: `В истории уже ${STORY_SCENE_GALLERY_LIMIT} иллюстраций. Удалите старые, чтобы создать новую.` }, 409);
         const messages = await prisma.message.findMany({ where: { threadId: storyThreadId, userId: session.user.id,
           characterId: thread.characterId, role: { in: ["user", "assistant"] } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: STORY_SCENE_MESSAGE_LIMIT, select: { id: true, role: true, content: true } });
