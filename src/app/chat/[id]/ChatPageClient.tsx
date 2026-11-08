@@ -612,7 +612,6 @@ function ChatSettingsMenu({
   onOpenPersona,
   onOpenPrompt,
   onOpenVoice,
-  onOpenSceneImage,
   onClearChat,
   threadsEnabled = false,
   onOpenThreads,
@@ -627,7 +626,6 @@ function ChatSettingsMenu({
   onOpenPersona: () => void;
   onOpenPrompt: () => void;
   onOpenVoice: () => void;
-  onOpenSceneImage?: () => void;
   onClearChat: () => void;
   /** Stories on: "new story" and the story list replace the destructive restart. */
   threadsEnabled?: boolean;
@@ -689,10 +687,6 @@ function ChatSettingsMenu({
           >
             {t("chatSpeech.settingsTitle")}
           </button>
-          {onOpenSceneImage && <button type="button" role="menuitem" onClick={() => { onClose(); onOpenSceneImage(); }}
-            className="block w-full px-4 py-2.5 text-left text-sm text-white transition-colors hover:bg-[#2a2638]">
-            {t("storyScene.title")}
-          </button>}
           <button
             type="button"
             role="menuitem"
@@ -2069,7 +2063,6 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
                   onOpenPersona={() => setPersonaSelectorOpen(true)}
                   onOpenPrompt={() => setPromptSettingsOpen(true)}
                   onOpenVoice={() => setVoiceSettingsOpen(true)}
-                  onOpenSceneImage={threadsEnabled && currentThread ? () => setSceneImageOpen(true) : undefined}
                   onClearChat={() => {
                     setSettingsMenuOpen(false);
                     setConfirmClearChat(true);
@@ -2193,6 +2186,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
               onSubmit={sendMessage}
               voiceInputEnabled={status === "authenticated"}
               onVoiceCaptureChange={setCapturingVoice}
+              onOpenSceneImage={!isAnonymous && threadsEnabled && currentThread ? () => setSceneImageOpen(true) : undefined}
               disabled={sending || actionLoading || clearingChat || historyLoading || transferState !== "idle"}
               canSend={canSend && !historyLoading && transferState === "idle"}
               note={isAnonymous ? undefined : t(telegram ? "telegram.coinRulesActions" : "pricing.coinRulesActions")}

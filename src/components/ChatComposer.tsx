@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useEffect, useId, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
-import { LuBookOpen, LuMic, LuSquare } from "react-icons/lu";
+import { LuBookOpen, LuImagePlus, LuMic, LuSquare } from "react-icons/lu";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { VOICE_INPUT_SECONDS } from "@/lib/voiceInput";
 
@@ -89,6 +89,7 @@ export default function ChatComposer({
   note,
   voiceInputEnabled = false,
   onVoiceCaptureChange,
+  onOpenSceneImage,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -99,6 +100,8 @@ export default function ChatComposer({
   note?: string;
   voiceInputEnabled?: boolean;
   onVoiceCaptureChange: (capturing: boolean) => void;
+  /** Opens the story illustration dialog; the button is hidden without it. */
+  onOpenSceneImage?: () => void;
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -189,6 +192,12 @@ export default function ChatComposer({
           {dictating && <button type="button" onClick={voice.cancel}
             className="shrink-0 font-semibold text-secondary-text hover:text-white">{t("voiceInput.cancel")}</button>}
         </div>
+      )}
+      {onOpenSceneImage && (
+        <button type="button" onClick={onOpenSceneImage} aria-label={t("storyScene.title")} title={t("storyScene.title")}
+          className="flex h-11 w-9 shrink-0 items-center justify-center rounded-full text-secondary-text transition-colors hover:text-white">
+          <LuImagePlus size={19} aria-hidden />
+        </button>
       )}
       {voiceInputEnabled && voice.supported && (
         <button type="button" aria-label={t(recording ? "voiceInput.stop" : "voiceInput.start")}
