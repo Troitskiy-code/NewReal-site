@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { parseCoreSections, sanitizeCoreMemory } from "./coreMemorySanitize";
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { withoutChatThoughts } from "./chatMessageMarkup";
-import { evidenceNumbers, inferMemoryStatus, isSameMemoryName, memoryNumbers, memoryTerms, retellingNumbersSupported } from "./memoryNarrative";
+import { evidenceNumbers, inferMemoryStatus, isSameMemoryName, memoryNumbers, memoryTerms, retellingNumbersSupported, retellingRejection, RETELLING_TERM_SHARE, memoryOverlap } from "./memoryNarrative";
 
 export const memoryV2Enabled = () => ["1", "true"].includes(process.env.MEMORY_V2_ENABLED ?? "");
 const SLOTS: Record<string, { label: string; multi?: boolean }> = {
@@ -37,7 +37,8 @@ export const factCardinality = (key: string) => SLOTS[key]?.multi || key.startsW
 export type FactDelta = { op: "set" | "retract"; subject: string; key: string; value: string;
   sourceMessageId: string | null; source: string; pinned: boolean; confidence: number };
 export type FactSource = { id: string; author: "user" | "character"; messageId: string; text: string };
-export type ExtractedEvent = { text: string; importance: number; sourceMessageId: string; source: "user" | "character" };
+/** retold: the text is the extractor's grounded retelling; otherwise it is the source sentence itself. */
+export type ExtractedEvent = { text: string; importance: number; sourceMessageId: string; source: "user" | "character"; retold: boolean };
 /** Where the hero is in a turn and who is near enough to see and hear them. The narrator let characters use
  * what was said without them: Трисс knew the informer's request, Йеннифэр the old woman's words (owner's
  * Witcher story 12, 2026-10-29). Shown on past user turns of the history (turnPresenceNote). */
@@ -48,7 +49,7 @@ export type MemoryValidationReason = "invalid_response_type" | "invalid_json" | 
   | "invalid_value_type" | "value_too_long" | "unsupported_key" | "unknown_source" | "user_fact_from_character"
   | "character_fact_from_user_first_person" | "control_instruction" | "unsupported_value" | "question_source"
   | "non_factual_source" | "unsupported_number" | "empty_value" | "negated_set" | "single_slot_conflict"
-  | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long" | "redundant_npc_name"
+  | "invalid_event_object" | "unexpected_event_field" | "invalid_importance" | "event_source_too_long" | "event_source_mismatch" | "redundant_npc_name"
   | "transient_state" | "slot_noise" | "npc_is_user" | "recap_source";
 /** Only enums, generated source labels and sizes. Never include quotes, values or NPC names. */
 export type MemoryValidationDiagnostic = {
@@ -448,7 +449,7 @@ subject=user — герой пользователя ЭТОЙ истории; т
 Отсутствие упоминания НЕ отменяет факт. Если в новом ходе не сказано об изменении города, не меняй city. Не возвращай весь activeFacts как список изменений.
 Для нового имени, города или профессии верни только set нового значения: сервер сам заменит старое. Не добавляй retract старого значения, отсутствующего в источнике.
 Закреплённые ручные факты не меняй. Не дублируй известное. Эмоции и бытовые действия не являются устойчивыми фактами.
-events: до 3 объектов {sourceId,importance:2|3}. Цитируй обещания, договорённости, открытия, действия с последствиями; не приветствия и бытовые жесты.
+events: до 3 объектов {sourceId,importance:2|3,text}. Событие — то, что изменило историю: обещание, договорённость, открытие, решение, действие с последствиями; не приветствия, бытовые жесты и не вопросы. text — одно предложение в третьем лице: кто что сделал, сказал или пообещал и кому, с именами, числами и названиями только из sources («Ирма назвала Каю аварийный пароль «Медный Ибис»»). Без «я», «ты» и действий в звёздочках, ничего сверх sources. «Пообещал», «решил», «сделал» — только если так прямо сказано в sources, иначе «сказал, что…». sourceId — главная фраза, на которой событие основано.
 presence: где герой пользователя в этом ходе и кто рядом с ним. spot — место коротко («дом вдовы Марии у кладбища», «склад у причалов»). area — город или область, всегда, даже если в ходе не названа: возьми из scene («Велен», «Новиград»). present — имена или роли персонажей, которые видят и слышат героя; сам герой не входит. Ушедших, оставшихся в другом месте и тех, о ком только говорят, не включай. Никого рядом — пустой present.
 Открытые/закрытые сюжетные линии и граф сущностей не веди: это следующий этап.`;
 
@@ -462,8 +463,8 @@ export function factExtractionFormat(sourceIds: string[]) {
           sourceId: { type: "string", enum: sourceIds },
         } } },
       events: { type: "array", maxItems: 3, items: { type: "object", additionalProperties: false,
-        required: ["sourceId", "importance"], properties: {
-          sourceId: { type: "string", enum: sourceIds }, importance: { type: "integer", enum: [2, 3] },
+        required: ["sourceId", "importance", "text"], properties: {
+          sourceId: { type: "string", enum: sourceIds }, importance: { type: "integer", enum: [2, 3] }, text: { type: "string", maxLength: 300 },
         } } },
       presence: { type: "object", additionalProperties: false, required: ["spot", "area", "present"], properties: {
         spot: { type: "string", maxLength: 100 }, area: { type: "string", maxLength: 60 },
@@ -568,13 +569,22 @@ export function turnPresenceNote(presence: TurnPresence): string {
   return `[[Сцена: ${presence.place || "место не названо"}. Рядом с героем: ${presence.present.length ? presence.present.join(", ") : "никого"}]]`;
 }
 
+/** A short name with its case forms for the event retelling check, which matches long names by stem only:
+ * «Кай» → «Каю», «Кая»; «Ян» → «Яну». Longer names are returned as they are. */
+function nameCaseForms(name: string): string[] {
+  if (name.length > 4) return [name];
+  const stem = name.replace(/[йьаяо]$/u, "");
+  const endings = /й$/u.test(name) ? ["я", "ю", "ем", "е"] : /[ая]$/u.test(name) ? ["ы", "и", "е", "у", "ю", "ой", "ей"] : ["а", "у", "ом", "е"];
+  return [name, ...endings.map(ending => stem + ending)];
+}
+
 /** The note after a memory event: where and before whom it was said («(сцена: порт; при этом были: Йеннифэр)»). */
 export function eventPresenceNote(presence: TurnPresence): string {
   const who = `при этом были: ${presence.present.length ? presence.present.join(", ") : "только герой"}`;
   return `(${presence.place ? `сцена: ${presence.place}; ` : ""}${who})`;
 }
 
-export function parseFactExtraction(raw: string, sources: FactSource[], { partial = false, heroNames = [] as string[] } = {}): {
+export function parseFactExtraction(raw: string, sources: FactSource[], { partial = false, heroNames = [] as string[], knownNames = [] as string[] } = {}): {
   facts: FactDelta[]; events: ExtractedEvent[]; presence: TurnPresence | null; rejectedRetractions: number;
   rejectedFacts: number; rejectedEvents: number; rejectedCandidates: Readonly<MemoryValidationDiagnostic>[];
 } {
@@ -610,7 +620,7 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
   const recoverable = new Set<MemoryValidationReason>(["invalid_subject", "unknown_source", "user_fact_from_character",
     "character_fact_from_user_first_person", "control_instruction", "unsupported_value", "unsupported_number",
     "question_source", "non_factual_source", "empty_value", "negated_set", "value_too_long", "event_source_too_long", "redundant_npc_name",
-    "transient_state", "slot_noise", "npc_is_user", "recap_source"]);
+    "transient_state", "slot_noise", "npc_is_user", "recap_source", "event_source_mismatch"]);
   const recap = isRecallTurn(sources);
   const candidate = <T>(kind: "fact" | "event", parse: () => T | null): T | null => {
     try { return parse(); } catch (error) {
@@ -730,21 +740,36 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
       .map(fact => `${fact.subject}:${fact.key}`));
     facts = facts.filter(fact => fact.op !== "retract" || !replacements.has(`${fact.subject}:${fact.key}`));
   }
+  const presence = readPresence(result.presence, heroNames);
+  // A stored event was the bare source sentence: «— Откуда ты вообще знаешь про Тау-7?», «Кристаллы забрали люди
+  // в серых плащах», with no speaker or audience (wave 2026-11-03). A retelling is kept when it passes the summary's
+  // grounding check against the whole turn; otherwise the source sentence stays, and a lone question is no event.
+  const turnEvidence = sources.map(row => ({ text: row.text }));
+  // The check compares single words: «Кай Ортега» must match «Каю Ортеге», and «Экипаж «Астролябии»» — «Астролябия».
+  const eventNames = [...heroNames, ...knownNames, ...(presence?.present ?? [])]
+    .flatMap(name => name.split(/[^\p{L}\p{N}-]+/u)).filter(word => /^\p{Lu}/u.test(word)).flatMap(nameCaseForms);
   const events: ExtractedEvent[] = result.events.map((value, eventIndex) => candidate<ExtractedEvent>("event", () => {
     const detail: MemoryValidationDiagnostic = { eventIndex };
     const reject = (reason: MemoryValidationReason, field = ""): never => fail(reason, `events[${eventIndex}]${field ? `.${field}` : ""}`, detail);
     if (!value || typeof value !== "object" || Array.isArray(value)) return reject("invalid_event_object");
     const row = value as Record<string, unknown>, source = known.get(String(row.sourceId));
-    if (Object.keys(row).some(key => !["sourceId", "importance"].includes(key))) return reject("unexpected_event_field");
+    if (Object.keys(row).some(key => !["sourceId", "importance", "text"].includes(key))) return reject("unexpected_event_field");
     if (![2, 3].includes(Number(row.importance))) return reject("invalid_importance", "importance");
     if (!source) return reject("unknown_source", "sourceId");
     if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
     detail.sourceRole = source.author; detail.sourceChars = source.text.length;
     if (recap && source.author !== "user") return reject("recap_source", "sourceId");
     if (source.text.length > 2000) return reject("event_source_too_long", "sourceId");
-    return { text: source.text, source: source.author, sourceMessageId: source.messageId, importance: Number(row.importance) };
+    const retold = typeof row.text === "string" ? row.text.replace(/\s+/gu, " ").trim() : "";
+    const grounded = retold.length > 0 && retold.length <= 300 && !/\?[»"')]*$/u.test(retold)
+      && retellingRejection(retold, turnEvidence, eventNames, turnEvidence, RETELLING_TERM_SHARE) === null;
+    if (!grounded && /\?[»"')]*$/u.test(source.text)) return reject("question_source", "sourceId");
+    // A rejected retelling that shares almost nothing with its source sentence cited the wrong line: a secret pact
+    // retold over «Подай ключ на двенадцать». That sentence is no event.
+    if (!grounded && retold && memoryOverlap(retold, source.text) < 0.2) return reject("event_source_mismatch", "sourceId");
+    return { text: grounded ? retold : source.text, retold: grounded, source: source.author, sourceMessageId: source.messageId, importance: Number(row.importance) };
   })).filter((event): event is ExtractedEvent => event !== null);
-  return { facts, events, presence: readPresence(result.presence, heroNames), rejectedRetractions, rejectedFacts, rejectedEvents, rejectedCandidates };
+  return { facts, events, presence, rejectedRetractions, rejectedFacts, rejectedEvents, rejectedCandidates };
 }
 
 /** Old Core is not silently reinterpreted by AI. Recognised labelled slots migrate;

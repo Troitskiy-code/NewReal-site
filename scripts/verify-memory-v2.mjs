@@ -1025,6 +1025,25 @@ try {
     assert.equal((await memory.drainMemoryJobs()).processed, 0);
     assert.match((await legacy.loadMemoryCandidates(fixture.scope)).core, /Артём/);
   });
+  await check('an event is a grounded retelling, an invented name keeps the source sentence, a lone question or a mismatched source is no event and still saves the turn', async () => {
+    process.env.MEMORY_V2_ENABLED = '1';
+    const events = async (assistant, extracted) => {
+      const f = await setup();
+      await turn(f, 'Вхожу в рубку.', assistant);
+      await run(f, JSON.stringify({ facts: [], events: extracted }));
+      // A dropped event never fails the turn: a failed job would block the story's memory queue (replay 2026-11-08).
+      assert.deepEqual((await db.memoryJob.findMany({ where: { threadId: f.scope.threadId }, select: { status: true } })).map(job => job.status), ['succeeded']);
+      return (await db.episodicMemory.findMany({ where: { threadId: f.scope.threadId } })).map(row => row.event);
+    };
+    const reply = 'Ирма кивает. Аварийный пароль на этот рейс — «Медный Ибис».';
+    assert.deepEqual(await events(reply, [{ sourceId: 's3', importance: 3, text: 'Ирма назвала аварийный пароль рейса «Медный Ибис».' }]),
+      ['[Сообщено] Ирма назвала аварийный пароль рейса «Медный Ибис».']);
+    assert.deepEqual(await events(reply, [{ sourceId: 's3', importance: 3, text: 'Тоби назвал аварийный пароль рейса «Медный Ибис».' }]),
+      ['По словам персонажа: [Сообщено] Аварийный пароль на этот рейс — «Медный Ибис».']);
+    assert.deepEqual(await events('Ирма хмурится. Откуда ты вообще знаешь про сектор Тау-7?', [{ sourceId: 's3', importance: 3, text: '' }]), []);
+    // A retelling far from its cited sentence means the wrong line was cited: neither is stored.
+    assert.deepEqual(await events(reply, [{ sourceId: 's2', importance: 3, text: 'Капитан договорилась хранить секрет навигатора.' }]), []);
+  });
   await check('a memory event carries where and before whom it was said; a regenerated reply drops it', async () => {
     process.env.MEMORY_V2_ENABLED = '1';
     const f = await setup();

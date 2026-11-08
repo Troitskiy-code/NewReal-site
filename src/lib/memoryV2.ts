@@ -8,6 +8,7 @@ import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
 import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { stripMemoryControlInstructions } from "./memorySafety";
+import { readRoleplayConfig } from "./roleplayConfig";
 import { inferMemoryStatus, isSameMemoryName, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
   factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, resolveRoleSubject, sameFactValue, slotNoiseReason, npcAliasMap, type RoleCard, isHeroName, fullNameInText, sharesName, type FactDelta, type TurnPresence } from "./memoryFacts";
@@ -263,6 +264,12 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
     const fullName = hero && introduced ? fullNameInText(hero.value, introduced.content) : null;
     const completedName = introduced && fullName && fullName !== hero?.value ? { value: fullName, messageId: introduced.id } : null;
     const heroNames = [hero?.value, completedName?.value].filter((name): name is string => Boolean(name));
+    // Names an event retelling may use although this turn does not spell them: the card, the group, known NPCs.
+    const card = await prisma.character.findUnique({ where: { id: thread.characterId }, select: { name: true, rpConfig: true } });
+    const npcNames = (await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active", subject: { startsWith: "npc:" } },
+      distinct: ["subject"], select: { subject: true } })).map(row => row.subject.slice(4));
+    const knownNames = [card?.name, ...(readRoleplayConfig(card?.rpConfig).participants ?? []).map(member => member.name), ...npcNames]
+      .filter((name): name is string => Boolean(name));
     const activeFacts = await prisma.memoryFact.findMany({ where: { threadId: thread.id, status: "active" },
       select: { subject: true, key: true, value: true, pinned: true, source: true, seq: true }, take: FACT_CONTEXT_LIMIT, orderBy: [{ pinned: "desc" }, { seq: "desc" }] })
       // Stored noise would teach the extractor to file more of it; two names of one NPC, to keep two cards;
@@ -299,7 +306,7 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       const finishReason = response.data?.choices?.[0]?.finish_reason;
       diagnostic.finishReason = ["stop", "length", "content_filter", "tool_calls", "function_call"].includes(finishReason) ? finishReason : "unknown";
       if (response.data?.choices?.[0]?.finish_reason === "length") throw new MemoryExtractionError("MEMORY_EXTRACT_TRUNCATED");
-      extraction = parseFactExtraction(content, sources, { partial: true, heroNames });
+      extraction = parseFactExtraction(content, sources, { partial: true, heroNames, knownNames });
     }
     const hasRejectedCandidates = extraction.rejectedFacts + extraction.rejectedEvents > 0;
     const warningCode = hasRejectedCandidates ? extraction.facts.length + extraction.events.length > 0
@@ -355,7 +362,8 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         // one 196-message story were such fragments, filling the prompt with noise (prod 2026-10-24).
         if (isTrivialEvent(event.text)) continue;
         const status = inferMemoryStatus(event.text);
-        const text = `${event.source === "character" ? "По словам персонажа: " : ""}[${STATUS_LABELS[status]}] ${event.text}`;
+        // A retelling names who said what; a bare sentence from a reply is marked as the character's word.
+        const text = `${event.source === "character" && !event.retold ? "По словам персонажа: " : ""}[${STATUS_LABELS[status]}] ${event.text}`;
         if (existing.some(row => sameMemoryMeaning(row.event, text))) continue;
         const projection = await tx.episodicMemory.create({ data: { ...memoryScopeWhere(scope), event: text,
           importance: event.importance, timestamp: messages[0].createdAt, sourceMemoryJobId: job.id } });
