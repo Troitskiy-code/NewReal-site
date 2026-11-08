@@ -409,7 +409,7 @@ async function handlePost(
     const meaningStarted = Date.now();
     const memoryCandidates = await withMeaningCandidates(fastContext.memoryCandidates);
     console.log(`[ChatTTFT] Meaning search waited ${Date.now() - meaningStarted}ms`);
-    const { messages: trimmedMessages } = assemblePreparedChatMessages({ ...fastContext, memoryCandidates }, intent, ragMessages);
+    const { messages: trimmedMessages, cast } = assemblePreparedChatMessages({ ...fastContext, memoryCandidates }, intent, ragMessages);
 
     if (!continueChat && !retryLast && typeof message === "string") {
       const userText = message;
@@ -441,7 +441,7 @@ async function handlePost(
       });
     }
 
-    const upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, locale), KODIKROUTER_KEY);
+    const upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, locale, { cast }), KODIKROUTER_KEY);
 
     let responseStage = "deliver_meta";
     const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {

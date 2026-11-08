@@ -191,7 +191,7 @@ async function handlePost(
       ? (await analyzeIntent(previousUserMessage.content, KODIKROUTER_KEY)).intent
       : "general";
 
-    const { messages: trimmedMessages } = await prepareChatMessages({
+    const { messages: trimmedMessages, cast } = await prepareChatMessages({
       scope,
       character,
       user,
@@ -207,7 +207,7 @@ async function handlePost(
       refreshSummary: false,
     });
 
-    const upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, getApiLocale(req)), KODIKROUTER_KEY);
+    const upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, getApiLocale(req), { cast }), KODIKROUTER_KEY);
 
     let responseStage = "deliver_meta";
     const streamAndSaveReply = async (emit: (event: ChatStreamEvent) => void) => {

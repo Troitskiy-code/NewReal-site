@@ -318,6 +318,17 @@ for (const locale of ['ru', 'en']) {
 const reminded = text => builder.withTurnReminder([{ role: 'user', content: text }], 'ru').at(-1).content;
 check(reminded('Что вы готовы сделать?').includes('не возвращает задачу герою') && reminded('Что вы готовы сделать?').includes('Решение героя остаётся за пользователем'), 'ru: a character at an obstacle makes a move and the decision stays with the user');
 check(reminded('Ирма?').includes('при этом были') && reminded('Ирма?').includes('отвечает только он'), 'ru: the reminder explains witness notes and the only addressee');
+// A group turn addressed to one member names who speaks and who stays silent.
+const cast = ['Ирма Сол', 'Тоби Ракс', 'Лейла Нур'];
+const addressed = text => builder.addressedCastMember(text, cast);
+check(addressed('*Входим в рубку, здесь Ирма, Тоби и Лейла.* Ирма, решите, кому поручить осмотр.') === 'Ирма Сол', 'a vocative after an action addresses one member');
+check(addressed('Скажи, Тоби, ты это серьёзно?') === 'Тоби Ракс' && addressed('Спасибо, Ирма.') === 'Ирма Сол', 'a vocative inside or at the end of a sentence counts');
+check([addressed('Ну что, команда, кто как думает?'), addressed('Тоби, Лейла, помогите!'), addressed('Ирма и Тоби, идите сюда.'), addressed('Я поговорю с Ирмой позже.')]
+  .every(member => member === null), 'everyone, two members or a mention is no single addressee');
+const groupTurn = builder.withTurnReminder([{ role: 'user', content: 'Тоби, сколько протянет генератор?' }], 'ru', { cast }).at(-1).content;
+check(groupTurn.includes('в этом ходе говорит только Тоби Ракс') && groupTurn.includes('Ирма Сол, Лейла Нур молчат'), 'the addressee line names who speaks and who is silent');
+check(!builder.withTurnReminder([{ role: 'user', content: 'Тоби, сколько протянет генератор?' }], 'ru').at(-1).content.includes('в этом ходе говорит только'), 'no cast, no addressee line');
+check(builder.withTurnReminder([{ role: 'user', content: 'Toby, how long will the generator last?' }], 'en', { cast: ['Irma', 'Toby'] }).at(-1).content.includes('only Toby speaks this turn'), 'en: the addressee line');
 check(builder.withTurnReminder([{ role: 'user', content: 'Irma?' }], 'en').at(-1).content.includes('only that character answers'), 'en: only the addressee answers');
 check(builder.withTurnReminder([{ role: 'user', content: 'What will you do?' }], 'en').at(-1).content.includes('do not hand the task back to the hero'), 'en: a character at an obstacle makes a move');
 check(reminded('*Достаю кошель и спрашиваю, сколько стоит комната.*').includes('Деньги называй числом'), 'a money turn gets the money line');

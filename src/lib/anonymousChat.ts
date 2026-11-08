@@ -9,6 +9,7 @@ import { previewTranslationSelect } from "./characterLocalization";
 import {
   resolveContextTokenBudget,
   resolveChatSystemPrompt,
+  chatCast,
   promptCharacterSelect,
   streamChatCompletion,
   trimMessagesToTokenLimit,
@@ -436,7 +437,7 @@ export async function handleAnonymousChatPost(
     }
 
     try {
-      upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, locale), process.env.KODIKROUTER_API_KEY ?? "");
+      upstream = await streamChatCompletion(model.name, withTurnReminder(trimmedMessages, locale, { cast: chatCast(character, locale, promptState) }), process.env.KODIKROUTER_API_KEY ?? "");
     } catch (error) {
       stopHeartbeat();
       await failGuestGeneration({ sessionId, requestId, attempt: claimed.attempt });

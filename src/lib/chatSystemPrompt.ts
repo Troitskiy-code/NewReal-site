@@ -4,7 +4,7 @@ import { stripMemoryControlInstructions } from "./memorySafety";
 import { localeDefinition, resolveLocale } from "./i18nConfig";
 import { withoutChatThoughts } from "./chatMessageMarkup";
 
-export const PROMPT_BUILDER_VERSION = "rp-v2.11";
+export const PROMPT_BUILDER_VERSION = "rp-v2.12";
 const SCENE_MARKUP = {
   ru: "Разделяй *действия*, 'мысли' и реплики. Если карточка или сцена предполагает скрытую реакцию твоего персонажа, покажи её даже в коротком ответе одной фразой от первого лица в одинарных кавычках. В звёздочках оставляй только то, что мог бы заметить другой участник: жест, движение, видимое выражение лица. Узнавание, сомнение, воспоминание и намерение выноси из звёздочек в отдельную мысль. Внутри мысли звёздочки не ставь. Реплики пиши обычным текстом, с тире или в двойных кавычках. Пример: *Леон закрывает окно.* 'Дождь смоет следы раньше рассвета.' — У вас есть плащ? Пометка '…' у пользователя означает невысказанную мысль. Герою пользователя мысли не дописывай. Персонажи не слышат чужих мыслей.",
   en: "Separate *actions*, 'thoughts', and spoken lines. When the card or scene calls for a private reaction from a character you play, show it as one short first-person sentence in single quotes, even in a brief reply. Use asterisks only for things another participant could notice, such as gestures, movement, or visible expressions. Put private recognition, doubts, memories, and intentions in a separate thought outside the asterisks. Keep asterisks out of thoughts. Write spoken lines as plain text or in double quotes. Example: *Leon closes the window.* 'The rain will wash away the tracks before dawn.' \"Do you have a coat?\" A '…' marker in a user's message is an unspoken thought. Never invent the user's hero's thoughts. Characters cannot hear anyone else's thoughts.",
@@ -149,7 +149,30 @@ const NARRATOR_REMINDER = {
   ru: "— Пользователь обратился к рассказчику вне сцены. Ответь сам, от лица рассказчика и вне игры: прямо и по пунктам на каждый вопрос, по истории и памяти. Если чего-то нет ни в истории, ни в памяти, так и скажи. Не отвечай голосом NPC и не продолжай сцену в этом ответе.",
   en: "— The user addressed the narrator outside the scene. Answer yourself, as the narrator and out of character: directly, point by point, each question, from the history and memory. If something is in neither, say so. Do not answer through an NPC and do not continue the scene in this reply.",
 };
-export function withTurnReminder<T extends { role: string; content: string }>(messages: T[], locale?: string | null): T[] {
+// The one member of a group story the user addresses by name («Ирма, решите…», «Скажи, Тоби, …»); null when nobody
+// or several are addressed. Actions in asterisks do not count: «*Тоби и Лейла возятся у генератора*» names but does
+// not address them.
+export function addressedCastMember(text: string, cast: string[]): string | null {
+  const speech = withoutChatThoughts(text).replace(/\*[^*]*\*/gu, " ").trim();
+  const escape = (word: string) => word.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  // A name after the start, a sentence end, a colon, a dash or a comma, and before a comma, an end mark or the end.
+  const vocative = (word: string) => new RegExp(`(?:^|[.!?…:—–-]\\s*|,\\s*)${escape(word)}(?=\\s*[,.!?…]|\\s*$)`, "iu");
+  const hit = cast.filter(name => [name, name.split(/\s+/u)[0]].some(word => word.length > 1 && vocative(word).test(speech)));
+  return hit.length === 1 ? hit[0] : null;
+}
+// A general line in the reminder (rp-v2.10) kept the others quiet in 3 of 6 replies; a line that names who speaks
+// and who stays silent is added only on turns addressed to one member of a group story (rp-v2.12, eval 2026-11-08,
+// Gemma 4 Turbo, 6 replies per case, read by hand): «Тоби, сколько протянет генератор?» 0/6 → 6/6, «Ирма, почему
+// через 4-Б?» 0/6 → 6/6, «Ирма, решите… остальным не отвечать» 4/6 → 6/6, «Лейла, ответь только ты» 6/6 → 6/6;
+// a question to the whole crew still gets two or three voices in 6/6.
+const ADDRESSEE_REMINDER = {
+  ru: (name: string, others: string[]) => `— Сейчас пользователь обращается к персонажу «${name}»: в этом ходе говорит только ${name}. ${others.join(", ")} молчат: без прямой речи, самое большее молча реагируют.`,
+  en: (name: string, others: string[]) => `— The user is addressing ${name} now: only ${name} speaks this turn. ${others.join(", ")} stay silent: no lines, at most a silent reaction.`,
+};
+/** cast: the members of a group story as the prompt names them; empty for other modes. */
+export type TurnReminderOptions = { cast?: string[] };
+export function withTurnReminder<T extends { role: string; content: string }>(messages: T[], locale?: string | null,
+  { cast = [] }: TurnReminderOptions = {}): T[] {
   const history = messages.map(message => {
     if (message.role !== "user") return message;
     const content = withoutChatThoughts(message.content, "'…'");
@@ -163,7 +186,9 @@ export function withTurnReminder<T extends { role: string; content: string }>(me
   const visibleTurn = withoutChatThoughts(last.content);
   const narratorTurn = NARRATOR_TURN.test(visibleTurn.trimStart());
   const hasThought = visibleTurn !== last.content;
+  const addressee = cast.length > 1 ? addressedCastMember(last.content, cast) : null;
   const extra = [MONEY_TURN.test(visibleTurn) ? (ru ? MONEY_REMINDER.ru : MONEY_REMINDER.en) : "",
+    addressee ? (ru ? ADDRESSEE_REMINDER.ru : ADDRESSEE_REMINDER.en)(addressee, cast.filter(name => name !== addressee)) : "",
     narratorTurn ? (ru ? NARRATOR_REMINDER.ru : NARRATOR_REMINDER.en) : "",
     `— ${ru ? SCENE_MARKUP.ru : SCENE_MARKUP.en}`,
     hasThought && !narratorTurn ? (ru ? REPLY_WITH_THOUGHT.ru : REPLY_WITH_THOUGHT.en) : ""].filter(Boolean);

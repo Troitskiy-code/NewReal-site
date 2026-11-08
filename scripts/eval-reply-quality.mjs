@@ -59,6 +59,8 @@ async function post(url, headers, body, timeout = 120_000) {
   }
 }
 
+/** A group card's members, as production passes them to the turn reminder. */
+const castOf = story => spec.cards[story].roleplayMode === 'group' ? (spec.cards[story].rpConfig?.participants ?? []).map(member => member.name) : [];
 /** The production request shape: system prompt, then the story (greeting first), cut to the history budget. */
 function chatMessages(ref, story, history, memory = null) {
   const prompt = prompts[ref];
@@ -75,7 +77,7 @@ function chatMessages(ref, story, history, memory = null) {
   }
   const messages = [{ role: 'system', content: system }, ...kept];
   return typeof prompt.withTurnReminder === 'function'
-    ? prompt.withTurnReminder(messages, 'ru') : messages;
+    ? prompt.withTurnReminder(messages, 'ru', { cast: castOf(story) }) : messages;
 }
 async function chat(messages) {
   const data = await post('https://api.deepinfra.com/v1/openai/chat/completions', { Authorization: `Bearer ${config.DEEPINFRA_API_KEY}` },

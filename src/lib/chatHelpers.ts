@@ -17,7 +17,7 @@ import { getSelectedChatPersona } from "@/lib/personaService";
 import { loadTurnPresence } from "@/lib/memoryV2";
 import { turnPresenceNote, type TurnPresence } from "@/lib/memoryFacts";
 import { assembleRoleplayPrompt, fitPromptAssembly, type PromptAssemblyOptions, type PromptAssembly } from "@/lib/chatSystemPrompt";
-import { roleplayMode } from "./roleplayConfig";
+import { readRoleplayConfig, roleplayMode } from "./roleplayConfig";
 import { getOrCreateThreadPromptState, assertPromptStateAvailable, type PromptState } from "@/lib/promptState";
 import { messageScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { promptAssemblyDiagnostics, logPromptDelivery } from "@/lib/promptDiagnostics";
@@ -102,6 +102,12 @@ export function resolveChatSystemPrompt(
   options: PromptAssemblyOptions = {}
 ): string {
   return resolveChatPromptAssembly(character, locale, state, options).content;
+}
+
+/** Members of a group story as the prompt names them (the localized card), for the turn reminder; empty otherwise. */
+export function chatCast(character: CharacterForChat, locale: string | null | undefined, state?: PromptState): string[] {
+  if ((state?.mode ?? roleplayMode(character.roleplayMode)) !== "group") return [];
+  return (readRoleplayConfig(localizeCharacterForChat(character, locale).rpConfig).participants ?? []).map(member => member.name);
 }
 
 export function resolveChatPromptAssembly(character: CharacterForChat, locale: string | null | undefined, state?: PromptState, options: PromptAssemblyOptions = {}): PromptAssembly {
@@ -388,6 +394,8 @@ export type ContextAssemblyStats = {
 
 export type PreparedChatMessages = {
   messages: ChatCompletionMessage[];
+  /** See FastChatContext.cast. */
+  cast: string[];
   totalTokens: number;
   maxContextTokens: number;
   memorySummary: string | null;
@@ -408,6 +416,8 @@ const promptContent = (row: ChatHistoryRow) => row.note ? `${row.content}\n\n${r
 export type FastChatContext = {
   userId: string;
   systemPromptBase: string;
+  /** Members of a group story as the prompt names them, for the turn reminder; empty for other modes. */
+  cast: string[];
   memorySummary: string | null;
   /** createdAt of the last message proven to be in the summary; null = nothing covered. */
   summaryCoveredUntil: Date | null;
@@ -761,7 +771,7 @@ export function assemblePreparedChatMessages(
     errorLog("Chat", `Контекст превышает лимит даже без памяти: ${totalTokens}/${maxContextTokens}`);
   }
 
-  return { messages, totalTokens, maxContextTokens, memorySummary: context.memorySummary, stats };
+  return { messages, cast: context.cast, totalTokens, maxContextTokens, memorySummary: context.memorySummary, stats };
 }
 
 export async function prepareFastContext({
@@ -814,6 +824,7 @@ export async function prepareFastContext({
   return {
     userId,
     systemPromptBase,
+    cast: chatCast(character, locale, promptState),
     memorySummary: memoryState.summary,
     summaryCoveredUntil: memoryState.coveredUntil,
     memoryCandidates,
