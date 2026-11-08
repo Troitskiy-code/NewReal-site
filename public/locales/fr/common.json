@@ -45,9 +45,24 @@
     "example": "*Je recule d’un pas.* 'Il ne doit pas voir la clé.' Qui est là ?"
   },
   "chatAmbience": {
-    "label": "Ambiance sonore",
-    "playing": "Ambiance sonore en cours",
-    "silent": "Aucun son d’ambiance en cours"
+    "label": "Son de la scène",
+    "music": "Musique",
+    "ambience": "Ambiance",
+    "off": "Son coupé",
+    "choosing": "La musique suit la scène",
+    "nowPlaying": "En ce moment : {{mood}}",
+    "moods": {
+      "romance": "romance",
+      "sadness": "tristesse nocturne",
+      "mystery": "mystère",
+      "tension": "tension",
+      "battle": "combat et poursuite",
+      "adventure": "aventure",
+      "cozy": "cocon",
+      "joy": "joie",
+      "tavern": "taverne",
+      "party": "fête"
+    }
   },
   "chatSpeech": {
     "editVoices": "Choisissez une voix pour chaque personnage. Les modifications sont enregistrées dans cette histoire et appliquées à la prochaine écoute.",

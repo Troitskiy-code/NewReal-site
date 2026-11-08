@@ -1,19 +1,26 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LuAudioLines, LuVolume2, LuVolumeX } from "react-icons/lu";
-import { storyAmbience, type StoryAmbience } from "@/lib/storyAmbience";
+import { LuAudioLines, LuMusic, LuVolume2, LuVolumeX, LuWind } from "react-icons/lu";
+import { storyAmbience } from "@/lib/storyAmbience";
+import { isSceneMood, sceneBed, SCENE_MOOD_MESSAGE_LIMIT, type SceneMood } from "@/lib/sceneMusicShared";
+import { SceneAudioMixer } from "@/lib/sceneAudioMixer";
 import { useChatSpeechPlaying } from "./ChatSpeech";
 
-const PREFERENCE = "newverse:chat-ambience";
-let sessionPreference = true;
+const PREFERENCE = "newverse:chat-audio";
+/** The earlier on/off switch for ambience; "off" keeps all scene sound off for those readers. */
+const LEGACY_PREFERENCE = "newverse:chat-ambience";
+const DEFAULT_LEVELS = "50,60";
+let sessionPreference: string | null = null;
 
 function readPreference() {
   try {
-    return localStorage.getItem(PREFERENCE) !== "off";
+    const saved = localStorage.getItem(PREFERENCE);
+    if (saved && /^\d{1,3},\d{1,3}$/.test(saved)) return saved;
+    return localStorage.getItem(LEGACY_PREFERENCE) === "off" ? "0,0" : DEFAULT_LEVELS;
   } catch {
-    return sessionPreference;
+    return sessionPreference ?? DEFAULT_LEVELS;
   }
 }
 
@@ -26,127 +33,145 @@ function subscribe(onChange: () => void) {
   };
 }
 
-function savePreference(enabled: boolean) {
-  sessionPreference = enabled;
+function savePreference(music: number, bed: number) {
+  const value = `${music},${bed}`;
+  sessionPreference = value;
   try {
-    localStorage.setItem(PREFERENCE, enabled ? "on" : "off");
+    localStorage.setItem(PREFERENCE, value);
   } catch {
-    // The setting still works until the page is reloaded.
+    // The levels still apply until the page is reloaded.
   }
   window.dispatchEvent(new Event(PREFERENCE));
 }
 
-function play(audio: HTMLAudioElement) {
-  if (!document.hidden && audio.getAttribute("src") && audio.paused && !audio.error) {
-    // If autoplay is blocked, retry in the next user gesture.
-    void audio.play().catch(() => {});
-  }
-}
-
-function selectTrack(audio: HTMLAudioElement, track: StoryAmbience | null) {
-  if (!track) {
-    audio.pause();
-    if (audio.hasAttribute("src")) {
-      audio.removeAttribute("src");
-      audio.load();
-    }
-    return;
-  }
-  const src = `/ambience/${track}.mp3`;
-  if (audio.getAttribute("src") !== src) audio.src = src;
-}
-
-export default function ChatAmbience({ audioRef, messages, ready, pending }: {
-  audioRef: RefObject<HTMLAudioElement | null>;
+export default function ChatAmbience({ messages, ready, pending, capturingVoice }: {
   messages: ReadonlyArray<{ role: string; content: string }>;
   ready: boolean;
   pending: boolean;
+  capturingVoice: boolean;
 }) {
   const { t } = useTranslation();
-  const enabled = useSyncExternalStore(subscribe, readPreference, () => null);
+  const preference = useSyncExternalStore(subscribe, readPreference, () => null);
+  const [musicPercent, bedPercent] = (preference ?? "0,0").split(",").map(Number);
   const speaking = useChatSpeechPlaying();
   const [playing, setPlaying] = useState(false);
-  const descriptionId = useId();
-  const toggleRef = useRef<HTMLButtonElement>(null);
+  const [mood, setMood] = useState<SceneMood | null>(null);
+  const [open, setOpen] = useState(false);
+  const mixerRef = useRef<SceneAudioMixer | null>(null);
+  const candidateRef = useRef<SceneMood | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const musicId = useId();
+  const bedId = useId();
   const completedMessages = pending ? null : messages;
-  const description = enabled === true ? t(playing ? "chatAmbience.playing" : "chatAmbience.silent") : undefined;
+  const turns = completedMessages?.filter(message => message.role === "user" || message.role === "assistant")
+    .slice(-SCENE_MOOD_MESSAGE_LIMIT).map(message => message.content) ?? null;
+  const turnsKey = turns?.length ? JSON.stringify(turns) : null;
+  const musicOn = musicPercent > 0;
+  const off = preference !== null && !musicOn && bedPercent <= 0;
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const start = () => setPlaying(true);
-    const stop = () => setPlaying(false);
-    const stopEvents = ["pause", "waiting", "emptied", "error"];
-    audio.addEventListener("playing", start);
-    for (const event of stopEvents) audio.addEventListener(event, stop);
-    return () => {
-      audio.removeEventListener("playing", start);
-      for (const event of stopEvents) audio.removeEventListener(event, stop);
-    };
-  }, [audioRef]);
+    const mixer = new SceneAudioMixer(setPlaying);
+    mixerRef.current = mixer;
+    return () => { mixer.dispose(); mixerRef.current = null; };
+  }, []);
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = speaking ? 0.16 : 0.55;
-  }, [audioRef, speaking]);
+    mixerRef.current?.setLevels(ready ? musicPercent / 100 : 0, ready ? bedPercent / 100 : 0);
+  }, [musicPercent, bedPercent, ready]);
+
+  useEffect(() => { mixerRef.current?.setDucked(speaking); }, [speaking]);
+  useEffect(() => { mixerRef.current?.setMuted(capturingVoice); }, [capturingVoice]);
+
+  // Keep the previous scene during generation, including edits to an existing reply.
+  useEffect(() => {
+    if (completedMessages) mixerRef.current?.setBed(sceneBed(storyAmbience(completedMessages)));
+  }, [completedMessages]);
+
+  // The theme changes only after two replies agree, so one odd line does not jerk the music around.
+  useEffect(() => {
+    if (!ready || !musicOn || !turnsKey) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch("/api/scene-mood", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texts: JSON.parse(turnsKey) }), signal: controller.signal })
+        .then(response => response.ok ? response.json() as Promise<{ mood?: unknown }> : null)
+        .then(data => {
+          const mixer = mixerRef.current;
+          if (!mixer || !isSceneMood(data?.mood)) return;
+          const next = data.mood;
+          if (mixer.currentMood && next !== mixer.currentMood && candidateRef.current !== next) {
+            candidateRef.current = next;
+            return;
+          }
+          candidateRef.current = null;
+          mixer.playMood(next);
+          setMood(next);
+        })
+        .catch(() => {});
+    }, 500);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [turnsKey, ready, musicOn]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (!ready || !enabled) {
-      selectTrack(audio, null);
-      return;
-    }
-    // Keep the previous scene during generation, including edits to an existing reply.
-    if (completedMessages) selectTrack(audio, storyAmbience(completedMessages));
-    play(audio);
-  }, [audioRef, enabled, completedMessages, ready]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    const button = toggleRef.current;
-    if (!audio || !button || !ready || !enabled) return;
-    const resumeOnGesture = (event: Event) => {
-      if (event.target instanceof Node && button.contains(event.target)) return;
-      play(audio);
-    };
-    const onVisibility = () => {
-      if (document.hidden) audio.pause();
-      else play(audio);
-    };
-    document.addEventListener("click", resumeOnGesture);
-    document.addEventListener("keydown", resumeOnGesture);
+    const mixer = mixerRef.current;
+    if (!mixer || !ready || off) return;
+    // Browsers start sound only after a gesture; the first tap anywhere unlocks it.
+    const unlock = () => mixer.unlock();
+    const onVisibility = () => mixer.setHidden(document.hidden);
+    document.addEventListener("pointerdown", unlock);
+    document.addEventListener("keydown", unlock);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      document.removeEventListener("click", resumeOnGesture);
-      document.removeEventListener("keydown", resumeOnGesture);
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
       document.removeEventListener("visibilitychange", onVisibility);
-      audio.pause();
     };
-  }, [audioRef, enabled, ready]);
+  }, [ready, off]);
 
-  function toggle() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (enabled) {
-      audio.pause();
-      savePreference(false);
-    } else {
-      if (completedMessages) selectTrack(audio, storyAmbience(completedMessages));
-      play(audio);
-      savePreference(true);
-    }
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  function setLevel(kind: "music" | "bed", value: number) {
+    mixerRef.current?.unlock();
+    savePreference(kind === "music" ? value : musicPercent, kind === "bed" ? value : bedPercent);
   }
 
-  return <>
-    <button ref={toggleRef} type="button" aria-label={t("chatAmbience.label")}
-      aria-describedby={description ? descriptionId : undefined} aria-pressed={enabled !== false}
-      title={description ? `${t("chatAmbience.label")} · ${description}` : t("chatAmbience.label")}
-      disabled={!ready || enabled === null}
-      onClick={toggle}
+  const status = off ? t("chatAmbience.off") : mood ? t("chatAmbience.nowPlaying", { mood: t(`chatAmbience.moods.${mood}`) })
+    : t("chatAmbience.choosing");
+  const slider = (id: string, label: string, icon: ReactNode, value: number, kind: "music" | "bed") => <div className="grid gap-1.5">
+    <label htmlFor={id} className="flex items-center justify-between gap-2 text-xs text-wd-text-secondary">
+      <span className="flex items-center gap-1.5">{icon}{label}</span>
+      <output htmlFor={id} className="tabular-nums">{value}%</output>
+    </label>
+    <input id={id} type="range" min={0} max={100} step={5} value={value} disabled={preference === null}
+      onChange={event => setLevel(kind, Number(event.target.value))} className="w-full accent-[#e0507f]" />
+  </div>;
+
+  return <div ref={rootRef} className="relative">
+    <button type="button" aria-label={t("chatAmbience.label")} aria-expanded={open} aria-controls={panelId}
+      title={`${t("chatAmbience.label")} · ${status}`} disabled={!ready || preference === null}
+      onClick={() => { mixerRef.current?.unlock(); setOpen(current => !current); }}
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/30 text-white transition-colors hover:text-wd-secondary-text disabled:opacity-50 md:bg-transparent">
-      {enabled === false ? <LuVolumeX size={18} aria-hidden /> : playing
-        ? <LuAudioLines size={18} aria-hidden /> : <LuVolume2 size={18} aria-hidden />}
+      {off ? <LuVolumeX size={18} aria-hidden /> : playing ? <LuAudioLines size={18} aria-hidden /> : <LuVolume2 size={18} aria-hidden />}
     </button>
-    {description && <span id={descriptionId} className="sr-only">{description}</span>}
-  </>;
+    <div id={panelId} hidden={!open} role="group" aria-label={t("chatAmbience.label")}
+      className="absolute right-0 top-full z-50 mt-2 grid w-64 gap-3 rounded-xl border border-[#2a2638] bg-[#15131d] p-4 text-white shadow-xl">
+      <p className="text-sm font-semibold">{t("chatAmbience.label")}</p>
+      {slider(musicId, t("chatAmbience.music"), <LuMusic size={14} aria-hidden />, musicPercent, "music")}
+      {slider(bedId, t("chatAmbience.ambience"), <LuWind size={14} aria-hidden />, bedPercent, "bed")}
+      <p role="status" className="text-xs text-wd-text-secondary">{status}</p>
+    </div>
+  </div>;
 }

@@ -1,18 +1,19 @@
-# Ambient recordings
+# Scene sound
 
-Recordings are filtered, level matched and edited to loop.
+## Ambience beds
 
+Continuous recordings only, so the bed stays behind the music: 64–120 s seamless loops (8 s crossfade),
+high-pass 90 Hz, low-pass 3–7 kHz, level smoothed and normalised to about −32 LUFS, 16 dB under the music.
+Rooms at home, offices and libraries have no bed.
+
+- `rain.mp3` — [Rain against the window, cori](https://commons.wikimedia.org/wiki/File:Rain_against_the_window.ogg), public domain.
+- `forest.mp3` — [forest ambience, nille](https://commons.wikimedia.org/wiki/File:20090610_0_ambience.ogg), public domain.
+- `city.mp3` — [Sunday in the city street noise 3, cori](https://commons.wikimedia.org/wiki/File:Sunday_in_the_city_street_noise3.ogg), public domain.
+- `shore.mp3` — [Ocean Waves on a Tropical Beach, J.D. Savanyu](https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg), CC0 1.0.
 - `tavern.mp3` — [Restaurant ambience, stephan](https://commons.wikimedia.org/wiki/File:Restaurant_ambience.ogg), public domain.
-- `rain.mp3` — [Rain, ジダネ](https://commons.wikimedia.org/wiki/File:Rain.ogg), public domain.
-- `forest.mp3` — [Birds chirping in a garden, Akum20](https://commons.wikimedia.org/wiki/File:Birds_chirping_in_a_garden.ogg), CC0 1.0.
-- `city.mp3` — [Sunday in the city street noise 1, Cori Samuel](https://commons.wikimedia.org/wiki/File:Sunday_in_the_city_street_noise1.ogg), public domain.
-- `shore.mp3` — [On a pebble beach, earthcalling](https://commons.wikimedia.org/wiki/File:On_a_pebble_beach.ogg), public domain.
-- `kitchen.mp3` — [Kitchen tidy up, starlite](https://commons.wikimedia.org/wiki/File:Kitchen_tidy_up.ogg), public domain.
-- `living-room.mp3` — [Dry grass burning in open fireplace, ezwa](https://commons.wikimedia.org/wiki/File:Dry_grass_burning_in_open_fireplace.ogg), public domain.
-- `bedroom.mp3` — [LA2 kitchen clock, LA2](https://commons.wikimedia.org/wiki/File:LA2_kitchen_clock.ogg), public domain.
-- `bathroom.mp3` — [Pouring water in mug in sink, earthcalling](https://commons.wikimedia.org/wiki/File:Pouring_water_in_mug_in_sink.ogg), public domain.
-- `store.mp3` — [Supermarket prize scan packing bought stuff people, natalie](https://commons.wikimedia.org/wiki/File:Supermarket_prize_scan_packing_bought_stuff_people.ogg), public domain.
-- `cafe.mp3` — [Cafe ambiance, Marble Toast](https://commons.wikimedia.org/wiki/File:Cafe_ambiance.ogg), CC0 1.0.
-- `club.mp3` — original instrumental loop created for NewVerse.
-- `office.mp3` — [Computer keyboard, russiandoll](https://commons.wikimedia.org/wiki/File:Computer_keyboard.ogg), public domain.
-- `library.mp3` — [Old book, Cori Samuel](https://commons.wikimedia.org/wiki/File:Old_book.ogg), public domain.
+- `crowd.mp3` — [Cafe ambiance, Marble Toast](https://commons.wikimedia.org/wiki/File:Cafe_ambiance.ogg), CC0 1.0. Used for cafes, clubs and shops.
+
+## Music (`public/music`)
+
+Instrumental mood themes generated for NewVerse with Suno V6 through Kie (November 2026), 2–3 takes per theme,
+normalised to −16 LUFS: romance, sadness, mystery, tension, battle, adventure, cozy, joy, tavern, party.

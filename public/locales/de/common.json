@@ -45,9 +45,24 @@
     "example": "*Ich trete einen Schritt zurück.* 'Er darf den Schlüssel nicht sehen.' Wer ist da?"
   },
   "chatAmbience": {
-    "label": "Hintergrundgeräusche",
-    "playing": "Hintergrundton läuft",
-    "silent": "Derzeit kein Hintergrundton"
+    "label": "Szenenklang",
+    "music": "Musik",
+    "ambience": "Umgebung",
+    "off": "Ton ist aus",
+    "choosing": "Die Musik folgt der Szene",
+    "nowPlaying": "Jetzt: {{mood}}",
+    "moods": {
+      "romance": "Romantik",
+      "sadness": "nächtliche Traurigkeit",
+      "mystery": "Geheimnis",
+      "tension": "Spannung",
+      "battle": "Kampf und Verfolgung",
+      "adventure": "Abenteuer",
+      "cozy": "Gemütlichkeit",
+      "joy": "Freude",
+      "tavern": "Taverne",
+      "party": "Party"
+    }
   },
   "chatSpeech": {
     "editVoices": "Wähle für jede Figur eine Stimme. Änderungen werden in dieser Geschichte gespeichert und gelten ab der nächsten Wiedergabe.",

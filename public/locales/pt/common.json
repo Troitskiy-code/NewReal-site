@@ -45,9 +45,24 @@
     "example": "*Dou um passo para trás.* 'Ele não pode ver a chave.' Quem está aí?"
   },
   "chatAmbience": {
-    "label": "Som ambiente",
-    "playing": "Som ambiente em reprodução",
-    "silent": "Nenhum som ambiente em reprodução"
+    "label": "Som da cena",
+    "music": "Música",
+    "ambience": "Ambiente",
+    "off": "Som desligado",
+    "choosing": "A música acompanha a cena",
+    "nowPlaying": "Agora: {{mood}}",
+    "moods": {
+      "romance": "romance",
+      "sadness": "tristeza noturna",
+      "mystery": "mistério",
+      "tension": "tensão",
+      "battle": "luta e perseguição",
+      "adventure": "aventura",
+      "cozy": "aconchego",
+      "joy": "alegria",
+      "tavern": "taverna",
+      "party": "festa"
+    }
   },
   "chatSpeech": {
     "editVoices": "Escolha uma voz para cada personagem. As alterações ficam guardadas nesta história e aplicam-se à próxima reprodução.",

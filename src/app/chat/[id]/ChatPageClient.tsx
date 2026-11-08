@@ -1024,7 +1024,6 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
     router.replace(id ? withThread(path, id) : path, { scroll: false });
   };
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const ambienceAudioRef = useRef<HTMLAudioElement>(null);
   const lastSendRef = useRef<{
     message: string;
     history?: Array<{ role: "user" | "assistant"; content: string }>;
@@ -1876,7 +1875,6 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
 
   return (<>
     {/* Keep the same media element when the speech provider resets for a new story. */}
-    <audio ref={ambienceAudioRef} hidden loop playsInline preload="none" muted={capturingVoice} />
     <ChatSpeechProvider key={`${characterId}:${threadId ?? ""}:${session?.user?.id ?? "guest"}`}
       characterId={characterId} threadId={threadId} userId={status === "authenticated" ? session?.user?.id ?? null : null}
       muted={capturingVoice}>
@@ -2046,7 +2044,7 @@ export default function ChatPageClient({ initialShell }: { initialShell: ChatShe
             </div>
             {/* Character info and chat settings live in the chat header instead of floating over the messages. */}
             <div className="-mr-2 flex shrink-0 items-center gap-1">
-              <ChatAmbience audioRef={ambienceAudioRef} messages={messages} ready={!historyLoading && transferState === "idle"}
+              <ChatAmbience capturingVoice={capturingVoice} messages={messages} ready={!historyLoading && transferState === "idle"}
                 pending={sending || actionLoading || streamingMessageId !== null} />
               {character?.slug ? (
                 <LocaleLink

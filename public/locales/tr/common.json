@@ -45,9 +45,24 @@
     "example": "*Bir adım geri çekilirim.* 'Anahtarı görmemeli.' Kim var orada?"
   },
   "chatAmbience": {
-    "label": "Ortam sesi",
-    "playing": "Ortam sesi çalıyor",
-    "silent": "Şu anda ortam sesi çalmıyor"
+    "label": "Sahne sesi",
+    "music": "Müzik",
+    "ambience": "Ortam",
+    "off": "Ses kapalı",
+    "choosing": "Müzik sahneye göre seçilir",
+    "nowPlaying": "Şimdi: {{mood}}",
+    "moods": {
+      "romance": "romantizm",
+      "sadness": "gece hüznü",
+      "mystery": "gizem",
+      "tension": "gerilim",
+      "battle": "dövüş ve kovalamaca",
+      "adventure": "macera",
+      "cozy": "huzur",
+      "joy": "neşe",
+      "tavern": "meyhane",
+      "party": "parti"
+    }
   },
   "chatSpeech": {
     "editVoices": "Her karakter için bir ses seçin. Değişiklikler bu hikâyede kaydedilir ve sonraki dinlemede uygulanır.",

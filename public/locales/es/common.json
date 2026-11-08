@@ -45,9 +45,24 @@
     "example": "*Doy un paso atrás.* 'No debe ver la llave.' ¿Quién anda ahí?"
   },
   "chatAmbience": {
-    "label": "Sonido ambiental",
-    "playing": "Sonido ambiental en reproducción",
-    "silent": "No se está reproduciendo sonido ambiental"
+    "label": "Sonido de la escena",
+    "music": "Música",
+    "ambience": "Ambiente",
+    "off": "Sonido desactivado",
+    "choosing": "La música sigue la escena",
+    "nowPlaying": "Ahora: {{mood}}",
+    "moods": {
+      "romance": "romance",
+      "sadness": "tristeza nocturna",
+      "mystery": "misterio",
+      "tension": "tensión",
+      "battle": "lucha y persecución",
+      "adventure": "aventura",
+      "cozy": "calma hogareña",
+      "joy": "alegría",
+      "tavern": "taberna",
+      "party": "fiesta"
+    }
   },
   "chatSpeech": {
     "editVoices": "Elige una voz para cada personaje. Los cambios se guardan en esta historia y se aplican a la próxima reproducción.",

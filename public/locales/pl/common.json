@@ -45,9 +45,24 @@
     "example": "*Cofam się o krok.* 'Nie może zobaczyć klucza.' Kto tam?"
   },
   "chatAmbience": {
-    "label": "Dźwięk tła",
-    "playing": "Dźwięk tła jest odtwarzany",
-    "silent": "Dźwięk tła nie jest teraz odtwarzany"
+    "label": "Dźwięk sceny",
+    "music": "Muzyka",
+    "ambience": "Otoczenie",
+    "off": "Dźwięk wyłączony",
+    "choosing": "Muzyka dopasowuje się do sceny",
+    "nowPlaying": "Teraz: {{mood}}",
+    "moods": {
+      "romance": "romans",
+      "sadness": "nocny smutek",
+      "mystery": "tajemnica",
+      "tension": "napięcie",
+      "battle": "walka i pościg",
+      "adventure": "przygoda",
+      "cozy": "przytulnie",
+      "joy": "radość",
+      "tavern": "karczma",
+      "party": "impreza"
+    }
   },
   "chatSpeech": {
     "editVoices": "Wybierz głos dla każdej postaci. Zmiany są zapisywane w tej historii i stosowane przy następnym odtwarzaniu.",

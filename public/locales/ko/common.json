@@ -45,9 +45,24 @@
     "example": "*한 걸음 물러선다.* '열쇠를 보여 주면 안 돼.' 거기 누구야?"
   },
   "chatAmbience": {
-    "label": "배경 소리",
-    "playing": "배경 소리 재생 중",
-    "silent": "현재 재생 중인 배경 소리가 없습니다"
+    "label": "장면 사운드",
+    "music": "음악",
+    "ambience": "주변음",
+    "off": "소리 꺼짐",
+    "choosing": "장면에 맞춰 음악이 선택됩니다",
+    "nowPlaying": "지금: {{mood}}",
+    "moods": {
+      "romance": "로맨스",
+      "sadness": "밤의 슬픔",
+      "mystery": "미스터리",
+      "tension": "긴장",
+      "battle": "전투와 추격",
+      "adventure": "모험",
+      "cozy": "아늑함",
+      "joy": "기쁨",
+      "tavern": "선술집",
+      "party": "파티"
+    }
   },
   "chatSpeech": {
     "editVoices": "인물별로 목소리를 선택하세요. 변경 사항은 이 이야기에 저장되며 다음 재생부터 적용됩니다.",

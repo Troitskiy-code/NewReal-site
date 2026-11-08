@@ -45,9 +45,24 @@
     "example": "*一歩後ずさる。* '鍵を見られてはいけない。' そこにいるのは誰？"
   },
   "chatAmbience": {
-    "label": "環境音",
-    "playing": "環境音を再生中",
-    "silent": "現在、環境音は再生されていません"
+    "label": "シーンの音",
+    "music": "音楽",
+    "ambience": "環境音",
+    "off": "音はオフです",
+    "choosing": "音楽はシーンに合わせて選ばれます",
+    "nowPlaying": "再生中：{{mood}}",
+    "moods": {
+      "romance": "ロマンス",
+      "sadness": "夜の哀しみ",
+      "mystery": "ミステリー",
+      "tension": "緊張",
+      "battle": "戦い・追跡",
+      "adventure": "冒険",
+      "cozy": "くつろぎ",
+      "joy": "喜び",
+      "tavern": "酒場",
+      "party": "パーティー"
+    }
   },
   "chatSpeech": {
     "editVoices": "キャラクターごとに声を選べます。変更はこの物語に保存され、次の再生に適用されます。",

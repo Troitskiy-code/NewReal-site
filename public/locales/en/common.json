@@ -45,9 +45,24 @@
     "example": "*I take a step back.* 'I don't want him to see the key.' Who’s there?"
   },
   "chatAmbience": {
-    "label": "Ambient sound",
-    "playing": "Ambient sound is playing",
-    "silent": "No ambient sound is playing"
+    "label": "Scene sound",
+    "music": "Music",
+    "ambience": "Ambience",
+    "off": "Sound is off",
+    "choosing": "Music follows the scene",
+    "nowPlaying": "Now: {{mood}}",
+    "moods": {
+      "romance": "romance",
+      "sadness": "night sadness",
+      "mystery": "mystery",
+      "tension": "tension",
+      "battle": "battle and chase",
+      "adventure": "adventure",
+      "cozy": "cozy",
+      "joy": "joy",
+      "tavern": "tavern",
+      "party": "party"
+    }
   },
   "chatSpeech": {
     "editVoices": "Choose a voice for each character. Changes are saved in this story and apply to the next playback.",
