@@ -35,7 +35,9 @@ const ALIASES: Record<string, string> = { имя: "name", зовут: "name", в
 export const canonicalFactKey = (key: string) => ALIASES[key.trim().toLowerCase()] ?? key.trim().toLowerCase();
 export const factCardinality = (key: string) => SLOTS[key]?.multi || key.startsWith("legacy.") ? "multi" : "single";
 export type FactDelta = { op: "set" | "retract"; subject: string; key: string; value: string;
-  sourceMessageId: string | null; source: string; pinned: boolean; confidence: number };
+  sourceMessageId: string | null; source: string; pinned: boolean; confidence: number;
+  /** A money line whose source sentence says it is another payment («хозяин снова сгрёб пять крон»). */
+  again?: boolean };
 export type FactSource = { id: string; author: "user" | "character"; messageId: string; text: string };
 /** retold: the text is the extractor's grounded retelling; otherwise it is the source sentence itself. */
 export type ExtractedEvent = { text: string; importance: number; sourceMessageId: string; source: "user" | "character"; retold: boolean };
@@ -434,7 +436,7 @@ place — где NPC живёт или находится сейчас, вмес
 ВАЖНО: прежде чем добавить факт к NPC из activeFacts, проверь, что это тот же человек — то же место, хозяин и приметы. Человек той же роли в другом месте (другой склад, другая каморка, другой хозяин) — другой NPC: новый subject с уточнением, а факты старой карточки, его гибель и приметы ему не переноси. Так же с именем: NPC с тем же именем в другом городе или области, далеко от place его карточки, — скорее другой человек (npc:вдова Мария из Новиграда); старой карточке место не меняй.
 Безымянных статистов одной сцены (нападавшие, чужая охрана, прохожие) не записывай: их судьбу передаст сводка.
 Гибель NPC сохраняй как health словами источника («зарезан в каморке у складов Грибо»). NPC, поступивший на службу к герою или получивший от него поручение, — relationship.status: герой велел громилам «стойте здесь, никого не выпускать» → subject=npc:громила с дубинкой, relationship.status «служит герою, охраняет склад сетей».
-money — движение денег героя пользователя (subject=user): знак, сумма как в источнике или «несколько», валюта, от кого или за что («+10 крон от гонца на заставе», «−5 крон за комнату в корчме», «+несколько золотых крон от купца»). Только деньги, которые герой реально получил или отдал (в том числе по словам рассказчика); цены, обещания и предложения не записывай. Итог не считай. Если прямо названо, сколько денег у героя сейчас («в кошельке у вас двадцать три кроны», «у меня 50 крон»), запиши остаток со знаком «=»: «=23 кроны в кошельке». Деньги героя не записывай в possessions; «серебро», «плата» без движения не записывай.
+money — движение денег героя пользователя (subject=user): знак, сумма как в источнике или «несколько», валюта, от кого или за что («+10 крон от гонца на заставе», «−5 крон за комнату в корчме», «+несколько золотых крон от купца»). Только деньги, которые герой реально получил или отдал (в том числе по словам рассказчика); цены, обещания и предложения не записывай. Итог не считай. Если прямо названо, сколько денег у героя сейчас («в кошельке у вас двадцать три кроны», «у меня 50 крон»), запиши остаток со знаком «=»: «=23 кроны в кошельке». Деньги героя не записывай в possessions; «серебро», «плата» без движения не записывай. Торг, согласие, уточнение суммы или напоминание о долге («Двести, Тоби, не сто пятьдесят», «верни мои двести») — не новое движение, если оно уже есть в activeFacts.
 turnsAgo в activeFacts — сколько ходов назад NPC упоминался последний раз. Безымянный NPC той же роли, давно не появлявшийся, в новом месте — скорее другой человек.
 value — короткое конкретное значение из источника. Имена и числа копируй точно; обычные падежные формы существительных допустимы. Не заменяй содержание синонимами.
 Для retract пустое value снимает весь слот, непустое — только это значение.
@@ -528,6 +530,17 @@ export function moneyLine(entries: Array<{ value: string; seq: number }>): strin
   const notes = [...vague].map(note => note.replace(/: (.+)$/u, " $1"));
   return [[...parts, ...notes].join(", "), recent.length ? `последнее: ${recent.join("; ")}` : ""].filter(Boolean).join("; ");
 }
+/** Sign, sum and currency of a ledger line («−200 кредитов Тоби» → «−200 кредитов»); null when the sum is vague. */
+export function moneyMovementKey(value: string): string | null {
+  const amount = moneyAmount(value);
+  return amount === null ? null : `${value[0]}${amount} ${currencyOf(value)[2]}`;
+}
+// One deal is talked over for several turns: «займу тебе двести кредитов» → «Двести, Тоби. Не сто пятьдесят» →
+// «Двести так двести», and each turn the extractor wrote −200 again, so one loan became −600 (wave 2026-11-03).
+// Within MONEY_REPEAT_TURNS the same sign, sum and currency is that deal, unless its sentence says it is another
+// payment; a later one is a new movement (the next night's room).
+export const MONEY_REPEAT_TURNS = 3;
+const ANOTHER_PAYMENT = /(?:^|[^\p{L}])(?:ещё|еще|снова|опять|вновь|повторно|втор\p{L}*|следующ\p{L}*|кажд\p{L}*)(?=$|[^\p{L}])/iu;
 /**
  * One line of the hero's money ledger: «+10 крон от гонца на заставе», «−5 крон за комнату». A running total
  * went negative, missed income and mixed silver with crowns on every model tried (owner's Witcher test
@@ -548,7 +561,8 @@ function moneyDelta(op: string, subject: string, text: string, source: FactSourc
     return reject("unsupported_number", "value");
   }
   return { op: "set", subject: "user", key: "money", value, sourceMessageId: source.messageId,
-    source: source.author === "user" ? "user_msg" : "assistant_msg", confidence: 1, pinned: false };
+    source: source.author === "user" ? "user_msg" : "assistant_msg", confidence: 1, pinned: false,
+    ...(ANOTHER_PAYMENT.test(source.text) ? { again: true } : {}) };
 }
 
 /** The presence of a turn, or null when absent or malformed: it is a hint, never a reason to refuse the turn. */

@@ -4,7 +4,7 @@ import { stripMemoryControlInstructions } from "./memorySafety";
 import { localeDefinition, resolveLocale } from "./i18nConfig";
 import { withoutChatThoughts } from "./chatMessageMarkup";
 
-export const PROMPT_BUILDER_VERSION = "rp-v2.10";
+export const PROMPT_BUILDER_VERSION = "rp-v2.11";
 const SCENE_MARKUP = {
   ru: "Разделяй *действия*, 'мысли' и реплики. Если карточка или сцена предполагает скрытую реакцию твоего персонажа, покажи её даже в коротком ответе одной фразой от первого лица в одинарных кавычках. В звёздочках оставляй только то, что мог бы заметить другой участник: жест, движение, видимое выражение лица. Узнавание, сомнение, воспоминание и намерение выноси из звёздочек в отдельную мысль. Внутри мысли звёздочки не ставь. Реплики пиши обычным текстом, с тире или в двойных кавычках. Пример: *Леон закрывает окно.* 'Дождь смоет следы раньше рассвета.' — У вас есть плащ? Пометка '…' у пользователя означает невысказанную мысль. Герою пользователя мысли не дописывай. Персонажи не слышат чужих мыслей.",
   en: "Separate *actions*, 'thoughts', and spoken lines. When the card or scene calls for a private reaction from a character you play, show it as one short first-person sentence in single quotes, even in a brief reply. Use asterisks only for things another participant could notice, such as gestures, movement, or visible expressions. Put private recognition, doubts, memories, and intentions in a separate thought outside the asterisks. Keep asterisks out of thoughts. Write spoken lines as plain text or in double quotes. Example: *Leon closes the window.* 'The rain will wash away the tracks before dawn.' \"Do you have a coat?\" A '…' marker in a user's message is an unspoken thought. Never invent the user's hero's thoughts. Characters cannot hear anyone else's thoughts.",
@@ -131,12 +131,15 @@ const TURN_REMINDER = {
 — Vary how replies open and do not repeat earlier gestures: not every turn "froze", "slowly looked up", "something flickered in her eyes".
 — Write in English, in the spirit of the story's world, with no list of options and no "what will you do?".`,
 };
+// Purse knowledge (rp-v2.11, eval 2026-11-08, Gemma 4 Turbo, 4 replies per case): with the hero's purse in memory, a
+// trader said «В кошельке у вас осталось 3 золотых» in her own line. Replies where a character named what the hero has
+// left: 2–3 of 12 → 0 of 12 (cases p-*); the price is still named in money-pay 4/4.
 // Only when the user's turn is about money: the rule among the core rules did not make the narrator name the
 // hero's purse (0 of 3 replies, eval 2026-10-29), and a standing line would cost tokens on every turn.
 const MONEY_TURN = /(?:^|[^\p{L}])(?:кошел\p{L}*|кошель|крон\p{L}*|монет\p{L}*|деньг\p{L}*|денег|серебр\p{L}*|золот\p{L}*|флорен\p{L}*|оренов|медяк\p{L}*|грош\p{L}*|кредит\p{L}*|плат\p{L}*|заплат\p{L}*|цен[аыуе]|стоит|расплат\p{L}*|купить|покуп\p{L}*|прода\p{L}*|purse|coins?|money|gold|silver|crowns?|pay|paid|price|cost|buy)(?=$|[^\p{L}])/iu;
 const MONEY_REMINDER = {
-  ru: "— Деньги называй числом: сколько платят, получают и сколько у героя в кошельке («двенадцать крон»), а не «несколько монет». Если сумма у героя ещё не названа ни в истории, ни в памяти, назови её сам по ситуации и роли героя — это факт мира, а не решение героя: «в кошельке у вас четырнадцать золотых». Дальше держись её и денег героя из памяти.",
-  en: "— Name money as numbers: what is paid, received and how much the hero has (\"twelve crowns\"), not \"a few coins\". If the hero's purse is named neither in the history nor in memory, set it yourself to suit the situation and the hero's role — it is a fact of the world, not the hero's decision: \"your purse holds fourteen gold pieces\". Then keep to it and to the hero's money in memory.",
+  ru: "— Деньги называй числом: сколько платят, получают и сколько у героя в кошельке («двенадцать крон»), а не «несколько монет». Если сумма у героя ещё не названа ни в истории, ни в памяти, назови её сам по ситуации и роли героя — это факт мира, а не решение героя: «в кошельке у вас четырнадцать золотых». Дальше держись её и денег героя из памяти. Остаток в кошельке героя называет только рассказчик или сам герой: персонажи знают цену и сколько им заплатили, но не сколько у героя осталось.",
+  en: "— Name money as numbers: what is paid, received and how much the hero has (\"twelve crowns\"), not \"a few coins\". If the hero's purse is named neither in the history nor in memory, set it yourself to suit the situation and the hero's role — it is a fact of the world, not the hero's decision: \"your purse holds fourteen gold pieces\". Then keep to it and to the hero's money in memory. Only the narrator or the hero names what is left in the hero's purse: characters know the price and what they were paid, not how much the hero has left.",
 };
 // Only when the user addresses the narrator by name or out of character («Рассказчик, кто меня нанял?»): with an
 // NPC in the scene the narrator answered none of three such questions and went on as that NPC (crash test 3,

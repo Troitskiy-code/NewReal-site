@@ -11,7 +11,8 @@ import { stripMemoryControlInstructions } from "./memorySafety";
 import { readRoleplayConfig } from "./roleplayConfig";
 import { inferMemoryStatus, isSameMemoryName, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
-  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, resolveRoleSubject, sameFactValue, slotNoiseReason, npcAliasMap, type RoleCard, isHeroName, fullNameInText, sharesName, type FactDelta, type TurnPresence } from "./memoryFacts";
+  factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, resolveRoleSubject, sameFactValue, slotNoiseReason, npcAliasMap, type RoleCard, isHeroName, fullNameInText, sharesName, type FactDelta, type TurnPresence,
+  MONEY_REPEAT_TURNS, moneyMovementKey } from "./memoryFacts";
 
 type Tx = Prisma.TransactionClient;
 const LEASE_MS = 180_000;
@@ -66,10 +67,15 @@ async function applyFact(tx: Tx, threadId: string, delta: FactDelta, seq: number
     if (ids.length) await tx.memoryFact.updateMany({ where: { id: { in: ids } }, data: { status: "retracted", supersededById: null } });
     return;
   }
-  // Two rooms for 5 crowns are two movements; only the same line from the same message is a repeat. The
-  // active-value unique index allows one copy of a text, so a second one is marked «(повторно)».
+  // Money: the same line from the same message is a repeat, and so is the same sum in the same deal a few turns
+  // on (MONEY_REPEAT_TURNS); another payment is a new movement. The active-value unique index allows one copy of a
+  // text, so a second one is marked «(повторно)».
   const ledger = delta.key === "money";
-  const repeated = active.find(fact => sameFactValue(fact.value, delta.value, delta.key) && (!ledger || fact.sourceMessageId === delta.sourceMessageId));
+  const movement = ledger && !delta.again ? moneyMovementKey(delta.value) : null;
+  const repeated = active.find(fact => ledger
+    ? fact.sourceMessageId === delta.sourceMessageId && sameFactValue(fact.value, delta.value, delta.key)
+      || movement !== null && seq - fact.seq <= MONEY_REPEAT_TURNS && moneyMovementKey(fact.value) === movement
+    : sameFactValue(fact.value, delta.value, delta.key));
   if (ledger && !repeated) {
     const base = delta.value;
     for (let copy = 1; active.some(fact => fact.value === delta.value); copy++) delta = { ...delta, value: `${base} (повторно${copy > 1 ? ` ${copy}` : ""})` };

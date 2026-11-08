@@ -322,6 +322,7 @@ check(builder.withTurnReminder([{ role: 'user', content: 'Irma?' }], 'en').at(-1
 check(builder.withTurnReminder([{ role: 'user', content: 'What will you do?' }], 'en').at(-1).content.includes('do not hand the task back to the hero'), 'en: a character at an obstacle makes a move');
 check(reminded('*Достаю кошель и спрашиваю, сколько стоит комната.*').includes('Деньги называй числом'), 'a money turn gets the money line');
 check(!reminded('*Беру её за руку.*').includes('Деньги называй числом'), 'other turns do not');
+check(reminded('*Отдаю торговке три кроны за карту.*').includes('персонажи знают цену и сколько им заплатили'), 'characters do not name what the hero has left');
 check(builder.withTurnReminder([{ role: 'user', content: 'How much for the room? I pay in crowns.' }], 'en').at(-1).content.includes('Name money as numbers'), 'en: the money line in English');
 // The narrator line joins only when the user addresses the narrator (crash test 3, turn 61).
 check(reminded('Рассказчик, напомни: как зовут мою кобылу и сколько я должна Борину?').includes('Пользователь обратился к рассказчику'), 'a question to the narrator gets the narrator line');

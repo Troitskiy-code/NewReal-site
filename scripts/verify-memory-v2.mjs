@@ -700,7 +700,7 @@ try {
       { subject: 'npc:громила с дубинкой', key: 'relationship.status', value: 'служит герою, охраняет склад сетей', pinned: false, seq: 1 },
     ]), '## Громила с дубинкой\n- Статус отношений: служит герою, охраняет склад сетей\n- Вещи и тайники: дубинка', 'an extra known only by role and things is not shown');
   });
-  await check('the server tells unnamed NPCs of one role apart; the hero\'s money is a ledger of movements', async () => {
+  await check('the server tells unnamed NPCs of one role apart; the hero\'s money is a ledger of movements, one deal is one movement', async () => {
     // The owner's Witcher test (2026-10-29): every model filed Gribo's accountant under the hero's own.
     const own = { subject: 'npc:счетовод', lastSeq: 34, text: 'худощав, бледная прозрачная кожа, тонкие пальцы; записи спрятаны за гнилыми сетями; сейф под половицей' };
     const gribo = { subject: 'npc:счетовод 2', lastSeq: 58, text: 'щуплый, седые волосы, бородавка на щеке, пальцы в чернилах' };
@@ -750,6 +750,22 @@ try {
     const rooms = (await active(f.scope)).filter(fact => fact.key === 'money');
     assert.deepEqual(rooms.map(fact => fact.value).sort(), ['−5 крон за комнату', '−5 крон за комнату (повторно)']);
     assert.match(facts.moneyLine(rooms), /^за историю −10 крон \(получено 0, потрачено 10\)/u);
+    // One loan talked over for three turns is one movement (wave 2026-11-03 stored −600 for a 200-credit loan);
+    // the same sum lent again later is a new one.
+    const g = await setup();
+    await turn(g, '*Отдаю Тоби кредитный чип.* Займу тебе двести кредитов до зарплаты.', 'Тоби сжал чип.');
+    await run(g, output([delta('−200 кредитов Тоби', 's1', 'money')]));
+    await turn(g, 'Двести, Тоби. Не сто пятьдесят.', 'Тоби кивнул.');
+    await run(g, output([delta('−200 кредитов Тоби до зарплаты', 's1', 'money')]));
+    await turn(g, 'Двести так двести, Тоби.', 'Тоби ухмыльнулся.');
+    await run(g, output([delta('−200 кредитов Тоби', 's1', 'money')]));
+    assert.deepEqual((await active(g.scope)).filter(fact => fact.key === 'money').map(fact => fact.value), ['−200 кредитов Тоби']);
+    for (const text of ['Смотрю на звёзды.', 'Иду в рубку.', 'Сажусь за консоль.', 'Проверяю курс.']) { await turn(g, text, 'Тихо.'); await run(g, output([])); }
+    await turn(g, '*Отдаю Тоби чип.* Держи двести кредитов на запчасти.', 'Тоби взял чип.');
+    await run(g, output([delta('−200 кредитов Тоби', 's1', 'money')]));
+    assert.equal((await active(g.scope)).filter(fact => fact.key === 'money').length, 2, 'a later loan of the same sum is a new movement');
+    assert.equal(facts.moneyMovementKey('−200 кредитов Тоби (повторно)'), '−200 кредитов');
+    assert.equal(facts.moneyMovementKey('+несколько золотых крон от купца'), null);
   });
   await check('the dead keep one line: a named NPC its death, an unnamed one nothing', async () => {
     const core = facts.renderFactCore([
