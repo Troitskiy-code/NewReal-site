@@ -92,13 +92,20 @@ async function saveMessageAndBumpTotal(scope: ChatScope, data: {
     const locked = Date.now();
     const message = await tx.message.create({ data: { ...data, characterId: scope.characterId, chatId: scope.characterId,
       userId: scope.userId, threadId: scope.threadId } });
+    const messageWritten = Date.now();
     await tx.character.update(bumpTotal);
+    const characterWritten = Date.now();
     await tx.chatThread.update({ where: { id: scope.threadId }, data: { lastMessageAt: now, status: "active" } });
+    const threadWritten = Date.now();
     if (data.role === "user") await enqueueMemoryTurn(tx, scope, message.id);
     if (data.role === "assistant" && memoryUserMessageId) await attachMemoryReply(tx, scope, memoryUserMessageId, message.id, appendMemoryReply);
-    const totalMs = Date.now() - requested;
+    const finished = Date.now();
+    const totalMs = finished - requested;
+    // writeMs is split per statement to show which write holds a slow save.
     if (totalMs > SLOW_SAVE_MS) infoLog("ChatSave", "slow save", { messageRole: data.role, attempt, totalMs,
-      connectionWaitMs: started - requested, lockWaitMs: locked - started, writeMs: Date.now() - locked });
+      connectionWaitMs: started - requested, lockWaitMs: locked - started, writeMs: finished - locked,
+      messageMs: messageWritten - locked, characterMs: characterWritten - messageWritten,
+      threadMs: threadWritten - characterWritten, memoryMs: finished - threadWritten });
     return message;
   }, SAVE_TRANSACTION);
   const [message] = await prisma.$transaction([
