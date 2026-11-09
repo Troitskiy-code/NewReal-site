@@ -670,6 +670,16 @@ try {
     await run(f, output([delta('должна Борину 40 крон', 's1', 'debts', 'user', 'retract')]));
     assert.deepEqual((await active(f.scope)).filter(fact => fact.key === 'debts').map(fact => fact.value), ['должна Ягне 10 крон']);
   });
+  await check('the hero\'s name does not become an NPC\'s name; a relative\'s full name stays', async () => {
+    // Wave 2026-11-09: «— Послушайте, мисс... как вас там... Тонн» made the innkeeper «Тонн», and the narrator called
+    // him by the hero's surname for five turns.
+    const named = (reply, value) => facts.parseFactExtraction(output([delta(value, 's2', 'name', 'npc:хозяин таверны')]),
+      facts.factSources([{ id: 'm1', role: 'user', content: 'Можно в долг?' }, { id: 'm2', role: 'assistant', content: reply }]),
+      { partial: true, heroNames: ['Эйра Тонн'] }).facts.map(fact => fact.value);
+    assert.deepEqual(named('— Послушайте, мисс... как вас там... Тонн.', 'Тонн'), []);
+    assert.deepEqual(named('— Меня зовут Бруно Тонн, я твой дядя.', 'Бруно Тонн'), ['Бруно Тонн']);
+    assert.deepEqual(named('— Меня зовут Бруно.', 'Бруно'), ['Бруно']);
+  });
   await check('a fact is judged by its own part of the sentence: another person agreeing does not make it a plan', async () => {
     // Waves 2026-11-03 and 2026-11-08: «хозяйка согласилась» made the hero's dog a «decided» plan, it was never stored,
     // and the character later denied the dog.

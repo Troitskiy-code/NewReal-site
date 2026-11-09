@@ -687,6 +687,12 @@ export function parseFactExtraction(raw: string, sources: FactSource[], { partia
       if (source.author !== "user") return reject("npc_is_user", "subject");
       row.subject = "user";
     }
+    // The hero's name given to an NPC: «— Послушайте, мисс... как вас там... Тонн» became the innkeeper's name «Тонн»,
+    // and the narrator called him so for the rest of the scene (wave 2026-11-09). A relative's full name has a word
+    // of its own («Ника Сорокина») and stays.
+    if (key === "name" && String(row.subject).startsWith("npc:") && isHeroName(`npc:${String(row.value).trim()}`, heroNames)) {
+      return reject("npc_is_user", "value");
+    }
     if (/^s\d{1,5}$/.test(source.id)) detail.sourceId = source.id;
     detail.sourceRole = source.author; detail.sourceChars = source.text.length;
     if (key === "money") return moneyDelta(String(row.op), String(row.subject), row.value.trim(), source, sources, reject);
