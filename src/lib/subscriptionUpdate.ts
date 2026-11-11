@@ -53,13 +53,13 @@ const ru = {
   sections: [
     {
       title: "Что изменится для действующих подписчиков",
-      text: "Доступ к двум моделям без расхода VC появится в день обновления. Если на дату запуска у вас действует оплаченная подписка, безлимитная озвучка сохранится до конца этого периода. Пока действует переходная квота аватаров, сначала расходуются включённые генерации.",
-      detail: "Автопродления после запуска идут по новой цене. Платёж, выставленный заранее по прежней цене, сохраняет прежний пакет VC. Если автопродление попадает в переходный период, начисляется прежний пакет. Действующим подписчикам «Истории», которые сохраняют тариф, на первое автопродление после переходного периода начислим 10 000 VC.",
+      text: "Доступ к двум моделям без расхода VC появится в день обновления. Если на момент запуска у вас действует оплаченная подписка, ваш пакет VC и безлимитная озвучка сохранятся до конца оплаченного периода. Пока действует переходная квота аватаров, сначала расходуются включённые генерации.",
+      detail: "При автопродлении по новой цене начисляется новый пакет VC, а озвучка оплачивается в VC. Если счёт выставили заранее по прежней цене, при его оплате начисляется прежний пакет VC.",
     },
     {
       title: "Сколько стоят озвучка и аватары",
       text: "Обычная озвучка доступна всем за 3 VC/с. Подписчики могут выбрать обычную или выразительную за 5 VC/с. Ежедневную бесплатную озвучку отменяем. Длительность готовой записи округляется вверх до целой секунды. Оплаченную запись можно переслушивать без доплаты, пока она хранится в чате.",
-      detail: "Платная генерация аватара или обложки стоит 50 VC за результат. Цена одинаковая для генерации с референсом и без него.",
+      detail: "Платная генерация аватара или обложки стоит 60 VC за результат. Цена одинаковая для генерации с референсом и без него.",
     },
     {
       title: "Что будет с балансом VC",
@@ -106,13 +106,13 @@ const en: typeof ru = {
   sections: [
     {
       title: "What changes for current subscribers",
-      text: "You can chat on both included models without spending VC starting on launch day. If you have an active paid subscription at launch, unlimited voice playback stays included until the end of that paid period. Any avatar generations still included during the transition are used first.",
-      detail: "Automatic renewals after launch use the new prices. If a payment was already issued at the old price, it keeps the old VC allowance. Automatic renewals during the transition also keep the old allowance. Existing Story subscribers who stay on the plan receive 10,000 VC at their first automatic renewal after the transition.",
+      text: "You can chat on both included models without spending VC starting on launch day. If you have an active paid subscription at launch, you keep your VC allowance and unlimited voice playback until the end of that paid period. Any avatar generations still included during the transition are used first.",
+      detail: "When your subscription renews at the new price, you receive the new VC allowance and pay for voice playback in VC. If your invoice was issued at the old price, paying it gives you the old VC allowance.",
     },
     {
       title: "Voice and avatar prices",
       text: "Standard voice is available to everyone for 3 VC/sec. Subscribers can also choose expressive voice for 5 VC/sec. The daily free playback is ending. We round the duration of the finished recording up to a whole second. You can replay a purchased recording at no extra cost while it’s stored in the chat.",
-      detail: "Paid avatar and cover generation costs 50 VC per result, with or without a reference image.",
+      detail: "Paid avatar and cover generation costs 60 VC per result, with or without a reference image.",
     },
     {
       title: "What happens to your VC balance",
