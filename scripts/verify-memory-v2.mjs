@@ -733,6 +733,24 @@ try {
     assert.equal(resolve('npc:счетовод', [own, { ...gribo, subject: 'npc:счетовод Грибо' }], 'Я сел ждать Грибо.', 70), 'npc:счетовод Грибо', 'a named qualifier wins');
     assert.equal(resolve('npc:счетовод склада Грибо', [own], 'Каморка у складов.', 57), 'npc:счетовод склада Грибо', 'the model\'s own qualifier for a new person stays');
     assert.equal(resolve('npc:Грибо', [own], 'Грибо пришёл.', 60), 'npc:Грибо', 'names are not roles');
+    // Open item of the 2026-11-09 handover: a second accountant met within 12 turns of the first, in another place,
+    // joined the first card. The scene of the turn now tells them apart; the same or an unknown place keeps recency.
+    const atNets = { ...own, place: 'склад сетей у причалов, Новиград', lastSeq: 50 };
+    assert.equal(facts.resolveRoleSubject('npc:счетовод', [atNets], 'Он поднял голову от гроссбуха.', 54, 'каморка Грибо за рынком, Новиград'), 'npc:счетовод 2',
+      'seen 4 turns ago but elsewhere: a new person');
+    assert.equal(facts.resolveRoleSubject('npc:счетовод', [atNets], 'Он поднял голову от гроссбуха.', 54, 'склад сетей, Новиград'), 'npc:счетовод', 'the same place: the same scene');
+    assert.equal(facts.resolveRoleSubject('npc:счетовод', [atNets], 'Он поднял голову от гроссбуха.', 54), 'npc:счетовод', 'no scene this turn: recency as before');
+    assert.equal(facts.resolveRoleSubject('npc:счетовод', [own], 'Он поднял голову от гроссбуха.', 40, 'каморка Грибо'), 'npc:счетовод', 'a card without a place: recency as before');
+    assert.equal(facts.resolveRoleSubject('npc:счетовод', [atNets], 'Тонкие пальцы, бледная прозрачная кожа, записи за гнилыми сетями.', 54, 'каморка Грибо'), 'npc:счетовод',
+      'words of the card still win over the place');
+    // Through the queue: the place comes from the card's place fact and the turn's presence.
+    const w = await setup();
+    await turn(w, 'Иду на склад сетей.', 'Счетовод, худой и бледный, поднимает голову.');
+    await run(w, JSON.stringify({ facts: [delta('худой и бледный', 's2', 'appearance', 'npc:счетовод')], events: [], presence: { place: 'склад сетей', present: ['счетовод'] } }));
+    await turn(w, 'Иду в каморку за рынком.', 'Счетовод, бородавка на щеке, поднимает голову.');
+    await run(w, JSON.stringify({ facts: [delta('бородавка на щеке', 's2', 'appearance', 'npc:счетовод')], events: [], presence: { place: 'каморка за рынком', present: ['счетовод'] } }));
+    const looks = (await active(w.scope)).filter(fact => fact.key === 'appearance').map(fact => `${fact.subject}: ${fact.value}`).sort();
+    assert.deepEqual(looks, ['npc:счетовод 2: бородавка на щеке', 'npc:счетовод: худой и бледный'], JSON.stringify(looks));
     const ledger = (texts, value, subject = 'user') => facts.parseFactExtraction(output([delta(value, 's2', 'money', subject)]),
       facts.factSources(texts.map(([role, content], index) => ({ id: `m${index}`, role, content }))), { partial: true }).facts.map(fact => fact.value);
     const paid = [['user', '*протягиваю руку*'], ['assistant', 'Он отсчитал десять крон и вложил их в вашу ладонь.']];

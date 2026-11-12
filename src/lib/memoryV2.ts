@@ -347,17 +347,18 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         sourceMessageId: completedName.messageId, confidence: 1, pinned: false }, job.seq, "extractor", job.id, true, job.seq <= current.memoryManualSeq);
       // A fact about «Ирма» goes to the card already stored as «Ирма Сол» (and the reverse is joined when rendered).
       const npcFacts = await tx.memoryFact.findMany({ where: { threadId: thread.id, status: "active", subject: { startsWith: "npc:" } },
-        select: { subject: true, value: true, seq: true } });
+        select: { subject: true, key: true, value: true, seq: true } });
       const npcs: string[] = Array.from(new Set<string>(npcFacts.map(fact => fact.subject)));
-      // Unnamed NPCs are told apart by the server: qualifier, shared words, recency (resolveRoleSubject).
+      // Unnamed NPCs are told apart by the server: qualifier, shared words, recency in the same place (resolveRoleSubject).
       const cards = new Map<string, RoleCard>();
       for (const fact of npcFacts) {
-        const card = cards.get(fact.subject) ?? { subject: fact.subject, lastSeq: 0, text: "" };
-        cards.set(fact.subject, { ...card, lastSeq: Math.max(card.lastSeq, fact.seq), text: `${card.text} ${fact.value}` });
+        const card: RoleCard = cards.get(fact.subject) ?? { subject: fact.subject, lastSeq: 0, text: "" };
+        const place = fact.key === "place" ? fact.value.replace(/^последний раз с героем:\s*/u, "") : card.place;
+        cards.set(fact.subject, { ...card, lastSeq: Math.max(card.lastSeq, fact.seq), text: `${card.text} ${fact.value}`, ...(place ? { place } : {}) });
       }
       const turnText = sources.map(source => source.text).join("\n");
       for (const extracted of extraction.facts) {
-        const resolved = resolveRoleSubject(extracted.subject, [...cards.values()], turnText, job.seq);
+        const resolved = resolveRoleSubject(extracted.subject, [...cards.values()], turnText, job.seq, extraction.presence?.place);
         const subject = npcAliasMap([...npcs, resolved]).get(resolved) ?? resolved;
         if (subject.startsWith("npc:") && !npcs.includes(subject)) npcs.push(subject);
         if (subject.startsWith("npc:")) {

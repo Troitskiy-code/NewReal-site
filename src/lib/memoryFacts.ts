@@ -180,15 +180,25 @@ const ROLE_STOP = new Set(["который", "которая", "которые",
 const roleHead = (subject: string) => clean(subject.slice(4)).match(/\p{L}+/u)?.[0] ?? "";
 const roleStem = (word: string) => word.slice(0, Math.max(4, word.length - 2));
 const stems = (text: string) => new Set((clean(text).match(/\p{L}{5,}/gu) ?? []).filter(word => !ROLE_STOP.has(word)).map(roleStem));
-export type RoleCard = { subject: string; lastSeq: number; text: string };
+/** `place`: where the NPC was last with the hero (its place fact), when known. */
+export type RoleCard = { subject: string; lastSeq: number; text: string; place?: string };
+/** Two scenes are one place when their spots (before the town: «склад сетей, Новиград») share a word. Unknown is no signal. */
+function samePlace(left: string | undefined, right: string | undefined): boolean {
+  if (!left?.trim() || !right?.trim()) return true;
+  const spot = (place: string) => stems(place.split(",")[0]);
+  const other = spot(right);
+  return [...spot(left)].some(word => other.has(word));
+}
 /**
  * Which stored card an unnamed NPC of this turn is. Models file a second accountant under the first one's
  * card whatever the context (Gemma, Claude Haiku, DeepSeek, Gemini; owner's Witcher test 2026-10-29), so
  * the server decides, in order: a card whose qualifier the turn names («счетовод Грибо» / «ждать Грибо»);
- * a card sharing words with the turn («за сетями» / «склад сетей»); a card seen within ROLE_SCENE_TURNS;
- * otherwise a new person («счетовод 2» unless the model gave its own qualifier).
+ * a card sharing words with the turn («за сетями» / «склад сетей»); a card seen within ROLE_SCENE_TURNS in the
+ * same place as this turn's scene, or where either place is unknown; otherwise a new person («счетовод 2» unless
+ * the model gave its own qualifier). Without the place, Gribo's accountant met 4 turns after the hero's own, in
+ * another room, joined the hero's card (handover 2026-11-09).
  */
-export function resolveRoleSubject(subject: string, cards: RoleCard[], turnText: string, seq: number): string {
+export function resolveRoleSubject(subject: string, cards: RoleCard[], turnText: string, seq: number, place?: string): string {
   if (!isRoleSubject(subject)) return subject;
   const head = roleHead(subject);
   const candidates = cards.filter(card => isRoleSubject(card.subject) && roleStem(roleHead(card.subject)) === roleStem(head));
@@ -202,7 +212,7 @@ export function resolveRoleSubject(subject: string, cards: RoleCard[], turnText:
   if (scored[0].score >= 2 && scored[0].score > (scored[1]?.score ?? 0)) return scored[0].card.subject;
   const own = subject.slice(4).trim().split(/\s+/u).length > 1;
   if (own) return subject;
-  const recent = candidates.filter(card => seq - card.lastSeq <= ROLE_SCENE_TURNS).sort((a, b) => b.lastSeq - a.lastSeq);
+  const recent = candidates.filter(card => seq - card.lastSeq <= ROLE_SCENE_TURNS && samePlace(card.place, place)).sort((a, b) => b.lastSeq - a.lastSeq);
   if (recent.length) return recent[0].subject;
   return `npc:${head} ${candidates.length + 1}`;
 }
