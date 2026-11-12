@@ -86,7 +86,8 @@ export async function processCharacterTranslationJob() {
       if(value===undefined)delete checkpoint[key];else checkpoint[key]=value;
       const changed=await release({checkpoint:checkpoint as Prisma.InputJsonObject});if(!changed.count)throw new CharacterTranslationError("translation_lease_lost");
     }},ask:async(stage,body)=>{
-      if(!await prisma.characterTranslationJob.count({where:owned}))throw new CharacterTranslationError("translation_lease_lost");
+      // A streamed call may run up to 15 minutes; renew the lease so a long job is never claimed twice.
+      if(!await prisma.$executeRaw`UPDATE "CharacterTranslationJob" SET "leaseUntil"=CURRENT_TIMESTAMP+INTERVAL '20 minutes' WHERE "id"=${job.id} AND "leaseToken"=${token}`)throw new CharacterTranslationError("translation_lease_lost");
       const settle=await reserveBudget(stage,body);return requestCharacterTranslation(body,settle);
     }});
     const state=await prisma.$transaction(async tx=>{

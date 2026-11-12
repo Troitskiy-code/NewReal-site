@@ -290,15 +290,16 @@ export async function meteredPost<T = AxiosResponse["data"]>(purpose: string, ur
 }
 
 const streams = new WeakMap<ReadableStream<Uint8Array>, { ticket: Ticket; completed: boolean }>();
-/** onChunk fires for every body chunk, so callers can run an idle watchdog without replacing the tracked stream. */
+/** onChunk fires for every body chunk, so callers can run an idle watchdog without replacing the tracked stream.
+ * purpose labels the cost event; streamed background work (card translation) keeps its own label. */
 export async function meteredChatFetch(url: string, init: RequestInit, model: string, estimatedInput: number,
   onEnd?: () => void, onChunk?: () => void,
-  limits?: { firstByteMs: number; idleMs: number; totalMs: number }): Promise<Response> {
-  const ticket = await begin(safeModel(model), "chat", textProviderForUrl(url));
+  limits?: { firstByteMs: number; idleMs: number; totalMs: number }, purpose = "chat"): Promise<Response> {
+  const ticket = await begin(safeModel(model), purpose, textProviderForUrl(url));
   const requestIdHeader = ticket.provider === "deepinfra" ? "x-request-id" : "x-kodikrouter-request-id";
   // Provider timing starts after local cost bookkeeping, immediately before the request.
   const started = Date.now();
-  const transport = beginAiTransport(ticket.provider, ticket.requestedModel, "chat");
+  const transport = beginAiTransport(ticket.provider, ticket.requestedModel, purpose);
   let networkPlan: ReturnType<typeof deepinfraRequestPlan> | undefined;
   const context = { ...ticketDiagnosticContext(ticket), networkRoute: "unavailable", firstByteLimitMs: limits?.firstByteMs,
     idleLimitMs: limits?.idleMs, totalLimitMs: limits?.totalMs };
