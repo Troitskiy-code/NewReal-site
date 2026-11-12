@@ -1504,6 +1504,8 @@
     "model006": "A reliable style with clear, focused reasoning.",
     "model007": "Realistic scenes and fewer invented details.",
     "model008": "For understanding context and building worlds.",
-    "model009": "For complex reasoning and detailed scenarios."
+    "model009": "For complex reasoning and detailed scenarios.",
+    "moreActions": "More actions",
+    "priceVC": "{{price}} VC"
   }
 }

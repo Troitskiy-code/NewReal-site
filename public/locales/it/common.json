@@ -1513,6 +1513,8 @@
     "model006": "Uno stile affidabile con un ragionamento chiaro e mirato.",
     "model007": "Scene realistiche e meno dettagli inventati.",
     "model008": "Per comprendere il contesto e costruire mondi.",
-    "model009": "Per ragionamenti complessi e scenari dettagliati."
+    "model009": "Per ragionamenti complessi e scenari dettagliati.",
+    "moreActions": "Altre azioni",
+    "priceVC": "{{price}} VC"
   }
 }

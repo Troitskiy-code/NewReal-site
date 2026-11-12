@@ -2,10 +2,11 @@
 
 import { useTranslation } from "react-i18next";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
-import { LuBookOpen, LuImagePlus, LuMic, LuSquare } from "react-icons/lu";
+import { LuBookOpen, LuImagePlus, LuMic, LuPlus, LuSquare } from "react-icons/lu";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { STORY_SCENE_PRICE_VC } from "@/lib/storySceneShared";
 import { VOICE_INPUT_SECONDS } from "@/lib/voiceInput";
 
 const COMPOSER_MAX_LINES = 5;
@@ -27,19 +28,15 @@ function resizeComposer(el: HTMLTextAreaElement | null) {
   el.style.overflowY = el.scrollHeight > maxHeight + 1 ? "auto" : "hidden";
 }
 
-function ChatGuide({ billingNote }: { billingNote?: string }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const guideId = useId();
-
+/** Closes a popover on a press outside `root` or on Escape. */
+function useDismiss(open: boolean, root: React.RefObject<HTMLElement | null>, close: (byKey: boolean) => void) {
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+      if (root.current && !root.current.contains(event.target as Node)) close(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") close(true);
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -47,13 +44,32 @@ function ChatGuide({ billingNote }: { billingNote?: string }) {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, root, close]);
+}
+
+/** The writing guide. Desktop shows its own book button; on phones it opens from the composer's "+" menu. */
+function ChatGuide({ billingNote, open, onOpenChange, showTrigger }: {
+  billingNote?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  showTrigger: boolean;
+}) {
+  const { t } = useTranslation();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const guideId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => onOpenChange(false), [onOpenChange]);
+  useDismiss(open, rootRef, close);
+  // Opened from the menu, the guide takes focus so screen readers announce it.
+  useEffect(() => {
+    if (open && !showTrigger) panelRef.current?.focus();
+  }, [open, showTrigger]);
 
   return (
-    <div ref={rootRef} className="shrink-0">
-      <button
+    <div ref={rootRef} className={showTrigger ? "shrink-0" : "contents"}>
+      {showTrigger && <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => onOpenChange(!open)}
         aria-expanded={open}
         aria-controls={guideId}
         aria-label={t("chatGuide.title")}
@@ -63,11 +79,15 @@ function ChatGuide({ billingNote }: { billingNote?: string }) {
         }`}
       >
         <LuBookOpen size={18} aria-hidden />
-      </button>
+      </button>}
       <div
+        ref={panelRef}
         id={guideId}
         hidden={!open}
-        className="absolute bottom-full right-0 z-30 mb-2 w-full max-w-xs rounded-xl border border-divider bg-bg-card px-3 py-2 text-xs leading-relaxed text-secondary-text shadow-xl"
+        tabIndex={showTrigger ? undefined : -1}
+        role={showTrigger ? undefined : "dialog"}
+        aria-label={showTrigger ? undefined : t("chatGuide.title")}
+        className="absolute bottom-full right-0 z-30 mb-2 w-full max-w-xs rounded-xl border border-divider bg-bg-card px-3 py-2 text-xs leading-relaxed text-secondary-text shadow-xl focus:outline-none"
       >
         <h2 className="font-semibold text-primary-text">{t("chatGuide.title")}</h2>
         <p className="mt-1">{t("chatGuide.action")}</p>
@@ -75,6 +95,80 @@ function ChatGuide({ billingNote }: { billingNote?: string }) {
         <p>{t("chatGuide.dialogue")}</p>
         <code className="mt-2 block rounded-md bg-bg-page px-2 py-1 text-primary-text">{t("chatGuide.example")}</code>
         {billingNote && <p className="mt-2 border-t border-divider pt-2">{billingNote}</p>}
+      </div>
+    </div>
+  );
+}
+
+type MenuItem = { key: string; icon: React.ReactNode; label: string; price?: string; onSelect: () => void };
+
+/** Phone-only "+" menu that holds the composer's secondary actions, so the text field keeps the width. */
+function ComposerMenu({ items }: { items: MenuItem[] }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const close = useCallback((byKey: boolean) => {
+    setOpen(false);
+    if (byKey) triggerRef.current?.focus();
+  }, []);
+  useDismiss(open, rootRef, close);
+
+  useEffect(() => {
+    if (open) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [open]);
+
+  function onMenuKeyDown(event: React.KeyboardEvent) {
+    const entries = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    const index = entries.indexOf(document.activeElement as HTMLElement);
+    const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+    if (!step || !entries.length) return;
+    event.preventDefault();
+    entries[(index + step + entries.length) % entries.length].focus();
+  }
+
+  return (
+    <div ref={rootRef} className="shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-label={t("chatUi.moreActions")}
+        title={t("chatUi.moreActions")}
+        className={`flex h-11 w-11 items-center justify-center rounded-full border border-divider bg-bg-card transition-colors hover:text-white ${
+          open ? "text-white" : "text-secondary-text"
+        }`}
+      >
+        <LuPlus size={20} aria-hidden className={`transition-transform ${open ? "rotate-45" : ""}`} />
+      </button>
+      <div
+        ref={menuRef}
+        id={menuId}
+        role="menu"
+        aria-label={t("chatUi.moreActions")}
+        hidden={!open}
+        onKeyDown={onMenuKeyDown}
+        className="absolute bottom-full left-0 z-30 mb-2 w-72 max-w-full overflow-hidden rounded-xl border border-divider bg-bg-card py-1 shadow-xl"
+      >
+        {items.map(item => (
+          <button
+            key={item.key}
+            type="button"
+            role="menuitem"
+            tabIndex={-1}
+            onClick={() => { setOpen(false); triggerRef.current?.focus(); item.onSelect(); }}
+            className="flex min-h-[44px] w-full items-center gap-3 px-3 py-2 text-left text-sm leading-snug text-primary-text transition-colors hover:bg-bg-card-hover focus:bg-bg-card-hover focus:outline-none"
+          >
+            <span className="flex w-5 shrink-0 justify-center text-secondary-text">{item.icon}</span>
+            <span className="min-w-0 flex-1 break-words">{item.label}</span>
+            {item.price && <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary-soft">{item.price}</span>}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -121,6 +215,20 @@ export default function ChatComposer({
   const recording = voice.phase === "recording";
   const voiceStatus = voice.error ? t(`voiceInput.errors.${voice.error}`) : dictating
     ? t(`voiceInput.${voice.phase}`, { seconds: VOICE_INPUT_SECONDS }) : null;
+  const voiceAvailable = voiceInputEnabled && voice.supported;
+  const [guideOpen, setGuideOpen] = useState(false);
+  // On phones the slot inside the field is the mic while the field is empty and the send button once there is text.
+  const inlineMic = voiceAvailable && (dictating || !value.trim());
+  const voiceLabel = t(recording ? "voiceInput.stop" : "voiceInput.start");
+  const toggleVoice = () => (recording ? voice.stop() : void voice.start());
+  const menuItems: MenuItem[] = [
+    ...(onOpenSceneImage ? [{ key: "scene", icon: <LuImagePlus size={18} aria-hidden />, label: t("storyScene.title"),
+      price: t("chatUi.priceVC", { price: STORY_SCENE_PRICE_VC }), onSelect: onOpenSceneImage }] : []),
+    // With text in the field the inline slot sends, so dictation stays reachable from the menu.
+    ...(voiceAvailable && !inlineMic && !disabled ? [{ key: "voice", icon: <LuMic size={18} aria-hidden />,
+      label: t("voiceInput.start"), onSelect: () => void voice.start() }] : []),
+    { key: "guide", icon: <LuBookOpen size={18} aria-hidden />, label: t("chatGuide.title"), onSelect: () => setGuideOpen(true) },
+  ];
 
   useEffect(() => {
     const mq = window.matchMedia(DESKTOP_MQ);
@@ -143,6 +251,7 @@ export default function ChatComposer({
       className="chat-form relative mx-auto flex w-full max-w-3xl items-end gap-2"
       data-metrika="chat-form"
     >
+      {isDesktop ? null : <ComposerMenu items={menuItems} />}
       <div className="min-w-0 flex-1">
         <div style={{ position: "relative", lineHeight: 0 }}>
           <textarea
@@ -165,23 +274,32 @@ export default function ChatComposer({
             }`}
             disabled={disabled}
           />
-          {isDesktop ? null : (
+          {isDesktop ? null : inlineMic ? (
+            <button
+              type="button"
+              aria-label={voiceLabel}
+              aria-describedby={voiceStatus ? voiceStatusId : undefined}
+              title={voiceLabel}
+              disabled={disabled || (dictating && !recording)}
+              onClick={toggleVoice}
+              className="group absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center rounded-full disabled:opacity-50"
+            >
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${recording
+                ? "bg-red-500/15 text-red-400" : "text-secondary-text group-hover:text-white"}`}>
+                {recording ? <LuSquare size={16} aria-hidden /> : <LuMic size={19} aria-hidden />}
+              </span>
+            </button>
+          ) : (
             <button
               type="submit"
               data-metrika="chat-send"
               disabled={!sendEnabled}
               aria-label={t("chatUi.text054")}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-all hover:bg-primary-hover active:scale-[0.98] disabled:bg-primary/50"
-              style={{
-                position: "absolute",
-                right: 6,
-                top: "50%",
-                height: 32,
-                width: 32,
-                marginTop: -16,
-              }}
+              className="group absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center rounded-full"
             >
-              <FaPaperPlane className="block text-[13px]" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white transition-all group-hover:bg-primary-hover group-active:scale-[0.98] group-disabled:bg-primary/50">
+                <FaPaperPlane className="block text-[13px]" />
+              </span>
             </button>
           )}
         </div>
@@ -193,24 +311,24 @@ export default function ChatComposer({
             className="shrink-0 font-semibold text-secondary-text hover:text-white">{t("voiceInput.cancel")}</button>}
         </div>
       )}
-      {onOpenSceneImage && (
+      {isDesktop && onOpenSceneImage && (
         <button type="button" onClick={onOpenSceneImage} aria-label={t("storyScene.title")} title={t("storyScene.title")}
           className="flex h-11 w-9 shrink-0 items-center justify-center rounded-full text-secondary-text transition-colors hover:text-white">
           <LuImagePlus size={19} aria-hidden />
         </button>
       )}
-      {voiceInputEnabled && voice.supported && (
-        <button type="button" aria-label={t(recording ? "voiceInput.stop" : "voiceInput.start")}
+      {isDesktop && voiceAvailable && (
+        <button type="button" aria-label={voiceLabel}
           aria-describedby={voiceStatus ? voiceStatusId : undefined}
-          title={t(recording ? "voiceInput.stop" : "voiceInput.start")}
+          title={voiceLabel}
           disabled={disabled || (dictating && !recording)}
-          onClick={() => recording ? voice.stop() : void voice.start()}
+          onClick={toggleVoice}
           className={`flex h-11 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${recording
             ? "bg-red-500/15 text-red-400" : "text-secondary-text hover:text-white"}`}>
           {recording ? <LuSquare size={17} aria-hidden /> : <LuMic size={19} aria-hidden />}
         </button>
       )}
-      <ChatGuide billingNote={note} />
+      <ChatGuide billingNote={note} open={guideOpen} onOpenChange={setGuideOpen} showTrigger={isDesktop} />
       {isDesktop ? (
         <button
           type="submit"

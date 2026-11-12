@@ -1522,6 +1522,8 @@
     "model006": "Niezawodny styl z jasnym, skoncentrowanym rozumowaniem.",
     "model007": "Realistyczne sceny i mniej wymyślonych szczegółów.",
     "model008": "Do zrozumienia kontekstu i budowania światów.",
-    "model009": "Dla złożonego rozumowania i szczegółowych scenariuszy."
+    "model009": "Dla złożonego rozumowania i szczegółowych scenariuszy.",
+    "moreActions": "Więcej działań",
+    "priceVC": "{{price}} VC"
   }
 }

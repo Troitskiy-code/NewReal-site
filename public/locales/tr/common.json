@@ -1504,6 +1504,8 @@
     "model006": "Net, odaklı akıl yürütme ile güvenilir bir tarz.",
     "model007": "Gerçekçi sahneler ve daha az uydurulmuş detay.",
     "model008": "Bağlamı anlama ve dünyalar inşa etme.",
-    "model009": "Karmaşık akıl yürütme ve ayrıntılı senaryolar için."
+    "model009": "Karmaşık akıl yürütme ve ayrıntılı senaryolar için.",
+    "moreActions": "Diğer işlemler",
+    "priceVC": "{{price}} VC"
   }
 }

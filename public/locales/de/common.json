@@ -1504,6 +1504,8 @@
     "model006": "Ein zuverlässiger Stil mit klarer, fokussierter Argumentation.",
     "model007": "Realistische Szenen und weniger erfundene Details.",
     "model008": "Um Zusammenhänge zu verstehen und Welten zu bauen.",
-    "model009": "Für komplexe Argumentation und detaillierte Szenarien."
+    "model009": "Für komplexe Argumentation und detaillierte Szenarien.",
+    "moreActions": "Weitere Aktionen",
+    "priceVC": "{{price}} VC"
   }
 }
