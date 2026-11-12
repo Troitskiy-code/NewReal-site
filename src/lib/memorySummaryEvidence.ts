@@ -2,13 +2,18 @@ import { stripMemoryControlInstructions } from "./memorySafety";
 import { withoutChatThoughts } from "./chatMessageMarkup";
 import { MemorySummaryError, OUTCOME_ITEM_MAX_CHARS, PAST_BUDGET_SHARE, SUMMARY_ITEM_MAX_CHARS, pastItemLimit, type MemorySummaryDetail,
   type MemorySummaryItemReason } from "./memorySummaryPolicy";
-import { MEMORY_STATUSES, RETELLING_TERM_SHARE, STATUS_LABELS, hasRoleplayVoice, inferMemoryStatus, isSameMemoryName, knownMemoryNames, retellingRejection, sameMemoryMeaning,
+import { MEMORY_STATUSES, RETELLING_TERM_SHARE, STATUS_LABELS, hasRoleplayVoice, inferMemoryStatus, isSameMemoryName, knownMemoryNames, nameCaseForms, retellingRejection, sameMemoryMeaning,
   type MemoryStatus, type RetellingRejection } from "./memoryNarrative";
 
 type Author = "user" | "character" | "memory";
-/** `past`: prose of the previous summary's «Предыстория», i.e. a retelling that already passed this check. */
+/** `past`: prose of the previous summary's «Предыстория», i.e. a retelling that already passed this check.
+ * `scene`: where the turn took place and who was near the hero, given by the server, not said by anyone. */
 export type SummarySource = { id: string; author: Author; text: string; status?: MemoryStatus;
-  speaker?: "user" | "character"; turn?: number; past?: boolean };
+  speaker?: "user" | "character"; turn?: number; past?: boolean; scene?: boolean };
+/** Where a user turn took place and who was near the hero (the turn presence of memory v2). */
+export type SummaryScene = { place: string; present: string[] };
+export const summarySceneLine = (scene: SummaryScene) =>
+  `Сцена: ${scene.place || "место не названо"}; при этом были: ${scene.present.length ? scene.present.join(", ") : "только герой"}`;
 const LABELS: Record<Author, string> = { user: "Пользователь", character: "Персонаж", memory: "Из прежней сводки" };
 export const OUTCOMES_HEADING = "Ключевые итоги";
 /** Per-rule counters of refused retelling sentences: logs show which rule refuses, never the text. */
@@ -33,6 +38,7 @@ export const GROUNDED_SUMMARY_RULES = `MEMORY_GROUNDED_SUMMARY_V1
 Не пиши «пользователь сказал / персонаж ответил», когда можно передать содержание; но сохраняй авторство обещаний и неподтверждённых заявлений.
 Один story item может содержать несколько коротких предложений с опорой на разные источники. Одно предложение — одно подтверждённое утверждение.
 Вместо «я/ты/мы», «это/там/он» без контекста называй участника, предмет или место, если они известны из источников.
+Источник «Сцена: …; при этом были: …» говорит, где прошли следующие реплики и кто был рядом с героем; сам он не событие и отдельно не пересказывается. Тайну, признание или сведение, которое узнали не все, пересказывай с тем, кому и при ком оно сказано: «В медотсеке Лейла рассказала только Каю, что у неё есть брат-близнец».
 Не превращай обычное развитие «предложили → решили → выполнили» в противоречие. Незавершённое и отменённое не объявляй выполненным.
 После предыстории добавляй state/plans только для существенного текущего положения и ещё открытых вопросов, без повторения истории.
 При малом бюджете один story item должен передавать главное: что произошло и что остаётся нерешённым.
@@ -64,7 +70,7 @@ export const CHAPTER_SUMMARY_RULES = GROUNDED_SUMMARY_RULES
     + "В главе важнее всего повороты: признания, решения, изменения отношений, первые разы, конфликты, обещания и открытые линии; быт, жесты и обстановку пропускай.")
   .replace(/^При обновлении сожми прежнюю предысторию.*$/mu,
     "Источники прежней сводки — текущая ситуация, решения и планы: перенеси ещё действующие, закрой выполненные и отменённые, не дублируй.")
-  + `\nsection=outcomes — 0–3 ключевых итога новых сообщений, важных до конца истории. Обычно в главе 1–2 таких итога: если в новых сообщениях есть хоть одно из перечисленного ниже, запиши его. Итоги: кто кого нанял и зачем; гибель или уход персонажа; взятый, возвращённый или прощённый долг; сделка и её условия (что, куда, кому, за сколько, к какому сроку); раскрытая тайна, содержимое письма или находки и где она лежит; данное или нарушенное обещание; где теперь скрывается важный персонаж. Одна короткая фраза до 150 символов, с именами и числами из источников (числа не складывай), без быта, чувств и обстановки. Итог дополняет главу, а не заменяет её. Во входе outcomes — уже записанные итоги: не повторяй их; если новые сообщения меняют итог (долг возвращён, сделка выполнена), запиши новый итог. Нет таких итогов — не возвращай outcomes.`;
+  + `\nsection=outcomes — 0–3 ключевых итога новых сообщений, важных до конца истории. Обычно в главе 1–2 таких итога: если в новых сообщениях есть хоть одно из перечисленного ниже, запиши его. Итоги: кто кого нанял и зачем; гибель или уход персонажа; взятый, возвращённый или прощённый долг; сделка и её условия (что, куда, кому, за сколько, к какому сроку); раскрытая тайна и кому она раскрыта, содержимое письма или находки и где она лежит; данное или нарушенное обещание; где теперь скрывается важный персонаж. Одна короткая фраза до 150 символов, с именами и числами из источников (числа не складывай), без быта, чувств и обстановки. Итог дополняет главу, а не заменяет её. Во входе outcomes — уже записанные итоги: не повторяй их; если новые сообщения меняют итог (долг возвращён, сделка выполнена), запиши новый итог. Нет таких итогов — не возвращай outcomes.`;
 /** Compression of the key-outcomes list when it outgrows its share of the allowance. */
 export const OUTCOME_COMPRESSION_RULES = `MEMORY_OUTCOME_COMPRESSION_V1
 Источники — ключевые итоги ролевой истории в хронологическом порядке. Сократи список.
@@ -163,11 +169,14 @@ export function renderGroundedSummary(raw: string, sources: SummarySource[], max
   /** pinned: the compressed past of a merge, rendered first and fitted before new events. */
   type Row = { section: Section; text: string; status: MemoryStatus; author: string; order: number; pinned?: boolean };
   const rows: Row[] = [];
-  const memorySources = [...known.values()].filter(source => source.author === "memory");
+  // Scene lines are not a previous summary: a past item is never supported by them alone.
+  const memorySources = [...known.values()].filter(source => source.author === "memory" && !source.scene);
   const messageTexts = [...turns.values()].map(rows => normalizedSentence(rows.map(row => row.text).join(" ")));
   // Names may come from any part of the request: cited roleplay quotes are first person.
+  // A short name brings its case forms: «Каю», «Кая» for «Кай» were unknown names, and every sentence naming the
+  // hero «Кай Ортега» that way was refused, a confession made to him among them (summary eval 2026-11-12).
   const knownNames = [...knownMemoryNames([context, ...sources.map(source => source.text)].join("\n")),
-    ...knownMemoryNames([names.user, names.character].filter(Boolean).join(" "))];
+    ...knownMemoryNames([names.user, names.character].filter(Boolean).join(" "))].flatMap(nameCaseForms);
   const stats: SummaryRenderDiagnostics = { candidateCount: result.items.length, sourceCount: sources.length,
     unsupportedItemCount: 0, budgetRejectedCount: 0, fittedCount: 0, renderedUsage: 0, storedLimit: maxTokens,
     skippedItemCount: 0, skippedSourceLimitCount: 0, trimmedStoryCount: 0, rejectedSentenceCount: 0,
@@ -313,10 +322,17 @@ export const EXTRACTIVE_SUMMARY_RULES = `MEMORY_SUMMARY_SELECTION_V1
 Текст ответа и названия разделов приложение составит само из исходных цитат.`;
 
 /** Whole sentences/lines are supplied by the server; a model cannot cut away a negation. */
-export function makeSummarySources(messages: Array<{ role: string; content: string }>): SummarySource[] {
+export function makeSummarySources(messages: Array<{ role: string; content: string; scene?: SummaryScene }>): SummarySource[] {
   const rows: SummarySource[] = [];
+  let lastScene = "";
   for (const [turn, message] of messages.entries()) {
     const author: Author = message.role === "user" ? "user" : message.role === "assistant" ? "character" : "memory";
+    // A turn opens with its scene when the scene changed, so a retold secret can say who heard it: a chapter told
+    // every member of a group a confession made to the hero alone (handover 2026-11-09). Same turn: citing the
+    // message brings its scene.
+    const scene = author === "user" && message.scene ? stripMemoryControlInstructions(summarySceneLine(message.scene)) : "";
+    if (scene && scene !== lastScene) rows.push({ id: `s${rows.length + 1}`, author: "memory", text: scene, turn, scene: true });
+    if (scene) lastScene = scene;
     for (const text of withoutChatThoughts(stripMemoryControlInstructions(message.content)).split(/\r?\n|(?<=[.!?])\s+/u)) {
       if (text.trim().length < 3) continue;
       rows.push({ id: `s${rows.length + 1}`, author, text: text.trim(), turn });

@@ -4,7 +4,7 @@ import { stripMemoryControlInstructions } from "./memorySafety";
 import { localeDefinition, resolveLocale } from "./i18nConfig";
 import { withoutChatThoughts } from "./chatMessageMarkup";
 
-export const PROMPT_BUILDER_VERSION = "rp-v2.12";
+export const PROMPT_BUILDER_VERSION = "rp-v2.13";
 const SCENE_MARKUP = {
   ru: "Разделяй *действия*, 'мысли' и реплики. Если карточка или сцена предполагает скрытую реакцию твоего персонажа, покажи её даже в коротком ответе одной фразой от первого лица в одинарных кавычках. В звёздочках оставляй только то, что мог бы заметить другой участник: жест, движение, видимое выражение лица. Узнавание, сомнение, воспоминание и намерение выноси из звёздочек в отдельную мысль. Внутри мысли звёздочки не ставь. Реплики пиши обычным текстом, с тире или в двойных кавычках. Пример: *Леон закрывает окно.* 'Дождь смоет следы раньше рассвета.' — У вас есть плащ? Пометка '…' у пользователя означает невысказанную мысль. Герою пользователя мысли не дописывай. Персонажи не слышат чужих мыслей.",
   en: "Separate *actions*, 'thoughts', and spoken lines. When the card or scene calls for a private reaction from a character you play, show it as one short first-person sentence in single quotes, even in a brief reply. Use asterisks only for things another participant could notice, such as gestures, movement, or visible expressions. Put private recognition, doubts, memories, and intentions in a separate thought outside the asterisks. Keep asterisks out of thoughts. Write spoken lines as plain text or in double quotes. Example: *Leon closes the window.* 'The rain will wash away the tracks before dawn.' \"Do you have a coat?\" A '…' marker in a user's message is an unspoken thought. Never invent the user's hero's thoughts. Characters cannot hear anyone else's thoughts.",
@@ -112,7 +112,7 @@ const TURN_REMINDER = {
 — Каждый персонаж знает лишь то, что видел, слышал сам или знал заранее. Чужие тайны и события, при которых его не было, ему неизвестны.
 — Пометки [[Сцена: …]] после прошлых реплик пользователя говорят, где был герой и кто был рядом. Персонаж знает сказанное и сделанное только в сценах, где он был рядом, и то, что герой ему потом пересказал.
 — Перед каждой репликой NPC проверь: был ли он рядом, когда это говорилось или происходило? Если не был и герой ему этого не пересказал, NPC этого не знает: не упоминает, не намекает, не называет имён, сделок и чужих слов.
-— Пометка «(сцена: …; при этом были: …)» у события в памяти говорит, где и при ком это прозвучало. Названные и герой это знают и не отрицают; остальные не знают, пока им не расскажут.
+— Пометка «(сцена: …; при этом были: …)» у события или тайны в памяти говорит, где и при ком это прозвучало. Названные и герой это знают и не отрицают; остальные не знают, пока им не расскажут.
 — Если пользователь обращается к одному персонажу или просит остальных молчать, отвечает только он: остальные не говорят и не вмешиваются.
 — Прошлое бери из истории и памяти. Если пользователь вспоминает то, чего не было, персонаж не подтверждает это, а удивляется или поправляет.
 — Если пользователь написал короткую реплику или простое бытовое действие, ответ тоже короткий: один-два абзаца, говорит тот, к кому обратились. В остальных случаях не сокращай: пиши так же развёрнуто, как в прошлых ответах.
@@ -124,7 +124,7 @@ const TURN_REMINDER = {
 — Each character knows only what they saw, heard or knew beforehand. Others' secrets and scenes they missed are unknown to them.
 — The [[Сцена: …]] notes after past user lines say where the hero was and who was near. A character knows what was said and done only in scenes where they were near, and what the hero told them later.
 — Before every NPC line, check: was this NPC near when it was said or happened? If not, and the hero has not told them, the NPC does not know it: no mention, no hint, no names, deals or other people's words.
-— The note "(сцена: …; при этом были: …)" on a memory event says where and before whom it was said. Those named and the hero know it and do not deny it; others do not know it until they are told.
+— The note "(сцена: …; при этом были: …)" on a memory event or secret says where and before whom it was said. Those named and the hero know it and do not deny it; others do not know it until they are told.
 — If the user addresses one character or asks the others to stay silent, only that character answers: the others do not speak or interfere.
 — Take the past from the history and memory. If the user recalls something that never happened, the character does not confirm it but is surprised or corrects them.
 — If the user wrote a short line or a simple everyday action, the reply is short too: one or two paragraphs, and the one addressed answers. Otherwise do not shorten: write as fully as in earlier replies.

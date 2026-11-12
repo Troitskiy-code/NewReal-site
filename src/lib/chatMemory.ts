@@ -6,7 +6,7 @@ import { isSubscriptionActive } from "@/lib/verseChatEconomy";
 import { ensureMemoryHierarchyColumns } from "@/lib/ensureMemoryHierarchyColumns";
 import { errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
-import { makeSummarySources, participantNames, renderGroundedSummary, sourcesFromSummaries, type SummaryParticipants, type SummarySource } from "@/lib/memorySummaryEvidence";
+import { makeSummarySources, participantNames, renderGroundedSummary, sourcesFromSummaries, type SummaryParticipants, type SummaryScene, type SummarySource } from "@/lib/memorySummaryEvidence";
 import { summarySystemPrompt, writeSummaryChapter, type SummaryMode } from "@/lib/memorySummaryChapters";
 import { KieTextError, kieSummaryEnabled, requestKieSummary } from "@/lib/kieText";
 import { getSelectedChatPersona } from "@/lib/personaService";
@@ -18,7 +18,7 @@ import { withoutChatThoughts } from "./chatMessageMarkup";
 import { extraSummaryItems, groundedSummaryFormat, isDeferredSummaryFailure, MemorySummaryError, readSummaryResponse, summaryGenerationLimit } from "./memorySummaryPolicy";
 import { SUMMARY_SIZE_LIMIT_COOLDOWN_SECONDS, withSummaryRefreshLease } from "./memorySummaryRefresh";
 import { memoryV2Enabled } from "./memoryFacts";
-import { lockMemoryThread } from "./memoryV2";
+import { loadTurnPresence, lockMemoryThread } from "./memoryV2";
 import {
   fetchEmbeddings,
   hasDistinctKeyTokens,
@@ -123,10 +123,21 @@ function summaryInputTooLarge(input: string, tokenLimit = MAX_SUMMARY_INPUT_TOKE
 }
 
 type DialogMessage = {
+  id?: string;
   role: string;
   content: string;
   createdAt?: Date | string;
+  /** A user turn's scene: where it took place and who was near the hero. */
+  scene?: SummaryScene;
 };
+
+/** User turns get their scene from memory v2, for who-heard-what in the retelling. A failure only loses the scenes. */
+async function withTurnScenes(scope: ChatScope, messages: DialogMessage[]): Promise<DialogMessage[]> {
+  const ids = messages.flatMap(message => message.role === "user" && message.id ? [message.id] : []);
+  const scenes = await loadTurnPresence(scope.threadId, ids)
+    .catch(error => { errorLog("MemorySummary", "turn scenes unavailable", toSafeDiagnostic(error)); return new Map<string, SummaryScene>(); });
+  return scenes.size ? messages.map(message => message.id && scenes.has(message.id) ? { ...message, scene: scenes.get(message.id) } : message) : messages;
+}
 
 type SummarySections = {
   story?: string;
@@ -758,7 +769,7 @@ async function createArcSummary(
 
   const coreText = await loadCoreMemoryText(scope);
   const revision = snapshotRevision ?? (memoryV2Enabled() ? (await prisma.chatThread.findUniqueOrThrow({ where: { id: scope.threadId }, select: { memoryRevision: true } })).memoryRevision : undefined);
-  messagesToSummarize = fitSummaryMessages(messagesToSummarize, coreText);
+  messagesToSummarize = fitSummaryMessages(await withTurnScenes(scope, messagesToSummarize), coreText);
   const dialogText = formatDialogForSummary(messagesToSummarize);
   const tokens = countTokens(dialogText);
   const names = await summaryParticipants(scope, coreText);
@@ -806,7 +817,7 @@ async function updateArcWithChapter(
   const state = memoryV2Enabled() ? await prisma.chatThread.findUniqueOrThrow({ where: { id: scope.threadId },
     select: { memoryRevision: true, memorySummaryInvalidated: true } }) : null;
   const sourceSummary = state?.memorySummaryInvalidated ? "" : existingSummary;
-  chapterMessages = fitSummaryMessages(chapterMessages, coreText, sourceSummary);
+  chapterMessages = fitSummaryMessages(await withTurnScenes(scope, chapterMessages), coreText, sourceSummary);
   const chapterText = formatDialogForSummary(chapterMessages);
   const chapterTokens = countTokens(chapterText);
   const arcTokens = countTokens(existingSummary);
@@ -879,7 +890,7 @@ async function refreshChatMemorySummary(
   const allMessages = await prisma.message.findMany({
     where: { ...messageScopeWhere(scope), ...(coverage ? { createdAt: { gt: coverage } } : {}) },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { role: true, content: true, createdAt: true },
+    select: { id: true, role: true, content: true, createdAt: true },
   });
 
   if (existingMemory) {
@@ -1015,7 +1026,7 @@ export async function forceRefreshMemorySummary(
   const allMessages = await prisma.message.findMany({
     where: messageScopeWhere(scope),
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { role: true, content: true, createdAt: true },
+    select: { id: true, role: true, content: true, createdAt: true },
   });
 
   if (allMessages.length === 0) {
@@ -1165,10 +1176,10 @@ export async function rebuildMemorySummaryStep(
   const rows = await prisma.message.findMany({
     where: { ...messageScopeWhere(scope), createdAt: { lte: new Date(cursor.through), ...(cursor.after ? { gt: new Date(cursor.after) } : {}) } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: MAX_SUMMARY_CHUNK_MESSAGES + 1,
-    select: { role: true, content: true, createdAt: true },
+    select: { id: true, role: true, content: true, createdAt: true },
   });
   // Preserve timestamp coverage semantics, including equal-time groups. Bound input before the AI call.
-  const all = takeSummaryChunk(rows, 0);
+  const all = takeSummaryChunk(await withTurnScenes(scope, rows), 0);
   const chunkFits = (candidate: DialogMessage[]) => !summaryInputTooLarge(JSON.stringify(mergeSources(cursor.draft, candidate)), MAX_SUMMARY_INPUT_TOKENS - 2000);
   let chunk = all;
   while (chunk.length && !chunkFits(chunk)) {

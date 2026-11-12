@@ -1097,6 +1097,37 @@ try {
     await db.$transaction(tx => memory.invalidateMessageMemory(tx, f.scope, t.assistant.id));
     assert.deepEqual((await legacy.loadMemoryCandidates(f.scope)).episodic.map(item => item.id), [old.id]);
   });
+  await check('a secret in the core carries where and before whom it was revealed; a regenerated reply drops it', async () => {
+    // Open item of the 2026-11-09 handover: an event said who heard it, a secret in the core did not, so in a group
+    // every member read Лейла's twin brother as known to them.
+    process.env.MEMORY_V2_ENABLED = '1';
+    const f = await setup();
+    const t = await turn(f, 'Остаюсь с Лейлой в медотсеке.', 'Лейла тихо признаётся: у неё есть брат-близнец на станции «Кассиопея», и никто на корабле об этом не знает.');
+    await run(f, JSON.stringify({ facts: [delta('скрывает брата-близнеца на станции «Кассиопея»', 's2', 'secrets', 'npc:Лейла')], events: [],
+      presence: { place: 'медотсек', present: ['Лейла'] } }));
+    // A secret from a turn without presence (stored before the notes) and a pinned one stay as written.
+    await turn(f, 'Иду в рубку.', 'Ирма признаётся, что продала старый маршрут контрабандистам.');
+    await run(f, output([delta('продала старый маршрут контрабандистам', 's2', 'secrets', 'npc:Ирма')]));
+    const core = await memory.readFactCore(f.scope);
+    assert.ok(core.includes('- Тайны: скрывает брата-близнеца на станции «Кассиопея» (сцена: медотсек; при этом были: Лейла)'), core);
+    assert.ok(core.includes('- Тайны: продала старый маршрут контрабандистам\n') || core.endsWith('- Тайны: продала старый маршрут контрабандистам'), core);
+    // The mirror stays plain: it is what the memory editor shows and saves back as facts.
+    const mirror = (await db.coreMemory.findUnique({ where: { threadId: f.scope.threadId } })).content;
+    assert.ok(!mirror.includes('при этом были'), mirror);
+    // The summary model gets the scene of each turn too, once per change of scene.
+    provider.summaryText = null;
+    await summaries.forceRefreshMemorySummary(f.scope, 'synthetic_memory_key', f.user);
+    const sources = JSON.parse(provider.calls.filter(call => call.kind === 'summary').at(-1).prompt.split('\n').filter(line => line.startsWith('{"sources"')).at(-1)).sources;
+    assert.deepEqual(sources.filter(source => source.text.startsWith('Сцена:')).map(source => source.text), ['Сцена: медотсек; при этом были: Лейла']);
+    assert.equal(sources[0].text, 'Сцена: медотсек; при этом были: Лейла', 'the scene opens its turn');
+    await db.$transaction(tx => memory.invalidateMessageMemory(tx, f.scope, t.assistant.id));
+    assert.ok(!(await memory.readFactCore(f.scope)).includes('при этом были'));
+    // Only secrets get the note: a debt or a look is not something others cannot know.
+    assert.equal(facts.renderFactCore([
+      { subject: 'npc:Тоби', key: 'debts', value: 'должен Каю 200 кредитов', pinned: false, seq: 3, scene: { place: 'бар', present: ['Тоби'] } },
+      { subject: 'npc:Тоби', key: 'secrets', value: 'боится космоса', pinned: false, seq: 3, scene: { place: '', present: [] } },
+    ]), '## Тоби\n- Долги и обязательства: должен Каю 200 кредитов\n- Тайны: боится космоса (при этом были: только герой)');
+  });
   await check('a turn keeps who was near the hero; a regenerated reply drops it', async () => {
     // Owner's Witcher story 12 (2026-10-29): Трисс knew the informer's request, Йеннифэр the old woman's words.
     process.env.MEMORY_V2_ENABLED = '1';

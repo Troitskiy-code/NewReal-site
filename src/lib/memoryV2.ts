@@ -42,6 +42,13 @@ export async function loadJobPresence(threadId: string, jobIds: string[]): Promi
     orderBy: { seq: "asc" }, select: { after: true, jobId: true } });
   return new Map(rows.flatMap(row => row.jobId ? [[row.jobId, row.after as unknown as TurnPresence] as const] : []));
 }
+/** Presence of the turns with the given sequence numbers: a fact keeps the seq of the turn that stored it. */
+async function loadSeqPresence(threadId: string, seqs: number[]): Promise<Map<number, TurnPresence>> {
+  if (!seqs.length) return new Map();
+  const rows = await prisma.memoryChange.findMany({ where: { threadId, subject: PRESENCE_SUBJECT, invalidated: false, seq: { in: seqs } },
+    orderBy: { createdAt: "asc" }, select: { after: true, seq: true } });
+  return new Map(rows.map(row => [row.seq, row.after as unknown as TurnPresence] as const));
+}
 export async function lockMemoryThread(tx: Tx, threadId: string) {
   await tx.$queryRaw`SELECT id FROM "ChatThread" WHERE id = ${threadId} FOR UPDATE`;
 }
@@ -146,7 +153,13 @@ export async function readFactCore(scope: ChatScope, query = ""): Promise<string
     terms.length ? prisma.memoryFact.findMany({ where: { ...where, OR: terms.map(term => ({ value: { contains: term, mode: "insensitive" as const } })) },
       orderBy: { seq: "desc" }, take: 80 }) : Promise.resolve([]),
   ]);
-  const facts = [...new Map(rows.flat().map(fact => [fact.id, fact])).values()];
+  const found = [...new Map(rows.flat().map(fact => [fact.id, fact])).values()];
+  // Where and before whom a secret was revealed comes from its turn. Manual and backfilled facts have no turn of
+  // their own (a manual edit takes the next turn's seq). A failure only loses the notes.
+  const told = (fact: typeof found[number]) => fact.key === "secrets" && !fact.pinned && ["user_msg", "assistant_msg"].includes(fact.source);
+  const scenes = await loadSeqPresence(scope.threadId, [...new Set(found.filter(told).map(fact => fact.seq))])
+    .catch(error => { errorLog("Memory", "secret presence unavailable", toSafeDiagnostic(error)); return new Map<number, TurnPresence>(); });
+  const facts = found.map(fact => told(fact) && scenes.has(fact.seq) ? { ...fact, scene: scenes.get(fact.seq) } : fact);
   const kept: typeof facts = [];
   for (const fact of rankFacts(facts, query)) if (renderFactCore([...kept, fact]).length <= 6000) kept.push(fact);
   return renderFactCore(kept);

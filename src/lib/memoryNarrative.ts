@@ -90,6 +90,14 @@ export function isSameMemoryName(left: string, right: string): boolean {
 export function knownMemoryNames(text: string): string[] {
   return [...names(text)];
 }
+/** A short name with its case forms for the retelling checks, which match long names by stem only:
+ * «Кай» → «Каю», «Кая»; «Ян» → «Яну». Longer names are returned as they are. */
+export function nameCaseForms(name: string): string[] {
+  if (name.length > 4) return [name];
+  const stem = name.replace(/[йьаяо]$/u, "");
+  const endings = /й$/u.test(name) ? ["я", "ю", "ем", "е"] : /[ая]$/u.test(name) ? ["ы", "и", "е", "у", "ю", "ой", "ей"] : ["а", "у", "ом", "е"];
+  return [name, ...endings.map(ending => stem + ending)];
+}
 
 /**
  * One sentence of a retelling. Roleplay evidence is first person and rarely names anyone,

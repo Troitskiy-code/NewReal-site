@@ -253,4 +253,44 @@ await check('a grown allowance keeps more chapters, but a new chapter is still w
   assert.ok(base.calls.some(call => call.mode === 'compress'), 'the base allowance compresses the oldest chapters');
 });
 
+await check('a chapter sees where each turn took place and who was near, so a retold secret says who heard it', async () => {
+  // Open item of the 2026-11-09 handover: chapters retold a confession made to the hero alone with no audience,
+  // and in a group every member read it as known to them.
+  const messages = [
+    { role: 'user', content: 'Остаюсь с Леной в медотсеке.', scene: { place: 'медотсек', present: ['Лена'] } },
+    { role: 'assistant', content: 'Лена тихо признаётся Артёму, что у неё есть брат-близнец на станции «Кассиопея».' },
+    { role: 'user', content: 'Спрашиваю, кто ещё знает.', scene: { place: 'медотсек', present: ['Лена'] } },
+    { role: 'assistant', content: 'Лена говорит, что никто на корабле не знает.' },
+    { role: 'user', content: 'Иду в рубку.', scene: { place: 'рубка', present: ['Ирма', 'Тоби'] } },
+    { role: 'assistant', content: 'Ирма и Тоби спорят о курсе.' },
+  ];
+  const sources = evidence.makeSummarySources(messages);
+  const scenes = sources.filter(source => source.scene);
+  // One line per change of scene, opening its turn; it is the server's, not anyone's words.
+  assert.deepEqual(scenes.map(source => source.text), ['Сцена: медотсек; при этом были: Лена', 'Сцена: рубка; при этом были: Ирма, Тоби']);
+  assert.deepEqual(scenes.map(source => [source.author, source.turn]), [['memory', 0], ['memory', 4]]);
+  assert.equal(sources[0].scene, true);
+  assert.equal(evidence.summarySceneLine({ place: '', present: [] }), 'Сцена: место не названо; при этом были: только герой');
+  const provider = stub({ chapter: JSON.stringify({ items: [{ ...story('В медотсеке Лена рассказала только Артёму, что у неё есть брат-близнец на станции «Кассиопея».'), sources: ['s1', 's3'] },
+    { section: 'outcomes', text: 'Лена раскрыла только Артёму в медотсеке тайну брата-близнеца на «Кассиопее».', status: 'reported', sources: ['s1', 's3'] }] }) });
+  const summary = await chapters.writeSummaryChapter('', messages, context(provider.ask));
+  assert.ok(provider.calls[0].input.sources.some(source => source.text === 'Сцена: медотсек; при этом были: Лена'), 'the scene reaches the chapter model');
+  assert.ok(summary.includes('В медотсеке Лена рассказала только Артёму, что у неё есть брат-близнец'), summary);
+  assert.ok(summary.includes('- Лена раскрыла только Артёму в медотсеке тайну брата-близнеца'), summary);
+  // A scene line is no event of its own: copied into the chapter it is refused, and it never supports a past.
+  const copied = stub({ chapter: JSON.stringify({ items: [{ ...story('Сцена: рубка; при этом были: Ирма, Тоби.'), sources: ['s7'] }] }) });
+  await assert.rejects(chapters.writeSummaryChapter('', messages, context(copied.ask)), /MEMORY_SUMMARY/);
+  for (const rules of [evidence.GROUNDED_SUMMARY_RULES, evidence.CHAPTER_SUMMARY_RULES]) assert.match(rules, /при этом были: …» говорит, где прошли/);
+  assert.match(evidence.CHAPTER_SUMMARY_RULES, /раскрытая тайна и кому она раскрыта/);
+  // A short hero name in another case is the hero, not an unknown name: «призналась Каю» was refused for «Кай Ортега»,
+  // and the confession left the summary whatever its notes (summary eval 2026-11-12).
+  const kai = [{ role: 'user', content: 'Остаюсь с Лейлой в медотсеке.', scene: { place: 'медотсек', present: ['Лейла Нур'] } },
+    { role: 'assistant', content: 'Лейла Нур тихо признаётся: у меня есть сестра-близнец Сара на станции «Кассиопея». Иди отдыхай, Кай.' }];
+  const confession = stub({ chapter: JSON.stringify({ items: [{ ...story('В медотсеке Лейла Нур призналась Каю, что у неё есть сестра-близнец Сара на станции «Кассиопея».'), sources: ['s1', 's3'] }] }) });
+  const told = await chapters.writeSummaryChapter('', kai, { ...context(confession.ask), core: '## Пользователь\n- Имя: Кай Ортега', names: { user: 'Кай Ортега' } });
+  assert.ok(told.includes('Лейла Нур призналась Каю'), told);
+  // Without scenes the sources are as before.
+  assert.ok(!evidence.makeSummarySources(messages.map(({ scene: _scene, ...message }) => message)).some(source => source.scene));
+});
+
 console.log(`Memory chapters: ${passed} checks passed`);

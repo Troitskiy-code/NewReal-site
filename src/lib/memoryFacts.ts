@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { parseCoreSections, sanitizeCoreMemory } from "./coreMemorySanitize";
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { withoutChatThoughts } from "./chatMessageMarkup";
-import { evidenceNumbers, inferMemoryStatus, isSameMemoryName, memoryNumbers, memoryTerms, retellingNumbersSupported, retellingRejection, RETELLING_TERM_SHARE, memoryOverlap, type MemoryStatus } from "./memoryNarrative";
+import { evidenceNumbers, inferMemoryStatus, isSameMemoryName, memoryNumbers, nameCaseForms, memoryTerms, retellingNumbersSupported, retellingRejection, RETELLING_TERM_SHARE, memoryOverlap, type MemoryStatus } from "./memoryNarrative";
 
 export const memoryV2Enabled = () => ["1", "true"].includes(process.env.MEMORY_V2_ENABLED ?? "");
 const SLOTS: Record<string, { label: string; multi?: boolean }> = {
@@ -594,15 +594,6 @@ export function turnPresenceNote(presence: TurnPresence): string {
   return `[[Сцена: ${presence.place || "место не названо"}. Рядом с героем: ${presence.present.length ? presence.present.join(", ") : "никого"}]]`;
 }
 
-/** A short name with its case forms for the event retelling check, which matches long names by stem only:
- * «Кай» → «Каю», «Кая»; «Ян» → «Яну». Longer names are returned as they are. */
-function nameCaseForms(name: string): string[] {
-  if (name.length > 4) return [name];
-  const stem = name.replace(/[йьаяо]$/u, "");
-  const endings = /й$/u.test(name) ? ["я", "ю", "ем", "е"] : /[ая]$/u.test(name) ? ["ы", "и", "е", "у", "ю", "ой", "ей"] : ["а", "у", "ом", "е"];
-  return [name, ...endings.map(ending => stem + ending)];
-}
-
 /** The note after a memory event: where and before whom it was said («(сцена: порт; при этом были: Йеннифэр)»). */
 export function eventPresenceNote(presence: TurnPresence): string {
   const who = `при этом были: ${presence.present.length ? presence.present.join(", ") : "только герой"}`;
@@ -817,7 +808,8 @@ export function coreToFacts(content: string, manual = false): FactDelta[] {
     }));
 }
 
-export type RenderableFact = Pick<FactDelta, "subject" | "key" | "value" | "pinned"> & { seq: number };
+/** `scene`: where and before whom the fact was said, shown after a secret only. */
+export type RenderableFact = Pick<FactDelta, "subject" | "key" | "value" | "pinned"> & { seq: number; scene?: TurnPresence };
 export function rankFacts<T extends RenderableFact>(facts: T[], query = ""): T[] {
   const essential = (fact: RenderableFact) => ["name", "age", "city", "place", "occupation", "relationship.status"].includes(fact.key);
   return [...facts].sort((a, b) => Number(b.pinned) - Number(a.pinned)
@@ -886,7 +878,10 @@ export function renderFactCore(stored: RenderableFact[]): string {
     const heading = fact.subject === "user" ? "Пользователь" : fact.subject === "character" ? "Персонаж"
       : fact.subject === "relationship" ? "Отношения" : fact.subject.startsWith("npc:") ? capitalize(fact.subject.slice(4).trim()) : "Мир и заметки";
     const label = SLOTS[fact.key]?.label;
-    const line = `- ${label ? `${label}: ` : ""}${value}`;
+    // A secret says who heard it, like an event: in a group every member read a confession made to the hero alone
+    // as known to them (handover 2026-11-09).
+    const note = fact.key === "secrets" && fact.scene ? ` ${eventPresenceNote(fact.scene)}` : "";
+    const line = `- ${label ? `${label}: ` : ""}${value}${note}`;
     sections.set(heading, [...(sections.get(heading) ?? []), line]);
   }
   if (bare.size) sections.set("Другие персонажи", [`- ${[...bare].map(subject => subject.slice(4)).join(", ")}`]);

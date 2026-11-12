@@ -217,7 +217,8 @@ async function runModel(id, messages, core, names, maxTokens) {
 }
 
 const story = JSON.parse(readFileSync(storyPath, 'utf8'));
-const all = story.chat.messages.map(row => ({ role: row.role, content: row.content, createdAt: row.createdAt }))
+// `scene` on a user message: where the turn took place and who was near the hero, as production loads it.
+const all = story.chat.messages.map(row => ({ role: row.role, content: row.content, createdAt: row.createdAt, ...(row.scene ? { scene: row.scene } : {}) }))
   .sort((a, b) => time(a) - time(b));
 // The rebuild leaves the newest 25 messages out and never splits a timestamp group.
 let through = all.length - KEEP_RECENT;
