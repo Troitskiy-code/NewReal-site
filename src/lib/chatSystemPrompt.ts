@@ -4,7 +4,7 @@ import { stripMemoryControlInstructions } from "./memorySafety";
 import { localeDefinition, resolveLocale } from "./i18nConfig";
 import { withoutChatThoughts } from "./chatMessageMarkup";
 
-export const PROMPT_BUILDER_VERSION = "rp-v2.13";
+export const PROMPT_BUILDER_VERSION = "rp-v2.14";
 const SCENE_MARKUP = {
   ru: "Разделяй *действия*, 'мысли' и реплики. Если карточка или сцена предполагает скрытую реакцию твоего персонажа, покажи её даже в коротком ответе одной фразой от первого лица в одинарных кавычках. В звёздочках оставляй только то, что мог бы заметить другой участник: жест, движение, видимое выражение лица. Узнавание, сомнение, воспоминание и намерение выноси из звёздочек в отдельную мысль. Внутри мысли звёздочки не ставь. Реплики пиши обычным текстом, с тире или в двойных кавычках. Пример: *Леон закрывает окно.* 'Дождь смоет следы раньше рассвета.' — У вас есть плащ? Пометка '…' у пользователя означает невысказанную мысль. Герою пользователя мысли не дописывай. Персонажи не слышат чужих мыслей.",
   en: "Separate *actions*, 'thoughts', and spoken lines. When the card or scene calls for a private reaction from a character you play, show it as one short first-person sentence in single quotes, even in a brief reply. Use asterisks only for things another participant could notice, such as gestures, movement, or visible expressions. Put private recognition, doubts, memories, and intentions in a separate thought outside the asterisks. Keep asterisks out of thoughts. Write spoken lines as plain text or in double quotes. Example: *Leon closes the window.* 'The rain will wash away the tracks before dawn.' \"Do you have a coat?\" A '…' marker in a user's message is an unspoken thought. Never invent the user's hero's thoughts. Characters cannot hear anyone else's thoughts.",
@@ -158,8 +158,23 @@ export function addressedCastMember(text: string, cast: string[]): string | null
   // A name after the start, a sentence end, a colon, a dash or a comma, and before a comma, an end mark or the end.
   const vocative = (word: string) => new RegExp(`(?:^|[.!?…:—–-]\\s*|,\\s*)${escape(word)}(?=\\s*[,.!?…]|\\s*$)`, "iu");
   const hit = cast.filter(name => [name, name.split(/\s+/u)[0]].some(word => word.length > 1 && vocative(word).test(speech)));
-  return hit.length === 1 ? hit[0] : null;
+  if (hit.length) return hit.length === 1 ? hit[0] : null;
+  // No name in the speech: «*Смотрю на Лейлу.* Ты в порядке?» addresses the one member the action names, when the
+  // line speaks to one person («ты», «скажешь») and not to all («вы», «все»). Handover 2026-11-09.
+  if (!SINGLE_YOU.test(speech) || PLURAL_YOU.test(speech)) return null;
+  const actions = [...withoutChatThoughts(text).matchAll(/\*([^*]+)\*/gu)].map(match => match[1]).join(" ");
+  // Any case form of a first name or surname: «Лейлу», «Ирме Сол», «к Тоби».
+  const named = (word: string, lead = "") => new RegExp(`(?<!\\p{L})${lead}${escape(word.length > 3 ? word.replace(/[аяйоеиыуюь]$/u, "") : word)}\\p{L}{0,3}(?!\\p{L})`, "iu");
+  const pick = (lead = "") => cast.filter(name => name.split(/\s+/u).some(word => word.length > 1 && named(word, lead).test(actions)));
+  const near = pick();
+  if (near.length <= 1) return near[0] ?? null;
+  // Several are named («Ирма и Лейла спорят. Подхожу к Тоби»): the one the hero turns to or looks at; «к Тоби и
+  // Лейле» turns to both.
+  const turned = pick("(?:к|ко|на)\\s+(?:[\\p{L}-]+\\s+и\\s+)?");
+  return turned.length === 1 ? turned[0] : null;
 }
+const SINGLE_YOU = /(?<!\p{L})(?:ты|тебя|тебе|тобой|тво[йяеёи]\p{L}*|\p{L}{2,}(?:ешь|ёшь|ишь)(?:ся)?)(?!\p{L})/iu;
+const PLURAL_YOU = /(?<!\p{L})(?:вы|вас|вам|вами|ваш\p{L}*|все|всем|всех|ребят\p{L}*|команд\p{L}*)(?!\p{L})/iu;
 // A general line in the reminder (rp-v2.10) kept the others quiet in 3 of 6 replies; a line that names who speaks
 // and who stays silent is added only on turns addressed to one member of a group story (rp-v2.12, eval 2026-11-08,
 // Gemma 4 Turbo, 6 replies per case, read by hand): «Тоби, сколько протянет генератор?» 0/6 → 6/6, «Ирма, почему

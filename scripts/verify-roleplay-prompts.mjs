@@ -323,6 +323,16 @@ const cast = ['Ирма Сол', 'Тоби Ракс', 'Лейла Нур'];
 const addressed = text => builder.addressedCastMember(text, cast);
 check(addressed('*Входим в рубку, здесь Ирма, Тоби и Лейла.* Ирма, решите, кому поручить осмотр.') === 'Ирма Сол', 'a vocative after an action addresses one member');
 check(addressed('Скажи, Тоби, ты это серьёзно?') === 'Тоби Ракс' && addressed('Спасибо, Ирма.') === 'Ирма Сол', 'a vocative inside or at the end of a sentence counts');
+// Open item of the 2026-11-09 handover: an action toward one member and a «ты» line without a name.
+check(addressed('*Смотрю на Лейлу.* Ты в порядке?') === 'Лейла Нур' && addressed('*Подхожу к Тоби и сажусь рядом.* Как тебе новый движок?') === 'Тоби Ракс'
+  && addressed('*Поворачиваюсь к Ирме Сол.* Что скажешь, капитан?') === 'Ирма Сол' && addressed('*Кладу руку Лейле на плечо.* Ты молодец.') === 'Лейла Нур',
+  'an action toward one member with a «ты» line addresses that member');
+check(addressed('*Ирма и Лейла спорят о курсе. Подхожу к Тоби и сажусь рядом на ящик.* Сколько, по-твоему, протянет генератор?') === 'Тоби Ракс'
+  && addressed('*Тоби и Лейла смотрят на Ирму.* Ты уверена?') === 'Ирма Сол' && addressed('*Подхожу к Тоби и Лейле.* Ты как?') === null,
+  'of several named, the one the hero turns to; two turned to are no single addressee');
+check([addressed('*Смотрю на Лейлу.* Вы все в порядке?'), addressed('*Смотрю на Лейлу и Тоби.* Ты в порядке?'), addressed('*Смотрю на Лейлу.* Хорошая погода.'),
+  addressed('*Смотрю на Лейлу.* Ирма, ты как?'), addressed('*Входим в рубку, здесь Ирма, Тоби и Лейла.* Ты кто такой?')]
+  .map(member => member ?? 'none').join() === 'none,none,none,Ирма Сол,none', 'no «ты», two members or a vocative to another keeps the old rule');
 check([addressed('Ну что, команда, кто как думает?'), addressed('Тоби, Лейла, помогите!'), addressed('Ирма и Тоби, идите сюда.'), addressed('Я поговорю с Ирмой позже.')]
   .every(member => member === null), 'everyone, two members or a mention is no single addressee');
 const groupTurn = builder.withTurnReminder([{ role: 'user', content: 'Тоби, сколько протянет генератор?' }], 'ru', { cast }).at(-1).content;
