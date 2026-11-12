@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { serviceChatPost } from "./aiTextClient";
 import { getMemoryProvider } from "./aiProviders";
 import { setAiCostActor, setAiCostThread, withAiCostContext } from "./aiCostTelemetry";
-import { errorLog, infoLog, toSafeDiagnostic } from "./logger";
+import { errorLog, infoLog, recoveredLog, toSafeDiagnostic } from "./logger";
 import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { stripMemoryControlInstructions } from "./memorySafety";
@@ -446,7 +446,7 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         return true;
       }
       if (cancelled === null) {
-        infoLog("MemoryV2", "turn failure ignored", { code, stage, jobId: job.id, seq: job.seq, outcome: "lease_lost" });
+        recoveredLog("MemoryV2", "turn attempt superseded", { code, stage, jobId: job.id, seq: job.seq, outcome: "lease_lost" });
         return false;
       }
     }
@@ -465,7 +465,7 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
       const context = { ...diagnostic, code: SKIPPED_OVERSIZED_TURN, stage, jobId: job.id, seq: job.seq, attempt: job.attempts,
         durationMs: Date.now() - startedAt };
       if (skipped) errorLog("MemoryV2", "turn skipped", { ...context, willRetry: false });
-      else infoLog("MemoryV2", "turn failure ignored", { ...context, outcome: "lease_lost" });
+      else recoveredLog("MemoryV2", "turn attempt superseded", { ...context, outcome: "lease_lost" });
       return skipped;
     }
     // A provider outage (timeout, 5xx, 429, lost connection) is not the turn's fault. Five attempts spanned
@@ -488,9 +488,12 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
     });
     const context = { ...safe, ...diagnostic, ...validation, code, ...(providerCode ? { providerCode } : {}), stage,
       jobId: job.id, seq: job.seq, attempt: job.attempts, maxAttempts, timeoutMs, durationMs: Date.now() - startedAt };
-    if (!deferred) infoLog("MemoryV2", "turn failure ignored", { ...context, outcome: "lease_lost" });
-    else errorLog("MemoryV2", willRetry ? "turn deferred" : "turn failed", { ...context, willRetry,
-      ...(willRetry ? { retryDelayMs, nextAttemptAt: availableAt.toISOString() } : {}) });
+    // A newer attempt took the turn over, or a retry is scheduled: neither is a problem yet, so neither goes
+    // to the error level (Relaxdev «Ошибки»). Only the attempt that gives up is an error.
+    if (!deferred) recoveredLog("MemoryV2", "turn attempt superseded", { ...context, outcome: "lease_lost" });
+    else if (willRetry) recoveredLog("MemoryV2", "turn deferred", { ...context, willRetry, retryDelayMs,
+      nextAttemptAt: availableAt.toISOString() });
+    else errorLog("MemoryV2", "turn failed", { ...context, willRetry });
     return false;
   }
 }

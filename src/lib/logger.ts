@@ -218,8 +218,8 @@ function ship(level: "debug" | "info" | "error", prefix: string, message: string
   }
 }
 
-function emit(level: "debug" | "info" | "error", prefix: string, args: unknown[]) {
-  const message = level === "error" ? formatErrorLog(prefix, args) : formatSafeLog(prefix, args);
+function emit(level: "debug" | "info" | "error", prefix: string, args: unknown[], errorFormat = level === "error") {
+  const message = errorFormat ? formatErrorLog(prefix, args) : formatSafeLog(prefix, args);
   try {
     if (level === "debug") console.log(message);
     else if (level === "info") console.info(message);
@@ -244,4 +244,13 @@ export function infoLog(prefix: string, ...args: unknown[]) {
 
 export function errorLog(prefix: string, ...args: unknown[]) {
   emit("error", prefix, args);
+}
+
+/**
+ * A failure that a later attempt resolves (a retry is scheduled, or a newer attempt already took over).
+ * Written to stdout at info level, so the Relaxdev «Ошибки» filter keeps only real problems, but with
+ * errorLog's allow-list formatting, since its context carries error diagnostics.
+ */
+export function recoveredLog(prefix: string, ...args: unknown[]) {
+  emit("info", prefix, args, true);
 }

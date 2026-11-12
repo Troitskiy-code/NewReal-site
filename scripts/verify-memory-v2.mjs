@@ -13,8 +13,9 @@ const facts = load(join(root, 'src/lib/memoryFacts.ts'));
 const legacy = load(join(root, 'src/lib/advancedMemory.ts'));
 const summaries = load(join(root, 'src/lib/chatMemory.ts'));
 const logger = load(join(root, 'src/lib/logger.ts'));
-const diagnosticLines = [];
-logger.setDiagnosticSink({ debug: line => diagnosticLines.push(line), info: line => diagnosticLines.push(line), error: line => diagnosticLines.push(line) });
+const diagnosticLines = [], errorLines = [];
+logger.setDiagnosticSink({ debug: line => diagnosticLines.push(line), info: line => diagnosticLines.push(line),
+  error: line => { diagnosticLines.push(line); errorLines.push(line); } });
 const { NextRequest } = require('next/server');
 const messageRoute = load(join(root, 'src/app/api/messages/[id]/route.ts'));
 const cron = load(join(root, 'src/app/api/cron/memory-jobs/route.ts'));
@@ -353,6 +354,21 @@ try {
     assert.match(line, /"code":"MEMORY_EXTRACT_PROVIDER_TIMEOUT"/); assert.match(line, /"providerCode":"ECONNABORTED"/);
     assert.match(line, /"stage":"provider_request"/); assert.match(line, /"timeoutMs":75000/);
     assert.ok(!line.includes('PRIVATE_PROVIDER_RESPONSE'));
+    assert.ok(!errorLines.includes(line), 'a scheduled retry is not an error-level line');
+  });
+  await check('an attempt overtaken by a newer one is logged below the error level', async () => {
+    const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
+    // Another worker takes the lease while this attempt waits on the provider, then the provider fails.
+    provider.beforeExtraction = async () => {
+      await db.chatThread.update({ where: { id: f.scope.threadId }, data: { memoryLeaseOwner: 'other-worker' } });
+      throw Object.assign(new Error('PRIVATE_PROVIDER_RESPONSE'), { isAxiosError: true, code: 'ECONNABORTED' });
+    };
+    try { await run(f, output()); } finally { provider.beforeExtraction = null; }
+    const line = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn attempt superseded'));
+    assert.ok(line); assert.match(line, /"outcome":"lease_lost"/); assert.match(line, /"code":"MEMORY_EXTRACT_PROVIDER_TIMEOUT"/);
+    assert.ok(!line.includes('PRIVATE_PROVIDER_RESPONSE') && !line.includes('Анна'));
+    assert.ok(!errorLines.some(row => row.includes(source.job.id)), 'nothing about this job at the error level');
+    assert.equal((await db.memoryJob.findUnique({ where: { id: source.job.id } })).status, 'processing');
   });
   await check('provider outages retry for hours instead of blocking the story after five quick attempts', async () => {
     const f = await setup(), source = await turn(f, 'Меня зовут Анна.');
@@ -405,6 +421,7 @@ try {
     assert.ok(job.finishedAt); assert.equal(job.errorCode, 'MEMORY_EXTRACT_INVALID:invalid_json');
     const terminal = diagnosticLines.find(line => line.includes(source.job.id) && line.includes('turn failed'));
     assert.ok(terminal); assert.match(terminal, /"attempt":5/); assert.match(terminal, /"willRetry":false/);
+    assert.ok(errorLines.includes(terminal), 'giving up is an error-level line');
     assert.ok(!terminal.includes('nextAttemptAt'));
     const before = provider.calls.length; await run(f, output()); assert.equal(provider.calls.length, before);
     assert.equal((await db.chatThread.findUnique({ where: { id: f.scope.threadId } })).memoryWatermarkSeq, 0);
