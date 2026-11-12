@@ -7,6 +7,9 @@ export const STATUS_LABELS: Record<MemoryStatus, string> = {
   done: "Выполнено", cancelled: "Отменено", uncertain: "Неясно",
 };
 
+/** Who said an event kept as its source sentence: the character's reply, or the player's line («Реплика героя (Кай): …»). */
+export const CHARACTER_EVENT_PREFIX = "По словам персонажа: ", HERO_EVENT_PREFIX = "Реплика героя";
+const SPEAKER_PREFIX = /^(?:По словам персонажа:\s*|Реплика героя(?:\s*\([^)\n]*\))?:\s*)/iu;
 const STATUS_PATTERNS: Array<[MemoryStatus, RegExp]> = [
   ["cancelled", /отмен|отлож|передум|больше не|не будем|cancel|postpon/iu],
   ["proposed", /предлаг|предлож|(?:^|[^\p{L}])(?:можно|следует|нужно|должен|должны|стоит)(?=$|[^\p{L}])|suggest|propos|should/iu],
@@ -15,7 +18,7 @@ const STATUS_PATTERNS: Array<[MemoryStatus, RegExp]> = [
   ["done", /наш[её]л|нашли|потерял|потеряли|закопал|спрятал|отдал|передал|выполн|создал|поднял|повысил|объявил|заверш|отправил(?:ся|ась|ись)|приш[её]л|пришли|found|lost|completed|announced/iu],
 ];
 export function inferMemoryStatus(text: string): MemoryStatus {
-  const labelled = /^(?:По словам персонажа:\s*|Персонаж\s*)?\[(Сообщено|Предложено|Решено|Обещано|Выполнено|Отменено|Неясно)(?:;[^\]]*)?\]/iu.exec(text.trim());
+  const labelled = /^(?:Персонаж\s*)?\[(Сообщено|Предложено|Решено|Обещано|Выполнено|Отменено|Неясно)(?:;[^\]]*)?\]/iu.exec(text.trim().replace(SPEAKER_PREFIX, ""));
   if (labelled) return MEMORY_STATUSES.find((key) => STATUS_LABELS[key].toLowerCase() === labelled[1].toLowerCase())!;
   if (text.trim().endsWith("?")) return "reported";
   if (/(?:^|[^\p{L}])не\s+(?:отмен[яи]|обеща|реши|утверди|выполни|наш[её]л|повыси)/iu.test(text)) return "reported";
@@ -221,7 +224,7 @@ export function retellingRejection(sentence: string, evidence: Array<{ text: str
 /** A quoted gesture or two-word reply («Можешь.», «За спину.») is not an event worth a prompt
  * line. The stored «По словам персонажа: [Сообщено]» prefix does not count. */
 export function isTrivialEvent(event: string): boolean {
-  const body = event.replace(/^(?:По словам персонажа:\s*)?\[[^\]]+\]\s*/u, "").replace(/\*/g, " ");
+  const body = event.replace(SPEAKER_PREFIX, "").replace(/^\[[^\]]+\]\s*/u, "").replace(/\*/g, " ");
   return (body.match(/[\p{L}\p{N}]+/gu) ?? []).length < 3;
 }
 

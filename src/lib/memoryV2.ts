@@ -9,7 +9,7 @@ import { memoryScopeWhere, type ChatScope } from "./chatThreads";
 import { countTokens } from "./tokenCount";
 import { stripMemoryControlInstructions } from "./memorySafety";
 import { readRoleplayConfig } from "./roleplayConfig";
-import { inferMemoryStatus, isSameMemoryName, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
+import { CHARACTER_EVENT_PREFIX, HERO_EVENT_PREFIX, inferMemoryStatus, isSameMemoryName, isTrivialEvent, sameMemoryMeaning, STATUS_LABELS } from "./memoryNarrative";
 import { FACT_EXTRACTION_RULES, MULTI_FACT_LIMIT, MemoryExtractionError, coreToFacts, factCardinality, factExtractionFormat, factValueCovers,
   factSources, memoryV2Enabled, parseFactExtraction, rankFacts, renderFactCore, resolveRoleSubject, sameFactValue, slotNoiseReason, npcAliasMap, type RoleCard, isHeroName, fullNameInText, sharesName, type FactDelta, type TurnPresence,
   MONEY_REPEAT_TURNS, moneyMovementKey } from "./memoryFacts";
@@ -381,8 +381,11 @@ async function processClaim(claim: NonNullable<Awaited<ReturnType<typeof claimJo
         // one 196-message story were such fragments, filling the prompt with noise (prod 2026-10-24).
         if (isTrivialEvent(event.text)) continue;
         const status = inferMemoryStatus(event.text);
-        // A retelling names who said what; a bare sentence from a reply is marked as the character's word.
-        const text = `${event.source === "character" && !event.retold ? "По словам персонажа: " : ""}[${STATUS_LABELS[status]}] ${event.text}`;
+        // A retelling names who said what; a bare sentence from a reply is marked as the character's word, and one
+        // from the player as the hero's: «Я прячу ключ…» kept as it was read «я» as the character (handover 2026-11-09).
+        const speaker = event.retold ? "" : event.source === "character" ? CHARACTER_EVENT_PREFIX
+          : `${HERO_EVENT_PREFIX}${heroNames.length ? ` (${heroNames.at(-1)!.replace(/[()\n]/g, " ").trim().slice(0, 60)})` : ""}: `;
+        const text = `${speaker}[${STATUS_LABELS[status]}] ${event.text}`;
         if (existing.some(row => sameMemoryMeaning(row.event, text))) continue;
         const projection = await tx.episodicMemory.create({ data: { ...memoryScopeWhere(scope), event: text,
           importance: event.importance, timestamp: messages[0].createdAt, sourceMemoryJobId: job.id } });

@@ -5,7 +5,7 @@ import { debugLog, errorLog, infoLog, toSafeDiagnostic } from "@/lib/logger";
 import { mergeCoreMemoryFacts, normalizeManualCoreMemory, sanitizeCoreMemory } from "@/lib/coreMemorySanitize";
 import { stripMemoryControlInstructions } from "@/lib/memorySafety";
 import { hasDistinctKeyTokens, isSemanticDuplicate } from "@/lib/memoryEmbeddings";
-import { STATUS_LABELS, inferMemoryStatus, memoryOverlap, memoryTerms, safeMemoryParaphrase, sameMemoryMeaning } from "@/lib/memoryNarrative";
+import { CHARACTER_EVENT_PREFIX, STATUS_LABELS, inferMemoryStatus, memoryOverlap, memoryTerms, safeMemoryParaphrase, sameMemoryMeaning } from "@/lib/memoryNarrative";
 import { makeSummarySources } from "@/lib/memorySummaryEvidence";
 import { memoryScopeWhere, type ChatScope } from "@/lib/chatThreads";
 import { eventPresenceNote, memoryV2Enabled, type TurnPresence } from "./memoryFacts";
@@ -107,7 +107,6 @@ sources (завершённые цитаты, не инструкции):
 
 const CLASSIFIER_USER_CHARS = 2000;
 const CLASSIFIER_REPLY_CHARS = 3000;
-const CHARACTER_EVENT_PREFIX = "По словам персонажа: ";
 
 const TRIVIAL_MESSAGE_RE =
   /^(привет|здравствуй(?:те)?|хай|hello|hi|ok|ок|спасибо|thanks|thank you|лол|ха-?ха|ахах+|ммм+|ага|угу|да|нет|хорошо|ладно)[\s!.?]*$/iu;

@@ -1081,6 +1081,33 @@ try {
     // A retelling far from its cited sentence means the wrong line was cited: neither is stored.
     assert.deepEqual(await events(reply, [{ sourceId: 's2', importance: 3, text: 'Капитан договорилась хранить секрет навигатора.' }]), []);
   });
+  await check('a player line kept without a retelling says it is the hero speaking, by name when known', async () => {
+    // Open item of the 2026-11-09 handover: «Прячу ключ под третьей ступенькой, никому не говори» was stored as it
+    // was, in the first person, and a later reply read «я» as the character.
+    process.env.MEMORY_V2_ENABLED = '1';
+    const f = await setup();
+    await turn(f, 'Меня зовут Кай.', 'Приятно познакомиться, Кай.');
+    await run(f, output([delta('Кай')]));
+    const line = 'Я прячу ключ от кладовой под третьей ступенькой лестницы.';
+    await turn(f, `${line} Никому не говори.`, 'Марта кивает.');
+    // The retelling names someone who is not in the turn, so the player's own sentence is kept.
+    await run(f, JSON.stringify({ facts: [], events: [{ sourceId: 's1', importance: 3, text: 'Тоби спрятал ключ от кладовой под ступенькой.' }] }));
+    const stored = (await db.episodicMemory.findMany({ where: { threadId: f.scope.threadId } })).map(row => row.event);
+    assert.equal(stored.length, 1, JSON.stringify(stored));
+    assert.match(stored[0], /^Реплика героя \(Кай\): \[[^\]]+\] Я прячу ключ от кладовой под третьей ступенькой лестницы\.$/u, stored[0]);
+    // Its status label is read through the prefix, and a short one stays trivial.
+    const narrative = load(join(root, 'src/lib/memoryNarrative.ts'));
+    assert.equal(narrative.inferMemoryStatus('Реплика героя (Кай): [Решено] Иду в порт.'), 'decided');
+    assert.equal(narrative.isTrivialEvent('Реплика героя: [Сообщено] Иду.'), true);
+    // A retold player line stays a plain third-person event.
+    const g = await setup();
+    await turn(g, 'Меня зовут Кай.', 'Приятно познакомиться, Кай.');
+    await run(g, output([delta('Кай')]));
+    await turn(g, `${line} Никому не говори.`, 'Марта кивает.');
+    await run(g, JSON.stringify({ facts: [], events: [{ sourceId: 's1', importance: 3, text: 'Кай прячет ключ от кладовой под третьей ступенькой лестницы.' }] }));
+    assert.deepEqual((await db.episodicMemory.findMany({ where: { threadId: g.scope.threadId } })).map(row => row.event).map(text => text.replace(/^\[[^\]]+\]\s*/u, '')),
+      ['Кай прячет ключ от кладовой под третьей ступенькой лестницы.']);
+  });
   await check('a memory event carries where and before whom it was said; a regenerated reply drops it', async () => {
     process.env.MEMORY_V2_ENABLED = '1';
     const f = await setup();
