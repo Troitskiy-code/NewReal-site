@@ -69,6 +69,12 @@ try {
   const helpers = load('src/lib/chatHelpers.ts');
   const client = load('src/lib/aiTextClient.ts');
   const policy = load('src/lib/testingChatModels.ts');
+  const network = load('src/lib/deepinfraNetwork.ts');
+  // Run with the developer .env files, a proxy left in the environment carried fixture calls to the real
+  // network once a stall opened the circuit; every DeepInfra call here must reach the fake fetch.
+  check(['DEEPINFRA_PROXY_URL', 'ALLVPN_PROXY_URL', 'DEEPINFRA_NETWORK_MODE'].every(key => !process.env[key])
+    && network.deepinfraRequestPlan('https://api.deepinfra.com/v1/openai/chat/completions').route === 'direct',
+    'no proxy from the environment: DeepInfra calls stay on the fixture');
   const legacy = await h.helpers.model(20000);
   const user = await h.helpers.user('universe');
   await h.db.user.update({ where: { id: user.id }, data: { selectedModelId: legacy.id } });
@@ -236,7 +242,7 @@ try {
       && await h.db.message.count({ where: { userId: stalledUser.id, role: 'assistant' } }) === 0,
       'base-model idle failure removes the reserved chat charge and saves no assistant message');
     h.session.userId = null;
-    const guestRequestId = randomUUID();
+    const guestRequestId = randomUUID(), beforeGuestStall = routes.length;
     const guestStall = await telemetry.withAiCostContext(() => guest.handleAnonymousChatPost(new NextRequest('http://localhost/api/chat/guest', {
       method: 'POST', headers: { 'x-forwarded-for': '127.0.0.3' },
     }), stalledCharacter.id, { message: 'Оборванный гостевой поток.', requestId: guestRequestId }));
@@ -244,7 +250,7 @@ try {
     await h.settle();
     const request = await h.db.anonymousChatRequest.findFirst({ where: { requestId: guestRequestId } });
     check(guestStallWire.includes('"type":"error"') && !guestStallWire.includes('"type":"end"')
-      && request?.status === 'failed' && request.refundedAt !== null,
+      && request?.status === 'failed' && request.refundedAt !== null && routes.length === beforeGuestStall + 1,
       'guest base-model idle failure returns the reserved anonymous message quota');
     check(await h.db.anonymousMessage.count({ where: { sessionId: request.sessionId, role: 'assistant' } }) === 0,
       'guest base-model idle failure does not save a partial assistant message');

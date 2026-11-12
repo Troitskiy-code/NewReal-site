@@ -208,6 +208,14 @@ async function migrationPart() {
   const fixed = cli(['--batch-size=2']);
   check('backfill CLI assigns the remaining row', fixed.status === 0 && JSON.parse(fixed.stdout).assigned.Message === 1, fixed.stdout || fixed.stderr);
 
+  // The rest of the chain on top of the migrated data, so the comparison is with the database as
+  // production has it now: later migrations (memory facts, episodic embeddings, scene avatars) add
+  // story columns, and without them every one of those read as drift.
+  const later = names.filter((name) => name > MIGRATION);
+  for (const name of later) await ddl.query(migrationSql(name));
+  check('later migrations apply on top of the migrated stories', later.length > 0
+    && (await rows('SELECT COUNT(*)::int AS count FROM "Message" WHERE "threadId" IS NULL'))[0].count === 0, later);
+
   // The migrated database matches the Prisma schema (vector columns are BYTEA in both fixtures).
   const schema = join(mkdtempSync(join(tmpdir(), 'nv-threads-schema-')), 'schema.prisma');
   writeFileSync(schema, readFileSync(join(root, 'prisma/schema.prisma'), 'utf8').replace(/Unsupported\("vector\(\d+\)"\)/g, 'Bytes'));
